@@ -24,7 +24,7 @@ export default async function PlanModulePage({ params }: PageProps) {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("full_name, onboarding_data, ai_credits_remaining")
+      .select("full_name, onboarding_data, ai_credits_remaining, subscription_tier")
       .eq("id", user.id)
       .single(),
     supabase
@@ -72,6 +72,7 @@ export default async function PlanModulePage({ params }: PageProps) {
         full_name: profile?.full_name ?? null,
         onboarding_data: (profile?.onboarding_data as Record<string, unknown>) ?? {},
         ai_credits_remaining: profile?.ai_credits_remaining ?? 0,
+        subscription_tier: (profile?.subscription_tier as string) ?? "free",
       }}
       initialResponses={responseMap}
       initialConversations={conversationMap}

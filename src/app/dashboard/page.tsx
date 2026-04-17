@@ -25,12 +25,14 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, readiness_score, subscription_tier, onboarding_completed")
+    .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining")
     .eq("id", user.id)
     .single();
 
   const firstName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
   const readinessScore = profile?.readiness_score ?? 0;
+  const subscriptionTier = profile?.subscription_tier ?? "free";
+  const creditsRemaining = profile?.ai_credits_remaining ?? 0;
 
   if (profile && !profile.onboarding_completed) {
     redirect("/onboarding");
@@ -63,14 +65,31 @@ export default async function DashboardPage() {
             <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">Hey {firstName} 👋</h1>
             <p className="text-[#afafaf] text-sm">Your coffee shop plan is waiting. Let&apos;s keep building.</p>
           </div>
-          <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center">
-            <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}</div>
-            <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">Opening Readiness Score</div>
-            <div className="mt-3 bg-[#efefef] rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-[#155e63] h-2 rounded-full transition-all duration-500"
-                style={{ width: `${readinessScore}%` }}
-              />
+          <div className="flex gap-4 flex-wrap sm:flex-nowrap">
+            <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center">
+              <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}</div>
+              <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">Opening Readiness Score</div>
+              <div className="mt-3 bg-[#efefef] rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-[#155e63] h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${readinessScore}%` }}
+                />
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-40 text-center">
+              {subscriptionTier === "accelerator" ? (
+                <div className="text-4xl font-bold text-[#76b39d] mb-1">∞</div>
+              ) : subscriptionTier === "free" ? (
+                <div className="text-4xl font-bold text-[#afafaf] mb-1">—</div>
+              ) : (
+                <div className={`text-4xl font-bold mb-1 ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
+                  {creditsRemaining}
+                </div>
+              )}
+              <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">AI Credits</div>
+              {subscriptionTier === "free" && (
+                <Link href="/account" className="mt-2 inline-block text-xs text-[#155e63] hover:underline">Upgrade →</Link>
+              )}
             </div>
           </div>
         </div>

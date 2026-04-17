@@ -10,6 +10,7 @@ interface UserProfile {
   full_name: string | null;
   onboarding_data: Record<string, unknown>;
   ai_credits_remaining: number;
+  subscription_tier: string;
 }
 
 interface SectionResponse {
@@ -645,6 +646,7 @@ function CoachPanel({
   onboardingData,
   allResponses,
   credits,
+  subscriptionTier,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -657,6 +659,7 @@ function CoachPanel({
   onboardingData: Record<string, unknown>;
   allResponses: Record<string, Record<string, unknown>>;
   credits: number;
+  subscriptionTier: string;
 }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -724,7 +727,13 @@ function CoachPanel({
             <div className="text-xs text-[#afafaf]">{sectionTitle}</div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-[#afafaf]">{credits} credits</span>
+            {subscriptionTier === "accelerator" ? (
+              <span className="text-xs text-[#76b39d] font-medium">Unlimited</span>
+            ) : (
+              <span className={`text-xs font-medium ${credits <= 10 && credits > 0 ? "text-amber-500" : "text-[#afafaf]"}`}>
+                {credits} credits
+              </span>
+            )}
             <button
               onClick={onClose}
               className="w-7 h-7 rounded-lg bg-[#f5f5f5] hover:bg-[#efefef] flex items-center justify-center transition-colors"
@@ -783,36 +792,62 @@ function CoachPanel({
 
         {/* Input */}
         <div className="border-t border-[#efefef] px-4 py-4">
-          {credits === 0 ? (
+          {subscriptionTier === "free" ? (
             <div className="text-center">
-              <p className="text-xs text-[#afafaf] mb-2">You&apos;re out of AI credits.</p>
-              <Link href="/pricing" className="text-xs text-[#155e63] font-medium hover:underline">
-                Upgrade to get more →
+              <p className="text-sm text-[#1a1a1a] font-medium mb-1">AI coaching requires a paid plan</p>
+              <p className="text-xs text-[#afafaf] mb-3">Free accounts can explore modules but cannot use the AI coach.</p>
+              <Link
+                href="/account"
+                className="inline-block text-xs bg-[#155e63] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0e4448] transition-colors"
+              >
+                Upgrade to Builder →
+              </Link>
+            </div>
+          ) : credits === 0 ? (
+            <div className="text-center">
+              <p className="text-sm text-[#1a1a1a] font-medium mb-1">You&apos;re out of AI credits</p>
+              <p className="text-xs text-[#afafaf] mb-3">
+                Your monthly credits have been used up. Upgrade to Accelerator for unlimited coaching, or wait for your monthly reset.
+              </p>
+              <Link
+                href="/account"
+                className="inline-block text-xs bg-[#155e63] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0e4448] transition-colors"
+              >
+                Upgrade for unlimited →
               </Link>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                rows={2}
-                placeholder="Ask your coach..."
-                className="flex-1 border border-[#efefef] rounded-xl px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63] transition-colors resize-none"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim() || loading}
-                className="px-3 bg-[#155e63] text-white rounded-xl hover:bg-[#0e4448] transition-colors disabled:opacity-40 flex-shrink-0"
-              >
-                <span className="text-sm">↑</span>
-              </button>
-            </div>
+            <>
+              {credits <= 10 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+                  <p className="text-xs text-amber-700">
+                    <strong>{credits} credits left</strong> this month. <Link href="/account" className="underline hover:no-underline">Upgrade to Accelerator</Link> for unlimited coaching.
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  rows={2}
+                  placeholder="Ask your coach..."
+                  className="flex-1 border border-[#efefef] rounded-xl px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63] transition-colors resize-none"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || loading}
+                  className="px-3 bg-[#155e63] text-white rounded-xl hover:bg-[#0e4448] transition-colors disabled:opacity-40 flex-shrink-0"
+                >
+                  <span className="text-sm">↑</span>
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -922,7 +957,11 @@ export function ModuleClient({
             >
               <span>☕</span>
               <span className="hidden sm:block">Coach</span>
-              {credits > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${coachOpen ? "bg-white/20" : "bg-[#efefef]"}`}>{credits}</span>}
+              {userProfile.subscription_tier === "accelerator" ? (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${coachOpen ? "bg-white/20 text-[#76b39d]" : "bg-[#efefef] text-[#76b39d]"}`}>∞</span>
+              ) : credits > 0 ? (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${credits <= 10 ? (coachOpen ? "bg-amber-400/30 text-amber-200" : "bg-amber-100 text-amber-600") : (coachOpen ? "bg-white/20" : "bg-[#efefef]")}`}>{credits}</span>
+              ) : null}
             </button>
           </div>
         </div>
@@ -1100,6 +1139,7 @@ export function ModuleClient({
           Object.entries(sectionData).map(([k, v]) => [k, v])
         )}
         credits={credits}
+        subscriptionTier={userProfile.subscription_tier}
       />
     </div>
   );

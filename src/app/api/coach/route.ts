@@ -71,12 +71,22 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining")
+    .select("ai_credits_remaining, subscription_tier")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.ai_credits_remaining < 1) {
-    return Response.json({ error: "Insufficient AI credits. Please upgrade your plan." }, { status: 402 });
+  if (!profile) {
+    return Response.json({ error: "Profile not found." }, { status: 404 });
+  }
+
+  if (profile.subscription_tier === "free") {
+    return Response.json({ error: "AI coaching requires a Builder or Accelerator plan. Upgrade to start coaching." }, { status: 403 });
+  }
+
+  const isUnlimited = profile.subscription_tier === "accelerator";
+
+  if (!isUnlimited && profile.ai_credits_remaining < 1) {
+    return Response.json({ error: "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or wait for your monthly reset." }, { status: 402 });
   }
 
   const systemPrompt = buildSystemPrompt(onboardingData ?? {}, allResponses ?? {}, sectionKey);
@@ -130,17 +140,19 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  await supabase
-    .from("users")
-    .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
-    .eq("id", user.id);
+  if (!isUnlimited) {
+    await supabase
+      .from("users")
+      .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
+      .eq("id", user.id);
 
-  await supabase.from("credit_transactions").insert({
-    user_id: user.id,
-    amount: -1,
-    type: "usage",
-    description: `Module ${moduleNumber} coach — ${sectionKey}`,
-  });
+    await supabase.from("credit_transactions").insert({
+      user_id: user.id,
+      amount: -1,
+      type: "usage",
+      description: `Module ${moduleNumber} coach — ${sectionKey}`,
+    });
+  }
 
   return Response.json({ message: assistantMessage });
 }
