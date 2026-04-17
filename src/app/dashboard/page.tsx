@@ -16,6 +16,62 @@ const MODULES = [
   { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", unlocked: false },
 ];
 
+function ReadinessRing({ score }: { score: number }) {
+  const r = 52;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (score / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width="140" height="140" viewBox="0 0 140 140" aria-label={`Readiness score: ${score} out of 100`}>
+        <circle cx="70" cy="70" r={r} fill="none" stroke="#efefef" strokeWidth="12" />
+        <circle
+          cx="70" cy="70" r={r}
+          fill="none"
+          stroke="#155e63"
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={`${circumference}`}
+          strokeDashoffset={`${offset}`}
+          style={{ transform: 'rotate(-90deg)', transformOrigin: '70px 70px' }}
+        />
+        <text x="70" y="64" textAnchor="middle" fill="#155e63" fontSize="30" fontWeight="700" fontFamily="Poppins, sans-serif">
+          {score}
+        </text>
+        <text x="70" y="88" textAnchor="middle" fill="#afafaf" fontSize="11" fontFamily="Poppins, sans-serif">
+          out of 100
+        </text>
+      </svg>
+      <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wider">Opening Readiness</p>
+    </div>
+  );
+}
+
+function buildMilestones(targetDate: string | null, currentModule: number) {
+  if (!targetDate) return null;
+  const now = new Date();
+  const open = new Date(targetDate + 'T00:00:00');
+  if (open <= now) return null;
+
+  const msTotal = open.getTime() - now.getTime();
+  const checkpoints = [
+    { label: 'Concept finalized', pct: 0.12, doneAfter: 1 },
+    { label: 'Financials complete', pct: 0.25, doneAfter: 2 },
+    { label: 'Location secured', pct: 0.42, doneAfter: 3 },
+    { label: 'Equipment & buildout', pct: 0.60, doneAfter: 5 },
+    { label: 'Staff trained', pct: 0.78, doneAfter: 6 },
+    { label: 'Soft open', pct: 0.92, doneAfter: 7 },
+    { label: 'Grand opening', pct: 1.0, doneAfter: 8 },
+  ];
+
+  return checkpoints.map(c => ({
+    label: c.label,
+    date: new Date(now.getTime() + msTotal * c.pct),
+    isCompleted: currentModule > c.doneAfter,
+    isGrandOpening: c.pct === 1.0,
+  }));
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -26,18 +82,20 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining")
+    .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining, target_opening_date")
     .eq("id", user.id)
     .single();
+
+  if (profile && !profile.onboarding_completed) {
+    redirect("/onboarding");
+  }
 
   const firstName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
   const readinessScore = profile?.readiness_score ?? 0;
   const subscriptionTier = profile?.subscription_tier ?? "free";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
-
-  if (profile && !profile.onboarding_completed) {
-    redirect("/onboarding");
-  }
+  const currentModule = 1;
+  const milestones = buildMilestones(profile?.target_opening_date ?? null, currentModule);
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
@@ -61,23 +119,18 @@ export default async function DashboardPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-10">
         {/* Welcome + readiness */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
           <div>
             <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">Hey {firstName} 👋</h1>
             <p className="text-[#afafaf] text-sm">Your coffee shop plan is waiting. Let&apos;s keep building.</p>
           </div>
           <div className="flex gap-4 flex-wrap sm:flex-nowrap">
-            <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center">
-              <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}</div>
-              <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">Opening Readiness Score</div>
-              <div className="mt-3 bg-[#efefef] rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-[#155e63] h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${readinessScore}%` }}
-                />
-              </div>
+            {/* Readiness ring */}
+            <div className="bg-white rounded-2xl border border-[#efefef] p-5 flex items-center justify-center">
+              <ReadinessRing score={readinessScore} />
             </div>
-            <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-40 text-center">
+            {/* AI credits */}
+            <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-40 text-center flex flex-col justify-center">
               {subscriptionTier === "accelerator" ? (
                 <div className="text-4xl font-bold text-[#76b39d] mb-1">∞</div>
               ) : subscriptionTier === "free" ? (
@@ -89,7 +142,7 @@ export default async function DashboardPage() {
               )}
               <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">AI Credits</div>
               {subscriptionTier === "free" && (
-                <Link href="/account" className="mt-2 inline-block text-xs text-[#155e63] hover:underline">Upgrade →</Link>
+                <Link href="/pricing" className="mt-2 inline-block text-xs text-[#155e63] hover:underline">Upgrade →</Link>
               )}
             </div>
           </div>
@@ -130,6 +183,43 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* Milestone timeline */}
+        {milestones && (
+          <>
+            <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Opening timeline</h2>
+            <div className="bg-white rounded-2xl border border-[#efefef] p-6 mb-10">
+              <div className="relative">
+                <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-[#efefef]" />
+                <ul className="space-y-5">
+                  {milestones.map((m, i) => (
+                    <li key={i} className="flex items-start gap-4 relative">
+                      <span className={`relative z-10 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        m.isCompleted
+                          ? 'bg-[#155e63] border-[#155e63]'
+                          : m.isGrandOpening
+                          ? 'bg-[#76b39d] border-[#76b39d]'
+                          : 'bg-white border-[#efefef]'
+                      }`}>
+                        {m.isCompleted && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <div>
+                        <p className={`text-sm font-medium ${m.isCompleted ? 'text-[#1a1a1a]' : 'text-[#afafaf]'}`}>{m.label}</p>
+                        <p className="text-xs text-[#afafaf]">
+                          {m.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Quick links */}
         <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Your tools</h2>
