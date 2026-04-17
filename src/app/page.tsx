@@ -238,6 +238,57 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Deliverables */}
+      <section className="bg-white px-6 py-20">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-4 text-[#1a1a1a]">What you walk away with</h2>
+          <p className="text-center text-[#afafaf] mb-12 max-w-xl mx-auto">
+            Every module produces a real document. By the end, you have a complete Business Readiness Document.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: "📄",
+                title: "Concept Brief",
+                desc: "Your shop's identity, target customer, differentiator, and brand voice — in a shareable one-pager.",
+                tags: ["Vision", "Positioning", "Brand"],
+              },
+              {
+                icon: "📊",
+                title: "Financial Model",
+                desc: "Build-out costs, revenue projections, break-even analysis, and 3-year P&L — all editable.",
+                tags: ["Revenue", "Costs", "Break-even"],
+              },
+              {
+                icon: "🔧",
+                title: "Equipment List",
+                desc: "A complete, spec'd equipment list with sourcing notes and estimated costs for your specific model.",
+                tags: ["Bar setup", "Pricing", "Sourcing"],
+              },
+              {
+                icon: "📋",
+                title: "Business Readiness Document",
+                desc: "All 8 modules compiled into one comprehensive document — your opening playbook.",
+                tags: ["Operations", "Hiring", "Marketing"],
+              },
+            ].map((d) => (
+              <div key={d.title} className="bg-[#faf9f7] rounded-2xl p-6 border border-[#efefef] flex flex-col">
+                <div className="text-3xl mb-4">{d.icon}</div>
+                <h3 className="font-semibold text-[#1a1a1a] mb-2">{d.title}</h3>
+                <p className="text-sm text-[#afafaf] leading-relaxed mb-4 flex-1">{d.desc}</p>
+                <div className="flex flex-wrap gap-2">
+                  {d.tags.map((tag) => (
+                    <span key={tag} className="text-xs bg-[#155e63]/10 text-[#155e63] px-2 py-1 rounded-full font-medium">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section id="pricing" className="bg-[#faf9f7] px-6 py-20">
         <div className="max-w-5xl mx-auto">
