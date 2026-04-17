@@ -33,41 +33,39 @@ interface ModuleClientProps {
   initialConversations: Record<string, ChatMessage[]>;
 }
 
-interface SectionDef {
-  key: string;
-  title: string;
-  requiredFields: string[];
-  minArrayLength?: Record<string, number>;
-}
-
-// ── Module Definitions ─────────────────────────────────────────────────────
+// ── Module Section Definitions ────────────────────────────────────────────
 
 const MODULE_TITLES: Record<number, string> = {
   1: "Concept & Positioning",
   2: "Financial Modeling",
+  3: "Site Selection & Lease",
+  4: "Menu Design & Sourcing",
+  5: "Bar Design & Equipment",
+  6: "Hiring, Training & Culture",
+  7: "Pre-Opening Marketing",
+  8: "BRD Assembly & Long-Term Ops",
 };
 
-const MODULE_1_SECTIONS: SectionDef[] = [
+const MODULE_1_SECTIONS = [
   { key: "shop_type", title: "Shop Type", requiredFields: ["model", "size", "seating", "food_level", "service_style"] },
   { key: "your_why", title: "Your Why", requiredFields: ["motivation", "customer_experience", "line_in_sand"] },
   { key: "target_customer", title: "Target Customer", requiredFields: ["age_range", "occupation", "income", "coffee_habits", "values"] },
-  { key: "competitive_analysis", title: "Competitive Analysis", requiredFields: ["competitors"], minArrayLength: { competitors: 3 } },
+  { key: "competitive_analysis", title: "Competitive Analysis", requiredFields: ["competitors"] },
   { key: "concept_brief", title: "Concept Brief", requiredFields: ["brief_content"] },
 ];
 
-const MODULE_2_SECTIONS: SectionDef[] = [
-  { key: "revenue_modeling", title: "Revenue Modeling", requiredFields: ["daily_customers", "avg_ticket", "days_per_week"] },
-  { key: "startup_costs", title: "Startup Costs", requiredFields: ["equipment", "build_out", "working_capital"] },
-  { key: "break_even", title: "Break-Even Analysis", requiredFields: ["monthly_rent", "monthly_labor", "cogs_percent"] },
-  { key: "operating_expenses", title: "Operating Expenses", requiredFields: ["rent_percent", "labor_percent", "summary_confirmed"] },
+const MODULE_2_SECTIONS = [
+  { key: "startup_costs", title: "Startup Budget", requiredFields: ["equipment_budget", "buildout_budget", "licensing_budget", "initial_inventory", "working_capital"] },
+  { key: "revenue_projections", title: "Revenue Projections", requiredFields: ["avg_ticket", "daily_transactions", "days_per_week"] },
+  { key: "monthly_expenses", title: "Monthly Expenses", requiredFields: ["rent", "labor_cost", "cogs_percentage"] },
+  { key: "pricing_strategy", title: "Pricing Strategy", requiredFields: ["espresso_price", "drip_price", "specialty_price"] },
+  { key: "financial_summary", title: "Financial Summary", requiredFields: ["summary_notes"] },
 ];
 
-const MODULE_SECTIONS: Record<number, SectionDef[]> = {
-  1: MODULE_1_SECTIONS,
-  2: MODULE_2_SECTIONS,
-};
-
-// ── Module 1 Data ─────────────────────────────────────────────────────────
+function getSectionsForModule(moduleNumber: number) {
+  if (moduleNumber === 2) return MODULE_2_SECTIONS;
+  return MODULE_1_SECTIONS;
+}
 
 const SHOP_MODELS = [
   { id: "full_cafe", label: "Full Café", desc: "Espresso, food, seating — the full experience", costRange: "$150K–$400K", example: "Blue Bottle, local neighborhood café" },
@@ -100,7 +98,7 @@ function useAutoSave(planId: string, moduleNumber: number, sectionKey: string) {
   return save;
 }
 
-// ── Module 1 Section Components ───────────────────────────────────────────
+// ── Section components ────────────────────────────────────────────────────
 
 function SectionShopType({
   data,
@@ -114,6 +112,7 @@ function SectionShopType({
 
   return (
     <div className="space-y-8">
+      {/* Learn */}
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">The 6 Shop Models</h3>
         <p className="text-sm text-[#afafaf] mb-5 leading-relaxed">
@@ -147,6 +146,7 @@ function SectionShopType({
         </div>
       </div>
 
+      {/* Build — only shows after model is selected */}
       {model && (
         <div className="border-t border-[#efefef] pt-6 space-y-5">
           <div>
@@ -659,463 +659,258 @@ function SectionConceptBrief({
 
 // ── Module 2 Section Components ───────────────────────────────────────────
 
-function StepperInput({
-  label,
-  value,
-  min,
-  max,
-  step,
-  format,
-  onChange,
-  hint,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  format: (v: number) => string;
-  onChange: (v: number) => void;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="text-sm font-medium text-[#1a1a1a]">{label}</label>
-        <span className="text-sm font-semibold text-[#155e63]">{format(value)}</span>
-      </div>
-      {hint && <p className="text-xs text-[#afafaf] mb-2">{hint}</p>}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => onChange(Math.max(min, value - step))}
-          className="w-9 h-9 rounded-xl border border-[#efefef] text-[#afafaf] hover:border-[#155e63] hover:text-[#155e63] transition-colors flex items-center justify-center text-lg font-light"
-        >
-          −
-        </button>
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 accent-[#155e63]"
-        />
-        <button
-          onClick={() => onChange(Math.min(max, value + step))}
-          className="w-9 h-9 rounded-xl border border-[#efefef] text-[#afafaf] hover:border-[#155e63] hover:text-[#155e63] transition-colors flex items-center justify-center text-lg font-light"
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function CurrencyInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  hint,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-[#1a1a1a] mb-1">{label}</label>
-      {hint && <p className="text-xs text-[#afafaf] mb-2">{hint}</p>}
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">$</span>
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder ?? "0"}
-          min="0"
-          className="w-full border border-[#efefef] rounded-xl pl-7 pr-4 py-2.5 text-sm text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
-        />
-      </div>
-    </div>
-  );
-}
-
-function SectionRevenueModeling({
-  data,
-  onChange,
-}: {
-  data: Record<string, unknown>;
-  onChange: (d: Record<string, unknown>) => void;
-}) {
-  const dailyCustomers = (data.daily_customers as number) ?? 80;
-  const avgTicket = (data.avg_ticket as number) ?? 7;
-  const daysPerWeek = (data.days_per_week as number) ?? 6;
-
-  const weeklyRevenue = dailyCustomers * avgTicket * daysPerWeek;
-  const monthlyRevenue = weeklyRevenue * 4.3;
-  const annualRevenue = monthlyRevenue * 12;
-
-  const fmt = (n: number) =>
-    n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n)}`;
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="font-semibold text-[#1a1a1a] mb-3">What Does Your Shop Actually Make?</h3>
-        <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          Revenue modeling for a coffee shop comes down to three numbers: how many people come in, how much they spend, and how many days you&apos;re open. Everything else is noise until you nail these. Start conservative — new shops typically run at 40–60% of capacity in year one.
-        </p>
-        <p className="text-sm text-[#afafaf] leading-relaxed">
-          Adjust the sliders below. The projections update in real time.
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        <StepperInput
-          label="Daily customers"
-          value={dailyCustomers}
-          min={10}
-          max={500}
-          step={5}
-          format={(v) => `${v} people/day`}
-          onChange={(v) => onChange({ ...data, daily_customers: v })}
-          hint="Industry average for a neighborhood café: 80–150 on a busy day. Be conservative for year one."
-        />
-
-        <StepperInput
-          label="Average ticket size"
-          value={avgTicket}
-          min={3}
-          max={20}
-          step={0.5}
-          format={(v) => `$${v.toFixed(2)}`}
-          onChange={(v) => onChange({ ...data, avg_ticket: v })}
-          hint="Drink-only shops: $5–$7. Shops with food add-ons: $8–$12. Specialty + food: $10–$15."
-        />
-
-        <StepperInput
-          label="Days open per week"
-          value={daysPerWeek}
-          min={5}
-          max={7}
-          step={1}
-          format={(v) => `${v} days/week`}
-          onChange={(v) => onChange({ ...data, days_per_week: v })}
-          hint="Most independent cafés open 6–7 days. Factor in your staffing capacity."
-        />
-      </div>
-
-      {/* Revenue projections */}
-      <div className="bg-[#faf9f7] border border-[#efefef] rounded-2xl p-5">
-        <p className="text-xs font-medium text-[#afafaf] uppercase tracking-wide mb-4">Revenue Projections</p>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#155e63]">{fmt(weeklyRevenue)}</div>
-            <div className="text-xs text-[#afafaf] mt-1">Weekly</div>
-          </div>
-          <div className="text-center border-x border-[#efefef]">
-            <div className="text-2xl font-bold text-[#155e63]">{fmt(monthlyRevenue)}</div>
-            <div className="text-xs text-[#afafaf] mt-1">Monthly</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#155e63]">{fmt(annualRevenue)}</div>
-            <div className="text-xs text-[#afafaf] mt-1">Annual</div>
-          </div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-[#efefef]">
-          <p className="text-xs text-[#afafaf] leading-relaxed">
-            These are gross revenue figures before any costs. Your coach can help you stress-test these numbers against your concept and location.
-          </p>
-        </div>
-      </div>
-
-      {/* Peak time split */}
-      <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] mb-2">When are most customers coming in?</label>
-        <p className="text-xs text-[#afafaf] mb-3">Select all that apply. This shapes staffing and inventory planning.</p>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { id: "early_morning", label: "Early morning (6–9am)", note: "Commuters, pre-work" },
-            { id: "mid_morning", label: "Mid-morning (9am–12pm)", note: "Remote workers, meetings" },
-            { id: "lunch", label: "Lunch rush (12–2pm)", note: "Office crowd, grab-and-go" },
-            { id: "afternoon", label: "Afternoon (2–5pm)", note: "Students, slow recharge" },
-            { id: "evening", label: "Evening (5pm+)", note: "Social, wine/beer crossover" },
-            { id: "weekends", label: "Weekend brunch", note: "Families, leisurely visits" },
-          ].map((opt) => {
-            const current = (data.peak_times as string[]) ?? [];
-            const selected = current.includes(opt.id);
-            return (
-              <button
-                key={opt.id}
-                onClick={() => {
-                  const updated = selected ? current.filter((v) => v !== opt.id) : [...current, opt.id];
-                  onChange({ ...data, peak_times: updated });
-                }}
-                className={`text-left p-3 rounded-xl border transition-colors ${
-                  selected
-                    ? "border-[#155e63] bg-[#155e63]/5"
-                    : "border-[#efefef] bg-white hover:border-[#afafaf]"
-                }`}
-              >
-                <div className={`text-xs font-medium ${selected ? "text-[#155e63]" : "text-[#1a1a1a]"}`}>{opt.label}</div>
-                <div className="text-xs text-[#afafaf] mt-0.5">{opt.note}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SectionStartupCosts({
-  data,
-  onChange,
-}: {
-  data: Record<string, unknown>;
-  onChange: (d: Record<string, unknown>) => void;
-}) {
-  const get = (key: string) => (data[key] as string) ?? "";
-  const num = (key: string) => parseFloat(get(key)) || 0;
-
-  const categories = [
-    {
-      group: "Space",
-      items: [
-        { key: "lease_deposit", label: "Lease deposit (first + last month)", placeholder: "8000", hint: "Typically 2–3 months rent upfront" },
-        { key: "build_out", label: "Build-out / renovation", placeholder: "60000", hint: "Plumbing, electrical, HVAC, finishes" },
-        { key: "signage", label: "Signage & exterior", placeholder: "3000", hint: "Window graphics, awning, exterior sign" },
-      ],
-    },
-    {
-      group: "Equipment",
-      items: [
-        { key: "equipment", label: "Espresso machine + grinders", placeholder: "20000", hint: "Commercial La Marzocco: $10–$20K. Semi-commercial: $3–$8K" },
-        { key: "brewing_equipment", label: "Brewing equipment & smallwares", placeholder: "5000", hint: "Batch brewers, pour-over gear, refrigeration" },
-        { key: "pos_system", label: "POS system + hardware", placeholder: "2500", hint: "Toast, Square, Lightspeed — hardware + first year" },
-      ],
-    },
-    {
-      group: "Pre-opening",
-      items: [
-        { key: "licenses_permits", label: "Licenses & permits", placeholder: "2000", hint: "Health permit, business license, food handler certs" },
-        { key: "inventory_initial", label: "Opening inventory", placeholder: "4000", hint: "Coffee, milk, syrups, pastries, packaging — 2 weeks supply" },
-        { key: "marketing_launch", label: "Launch marketing", placeholder: "2000", hint: "Soft opening events, social media setup, local ads" },
-      ],
-    },
-    {
-      group: "Cash Buffer",
-      items: [
-        { key: "working_capital", label: "Working capital reserve", placeholder: "20000", hint: "3–6 months operating costs. Critical — most shops fail from cash flow, not bad coffee" },
-      ],
-    },
+function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const fields = [
+    { key: "equipment_budget", label: "Equipment & Bar Build-Out", placeholder: "e.g. 85000", hint: "Espresso machine, grinders, brewers, refrigeration" },
+    { key: "buildout_budget", label: "Construction & Leasehold Improvements", placeholder: "e.g. 120000", hint: "Plumbing, electrical, flooring, walls" },
+    { key: "deposit_budget", label: "Deposits & Pre-Opening Fees", placeholder: "e.g. 30000", hint: "Lease deposit, utility deposits, architect" },
+    { key: "licensing_budget", label: "Licenses & Legal", placeholder: "e.g. 8000", hint: "Business license, health permits, LLC formation" },
+    { key: "initial_inventory", label: "Initial Inventory", placeholder: "e.g. 12000", hint: "Coffee, milk, syrups, cups, food" },
+    { key: "working_capital", label: "Working Capital Reserve", placeholder: "e.g. 40000", hint: "3–6 months of operating cash on hand" },
   ];
 
-  const totalCost = categories.flatMap((g) => g.items).reduce((sum, item) => sum + num(item.key), 0);
-
-  const formatCurrency = (n: number) =>
-    n === 0 ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  const total = fields.reduce((sum, f) => {
+    const val = parseFloat((data[f.key] as string) ?? "0") || 0;
+    return sum + val;
+  }, 0);
 
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-[#1a1a1a] mb-3">What Does It Actually Cost to Open?</h3>
-        <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          Most first-time operators underestimate by 20–40%. The categories below cover the full picture — not just the fun stuff like espresso machines. Enter your best estimates and your coach will flag anything that looks off given your model and location.
-        </p>
+        <h3 className="font-semibold text-[#1a1a1a] mb-2">Startup Budget</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          Leave fields blank if you don&apos;t have an estimate yet. Focus on completing Equipment, Build-out, and Working Capital — those three drive 80% of the total.
+          Break down your total startup cost by category. Be honest — most operators underestimate buildout and working capital by 20–30%.
         </p>
       </div>
-
-      <div className="space-y-6">
-        {categories.map((group) => (
-          <div key={group.group}>
-            <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-wide mb-3">{group.group}</p>
-            <div className="space-y-3">
-              {group.items.map((item) => (
-                <CurrencyInput
-                  key={item.key}
-                  label={item.label}
-                  value={get(item.key)}
-                  onChange={(v) => onChange({ ...data, [item.key]: v })}
-                  placeholder={item.placeholder}
-                  hint={item.hint}
-                />
-              ))}
+      <div className="space-y-5">
+        {fields.map((f) => (
+          <div key={f.key}>
+            <label className="text-sm font-medium text-[#1a1a1a] block mb-1">{f.label}</label>
+            <p className="text-xs text-[#afafaf] mb-2">{f.hint}</p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">$</span>
+              <input
+                type="number"
+                min="0"
+                value={(data[f.key] as string) ?? ""}
+                onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
+                placeholder={f.placeholder}
+                className="w-full border border-[#efefef] rounded-xl pl-7 pr-4 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+              />
             </div>
           </div>
         ))}
       </div>
-
-      {/* Total */}
-      <div className="bg-[#faf9f7] border border-[#efefef] rounded-2xl p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-[#afafaf] uppercase tracking-wide mb-1">Estimated Total</p>
-            <p className="text-3xl font-bold text-[#155e63]">{formatCurrency(totalCost)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-[#afafaf]">Industry range</p>
-            <p className="text-sm font-medium text-[#1a1a1a]">$50K – $400K+</p>
-          </div>
-        </div>
-        {totalCost > 0 && (
-          <div className="mt-4 pt-4 border-t border-[#efefef]">
-            <p className="text-xs text-[#afafaf] leading-relaxed">
-              Add a 15–20% contingency buffer to this number. Renovation always runs over. Equipment arrives damaged. Permits take longer than expected.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SectionBreakEven({
-  data,
-  onChange,
-}: {
-  data: Record<string, unknown>;
-  onChange: (d: Record<string, unknown>) => void;
-}) {
-  const get = (key: string) => (data[key] as string) ?? "";
-  const num = (key: string) => parseFloat(get(key)) || 0;
-  const cogsPercent = (data.cogs_percent as number) ?? 32;
-
-  const monthlyRent = num("monthly_rent");
-  const monthlyLabor = num("monthly_labor");
-  const monthlyUtilities = num("monthly_utilities");
-  const monthlyOther = num("monthly_other_fixed");
-
-  const totalFixed = monthlyRent + monthlyLabor + monthlyUtilities + monthlyOther;
-  const contributionMargin = 1 - cogsPercent / 100;
-  const breakEvenRevenue = contributionMargin > 0 ? totalFixed / contributionMargin : 0;
-
-  const avgTicketEstimate = 7;
-  const breakEvenCustomersPerDay = breakEvenRevenue > 0 ? Math.ceil(breakEvenRevenue / (avgTicketEstimate * 26)) : 0;
-
-  const formatCurrency = (n: number) =>
-    n === 0 ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="font-semibold text-[#1a1a1a] mb-3">The Number That Keeps You in Business</h3>
-        <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          Break-even is the minimum revenue you need every month to cover all your costs. Below it, you&apos;re losing money. Above it, every dollar is profit. Knowing this number before you open is non-negotiable.
-        </p>
-        <p className="text-sm text-[#afafaf] leading-relaxed">
-          Enter your estimated monthly fixed costs. Your COGS (cost of goods sold) — coffee, milk, food — typically runs 28–38% of revenue for independent cafés.
-        </p>
-      </div>
-
-      {/* Fixed costs */}
-      <div>
-        <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-wide mb-3">Monthly Fixed Costs</p>
-        <div className="space-y-3">
-          <CurrencyInput
-            label="Rent / lease"
-            value={get("monthly_rent")}
-            onChange={(v) => onChange({ ...data, monthly_rent: v })}
-            placeholder="4500"
-            hint="Your negotiated monthly rent. Aim for under 10% of projected monthly revenue."
-          />
-          <CurrencyInput
-            label="Labor (wages + payroll taxes)"
-            value={get("monthly_labor")}
-            onChange={(v) => onChange({ ...data, monthly_labor: v })}
-            placeholder="12000"
-            hint="All staff wages including yours if you're paying yourself. Typically the largest line item."
-          />
-          <CurrencyInput
-            label="Utilities (electric, gas, water)"
-            value={get("monthly_utilities")}
-            onChange={(v) => onChange({ ...data, monthly_utilities: v })}
-            placeholder="800"
-            hint="Espresso machines are power-hungry. Budget $600–$1,200/month depending on equipment."
-          />
-          <CurrencyInput
-            label="Other fixed costs"
-            value={get("monthly_other_fixed")}
-            onChange={(v) => onChange({ ...data, monthly_other_fixed: v })}
-            placeholder="1500"
-            hint="Insurance, POS fees, loan repayment, music licensing, software subscriptions"
-          />
-        </div>
-      </div>
-
-      {/* COGS */}
-      <div>
-        <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-wide mb-3">Cost of Goods Sold (COGS)</p>
-        <StepperInput
-          label="COGS as % of revenue"
-          value={cogsPercent}
-          min={20}
-          max={50}
-          step={1}
-          format={(v) => `${v}%`}
-          onChange={(v) => onChange({ ...data, cogs_percent: v })}
-          hint="Drinks-only: 28–33%. With food: 32–38%. High food: up to 42%. Lower is better."
-        />
-        <div className="mt-3 flex gap-2 flex-wrap">
-          {[
-            { label: "Lean (drinks-only)", value: 30 },
-            { label: "Typical café", value: 33 },
-            { label: "Café + light food", value: 36 },
-            { label: "Full food menu", value: 40 },
-          ].map((preset) => (
-            <button
-              key={preset.value}
-              onClick={() => onChange({ ...data, cogs_percent: preset.value })}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                cogsPercent === preset.value
-                  ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                  : "border-[#efefef] text-[#afafaf] hover:border-[#afafaf]"
-              }`}
-            >
-              {preset.label} ({preset.value}%)
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Break-even result */}
-      {totalFixed > 0 && (
-        <div className="bg-[#faf9f7] border border-[#efefef] rounded-2xl p-5 space-y-4">
-          <p className="text-xs font-medium text-[#afafaf] uppercase tracking-wide">Your Break-Even</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-2xl font-bold text-[#155e63]">{formatCurrency(breakEvenRevenue)}</div>
-              <div className="text-xs text-[#afafaf] mt-1">Revenue needed per month</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-[#155e63]">{breakEvenCustomersPerDay > 0 ? `~${breakEvenCustomersPerDay}` : "—"}</div>
-              <div className="text-xs text-[#afafaf] mt-1">Customers/day to break even*</div>
-            </div>
-          </div>
-          <div className="pt-3 border-t border-[#efefef]">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-[#afafaf]">Total fixed monthly costs</span>
-              <span className="font-medium text-[#1a1a1a]">{formatCurrency(totalFixed)}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[#afafaf]">Contribution margin</span>
-              <span className="font-medium text-[#1a1a1a]">{(contributionMargin * 100).toFixed(0)}%</span>
-            </div>
-          </div>
-          <p className="text-xs text-[#afafaf]">*Assumes $7 avg ticket, 26 open days/month. Ask your coach to adjust for your numbers.</p>
+      {total > 0 && (
+        <div className="bg-[#155e63]/5 border border-[#155e63]/20 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-[#155e63]">Estimated Total Startup Cost</span>
+          <span className="text-lg font-bold text-[#155e63]">${total.toLocaleString()}</span>
         </div>
       )}
     </div>
   );
 }
 
-function SectionOperatingExpenses({
+function SectionRevenueProjections({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const avgTicket = parseFloat((data.avg_ticket as string) ?? "0") || 0;
+  const dailyTx = parseFloat((data.daily_transactions as string) ?? "0") || 0;
+  const daysPerWeek = parseFloat((data.days_per_week as string) ?? "0") || 0;
+  const monthlyRevenue = avgTicket * dailyTx * daysPerWeek * 4.33;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="font-semibold text-[#1a1a1a] mb-2">Revenue Projections</h3>
+        <p className="text-sm text-[#afafaf] leading-relaxed">
+          Start with realistic daily transaction counts — not best-case. Most independent cafés average 80–150 transactions/day in year one.
+        </p>
+      </div>
+      <div className="space-y-5">
+        <div>
+          <label className="text-sm font-medium text-[#1a1a1a] block mb-1">Average Ticket Size</label>
+          <p className="text-xs text-[#afafaf] mb-2">Total sale per customer including food and add-ons</p>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">$</span>
+            <input
+              type="number"
+              min="0"
+              step="0.50"
+              value={(data.avg_ticket as string) ?? ""}
+              onChange={(e) => onChange({ ...data, avg_ticket: e.target.value })}
+              placeholder="e.g. 8.50"
+              className="w-full border border-[#efefef] rounded-xl pl-7 pr-4 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium text-[#1a1a1a] block mb-1">Daily Transactions</label>
+          <p className="text-xs text-[#afafaf] mb-2">Estimated unique customer transactions per day</p>
+          <input
+            type="number"
+            min="0"
+            value={(data.daily_transactions as string) ?? ""}
+            onChange={(e) => onChange({ ...data, daily_transactions: e.target.value })}
+            placeholder="e.g. 120"
+            className="w-full border border-[#efefef] rounded-xl px-4 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-[#1a1a1a] block mb-1">Days Open Per Week</label>
+          <input
+            type="number"
+            min="1"
+            max="7"
+            value={(data.days_per_week as string) ?? ""}
+            onChange={(e) => onChange({ ...data, days_per_week: e.target.value })}
+            placeholder="e.g. 6"
+            className="w-full border border-[#efefef] rounded-xl px-4 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-[#1a1a1a] block mb-1">Seasonal Notes</label>
+          <p className="text-xs text-[#afafaf] mb-2">Describe any seasonality expected in your market</p>
+          <textarea
+            value={(data.seasonal_notes as string) ?? ""}
+            onChange={(e) => onChange({ ...data, seasonal_notes: e.target.value })}
+            placeholder="e.g. Tourist area — expect 40% volume spike June–August, slower January–February"
+            rows={3}
+            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors resize-none"
+          />
+        </div>
+      </div>
+      {monthlyRevenue > 0 && (
+        <div className="bg-[#155e63]/5 border border-[#155e63]/20 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-[#155e63]">Estimated Monthly Revenue</span>
+          <span className="text-lg font-bold text-[#155e63]">${Math.round(monthlyRevenue).toLocaleString()}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const fields = [
+    { key: "rent", label: "Rent / Lease Payment", placeholder: "e.g. 6500", hint: "Monthly base rent — don't include CAM yet" },
+    { key: "labor_cost", label: "Total Labor (Gross)", placeholder: "e.g. 14000", hint: "All staff wages + your own owner pay" },
+    { key: "utilities", label: "Utilities", placeholder: "e.g. 1200", hint: "Electric, gas, water, internet" },
+    { key: "marketing_budget", label: "Marketing", placeholder: "e.g. 800", hint: "Social ads, loyalty program, events" },
+    { key: "other_expenses", label: "Other Operating Expenses", placeholder: "e.g. 2000", hint: "Insurance, POS fees, repairs, supplies" },
+  ];
+
+  const cogsPercent = parseFloat((data.cogs_percentage as string) ?? "0") || 0;
+  const otherFixed = fields.reduce((sum, f) => {
+    return sum + (parseFloat((data[f.key] as string) ?? "0") || 0);
+  }, 0);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="font-semibold text-[#1a1a1a] mb-2">Monthly Expenses</h3>
+        <p className="text-sm text-[#afafaf] leading-relaxed">
+          Know your fixed and variable costs before you open. Labor + rent typically make up 50–60% of a café&apos;s revenue.
+        </p>
+      </div>
+      <div className="space-y-5">
+        <div>
+          <label className="text-sm font-medium text-[#1a1a1a] block mb-1">Cost of Goods Sold (COGS) %</label>
+          <p className="text-xs text-[#afafaf] mb-2">Typical specialty café COGS is 25–35% of revenue</p>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={(data.cogs_percentage as string) ?? ""}
+              onChange={(e) => onChange({ ...data, cogs_percentage: e.target.value })}
+              placeholder="e.g. 30"
+              className="w-full border border-[#efefef] rounded-xl px-4 pr-8 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">%</span>
+          </div>
+        </div>
+        {fields.map((f) => (
+          <div key={f.key}>
+            <label className="text-sm font-medium text-[#1a1a1a] block mb-1">{f.label}</label>
+            <p className="text-xs text-[#afafaf] mb-2">{f.hint}</p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">$</span>
+              <input
+                type="number"
+                min="0"
+                value={(data[f.key] as string) ?? ""}
+                onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
+                placeholder={f.placeholder}
+                className="w-full border border-[#efefef] rounded-xl pl-7 pr-4 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {otherFixed > 0 && (
+        <div className="bg-[#155e63]/5 border border-[#155e63]/20 rounded-xl p-4 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-[#155e63]">Fixed Monthly Costs</span>
+            <span className="text-lg font-bold text-[#155e63]">${otherFixed.toLocaleString()}</span>
+          </div>
+          {cogsPercent > 0 && (
+            <p className="text-xs text-[#155e63]/70">Plus {cogsPercent}% of revenue in COGS (variable)</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionPricingStrategy({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const pricingFields = [
+    { key: "espresso_price", label: "Espresso / Americano", placeholder: "e.g. 4.50" },
+    { key: "drip_price", label: "Drip / Filter Coffee", placeholder: "e.g. 3.50" },
+    { key: "specialty_price", label: "Specialty Latte / Signature Drink", placeholder: "e.g. 7.00" },
+    { key: "food_avg_price", label: "Average Food Item", placeholder: "e.g. 6.00" },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="font-semibold text-[#1a1a1a] mb-2">Pricing Strategy</h3>
+        <p className="text-sm text-[#afafaf] leading-relaxed">
+          Set your core price points. Specialty cafés in major metros average $5–$7 for espresso drinks. Price confidently — customers pay for experience, not just coffee.
+        </p>
+      </div>
+      <div className="space-y-5">
+        {pricingFields.map((f) => (
+          <div key={f.key}>
+            <label className="text-sm font-medium text-[#1a1a1a] block mb-1">{f.label}</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={(data[f.key] as string) ?? ""}
+                onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
+                placeholder={f.placeholder}
+                className="w-full border border-[#efefef] rounded-xl pl-7 pr-4 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors"
+              />
+            </div>
+          </div>
+        ))}
+        <div>
+          <label className="text-sm font-medium text-[#1a1a1a] block mb-1">Pricing Philosophy</label>
+          <p className="text-xs text-[#afafaf] mb-2">How will you position on price vs. local competitors?</p>
+          <textarea
+            value={(data.pricing_notes as string) ?? ""}
+            onChange={(e) => onChange({ ...data, pricing_notes: e.target.value })}
+            placeholder="e.g. Premium pricing (10% above market) justified by single-origin sourcing and barista education. Loyalty program to offset frequency sensitivity."
+            rows={4}
+            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors resize-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionFinancialSummary({
   data,
   onChange,
   allData,
@@ -1124,194 +919,68 @@ function SectionOperatingExpenses({
   onChange: (d: Record<string, unknown>) => void;
   allData: Record<string, Record<string, unknown>>;
 }) {
-  const breakEvenData = allData.break_even ?? {};
-  const revenueData = allData.revenue_modeling ?? {};
+  const costs = allData.startup_costs ?? {};
+  const revenue = allData.revenue_projections ?? {};
+  const expenses = allData.monthly_expenses ?? {};
 
-  const num = (obj: Record<string, unknown>, key: string) => parseFloat((obj[key] as string) ?? "0") || 0;
-  const cogsPercent = (breakEvenData.cogs_percent as number) ?? 32;
-  const monthlyRent = num(breakEvenData, "monthly_rent");
-  const monthlyLabor = num(breakEvenData, "monthly_labor");
-  const monthlyUtilities = num(breakEvenData, "monthly_utilities");
-  const monthlyOther = num(breakEvenData, "monthly_other_fixed");
-  const dailyCustomers = (revenueData.daily_customers as number) ?? 80;
-  const avgTicket = (revenueData.avg_ticket as number) ?? 7;
-  const daysPerWeek = (revenueData.days_per_week as number) ?? 6;
-  const monthlyRevenue = dailyCustomers * avgTicket * daysPerWeek * 4.3;
+  const startupTotal = ["equipment_budget", "buildout_budget", "deposit_budget", "licensing_budget", "initial_inventory", "working_capital"]
+    .reduce((s, k) => s + (parseFloat((costs[k] as string) ?? "0") || 0), 0);
 
-  const monthlyCogs = monthlyRevenue * (cogsPercent / 100);
-  const totalMonthlyExpenses = monthlyCogs + monthlyRent + monthlyLabor + monthlyUtilities + monthlyOther;
-  const netProfit = monthlyRevenue - totalMonthlyExpenses;
-  const netMargin = monthlyRevenue > 0 ? (netProfit / monthlyRevenue) * 100 : 0;
+  const avgTicket = parseFloat((revenue.avg_ticket as string) ?? "0") || 0;
+  const dailyTx = parseFloat((revenue.daily_transactions as string) ?? "0") || 0;
+  const daysPerWeek = parseFloat((revenue.days_per_week as string) ?? "0") || 0;
+  const monthlyRevenue = avgTicket * dailyTx * daysPerWeek * 4.33;
 
-  const rentPercent = monthlyRevenue > 0 ? (monthlyRent / monthlyRevenue) * 100 : 0;
-  const laborPercent = monthlyRevenue > 0 ? (monthlyLabor / monthlyRevenue) * 100 : 0;
-  const primeCost = cogsPercent + laborPercent;
+  const cogs = monthlyRevenue * ((parseFloat((expenses.cogs_percentage as string) ?? "0") || 0) / 100);
+  const fixedExpenses = ["rent", "labor_cost", "utilities", "marketing_budget", "other_expenses"]
+    .reduce((s, k) => s + (parseFloat((expenses[k] as string) ?? "0") || 0), 0);
+  const totalMonthlyExpenses = cogs + fixedExpenses;
+  const monthlyProfit = monthlyRevenue - totalMonthlyExpenses;
 
-  const formatCurrency = (n: number) =>
-    `$${Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  const generated = `# Financial Summary\n\n## Startup Investment\nTotal estimated startup cost: $${startupTotal.toLocaleString()}\n\n## Monthly P&L Projection\n- Revenue: $${Math.round(monthlyRevenue).toLocaleString()}\n- COGS: $${Math.round(cogs).toLocaleString()}\n- Fixed costs: $${Math.round(fixedExpenses).toLocaleString()}\n- **Net operating income: $${Math.round(monthlyProfit).toLocaleString()}**\n\n## Notes\n[Add your notes on assumptions, risks, and funding plan here.]`;
 
-  const pnlRows = [
-    { label: "Gross revenue", value: monthlyRevenue, isTotal: false, positive: true },
-    { label: `COGS (${cogsPercent}%)`, value: -monthlyCogs, isTotal: false, positive: false },
-    { label: "Rent / lease", value: -monthlyRent, isTotal: false, positive: false },
-    { label: "Labor", value: -monthlyLabor, isTotal: false, positive: false },
-    { label: "Utilities", value: -monthlyUtilities, isTotal: false, positive: false },
-    { label: "Other fixed", value: -monthlyOther, isTotal: false, positive: false },
-    { label: "Net profit / loss", value: netProfit, isTotal: true, positive: netProfit >= 0 },
-  ];
-
-  const benchmarks = [
-    { label: "Rent %", value: rentPercent, target: "< 10%", good: rentPercent < 10, na: monthlyRevenue === 0 },
-    { label: "Labor %", value: laborPercent, target: "< 35%", good: laborPercent < 35, na: monthlyRevenue === 0 },
-    { label: "COGS %", value: cogsPercent, target: "< 35%", good: cogsPercent < 35, na: false },
-    { label: "Prime cost", value: primeCost, target: "< 65%", good: primeCost < 65, na: monthlyRevenue === 0 },
-  ];
-
-  const get = (key: string) => (data[key] as string) ?? "";
-  const rentPctInput = get("rent_percent") || (rentPercent > 0 ? rentPercent.toFixed(1) : "");
-  const laborPctInput = get("labor_percent") || (laborPercent > 0 ? laborPercent.toFixed(1) : "");
-
-  const isConfirmed = data.summary_confirmed === true;
+  const content = (data.summary_notes as string) ?? generated;
 
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-[#1a1a1a] mb-3">Your Monthly P&amp;L Snapshot</h3>
-        <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          This is pulled from your Revenue Modeling and Break-Even sections. It gives you a complete picture of how your shop looks month-to-month — and flags whether your cost structure is within healthy ranges.
-        </p>
+        <h3 className="font-semibold text-[#1a1a1a] mb-2">Financial Summary</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          Industry benchmarks are shown on the right. &quot;Prime cost&quot; — COGS plus labor — should stay under 65% to run a healthy operation.
+          Your financial model auto-compiled from the sections above. Review it, annotate your assumptions, and use it as the financial section of your BRD.
         </p>
       </div>
-
-      {/* P&L table */}
-      {monthlyRevenue > 0 ? (
-        <div className="border border-[#efefef] rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 bg-[#faf9f7] border-b border-[#efefef]">
-            <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-wide">Monthly P&amp;L</p>
-          </div>
-          <div className="divide-y divide-[#f5f5f5]">
-            {pnlRows.map((row, i) => (
-              <div
-                key={i}
-                className={`flex items-center justify-between px-5 py-3 ${row.isTotal ? "bg-[#faf9f7] font-semibold" : ""}`}
-              >
-                <span className={`text-sm ${row.isTotal ? "text-[#1a1a1a]" : "text-[#afafaf]"}`}>{row.label}</span>
-                <span className={`text-sm font-medium ${
-                  row.isTotal
-                    ? row.positive ? "text-[#155e63]" : "text-red-500"
-                    : row.positive ? "text-[#1a1a1a]" : "text-[#afafaf]"
-                }`}>
-                  {row.value < 0 ? `(${formatCurrency(row.value)})` : formatCurrency(row.value)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="px-5 py-3 bg-[#faf9f7] border-t border-[#efefef]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[#afafaf]">Net margin</span>
-              <span className={`text-sm font-semibold ${netMargin >= 10 ? "text-[#155e63]" : netMargin >= 0 ? "text-amber-500" : "text-red-500"}`}>
-                {netMargin.toFixed(1)}%
-              </span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-[#faf9f7] border border-dashed border-[#efefef] rounded-2xl p-6 text-center">
-          <p className="text-sm text-[#afafaf]">Complete Revenue Modeling and Break-Even sections to see your P&amp;L here.</p>
-        </div>
-      )}
-
-      {/* Benchmarks */}
-      <div>
-        <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-wide mb-3">Industry Benchmarks</p>
-        <div className="grid grid-cols-2 gap-3">
-          {benchmarks.map((b) => (
-            <div key={b.label} className={`p-3 rounded-xl border ${b.na ? "border-[#efefef] bg-white" : b.good ? "border-[#155e63]/20 bg-[#155e63]/5" : "border-amber-200 bg-amber-50"}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-[#1a1a1a]">{b.label}</span>
-                <span className={`text-xs font-semibold ${b.na ? "text-[#afafaf]" : b.good ? "text-[#155e63]" : "text-amber-600"}`}>
-                  {b.na ? "—" : `${typeof b.value === "number" ? b.value.toFixed(1) : b.value}%`}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#afafaf]">Target: {b.target}</span>
-                {!b.na && (
-                  <span className={`text-xs ${b.good ? "text-[#155e63]" : "text-amber-600"}`}>
-                    {b.good ? "✓ Good" : "↑ Review"}
-                  </span>
-                )}
-              </div>
+      {monthlyRevenue > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { label: "Startup Cost", value: `$${startupTotal.toLocaleString()}` },
+            { label: "Monthly Revenue", value: `$${Math.round(monthlyRevenue).toLocaleString()}` },
+            { label: "Monthly Profit", value: `$${Math.round(monthlyProfit).toLocaleString()}`, highlight: monthlyProfit > 0 },
+          ].map((stat) => (
+            <div key={stat.label} className={`rounded-xl border p-4 ${stat.highlight ? "bg-[#155e63]/5 border-[#155e63]/20" : "bg-[#f9f9f9] border-[#efefef]"}`}>
+              <div className="text-xs text-[#afafaf] mb-1">{stat.label}</div>
+              <div className={`text-lg font-bold ${stat.highlight ? "text-[#155e63]" : "text-[#1a1a1a]"}`}>{stat.value}</div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Hidden fields to satisfy required completions */}
-      <input type="hidden" value={rentPctInput} onChange={(e) => onChange({ ...data, rent_percent: e.target.value })} />
-      <input type="hidden" value={laborPctInput} onChange={(e) => onChange({ ...data, labor_percent: e.target.value })} />
-
-      {/* Manual overrides */}
+      )}
       <div>
-        <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-wide mb-3">Override Percentages (optional)</p>
-        <p className="text-xs text-[#afafaf] mb-4">If your real-world rent or labor numbers differ from what was calculated above, enter them here for accurate benchmarking.</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs text-[#afafaf] mb-1">Actual rent % of revenue</label>
-            <div className="relative">
-              <input
-                type="number"
-                value={rentPctInput}
-                onChange={(e) => onChange({ ...data, rent_percent: e.target.value })}
-                placeholder={rentPercent > 0 ? rentPercent.toFixed(1) : "0"}
-                min="0"
-                max="100"
-                className="w-full border border-[#efefef] rounded-xl px-3 pr-7 py-2.5 text-sm text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">%</span>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-[#afafaf] mb-1">Actual labor % of revenue</label>
-            <div className="relative">
-              <input
-                type="number"
-                value={laborPctInput}
-                onChange={(e) => onChange({ ...data, labor_percent: e.target.value })}
-                placeholder={laborPercent > 0 ? laborPercent.toFixed(1) : "0"}
-                min="0"
-                max="100"
-                className="w-full border border-[#efefef] rounded-xl px-3 pr-7 py-2.5 text-sm text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">%</span>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-[#1a1a1a]">Financial Summary Document</label>
+          {data.summary_notes !== generated && (
+            <button
+              onClick={() => onChange({ ...data, summary_notes: generated })}
+              className="text-xs text-[#afafaf] hover:text-[#155e63] transition-colors"
+            >
+              Reset to generated
+            </button>
+          )}
         </div>
-      </div>
-
-      {/* Confirm */}
-      <div className="border-t border-[#efefef] pt-6">
-        <button
-          onClick={() => onChange({
-            ...data,
-            rent_percent: rentPctInput || rentPercent.toFixed(1),
-            labor_percent: laborPctInput || laborPercent.toFixed(1),
-            summary_confirmed: !isConfirmed,
-          })}
-          className={`w-full py-3 rounded-xl border text-sm font-medium transition-colors ${
-            isConfirmed
-              ? "border-[#155e63] bg-[#155e63] text-white"
-              : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#155e63]"
-          }`}
-        >
-          {isConfirmed ? "✓ Financial model reviewed and confirmed" : "I've reviewed my operating expense model →"}
-        </button>
-        {isConfirmed && (
-          <p className="text-xs text-center text-[#afafaf] mt-2">
-            Module 2 complete. Your coach can help you pressure-test any of these numbers before you proceed.
-          </p>
-        )}
+        <textarea
+          value={content}
+          onChange={(e) => onChange({ ...data, summary_notes: e.target.value })}
+          rows={18}
+          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors resize-none bg-white font-mono leading-relaxed"
+        />
       </div>
     </div>
   );
@@ -1395,16 +1064,17 @@ function CoachPanel({
 
   if (!isOpen) return null;
 
-  const isFinancialModule = moduleNumber === 2;
-
   return (
     <>
+      {/* Mobile overlay backdrop */}
       <div
         className="fixed inset-0 bg-black/30 z-40 lg:hidden"
         onClick={onClose}
       />
 
+      {/* Panel */}
       <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 lg:w-80 xl:w-96 bg-white shadow-2xl flex flex-col">
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
           <div>
             <div className="font-semibold text-sm text-[#1a1a1a]">AI Coach</div>
@@ -1427,11 +1097,12 @@ function CoachPanel({
           </div>
         </div>
 
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-8">
               <div className="w-12 h-12 bg-[#155e63]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <span className="text-2xl">{isFinancialModule ? "📊" : "☕"}</span>
+                <span className="text-2xl">☕</span>
               </div>
               <p className="text-sm text-[#1a1a1a] font-medium mb-1">Your coach is ready</p>
               <p className="text-xs text-[#afafaf] leading-relaxed">
@@ -1473,6 +1144,7 @@ function CoachPanel({
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Input */}
         <div className="border-t border-[#efefef] px-4 py-4">
           {subscriptionTier === "free" ? (
             <div className="text-center">
@@ -1547,9 +1219,7 @@ export function ModuleClient({
   initialResponses,
   initialConversations,
 }: ModuleClientProps) {
-  const SECTIONS = MODULE_SECTIONS[moduleNumber] ?? MODULE_1_SECTIONS;
-  const moduleTitle = MODULE_TITLES[moduleNumber] ?? `Module ${moduleNumber}`;
-
+  const SECTIONS = getSectionsForModule(moduleNumber);
   const [activeSection, setActiveSection] = useState(0);
   const [sectionData, setSectionData] = useState<Record<string, Record<string, unknown>>>(() => {
     const init: Record<string, Record<string, unknown>> = {};
@@ -1579,32 +1249,25 @@ export function ModuleClient({
   const saveSection = useAutoSave(planId, moduleNumber, section.key);
 
   function isSectionComplete(key: string): boolean {
-    const d = sectionData[key];
+    const data = sectionData[key];
     const def = SECTIONS.find((s) => s.key === key);
     if (!def) return false;
 
     return def.requiredFields.every((field) => {
-      const val = d[field];
-      if (Array.isArray(val)) {
-        const min = def.minArrayLength?.[field] ?? 1;
-        return val.length >= min;
-      }
-      if (typeof val === "boolean") return val === true;
-      return val !== undefined && val !== "" && val !== null;
+      const val = data[field];
+      if (Array.isArray(val)) return val.length > 0;
+      if (field === "competitors") return (val as Competitor[])?.length >= 3;
+      return val !== undefined && val !== "";
     });
   }
 
   function handleDataChange(key: string, newData: Record<string, unknown>) {
     setSectionData((prev) => ({ ...prev, [key]: newData }));
-    const def = SECTIONS.find((s) => s.key === key);
-    const complete = def?.requiredFields.every((f) => {
+    const complete = SECTIONS.find((s) => s.key === key)?.requiredFields.every((f) => {
       const val = newData[f];
-      if (Array.isArray(val)) {
-        const min = def.minArrayLength?.[f] ?? 1;
-        return val.length >= min;
-      }
-      if (typeof val === "boolean") return val === true;
-      return val !== undefined && val !== "" && val !== null;
+      if (Array.isArray(val)) return val.length > 0;
+      if (f === "competitors") return (val as Competitor[])?.length >= 3;
+      return val !== undefined && val !== "";
     });
     const status = complete ? "completed" : "in_progress";
     setSectionStatus((prev) => ({ ...prev, [key]: status }));
@@ -1636,7 +1299,7 @@ export function ModuleClient({
               {planName}
             </Link>
             <span className="text-[#afafaf] text-sm hidden sm:block">/</span>
-            <span className="text-sm font-medium text-[#1a1a1a]">Module {moduleNumber}: {moduleTitle}</span>
+            <span className="text-sm font-medium text-[#1a1a1a]">Module {moduleNumber}: {MODULE_TITLES[moduleNumber] ?? "Module"}</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -1647,7 +1310,7 @@ export function ModuleClient({
                   : "bg-[#f5f5f5] text-[#1a1a1a] hover:bg-[#efefef]"
               }`}
             >
-              <span>{moduleNumber === 2 ? "📊" : "☕"}</span>
+              <span>☕</span>
               <span className="hidden sm:block">Coach</span>
               {userProfile.subscription_tier === "accelerator" ? (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${coachOpen ? "bg-white/20 text-[#76b39d]" : "bg-[#efefef] text-[#76b39d]"}`}>∞</span>
@@ -1743,7 +1406,6 @@ export function ModuleClient({
               )}
             </div>
 
-            {/* Module 1 sections */}
             {section.key === "shop_type" && (
               <SectionShopType
                 data={sectionData.shop_type}
@@ -1776,29 +1438,34 @@ export function ModuleClient({
               />
             )}
 
-            {/* Module 2 sections */}
-            {section.key === "revenue_modeling" && (
-              <SectionRevenueModeling
-                data={sectionData.revenue_modeling}
-                onChange={(d) => handleDataChange("revenue_modeling", d)}
-              />
-            )}
             {section.key === "startup_costs" && (
               <SectionStartupCosts
-                data={sectionData.startup_costs}
+                data={sectionData.startup_costs ?? {}}
                 onChange={(d) => handleDataChange("startup_costs", d)}
               />
             )}
-            {section.key === "break_even" && (
-              <SectionBreakEven
-                data={sectionData.break_even}
-                onChange={(d) => handleDataChange("break_even", d)}
+            {section.key === "revenue_projections" && (
+              <SectionRevenueProjections
+                data={sectionData.revenue_projections ?? {}}
+                onChange={(d) => handleDataChange("revenue_projections", d)}
               />
             )}
-            {section.key === "operating_expenses" && (
-              <SectionOperatingExpenses
-                data={sectionData.operating_expenses}
-                onChange={(d) => handleDataChange("operating_expenses", d)}
+            {section.key === "monthly_expenses" && (
+              <SectionMonthlyExpenses
+                data={sectionData.monthly_expenses ?? {}}
+                onChange={(d) => handleDataChange("monthly_expenses", d)}
+              />
+            )}
+            {section.key === "pricing_strategy" && (
+              <SectionPricingStrategy
+                data={sectionData.pricing_strategy ?? {}}
+                onChange={(d) => handleDataChange("pricing_strategy", d)}
+              />
+            )}
+            {section.key === "financial_summary" && (
+              <SectionFinancialSummary
+                data={sectionData.financial_summary ?? {}}
+                onChange={(d) => handleDataChange("financial_summary", d)}
                 allData={sectionData}
               />
             )}
