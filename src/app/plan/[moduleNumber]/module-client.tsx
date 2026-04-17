@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -929,7 +930,7 @@ export function ModuleClient({
   const allComplete = SECTIONS.every((s) => isSectionComplete(s.key));
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
+    <div className="min-h-screen bg-[#faf9f7] flex flex-col pb-16 lg:pb-0">
       {/* Top nav */}
       <nav className="bg-white border-b border-[#efefef] px-6 py-4 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -1141,6 +1142,7 @@ export function ModuleClient({
         credits={credits}
         subscriptionTier={userProfile.subscription_tier}
       />
+      <BottomTabBar />
     </div>
   );
 }

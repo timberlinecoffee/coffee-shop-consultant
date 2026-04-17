@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
       {/* Top bar */}
       <nav className="bg-white border-b border-[#efefef] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -150,6 +151,7 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
+      <BottomTabBar />
     </div>
   );
 }
