@@ -49,6 +49,9 @@ export default async function DashboardPage() {
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/account" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Account</Link>
+            <form action="/auth/signout" method="POST">
+              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign out</button>
+            </form>
           </div>
         </div>
       </nav>

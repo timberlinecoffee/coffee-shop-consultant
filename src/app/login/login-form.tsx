@@ -43,11 +43,25 @@ export function LoginForm() {
         alert("Check your email to confirm your account!");
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setError(error.message);
       } else {
-        router.push("/dashboard");
+        // Check onboarding status before redirecting
+        if (data.user) {
+          const { data: profile } = await supabase
+            .from("users")
+            .select("onboarding_completed")
+            .eq("id", data.user.id)
+            .single();
+          if (!profile?.onboarding_completed) {
+            router.push("/onboarding");
+          } else {
+            router.push("/dashboard");
+          }
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }
     }
