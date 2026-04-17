@@ -6,15 +6,18 @@ import { BottomTabBar } from "@/components/bottom-tab-bar";
 export const dynamic = 'force-dynamic';
 
 const MODULES = [
-  { num: 1, title: "Concept & Positioning", desc: "Define your shop type, target customer, and what makes you different.", unlocked: true },
-  { num: 2, title: "Financial Modeling", desc: "Build your startup budget and monthly P&L projections.", unlocked: true },
-  { num: 3, title: "Site Selection & Lease", desc: "Find the right location and negotiate a smart lease.", unlocked: true },
-  { num: 4, title: "Menu Design & Sourcing", desc: "Design your menu and find your roasting partner.", unlocked: false },
-  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear.", unlocked: false },
-  { num: 6, title: "Hiring, Training & Culture", desc: "Build the team that brings your shop to life.", unlocked: false },
-  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before you open.", unlocked: false },
-  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", unlocked: false },
+  { num: 1, title: "Concept & Positioning", desc: "Define your shop type, target customer, and what makes you different.", unlocked: true, totalSections: 5 },
+  { num: 2, title: "Financial Modeling", desc: "Build your startup budget and monthly P&L projections.", unlocked: true, totalSections: 4 },
+  { num: 3, title: "Site Selection & Lease", desc: "Find the right location and negotiate a smart lease.", unlocked: true, totalSections: 0 },
+  { num: 4, title: "Menu Design & Sourcing", desc: "Design your menu and find your roasting partner.", unlocked: false, totalSections: 0 },
+  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear.", unlocked: false, totalSections: 0 },
+  { num: 6, title: "Hiring, Training & Culture", desc: "Build the team that brings your shop to life.", unlocked: false, totalSections: 0 },
+  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before you open.", unlocked: false, totalSections: 0 },
+  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", unlocked: false, totalSections: 0 },
 ];
+
+const UNLOCKED_TOTAL_SECTIONS = MODULES.filter(m => m.unlocked && m.totalSections > 0)
+  .reduce((sum, m) => sum + m.totalSections, 0);
 
 function ReadinessRing({ score }: { score: number }) {
   const r = 52;
@@ -80,21 +83,51 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining, target_opening_date")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, { data: plan }] = await Promise.all([
+    supabase
+      .from("users")
+      .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining, target_opening_date")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("coffee_shop_plans")
+      .select("id")
+      .eq("user_id", user.id)
+      .single(),
+  ]);
 
   if (profile && !profile.onboarding_completed) {
     redirect("/onboarding");
   }
 
+  // Fetch module completion data
+  const moduleProgress: Record<number, number> = {};
+  if (plan) {
+    const { data: responses } = await supabase
+      .from("module_responses")
+      .select("module_number, status")
+      .eq("plan_id", plan.id);
+
+    for (const r of responses ?? []) {
+      if (r.status === "complete") {
+        moduleProgress[r.module_number] = (moduleProgress[r.module_number] ?? 0) + 1;
+      }
+    }
+  }
+
+  const totalDone = Object.values(moduleProgress).reduce((s, n) => s + n, 0);
+  const readinessScore = UNLOCKED_TOTAL_SECTIONS > 0
+    ? Math.round((totalDone / UNLOCKED_TOTAL_SECTIONS) * 100)
+    : 0;
+
+  // First module that has sections but isn't fully complete
+  const currentModule = MODULES.find(
+    m => m.totalSections > 0 && (moduleProgress[m.num] ?? 0) < m.totalSections
+  )?.num ?? 1;
+
   const firstName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
-  const readinessScore = profile?.readiness_score ?? 0;
   const subscriptionTier = profile?.subscription_tier ?? "free";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
-  const currentModule = 1;
   const milestones = buildMilestones(profile?.target_opening_date ?? null, currentModule);
 
   return (
@@ -151,37 +184,67 @@ export default async function DashboardPage() {
         {/* Module grid */}
         <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Your 8-module plan</h2>
         <div className="grid sm:grid-cols-2 gap-4 mb-10">
-          {MODULES.map((m) => (
-            <div
-              key={m.num}
-              className={`bg-white rounded-xl border p-6 flex gap-4 ${
-                m.unlocked ? "border-[#efefef] hover:border-[#155e63]/30 transition-colors" : "border-[#efefef] opacity-60"
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                m.unlocked ? "bg-[#155e63] text-white" : "bg-[#efefef] text-[#afafaf]"
-              }`}>
-                {m.num}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-sm text-[#1a1a1a] truncate">{m.title}</h3>
-                  {!m.unlocked && (
-                    <span className="text-xs bg-[#efefef] text-[#afafaf] px-2 py-0.5 rounded-full flex-shrink-0">Locked</span>
+          {MODULES.map((m) => {
+            const done = moduleProgress[m.num] ?? 0;
+            const total = m.totalSections;
+            const isComplete = total > 0 && done >= total;
+            const isInProgress = total > 0 && done > 0 && !isComplete;
+            const borderClass = isComplete
+              ? "border-[#155e63]/40 bg-[#155e63]/5"
+              : m.unlocked
+              ? "border-[#efefef] hover:border-[#155e63]/30 transition-colors"
+              : "border-[#efefef] opacity-60";
+            return (
+              <div key={m.num} className={`bg-white rounded-xl border p-6 flex gap-4 ${borderClass}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                  isComplete ? "bg-[#155e63] text-white" : m.unlocked ? "bg-[#155e63] text-white" : "bg-[#efefef] text-[#afafaf]"
+                }`}>
+                  {isComplete ? (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : m.num}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-sm text-[#1a1a1a] truncate">{m.title}</h3>
+                    {!m.unlocked && (
+                      <span className="text-xs bg-[#efefef] text-[#afafaf] px-2 py-0.5 rounded-full flex-shrink-0">Locked</span>
+                    )}
+                    {isComplete && (
+                      <span className="text-xs bg-[#155e63]/10 text-[#155e63] px-2 py-0.5 rounded-full flex-shrink-0 font-medium">Done</span>
+                    )}
+                    {isInProgress && (
+                      <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full flex-shrink-0 font-medium">In progress</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#afafaf] leading-relaxed mb-3">{m.desc}</p>
+                  {m.unlocked && total > 0 && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-[#afafaf]">{done}/{total} sections done</span>
+                        <span className="text-[10px] text-[#afafaf]">{Math.round((done / total) * 100)}%</span>
+                      </div>
+                      <div className="h-1 bg-[#efefef] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#155e63] rounded-full transition-all"
+                          style={{ width: `${Math.round((done / total) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {m.unlocked && (
+                    <Link
+                      href={`/plan/${m.num}`}
+                      className="text-xs text-[#155e63] font-medium hover:underline"
+                    >
+                      {isComplete ? "Review →" : done === 0 ? (m.num === 1 ? "Start here →" : "Open module →") : "Continue →"}
+                    </Link>
                   )}
                 </div>
-                <p className="text-xs text-[#afafaf] leading-relaxed mb-3">{m.desc}</p>
-                {m.unlocked && (
-                  <Link
-                    href={`/plan/${m.num}`}
-                    className="text-xs text-[#155e63] font-medium hover:underline"
-                  >
-                    {m.num === 1 ? "Start here →" : "Open module →"}
-                  </Link>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Milestone timeline */}
