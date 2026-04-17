@@ -138,7 +138,7 @@ create table public.vendors (
 -- Subscriptions
 create table public.subscriptions (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references public.users(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade unique,
   stripe_customer_id text,
   stripe_subscription_id text unique,
   tier text not null check (tier in ('builder', 'accelerator')),
