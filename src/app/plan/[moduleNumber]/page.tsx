@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isModuleAvailable } from "@/lib/modules";
 import { redirect } from "next/navigation";
 import { ModuleClient } from "./module-client";
 
@@ -12,7 +13,10 @@ export default async function PlanModulePage({ params }: PageProps) {
   const { moduleNumber } = await params;
   const moduleNum = parseInt(moduleNumber, 10);
 
-  if (isNaN(moduleNum) || moduleNum < 1 || moduleNum > 8) {
+  // Redirect any module that doesn't have sections wired up yet, instead of
+  // rendering ModuleClient with Module 1 fallback content under another
+  // module's label (the source of the TIM-543 navigation crash report).
+  if (!isModuleAvailable(moduleNum)) {
     redirect("/dashboard");
   }
 

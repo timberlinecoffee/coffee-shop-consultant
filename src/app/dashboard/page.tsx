@@ -1,20 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
+import { isModuleAvailable } from "@/lib/modules";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export const dynamic = 'force-dynamic';
 
+// `unlocked` is derived from isModuleAvailable() so the dashboard stays in
+// sync with the /plan/[moduleNumber] route guard. A module is only clickable
+// when its sections exist in module-client.tsx.
 const MODULES = [
-  { num: 1, title: "Concept & Positioning", desc: "Define your shop type, target customer, and what makes you different.", unlocked: true, totalSections: 5 },
-  { num: 2, title: "Financial Modeling", desc: "Build your startup budget and monthly P&L projections.", unlocked: true, totalSections: 5 },
-  { num: 3, title: "Site Selection & Lease", desc: "Find the right location and negotiate a smart lease.", unlocked: true, totalSections: 5 },
-  { num: 4, title: "Menu Design & Sourcing", desc: "Design your menu and find your roasting partner.", unlocked: false, totalSections: 5 },
-  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear.", unlocked: false, totalSections: 5 },
-  { num: 6, title: "Hiring, Training & Culture", desc: "Build the team that brings your shop to life.", unlocked: false, totalSections: 5 },
-  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before you open.", unlocked: false, totalSections: 5 },
-  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", unlocked: false, totalSections: 5 },
-];
+  { num: 1, title: "Concept & Positioning", desc: "Define your shop type, target customer, and what makes you different.", totalSections: 5 },
+  { num: 2, title: "Financial Modeling", desc: "Build your startup budget and monthly P&L projections.", totalSections: 5 },
+  { num: 3, title: "Site Selection & Lease", desc: "Find the right location and negotiate a smart lease.", totalSections: 5 },
+  { num: 4, title: "Menu Design & Sourcing", desc: "Design your menu and find your roasting partner.", totalSections: 5 },
+  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear.", totalSections: 5 },
+  { num: 6, title: "Hiring, Training & Culture", desc: "Build the team that brings your shop to life.", totalSections: 5 },
+  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before you open.", totalSections: 5 },
+  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", totalSections: 5 },
+].map((m) => ({ ...m, unlocked: isModuleAvailable(m.num) }));
 
 export default async function DashboardPage() {
   const supabase = await createClient();

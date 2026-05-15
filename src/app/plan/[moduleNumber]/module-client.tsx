@@ -63,8 +63,13 @@ const MODULE_2_SECTIONS = [
 ];
 
 function getSectionsForModule(moduleNumber: number) {
+  if (moduleNumber === 1) return MODULE_1_SECTIONS;
   if (moduleNumber === 2) return MODULE_2_SECTIONS;
-  return MODULE_1_SECTIONS;
+  // The /plan/[moduleNumber] page guards on isModuleAvailable() and redirects
+  // unknown modules to /dashboard, so this branch should be unreachable in
+  // normal flows. Throw explicitly instead of silently rendering Module 1
+  // content under another module's label (TIM-543).
+  throw new Error(`Module ${moduleNumber} has no sections defined`);
 }
 
 const SHOP_MODELS = [
