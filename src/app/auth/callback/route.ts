@@ -1,15 +1,34 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+const SAFE_NEXT_PREFIXES = ["/dashboard", "/onboarding", "/plan", "/account", "/reset-password"];
+
+function resolveNext(rawNext: string | null): string | null {
+  if (!rawNext) return null;
+  if (!rawNext.startsWith("/")) return null;
+  if (rawNext.startsWith("//")) return null;
+  return SAFE_NEXT_PREFIXES.some(
+    prefix => rawNext === prefix || rawNext.startsWith(`${prefix}/`) || rawNext.startsWith(`${prefix}?`)
+  )
+    ? rawNext
+    : null;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = resolveNext(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser();
+
+      if (next) {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+
       if (user) {
         const { data: profile } = await supabase
           .from("users")
