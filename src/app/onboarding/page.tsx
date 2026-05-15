@@ -5,7 +5,7 @@ import { OnboardingFlow } from "./onboarding-flow";
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "Let's get to know you — My Coffee Shop Consultant",
+  title: "Let's get to know you | My Coffee Shop Consultant",
 };
 
 export default async function OnboardingPage() {

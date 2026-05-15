@@ -4,7 +4,7 @@ import { LoginForm } from "./login-form";
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "Sign In — My Coffee Shop Consultant",
+  title: "Sign In | My Coffee Shop Consultant",
 };
 
 export default function LoginPage() {

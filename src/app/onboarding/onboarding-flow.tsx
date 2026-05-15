@@ -9,7 +9,7 @@ const QUESTIONS = [
   {
     id: "first_name",
     question: "What should we call you?",
-    hint: "First name only — we'll use it throughout the platform.",
+    hint: "First name only. We'll use it throughout the platform.",
     type: "text",
     placeholder: "Marcus",
   },
@@ -32,10 +32,10 @@ const QUESTIONS = [
     hint: "This tells your coach how much scaffolding vs. acceleration to give you.",
     type: "select",
     options: [
-      "Just an idea — haven't done anything yet",
+      "Just an idea, haven't done anything yet",
       "Researching and learning",
-      "Actively planning — looking at locations and numbers",
-      "Ready to go — need to organize everything into a plan",
+      "Actively planning: looking at locations and numbers",
+      "Ready to go: need to organize everything into a plan",
     ],
   },
   {
@@ -48,7 +48,7 @@ const QUESTIONS = [
   {
     id: "budget",
     question: "What's your budget range?",
-    hint: "Your honest starting point — not a commitment.",
+    hint: "Your honest starting point. Not a commitment.",
     type: "select",
     options: [
       "Under $50K",
@@ -72,16 +72,16 @@ const QUESTIONS = [
     hint: "Your coach adapts its language based on your experience level.",
     type: "select",
     options: [
-      "No — I'm a coffee lover, not a coffee professional",
-      "Yes — I've worked as a barista",
-      "Yes — I've managed or trained in a coffee shop",
-      "Yes — I've owned a coffee business before",
+      "No, I'm a coffee lover, not a coffee professional",
+      "Yes, I've worked as a barista",
+      "Yes, I've managed or trained in a coffee shop",
+      "Yes, I've owned a coffee business before",
     ],
   },
   {
     id: "shop_type",
     question: "What kind of shop are you imagining?",
-    hint: "Pick everything that resonates — you can change this in Module 1.",
+    hint: "Pick everything that resonates. You can change this in Module 1.",
     type: "multiselect",
     options: [
       "Full café with food",

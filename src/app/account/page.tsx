@@ -5,7 +5,7 @@ import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: "Account — My Coffee Shop Consultant" };
+export const metadata = { title: "Account | My Coffee Shop Consultant" };
 
 export default async function AccountPage() {
   const supabase = await createClient();

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           amount: MONTHLY_CREDITS[tier] ?? 0,
           type: "monthly_allocation",
-          description: `${tier} plan — initial allocation`,
+          description: `${tier} plan: initial allocation`,
         });
       }
       break;
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
           user_id: sub.user_id,
           amount: MONTHLY_CREDITS[tier] ?? 0,
           type: "monthly_allocation",
-          description: `${tier} plan — monthly renewal`,
+          description: `${tier} plan: monthly renewal`,
         });
       }
 

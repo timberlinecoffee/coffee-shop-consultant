@@ -68,7 +68,7 @@ function getSectionsForModule(moduleNumber: number) {
 }
 
 const SHOP_MODELS = [
-  { id: "full_cafe", label: "Full Café", desc: "Espresso, food, seating — the full experience", costRange: "$150K–$400K", example: "Blue Bottle, local neighborhood café" },
+  { id: "full_cafe", label: "Full Café", desc: "Espresso, food, seating (the full experience)", costRange: "$150K–$400K", example: "Blue Bottle, local neighborhood café" },
   { id: "espresso_bar", label: "Espresso Bar", desc: "Drinks only, fast, minimal footprint", costRange: "$80K–$200K", example: "% Arabica, Onyx Coffee Lab" },
   { id: "roastery_cafe", label: "Roastery Café", desc: "Roasting on-site, premium experience, wholesale revenue", costRange: "$200K–$600K", example: "Stumptown, Heart Coffee" },
   { id: "drive_through", label: "Drive-Through / Kiosk", desc: "High volume, low overhead, location-dependent", costRange: "$50K–$150K", example: "Dutch Bros model, airport kiosks" },
@@ -116,7 +116,7 @@ function SectionShopType({
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">The 6 Shop Models</h3>
         <p className="text-sm text-[#afafaf] mb-5 leading-relaxed">
-          Your shop model shapes every decision that follows — staffing, equipment, lease requirements, and your daily rhythm. Choose based on your budget, lifestyle, and the gap you&apos;ve identified, not just what sounds exciting.
+          Your shop model shapes every decision that follows: staffing, equipment, lease requirements, and your daily rhythm. Choose based on your budget, lifestyle, and the gap you&apos;ve identified, not just what sounds exciting.
         </p>
         <div className="grid gap-3">
           {SHOP_MODELS.map((m) => (
@@ -252,7 +252,7 @@ function SectionYourWhy({
           Your &quot;why&quot; isn&apos;t just a feel-good exercise. It shapes how you hire, what you put on the menu, who you serve, and how you behave on the hardest days. Successful operators who make it through year two almost always have a clear, specific answer to this. Vague reasons produce vague concepts.
         </p>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          The three prompts below will become the foundation of your positioning statement in Section 5. Answer them as if you&apos;re talking to someone who&apos;s genuinely curious — not a business plan reviewer.
+          The three prompts below will become the foundation of your positioning statement in Section 5. Answer them as if you&apos;re talking to someone who&apos;s genuinely curious, not a business plan reviewer.
         </p>
       </div>
 
@@ -261,7 +261,7 @@ function SectionYourWhy({
           <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
             What&apos;s pulling you toward this?
           </label>
-          <p className="text-xs text-[#afafaf] mb-2">Not what you think sounds good — what&apos;s actually driving you.</p>
+          <p className="text-xs text-[#afafaf] mb-2">Not what you think sounds good. What&apos;s actually driving you.</p>
           <textarea
             value={(data.motivation as string) ?? ""}
             onChange={(e) => onChange({ ...data, motivation: e.target.value })}
@@ -315,10 +315,10 @@ function SectionTargetCustomer({
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Your Customer Is Not &quot;Everyone Who Likes Coffee&quot;</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          The most common mistake in coffee shop planning is designing for everyone. When you try to serve everyone, you end up resonating with no one. Shops that win have a clear, specific customer in mind — and every decision runs through that filter.
+          The most common mistake in coffee shop planning is designing for everyone. When you try to serve everyone, you end up resonating with no one. Shops that win have a clear, specific customer in mind, and every decision runs through that filter.
         </p>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          Build your primary customer persona here. You&apos;re not excluding everyone else — you&apos;re anchoring your decisions to someone real. Your coach will create a vivid paragraph from your answers and challenge you on blind spots.
+          Build your primary customer persona here. You&apos;re not excluding everyone else; you&apos;re anchoring your decisions to someone real. Your coach will create a vivid paragraph from your answers and challenge you on blind spots.
         </p>
       </div>
 
@@ -383,7 +383,7 @@ function SectionTargetCustomer({
                   }`}
                 >
                   <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-[#155e63] border-[#155e63]" : "border-[#afafaf]"}`}>
-                    {selected && <span className="text-white" style={{ fontSize: 9 }}>✓</span>}
+                    {selected && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
                   <span className="text-xs">{opt}</span>
                 </button>
@@ -395,7 +395,7 @@ function SectionTargetCustomer({
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] mb-2">Coffee habits</label>
           <div className="grid grid-cols-1 gap-2">
-            {["Daily drinker, creature of habit", "Occasional — treats coffee as a treat", "Coffee-curious, interested in origin and craft", "Specialty-focused, knows what they want", "On-the-go, speed matters most"].map((opt) => (
+            {["Daily drinker, creature of habit", "Occasional: treats coffee as a treat", "Coffee-curious, interested in origin and craft", "Specialty-focused, knows what they want", "On-the-go, speed matters most"].map((opt) => (
               <button
                 key={opt}
                 onClick={() => onChange({ ...data, coffee_habits: opt })}
@@ -431,7 +431,7 @@ function SectionTargetCustomer({
                   }`}
                 >
                   <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-[#155e63] border-[#155e63]" : "border-[#afafaf]"}`}>
-                    {selected && <span className="text-white" style={{ fontSize: 9 }}>✓</span>}
+                    {selected && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
                   <span className="text-xs">{opt}</span>
                 </button>
@@ -482,7 +482,7 @@ function SectionCompetitiveAnalysis({
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Know What Exists to Find the Gap</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          You don&apos;t need to be different from everyone — you need to be different from the places that will compete for the same customers and occasions. Map your real competitors: the places your target customer would go instead of you.
+          You don&apos;t need to be different from everyone; you need to be different from the places that will compete for the same customers and occasions. Map your real competitors: the places your target customer would go instead of you.
         </p>
         <p className="text-sm text-[#afafaf] leading-relaxed">
           Add 3–5 competitors. Your coach will identify patterns and gaps once you&apos;ve filled these in.
@@ -613,7 +613,7 @@ function SectionConceptBrief({
   const selectedModel = SHOP_MODELS.find((m) => m.id === shopTypeData.model);
   const competitors = (compData.competitors as Competitor[]) ?? [];
 
-  const generated = `# Concept Brief\n\n## Shop Model\n${selectedModel?.label ?? "Not defined"} — ${selectedModel?.desc ?? ""}\n\n**Size:** ${(shopTypeData.size as string) ?? "TBD"}  \n**Seating:** ${(shopTypeData.seating as string) ?? "TBD"}  \n**Food level:** ${(shopTypeData.food_level as string) ?? "TBD"}  \n**Service style:** ${(shopTypeData.service_style as string) ?? "TBD"}\n\n## Concept Statement\n${(whyData.motivation as string) ?? "Not yet defined."}\n\n## Target Customer Persona\n**Who they are:** ${Array.isArray(customerData.occupation) ? (customerData.occupation as string[]).join(", ") : (customerData.occupation as string) ?? "TBD"}, ${(customerData.age_range as string) ?? "TBD"}, ${(customerData.income as string) ?? "TBD"} income  \n**Coffee habits:** ${(customerData.coffee_habits as string) ?? "TBD"}  \n**What they value:** ${Array.isArray(customerData.values) ? (customerData.values as string[]).join(", ") : (customerData.values as string) ?? "TBD"}\n\n## Positioning Statement\n${(whyData.customer_experience as string) ?? "Not yet defined."}\n\n## Key Differentiators\n${(whyData.line_in_sand as string) ?? "Not yet defined."}\n\n## Competitive Landscape\n${competitors.length > 0 ? competitors.map((c) => `- **${c.name}** (${c.location}): ${c.vibe}, ${c.price_range}`).join("\n") : "No competitors analyzed yet."}\n`;
+  const generated = `# Concept Brief\n\n## Shop Model\n${selectedModel?.label ?? "Not defined"}: ${selectedModel?.desc ?? ""}\n\n**Size:** ${(shopTypeData.size as string) ?? "TBD"}  \n**Seating:** ${(shopTypeData.seating as string) ?? "TBD"}  \n**Food level:** ${(shopTypeData.food_level as string) ?? "TBD"}  \n**Service style:** ${(shopTypeData.service_style as string) ?? "TBD"}\n\n## Concept Statement\n${(whyData.motivation as string) ?? "Not yet defined."}\n\n## Target Customer Persona\n**Who they are:** ${Array.isArray(customerData.occupation) ? (customerData.occupation as string[]).join(", ") : (customerData.occupation as string) ?? "TBD"}, ${(customerData.age_range as string) ?? "TBD"}, ${(customerData.income as string) ?? "TBD"} income  \n**Coffee habits:** ${(customerData.coffee_habits as string) ?? "TBD"}  \n**What they value:** ${Array.isArray(customerData.values) ? (customerData.values as string[]).join(", ") : (customerData.values as string) ?? "TBD"}\n\n## Positioning Statement\n${(whyData.customer_experience as string) ?? "Not yet defined."}\n\n## Key Differentiators\n${(whyData.line_in_sand as string) ?? "Not yet defined."}\n\n## Competitive Landscape\n${competitors.length > 0 ? competitors.map((c) => `- **${c.name}** (${c.location}): ${c.vibe}, ${c.price_range}`).join("\n") : "No competitors analyzed yet."}\n`;
 
   const content = (data.brief_content as string) ?? generated;
 
@@ -622,7 +622,7 @@ function SectionConceptBrief({
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Your Concept Brief</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          A concept brief is your shop&apos;s founding document — a single page that captures who you are, who you serve, and why you win. It&apos;s not a business plan. It&apos;s the anchor document that keeps every future decision aligned.
+          A concept brief is your shop&apos;s founding document: a single page that captures who you are, who you serve, and why you win. It&apos;s not a business plan. It&apos;s the anchor document that keeps every future decision aligned.
         </p>
         <p className="text-sm text-[#afafaf] leading-relaxed">
           We&apos;ve auto-generated your brief from everything you&apos;ve built in this module. Review it, edit it, and make it yours. Your coach can help refine it.
@@ -679,7 +679,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-2">Startup Budget</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          Break down your total startup cost by category. Be honest — most operators underestimate buildout and working capital by 20–30%.
+          Break down your total startup cost by category. Be honest; most operators underestimate buildout and working capital by 20-30%.
         </p>
       </div>
       <div className="space-y-5">
@@ -722,7 +722,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-2">Revenue Projections</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          Start with realistic daily transaction counts — not best-case. Most independent cafés average 80–150 transactions/day in year one.
+          Start with realistic daily transaction counts, not best-case. Most independent cafés average 80–150 transactions/day in year one.
         </p>
       </div>
       <div className="space-y-5">
@@ -772,7 +772,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
           <textarea
             value={(data.seasonal_notes as string) ?? ""}
             onChange={(e) => onChange({ ...data, seasonal_notes: e.target.value })}
-            placeholder="e.g. Tourist area — expect 40% volume spike June–August, slower January–February"
+            placeholder="e.g. Tourist area: expect 40% volume spike June-August, slower January-February"
             rows={3}
             className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors resize-none"
           />
@@ -790,7 +790,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
 
 function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
   const fields = [
-    { key: "rent", label: "Rent / Lease Payment", placeholder: "e.g. 6500", hint: "Monthly base rent — don't include CAM yet" },
+    { key: "rent", label: "Rent / Lease Payment", placeholder: "e.g. 6500", hint: "Monthly base rent (don't include CAM yet)" },
     { key: "labor_cost", label: "Total Labor (Gross)", placeholder: "e.g. 14000", hint: "All staff wages + your own owner pay" },
     { key: "utilities", label: "Utilities", placeholder: "e.g. 1200", hint: "Electric, gas, water, internet" },
     { key: "marketing_budget", label: "Marketing", placeholder: "e.g. 800", hint: "Social ads, loyalty program, events" },
@@ -873,7 +873,7 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-2">Pricing Strategy</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          Set your core price points. Specialty cafés in major metros average $5–$7 for espresso drinks. Price confidently — customers pay for experience, not just coffee.
+          Set your core price points. Specialty cafés in major metros average $5–$7 for espresso drinks. Price confidently; customers pay for experience, not just coffee.
         </p>
       </div>
       <div className="space-y-5">
@@ -1092,7 +1092,7 @@ function CoachPanel({
               onClick={onClose}
               className="w-7 h-7 rounded-lg bg-[#f5f5f5] hover:bg-[#efefef] flex items-center justify-center transition-colors"
             >
-              <span className="text-[#afafaf] text-sm">✕</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
         </div>
@@ -1102,7 +1102,7 @@ function CoachPanel({
           {messages.length === 0 && (
             <div className="text-center py-8">
               <div className="w-12 h-12 bg-[#155e63]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <span className="text-2xl">☕</span>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
               </div>
               <p className="text-sm text-[#1a1a1a] font-medium mb-1">Your coach is ready</p>
               <p className="text-xs text-[#afafaf] leading-relaxed">
@@ -1310,7 +1310,7 @@ export function ModuleClient({
                   : "bg-[#f5f5f5] text-[#1a1a1a] hover:bg-[#efefef]"
               }`}
             >
-              <span>☕</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
               <span className="hidden sm:block">Coach</span>
               {userProfile.subscription_tier === "accelerator" ? (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${coachOpen ? "bg-white/20 text-[#76b39d]" : "bg-[#efefef] text-[#76b39d]"}`}>∞</span>
@@ -1347,7 +1347,7 @@ export function ModuleClient({
                       ? active ? "bg-white text-[#155e63]" : "bg-[#155e63] text-white"
                       : active ? "bg-white/20 text-white" : started ? "bg-[#efefef] text-[#afafaf]" : "bg-[#f5f5f5] text-[#afafaf]"
                   }`}>
-                    {complete ? "✓" : i + 1}
+                    {complete ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> : i + 1}
                   </div>
                   <span className="truncate">{s.title}</span>
                 </button>
@@ -1382,7 +1382,7 @@ export function ModuleClient({
                       : "bg-[#efefef] text-[#afafaf]"
                   }`}
                 >
-                  {complete && !active && <span>✓</span>}
+                  {complete && !active && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   {s.title}
                 </button>
               );
@@ -1400,7 +1400,7 @@ export function ModuleClient({
               </div>
               {isSectionComplete(section.key) && (
                 <div className="flex items-center gap-1.5 bg-[#155e63]/10 text-[#155e63] px-3 py-1.5 rounded-full">
-                  <span className="text-xs">✓</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                   <span className="text-xs font-medium">Complete</span>
                 </div>
               )}
