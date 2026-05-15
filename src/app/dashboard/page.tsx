@@ -6,19 +6,19 @@ import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export const dynamic = 'force-dynamic';
 
-// `unlocked` is derived from isModuleAvailable() so the dashboard stays in
-// sync with the /plan/[moduleNumber] route guard. A module is only clickable
-// when its sections exist in module-client.tsx.
+// `available` = content exists in module-client (drives CTA vs "Coming soon").
+// `unlocked` = not progression-gated (drives "Locked" + hint vs accessible).
+// Modules can be unlocked but not yet available (Module 3 = coming soon).
 const MODULES = [
-  { num: 1, title: "Concept & Positioning", desc: "Define your shop type, target customer, and what makes you different.", totalSections: 5 },
-  { num: 2, title: "Financial Modeling", desc: "Build your startup budget and monthly P&L projections.", totalSections: 5 },
-  { num: 3, title: "Site Selection & Lease", desc: "Find the right location and negotiate a smart lease.", totalSections: 5 },
-  { num: 4, title: "Menu Design & Sourcing", desc: "Design your menu and find your roasting partner.", totalSections: 5 },
-  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear.", totalSections: 5 },
-  { num: 6, title: "Hiring, Training & Culture", desc: "Build the team that brings your shop to life.", totalSections: 5 },
-  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before you open.", totalSections: 5 },
-  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", totalSections: 5 },
-].map((m) => ({ ...m, unlocked: isModuleAvailable(m.num) }));
+  { num: 1, title: "Concept & Positioning", desc: "Define your shop type, target customer, and what makes you different.", totalSections: 5, unlocked: true },
+  { num: 2, title: "Financial Modeling", desc: "Build your startup budget and monthly P&L projections.", totalSections: 5, unlocked: true },
+  { num: 3, title: "Site Selection & Lease", desc: "Find the right location and negotiate a smart lease.", totalSections: 5, unlocked: true },
+  { num: 4, title: "Menu Design & Sourcing", desc: "Design your menu and find your roasting partner.", totalSections: 5, unlocked: false },
+  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear.", totalSections: 5, unlocked: false },
+  { num: 6, title: "Hiring, Training & Culture", desc: "Build the team that brings your shop to life.", totalSections: 5, unlocked: false },
+  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before you open.", totalSections: 5, unlocked: false },
+  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Assemble your complete Business Readiness Document.", totalSections: 5, unlocked: false },
+];
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining")
+      .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining, onboarding_data")
       .eq("id", user.id)
       .single(),
     supabase
@@ -44,6 +44,8 @@ export default async function DashboardPage() {
   const firstName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
   const subscriptionTier = profile?.subscription_tier ?? "free";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
+  const onboardingData = (profile?.onboarding_data as Record<string, string> | null) ?? {};
+  const targetTimeline: string | null = onboardingData?.timeline ?? null;
 
   if (profile && !profile.onboarding_completed) {
     redirect("/onboarding");
@@ -65,12 +67,12 @@ export default async function DashboardPage() {
     });
   }
 
-  // Compute readiness score from actual completion across unlocked modules
-  const unlockedModules = MODULES.filter((m) => m.unlocked);
-  const totalUnlockedSections = unlockedModules.reduce((sum, m) => sum + m.totalSections, 0);
-  const completedSections = unlockedModules.reduce((sum, m) => sum + (moduleProgressMap[m.num] ?? 0), 0);
-  const readinessScore = totalUnlockedSections > 0
-    ? Math.round((completedSections / totalUnlockedSections) * 100)
+  // Compute readiness score from available modules only (have actual content)
+  const availableModules = MODULES.filter((m) => isModuleAvailable(m.num));
+  const totalAvailableSections = availableModules.reduce((sum, m) => sum + m.totalSections, 0);
+  const completedSections = availableModules.reduce((sum, m) => sum + (moduleProgressMap[m.num] ?? 0), 0);
+  const readinessScore = totalAvailableSections > 0
+    ? Math.round((completedSections / totalAvailableSections) * 100)
     : (profile?.readiness_score ?? 0);
 
   return (
@@ -95,27 +97,31 @@ export default async function DashboardPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-10">
         {/* Welcome + readiness */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">Hey {firstName} 👋</h1>
             <p className="text-[#afafaf] text-sm">Your coffee shop plan is waiting. Let&apos;s keep building.</p>
           </div>
           <div className="flex gap-4 flex-wrap sm:flex-nowrap">
-            <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center">
-              <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}</div>
-              <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">Opening Readiness Score</div>
+            <div
+              className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center"
+              title="Complete sections in each available module to raise this score."
+            >
+              <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}%</div>
+              <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">Plan Progress</div>
               <div className="mt-3 bg-[#efefef] rounded-full h-2 overflow-hidden">
                 <div
                   className="bg-[#155e63] h-2 rounded-full transition-all duration-500"
                   style={{ width: `${readinessScore}%` }}
                 />
               </div>
+              <p className="text-xs text-[#afafaf] mt-2">Finish module sections to move this.</p>
             </div>
             <div className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-40 text-center">
               {subscriptionTier === "accelerator" ? (
                 <div className="text-4xl font-bold text-[#76b39d] mb-1">∞</div>
               ) : subscriptionTier === "free" ? (
-                <div className="text-4xl font-bold text-[#afafaf] mb-1">—</div>
+                <div className="text-4xl font-bold text-[#afafaf] mb-1">0</div>
               ) : (
                 <div className={`text-4xl font-bold mb-1 ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
                   {creditsRemaining}
@@ -123,20 +129,42 @@ export default async function DashboardPage() {
               )}
               <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">AI Credits</div>
               {subscriptionTier === "free" && (
-                <Link href="/account" className="mt-2 inline-block text-xs text-[#155e63] hover:underline">Upgrade →</Link>
+                <>
+                  <p className="text-xs text-[#afafaf] mt-1">Included with paid plans.</p>
+                  <Link href="/account" className="mt-1 inline-block text-xs text-[#155e63] hover:underline">Upgrade →</Link>
+                </>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Opening timeline placeholder */}
+        <div className="bg-white rounded-xl border border-[#efefef] px-5 py-4 mb-10 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📅</span>
+            <div>
+              <p className="text-sm font-semibold text-[#1a1a1a]">Target opening</p>
+              {targetTimeline ? (
+                <p className="text-sm text-[#afafaf]">{targetTimeline}</p>
+              ) : (
+                <p className="text-sm text-[#afafaf]">No target date set yet.</p>
+              )}
+            </div>
+          </div>
+          <Link href="/account" className="text-xs text-[#155e63] hover:underline flex-shrink-0">
+            {targetTimeline ? "Update" : "Set opening date →"}
+          </Link>
         </div>
 
         {/* Module grid */}
         <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Your 8-module plan</h2>
         <div className="grid sm:grid-cols-2 gap-4 mb-10">
           {MODULES.map((m) => {
+            const available = isModuleAvailable(m.num);
             const completed = moduleProgressMap[m.num] ?? 0;
             const total = m.totalSections;
-            const pct = Math.round((completed / total) * 100);
-            const isComplete = completed >= total;
+            const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const isComplete = total > 0 && completed >= total;
             const isStarted = completed > 0;
 
             return (
@@ -159,12 +187,18 @@ export default async function DashboardPage() {
                   {!m.unlocked && (
                     <span className="text-xs bg-[#efefef] text-[#afafaf] px-2 py-0.5 rounded-full flex-shrink-0">Locked</span>
                   )}
-                  {m.unlocked && isComplete && (
+                  {m.unlocked && !available && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex-shrink-0 font-medium">Coming soon</span>
+                  )}
+                  {m.unlocked && available && isComplete && (
                     <span className="text-xs bg-[#155e63]/10 text-[#155e63] px-2 py-0.5 rounded-full flex-shrink-0 font-medium">Complete</span>
                   )}
                 </div>
                 <p className="text-xs text-[#afafaf] leading-relaxed mb-2">{m.desc}</p>
-                {m.unlocked && (
+                {!m.unlocked && (
+                  <p className="text-xs text-[#afafaf]">Finish Module {m.num - 1} to unlock.</p>
+                )}
+                {m.unlocked && available && (
                   <>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1 bg-[#efefef] rounded-full h-1.5 overflow-hidden">
