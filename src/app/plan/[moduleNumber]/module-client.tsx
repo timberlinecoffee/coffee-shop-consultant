@@ -1439,8 +1439,8 @@ export function ModuleClient({
 
             {!activeSectionAccessible && (
               <UpgradeGate
-                title={`Upgrade to unlock ${section.title}`}
-                description="Free preview includes the first section of Module 1. A paid plan unlocks every section, the AI coach, and your full Business Readiness Document."
+                title={`${section.title} comes with Builder and Accelerator plans`}
+                description="Free preview gives you Shop Type — the first real decision every owner has to make. Builder and Accelerator plans get you all five sections of Module 1, the complete financial model in Module 2, the AI coach, and your Business Readiness Document."
                 benefits={[
                   "All 5 sections of Module 1 and the live financial model in Module 2",
                   "50 AI coach credits each month (unlimited on Accelerator)",
@@ -1549,7 +1549,7 @@ export function ModuleClient({
                         href={`/pricing?return=${encodeURIComponent(`/plan/${moduleNumber}`)}`}
                         className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
                       >
-                        Unlock all sections →
+                        Get full access →
                       </Link>
                     );
                   }
