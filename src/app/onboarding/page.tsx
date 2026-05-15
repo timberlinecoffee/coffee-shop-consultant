@@ -22,5 +22,12 @@ export default async function OnboardingPage() {
 
   if (profile?.onboarding_completed) redirect("/dashboard");
 
-  return <OnboardingFlow userId={user.id} />;
+  const firstName =
+    profile?.full_name?.split(" ")[0] ??
+    (user.user_metadata?.full_name as string | undefined)?.split(" ")[0] ??
+    (user.user_metadata?.name as string | undefined)?.split(" ")[0] ??
+    user.email?.split("@")[0] ??
+    "there";
+
+  return <OnboardingFlow userId={user.id} firstName={firstName} />;
 }
