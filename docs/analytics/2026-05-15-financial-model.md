@@ -20,6 +20,7 @@
 | Labor (monthly) | $12,000 | 2-3 FTEs + PT baristas |
 | COGS % | 28% | Specialty coffee industry benchmark |
 | Marketing (monthly) | $500 | Local ads, social, loyalty |
+| Utilities + misc (monthly) | $1,200 | Power, water, internet, supplies |
 
 ### Outputs (What the model calculates)
 
@@ -43,7 +44,7 @@ Example: $952 × 29.2 = $27,798/month
 | Labor | $12,000 |
 | Rent | $4,500 |
 | Marketing | $500 |
-| Utilities + misc | $1,200 |
+| Utilities + misc | $1,200 *(adjustable in inputs)* |
 | **Total costs** | **$25,983** |
 
 **Net Margin**
@@ -52,17 +53,26 @@ Net margin = (Revenue - Costs) / Revenue
 Example: ($27,798 - $25,983) / $27,798 = 6.5%
 ```
 
-**Break-Even Daily Revenue**
+**Break-Even Daily Ticket Volume**
 ```
-Break-even = Monthly fixed costs / Operating days
-Example: $18,200 fixed / 29.2 days = $623/day
-Break-even ticket volume = $623 / $8.50 = 73 tickets/day
+Contribution margin per ticket = Avg ticket × (1 − COGS%)
+Example: $8.50 × (1 − 0.28) = $6.12/ticket
+
+Fixed costs per month = Labor + Rent + Marketing + Utilities
+Example: $12,000 + $4,500 + $500 + $1,200 = $18,200/month
+
+Break-even tickets/day = Fixed costs ÷ (Contribution margin × Operating days/month)
+Example: $18,200 ÷ ($6.12 × 29.2) = 102 tickets/day
+
+Break-even daily revenue = 102 × $8.50 = $867/day
 ```
+
+> **Why this formula matters:** COGS is a variable cost — it scales with every ticket sold. The simple "fixed costs ÷ daily revenue" formula ignores this and understates break-even by ~28%. The contribution-margin method gives the true number: the shop must cover its fixed costs with the *margin* on each ticket, not the full ticket price.
 
 ### The 5-Minute Owner Sanity Check
 
 A real owner skips the model and asks three questions:
-1. Am I doing at least 75 tickets a day? (break-even)
+1. Am I doing at least 100 tickets a day? (break-even, using contribution-margin method)
 2. Is my food cost under 30%? (COGS discipline)
 3. Is labor under 35% of revenue? (the death zone is above 40%)
 
@@ -93,6 +103,8 @@ The pricing only feels like a luxury to an owner who:
 | Menu costing + ordering | 1.5 hrs | $40 | $240 |
 | Staff training (onboarding) | 1 hr avg | $40 | $160 |
 | **Total** | **4.5 hrs** | | **$720/month** |
+
+*Note: Monthly values use a conservative 4-week month. At the actual 4.33-week average, total value is ~$779/month — the $720 figure is intentionally understated.*
 
 At $49/month, the ROI is **14.7x** on time alone. At $99/month, it is **7.3x**.
 
@@ -167,17 +179,30 @@ ORDER BY 1 DESC;
 
 **Supabase measurement:**
 ```sql
--- Weekly active users (completed ≥1 module that week)
+-- Weekly engagement rate = weekly active users / total activated user base
+WITH activated_users AS (
+  -- Activated = started ≥1 module within 7 days of signup
+  SELECT DISTINCT u.id
+  FROM auth.users u
+  JOIN module_progress mp ON mp.user_id = u.id
+  WHERE mp.started_at <= u.created_at + INTERVAL '7 days'
+)
 SELECT
-  DATE_TRUNC('week', completed_at) AS week,
-  COUNT(DISTINCT user_id) AS weekly_active_users
-FROM module_progress
-WHERE completed_at IS NOT NULL
+  DATE_TRUNC('week', mp.completed_at) AS week,
+  COUNT(DISTINCT mp.user_id) AS weekly_active_users,
+  (SELECT COUNT(*) FROM activated_users) AS activated_base,
+  ROUND(
+    COUNT(DISTINCT mp.user_id)::numeric
+    / NULLIF((SELECT COUNT(*) FROM activated_users), 0) * 100, 1
+  ) AS engagement_rate_pct
+FROM module_progress mp
+JOIN activated_users au ON au.id = mp.user_id
+WHERE mp.completed_at IS NOT NULL
 GROUP BY 1
 ORDER BY 1 DESC;
 ```
 
-**Tables needed:** `module_progress` (columns: `user_id`, `completed_at`)
+**Tables needed:** `auth.users`, `module_progress` (columns: `user_id`, `started_at`, `completed_at`)
 
 ### Metric 3: Retention Rate (30-day)
 
@@ -293,6 +318,7 @@ The following tables/columns are needed for full cohort tracking. Items marked *
 | `module_progress` | `user_id`, `module_id`, `started_at`, `completed_at` | Verify exists |
 | `stripe_charges` | `customer_id`, `amount`, `status`, `created_at` | Needs Stripe sync |
 | `stripe_subscriptions` | `customer_id`, `plan_amount`, `status`, `created_at` | Needs Stripe sync |
+| `stripe_customer_mapping` | `user_id` (UUID), `stripe_customer_id` (cus_XXXX) | **[MISSING]** |
 | `referrals` | `referrer_user_id`, `referred_user_id`, `created_at` | **[MISSING]** |
 
 ---
@@ -312,15 +338,21 @@ Why this is the right North Star:
 Target at 90 days post-launch: **2.5 modules/week/paying customer**
 
 ```sql
+-- stripe_charges.customer_id is a Stripe-format ID (cus_XXXX)
+-- module_progress.user_id is a Supabase UUID
+-- Join through stripe_customer_mapping to bridge the two ID spaces
 SELECT
   DATE_TRUNC('week', mp.started_at) AS week,
   COUNT(DISTINCT mp.module_id) / NULLIF(COUNT(DISTINCT mp.user_id), 0.0) AS avg_modules_per_paying_user
 FROM module_progress mp
-JOIN stripe_charges sc ON sc.customer_id = mp.user_id AND sc.status = 'succeeded'
+JOIN stripe_customer_mapping scm ON scm.user_id = mp.user_id
+JOIN stripe_charges sc ON sc.customer_id = scm.stripe_customer_id AND sc.status = 'succeeded'
 WHERE mp.started_at >= NOW() - INTERVAL '7 days'
 GROUP BY 1
 ORDER BY 1 DESC;
 ```
+
+**Schema note:** `stripe_customer_mapping` must store both `user_id` (Supabase UUID) and `stripe_customer_id` (Stripe `cus_XXXX`). Add this table to the schema requirements below if not already present.
 
 ---
 
