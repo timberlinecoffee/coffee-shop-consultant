@@ -12,7 +12,7 @@ export default async function FinancialsPage() {
   return (
     <ComingSoon
       title="Financial Model"
-      description="Your live P&L, break-even, and cash-flow model — pulled from your Module 2 inputs and exportable for lenders or partners."
+      description="Your live P&L, break-even, and cash-flow model, pulled from your Module 2 inputs and exportable for lenders or partners."
       icon="📊"
       shipsWith="Module 2 polish + PDF export"
     />

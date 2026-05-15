@@ -12,7 +12,7 @@ export default async function EquipmentPage() {
   return (
     <ComingSoon
       title="Equipment List"
-      description="A working list of every machine, tool, and small ware your shop needs — with cost estimates and vendor links."
+      description="A working list of every machine, tool, and small ware your shop needs, with cost estimates and vendor links."
       icon="🔧"
       shipsWith="Module 5: Bar Design & Equipment"
     />

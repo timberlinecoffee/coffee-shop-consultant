@@ -12,7 +12,7 @@ export default async function CostsPage() {
   return (
     <ComingSoon
       title="Cost Tracker"
-      description="Track every dollar against your startup budget — receipts, vendor quotes, and variance from plan in one place."
+      description="Track every dollar against your startup budget: receipts, vendor quotes, and variance from plan in one place."
       icon="💰"
       shipsWith="Module 2: Financial Modeling expansion"
     />
