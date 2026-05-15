@@ -131,23 +131,23 @@ export default function PrivacyPage() {
                 to operate the Service, including:
                 <ul className="list-disc pl-6 mt-1 space-y-1">
                   <li>
-                    <strong>Supabase</strong> &mdash; database, authentication, and
+                    <strong>Supabase</strong>: database, authentication, and
                     storage hosting (United States).
                   </li>
                   <li>
-                    <strong>Vercel</strong> &mdash; application hosting and analytics
+                    <strong>Vercel</strong>: application hosting and analytics
                     (United States).
                   </li>
                   <li>
-                    <strong>Stripe</strong> &mdash; subscription billing and payment
+                    <strong>Stripe</strong>: subscription billing and payment
                     processing.
                   </li>
                   <li>
-                    <strong>Anthropic</strong> &mdash; AI coaching responses; prompts and
+                    <strong>Anthropic</strong>: AI coaching responses; prompts and
                     responses are sent to Anthropic to generate AI Output.
                   </li>
                   <li>
-                    <strong>Google</strong> &mdash; Google sign-in (only if you choose to
+                    <strong>Google</strong>: Google sign-in (only if you choose to
                     sign in with Google).
                   </li>
                 </ul>
