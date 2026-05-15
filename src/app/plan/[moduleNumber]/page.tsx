@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isModuleAvailable } from "@/lib/modules";
+import { canAccessModule, isPaidTier, UPGRADE_PATH } from "@/lib/access";
 import { redirect } from "next/navigation";
 import { ModuleClient } from "./module-client";
 
@@ -40,6 +41,16 @@ export default async function PlanModulePage({ params }: PageProps) {
 
   if (!plan) redirect("/dashboard");
 
+  // TIM-545: server-side paywall. Free users cannot reach paid modules at all.
+  // Module 1 stays open as a preview; the client renders section-level gating
+  // for everything past the free preview section.
+  const subscriptionTier = (profile?.subscription_tier as string) ?? "free";
+  if (!canAccessModule(subscriptionTier, moduleNum)) {
+    redirect(
+      `${UPGRADE_PATH}?return=${encodeURIComponent(`/plan/${moduleNum}`)}`
+    );
+  }
+
   const { data: responses } = await supabase
     .from("module_responses")
     .select("section_key, response_data, status")
@@ -76,10 +87,11 @@ export default async function PlanModulePage({ params }: PageProps) {
         full_name: profile?.full_name ?? null,
         onboarding_data: (profile?.onboarding_data as Record<string, unknown>) ?? {},
         ai_credits_remaining: profile?.ai_credits_remaining ?? 0,
-        subscription_tier: (profile?.subscription_tier as string) ?? "free",
+        subscription_tier: subscriptionTier,
       }}
       initialResponses={responseMap}
       initialConversations={conversationMap}
+      freePreview={!isPaidTier(subscriptionTier)}
     />
   );
 }

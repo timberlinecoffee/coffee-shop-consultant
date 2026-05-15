@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { UpgradeGate } from "@/components/upgrade-gate";
+import { canAccessSection } from "@/lib/access";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,9 @@ interface ModuleClientProps {
   userProfile: UserProfile;
   initialResponses: Record<string, SectionResponse>;
   initialConversations: Record<string, ChatMessage[]>;
+  // True when the user is on a free preview and only the first section is
+  // fully accessible. Everything else renders an UpgradeGate.
+  freePreview?: boolean;
 }
 
 // ── Module Section Definitions ────────────────────────────────────────────
@@ -1223,9 +1228,13 @@ export function ModuleClient({
   userProfile,
   initialResponses,
   initialConversations,
+  freePreview = false,
 }: ModuleClientProps) {
   const SECTIONS = getSectionsForModule(moduleNumber);
   const [activeSection, setActiveSection] = useState(0);
+  const sectionAccessible = (key: string) =>
+    !freePreview || canAccessSection(userProfile.subscription_tier, moduleNumber, key);
+  const activeSectionAccessible = sectionAccessible(SECTIONS[activeSection]?.key ?? "");
   const [sectionData, setSectionData] = useState<Record<string, Record<string, unknown>>>(() => {
     const init: Record<string, Record<string, unknown>> = {};
     SECTIONS.forEach((s) => {
@@ -1286,7 +1295,11 @@ export function ModuleClient({
     }
   }
 
-  const allComplete = SECTIONS.every((s) => isSectionComplete(s.key));
+  // Free-preview users can't truly complete the module — they only see one
+  // section. The "Module complete!" banner is for paid users with everything
+  // filled in.
+  const allComplete =
+    !freePreview && SECTIONS.every((s) => isSectionComplete(s.key));
 
   return (
     <div className="min-h-screen bg-[#faf9f7] flex flex-col pb-16 lg:pb-0">
@@ -1336,6 +1349,7 @@ export function ModuleClient({
               const complete = isSectionComplete(s.key);
               const active = i === activeSection;
               const started = sectionStatus[s.key] !== "not_started";
+              const locked = !sectionAccessible(s.key);
 
               return (
                 <button
@@ -1344,6 +1358,8 @@ export function ModuleClient({
                   className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2.5 ${
                     active
                       ? "bg-[#155e63] text-white font-medium"
+                      : locked
+                      ? "text-[#afafaf] hover:bg-[#efefef]"
                       : "text-[#1a1a1a] hover:bg-[#efefef]"
                   }`}
                 >
@@ -1352,7 +1368,13 @@ export function ModuleClient({
                       ? active ? "bg-white text-[#155e63]" : "bg-[#155e63] text-white"
                       : active ? "bg-white/20 text-white" : started ? "bg-[#efefef] text-[#afafaf]" : "bg-[#f5f5f5] text-[#afafaf]"
                   }`}>
-                    {complete ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> : i + 1}
+                    {locked ? (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    ) : complete ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    ) : (
+                      i + 1
+                    )}
                   </div>
                   <span className="truncate">{s.title}</span>
                 </button>
@@ -1375,6 +1397,7 @@ export function ModuleClient({
             {SECTIONS.map((s, i) => {
               const complete = isSectionComplete(s.key);
               const active = i === activeSection;
+              const locked = !sectionAccessible(s.key);
               return (
                 <button
                   key={s.key}
@@ -1382,12 +1405,15 @@ export function ModuleClient({
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     active
                       ? "bg-[#155e63] text-white"
+                      : locked
+                      ? "bg-[#f5f5f5] text-[#afafaf]"
                       : complete
                       ? "bg-[#155e63]/10 text-[#155e63]"
                       : "bg-[#efefef] text-[#afafaf]"
                   }`}
                 >
-                  {complete && !active && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  {locked && !active && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
+                  {!locked && complete && !active && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   {s.title}
                 </button>
               );
@@ -1403,7 +1429,7 @@ export function ModuleClient({
                 </div>
                 <h2 className="text-xl font-bold text-[#1a1a1a]">{section.title}</h2>
               </div>
-              {isSectionComplete(section.key) && (
+              {isSectionComplete(section.key) && activeSectionAccessible && (
                 <div className="flex items-center gap-1.5 bg-[#155e63]/10 text-[#155e63] px-3 py-1.5 rounded-full">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                   <span className="text-xs font-medium">Complete</span>
@@ -1411,31 +1437,44 @@ export function ModuleClient({
               )}
             </div>
 
-            {section.key === "shop_type" && (
+            {!activeSectionAccessible && (
+              <UpgradeGate
+                title={`Upgrade to unlock ${section.title}`}
+                description="Free preview includes the first section of Module 1. A paid plan unlocks every section, the AI coach, and your full Business Readiness Document."
+                benefits={[
+                  "All 5 sections of Module 1 and the live financial model in Module 2",
+                  "50 AI coach credits each month (unlimited on Accelerator)",
+                  "Concept brief and financial summary you can export and share",
+                ]}
+                returnHref={`/plan/${moduleNumber}`}
+              />
+            )}
+
+            {activeSectionAccessible && section.key === "shop_type" && (
               <SectionShopType
                 data={sectionData.shop_type}
                 onChange={(d) => handleDataChange("shop_type", d)}
               />
             )}
-            {section.key === "your_why" && (
+            {activeSectionAccessible && section.key === "your_why" && (
               <SectionYourWhy
                 data={sectionData.your_why}
                 onChange={(d) => handleDataChange("your_why", d)}
               />
             )}
-            {section.key === "target_customer" && (
+            {activeSectionAccessible && section.key === "target_customer" && (
               <SectionTargetCustomer
                 data={sectionData.target_customer}
                 onChange={(d) => handleDataChange("target_customer", d)}
               />
             )}
-            {section.key === "competitive_analysis" && (
+            {activeSectionAccessible && section.key === "competitive_analysis" && (
               <SectionCompetitiveAnalysis
                 data={sectionData.competitive_analysis}
                 onChange={(d) => handleDataChange("competitive_analysis", d)}
               />
             )}
-            {section.key === "concept_brief" && (
+            {activeSectionAccessible && section.key === "concept_brief" && (
               <SectionConceptBrief
                 data={sectionData.concept_brief}
                 onChange={(d) => handleDataChange("concept_brief", d)}
@@ -1443,31 +1482,31 @@ export function ModuleClient({
               />
             )}
 
-            {section.key === "startup_costs" && (
+            {activeSectionAccessible && section.key === "startup_costs" && (
               <SectionStartupCosts
                 data={sectionData.startup_costs ?? {}}
                 onChange={(d) => handleDataChange("startup_costs", d)}
               />
             )}
-            {section.key === "revenue_projections" && (
+            {activeSectionAccessible && section.key === "revenue_projections" && (
               <SectionRevenueProjections
                 data={sectionData.revenue_projections ?? {}}
                 onChange={(d) => handleDataChange("revenue_projections", d)}
               />
             )}
-            {section.key === "monthly_expenses" && (
+            {activeSectionAccessible && section.key === "monthly_expenses" && (
               <SectionMonthlyExpenses
                 data={sectionData.monthly_expenses ?? {}}
                 onChange={(d) => handleDataChange("monthly_expenses", d)}
               />
             )}
-            {section.key === "pricing_strategy" && (
+            {activeSectionAccessible && section.key === "pricing_strategy" && (
               <SectionPricingStrategy
                 data={sectionData.pricing_strategy ?? {}}
                 onChange={(d) => handleDataChange("pricing_strategy", d)}
               />
             )}
-            {section.key === "financial_summary" && (
+            {activeSectionAccessible && section.key === "financial_summary" && (
               <SectionFinancialSummary
                 data={sectionData.financial_summary ?? {}}
                 onChange={(d) => handleDataChange("financial_summary", d)}
@@ -1486,7 +1525,7 @@ export function ModuleClient({
               </button>
 
               <div className="flex items-center gap-3">
-                {!coachOpen && isSectionComplete(section.key) && conversations[section.key].length === 0 && (
+                {!coachOpen && activeSectionAccessible && isSectionComplete(section.key) && conversations[section.key].length === 0 && (
                   <button
                     onClick={() => setCoachOpen(true)}
                     className="text-sm text-[#155e63] font-medium hover:underline"
@@ -1495,21 +1534,46 @@ export function ModuleClient({
                   </button>
                 )}
 
-                {activeSection < SECTIONS.length - 1 ? (
-                  <button
-                    onClick={() => setActiveSection((s) => s + 1)}
-                    className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
-                  >
-                    Next section →
-                  </button>
-                ) : (
-                  <Link
-                    href="/dashboard"
-                    className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
-                  >
-                    Back to dashboard
-                  </Link>
-                )}
+                {(() => {
+                  const nextIndex = activeSection + 1;
+                  const nextSection = SECTIONS[nextIndex];
+                  const nextAccessible =
+                    nextSection ? sectionAccessible(nextSection.key) : false;
+
+                  // Free preview: the moment the next section is paid, stop
+                  // pretending the user can continue inline and route them to
+                  // upgrade. This is the in-product upgrade path.
+                  if (freePreview && activeSectionAccessible && nextSection && !nextAccessible) {
+                    return (
+                      <Link
+                        href={`/pricing?return=${encodeURIComponent(`/plan/${moduleNumber}`)}`}
+                        className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
+                      >
+                        Unlock all sections →
+                      </Link>
+                    );
+                  }
+
+                  if (nextIndex < SECTIONS.length) {
+                    return (
+                      <button
+                        onClick={() => setActiveSection((s) => s + 1)}
+                        className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
+                      >
+                        Next section →
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      href="/dashboard"
+                      className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
+                    >
+                      Back to dashboard
+                    </Link>
+                  );
+                })()}
               </div>
             </div>
           </div>
