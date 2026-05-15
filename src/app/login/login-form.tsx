@@ -61,8 +61,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       if (error) {
         setError(error.message);
       } else {
-        setError(null);
-        alert("Check your email to confirm your account!");
+        router.push("/onboarding");
+        router.refresh();
       }
     } else {
       const { error, data } = await supabase.auth.signInWithPassword({ email, password });
