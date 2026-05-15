@@ -71,6 +71,14 @@ export default function TermsPage() {
               will give reasonable notice of material changes that adversely affect a paid
               plan you are then on.
             </p>
+            <p>
+              From time to time we may release features labeled &quot;beta,&quot;
+              &quot;preview,&quot; or &quot;early access.&quot; Those features are provided
+              as-is, may change or be removed at any time, and may not be as reliable as
+              the rest of the Service. Service-level commitments, refund eligibility for
+              beta-only failures, and indemnities in these Terms do not apply to beta
+              features.
+            </p>
           </section>
 
           <section>
@@ -131,8 +139,14 @@ export default function TermsPage() {
             <ul className="list-disc pl-6 space-y-1">
               <li>Use the Service in violation of any law or third-party rights;</li>
               <li>
-                Reverse engineer, scrape, or attempt to extract source code, prompts, or
-                model weights from the Service;
+                Reverse engineer, scrape, crawl, or otherwise use automated means to
+                extract source code, prompts, model weights, page content, or AI Output
+                from the Service;
+              </li>
+              <li>
+                Use the Service, Your Content (other than your own), or AI Output as
+                training data, fine-tuning data, or evaluation data for any artificial
+                intelligence or machine-learning model;
               </li>
               <li>
                 Resell, sublicense, or share your account credentials, or use the Service
@@ -164,8 +178,11 @@ export default function TermsPage() {
               you, to operate and improve the Service, and to comply with law.
             </p>
             <p>
-              We do not use Your Content to train third-party AI models. We may use
-              aggregated and de-identified usage data to improve the Service.
+              We do not use Your Content to train any first-party or third-party AI
+              models. Aggregated, de-identified usage metrics (such as feature usage
+              counts, latencies, and error rates) may be used to operate, secure, and
+              improve the Service. We do not use the substance of your prompts, AI Output,
+              plan inputs, or financial data to train models, whether ours or a vendor&rsquo;s.
             </p>
           </section>
 

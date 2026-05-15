@@ -131,12 +131,14 @@ export default function PrivacyPage() {
                 to operate the Service, including:
                 <ul className="list-disc pl-6 mt-1 space-y-1">
                   <li>
-                    <strong>Supabase</strong>: database, authentication, and
-                    storage hosting (United States).
+                    <strong>Supabase</strong>: database, authentication, storage
+                    hosting, and delivery of transactional authentication emails
+                    (account confirmation, password reset, security notifications) via
+                    its built-in mailer (United States).
                   </li>
                   <li>
-                    <strong>Vercel</strong>: application hosting and analytics
-                    (United States).
+                    <strong>Vercel</strong>: application hosting and product analytics
+                    via Vercel Analytics (United States).
                   </li>
                   <li>
                     <strong>Stripe</strong>: subscription billing and payment
@@ -198,8 +200,11 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">8. Your rights</h2>
             <p>
-              Subject to applicable law (including the EU/UK GDPR and the California
-              Consumer Privacy Act), you have the right to:
+              Subject to applicable law (including the EU/UK GDPR; the California
+              Consumer Privacy Act / CPRA; the Oregon Consumer Privacy Act / OCPA, which
+              applies to Timberline as an Oregon-based business; the Colorado Privacy Act
+              / CPA; and the Virginia Consumer Data Protection Act / VCDPA), you have the
+              right to:
             </p>
             <ul className="list-disc pl-6 space-y-1">
               <li>Access the personal information we hold about you;</li>
@@ -209,10 +214,13 @@ export default function PrivacyPage() {
               <li>Object to or restrict certain processing;</li>
               <li>Withdraw consent where we rely on it;</li>
               <li>
-                If you are a California resident, opt out of any &quot;sale&quot; or
-                &quot;sharing&quot; of personal information (we do not sell or share
-                personal information for cross-context behavioral advertising) and not be
-                discriminated against for exercising your rights.
+                If you are a resident of California, Oregon, Colorado, Virginia, or
+                another US state with a comparable privacy law, opt out of any
+                &quot;sale&quot; or &quot;sharing&quot; of personal information and any
+                processing for targeted advertising (we do not sell or share personal
+                information for cross-context behavioral advertising and we do not run
+                targeted advertising), and not be discriminated against for exercising
+                your rights.
               </li>
             </ul>
             <p>
