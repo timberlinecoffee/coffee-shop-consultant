@@ -1547,8 +1547,31 @@ export function ModuleClient({
               />
             )}
 
+            {/* Inline coach prompt — Module 1 only, above section nav */}
+            {moduleNumber === 1 && activeSectionAccessible && !coachOpen && (
+              <div className="mt-8 flex justify-center">
+                {userProfile.subscription_tier === "free" ? (
+                  <Link
+                    href={`/pricing?return=${encodeURIComponent(`/plan/${moduleNumber}`)}`}
+                    className="inline-flex items-center gap-1.5 text-sm text-[#afafaf] hover:text-[#155e63] transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+                    Ask a question <span className="text-[#155e63] font-medium ml-0.5">(Builder plan)</span>
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => setCoachOpen(true)}
+                    className="inline-flex items-center gap-1.5 text-sm text-[#155e63] font-medium hover:underline"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+                    Stuck? Ask the coach →
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Section nav */}
-            <div className="flex items-center justify-between mt-10 pt-6 border-t border-[#efefef]">
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-[#efefef]">
               <button
                 onClick={() => setActiveSection((s) => Math.max(0, s - 1))}
                 disabled={activeSection === 0}
@@ -1558,7 +1581,7 @@ export function ModuleClient({
               </button>
 
               <div className="flex items-center gap-3">
-                {!coachOpen && activeSectionAccessible && isSectionComplete(section.key) && conversations[section.key].length === 0 && (
+                {!coachOpen && activeSectionAccessible && isSectionComplete(section.key) && conversations[section.key].length === 0 && moduleNumber !== 1 && (
                   <button
                     onClick={() => setCoachOpen(true)}
                     className="text-sm text-[#155e63] font-medium hover:underline"
@@ -1611,6 +1634,20 @@ export function ModuleClient({
             </div>
           </div>
         </main>
+      </div>
+
+      {/* Mobile Coach FAB — bottom-right, above BottomTabBar */}
+      <div className="lg:hidden fixed bottom-[72px] right-4 z-30">
+        <button
+          onClick={() => setCoachOpen((o) => !o)}
+          aria-label="Open AI Coach"
+          className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl shadow-lg active:scale-95 transition-all ${
+            coachOpen ? "bg-[#0e4448] text-white" : "bg-[#155e63] text-white"
+          }`}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+          <span className="text-[10px] font-semibold mt-0.5">Coach</span>
+        </button>
       </div>
 
       {/* Coach panel */}
