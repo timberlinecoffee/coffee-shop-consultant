@@ -72,11 +72,11 @@ const PRICING = [
 const FAQS = [
   {
     q: "Is this just a chatbot?",
-    a: "No. The AI coach is one part of a structured 8-module planning system. You're building a real document — a Business Readiness Document — that reflects your specific concept, location, budget, and timeline. The AI reads everything you've built and responds to your actual plan, not a generic question.",
+    a: "No. The AI coach is one part of a structured 8-module planning system. You're building a real document. The Business Readiness Document reflects your specific concept, location, budget, and timeline. The AI reads everything you've built and responds to your actual plan, not a generic question.",
   },
   {
     q: "Can I really plan a coffee shop without a consultant?",
-    a: "This platform was built by someone who has done both — hired consultants and opened shops without them. A good consultant costs $150-300/hour and you'd need 20+ hours to cover what this platform covers. The methodology here is the same. The price isn't.",
+    a: "This platform was built by someone who has hired consultants and opened shops without them. A good consultant costs $150-300/hour and you'd need 20+ hours to cover what this platform covers. The methodology here is the same. The price isn't.",
   },
   {
     q: "What if I already have a business plan?",
@@ -132,7 +132,7 @@ export default function LandingPage() {
             <span className="text-[#155e63]">We&apos;ll help you build the plan to make it real.</span>
           </h1>
           <p className="text-lg text-[#afafaf] mb-8 max-w-2xl mx-auto leading-relaxed">
-            An AI-powered planning platform built by a World Coffee Championships judge who has opened &mdash; and closed &mdash; his own shops. Everything he teaches in Coffee Shop Basecamp, available to you 24/7.
+            An AI-powered planning platform built by a World Coffee Championships judge who has opened and closed his own shops. Everything he teaches in Coffee Shop Basecamp, available to you 24/7.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -158,7 +158,7 @@ export default function LandingPage() {
           <p className="text-xl text-[#1a1a1a] leading-relaxed font-light">
             Opening a coffee shop without a plan is like{" "}
             <strong className="font-semibold">pulling espresso without a recipe</strong>.
-            Most new coffee shops fail in the first two years &mdash; not because the coffee was bad,
+            Most new coffee shops fail in the first two years, not because the coffee was bad,
             but because the planning was.
           </p>
         </div>
@@ -174,7 +174,7 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-3 gap-8">
             {[
               { step: "01", title: "Tell us about your vision", desc: "A quick onboarding questionnaire captures your concept, budget, location, and timeline so your AI coach knows where you're starting from." },
-              { step: "02", title: "Work through 8 guided modules", desc: "Each module combines concise lessons, interactive exercises, and an AI coach that references your actual plan — not generic advice." },
+              { step: "02", title: "Work through 8 guided modules", desc: "Each module combines concise lessons, interactive exercises, and an AI coach that references your actual plan, not generic advice." },
               { step: "03", title: "Open your doors with a real plan", desc: "You walk away with a complete Business Readiness Document: concept brief, financial model, equipment list, and 90-day operations plan." },
             ].map((item) => (
               <div key={item.step} className="bg-white rounded-2xl p-8 border border-[#efefef]">
@@ -227,7 +227,7 @@ export default function LandingPage() {
               </div>
               <div className="flex gap-3 justify-end">
                 <div className="bg-[#76b39d] rounded-2xl rounded-tr-none px-4 py-3 text-sm text-[#155e63] max-w-sm">
-                  <p className="mb-2">That&apos;s a starting point &mdash; but &ldquo;anyone who likes good coffee&rdquo; is basically the entire adult population of your city.</p>
+                  <p className="mb-2">That&apos;s a starting point, but &ldquo;anyone who likes good coffee&rdquo; is basically the entire adult population of your city.</p>
                   <p className="mb-2">Think about it this way: who is the ONE person you&apos;d design this whole shop for? Are they a remote worker who needs 4 hours of space? A parent grabbing a quick latte on the school run? A coffee nerd who wants to talk about processing methods?</p>
                   <p>Try filling in: <em>&ldquo;My shop exists for _____ who need _____ and can&apos;t currently get it at _____.&rdquo;</em></p>
                 </div>
@@ -250,13 +250,13 @@ export default function LandingPage() {
               {
                 icon: "📄",
                 title: "Concept Brief",
-                desc: "Your shop's identity, target customer, differentiator, and brand voice — in a shareable one-pager.",
+                desc: "Your shop's identity, target customer, differentiator, and brand voice. It fits on one page.",
                 tags: ["Vision", "Positioning", "Brand"],
               },
               {
                 icon: "📊",
                 title: "Financial Model",
-                desc: "Build-out costs, revenue projections, break-even analysis, and 3-year P&L — all editable.",
+                desc: "Build-out costs, revenue projections, break-even analysis, and 3-year P&L, all editable.",
                 tags: ["Revenue", "Costs", "Break-even"],
               },
               {
@@ -268,7 +268,7 @@ export default function LandingPage() {
               {
                 icon: "📋",
                 title: "Business Readiness Document",
-                desc: "All 8 modules compiled into one comprehensive document — your opening playbook.",
+                desc: "All 8 modules compiled into one comprehensive document: your opening playbook.",
                 tags: ["Operations", "Hiring", "Marketing"],
               },
             ].map((d) => (
@@ -351,10 +351,10 @@ export default function LandingPage() {
           </div>
           <h2 className="text-2xl font-bold mb-4 text-[#1a1a1a]">Built by someone who&apos;s been there</h2>
           <p className="text-[#afafaf] leading-relaxed mb-6">
-            Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty Trainer, and the founder of Timberline Coffee School. He&apos;s spent years teaching the Coffee Shop Basecamp curriculum to aspiring café owners &mdash; and has personally opened and closed coffee businesses.
+            Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty Trainer, and the founder of Timberline Coffee School. He&apos;s spent years teaching the Coffee Shop Basecamp curriculum to aspiring café owners and has personally opened and closed coffee businesses.
           </p>
           <p className="text-[#afafaf] leading-relaxed">
-            This platform is everything he teaches in live cohorts &mdash; the frameworks, the honest advice, the hard numbers &mdash; available to you 24 hours a day, at a fraction of the cost of a consultant.
+            This platform is everything he teaches in live cohorts: the frameworks, the honest advice, the hard numbers, available to you 24 hours a day, at a fraction of the cost of a consultant.
           </p>
         </div>
       </section>
@@ -378,7 +378,7 @@ export default function LandingPage() {
       <section className="bg-[#155e63] px-6 py-20 text-center text-white">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold mb-4">Your coffee shop is waiting.</h2>
-          <p className="text-[#76b39d] mb-8 text-lg">Start planning today &mdash; it&apos;s free. No credit card required.</p>
+          <p className="text-[#76b39d] mb-8 text-lg">Start planning today. It&apos;s free. No credit card required.</p>
           <Link
             href="/login"
             className="inline-block bg-white text-[#155e63] px-10 py-4 rounded-xl font-bold text-lg hover:bg-[#faf9f7] transition-colors"

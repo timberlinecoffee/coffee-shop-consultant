@@ -1,4 +1,4 @@
-# My Coffee Shop Consultant — Timberline Coffee School
+# My Coffee Shop Consultant: Timberline Coffee School
 
 An AI-powered coffee shop planning platform built on Next.js, Supabase, and Vercel.
 
