@@ -52,12 +52,19 @@ const MODULE_TITLES: Record<number, string> = {
 };
 
 const MODULE_1_SECTIONS = [
-  { key: "shop_type", title: "Shop Type", requiredFields: ["model", "size", "seating", "food_level", "service_style"] },
+  { key: "shop_type", title: "Shop Model", requiredFields: ["model", "size", "seating", "food_level", "service_style"] },
   { key: "your_why", title: "Your Why", requiredFields: ["motivation", "customer_experience", "line_in_sand"] },
-  { key: "target_customer", title: "Target Customer", requiredFields: ["age_range", "occupation", "income", "coffee_habits", "values"] },
-  { key: "competitive_analysis", title: "Competitive Analysis", requiredFields: ["competitors"] },
+  { key: "target_customer", title: "Who are you making coffee for?", requiredFields: ["age_range", "occupation", "income", "coffee_habits", "values"] },
+  { key: "competitive_analysis", title: "What's already out there?", requiredFields: ["competitors"] },
   { key: "concept_brief", title: "Concept Brief", requiredFields: ["brief_content"] },
 ];
+
+const SECTION_1_CONTEXT: Record<string, string> = {
+  shop_type: "What kind of shop are you building? This shapes every financial number ahead.",
+  your_why: "Your reason is the test for every decision later. The clearer it is, the easier the hard calls get.",
+  target_customer: "Knowing exactly who you're serving makes menu, pricing, and location decisions obvious instead of guesses.",
+  competitive_analysis: "Knowing who's already out there helps you find the gap. Just add 2–3 spots you'd compete with.",
+};
 
 const MODULE_2_SECTIONS = [
   { key: "startup_costs", title: "Startup Budget", requiredFields: ["equipment_budget", "buildout_budget", "licensing_budget", "initial_inventory", "working_capital"] },
@@ -122,6 +129,7 @@ function SectionShopType({
 
   return (
     <div className="space-y-8">
+      <p className="text-sm italic text-[#afafaf] leading-relaxed">{SECTION_1_CONTEXT.shop_type}</p>
       {/* Learn */}
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">The 6 Shop Models</h3>
@@ -256,6 +264,7 @@ function SectionYourWhy({
 }) {
   return (
     <div className="space-y-8">
+      <p className="text-sm italic text-[#afafaf] leading-relaxed">{SECTION_1_CONTEXT.your_why}</p>
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Why Motivation Matters</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
@@ -322,6 +331,7 @@ function SectionTargetCustomer({
 }) {
   return (
     <div className="space-y-8">
+      <p className="text-sm italic text-[#afafaf] leading-relaxed">{SECTION_1_CONTEXT.target_customer}</p>
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Your Customer Is Not &quot;Everyone Who Likes Coffee&quot;</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
@@ -489,6 +499,7 @@ function SectionCompetitiveAnalysis({
 
   return (
     <div className="space-y-8">
+      <p className="text-sm italic text-[#afafaf] leading-relaxed">{SECTION_1_CONTEXT.competitive_analysis}</p>
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Know What Exists to Find the Gap</h3>
         <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
@@ -615,6 +626,8 @@ function SectionConceptBrief({
   onChange: (d: Record<string, unknown>) => void;
   allData: Record<string, Record<string, unknown>>;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+
   const shopTypeData = allData.shop_type ?? {};
   const whyData = allData.your_why ?? {};
   const customerData = allData.target_customer ?? {};
@@ -631,32 +644,52 @@ function SectionConceptBrief({
     <div className="space-y-8">
       <div>
         <h3 className="font-semibold text-[#1a1a1a] mb-3">Your Concept Brief</h3>
-        <p className="text-sm text-[#afafaf] leading-relaxed mb-4">
-          A concept brief is your shop&apos;s founding document: a single page that captures who you are, who you serve, and why you win. It&apos;s not a business plan. It&apos;s the anchor document that keeps every future decision aligned.
-        </p>
         <p className="text-sm text-[#afafaf] leading-relaxed">
-          We&apos;ve auto-generated your brief from everything you&apos;ve built in this module. Review it, edit it, and make it yours. Your coach can help refine it.
+          This is your plan&apos;s foundation. Everything from here builds on it.
         </p>
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-[#1a1a1a]">Your Concept Brief</label>
-          {data.brief_content !== generated && (
+        {isEditing ? (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-[#1a1a1a]">Edit your brief</label>
+              {data.brief_content !== generated && (
+                <button
+                  onClick={() => onChange({ ...data, brief_content: generated })}
+                  className="text-xs text-[#afafaf] hover:text-[#155e63] transition-colors"
+                >
+                  Reset to generated
+                </button>
+              )}
+            </div>
+            <textarea
+              autoFocus
+              value={content}
+              onChange={(e) => onChange({ ...data, brief_content: e.target.value })}
+              rows={22}
+              className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors resize-none bg-white font-mono leading-relaxed"
+            />
             <button
-              onClick={() => onChange({ ...data, brief_content: generated })}
-              className="text-xs text-[#afafaf] hover:text-[#155e63] transition-colors"
+              onClick={() => setIsEditing(false)}
+              className="mt-2 text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
             >
-              Reset to generated
+              Done editing
             </button>
-          )}
-        </div>
-        <textarea
-          value={content}
-          onChange={(e) => onChange({ ...data, brief_content: e.target.value })}
-          rows={22}
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors resize-none bg-white font-mono leading-relaxed"
-        />
+          </>
+        ) : (
+          <>
+            <pre className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] bg-[#faf9f7] font-mono leading-relaxed whitespace-pre-wrap overflow-auto min-h-[320px]">
+              {content}
+            </pre>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="mt-3 px-4 py-2 border border-[#155e63] text-[#155e63] rounded-xl text-sm font-medium hover:bg-[#155e63]/5 transition-colors"
+            >
+              Edit this brief
+            </button>
+          </>
+        )}
       </div>
 
       <div className="bg-[#155e63]/5 border border-[#155e63]/20 rounded-xl p-4">
@@ -1567,10 +1600,10 @@ export function ModuleClient({
 
                   return (
                     <Link
-                      href="/dashboard"
+                      href={moduleNumber === 1 ? "/plan/2" : "/dashboard"}
                       className="px-5 py-2.5 bg-[#155e63] text-white rounded-xl text-sm font-medium hover:bg-[#0e4448] transition-colors"
                     >
-                      Back to dashboard
+                      {moduleNumber === 1 ? "Continue to Module 2 →" : "Back to dashboard"}
                     </Link>
                   );
                 })()}
