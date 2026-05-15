@@ -13,9 +13,15 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from("users")
-          .select("onboarding_completed")
+          .select("onboarding_completed, signup_source")
           .eq("id", user.id)
           .single();
+
+        // Capture signup_source for OAuth users (trigger fires before we have UTM data)
+        if (profile && !profile.signup_source) {
+          const signupSource = searchParams.get("signup_source") || "direct";
+          await supabase.from("users").update({ signup_source: signupSource }).eq("id", user.id);
+        }
 
         if (!profile?.onboarding_completed) {
           return NextResponse.redirect(`${origin}/onboarding`);

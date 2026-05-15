@@ -10,6 +10,7 @@ create table public.users (
   email text not null,
   full_name text,
   avatar_url text,
+  signup_source text,
   subscription_status text not null default 'free_trial' check (subscription_status in ('free_trial', 'active', 'cancelled', 'expired')),
   subscription_tier text not null default 'free' check (subscription_tier in ('free', 'builder', 'accelerator')),
   ai_credits_remaining integer not null default 0,
@@ -53,6 +54,7 @@ create table public.ai_conversations (
   section_key text,
   messages jsonb not null default '[]',
   credits_used integer not null default 0,
+  cost_usd numeric,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -228,12 +230,13 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.users (id, email, full_name, avatar_url)
+  insert into public.users (id, email, full_name, avatar_url, signup_source)
   values (
     new.id,
     new.email,
     new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'avatar_url'
+    new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'signup_source'
   );
   return new;
 end;

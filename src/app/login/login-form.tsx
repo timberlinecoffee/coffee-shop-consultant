@@ -12,13 +12,21 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const router = useRouter();
 
+  function getSignupSource(): string {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("utm_source") || params.get("ref") || "direct";
+  }
+
   async function handleGoogleSignIn() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    const signupSource = getSignupSource();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?signup_source=${encodeURIComponent(signupSource)}`,
+      },
     });
     if (error) setError(error.message);
     setLoading(false);
@@ -31,10 +39,14 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     const supabase = createClient();
 
     if (mode === "signup") {
+      const signupSource = getSignupSource();
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { signup_source: signupSource },
+        },
       });
       if (error) {
         setError(error.message);

@@ -115,11 +115,16 @@ export async function POST(request: NextRequest) {
   const aiData = await anthropicResponse.json();
   const assistantMessage: string = aiData.content[0].text;
 
+  // Claude Sonnet 4.6 pricing: $3/M input tokens, $15/M output tokens
+  const inputTokens: number = aiData.usage?.input_tokens ?? 0;
+  const outputTokens: number = aiData.usage?.output_tokens ?? 0;
+  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+
   const updatedMessages = [...messages, { role: "assistant", content: assistantMessage }];
 
   const { data: existing } = await supabase
     .from("ai_conversations")
-    .select("id, credits_used")
+    .select("id, credits_used, cost_usd")
     .eq("plan_id", planId)
     .eq("module_number", moduleNumber)
     .eq("section_key", sectionKey)
@@ -128,7 +133,11 @@ export async function POST(request: NextRequest) {
   if (existing) {
     await supabase
       .from("ai_conversations")
-      .update({ messages: updatedMessages, credits_used: existing.credits_used + 1 })
+      .update({
+        messages: updatedMessages,
+        credits_used: existing.credits_used + 1,
+        cost_usd: (Number(existing.cost_usd) || 0) + costUsd,
+      })
       .eq("id", existing.id);
   } else {
     await supabase.from("ai_conversations").insert({
@@ -137,6 +146,7 @@ export async function POST(request: NextRequest) {
       section_key: sectionKey,
       messages: updatedMessages,
       credits_used: 1,
+      cost_usd: costUsd,
     });
   }
 
