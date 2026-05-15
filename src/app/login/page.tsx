@@ -30,7 +30,15 @@ export default function LoginPage() {
       </div>
 
       <p className="text-xs text-[#afafaf] mt-8 text-center max-w-xs">
-        By continuing, you agree to our Terms of Service and Privacy Policy.
+        By continuing, you agree to our{" "}
+        <Link href="/terms" className="underline hover:text-[#155e63]">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline hover:text-[#155e63]">
+          Privacy Policy
+        </Link>
+        .
       </p>
     </div>
   );

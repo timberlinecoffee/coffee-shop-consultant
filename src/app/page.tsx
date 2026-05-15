@@ -397,9 +397,11 @@ export default function LandingPage() {
             </div>
             <span>Timberline Coffee School</span>
           </div>
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
             <Link href="/login" className="hover:text-white transition-colors">Sign in</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <a href="mailto:hello@timberline.coffee" className="hover:text-white transition-colors">Contact</a>
           </div>
           <p>&#169; {new Date().getFullYear()} Timberline Coffee School</p>

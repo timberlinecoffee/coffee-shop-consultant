@@ -234,6 +234,11 @@ export default function PricingPage() {
         <div className="text-center mt-12 text-sm text-[#afafaf]">
           <p>Questions? Email <a href="mailto:hello@timberline.coffee" className="text-[#155e63] hover:underline">hello@timberline.coffee</a></p>
         </div>
+
+        <div className="mt-8 flex justify-center gap-6 text-xs text-[#afafaf]">
+          <Link href="/terms" className="hover:text-[#155e63] transition-colors">Terms of Service</Link>
+          <Link href="/privacy" className="hover:text-[#155e63] transition-colors">Privacy Policy</Link>
+        </div>
       </div>
     </div>
   );
