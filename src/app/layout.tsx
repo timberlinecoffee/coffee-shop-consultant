@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Poppins, Lora } from "next/font/google";
+import { Poppins, Lora, Geist } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -35,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={cn("h-full", "font-sans", geist.variable)}>
       <body className={`${poppins.variable} ${lora.variable} ${poppins.className} min-h-full flex flex-col bg-neutral-100 text-neutral-950`}>
         {children}
         <Analytics />
