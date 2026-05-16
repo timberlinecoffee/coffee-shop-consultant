@@ -249,6 +249,15 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
+                <p className={`text-xs text-center mb-3 ${tier.highlight ? "text-[#76b39d]" : "text-[#afafaf]"}`}>
+                  By subscribing you agree to our{" "}
+                  <a href="/terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Terms</a>
+                  {", "}
+                  <a href="/privacy" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Privacy Policy</a>
+                  {", and "}
+                  <a href="/subscription-terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Subscription Terms</a>
+                  .
+                </p>
                 <button
                   onClick={() => startCheckout(tier.key)}
                   disabled={loading === loadingKey}
@@ -307,6 +316,7 @@ export default function PricingPage() {
         <div className="mt-8 flex justify-center gap-6 text-xs text-[#afafaf]">
           <Link href="/terms" className="hover:text-[#155e63] transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-[#155e63] transition-colors">Privacy Policy</Link>
+          <Link href="/subscription-terms" className="hover:text-[#155e63] transition-colors">Subscription Terms</Link>
         </div>
       </div>
     </div>

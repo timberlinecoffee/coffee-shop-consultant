@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — My Coffee Shop Consultant",
-  description: "Terms of Service for Timberline Coffee School and My Coffee Shop Consultant.",
+  title: "Terms of Service — Timberline Coffee School",
+  description: "Terms of Service for Timberline Coffee School.",
 };
 
-const EFFECTIVE_DATE = "May 15, 2026";
+const EFFECTIVE_DATE = "May 22, 2026";
 
 export default function TermsPage() {
   return (
@@ -29,257 +29,144 @@ export default function TermsPage() {
         <p className="text-sm text-[#afafaf] mb-10">Effective {EFFECTIVE_DATE}</p>
 
         <div className="prose prose-sm max-w-none text-[#1a1a1a] space-y-8">
-          <section>
-            <h2 className="text-xl font-semibold mb-3">1. Who we are</h2>
-            <p>
-              These Terms of Service (&quot;Terms&quot;) are an agreement between you and
-              Timberline Coffee School (&quot;Timberline,&quot; &quot;we,&quot; &quot;us&quot;), the operator of
-              the My Coffee Shop Consultant platform at this website (the &quot;Service&quot;).
-              By creating an account, accessing, or using the Service, you agree to these
-              Terms and to our{" "}
-              <Link href="/privacy" className="text-[#155e63] underline">
-                Privacy Policy
-              </Link>
-              . If you do not agree, do not use the Service.
-            </p>
-          </section>
+          <p>
+            These Terms of Service (&quot;Terms&quot;) govern your use of Timberline Coffee School
+            (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) and the subscription-based
+            platform available at timberlinecoffeeschool.com (the &quot;Service&quot;). By creating an
+            account or using the Service, you agree to these Terms.
+          </p>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">2. Eligibility and accounts</h2>
+            <h2 className="text-xl font-semibold mb-3">1. Your Account</h2>
             <p>
-              You must be at least 18 years old and able to form a binding contract to use
-              the Service. You are responsible for keeping your login credentials secure
-              and for all activity under your account. Tell us promptly at{" "}
-              <a href="mailto:hello@timberline.coffee" className="text-[#155e63] underline">
-                hello@timberline.coffee
+              You must be 18 years or older to create an account. You are responsible for keeping
+              your login credentials confidential and for all activity that occurs under your account.
+              Notify us immediately at{" "}
+              <a href="mailto:support@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+                support@timberlinecoffeeschool.com
               </a>{" "}
-              if you suspect unauthorized use.
+              if you believe your account has been compromised.
+            </p>
+            <p className="mt-3">
+              One account per person. You may not share, sell, or transfer your account to another person.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">3. The Service</h2>
-            <p>
-              The Service helps prospective coffee shop owners plan their business through
-              guided modules, AI-assisted coaching, and deliverable generation. The Service
-              is provided for educational and planning purposes only. It is not legal,
-              financial, tax, accounting, real estate, or professional advice. You are
-              solely responsible for decisions you make about your business.
-            </p>
-            <p>
-              We may add, change, or remove features, modules, or content at any time. We
-              will give reasonable notice of material changes that adversely affect a paid
-              plan you are then on.
-            </p>
-            <p>
-              From time to time we may release features labeled &quot;beta,&quot;
-              &quot;preview,&quot; or &quot;early access.&quot; Those features are provided
-              as-is, may change or be removed at any time, and may not be as reliable as
-              the rest of the Service. Service-level commitments, refund eligibility for
-              beta-only failures, and indemnities in these Terms do not apply to beta
-              features.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">4. Plans, billing, and renewals</h2>
-            <p>
-              Paid plans (currently &quot;Builder&quot; and &quot;Accelerator&quot;) are
-              billed in advance on a monthly or annual cycle through our payment processor,
-              Stripe. By starting a paid plan you authorize us, through Stripe, to charge
-              your payment method on each renewal at the then-current price for your plan
-              and billing interval, until you cancel.
-            </p>
-            <p>
-              Prices, included credits, and feature lists are shown on our{" "}
-              <Link href="/pricing" className="text-[#155e63] underline">
-                Pricing page
-              </Link>
-              . We may change prices for future billing periods on at least 30 days&rsquo;
-              notice; changes will not take effect for the current paid period.
-            </p>
-            <p>
-              You can cancel at any time from your account&rsquo;s billing portal.
-              Cancellation stops future renewals and takes effect at the end of your current
-              paid period.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">5. Refunds</h2>
-            <p>
-              If you are not satisfied with a paid plan, contact us within 14 days of your
-              first paid charge for that plan and we will refund that charge in full.
-              Outside of that 14-day window, paid fees are non-refundable, including for
-              partial billing periods, unused AI credits, or features you choose not to
-              use. We may issue refunds at our discretion in cases of platform outage,
-              billing error, or our material failure to provide the Service.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">6. AI features and credits</h2>
-            <p>
-              The Service uses third-party AI providers (currently Anthropic) to generate
-              coaching responses, summaries, and other outputs (&quot;AI Output&quot;). AI
-              Output can be inaccurate, incomplete, biased, or out of date. You should
-              verify any AI Output before relying on it for business decisions.
-            </p>
-            <p>
-              Builder plans include a monthly allocation of AI coaching credits.
-              Unused credits do not roll over between billing periods. We may apply
-              reasonable rate limits and abuse protections to prevent automated, scripted,
-              or commercially-resold use.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">7. Acceptable use</h2>
+            <h2 className="text-xl font-semibold mb-3">2. Acceptable Use</h2>
             <p>You agree not to:</p>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Use the Service in violation of any law or third-party rights;</li>
-              <li>
-                Reverse engineer, scrape, crawl, or otherwise use automated means to
-                extract source code, prompts, model weights, page content, or AI Output
-                from the Service;
-              </li>
-              <li>
-                Use the Service, Your Content (other than your own), or AI Output as
-                training data, fine-tuning data, or evaluation data for any artificial
-                intelligence or machine-learning model;
-              </li>
-              <li>
-                Resell, sublicense, or share your account credentials, or use the Service
-                to provide a substantially similar product to others;
-              </li>
-              <li>
-                Upload content that is unlawful, infringing, harmful, or contains personal
-                data of others without their permission;
-              </li>
-              <li>
-                Use the Service to harass, defraud, or attempt to gain unauthorized access
-                to any system, account, or data;
-              </li>
-              <li>
-                Interfere with the Service&rsquo;s infrastructure, including by sending
-                excessive requests, probing for vulnerabilities, or evading rate limits.
-              </li>
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>Use the Service for any unlawful purpose or in violation of these Terms.</li>
+              <li>Copy, distribute, or reproduce course materials outside of your personal use.</li>
+              <li>Attempt to reverse-engineer, scrape, or extract data from the platform.</li>
+              <li>Upload or transmit content that is harmful, offensive, or infringes a third party&rsquo;s rights.</li>
+              <li>Use automated tools, bots, or scripts to access the Service.</li>
             </ul>
-            <p>We may suspend or terminate accounts that violate this section.</p>
+            <p className="mt-3">We reserve the right to suspend or terminate accounts that violate these rules.</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Your content</h2>
+            <h2 className="text-xl font-semibold mb-3">3. Intellectual Property</h2>
             <p>
-              You own the business plan content, exercise responses, financial inputs, and
-              other materials you submit to the Service (&quot;Your Content&quot;). You
-              grant Timberline a worldwide, non-exclusive, royalty-free license to host,
-              process, transmit, and display Your Content solely to provide the Service to
-              you, to operate and improve the Service, and to comply with law.
+              All content on the Service -- including course videos, written materials, exercises, and
+              platform design -- is owned by Timberline Coffee School or our licensors and is protected
+              by copyright and other intellectual property laws.
             </p>
-            <p>
-              We do not use Your Content to train any first-party or third-party AI
-              models. Aggregated, de-identified usage metrics (such as feature usage
-              counts, latencies, and error rates) may be used to operate, secure, and
-              improve the Service. We do not use the substance of your prompts, AI Output,
-              plan inputs, or financial data to train models, whether ours or a vendor&rsquo;s.
+            <p className="mt-3">
+              Your subscription grants you a limited, non-exclusive, non-transferable license to access
+              and use the content for your personal, non-commercial education. You do not acquire any
+              ownership rights.
             </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">9. Our intellectual property</h2>
-            <p>
-              The Service, including its software, prompts, module structure, copy,
-              templates, designs, and brand assets, is owned by Timberline or its licensors
-              and is protected by intellectual property law. We grant you a limited,
-              non-exclusive, non-transferable, revocable license to use the Service for
-              your internal coffee-shop planning purposes during your paid (or free)
-              subscription. AI Output you generate while using the Service is yours to use
-              for your own coffee-shop planning, subject to these Terms.
+            <p className="mt-3">
+              User-generated content (such as forum posts or comments) remains yours. By posting it on
+              the Service, you grant us a non-exclusive, royalty-free license to display and distribute
+              it within the platform.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Disclaimers</h2>
+            <h2 className="text-xl font-semibold mb-3">4. Disclaimers</h2>
             <p>
-              The Service is provided &quot;as is&quot; and &quot;as available.&quot; To
-              the maximum extent permitted by law, Timberline disclaims all warranties,
-              express or implied, including merchantability, fitness for a particular
-              purpose, non-infringement, accuracy, and uninterrupted operation. We do not
-              guarantee that the Service will meet your requirements, that AI Output will
-              be accurate, or that your coffee shop will be profitable.
+              The Service and all content are provided &quot;as is&quot; without warranties of any kind,
+              either express or implied. We do not warrant that the Service will be uninterrupted,
+              error-free, or free of viruses.
+            </p>
+            <p className="mt-3">
+              Coffee education is informational. We make no guarantees about employment outcomes,
+              certification recognition, or business results from using the Service.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">11. Limitation of liability</h2>
+            <h2 className="text-xl font-semibold mb-3">5. Limitation of Liability</h2>
             <p>
-              To the maximum extent permitted by law, Timberline and its officers,
-              employees, and contractors will not be liable for any indirect, incidental,
-              special, consequential, exemplary, or punitive damages, or for lost profits,
-              lost revenue, lost data, or business interruption, arising out of or in
-              connection with the Service or these Terms, even if advised of the
-              possibility of such damages.
+              To the fullest extent permitted by law, Timberline Coffee School, its officers, employees,
+              and partners will not be liable for:
             </p>
-            <p>
-              Our total cumulative liability for all claims arising out of or in connection
-              with the Service or these Terms will not exceed the greater of (a) the
-              amounts you paid Timberline for the Service in the 12 months immediately
-              before the event giving rise to the claim, or (b) US$100.
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>Any indirect, incidental, special, or consequential damages.</li>
+              <li>Loss of profits, data, or goodwill.</li>
+              <li>Damages resulting from unauthorized access to or alteration of your content.</li>
+            </ul>
+            <p className="mt-3">
+              Our total liability for any claim arising from your use of the Service will not exceed the
+              amount you paid us in the 12 months preceding the claim.
             </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">12. Indemnification</h2>
-            <p>
-              You will indemnify and hold Timberline harmless from any third-party claims,
-              damages, liabilities, and reasonable legal fees arising from (a) Your Content,
-              (b) your use of the Service in violation of these Terms or applicable law, or
-              (c) decisions you make about your business, including any reliance on AI
-              Output.
+            <p className="mt-3">
+              Some jurisdictions do not allow certain liability limitations. In those cases, our liability
+              is limited to the maximum extent permitted by applicable law.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">13. Termination</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Governing Law</h2>
             <p>
-              You may stop using the Service at any time and delete your account by
-              contacting us. We may suspend or terminate your access if you breach these
-              Terms, if required by law, or if continuing to provide the Service to you
-              would expose Timberline to legal or operational risk. Sections that by their
-              nature should survive termination (including 8&ndash;12 and 15) will survive.
+              These Terms are governed by the laws of the State of Colorado, without regard to its
+              conflict-of-law principles. Any legal action arising from these Terms must be brought in
+              the state or federal courts located in Denver, Colorado.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">14. Changes to these Terms</h2>
+            <h2 className="text-xl font-semibold mb-3">7. Dispute Resolution</h2>
             <p>
-              We may update these Terms from time to time. If we make material changes, we
-              will notify you by email or through the Service before they take effect.
-              Continued use of the Service after the effective date constitutes acceptance
-              of the updated Terms.
+              Before filing any formal legal claim, you agree to first contact us at{" "}
+              <a href="mailto:legal@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+                legal@timberlinecoffeeschool.com
+              </a>{" "}
+              and give us 30 days to attempt to resolve the dispute informally.
+            </p>
+            <p className="mt-3">
+              If informal resolution fails, any dispute will be resolved through binding individual
+              arbitration administered by the American Arbitration Association under its Consumer
+              Arbitration Rules. You waive any right to participate in a class action lawsuit or
+              class-wide arbitration.
+            </p>
+            <p className="mt-3">
+              Nothing in this section prevents either party from seeking injunctive relief in court for
+              intellectual property infringement or unauthorized use.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">15. Governing law and disputes</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Changes to These Terms</h2>
             <p>
-              These Terms are governed by the laws of the State of Oregon, USA, without
-              regard to its conflict-of-laws principles. The exclusive venue for any
-              dispute that is not subject to arbitration or small-claims court will be the
-              state and federal courts located in Multnomah County, Oregon, and you and
-              Timberline consent to the personal jurisdiction of those courts.
+              We may update these Terms from time to time. If we make material changes, we will notify
+              you by email or by posting a notice on the Service at least 14 days before the changes
+              take effect. Continued use of the Service after that date constitutes your acceptance of
+              the updated Terms.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">16. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Contact</h2>
             <p>
-              Questions about these Terms? Email{" "}
-              <a href="mailto:hello@timberline.coffee" className="text-[#155e63] underline">
-                hello@timberline.coffee
+              Timberline Coffee School
+              <br />
+              Email:{" "}
+              <a href="mailto:legal@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+                legal@timberlinecoffeeschool.com
               </a>
-              .
             </p>
           </section>
         </div>
@@ -288,10 +175,10 @@ export default function TermsPage() {
       <footer className="bg-[#1a1a1a] text-[#afafaf] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
           <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <a href="mailto:hello@timberline.coffee" className="hover:text-white transition-colors">Contact</a>
+            <Link href="/subscription-terms" className="hover:text-white transition-colors">Subscription Terms</Link>
           </div>
         </div>
       </footer>

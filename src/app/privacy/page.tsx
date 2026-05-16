@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — My Coffee Shop Consultant",
-  description: "Privacy Policy for Timberline Coffee School and My Coffee Shop Consultant.",
+  title: "Privacy Policy — Timberline Coffee School",
+  description: "Privacy Policy for Timberline Coffee School.",
 };
 
-const EFFECTIVE_DATE = "May 15, 2026";
+const EFFECTIVE_DATE = "May 22, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -29,261 +29,161 @@ export default function PrivacyPage() {
         <p className="text-sm text-[#afafaf] mb-10">Effective {EFFECTIVE_DATE}</p>
 
         <div className="prose prose-sm max-w-none text-[#1a1a1a] space-y-8">
-          <section>
-            <h2 className="text-xl font-semibold mb-3">1. Overview</h2>
-            <p>
-              This Privacy Policy explains how Timberline Coffee School (&quot;Timberline,&quot;
-              &quot;we,&quot; &quot;us&quot;) collects, uses, shares, and protects personal
-              information in connection with the My Coffee Shop Consultant platform
-              (the &quot;Service&quot;). It applies to visitors, free users, and paid
-              subscribers. By using the Service you agree to this Policy and to our{" "}
-              <Link href="/terms" className="text-[#155e63] underline">
-                Terms of Service
-              </Link>
-              .
-            </p>
-          </section>
+          <p>
+            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) is committed
+            to protecting your privacy. This Privacy Policy explains what information we collect, how we
+            use it, and your rights regarding that information.
+          </p>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">2. Information we collect</h2>
-            <p>We collect the following categories of information:</p>
-            <ul className="list-disc pl-6 space-y-2">
+            <h2 className="text-xl font-semibold mb-3">1. Information We Collect</h2>
+            <ul className="list-none space-y-3">
               <li>
-                <strong>Account information.</strong> Email address, password (stored
-                hashed), authentication identifiers from Google when you sign in with
-                Google, and your display name if provided.
+                <strong>Account information.</strong> When you create an account, we collect your name,
+                email address, and password (hashed).
               </li>
               <li>
-                <strong>Profile and onboarding data.</strong> Information you provide
-                during the onboarding wizard and in module exercises, including your
-                concept, target customer, location preferences, financial inputs, and
-                business goals.
+                <strong>Payment information.</strong> Payments are processed by Stripe. We do not store
+                your full card number or CVV. We receive and retain a payment record including billing
+                name, last 4 digits of the card, transaction ID, and subscription status from Stripe.
               </li>
               <li>
-                <strong>Usage and AI conversation data.</strong> Pages you visit, modules
-                and sections you complete, prompts you send to the AI coach, AI responses
-                returned to you, credit consumption, and timestamps.
+                <strong>Usage data.</strong> We collect information about how you use the Service,
+                including lessons viewed, progress milestones, session timestamps, and feature
+                interactions.
               </li>
               <li>
-                <strong>Subscription and billing data.</strong> Your subscription tier,
-                billing interval, plan status, and Stripe customer / subscription
-                identifiers. Card numbers and bank details are collected and stored by
-                Stripe, not by Timberline.
+                <strong>Device and technical data.</strong> We automatically collect your IP address,
+                browser type, operating system, and referring URLs when you visit the Service.
               </li>
               <li>
-                <strong>Device and log data.</strong> IP address, browser type, device
-                type, referring URL, and similar information collected automatically when
-                you use the Service.
-              </li>
-              <li>
-                <strong>Cookies and similar technologies.</strong> Essential cookies for
-                login session management and limited analytics cookies as described in
-                Section 6.
+                <strong>Communications.</strong> If you contact support or submit feedback, we retain
+                those communications.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">3. How we use information</h2>
-            <p>We use personal information to:</p>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Provide, operate, and improve the Service;</li>
-              <li>
-                Personalize your dashboard, modules, and AI coaching to your business
-                context;
-              </li>
-              <li>Process payments, manage subscriptions, and prevent fraud;</li>
-              <li>
-                Send transactional messages (account confirmations, billing receipts,
-                security alerts, important Service announcements);
-              </li>
-              <li>Provide customer support and respond to your requests;</li>
-              <li>
-                Monitor performance, debug issues, and protect the security and integrity
-                of the Service;
-              </li>
+            <h2 className="text-xl font-semibold mb-3">2. How We Use Your Information</h2>
+            <p>We use the information we collect to:</p>
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>Create and manage your account.</li>
+              <li>Process your subscription payments.</li>
+              <li>Deliver and improve the Service and course content.</li>
+              <li>Send transactional emails (receipts, password resets, account notices).</li>
+              <li>Send marketing emails if you have opted in (you can opt out at any time).</li>
+              <li>Detect and prevent fraud and abuse.</li>
               <li>Comply with legal obligations.</li>
             </ul>
-            <p>
-              We will not sell your personal information. We do not use the contents of
-              Your Content (including AI prompts and responses) to train third-party AI
-              models.
-            </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">4. Legal bases (EEA / UK users)</h2>
-            <p>
-              If you are in the European Economic Area or United Kingdom, our legal bases
-              for processing are: (a) performance of our contract with you; (b) our
-              legitimate interests in operating, securing, and improving the Service; (c)
-              your consent, where required (for example, for non-essential cookies); and
-              (d) compliance with legal obligations.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">5. How we share information</h2>
-            <p>We share personal information only as needed:</p>
-            <ul className="list-disc pl-6 space-y-2">
+            <h2 className="text-xl font-semibold mb-3">3. Information We Share</h2>
+            <p>We do not sell your personal information. We share it only as follows:</p>
+            <ul className="list-none space-y-3 mt-3">
               <li>
-                <strong>Service providers (subprocessors).</strong> We use trusted vendors
-                to operate the Service, including:
-                <ul className="list-disc pl-6 mt-1 space-y-1">
-                  <li>
-                    <strong>Supabase</strong>: database, authentication, storage
-                    hosting, and delivery of transactional authentication emails
-                    (account confirmation, password reset, security notifications) via
-                    its built-in mailer (United States).
-                  </li>
-                  <li>
-                    <strong>Vercel</strong>: application hosting and product analytics
-                    via Vercel Analytics (United States).
-                  </li>
-                  <li>
-                    <strong>Stripe</strong>: subscription billing and payment
-                    processing.
-                  </li>
-                  <li>
-                    <strong>Anthropic</strong>: AI coaching responses; prompts and
-                    responses are sent to Anthropic to generate AI Output.
-                  </li>
-                  <li>
-                    <strong>Google</strong>: Google sign-in (only if you choose to
-                    sign in with Google).
-                  </li>
-                </ul>
-                These providers process information only as instructed by us and under
-                their own privacy commitments.
+                <strong>Stripe</strong> -- to process and manage subscription payments. Stripe&rsquo;s
+                privacy policy is at stripe.com/privacy.
               </li>
               <li>
-                <strong>Legal and safety.</strong> We may disclose information when
-                required by law, subpoena, or other legal process, or when we believe in
-                good faith that disclosure is necessary to protect our rights, your
-                safety, or the safety of others, or to investigate fraud or violations of
-                our Terms.
+                <strong>Supabase</strong> -- our cloud database and authentication provider stores your
+                account and usage data on our behalf.
               </li>
               <li>
-                <strong>Business transfers.</strong> If Timberline is involved in a
-                merger, acquisition, financing, or sale of assets, your information may be
-                transferred as part of that transaction; we will notify you of any change
-                in ownership or use of your personal information.
+                <strong>AI provider(s)</strong> -- certain features (such as personalized
+                recommendations or interactive tools) may send anonymized or pseudonymized usage data to
+                AI processing services. We do not send your name, email, or payment information to AI
+                providers.
+              </li>
+              <li>
+                <strong>Legal and safety.</strong> We may disclose information if required by law,
+                court order, or to protect the rights and safety of Timberline, our users, or the
+                public.
+              </li>
+              <li>
+                <strong>Business transfers.</strong> If Timberline is acquired or merges with another
+                company, your information may be transferred as part of that transaction. We will notify
+                you in advance.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Cookies and analytics</h2>
+            <h2 className="text-xl font-semibold mb-3">4. Data Retention</h2>
             <p>
-              We use a small number of cookies that are strictly necessary to keep you
-              signed in and to remember your session. We use limited, privacy-respecting
-              analytics (such as page-view counts via Vercel Analytics) to understand how
-              the Service is used in aggregate. We do not run advertising trackers or
-              cross-site profiling.
+              We retain your account information for as long as your account is active, plus up to 3
+              years after closure for legal and audit purposes. Payment records are retained as required
+              by law (typically 7 years). You may request deletion at any time (see Your Rights below).
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Data retention</h2>
-            <p>
-              We keep your account information and Your Content for as long as your
-              account is active. If you cancel your subscription, your account remains
-              accessible to you on the free tier; we keep your data so you can return to
-              it. If you delete your account, we will delete your account profile, plan
-              data, module responses, and AI conversation history within 30 days, except
-              where we are required to retain limited records (for example, billing and
-              tax records, fraud-prevention logs, or as required by law) for up to 7
-              years.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">8. Your rights</h2>
-            <p>
-              Subject to applicable law (including the EU/UK GDPR; the California
-              Consumer Privacy Act / CPRA; the Oregon Consumer Privacy Act / OCPA, which
-              applies to Timberline as an Oregon-based business; the Colorado Privacy Act
-              / CPA; and the Virginia Consumer Data Protection Act / VCDPA), you have the
-              right to:
-            </p>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Access the personal information we hold about you;</li>
-              <li>Request correction of inaccurate information;</li>
-              <li>Request deletion of your account and associated personal information;</li>
-              <li>Request a portable copy of your account data;</li>
-              <li>Object to or restrict certain processing;</li>
-              <li>Withdraw consent where we rely on it;</li>
-              <li>
-                If you are a resident of California, Oregon, Colorado, Virginia, or
-                another US state with a comparable privacy law, opt out of any
-                &quot;sale&quot; or &quot;sharing&quot; of personal information and any
-                processing for targeted advertising (we do not sell or share personal
-                information for cross-context behavioral advertising and we do not run
-                targeted advertising), and not be discriminated against for exercising
-                your rights.
-              </li>
+            <h2 className="text-xl font-semibold mb-3">5. Your Rights</h2>
+            <p>Depending on where you live, you may have rights to:</p>
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>Access the personal information we hold about you.</li>
+              <li>Correct inaccurate information.</li>
+              <li>Request deletion of your information.</li>
+              <li>Object to or restrict certain processing.</li>
+              <li>Export your data in a portable format.</li>
+              <li>Opt out of marketing emails at any time via the unsubscribe link or by contacting us.</li>
             </ul>
-            <p>
+            <p className="mt-3">
               To exercise any of these rights, email{" "}
-              <a href="mailto:hello@timberline.coffee" className="text-[#155e63] underline">
-                hello@timberline.coffee
+              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+                privacy@timberlinecoffeeschool.com
               </a>
-              . We may need to verify your identity before responding. You also have the
-              right to lodge a complaint with your local data-protection authority.
+              . We will respond within 30 days.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. International transfers</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Cookies</h2>
             <p>
-              Timberline is based in the United States, and our subprocessors primarily
-              host data in the United States. If you access the Service from outside the
-              United States, your information will be transferred to and processed in the
-              United States. We rely on appropriate safeguards (such as Standard
-              Contractual Clauses) for transfers from the EEA, UK, and Switzerland where
-              required.
+              We use cookies and similar technologies to keep you logged in, remember your preferences,
+              and analyze traffic. You can control cookies through your browser settings. Disabling
+              cookies may affect some Service features.
+            </p>
+            <p className="mt-3">
+              We do not use third-party advertising cookies or tracking pixels for ad targeting.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">7. Security</h2>
             <p>
-              We use industry-standard administrative, technical, and physical safeguards
-              to protect personal information, including encryption in transit, encryption
-              at rest for our database, row-level security, and least-privilege access for
-              staff. No system is perfectly secure; if we learn of a security incident
-              affecting your personal information we will notify you as required by law.
+              We use industry-standard security measures including encryption in transit (TLS) and at
+              rest, access controls, and regular security reviews. No method of transmission over the
+              internet is completely secure, and we cannot guarantee absolute security.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">11. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Children</h2>
             <p>
-              The Service is not directed to children under 16, and we do not knowingly
-              collect personal information from children under 16. If you believe we have
-              collected information from a child under 16, please contact us and we will
-              delete it.
+              The Service is not directed to children under 13. We do not knowingly collect personal
+              information from children under 13. If you believe we have collected such information,
+              please contact us and we will delete it promptly.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">12. Changes to this Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Changes to This Policy</h2>
             <p>
-              We may update this Privacy Policy from time to time. If we make material
-              changes, we will notify you by email or through the Service before they take
-              effect. The &quot;Effective&quot; date at the top of this page indicates
-              when it was last updated.
+              We may update this Privacy Policy from time to time. If we make material changes, we will
+              notify you by email at least 14 days before the changes take effect.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">13. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">10. Contact</h2>
             <p>
-              Questions or requests about this Privacy Policy? Email{" "}
-              <a href="mailto:hello@timberline.coffee" className="text-[#155e63] underline">
-                hello@timberline.coffee
+              Timberline Coffee School
+              <br />
+              Email:{" "}
+              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+                privacy@timberlinecoffeeschool.com
               </a>
-              .
             </p>
           </section>
         </div>
@@ -292,10 +192,10 @@ export default function PrivacyPage() {
       <footer className="bg-[#1a1a1a] text-[#afafaf] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
           <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <a href="mailto:hello@timberline.coffee" className="hover:text-white transition-colors">Contact</a>
+            <Link href="/subscription-terms" className="hover:text-white transition-colors">Subscription Terms</Link>
           </div>
         </div>
       </footer>

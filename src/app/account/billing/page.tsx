@@ -27,7 +27,7 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
       <nav className="bg-white border-b border-[#efefef] px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link href="/account" className="flex items-center gap-2">
@@ -41,6 +41,7 @@ export default function BillingPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
         <h1 className="text-2xl font-bold text-[#1a1a1a]">Billing</h1>
+
 
         {successParam && (
           <div className="bg-[#155e63]/10 border border-[#155e63]/20 rounded-xl p-4">
@@ -77,6 +78,14 @@ export default function BillingPage() {
           </Link>
         </div>
       </div>
+
+      <footer className="mt-auto border-t border-[#efefef] px-6 py-5 text-xs text-[#afafaf]">
+        <div className="max-w-3xl mx-auto flex justify-center gap-6">
+          <Link href="/terms" className="hover:text-[#155e63] transition-colors">Terms</Link>
+          <Link href="/privacy" className="hover:text-[#155e63] transition-colors">Privacy</Link>
+          <Link href="/subscription-terms" className="hover:text-[#155e63] transition-colors">Subscription Terms</Link>
+        </div>
+      </footer>
     </div>
   );
 }
