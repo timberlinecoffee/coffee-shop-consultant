@@ -22,7 +22,7 @@ export interface Database {
           avatar_url: string | null
           signup_source: string | null
           subscription_status: 'free_trial' | 'active' | 'cancelled' | 'expired'
-          subscription_tier: 'free' | 'builder' | 'accelerator'
+          subscription_tier: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining: number
           target_opening_date: string | null
           readiness_score: number
@@ -38,7 +38,7 @@ export interface Database {
           avatar_url?: string | null
           signup_source?: string | null
           subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired'
-          subscription_tier?: 'free' | 'builder' | 'accelerator'
+          subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           target_opening_date?: string | null
           readiness_score?: number
@@ -54,7 +54,7 @@ export interface Database {
           avatar_url?: string | null
           signup_source?: string | null
           subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired'
-          subscription_tier?: 'free' | 'builder' | 'accelerator'
+          subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           target_opening_date?: string | null
           readiness_score?: number
@@ -447,7 +447,7 @@ export interface Database {
           user_id: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
-          tier: 'builder' | 'accelerator'
+          tier: 'starter' | 'growth' | 'pro'
           status: 'active' | 'cancelled' | 'past_due' | 'trialing'
           current_period_start: string | null
           current_period_end: string | null
@@ -459,7 +459,7 @@ export interface Database {
           user_id: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          tier: 'builder' | 'accelerator'
+          tier: 'starter' | 'growth' | 'pro'
           status: 'active' | 'cancelled' | 'past_due' | 'trialing'
           current_period_start?: string | null
           current_period_end?: string | null
@@ -471,7 +471,7 @@ export interface Database {
           user_id?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          tier?: 'builder' | 'accelerator'
+          tier?: 'starter' | 'growth' | 'pro'
           status?: 'active' | 'cancelled' | 'past_due' | 'trialing'
           current_period_start?: string | null
           current_period_end?: string | null
