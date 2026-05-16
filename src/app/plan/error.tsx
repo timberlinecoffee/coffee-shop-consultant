@@ -1,19 +1,19 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
+import Link from 'next/link'
+import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
-export default function DashboardError({
+export default function PlanError({
   error,
   unstable_retry,
 }: {
-  error: Error & { digest?: string };
-  unstable_retry: () => void;
+  error: Error & { digest?: string }
+  unstable_retry: () => void
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
-  }, [error]);
+    Sentry.captureException(error)
+  }, [error])
 
   return (
     <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center px-6">
@@ -21,7 +21,12 @@ export default function DashboardError({
         <div className="text-4xl mb-4">☕</div>
         <h1 className="text-xl font-bold text-[#1a1a1a] mb-2">Something went wrong</h1>
         <p className="text-sm text-[#afafaf] mb-6">
-          We hit a snag loading your dashboard. This is on us — your plan data is safe.
+          We hit a snag loading this page. Your plan data is safe — go back to the dashboard to continue.
+          {error.digest && (
+            <span className="block mt-2 font-mono text-xs text-[#cfcfcf]">
+              ref: {error.digest}
+            </span>
+          )}
         </p>
         <div className="flex gap-3 justify-center">
           <button
@@ -31,13 +36,13 @@ export default function DashboardError({
             Try again
           </button>
           <Link
-            href="/"
+            href="/dashboard"
             className="px-4 py-2 border border-[#efefef] text-sm font-medium rounded-lg text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
           >
-            Go home
+            Back to dashboard
           </Link>
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 export default function ModuleError({
   error,
@@ -11,7 +12,7 @@ export default function ModuleError({
   unstable_retry: () => void
 }) {
   useEffect(() => {
-    console.error(error)
+    Sentry.captureException(error)
   }, [error])
 
   return (
