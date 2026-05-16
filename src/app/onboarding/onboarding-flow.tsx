@@ -38,7 +38,7 @@ const STEPS = [
     id: "location",
     type: "text" as const,
     question: "Where are you thinking of opening?",
-    hint: "Don't have one yet? Just put your current city — we'll ask again when it matters.",
+    hint: "Don't have one yet? Just put your current city. We'll ask again when it matters.",
     placeholder: "e.g. Austin, TX or Southeast London",
   },
   {
