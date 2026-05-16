@@ -25,7 +25,7 @@ const WORKSPACE_KEYS: WorkspaceKey[] = [
   "launch_plan",
 ]
 
-const TTFT_MS = 8_000
+const TTFT_MS = 15_000 // extended thinking needs ramp time; 8_000 caused false timeouts (TIM-674)
 const GAP_MS = 20_000
 const HEARTBEAT_MS = 15_000
 
