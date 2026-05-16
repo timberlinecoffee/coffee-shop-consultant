@@ -50,31 +50,6 @@ function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 }
 
-function buildDynamicPrompt(
-  onboarding: Record<string, unknown>,
-  planSnapshot: string,
-  currentWorkspace: WorkspaceKey,
-): string {
-  const shopType = Array.isArray(onboarding?.shop_type)
-    ? (onboarding.shop_type as string[]).join(", ")
-    : String(onboarding?.shop_type ?? "not specified")
-
-  return `## User Profile
-- **Budget**: ${String(onboarding?.budget ?? "not specified")}
-- **Location**: ${String(onboarding?.location ?? "not specified")}
-- **Stage**: ${String(onboarding?.stage ?? "not specified")}
-- **Motivation**: ${String(onboarding?.motivation ?? "not specified")}
-- **Coffee experience**: ${String(onboarding?.coffee_experience ?? "not specified")}
-- **Timeline**: ${String(onboarding?.timeline ?? "not specified")}
-- **Shop type**: ${shopType}
-
-## Current Workspace
-The user is working in: **${currentWorkspace.replace(/_/g, " ")}**
-
-## Their Plan So Far (all workspaces)
-${planSnapshot}`
-}
-
 function countWorkspaceMentions(messages: Array<{ role: string; content: string }>): number {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
   const lower = lastUser.toLowerCase()
@@ -127,7 +102,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data")
+    .select("ai_credits_remaining, subscription_tier, subscription_status")
     .eq("id", user.id)
     .single()
 
@@ -172,19 +147,16 @@ export async function POST(request: NextRequest) {
 
   // ── Build prompt ────────────────────────────────────────────────────────────
   const svcClient = createServiceClient()
-  const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = await composePlanSnapshot(
+  const { snapshot: dynamicPrompt, metadata } = await composePlanSnapshot(
     planId,
     workspaceKey,
     svcClient,
   )
 
-  const dynamicPrompt = buildDynamicPrompt(onboarding, planSnapshot, workspaceKey)
-
   // ── Model routing ────────────────────────────────────────────────────────────
   const workspaceMentions = countWorkspaceMentions(messages)
-  const useOpus = snapshotTokens > 8_000 || workspaceMentions >= 3
+  const useOpus = metadata.totalTokens > 8_000 || workspaceMentions >= 3
   const modelId = useOpus ? "claude-opus-4-7" : "claude-sonnet-4-6"
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
