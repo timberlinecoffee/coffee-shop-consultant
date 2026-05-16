@@ -20,6 +20,20 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // Idempotency: skip already-processed events (replay safety)
+  const { error: insertErr } = await supabase
+    .from("stripe_processed_events")
+    .insert({ event_id: event.id, event_type: event.type });
+
+  if (insertErr) {
+    // Unique violation means we already processed this event
+    if (insertErr.code === "23505") {
+      return Response.json({ received: true, skipped: true });
+    }
+    console.error("Failed to record stripe event:", insertErr);
+    return Response.json({ error: "Internal error" }, { status: 500 });
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -132,10 +146,39 @@ export async function POST(request: NextRequest) {
         status: "cancelled",
       }).eq("stripe_subscription_id", subscription.id);
 
+      // Downgrade immediately on hard cancellation
       await supabase.from("users").update({
         subscription_status: "cancelled",
         subscription_tier: "free",
       }).eq("id", sub.user_id);
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const invoice = event.data.object as unknown as any;
+      const stripeSubscriptionId: string = invoice.subscription ?? "";
+      if (!stripeSubscriptionId) break;
+
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("user_id")
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .single();
+
+      if (!sub) break;
+
+      // Mark past_due — Stripe will retry; paywall enforced on next write (TIM-643)
+      await supabase.from("subscriptions").update({
+        status: "past_due",
+      }).eq("stripe_subscription_id", stripeSubscriptionId);
+
+      await supabase.from("users").update({
+        subscription_status: "past_due",
+      }).eq("id", sub.user_id);
+
+      // After Stripe exhausts retries it fires customer.subscription.deleted;
+      // that handler downgrades to free. No grace-period timer needed here.
       break;
     }
   }
