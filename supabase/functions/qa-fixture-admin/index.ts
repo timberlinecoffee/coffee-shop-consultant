@@ -6,6 +6,10 @@
 //
 // Allowlist: only ^qa-[a-z0-9._-]+@timberline\.coffee$ may be mutated.
 // Every attempt (allowed or refused) is written to auth_users_audit.
+//
+// QA_FIXTURE_TOKEN resolution order:
+//   1. Deno.env.get("QA_FIXTURE_TOKEN") -- set via supabase secrets set
+//   2. public.get_qa_fixture_token() RPC -- reads from Vault, service_role only
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -37,11 +41,25 @@ async function writeAudit(
 }
 
 Deno.serve(async (req: Request) => {
-  // --- Auth: shared secret ------------------------------------------------
-  const expectedToken = Deno.env.get("QA_FIXTURE_TOKEN");
+  // --- Service-role client (needed for Vault RPC and auth operations) ------
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const serviceClient = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+
+  // --- Auth: shared secret (env-first, Vault RPC fallback) ----------------
+  let expectedToken: string | null = Deno.env.get("QA_FIXTURE_TOKEN") ?? null;
+  if (!expectedToken) {
+    const { data, error } = await serviceClient.rpc("get_qa_fixture_token");
+    if (!error && typeof data === "string" && data.length > 0) {
+      expectedToken = data;
+    }
+  }
+
   if (!expectedToken) {
     return new Response(
-      JSON.stringify({ error: "server_misconfigured", detail: "QA_FIXTURE_TOKEN not set" }),
+      JSON.stringify({ error: "server_misconfigured", detail: "QA_FIXTURE_TOKEN not configured" }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -83,13 +101,6 @@ Deno.serve(async (req: Request) => {
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
-
-  // --- Service-role client ------------------------------------------------
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const serviceClient = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false },
-  });
 
   const sourceIp = req.headers.get("x-forwarded-for") ?? undefined;
 
@@ -174,6 +185,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Unreachable, but TypeScript needs a return
   return new Response(JSON.stringify({ error: "unhandled_op" }), { status: 500 });
 });
