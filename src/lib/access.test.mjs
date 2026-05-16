@@ -1,6 +1,6 @@
-// TIM-545: paywall regression tests. These pin down the contract that the
-// /plan route guard and the section-level gating UI consult the same access
-// policy, so a free user can never reach paid content.
+// TIM-545 / TIM-701: paywall regression tests. These pin down the access
+// policy contract. The /plan/[moduleNumber] route guard tests were retired
+// in TIM-701 when that route was deleted; the policy unit tests remain.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -110,66 +110,8 @@ test("paid users see every section", () => {
 });
 
 // ── Server-side guard wiring ──────────────────────────────────────────────
-
-test("page.tsx redirects free users from paid modules to the upgrade path", () => {
-  const src = read("src/app/plan/[moduleNumber]/page.tsx");
-  assert.match(
-    src,
-    /import\s*\{[^}]*canAccessModule[^}]*\}\s*from\s*["']@\/lib\/access["']/,
-    "page.tsx must import canAccessModule from the access policy"
-  );
-  assert.match(
-    src,
-    /if\s*\(\s*!canAccessModule\(\s*subscriptionTier\s*,\s*moduleNum\s*\)\s*\)\s*\{[\s\S]*?redirect\(/,
-    "page.tsx must redirect when canAccessModule returns false"
-  );
-  assert.match(
-    src,
-    /import\s*\{[^}]*UPGRADE_PATH[^}]*\}\s*from\s*["']@\/lib\/access["']/,
-    "page.tsx must import UPGRADE_PATH from the access policy"
-  );
-  assert.match(
-    src,
-    /redirect\(\s*[`"][^"`]*\$\{UPGRADE_PATH\}/,
-    "page.tsx must redirect using the canonical UPGRADE_PATH constant"
-  );
-  // Sanity: the constant itself resolves to /pricing today; if that changes,
-  // tests should still cover the redirect target via the constant.
-  assert.equal(UPGRADE_PATH, "/pricing");
-});
-
-test("page.tsx passes freePreview to the module client based on tier", () => {
-  const src = read("src/app/plan/[moduleNumber]/page.tsx");
-  assert.match(
-    src,
-    /freePreview=\{\s*!isPaidTier\(subscriptionTier\)\s*\}/,
-    "ModuleClient must receive freePreview derived from isPaidTier"
-  );
-});
-
-test("module-client renders an UpgradeGate for inaccessible sections", () => {
-  const src = read("src/app/plan/[moduleNumber]/module-client.tsx");
-  assert.match(
-    src,
-    /import\s*\{\s*UpgradeGate\s*\}\s*from\s*["']@\/components\/upgrade-gate["']/,
-    "module-client must import the shared UpgradeGate"
-  );
-  assert.match(
-    src,
-    /import\s*\{\s*canAccessSection\s*\}\s*from\s*["']@\/lib\/access["']/,
-    "module-client must import canAccessSection"
-  );
-  assert.match(
-    src,
-    /sectionAccessible\s*=\s*\(key:\s*string\)\s*=>\s*\n?\s*!freePreview\s*\|\|\s*canAccessSection\(/,
-    "module-client must gate sections through canAccessSection when in free preview"
-  );
-  assert.match(
-    src,
-    /!activeSectionAccessible[\s\S]{0,200}<UpgradeGate/,
-    "module-client must render <UpgradeGate /> when the active section is gated"
-  );
-});
+// Note: /plan/[moduleNumber] guard tests were removed in TIM-701 when that
+// route was retired. The coach API test remains until TIM-639 deletes it.
 
 test("coach API returns 403 for free users", () => {
   const src = read("src/app/api/coach/route.ts");

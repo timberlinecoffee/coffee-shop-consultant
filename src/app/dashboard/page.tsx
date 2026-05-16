@@ -150,7 +150,7 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <Link
-                href="/plan/1"
+                href="/workspace/concept"
                 className="inline-block text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-1.5 rounded-lg transition-colors"
               >
                 {w1Completed ? "Review \u2192" : w1Started ? "Continue \u2192" : "Start \u2192"}
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
                 </p>
               </div>
               {w2Unlocked && (
-                <Link href="/plan/2" className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0">Open \u2192</Link>
+                <Link href="/workspace/location-lease" className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0">Open \u2192</Link>
               )}
             </div>
             {/* Workspaces 3-6 collapsed */}
@@ -202,7 +202,7 @@ export default async function DashboardPage() {
           {[
             {
               label: "Equipment list",
-              href: "/plan/equipment",
+              href: "/workspace/buildout-equipment",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
             },
             {
               label: "Your numbers",
-              href: "/plan/financials",
+              href: "/workspace/financials",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>
@@ -220,7 +220,7 @@ export default async function DashboardPage() {
             },
             {
               label: "Startup costs",
-              href: "/plan/costs",
+              href: "/workspace/financials",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>
@@ -229,7 +229,7 @@ export default async function DashboardPage() {
             },
             ...(showMilestones ? [{
               label: "Milestones",
-              href: "/plan/milestones",
+              href: "/workspace/launch-plan",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
