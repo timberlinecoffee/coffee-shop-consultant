@@ -44,7 +44,7 @@ const PRICING = [
       "Email support",
     ],
     cta: "Start building",
-    href: "/login?plan=builder",
+    href: "/login?plan=starter",
     highlight: true,
   },
   {
@@ -64,7 +64,7 @@ const PRICING = [
       "Priority support",
     ],
     cta: "Get accelerated",
-    href: "/login?plan=accelerator",
+    href: "/login?plan=pro",
     highlight: false,
   },
 ];
@@ -248,32 +248,48 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                icon: "📄",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                ),
                 title: "Concept Brief",
                 desc: "Your shop's identity, target customer, differentiator, and brand voice. It fits on one page.",
                 tags: ["Vision", "Positioning", "Brand"],
               },
               {
-                icon: "📊",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>
+                  </svg>
+                ),
                 title: "Financial Model",
                 desc: "Build-out costs, revenue projections, break-even analysis, and 3-year P&L, all editable.",
                 tags: ["Revenue", "Costs", "Break-even"],
               },
               {
-                icon: "🔧",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                  </svg>
+                ),
                 title: "Equipment List",
                 desc: "A complete, spec'd equipment list with sourcing notes and estimated costs for your specific model.",
                 tags: ["Bar setup", "Pricing", "Sourcing"],
               },
               {
-                icon: "📋",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                ),
                 title: "Business Readiness Document",
                 desc: "All 8 modules compiled into one comprehensive document: your opening playbook.",
                 tags: ["Operations", "Hiring", "Marketing"],
               },
             ].map((d) => (
               <div key={d.title} className="bg-[#faf9f7] rounded-2xl p-6 border border-[#efefef] flex flex-col">
-                <div className="text-3xl mb-4">{d.icon}</div>
+                <div className="mb-4 text-[#155e63]">{d.icon}</div>
                 <h3 className="font-semibold text-[#1a1a1a] mb-2">{d.title}</h3>
                 <p className="text-sm text-[#afafaf] leading-relaxed mb-4 flex-1">{d.desc}</p>
                 <div className="flex flex-wrap gap-2">

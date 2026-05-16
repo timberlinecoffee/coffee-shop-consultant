@@ -1124,7 +1124,7 @@ function CoachPanel({
             <div className="text-xs text-[#afafaf]">{sectionTitle}</div>
           </div>
           <div className="flex items-center gap-3">
-            {subscriptionTier === "accelerator" ? (
+            {subscriptionTier === "pro" ? (
               <span className="text-xs text-[#76b39d] font-medium">Unlimited</span>
             ) : (
               <span className={`text-xs font-medium ${credits <= 10 && credits > 0 ? "text-amber-500" : "text-[#afafaf]"}`}>
@@ -1363,7 +1363,7 @@ export function ModuleClient({
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
               <span className="hidden sm:block">Coach</span>
-              {userProfile.subscription_tier === "accelerator" ? (
+              {userProfile.subscription_tier === "pro" ? (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${coachOpen ? "bg-white/20 text-[#76b39d]" : "bg-[#efefef] text-[#76b39d]"}`}>∞</span>
               ) : credits > 0 ? (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${credits <= 10 ? (coachOpen ? "bg-amber-400/30 text-amber-200" : "bg-amber-100 text-amber-600") : (coachOpen ? "bg-white/20" : "bg-[#efefef]")}`}>{credits}</span>

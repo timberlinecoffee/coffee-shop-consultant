@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { stripe, PLANS, PlanKey } from "@/lib/stripe";
+import { stripe, PLANS, planKeyFromParams } from "@/lib/stripe";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -11,13 +11,23 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { planKey } = body as { planKey: PlanKey };
+
+  // Accept either the new (tier + interval) shape or the legacy planKey shape
+  // so existing links don't break during the transition window.
+  let planKey = body.planKey ?? null;
+  if (!planKey && body.tier && body.interval) {
+    planKey = planKeyFromParams(body.tier as string, body.interval as string);
+  }
 
   if (!planKey || !(planKey in PLANS)) {
     return Response.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  const plan = PLANS[planKey];
+  const plan = PLANS[planKey as keyof typeof PLANS];
+
+  if (!plan.priceId) {
+    return Response.json({ error: "Price not configured" }, { status: 503 });
+  }
 
   const { data: profile } = await supabase
     .from("users")
@@ -39,11 +49,11 @@ export async function POST(request: NextRequest) {
     customer: subscription?.stripe_customer_id ?? undefined,
     customer_email: subscription?.stripe_customer_id ? undefined : (profile?.email ?? user.email),
     line_items: [{ price: plan.priceId, quantity: 1 }],
-    success_url: `${origin}/account/billing?success=true`,
-    cancel_url: `${origin}/pricing`,
-    metadata: { userId: user.id, planKey },
+    success_url: `${origin}/account/billing?success=1`,
+    cancel_url: `${origin}/pricing?canceled=1`,
+    metadata: { userId: user.id, planKey, tier: plan.tier, interval: plan.interval },
     subscription_data: {
-      metadata: { userId: user.id, planKey },
+      metadata: { userId: user.id, planKey, tier: plan.tier, interval: plan.interval },
     },
   });
 
