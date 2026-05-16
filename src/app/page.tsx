@@ -1,16 +1,5 @@
 import Link from "next/link";
 
-const MODULES = [
-  { num: 1, title: "Concept & Positioning", desc: "Figure out what kind of shop you're building and what makes it different." },
-  { num: 2, title: "Financial Modeling", desc: "Build your numbers so you know what it takes to be profitable." },
-  { num: 3, title: "Site Selection & Lease", desc: "Learn what to look for in a location and how to negotiate a lease." },
-  { num: 4, title: "Menu Design & Sourcing", desc: "Design a menu that works and find the right coffee partner." },
-  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear for your model." },
-  { num: 6, title: "Hiring, Training & Culture", desc: "Build a team that can run the shop the way it needs to be run." },
-  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before your doors even open." },
-  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Bring everything together into your complete Business Readiness Document." },
-];
-
 const PRICING = [
   {
     name: "Free",
@@ -187,29 +176,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Module Preview */}
-      <section className="bg-white px-6 py-20">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4 text-[#1a1a1a]">What you&apos;ll build</h2>
-          <p className="text-center text-[#afafaf] mb-12 max-w-xl mx-auto">
-            8 modules. 8 deliverables. One complete plan for opening your coffee shop.
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {MODULES.map((m) => (
-              <div key={m.num} className="bg-[#faf9f7] rounded-xl p-5 border border-[#efefef]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 bg-[#155e63] text-white rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {m.num}
-                  </div>
-                  <h3 className="font-semibold text-sm text-[#1a1a1a] leading-tight">{m.title}</h3>
-                </div>
-                <p className="text-xs text-[#afafaf] leading-relaxed">{m.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* AI Coach Demo */}
       <section className="bg-[#155e63] px-6 py-20 text-white">
         <div className="max-w-4xl mx-auto">
@@ -340,22 +306,6 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Trent credibility */}
-      <section className="bg-white px-6 py-20">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="w-20 h-20 bg-[#155e63]/10 rounded-full mx-auto mb-6 flex items-center justify-center">
-            <span className="text-3xl">&#9749;</span>
-          </div>
-          <h2 className="text-2xl font-bold mb-4 text-[#1a1a1a]">Built by someone who&apos;s been there</h2>
-          <p className="text-[#afafaf] leading-relaxed mb-6">
-            Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty Trainer, and the founder of Timberline Coffee School. He&apos;s spent years teaching the Coffee Shop Basecamp curriculum to aspiring café owners and has personally opened and closed coffee businesses.
-          </p>
-          <p className="text-[#afafaf] leading-relaxed">
-            This platform is everything he teaches in live cohorts: the frameworks, the honest advice, the hard numbers, available to you 24 hours a day, at a fraction of the cost of a consultant.
-          </p>
         </div>
       </section>
 

@@ -105,65 +105,13 @@ test("paid users see every section", () => {
 });
 
 // ── Server-side guard wiring ──────────────────────────────────────────────
+// TIM-627: the /plan/[moduleNumber] route and module-client are deleted as
+// part of the destructive plan. Route-level guard tests are reintroduced
+// against /plan/[workspace]/page.tsx + WorkspaceClient in the workspace
+// build issues (TIM-619+). UPGRADE_PATH constant test stays.
 
-test("page.tsx redirects free users from paid modules to the upgrade path", () => {
-  const src = read("src/app/plan/[moduleNumber]/page.tsx");
-  assert.match(
-    src,
-    /import\s*\{[^}]*canAccessModule[^}]*\}\s*from\s*["']@\/lib\/access["']/,
-    "page.tsx must import canAccessModule from the access policy"
-  );
-  assert.match(
-    src,
-    /if\s*\(\s*!canAccessModule\(\s*subscriptionTier\s*,\s*moduleNum\s*\)\s*\)\s*\{[\s\S]*?redirect\(/,
-    "page.tsx must redirect when canAccessModule returns false"
-  );
-  assert.match(
-    src,
-    /import\s*\{[^}]*UPGRADE_PATH[^}]*\}\s*from\s*["']@\/lib\/access["']/,
-    "page.tsx must import UPGRADE_PATH from the access policy"
-  );
-  assert.match(
-    src,
-    /redirect\(\s*[`"][^"`]*\$\{UPGRADE_PATH\}/,
-    "page.tsx must redirect using the canonical UPGRADE_PATH constant"
-  );
-  // Sanity: the constant itself resolves to /pricing today; if that changes,
-  // tests should still cover the redirect target via the constant.
+test("UPGRADE_PATH resolves to /pricing", () => {
   assert.equal(UPGRADE_PATH, "/pricing");
-});
-
-test("page.tsx passes freePreview to the module client based on tier", () => {
-  const src = read("src/app/plan/[moduleNumber]/page.tsx");
-  assert.match(
-    src,
-    /freePreview=\{\s*!isPaidTier\(subscriptionTier\)\s*\}/,
-    "ModuleClient must receive freePreview derived from isPaidTier"
-  );
-});
-
-test("module-client renders an UpgradeGate for inaccessible sections", () => {
-  const src = read("src/app/plan/[moduleNumber]/module-client.tsx");
-  assert.match(
-    src,
-    /import\s*\{\s*UpgradeGate\s*\}\s*from\s*["']@\/components\/upgrade-gate["']/,
-    "module-client must import the shared UpgradeGate"
-  );
-  assert.match(
-    src,
-    /import\s*\{\s*canAccessSection\s*\}\s*from\s*["']@\/lib\/access["']/,
-    "module-client must import canAccessSection"
-  );
-  assert.match(
-    src,
-    /sectionAccessible\s*=\s*\(key:\s*string\)\s*=>\s*\n?\s*!freePreview\s*\|\|\s*canAccessSection\(/,
-    "module-client must gate sections through canAccessSection when in free preview"
-  );
-  assert.match(
-    src,
-    /!activeSectionAccessible[\s\S]{0,200}<UpgradeGate/,
-    "module-client must render <UpgradeGate /> when the active section is gated"
-  );
 });
 
 test("coach API returns 403 for free users", () => {

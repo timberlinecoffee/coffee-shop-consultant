@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { label: "Dashboard", href: "/dashboard", icon: "⊞" },
-  { label: "Module", href: "/plan/1", icon: "📖" },
-  { label: "BRD", href: "/plan/8", icon: "📋" },
   { label: "Account", href: "/account", icon: "⚙" },
 ];
 
@@ -14,8 +12,7 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   function isActive(href: string) {
-    if (href === "/dashboard") return pathname === "/dashboard";
-    if (href === "/plan/1") return pathname.startsWith("/plan/");
+    if (href === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/plan/");
     return pathname.startsWith(href);
   }
 
