@@ -157,14 +157,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const isUnlimited = profile.subscription_tier === "accelerator"
+  const isUnlimited = profile.subscription_tier === "pro"
 
   if (!isUnlimited && profile.ai_credits_remaining < 1) {
     return new Response(
       sse("error", {
         code: "quota",
         message:
-          "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or wait for your monthly reset.",
+          "You've used all your AI credits for this month. Upgrade to Pro for unlimited coaching, or wait for your monthly reset.",
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )

@@ -34,16 +34,21 @@ test("free tier is not paid", () => {
   assert.equal(isPaidTier("free_trial"), false);
 });
 
-test("builder and accelerator are paid tiers", () => {
-  assert.equal(isPaidTier("builder"), true);
-  assert.equal(isPaidTier("accelerator"), true);
+test("starter, growth, and pro are paid tiers", () => {
+  assert.equal(isPaidTier("starter"), true);
+  assert.equal(isPaidTier("growth"), true);
+  assert.equal(isPaidTier("pro"), true);
 });
 
 test("normalizeTier maps unknown values to free", () => {
   assert.equal(normalizeTier("free_trial"), "free");
   assert.equal(normalizeTier(null), "free");
-  assert.equal(normalizeTier("builder"), "builder");
-  assert.equal(normalizeTier("accelerator"), "accelerator");
+  assert.equal(normalizeTier("starter"), "starter");
+  assert.equal(normalizeTier("growth"), "growth");
+  assert.equal(normalizeTier("pro"), "pro");
+  // Legacy names from pre-TIM-641 must no longer be recognized as paid.
+  assert.equal(normalizeTier("builder"), "free");
+  assert.equal(normalizeTier("accelerator"), "free");
 });
 
 test("free users can access the preview module only", () => {
@@ -58,7 +63,7 @@ test("free users can access the preview module only", () => {
 });
 
 test("paid users can access every module", () => {
-  for (const tier of ["builder", "accelerator"]) {
+  for (const tier of ["starter", "growth", "pro"]) {
     for (let m = 1; m <= 8; m++) {
       assert.equal(canAccessModule(tier, m), true);
     }
@@ -90,7 +95,7 @@ test("free users only see the preview section inside the preview module", () => 
 });
 
 test("paid users see every section", () => {
-  for (const tier of ["builder", "accelerator"]) {
+  for (const tier of ["starter", "growth", "pro"]) {
     for (const key of [
       "shop_type",
       "your_why",
