@@ -149,19 +149,19 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
+    <div className="min-h-screen bg-neutral-100 flex flex-col">
       <header className="px-6 pt-6 pb-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center">
+            <div className="w-7 h-7 bg-teal rounded flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
           </Link>
-          <span className="text-xs text-[#afafaf]">Step {step + 1} of {totalSteps}</span>
+          <span className="text-xs text-neutral-500">Step {step + 1} of {totalSteps}</span>
         </div>
         <div className="flex gap-2" aria-label={`Step ${step + 1} of ${totalSteps}`}>
           {STEPS.map((_, i) => (
-            <span key={i} className={`text-lg leading-none ${i <= step ? "text-[#155e63]" : "text-[#d4d4d4]"}`}>
+            <span key={i} className={`text-lg leading-none ${i <= step ? "text-teal" : "text-neutral-300"}`}>
               {i <= step ? "●" : "○"}
             </span>
           ))}
@@ -171,10 +171,10 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
       <main className="flex-1 px-6 py-8 flex flex-col">
         {currentStep.type === "welcome" && (
           <div className="flex-1 flex flex-col justify-center">
-            <h1 className="text-3xl font-bold text-[#1a1a1a] mb-4">
+            <h1 className="text-3xl font-bold text-neutral-950 mb-4">
               Hi {firstName}, welcome.
             </h1>
-            <p className="text-[#afafaf] text-base">
+            <p className="text-neutral-500 text-base">
               A few quick questions and your plan is ready.
             </p>
           </div>
@@ -183,12 +183,12 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
         {currentStep.type !== "welcome" && (
           <div>
             {"question" in currentStep && (
-              <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+              <h1 className="text-2xl font-bold text-neutral-950 mb-2">
                 {currentStep.question}
               </h1>
             )}
             {"hint" in currentStep && (
-              <p className="text-[#afafaf] text-sm mb-8">{currentStep.hint}</p>
+              <p className="text-neutral-500 text-sm mb-8">{currentStep.hint}</p>
             )}
 
             {(currentStep.type === "cards" || currentStep.type === "radio") && (
@@ -202,20 +202,20 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
                         onClick={() => handleSelect(opt)}
                         className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
                           isSelected
-                            ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                            : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
+                            ? "border-teal bg-teal/5 text-teal font-medium"
+                            : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
                         }`}
                       >
                         {currentStep.type === "radio" && (
                           <span
                             className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                               isSelected
-                                ? "border-[#155e63]"
-                                : "border-[#afafaf]"
+                                ? "border-teal"
+                                : "border-neutral-500"
                             }`}
                           >
                             {isSelected && (
-                              <span className="w-2 h-2 rounded-full bg-[#155e63] block" />
+                              <span className="w-2 h-2 rounded-full bg-teal block" />
                             )}
                           </span>
                         )}
@@ -232,7 +232,7 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
                 value={typeof currentAnswer === "string" ? currentAnswer : ""}
                 onChange={e => handleSelect(e.target.value)}
                 placeholder={"placeholder" in currentStep ? currentStep.placeholder : ""}
-                className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
+                className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none focus:border-teal transition-colors bg-white"
               />
             )}
 
@@ -248,15 +248,15 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
                         onClick={() => handleMultiSelect(opt)}
                         className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
                           selected
-                            ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                            : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
+                            ? "border-teal bg-teal/5 text-teal font-medium"
+                            : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
                         }`}
                       >
                         <div
                           className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
                             selected
-                              ? "bg-[#155e63] border-[#155e63]"
-                              : "border-[#afafaf]"
+                              ? "bg-teal border-teal"
+                              : "border-neutral-500"
                           }`}
                         >
                           {selected && (
@@ -273,11 +273,11 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
         )}
       </main>
 
-      <div className="sticky bottom-0 bg-[#faf9f7] border-t border-[#efefef] px-6 py-4 flex gap-3">
+      <div className="sticky bottom-0 bg-neutral-100 border-t border-grey-light px-6 py-4 flex gap-3">
         {step > 0 && (
           <button
             onClick={() => setStep(s => s - 1)}
-            className="px-6 py-3 border border-[#efefef] rounded-xl text-sm text-[#afafaf] hover:border-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            className="px-6 py-3 border border-grey-light rounded-xl text-sm text-neutral-500 hover:border-neutral-500 hover:text-neutral-950 transition-colors"
           >
             Back
           </button>
@@ -285,7 +285,7 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
         <button
           onClick={handleNext}
           disabled={!canAdvance() || saving}
-          className="flex-1 bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-40"
+          className="flex-1 bg-teal text-white py-3 rounded-xl font-semibold text-sm hover:bg-teal-dark transition-colors disabled:opacity-40"
         >
           {saving
             ? "Setting up your plan..."

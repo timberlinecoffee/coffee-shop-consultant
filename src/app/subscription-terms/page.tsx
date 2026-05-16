@@ -9,29 +9,29 @@ const EFFECTIVE_DATE = "May 22, 2026";
 
 export default function SubscriptionTermsPage() {
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
-      <header className="border-b border-[#efefef] bg-white">
+    <div className="min-h-screen bg-neutral-100 flex flex-col">
+      <header className="border-b border-grey-light bg-white">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#155e63] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-teal rounded-lg flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
-            <span className="font-semibold text-[#155e63]">Timberline Coffee School</span>
+            <span className="font-semibold text-teal">Timberline Coffee School</span>
           </Link>
-          <Link href="/" className="text-sm text-[#155e63] hover:underline">
+          <Link href="/" className="text-sm text-teal hover:underline">
             Back to home
           </Link>
         </div>
       </header>
 
       <main className="flex-1 max-w-3xl mx-auto px-6 py-12 w-full">
-        <h1 className="text-3xl font-bold text-[#1a1a1a] mb-2">Subscription Terms</h1>
-        <p className="text-sm text-[#afafaf] mb-10">Effective {EFFECTIVE_DATE}</p>
+        <h1 className="text-3xl font-bold text-neutral-950 mb-2">Subscription Terms</h1>
+        <p className="text-sm text-neutral-500 mb-10">Effective {EFFECTIVE_DATE}</p>
 
-        <div className="prose prose-sm max-w-none text-[#1a1a1a] space-y-8">
+        <div className="prose prose-sm max-w-none text-neutral-950 space-y-8">
           <p>
             These Subscription Terms supplement the Timberline Coffee School{" "}
-            <Link href="/terms" className="text-[#155e63] underline">
+            <Link href="/terms" className="text-teal underline">
               Terms of Service
             </Link>{" "}
             and govern the billing, renewal, and cancellation of your paid subscription. By starting a
@@ -42,7 +42,7 @@ export default function SubscriptionTermsPage() {
             <h2 className="text-xl font-semibold mb-3">1. Subscription Plans</h2>
             <p>
               Timberline offers monthly and annual subscription plans. Current pricing is listed at{" "}
-              <Link href="/pricing" className="text-[#155e63] underline">
+              <Link href="/pricing" className="text-teal underline">
                 timberlinecoffeeschool.com/pricing
               </Link>
               . We may add or change plans at any time; existing subscribers will be notified before
@@ -79,7 +79,7 @@ export default function SubscriptionTermsPage() {
             <h2 className="text-xl font-semibold mb-3">4. Cancellation</h2>
             <p>
               You may cancel your subscription at any time from your account settings or by contacting{" "}
-              <a href="mailto:support@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+              <a href="mailto:support@timberlinecoffeeschool.com" className="text-teal underline">
                 support@timberlinecoffeeschool.com
               </a>
               .
@@ -96,7 +96,7 @@ export default function SubscriptionTermsPage() {
             <p>
               We offer a 7-day money-back guarantee on your first subscription payment only. If you are
               unsatisfied within the first 7 days of a new paid subscription, contact{" "}
-              <a href="mailto:support@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+              <a href="mailto:support@timberlinecoffeeschool.com" className="text-teal underline">
                 support@timberlinecoffeeschool.com
               </a>{" "}
               for a full refund.
@@ -151,7 +151,7 @@ export default function SubscriptionTermsPage() {
             <h2 className="text-xl font-semibold mb-3">9. Disputes</h2>
             <p>
               If you believe a charge is incorrect, contact{" "}
-              <a href="mailto:billing@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+              <a href="mailto:billing@timberlinecoffeeschool.com" className="text-teal underline">
                 billing@timberlinecoffeeschool.com
               </a>{" "}
               within 60 days of the charge date. We will investigate and respond within 10 business
@@ -174,7 +174,7 @@ export default function SubscriptionTermsPage() {
               Timberline Coffee School
               <br />
               Email:{" "}
-              <a href="mailto:billing@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+              <a href="mailto:billing@timberlinecoffeeschool.com" className="text-teal underline">
                 billing@timberlinecoffeeschool.com
               </a>
             </p>
@@ -182,7 +182,7 @@ export default function SubscriptionTermsPage() {
         </div>
       </main>
 
-      <footer className="bg-[#1a1a1a] text-[#afafaf] px-6 py-6 text-sm">
+      <footer className="bg-neutral-950 text-neutral-500 px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
           <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
           <div className="flex gap-6 flex-wrap justify-center">

@@ -60,7 +60,7 @@ export function BottomTabBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#efefef] lg:hidden safe-area-pb">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-grey-light lg:hidden safe-area-pb">
       <div className="flex">
         {TABS.map((tab) => (
           <Link
@@ -68,8 +68,8 @@ export function BottomTabBar() {
             href={tab.href}
             className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] transition-colors ${
               isActive(tab.href)
-                ? "text-[#155e63]"
-                : "text-[#afafaf] hover:text-[#1a1a1a]"
+                ? "text-teal"
+                : "text-neutral-500 hover:text-neutral-950"
             }`}
           >
             <span className="mb-1">{tab.icon}</span>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Lora } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -7,6 +7,15 @@ const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
   subsets: ["latin"],
   display: 'swap',
+  variable: '--font-poppins',
+});
+
+const lora = Lora({
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-lora',
 });
 
 export const metadata: Metadata = {
@@ -27,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${poppins.className} min-h-full flex flex-col bg-[#faf9f7] text-[#1a1a1a]`}>
+      <body className={`${poppins.variable} ${lora.variable} ${poppins.className} min-h-full flex flex-col bg-neutral-100 text-neutral-950`}>
         {children}
         <Analytics />
       </body>

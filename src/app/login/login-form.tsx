@@ -97,7 +97,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       <button
         onClick={handleGoogleSignIn}
         disabled={loading || signupBlocked}
-        className="w-full flex items-center justify-center gap-3 border border-[#efefef] rounded-xl py-3 text-sm font-medium text-[#1a1a1a] hover:border-[#afafaf] hover:bg-[#faf9f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-3 border border-grey-light rounded-xl py-3 text-sm font-medium text-neutral-950 hover:border-neutral-500 hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -108,15 +108,15 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         Continue with Google
       </button>
 
-      <div className="flex items-center gap-3 text-xs text-[#afafaf]">
-        <div className="flex-1 h-px bg-[#efefef]" />
+      <div className="flex items-center gap-3 text-xs text-neutral-500">
+        <div className="flex-1 h-px bg-grey-light" />
         <span>or</span>
-        <div className="flex-1 h-px bg-[#efefef]" />
+        <div className="flex-1 h-px bg-grey-light" />
       </div>
 
       <form onSubmit={handleEmailAuth} className="space-y-3">
         <div>
-          <label htmlFor="email" className="block text-xs font-medium text-[#1a1a1a] mb-1">Email</label>
+          <label htmlFor="email" className="block text-xs font-medium text-neutral-950 mb-1">Email</label>
           <input
             id="email"
             type="email"
@@ -124,16 +124,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
             onChange={e => setEmail(e.target.value)}
             required
             placeholder="you@example.com"
-            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none focus:border-teal transition-colors"
           />
         </div>
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <label htmlFor="password" className="block text-xs font-medium text-[#1a1a1a]">Password</label>
+            <label htmlFor="password" className="block text-xs font-medium text-neutral-950">Password</label>
             {mode === "signin" && (
               <Link
                 href="/forgot-password"
-                className="text-xs text-[#155e63] hover:underline"
+                className="text-xs text-teal hover:underline"
               >
                 Forgot password?
               </Link>
@@ -147,27 +147,27 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
             required
             placeholder="••••••••"
             minLength={8}
-            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none focus:border-teal transition-colors"
           />
         </div>
 
         {mode === "signup" && (
-          <label className="flex items-start gap-2 text-xs text-[#1a1a1a] leading-relaxed pt-1">
+          <label className="flex items-start gap-2 text-xs text-neutral-950 leading-relaxed pt-1">
             <input
               type="checkbox"
               checked={consent}
               onChange={e => setConsent(e.target.checked)}
               required
               aria-required="true"
-              className="mt-0.5 h-4 w-4 rounded border-[#afafaf] text-[#155e63] focus:ring-[#155e63]"
+              className="mt-0.5 h-4 w-4 rounded border-neutral-500 text-teal focus:ring-teal"
             />
             <span>
               I agree to the{" "}
-              <Link href="/terms" target="_blank" rel="noopener" className="text-[#155e63] underline">
+              <Link href="/terms" target="_blank" rel="noopener" className="text-teal underline">
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" target="_blank" rel="noopener" className="text-[#155e63] underline">
+              <Link href="/privacy" target="_blank" rel="noopener" className="text-teal underline">
                 Privacy Policy
               </Link>
               .
@@ -182,7 +182,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         <button
           type="submit"
           disabled={loading || signupBlocked}
-          className="w-full bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-teal text-white py-3 rounded-xl font-semibold text-sm hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Just a moment..." : mode === "signin" ? "Sign in" : "Create account"}
         </button>
@@ -190,7 +190,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
 
       <button
         onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        className="w-full text-center text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+        className="w-full text-center text-xs text-neutral-500 hover:text-neutral-950 transition-colors"
       >
         {mode === "signin" ? "New here? Create a free account instead" : "Already have an account? Sign in"}
       </button>

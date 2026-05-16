@@ -76,20 +76,20 @@ export default async function DashboardPage() {
   const isPaid = subscriptionTier !== "free";
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
+    <div className="min-h-screen bg-neutral-100 pb-16 lg:pb-0">
       {/* Top bar */}
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4">
+      <nav className="bg-white border-b border-grey-light px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center">
+            <div className="w-7 h-7 bg-teal rounded flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
-            <span className="font-semibold text-[#155e63] text-sm hidden sm:block">My Coffee Shop Consultant</span>
+            <span className="font-semibold text-teal text-sm hidden sm:block">My Coffee Shop Consultant</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/account" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Account</Link>
+            <Link href="/account" className="text-sm text-neutral-500 hover:text-neutral-950 transition-colors">Account</Link>
             <form action="/auth/signout" method="POST">
-              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign out</button>
+              <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-950 transition-colors">Sign out</button>
             </form>
           </div>
         </div>
@@ -99,23 +99,23 @@ export default async function DashboardPage() {
         {/* Greeting + readiness */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">
+            <h1 className="text-2xl font-bold text-neutral-950 mb-1">
               <span className="sm:hidden">Hey {firstName}.</span>
               <span className="hidden sm:inline">Hey {firstName}. You have started.</span>
             </h1>
           </div>
           <div
-            className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center"
+            className="bg-white rounded-2xl border border-grey-light p-5 min-w-48 text-center"
             title="Complete sections in each available workspace to raise this score."
           >
-            <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}%</div>
-            <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">
+            <div className="text-4xl font-bold text-teal mb-1">{readinessScore}%</div>
+            <div className="text-xs text-neutral-500 uppercase tracking-wide font-medium">
               <span className="sm:hidden">Taking shape</span>
               <span className="hidden sm:inline">Your plan is taking shape</span>
             </div>
-            <div className="mt-3 bg-[#efefef] rounded-full h-2 overflow-hidden max-w-[140px] mx-auto">
+            <div className="mt-3 bg-grey-light rounded-full h-2 overflow-hidden max-w-[140px] mx-auto">
               <div
-                className="bg-[#155e63] h-2 rounded-full transition-all duration-500"
+                className="bg-teal h-2 rounded-full transition-all duration-500"
                 style={{ width: `${readinessScore}%` }}
               />
             </div>
@@ -124,34 +124,34 @@ export default async function DashboardPage() {
 
         {/* START HERE — Workspace 1 */}
         <div className="mb-2">
-          <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">Start here</p>
-          <div className="bg-white rounded-xl border border-[#155e63]/30 p-6 flex gap-4">
+          <p className="text-xs font-semibold text-teal uppercase tracking-widest mb-3">Start here</p>
+          <div className="bg-white rounded-xl border border-teal/30 p-6 flex gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-              w1Completed ? "bg-[#155e63] text-white" :
-              w1Started ? "bg-[#155e63]/20 text-[#155e63]" :
-              "bg-[#155e63] text-white"
+              w1Completed ? "bg-teal text-white" :
+              w1Started ? "bg-teal/20 text-teal" :
+              "bg-teal text-white"
             }`}>
               {w1Completed
                 ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 : 1}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-[#1a1a1a] mb-0.5">{WORKSPACE_1.title}</h3>
-              <p className="text-xs text-[#afafaf] mb-3">{WORKSPACE_1.subtitle}</p>
+              <h3 className="font-semibold text-sm text-neutral-950 mb-0.5">{WORKSPACE_1.title}</h3>
+              <p className="text-xs text-neutral-500 mb-3">{WORKSPACE_1.subtitle}</p>
               <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 bg-[#efefef] rounded-full h-1.5 overflow-hidden max-w-[200px]">
+                <div className="flex-1 bg-grey-light rounded-full h-1.5 overflow-hidden max-w-[200px]">
                   <div
-                    className={`h-1.5 rounded-full transition-all duration-500 ${w1Completed ? "bg-[#155e63]" : w1Started ? "bg-amber-400" : "bg-[#efefef]"}`}
+                    className={`h-1.5 rounded-full transition-all duration-500 ${w1Completed ? "bg-teal" : w1Started ? "bg-amber-400" : "bg-grey-light"}`}
                     style={{ width: `${w1Pct}%` }}
                   />
                 </div>
-                <span className="text-xs text-[#afafaf] whitespace-nowrap flex-shrink-0">
+                <span className="text-xs text-neutral-500 whitespace-nowrap flex-shrink-0">
                   {w1Progress}/{WORKSPACE_1.totalSections} sections
                 </span>
               </div>
               <Link
                 href="/plan/1"
-                className="inline-block text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-1.5 rounded-lg transition-colors"
+                className="inline-block text-sm font-semibold text-white bg-teal hover:bg-teal/90 px-4 py-1.5 rounded-lg transition-colors"
               >
                 {w1Completed ? "Review \u2192" : w1Started ? "Continue \u2192" : "Start \u2192"}
               </Link>
@@ -161,43 +161,43 @@ export default async function DashboardPage() {
 
         {/* COMING UP */}
         <div className="mb-10">
-          <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming up</p>
-          <div className="bg-white rounded-xl border border-[#efefef] divide-y divide-[#efefef]">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mt-6 mb-3">Coming up</p>
+          <div className="bg-white rounded-xl border border-grey-light divide-y divide-grey-light">
             {/* Workspace 2 */}
             <div className="p-5 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-grey-light flex items-center justify-center flex-shrink-0">
                 {w2Unlocked ? (
-                  <span className="text-xs font-bold text-[#155e63]">2</span>
+                  <span className="text-xs font-bold text-teal">2</span>
                 ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-500)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1a1a1a]">Workspace 2: Location &amp; Lease</p>
-                <p className="text-xs text-[#afafaf]">
+                <p className="text-sm font-medium text-neutral-950">Workspace 2: Location &amp; Lease</p>
+                <p className="text-xs text-neutral-500">
                   {w2Unlocked ? "Ready to start" : "Begin after Concept"}
                 </p>
               </div>
               {w2Unlocked && (
-                <Link href="/plan/2" className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0">Open \u2192</Link>
+                <Link href="/plan/2" className="text-xs text-teal font-medium hover:underline flex-shrink-0">Open \u2192</Link>
               )}
             </div>
             {/* Workspaces 3-6 collapsed */}
             <div className="px-5 py-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="w-8 h-8 rounded-lg bg-grey-light flex items-center justify-center flex-shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-500)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
               </div>
-              <p className="text-sm text-[#afafaf]">Workspaces 3{"\u20136"} unlock as you go</p>
+              <p className="text-sm text-neutral-500">Workspaces 3{"\u20136"} unlock as you go</p>
             </div>
           </div>
         </div>
 
         {/* Quick links */}
-        <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick links</h2>
+        <h2 className="font-semibold text-lg text-neutral-950 mb-4">Quick links</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           {[
             {
@@ -240,23 +240,23 @@ export default async function DashboardPage() {
             <Link
               key={tool.label}
               href={tool.href}
-              className="bg-white rounded-xl border border-[#efefef] p-4 text-center hover:border-[#155e63]/30 transition-colors"
+              className="bg-white rounded-xl border border-grey-light p-4 text-center hover:border-teal/30 transition-colors"
             >
-              <div className="flex justify-center mb-2 text-[#155e63]">{tool.icon}</div>
-              <span className="text-xs font-medium text-[#1a1a1a]">{tool.label}</span>
+              <div className="flex justify-center mb-2 text-teal">{tool.icon}</div>
+              <span className="text-xs font-medium text-neutral-950">{tool.label}</span>
             </Link>
           ))}
         </div>
 
         {/* AI coaching — low-visual-weight line in quick links area */}
-        <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">AI coaching</span>
+        <div className="bg-white rounded-xl border border-grey-light px-4 py-3 flex items-center justify-between">
+          <span className="text-xs text-neutral-500">AI coaching</span>
           {isPaid && creditsRemaining > 0 ? (
-            <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
+            <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-teal"}`}>
               {creditsRemaining} coaching messages left this month
             </span>
           ) : (
-            <Link href="/account" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>
+            <Link href="/account" className="text-xs text-teal hover:underline">Upgrade to get AI coaching</Link>
           )}
         </div>
       </div>

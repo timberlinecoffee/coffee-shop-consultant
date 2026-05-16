@@ -43,13 +43,13 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
 
       {/* Card */}
       <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8 text-center">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[#155e63]/10 flex items-center justify-center">
+        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-teal/10 flex items-center justify-center">
           <svg
             width="22"
             height="22"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#155e63"
+            stroke="var(--color-teal)"
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -62,11 +62,11 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
 
         <h2
           id="paywall-modal-title"
-          className="text-lg font-bold text-[#1a1a1a] mb-2"
+          className="text-lg font-bold text-neutral-950 mb-2"
         >
           This is a paid feature
         </h2>
-        <p className="text-sm text-[#6b6b6b] leading-relaxed mb-6">
+        <p className="text-sm text-neutral-600 leading-relaxed mb-6">
           Saving your work requires an active plan. Free accounts can browse
           but not build. Pick a plan and your progress saves from here on.
         </p>
@@ -74,14 +74,14 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
         <div className="flex flex-col gap-3">
           <Link
             href="/pricing"
-            className="block bg-[#155e63] text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+            className="block bg-teal text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-teal-dark transition-colors"
           >
             Choose a plan
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors py-1"
+            className="text-sm text-neutral-500 hover:text-neutral-950 transition-colors py-1"
           >
             Not now
           </button>

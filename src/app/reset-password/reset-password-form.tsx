@@ -44,7 +44,7 @@ export function ResetPasswordForm() {
 
   if (done) {
     return (
-      <div className="bg-[#f0f7f7] border border-[#cce3e5] rounded-xl px-4 py-4 text-sm text-[#155e63] text-center">
+      <div className="bg-teal-surface border border-teal-border rounded-xl px-4 py-4 text-sm text-teal text-center">
         Password updated. Redirecting you to your dashboard...
       </div>
     );
@@ -53,7 +53,7 @@ export function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label htmlFor="password" className="block text-xs font-medium text-[#1a1a1a] mb-1">New password</label>
+        <label htmlFor="password" className="block text-xs font-medium text-neutral-950 mb-1">New password</label>
         <input
           id="password"
           type="password"
@@ -63,11 +63,11 @@ export function ResetPasswordForm() {
           minLength={8}
           autoComplete="new-password"
           placeholder="••••••••"
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors"
+          className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none focus:border-teal transition-colors"
         />
       </div>
       <div>
-        <label htmlFor="confirm" className="block text-xs font-medium text-[#1a1a1a] mb-1">Confirm password</label>
+        <label htmlFor="confirm" className="block text-xs font-medium text-neutral-950 mb-1">Confirm password</label>
         <input
           id="confirm"
           type="password"
@@ -77,7 +77,7 @@ export function ResetPasswordForm() {
           minLength={8}
           autoComplete="new-password"
           placeholder="••••••••"
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors"
+          className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none focus:border-teal transition-colors"
         />
       </div>
 
@@ -88,7 +88,7 @@ export function ResetPasswordForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+        className="w-full bg-teal text-white py-3 rounded-xl font-semibold text-sm hover:bg-teal-dark transition-colors disabled:opacity-50"
       >
         {loading ? "Saving..." : "Save new password"}
       </button>
