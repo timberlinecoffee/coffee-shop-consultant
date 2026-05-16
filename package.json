@@ -12,11 +12,13 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
     "@anthropic-ai/sdk": "^0.55.1",
+    "@react-pdf/renderer": "^4.5.1",
     "@sentry/nextjs": "^10.53.1",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
     "@vercel/analytics": "^2.0.1",
     "ai": "^4.3.19",
+    "chartjs-node-canvas": "^5.0.0",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -25,7 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.41",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

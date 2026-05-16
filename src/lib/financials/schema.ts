@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { EMPTY_FINANCIALS } from "./defaults.ts";
-import type { FinancialsContent } from "../../types/financials.ts";
+import { EMPTY_FINANCIALS } from "./defaults"
+import type { FinancialsContent } from "../../types/financials"
 
 const StartupCostCategorySchema = z.enum([
   "build_out",
