@@ -1201,6 +1201,7 @@ function CoachPanel({
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
+                data-testid="coach-message"
                 className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "bg-[#155e63] text-white rounded-br-sm"
@@ -1214,7 +1215,7 @@ function CoachPanel({
 
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-[#f5f5f5] rounded-2xl rounded-bl-sm px-4 py-3">
+              <div data-testid="coach-thinking" className="bg-[#f5f5f5] rounded-2xl rounded-bl-sm px-4 py-3">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-[#afafaf] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                   <div className="w-2 h-2 bg-[#afafaf] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -1225,7 +1226,7 @@ function CoachPanel({
           )}
 
           {error && (
-            <div className="text-xs text-red-500 text-center px-2">{error}</div>
+            <div data-testid="coach-error-banner" className="text-xs text-red-500 text-center px-2">{error}</div>
           )}
 
           <div ref={messagesEndRef} />
@@ -1268,6 +1269,7 @@ function CoachPanel({
               )}
               <div className="flex gap-2">
                 <textarea
+                  data-testid="coach-input"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -1281,6 +1283,7 @@ function CoachPanel({
                   className="flex-1 border border-[#efefef] rounded-xl px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63] transition-colors resize-none"
                 />
                 <button
+                  data-testid="coach-submit"
                   onClick={sendMessage}
                   disabled={!input.trim() || loading}
                   className="px-3 bg-[#155e63] text-white rounded-xl hover:bg-[#0e4448] transition-colors disabled:opacity-40 flex-shrink-0"
