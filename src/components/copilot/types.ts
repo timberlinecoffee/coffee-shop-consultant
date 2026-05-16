@@ -21,7 +21,8 @@ export type CopilotErrorCode =
   | "quota"
   | "unauthorized"
   | "bad_request"
-  | "network";
+  | "network"
+  | "paywall";
 
 export interface CopilotErrorState {
   code: CopilotErrorCode;

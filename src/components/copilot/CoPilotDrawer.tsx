@@ -72,6 +72,12 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
         cta: "Sign in",
         href: "/login",
       };
+    case "paywall":
+      return {
+        title: "Subscription paused — reactivate to keep using the co-pilot.",
+        cta: "Manage subscription",
+        href: "/account/billing",
+      };
     default:
       return { title: err.message, cta: "Retry", href: null };
   }
@@ -93,7 +99,10 @@ export function CoPilotDrawer({
     setWorkspaceKeyVersion({ key: workspaceKey });
     setActiveWorkspaceKey(workspaceKey);
   }
-  const [activeThreadId, setActiveThreadId] = useState<string>(() => newThreadId());
+  const [activeThreadId, setActiveThreadId] = useState<string>(() => {
+    if (typeof window === "undefined") return newThreadId();
+    return localStorage.getItem(`copilot_last_thread_${workspaceKey}`) ?? newThreadId();
+  });
   const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -102,6 +111,7 @@ export function CoPilotDrawer({
   const [loadingThread, setLoadingThread] = useState(false);
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const hydratedRef = useRef(false);
 
   const {
     isStreaming,
@@ -275,6 +285,40 @@ export function CoPilotDrawer({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, assistantBuffer, isThinking, error]);
+
+  // Persist active thread so reload can restore it
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(`copilot_last_thread_${workspaceKey}`, activeThreadId);
+  }, [activeThreadId, workspaceKey]);
+
+  // Hydrate messages for the restored thread on first mount
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem(`copilot_last_thread_${workspaceKey}`);
+    if (!stored) return;
+    setLoadingThread(true);
+    fetch(
+      `/api/copilot/threads/${encodeURIComponent(stored)}?planId=${encodeURIComponent(planId)}`,
+      { credentials: "same-origin" },
+    )
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = (await res.json()) as {
+          messages: { role: "user" | "assistant"; content: string }[];
+          title: string | null;
+          workspace_key: WorkspaceKey;
+        };
+        setMessages(payload.messages ?? []);
+        setActiveThreadTitle(payload.title ?? null);
+        if (payload.workspace_key) setActiveWorkspaceKey(payload.workspace_key);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingThread(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const errorBanner = error ? errorCopy(error) : null;
   const showEmpty =
