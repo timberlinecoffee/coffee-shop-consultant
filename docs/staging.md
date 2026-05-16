@@ -15,6 +15,16 @@ Every push to `main` triggers a fresh production build (Next.js 16 / Turbopack).
 Vercel project: `prj_QuArqjpW3FspTZ9sYa6xVySe4qOb`
 Git source: `timberlinecoffee/coffee-shop-consultant` (branch `main`)
 
+## API endpoint inventory
+
+| Surface | Route | Notes |
+| --- | --- | --- |
+| AI co-pilot stream | `POST /api/copilot/stream` | SSE; workspace-keyed, plan-aware. Replaces the retired `coach` endpoint (TIM-639 / TIM-618-H). |
+| Co-pilot threads | `GET/POST /api/copilot/threads`, `GET/PATCH/DELETE /api/copilot/threads/[threadId]`, `POST /api/copilot/threads/[threadId]/title` | Thread browser + auto-title (TIM-634). |
+| Workspaces | `src/app/workspace/*` | Six workspace shells mount `<CoPilotDrawer />` (TIM-636). |
+| Stripe webhook | `POST /api/stripe/webhook` | Hardened with idempotency + `invoice.payment_failed` (TIM-642). |
+| Auth | `POST /auth/signout`, `/login`, `/signup`, `/forgot-password`, `/reset-password` | Supabase Auth. |
+
 ## Supabase backend
 
 - Project: `coffee-shop-consultant` (`ltmcttjftxzpgynhnrpg`), region `us-east-1`

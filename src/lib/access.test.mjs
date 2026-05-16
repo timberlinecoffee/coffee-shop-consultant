@@ -4,10 +4,6 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-
 import {
   canAccessModule,
   canAccessSection,
@@ -15,15 +11,7 @@ import {
   normalizeTier,
   FREE_PREVIEW_MODULE,
   FREE_PREVIEW_SECTION_KEYS,
-  UPGRADE_PATH,
 } from "./access.ts";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(here, "..", "..");
-
-function read(rel) {
-  return readFileSync(resolve(repoRoot, rel), "utf8");
-}
 
 // ── Policy unit tests ─────────────────────────────────────────────────────
 
@@ -109,15 +97,3 @@ test("paid users see every section", () => {
   }
 });
 
-// ── Server-side guard wiring ──────────────────────────────────────────────
-// Note: /plan/[moduleNumber] guard tests were removed in TIM-701 when that
-// route was retired. The coach API test remains until TIM-639 deletes it.
-
-test("coach API returns 403 for free users", () => {
-  const src = read("src/app/api/coach/route.ts");
-  assert.match(
-    src,
-    /profile\.subscription_tier\s*===\s*["']free["'][\s\S]{0,400}status:\s*403/,
-    "/api/coach must return 403 when the caller is on the free tier"
-  );
-});
