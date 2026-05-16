@@ -1,12 +1,19 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "./sse";
-import type {
-  CopilotErrorState,
-  CopilotMessage,
-} from "./types";
+import {
+  GAP_MS,
+  TTFT_MS,
+  fromHttpError,
+  parseErrorFrame,
+  shouldAutoRetry,
+  timeoutError,
+  trackVisibleError,
+} from "./errors";
+import type { CopilotErrorState, CopilotMessage } from "./types";
 
 interface SendArgs {
   planId: string;
@@ -14,6 +21,14 @@ interface SendArgs {
   threadId: string;
   history: CopilotMessage[];
   prompt: string;
+}
+
+interface AttemptResult {
+  outcome: "success" | "error" | "aborted";
+  error: CopilotErrorState | null;
+  threadId: string;
+  modelUsed: string | null;
+  assistant: string;
 }
 
 interface UseCopilotStreamResult {
@@ -55,13 +70,18 @@ export function useCopilotStream(): UseCopilotStreamResult {
     setIsThinking(false);
   }, []);
 
-  const send = useCallback<UseCopilotStreamResult["send"]>(
-    async ({ planId, workspaceKey, threadId, history, prompt }) => {
+  const runAttempt = useCallback(
+    async ({
+      planId,
+      workspaceKey,
+      threadId,
+      history,
+      prompt,
+    }: SendArgs): Promise<AttemptResult> => {
       const controller = new AbortController();
       abortRef.current?.abort();
       abortRef.current = controller;
 
-      setError(null);
       setAssistantBuffer("");
       setIsStreaming(true);
       setIsThinking(false);
@@ -70,6 +90,42 @@ export function useCopilotStream(): UseCopilotStreamResult {
         ...history,
         { role: "user", content: prompt },
       ];
+
+      // Client-side TTFT + gap watchdogs (defense-in-depth on top of server timers).
+      // If the server already emits a timeout error frame we'll see that first; if the
+      // pipe goes silent (proxy ate the heartbeat, fetch hung), these fire instead.
+      let ttftTimer: ReturnType<typeof setTimeout> | null = null;
+      let gapTimer: ReturnType<typeof setTimeout> | null = null;
+      let watchdogError: CopilotErrorState | null = null;
+
+      const clearTimers = () => {
+        if (ttftTimer) {
+          clearTimeout(ttftTimer);
+          ttftTimer = null;
+        }
+        if (gapTimer) {
+          clearTimeout(gapTimer);
+          gapTimer = null;
+        }
+      };
+
+      const tripWatchdog = (kind: "ttft" | "gap") => {
+        if (watchdogError) return;
+        watchdogError = timeoutError(kind);
+        clearTimers();
+        controller.abort();
+      };
+
+      ttftTimer = setTimeout(() => tripWatchdog("ttft"), TTFT_MS);
+
+      const noteChunk = () => {
+        if (ttftTimer) {
+          clearTimeout(ttftTimer);
+          ttftTimer = null;
+        }
+        if (gapTimer) clearTimeout(gapTimer);
+        gapTimer = setTimeout(() => tripWatchdog("gap"), GAP_MS);
+      };
 
       let response: Response;
       try {
@@ -80,35 +136,66 @@ export function useCopilotStream(): UseCopilotStreamResult {
           signal: controller.signal,
         });
       } catch (err) {
-        if ((err as { name?: string }).name === "AbortError") {
-          setIsStreaming(false);
-          return null;
+        clearTimers();
+        if (watchdogError) {
+          return {
+            outcome: "error",
+            error: watchdogError,
+            threadId,
+            modelUsed: null,
+            assistant: "",
+          };
         }
-        const message =
-          err instanceof Error ? err.message : "Network request failed.";
-        setError({ code: "network", message });
-        setIsStreaming(false);
-        return null;
+        if ((err as { name?: string }).name === "AbortError") {
+          return {
+            outcome: "aborted",
+            error: null,
+            threadId,
+            modelUsed: null,
+            assistant: "",
+          };
+        }
+        return {
+          outcome: "error",
+          error: {
+            code: "network",
+            message:
+              err instanceof Error ? err.message : "Network request failed.",
+          },
+          threadId,
+          modelUsed: null,
+          assistant: "",
+        };
       }
 
-      if (!response.ok && response.headers.get("content-type")?.includes("application/json")) {
-        try {
-          const payload = (await response.json()) as { error?: string };
-          setError({
-            code: "upstream_error",
-            message: payload.error ?? "Request failed.",
-          });
-        } catch {
-          setError({ code: "upstream_error", message: "Request failed." });
+      if (!response.ok) {
+        clearTimers();
+        let payload: unknown = null;
+        if (response.headers.get("content-type")?.includes("application/json")) {
+          try {
+            payload = await response.json();
+          } catch {
+            /* empty */
+          }
         }
-        setIsStreaming(false);
-        return null;
+        return {
+          outcome: "error",
+          error: fromHttpError(response.status, payload),
+          threadId,
+          modelUsed: null,
+          assistant: "",
+        };
       }
 
       if (!response.body) {
-        setError({ code: "upstream_error", message: "No response body." });
-        setIsStreaming(false);
-        return null;
+        clearTimers();
+        return {
+          outcome: "error",
+          error: { code: "upstream_error", message: "No response body." },
+          threadId,
+          modelUsed: null,
+          assistant: "",
+        };
       }
 
       const reader = response.body.getReader();
@@ -119,7 +206,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
       let lastThinkingAt = 0;
       let resolvedThreadId = threadId;
       let resolvedModelUsed: string | null = null;
-      let finalError: CopilotErrorState | null = null;
+      let serverError: CopilotErrorState | null = null;
 
       try {
         for (;;) {
@@ -129,9 +216,10 @@ export function useCopilotStream(): UseCopilotStreamResult {
           const { events, rest } = consumeSseFrames(buffer);
           buffer = rest;
           for (const evt of events) {
+            // Any framed event is liveness — reset the gap watchdog (and clear TTFT).
+            noteChunk();
             if (evt.event === "thinking") {
               lastThinkingAt = Date.now();
-              // Pill stays on while thinking is fresher than text.
               if (lastThinkingAt > lastTextAt) setIsThinking(true);
             } else if (evt.event === "text") {
               try {
@@ -146,21 +234,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
                 /* ignore malformed text frame */
               }
             } else if (evt.event === "error") {
-              try {
-                const parsed = JSON.parse(evt.data) as {
-                  code?: string;
-                  message?: string;
-                };
-                finalError = {
-                  code: (parsed.code as CopilotErrorState["code"]) ?? "upstream_error",
-                  message: parsed.message ?? "Something went wrong.",
-                };
-              } catch {
-                finalError = {
-                  code: "upstream_error",
-                  message: "Stream ended with an unknown error.",
-                };
-              }
+              serverError = parseErrorFrame(evt.data);
             } else if (evt.event === "done") {
               try {
                 const parsed = JSON.parse(evt.data) as {
@@ -176,34 +250,115 @@ export function useCopilotStream(): UseCopilotStreamResult {
           }
         }
       } catch (err) {
-        if ((err as { name?: string }).name !== "AbortError") {
-          finalError = {
+        if ((err as { name?: string }).name === "AbortError") {
+          // Aborted either by us (watchdog or user) or by the network.
+          clearTimers();
+          if (watchdogError) {
+            return {
+              outcome: "error",
+              error: watchdogError,
+              threadId: resolvedThreadId,
+              modelUsed: resolvedModelUsed,
+              assistant,
+            };
+          }
+          return {
+            outcome: "aborted",
+            error: null,
+            threadId: resolvedThreadId,
+            modelUsed: resolvedModelUsed,
+            assistant,
+          };
+        }
+        clearTimers();
+        return {
+          outcome: "error",
+          error: {
             code: "network",
             message:
               err instanceof Error ? err.message : "Stream connection lost.",
-          };
-        }
+          },
+          threadId: resolvedThreadId,
+          modelUsed: resolvedModelUsed,
+          assistant,
+        };
       } finally {
+        clearTimers();
         setIsStreaming(false);
         setIsThinking(false);
-        abortRef.current = null;
+        if (abortRef.current === controller) abortRef.current = null;
       }
 
-      if (finalError) {
-        setError(finalError);
-        return null;
+      if (watchdogError) {
+        return {
+          outcome: "error",
+          error: watchdogError,
+          threadId: resolvedThreadId,
+          modelUsed: resolvedModelUsed,
+          assistant,
+        };
       }
 
-      setLastThreadId(resolvedThreadId);
-      setLastModelUsed(resolvedModelUsed);
+      if (serverError) {
+        return {
+          outcome: "error",
+          error: serverError,
+          threadId: resolvedThreadId,
+          modelUsed: resolvedModelUsed,
+          assistant,
+        };
+      }
 
       return {
+        outcome: "success",
+        error: null,
         threadId: resolvedThreadId,
         modelUsed: resolvedModelUsed,
         assistant,
       };
     },
     [],
+  );
+
+  const send = useCallback<UseCopilotStreamResult["send"]>(
+    async (args) => {
+      setError(null);
+
+      let attempt = await runAttempt(args);
+
+      // Auto-retry once silently for timeouts, per TIM-606 spec / TIM-635.
+      if (
+        attempt.outcome === "error" &&
+        attempt.error &&
+        shouldAutoRetry(attempt.error.code)
+      ) {
+        attempt = await runAttempt(args);
+      }
+
+      if (attempt.outcome === "aborted") {
+        return null;
+      }
+
+      if (attempt.outcome === "error" && attempt.error) {
+        setError(attempt.error);
+        trackVisibleError(
+          attempt.error,
+          { workspaceKey: args.workspaceKey, modelUsed: attempt.modelUsed },
+          track,
+        );
+        return null;
+      }
+
+      setLastThreadId(attempt.threadId);
+      setLastModelUsed(attempt.modelUsed);
+
+      return {
+        threadId: attempt.threadId,
+        modelUsed: attempt.modelUsed,
+        assistant: attempt.assistant,
+      };
+    },
+    [runAttempt],
   );
 
   return {

@@ -19,6 +19,7 @@ export type CopilotErrorCode =
   | "upstream_error"
   | "timeout"
   | "quota"
+  | "paywall"
   | "unauthorized"
   | "bad_request"
   | "network";
@@ -26,6 +27,8 @@ export type CopilotErrorCode =
 export interface CopilotErrorState {
   code: CopilotErrorCode;
   message: string;
+  /** Optional structured payload from the server (e.g. tier_required for paywall). */
+  details?: Record<string, unknown>;
 }
 
 export interface CopilotFocus {

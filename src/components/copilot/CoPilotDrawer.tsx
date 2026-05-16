@@ -11,10 +11,9 @@ import {
 } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { UPGRADE_PATH } from "@/lib/access";
 import type { WorkspaceKey } from "@/types/supabase";
+import { errorCopy } from "./errors";
 import type {
-  CopilotErrorState,
   CopilotFocus,
   CopilotMessage,
   CopilotThreadSummary,
@@ -59,42 +58,6 @@ function deriveTitle(messages: CopilotMessage[]): string {
   return trimmed.length > 60 ? `${trimmed.slice(0, 57)}…` : trimmed;
 }
 
-function errorCopy(err: CopilotErrorState): { title: string; cta: string | null; href: string | null } {
-  switch (err.code) {
-    case "quota":
-      return {
-        title: err.message,
-        cta: "Upgrade",
-        href: UPGRADE_PATH,
-      };
-    case "timeout":
-      return {
-        title: "Took too long. Try a smaller question.",
-        cta: "Retry",
-        href: null,
-      };
-    case "upstream_error":
-      return {
-        title: "AI service hiccup — your message wasn't sent.",
-        cta: "Retry",
-        href: null,
-      };
-    case "network":
-      return {
-        title: "Connection dropped mid-stream.",
-        cta: "Retry",
-        href: null,
-      };
-    case "unauthorized":
-      return {
-        title: "Please sign in again to keep coaching.",
-        cta: "Sign in",
-        href: "/login",
-      };
-    default:
-      return { title: err.message, cta: "Retry", href: null };
-  }
-}
 
 export function CoPilotDrawer({
   workspaceKey,
@@ -431,7 +394,12 @@ export function CoPilotDrawer({
               )}
 
               {errorBanner && (
-                <div className="border border-red-200 bg-red-50 text-red-700 rounded-xl p-3 text-sm flex items-start gap-3">
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  data-testid={`copilot-error-${error?.code}`}
+                  className="border border-red-200 bg-red-50 text-red-700 rounded-xl p-3 text-sm flex items-start gap-3"
+                >
                   <span aria-hidden>!</span>
                   <div className="flex-1">
                     <p className="font-medium">{errorBanner.title}</p>
@@ -443,7 +411,7 @@ export function CoPilotDrawer({
                         >
                           {errorBanner.cta}
                         </Link>
-                      ) : errorBanner.cta ? (
+                      ) : errorBanner.retryable && errorBanner.cta ? (
                         <button
                           type="button"
                           onClick={handleRetry}
@@ -452,7 +420,7 @@ export function CoPilotDrawer({
                           {errorBanner.cta}
                         </button>
                       ) : null}
-                      {error?.code === "timeout" && (
+                      {errorBanner.showSmallerQuestion && (
                         <button
                           type="button"
                           onClick={handleNewThread}
