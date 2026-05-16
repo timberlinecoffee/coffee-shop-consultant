@@ -192,7 +192,7 @@ export default async function DashboardPage() {
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
               </div>
-              <p className="text-sm text-[#afafaf]">Modules 3\u20138 \u2014 Unlocks as you go</p>
+              <p className="text-sm text-[#afafaf]">Modules 3–8 unlock as you progress</p>
             </div>
           </div>
         </div>
@@ -255,7 +255,7 @@ export default async function DashboardPage() {
           {subscriptionTier === "accelerator" ? (
             <span className="text-xs font-medium text-[#155e63]">Unlimited</span>
           ) : subscriptionTier === "free" || creditsRemaining === 0 ? (
-            <Link href="/account" className="text-xs text-[#155e63] hover:underline">Add a plan to unlock coaching</Link>
+            <Link href="/account" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>
           ) : (
             <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
               {creditsRemaining} remaining
