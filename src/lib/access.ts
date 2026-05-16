@@ -2,6 +2,24 @@
 // and sections a tier can reach — consumed by the /plan route guard and the
 // client-side gating UI. Keep this aligned with the schema's allowed values
 // in `users.subscription_tier`: 'free' | 'starter' | 'growth' | 'pro'.
+//
+// Write-gate rule (TIM-643): workspace mutations require subscription_status === 'active'.
+// free_trial, cancelled, and expired are all read-only.
+export type SubscriptionStatus = 'free_trial' | 'active' | 'cancelled' | 'expired';
+
+export function isSubscriptionActive(status: string | null | undefined): boolean {
+  return status === 'active';
+}
+
+// Canonical set of workspace keys that require an active subscription to mutate.
+export const MUTABLE_WORKSPACE_KEYS = new Set([
+  'concept',
+  'location_lease',
+  'financials',
+  'menu_pricing',
+  'buildout_equipment',
+  'launch_plan',
+] as const);
 
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro";
 

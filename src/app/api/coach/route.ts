@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isSubscriptionActive } from "@/lib/access";
 import { NextRequest } from "next/server";
 
 function buildSystemPrompt(
@@ -71,12 +72,17 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier")
+    .select("ai_credits_remaining, subscription_tier, subscription_status")
     .eq("id", user.id)
     .single();
 
   if (!profile) {
     return Response.json({ error: "Profile not found." }, { status: 404 });
+  }
+
+  // TIM-643: subscription_status gate — coaching is a write action.
+  if (!isSubscriptionActive(profile.subscription_status)) {
+    return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 });
   }
 
   if (profile.subscription_tier === "free") {

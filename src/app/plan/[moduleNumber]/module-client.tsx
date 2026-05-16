@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { UpgradeGate } from "@/components/upgrade-gate";
+import { PaywallModal } from "@/components/paywall-modal";
+import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { canAccessSection } from "@/lib/access";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -1044,6 +1046,7 @@ function CoachPanel({
   allResponses,
   credits,
   subscriptionTier,
+  guardedFetch,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -1057,6 +1060,7 @@ function CoachPanel({
   allResponses: Record<string, Record<string, unknown>>;
   credits: number;
   subscriptionTier: string;
+  guardedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response | null>;
 }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1078,7 +1082,7 @@ function CoachPanel({
     setError("");
 
     try {
-      const res = await fetch("/api/coach", {
+      const res = await guardedFetch("/api/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1090,6 +1094,12 @@ function CoachPanel({
           allResponses,
         }),
       });
+
+      // guardedFetch returns null on 402 (paywall shown automatically)
+      if (!res) {
+        setLoading(false);
+        return;
+      }
 
       const data = await res.json();
 
@@ -1291,6 +1301,7 @@ export function ModuleClient({
   });
   const [coachOpen, setCoachOpen] = useState(false);
   const [credits, setCredits] = useState(userProfile.ai_credits_remaining);
+  const { paywalled, dismissPaywall, guardedFetch } = usePaywallGuard();
 
   const section = SECTIONS[activeSection];
   const saveSection = useAutoSave(planId, moduleNumber, section.key);
@@ -1666,7 +1677,9 @@ export function ModuleClient({
         )}
         credits={credits}
         subscriptionTier={userProfile.subscription_tier}
+        guardedFetch={guardedFetch}
       />
+      <PaywallModal open={paywalled} onClose={dismissPaywall} />
       <BottomTabBar />
     </div>
   );

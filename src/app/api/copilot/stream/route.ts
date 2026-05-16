@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
+import { isSubscriptionActive } from "@/lib/access"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, onboarding_data")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data")
     .eq("id", user.id)
     .single()
 
@@ -137,11 +138,20 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // TIM-643: subscription_status gate — copilot is a write action.
+  // Inactive subscriptions (free_trial, cancelled, expired) get a 402 paywall.
+  if (!isSubscriptionActive(profile.subscription_status)) {
+    return new Response(
+      sse("error", { code: "paywall", reason: "paywall", tier_required: "starter" }),
+      { status: 402, headers: { "Content-Type": "text/event-stream" } },
+    )
+  }
+
   if (profile.subscription_tier === "free") {
     return new Response(
       sse("error", {
         code: "quota",
-        message: "AI co-pilot requires a Builder or Accelerator plan. Upgrade to start coaching.",
+        message: "AI co-pilot requires a Starter, Growth, or Pro plan. Upgrade to start coaching.",
       }),
       { status: 403, headers: { "Content-Type": "text/event-stream" } },
     )
