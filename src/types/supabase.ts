@@ -1,4 +1,4 @@
-// Auto-generated from schema + TIM-629 copilot_v1 migration.
+// Auto-generated from schema + TIM-629 copilot_v1 migration + TIM-703 menu_items W4 migration.
 // Regenerate with: supabase gen types typescript --local > src/types/supabase.ts
 
 export type WorkspaceKey =
@@ -363,38 +363,82 @@ export interface Database {
         Row: {
           id: string
           plan_id: string
+          position: number
           name: string
-          category: 'espresso' | 'brewed' | 'food' | 'retail' | 'seasonal'
-          recipe: Json
-          cogs: number
-          price: number
+          category: 'espresso' | 'drip' | 'specialty' | 'food' | 'retail' | 'other'
+          price_cents: number
+          cogs_cents: number
+          expected_mix_pct: number
+          prep_time_seconds: number | null
           notes: string | null
+          archived: boolean
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           plan_id: string
+          position?: number
           name: string
-          category: 'espresso' | 'brewed' | 'food' | 'retail' | 'seasonal'
-          recipe?: Json
-          cogs?: number
-          price?: number
+          category: 'espresso' | 'drip' | 'specialty' | 'food' | 'retail' | 'other'
+          price_cents?: number
+          cogs_cents?: number
+          expected_mix_pct?: number
+          prep_time_seconds?: number | null
           notes?: string | null
+          archived?: boolean
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           plan_id?: string
+          position?: number
           name?: string
-          category?: 'espresso' | 'brewed' | 'food' | 'retail' | 'seasonal'
-          recipe?: Json
-          cogs?: number
-          price?: number
+          category?: 'espresso' | 'drip' | 'specialty' | 'food' | 'retail' | 'other'
+          price_cents?: number
+          cogs_cents?: number
+          expected_mix_pct?: number
+          prep_time_seconds?: number | null
           notes?: string | null
+          archived?: boolean
           created_at?: string
           updated_at?: string
+        }
+      }
+      pricing_benchmarks: {
+        Row: {
+          id: string
+          region_key: string
+          category: string
+          item_name_canonical: string
+          price_cents_p25: number
+          price_cents_p50: number
+          price_cents_p75: number
+          source: string | null
+          collected_on: string
+        }
+        Insert: {
+          id?: string
+          region_key: string
+          category: string
+          item_name_canonical: string
+          price_cents_p25: number
+          price_cents_p50: number
+          price_cents_p75: number
+          source?: string | null
+          collected_on: string
+        }
+        Update: {
+          id?: string
+          region_key?: string
+          category?: string
+          item_name_canonical?: string
+          price_cents_p25?: number
+          price_cents_p50?: number
+          price_cents_p75?: number
+          source?: string | null
+          collected_on?: string
         }
       }
       vendors: {
