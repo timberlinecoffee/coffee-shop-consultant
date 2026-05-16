@@ -72,6 +72,12 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
         cta: "Sign in",
         href: "/login",
       };
+    case "paywall":
+      return {
+        title: "Subscription paused — reactivate to keep using the co-pilot.",
+        cta: "Manage subscription",
+        href: "/account/billing",
+      };
     default:
       return { title: err.message, cta: "Retry", href: null };
   }
