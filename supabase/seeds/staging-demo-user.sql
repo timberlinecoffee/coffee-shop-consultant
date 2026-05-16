@@ -1,10 +1,11 @@
 -- Staging demo data: idempotent seed for board walkthroughs.
 --
--- Creates one demo owner with Module 1 complete + Module 2 in progress,
--- AI coach conversation history, an accelerator subscription, financial
--- model + equipment list, and a couple of milestones. Safe to re-run.
+-- Creates one demo owner with the 'concept' workspace complete and the
+-- 'financials' workspace in progress, AI coach conversation history, a
+-- Pro subscription, financial model + equipment list, and a couple of
+-- milestones. Safe to re-run.
 --
--- Owner: CTO (TIM-567).
+-- Owner: CTO (TIM-567 → schema refreshed for TIM-627 / TIM-652).
 -- Run via: psql or Supabase SQL editor against the staging project.
 
 do $$
@@ -52,9 +53,6 @@ begin
     updated_at         = now();
 
   -- 2. auth.identities row so email/password login resolves the identity.
-  --    auth.identities.email is a generated column (derived from
-  --    identity_data->>'email') in current Supabase schema and is not
-  --    inserted directly.
   insert into auth.identities (
     id, user_id, provider, provider_id, identity_data,
     last_sign_in_at, created_at, updated_at
@@ -74,15 +72,14 @@ begin
     last_sign_in_at = excluded.last_sign_in_at,
     updated_at      = now();
 
-  -- 3. public.users (the handle_new_user trigger creates a base row;
-  --    this update brings it to "Module 1 done, Module 2 in progress").
+  -- 3. public.users — Pro tier (TIM-627 rename from 'accelerator').
   insert into public.users (
     id, email, full_name, signup_source, subscription_status,
     subscription_tier, ai_credits_remaining, target_opening_date,
     readiness_score, onboarding_completed, onboarding_data
   ) values (
     demo_user_id, demo_email, 'Maya Chen', 'staging_seed', 'active',
-    'accelerator', 200, '2026-09-15', 42, true,
+    'pro', 200, '2026-09-15', 42, true,
     jsonb_build_object(
       'motivation','community',
       'stage','signed_lease',
@@ -101,78 +98,85 @@ begin
     onboarding_data      = excluded.onboarding_data,
     updated_at           = now();
 
-  -- 4. coffee_shop_plans
-  insert into public.coffee_shop_plans (id, user_id, plan_name, current_module, status)
-  values (demo_plan_id, demo_user_id, 'Cedar & Crema (demo)', 2, 'in_progress')
+  -- 4. coffee_shop_plans (TIM-627: current_module dropped, workspace_progress added).
+  insert into public.coffee_shop_plans (id, user_id, plan_name, status, workspace_progress)
+  values (
+    demo_plan_id, demo_user_id, 'Cedar & Crema (demo)', 'in_progress',
+    jsonb_build_object(
+      'concept',    jsonb_build_object('status','completed','completed_sections',5),
+      'financials', jsonb_build_object('status','in_progress','completed_sections',2)
+    )
+  )
   on conflict (id) do update set
-    plan_name      = excluded.plan_name,
-    current_module = excluded.current_module,
-    status         = excluded.status,
-    updated_at     = now();
+    plan_name          = excluded.plan_name,
+    status             = excluded.status,
+    workspace_progress = excluded.workspace_progress,
+    updated_at         = now();
 
-  -- 5. module_responses: Module 1 fully complete, Module 2 partially complete.
-  insert into public.module_responses (plan_id, module_number, section_key, response_data, status)
+  -- 5. workspace_responses (TIM-627 rename from module_responses; workspace_key text axis).
+  insert into public.workspace_responses (plan_id, workspace_key, section_key, response_data, status)
   values
-    (demo_plan_id, 1, 'shop_type', jsonb_build_object(
+    (demo_plan_id, 'concept', 'shop_type', jsonb_build_object(
       'model','full_cafe','size','1100sqft','seating','24',
       'food_level','light_pastries_only','service_style','counter_order'
     ), 'completed'),
-    (demo_plan_id, 1, 'your_why', jsonb_build_object(
+    (demo_plan_id, 'concept', 'your_why', jsonb_build_object(
       'motivation','Build the third place my neighborhood does not have yet.',
       'customer_experience','Greeted by name, drink ready before the 9am meeting.',
       'line_in_sand','I will not serve burnt espresso to move volume.'
     ), 'completed'),
-    (demo_plan_id, 1, 'target_customer', jsonb_build_object(
+    (demo_plan_id, 'concept', 'target_customer', jsonb_build_object(
       'age_range','28-45','occupation','remote_professionals_and_creatives',
       'income','75k-140k','coffee_habits','daily_pourover_or_latte',
       'values','craft, neighborhood, sustainability'
     ), 'completed'),
-    (demo_plan_id, 1, 'competitive_analysis', jsonb_build_object(
+    (demo_plan_id, 'concept', 'competitive_analysis', jsonb_build_object(
       'competitors', jsonb_build_array(
         jsonb_build_object('name','Heart Coffee','distance','0.4mi','strength','roastery brand','gap','closes at 6pm, no evening hours'),
         jsonb_build_object('name','Stumptown Belmont','distance','0.6mi','strength','tourist draw','gap','no neighborhood loyalty program'),
         jsonb_build_object('name','Coava Public Brew Bar','distance','0.9mi','strength','minimalist espresso','gap','no food, no seating')
       )
     ), 'completed'),
-    (demo_plan_id, 1, 'concept_brief', jsonb_build_object(
+    (demo_plan_id, 'concept', 'concept_brief', jsonb_build_object(
       'brief_content','Cedar & Crema is a 1,100 sqft neighborhood cafe in inner-SE Portland for remote professionals who want a craft pourover, a quiet seat, and to be known by name. Open 6:30am-7pm to own the evening gap our competitors leave on the table.'
     ), 'completed'),
-    (demo_plan_id, 2, 'startup_costs', jsonb_build_object(
+    (demo_plan_id, 'financials', 'startup_costs', jsonb_build_object(
       'equipment_budget',58000,'buildout_budget',92000,'licensing_budget',6500,
       'initial_inventory',9500,'working_capital',35000
     ), 'completed'),
-    (demo_plan_id, 2, 'revenue_projections', jsonb_build_object(
+    (demo_plan_id, 'financials', 'revenue_projections', jsonb_build_object(
       'avg_ticket',7.40,'daily_transactions',180,'days_per_week',6
     ), 'completed'),
-    (demo_plan_id, 2, 'monthly_expenses', jsonb_build_object(
+    (demo_plan_id, 'financials', 'monthly_expenses', jsonb_build_object(
       'rent',4800,'labor_cost',18500,'cogs_percentage',32
     ), 'in_progress'),
-    (demo_plan_id, 2, 'pricing_strategy', jsonb_build_object(
+    (demo_plan_id, 'financials', 'pricing_strategy', jsonb_build_object(
       'espresso_price',3.75,'drip_price',4.25,'specialty_price',6.00
     ), 'not_started'),
-    (demo_plan_id, 2, 'financial_summary', jsonb_build_object('summary_notes',''), 'not_started')
-  on conflict (plan_id, module_number, section_key) do update set
+    (demo_plan_id, 'financials', 'financial_summary', jsonb_build_object('summary_notes',''), 'not_started')
+  on conflict (plan_id, workspace_key, section_key) do update set
     response_data = excluded.response_data,
     status        = excluded.status,
     updated_at    = now();
 
   -- 6. ai_conversations: a short coach exchange the board can scroll.
+  --    TIM-627: module_number column dropped; workspace_key (text) is the axis.
   delete from public.ai_conversations where plan_id = demo_plan_id;
-  insert into public.ai_conversations (plan_id, module_number, section_key, messages, credits_used, cost_usd)
+  insert into public.ai_conversations (plan_id, workspace_key, section_key, messages, credits_used, cost_usd)
   values
-    (demo_plan_id, 1, 'concept_brief',
+    (demo_plan_id, 'concept', 'concept_brief',
       jsonb_build_array(
         jsonb_build_object('role','user','content','Does my concept brief read like a real positioning statement or a wish list?'),
         jsonb_build_object('role','assistant','content','Strong start. The evening gap is your sharpest differentiator. Tighten the customer line: "remote professionals" is broad. Try "remote workers and creatives who treat their morning cafe like a co-working anchor." That makes pricing, food, and music decisions write themselves.')
       ),
       2, 0.0148),
-    (demo_plan_id, 2, 'startup_costs',
+    (demo_plan_id, 'financials', 'startup_costs',
       jsonb_build_array(
         jsonb_build_object('role','user','content','Is 35k working capital enough for a 1100 sqft cafe in Portland?'),
         jsonb_build_object('role','assistant','content','It is on the lower end. Industry rule of thumb is 3 months of fixed costs on hand at open. Your fixed monthly run rate is roughly 23,300, so target 70k. If 35k is the cap, plan to be cash-flow positive by month 4 or line up a working-capital line of credit before signing the lease.')
       ),
       2, 0.0162),
-    (demo_plan_id, 2, 'revenue_projections',
+    (demo_plan_id, 'financials', 'revenue_projections',
       jsonb_build_array(
         jsonb_build_object('role','user','content','180 transactions a day, 6 days a week, 7.40 ticket. Realistic for inner-SE?'),
         jsonb_build_object('role','assistant','content','Reasonable by month 6, optimistic for month 1. Heart and Stumptown both do 240-310/day at maturity. Plan a ramp: 90 tx/day months 1-2, 130 by month 4, 180 by month 7. Your break-even from the earlier scenario sits at 102 tx/day, so the math holds even on the slow ramp.')
@@ -180,13 +184,13 @@ begin
       2, 0.0155)
   ;
 
-  -- 7. subscriptions (accelerator tier, active).
+  -- 7. subscriptions (Pro tier, active — TIM-627 rename from 'accelerator').
   insert into public.subscriptions (
     user_id, stripe_customer_id, stripe_subscription_id, tier, status,
     current_period_start, current_period_end
   ) values (
-    demo_user_id, 'cus_demo_staging', 'sub_demo_staging_accelerator',
-    'accelerator', 'active',
+    demo_user_id, 'cus_demo_staging', 'sub_demo_staging_pro',
+    'pro', 'active',
     now() - interval '8 days', now() + interval '22 days'
   )
   on conflict (user_id) do update set
@@ -236,11 +240,11 @@ begin
   ))
   on conflict (plan_id) do update set items = excluded.items, updated_at = now();
 
-  -- 10. milestones (a couple, one done, one upcoming).
+  -- 10. milestones (TIM-627 rename module_number → source_workspace_key).
   delete from public.milestones where plan_id = demo_plan_id and is_auto_generated;
-  insert into public.milestones (plan_id, title, description, target_date, completed_at, module_number, is_auto_generated)
+  insert into public.milestones (plan_id, title, description, target_date, completed_at, source_workspace_key, is_auto_generated)
   values
-    (demo_plan_id, 'Concept brief locked', 'Module 1 complete', current_date - 4, now() - interval '4 days', 1, true),
-    (demo_plan_id, 'Sign lease at Belmont & 34th', 'Letter of intent out; landlord countersign expected this week', current_date + 9, null, 3, true),
-    (demo_plan_id, 'Equipment quotes in', 'Need 3 quotes per major SKU before purchase', current_date + 18, null, 4, true);
+    (demo_plan_id, 'Concept brief locked', 'Concept workspace complete', current_date - 4, now() - interval '4 days', 'concept', true),
+    (demo_plan_id, 'Sign lease at Belmont & 34th', 'Letter of intent out; landlord countersign expected this week', current_date + 9, null, 'location_lease', true),
+    (demo_plan_id, 'Equipment quotes in', 'Need 3 quotes per major SKU before purchase', current_date + 18, null, 'buildout_equipment', true);
 end $$;

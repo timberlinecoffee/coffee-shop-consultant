@@ -3,52 +3,118 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const FEATURES = {
-  free: [
-    { label: "Dashboard access", included: true },
-    { label: "Preview Module 1 content", included: true },
-    { label: "Complete exercises", included: false },
-    { label: "AI coaching", included: false },
-    { label: "Deliverable generation (BRD, financial model)", included: false },
-    { label: "All 8 modules", included: false },
-    { label: "Export to PDF", included: false },
-    { label: "Priority support", included: false },
-  ],
-  builder: [
-    { label: "Dashboard access", included: true },
-    { label: "All 8 modules", included: true },
-    { label: "50 AI coaching credits/month", included: true },
-    { label: "Complete exercises", included: true },
-    { label: "Deliverable generation (BRD, financial model)", included: true },
-    { label: "Export to PDF", included: true },
-    { label: "Email support", included: true },
-    { label: "Priority support", included: false },
-  ],
-  accelerator: [
-    { label: "Everything in Builder", included: true },
-    { label: "Unlimited AI coaching", included: true },
-    { label: "Weekly async Q&A with Trent", included: true },
-    { label: "Financial model stress-testing", included: true },
-    { label: "Equipment sourcing assistance", included: true },
-    { label: "Roaster matching recommendations", included: true },
-    { label: "30-min 1-on-1 call at BRD completion", included: true },
-    { label: "Priority support", included: true },
-  ],
-};
-
 type BillingInterval = "monthly" | "annual";
+
+const TIERS = [
+  {
+    key: "starter",
+    name: "Starter",
+    monthlyPrice: "$39",
+    annualPrice: "$25",
+    annualBilled: "$299/year",
+    annualSavings: "Save $169",
+    description: "Get your plan built and your numbers right.",
+    highlight: false,
+    features: [
+      "All course modules",
+      "25 AI coaching credits/month",
+      "Complete every exercise",
+      "BRD and financial model generation",
+      "Export to PDF",
+      "Email support",
+    ],
+    notIncluded: [
+      "Weekly async Q&A",
+      "Financial model stress-testing",
+      "Equipment sourcing assistance",
+      "1-on-1 call at BRD completion",
+    ],
+    cta: "Start with Starter",
+  },
+  {
+    key: "growth",
+    name: "Growth",
+    monthlyPrice: "$99",
+    annualPrice: "$67",
+    annualBilled: "$799/year",
+    annualSavings: "Save $389",
+    description: "For owners who want to move fast with expert backup.",
+    highlight: true,
+    features: [
+      "Everything in Starter",
+      "100 AI coaching credits/month",
+      "Weekly async Q&A with Trent",
+      "Financial model stress-testing",
+      "Priority support",
+    ],
+    notIncluded: [
+      "Equipment sourcing assistance",
+      "1-on-1 call at BRD completion",
+    ],
+    cta: "Start with Growth",
+  },
+  {
+    key: "pro",
+    name: "Pro",
+    monthlyPrice: "$199",
+    annualPrice: "$133",
+    annualBilled: "$1,599/year",
+    annualSavings: "Save $789",
+    description: "Full support from concept to open doors.",
+    highlight: false,
+    features: [
+      "Everything in Growth",
+      "Unlimited AI coaching",
+      "Equipment sourcing assistance",
+      "Roaster matching recommendations",
+      "30-min 1-on-1 call at BRD completion",
+      "White-glove onboarding",
+    ],
+    notIncluded: [],
+    cta: "Start with Pro",
+  },
+];
+
+const FAQ = [
+  {
+    q: "Can I switch plans later?",
+    a: "Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades take effect immediately; downgrades apply at the end of your current billing period.",
+  },
+  {
+    q: "What is the annual plan billed as?",
+    a: "Annual plans are charged as a single payment at the start of each year. You save roughly two months compared with paying monthly.",
+  },
+  {
+    q: "What counts as an AI coaching credit?",
+    a: "Each message you send to the AI coach uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro is unlimited.",
+  },
+  {
+    q: "What is the weekly async Q&A?",
+    a: "Growth and Pro members can submit questions each week. Trent records a short video response delivered within 48 hours.",
+  },
+  {
+    q: "Is there a free trial?",
+    a: "There is no free trial, but you can cancel within 7 days of your first payment for a full refund -- no questions asked.",
+  },
+  {
+    q: "What payment methods do you accept?",
+    a: "All major credit and debit cards. Payments are processed securely by Stripe.",
+  },
+];
 
 export default function PricingPage() {
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const [loading, setLoading] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  async function startCheckout(planKey: string) {
-    setLoading(planKey);
+  async function startCheckout(tier: string) {
+    const key = `${tier}_${interval}`;
+    setLoading(key);
     try {
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planKey }),
+        body: JSON.stringify({ tier, interval }),
       });
       const data = await res.json();
       if (data.url) {
@@ -62,48 +128,6 @@ export default function PricingPage() {
       setLoading(null);
     }
   }
-
-  const plans = [
-    {
-      name: "Free",
-      monthlyPrice: "$0",
-      annualPrice: "$0",
-      period: "",
-      annualNote: "",
-      description: "Explore and see if this is for you.",
-      features: FEATURES.free,
-      cta: "Get started",
-      href: "/login",
-      highlight: false,
-      planKey: null,
-    },
-    {
-      name: "Builder",
-      monthlyPrice: "$49",
-      annualPrice: "$39",
-      period: "/month",
-      annualNote: "billed $468/year",
-      description: "Everything you need to build your plan.",
-      features: FEATURES.builder,
-      cta: interval === "annual" ? "Start building (annual)" : "Start building",
-      href: null,
-      highlight: true,
-      planKey: interval === "annual" ? "builder_annual" : "builder_monthly",
-    },
-    {
-      name: "Accelerator",
-      monthlyPrice: "$99",
-      annualPrice: "$79",
-      period: "/month",
-      annualNote: "billed $948/year",
-      description: "For serious owners who want to move fast.",
-      features: FEATURES.accelerator,
-      cta: interval === "annual" ? "Get accelerated (annual)" : "Get accelerated",
-      href: null,
-      highlight: false,
-      planKey: interval === "annual" ? "accelerator_annual" : "accelerator_monthly",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-[#faf9f7]">
@@ -122,122 +146,177 @@ export default function PricingPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-16">
+        {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">Simple pricing</h1>
-          <p className="text-[#afafaf] text-lg mb-8">Start free. Upgrade when you&apos;re ready to go deep.</p>
+          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">Groundwork pricing</h1>
+          <p className="text-[#6b6b6b] text-lg mb-8">
+            Three tiers. Two intervals. One goal: open doors with a plan that works.
+          </p>
 
           {/* Billing toggle */}
           <div className="inline-flex items-center bg-white border border-[#efefef] rounded-xl p-1 gap-1">
             <button
               onClick={() => setInterval("monthly")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                interval === "monthly" ? "bg-[#155e63] text-white" : "text-[#afafaf] hover:text-[#1a1a1a]"
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                interval === "monthly" ? "bg-[#155e63] text-white" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
               }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setInterval("annual")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                interval === "annual" ? "bg-[#155e63] text-white" : "text-[#afafaf] hover:text-[#1a1a1a]"
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                interval === "annual" ? "bg-[#155e63] text-white" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
               }`}
             >
               Annual
-              <span className="ml-1.5 text-xs bg-[#76b39d]/20 text-[#155e63] px-1.5 py-0.5 rounded-full">Save 20%</span>
+              <span className="ml-2 text-xs bg-[#d4f0e8] text-[#155e63] px-1.5 py-0.5 rounded-full font-semibold">
+                2 months free
+              </span>
             </button>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`rounded-2xl p-8 border flex flex-col ${
-                plan.highlight
-                  ? "bg-[#155e63] text-white border-[#155e63]"
-                  : "bg-white text-[#1a1a1a] border-[#efefef]"
-              }`}
-            >
-              <div className="mb-6">
-                <h2 className={`font-bold text-xl mb-1 ${plan.highlight ? "text-white" : "text-[#1a1a1a]"}`}>
-                  {plan.name}
-                </h2>
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-4xl font-bold">
-                    {interval === "annual" ? plan.annualPrice : plan.monthlyPrice}
-                  </span>
-                  {plan.period && (
-                    <span className={`text-sm ${plan.highlight ? "text-[#76b39d]" : "text-[#afafaf]"}`}>
-                      {plan.period}
+        {/* Tier cards */}
+        <div className="grid sm:grid-cols-3 gap-6 mb-16">
+          {TIERS.map((tier) => {
+            const loadingKey = `${tier.key}_${interval}`;
+            return (
+              <div
+                key={tier.key}
+                className={`rounded-2xl p-8 border flex flex-col relative ${
+                  tier.highlight
+                    ? "bg-[#155e63] text-white border-[#155e63] shadow-lg"
+                    : "bg-white text-[#1a1a1a] border-[#efefef]"
+                }`}
+              >
+                {tier.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-[#f0b429] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                      Most popular
                     </span>
-                  )}
-                </div>
-                {plan.annualNote && interval === "annual" && (
-                  <p className={`text-xs mb-2 ${plan.highlight ? "text-[#76b39d]" : "text-[#afafaf]"}`}>
-                    {plan.annualNote}
-                  </p>
+                  </div>
                 )}
-                <p className={`text-sm ${plan.highlight ? "text-[#76b39d]" : "text-[#afafaf]"}`}>
-                  {plan.description}
+
+                <div className="mb-6">
+                  <h2 className={`font-bold text-xl mb-1 ${tier.highlight ? "text-white" : "text-[#1a1a1a]"}`}>
+                    {tier.name}
+                  </h2>
+
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-4xl font-bold">
+                      {interval === "annual" ? tier.annualPrice : tier.monthlyPrice}
+                    </span>
+                    <span className={`text-sm ${tier.highlight ? "text-[#76b39d]" : "text-[#6b6b6b]"}`}>/month</span>
+                  </div>
+
+                  {interval === "annual" && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs ${tier.highlight ? "text-[#76b39d]" : "text-[#6b6b6b]"}`}>
+                        {tier.annualBilled}
+                      </span>
+                      <span className="text-xs bg-[#d4f0e8] text-[#155e63] px-1.5 py-0.5 rounded-full font-semibold">
+                        {tier.annualSavings}
+                      </span>
+                    </div>
+                  )}
+
+                  <p className={`text-sm ${tier.highlight ? "text-[#76b39d]" : "text-[#6b6b6b]"}`}>
+                    {tier.description}
+                  </p>
+                </div>
+
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex gap-2 text-sm items-start">
+                      <span className={`flex-shrink-0 mt-0.5 ${tier.highlight ? "text-[#76b39d]" : "text-[#155e63]"}`}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      <span className={tier.highlight ? "text-white/90" : "text-[#1a1a1a]"}>{f}</span>
+                    </li>
+                  ))}
+                  {tier.notIncluded.map((f) => (
+                    <li key={f} className="flex gap-2 text-sm items-start">
+                      <span className="flex-shrink-0 mt-0.5 text-[#d0d0d0]">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </span>
+                      <span className="text-[#c0c0c0]">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <p className={`text-xs text-center mb-3 ${tier.highlight ? "text-[#76b39d]" : "text-[#afafaf]"}`}>
+                  By subscribing you agree to our{" "}
+                  <a href="/terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Terms</a>
+                  {", "}
+                  <a href="/privacy" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Privacy Policy</a>
+                  {", and "}
+                  <a href="/subscription-terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Subscription Terms</a>
+                  .
                 </p>
-              </div>
-
-              <ul className="space-y-3 mb-8 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f.label} className="flex gap-2 text-sm items-start">
-                    <span className={`flex-shrink-0 mt-0.5 ${
-                      f.included
-                        ? plan.highlight ? "text-[#76b39d]" : "text-[#155e63]"
-                        : "text-[#d0d0d0]"
-                    }`}>
-                      {f.included ? "✓" : "✗"}
-                    </span>
-                    <span className={
-                      f.included
-                        ? plan.highlight ? "text-white/90" : "text-[#1a1a1a]"
-                        : "text-[#d0d0d0]"
-                    }>
-                      {f.label}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              {plan.href ? (
-                <Link
-                  href={plan.href}
-                  className={`text-center py-3 rounded-xl font-semibold text-sm transition-colors ${
-                    plan.highlight
-                      ? "bg-white text-[#155e63] hover:bg-[#faf9f7]"
-                      : "bg-[#155e63] text-white hover:bg-[#0e4448]"
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
-              ) : (
                 <button
-                  onClick={() => plan.planKey && startCheckout(plan.planKey)}
-                  disabled={loading === plan.planKey}
+                  onClick={() => startCheckout(tier.key)}
+                  disabled={loading === loadingKey}
                   className={`text-center py-3 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60 ${
-                    plan.highlight
+                    tier.highlight
                       ? "bg-white text-[#155e63] hover:bg-[#faf9f7]"
                       : "bg-[#155e63] text-white hover:bg-[#0e4448]"
                   }`}
                 >
-                  {loading === plan.planKey ? "Loading…" : plan.cta}
+                  {loading === loadingKey ? "Loading..." : tier.cta}
                 </button>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
-        <div className="text-center mt-12 text-sm text-[#afafaf]">
-          <p>Questions? Email <a href="mailto:hello@timberline.coffee" className="text-[#155e63] hover:underline">hello@timberline.coffee</a></p>
+        {/* FAQ */}
+        <div className="max-w-2xl mx-auto mb-16">
+          <h2 className="text-2xl font-bold text-[#1a1a1a] text-center mb-8">Frequently asked questions</h2>
+          <div className="space-y-2">
+            {FAQ.map((item, i) => (
+              <div key={i} className="bg-white border border-[#efefef] rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full text-left px-6 py-4 flex items-center justify-between gap-4 font-medium text-[#1a1a1a] text-sm hover:bg-[#faf9f7] transition-colors"
+                >
+                  <span>{item.q}</span>
+                  <svg
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    className={`flex-shrink-0 transition-transform ${openFaq === i ? "rotate-180" : ""}`}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                {openFaq === i && (
+                  <div className="px-6 pb-4 text-sm text-[#6b6b6b] leading-relaxed border-t border-[#efefef]">
+                    <p className="pt-3">{item.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer links */}
+        <div className="text-center text-sm text-[#6b6b6b]">
+          <p>
+            Questions? Email{" "}
+            <a href="mailto:hello@timberline.coffee" className="text-[#155e63] hover:underline">
+              hello@timberline.coffee
+            </a>
+          </p>
         </div>
 
         <div className="mt-8 flex justify-center gap-6 text-xs text-[#afafaf]">
           <Link href="/terms" className="hover:text-[#155e63] transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-[#155e63] transition-colors">Privacy Policy</Link>
+          <Link href="/subscription-terms" className="hover:text-[#155e63] transition-colors">Subscription Terms</Link>
         </div>
       </div>
     </div>

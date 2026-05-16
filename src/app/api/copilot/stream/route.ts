@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const isUnlimited = profile.subscription_tier === "accelerator"
+  const isUnlimited = profile.subscription_tier === "pro"
 
   if (!isUnlimited && profile.ai_credits_remaining < 1) {
     return new Response(

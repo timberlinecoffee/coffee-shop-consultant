@@ -1,5 +1,16 @@
 import Link from "next/link";
 
+const MODULES = [
+  { num: 1, title: "Concept & Positioning", desc: "Figure out what kind of shop you're building and what makes it different." },
+  { num: 2, title: "Financial Modeling", desc: "Build your numbers so you know what it takes to be profitable." },
+  { num: 3, title: "Site Selection & Lease", desc: "Learn what to look for in a location and how to negotiate a lease." },
+  { num: 4, title: "Menu Design & Sourcing", desc: "Design a menu that works and find the right coffee partner." },
+  { num: 5, title: "Bar Design & Equipment", desc: "Plan your bar layout and choose the right gear for your model." },
+  { num: 6, title: "Hiring, Training & Culture", desc: "Build a team that can run the shop the way it needs to be run." },
+  { num: 7, title: "Pre-Opening Marketing", desc: "Get people lined up before your doors even open." },
+  { num: 8, title: "BRD Assembly & Long-Term Ops", desc: "Bring everything together into your complete Business Readiness Document." },
+];
+
 const PRICING = [
   {
     name: "Free",
@@ -33,7 +44,7 @@ const PRICING = [
       "Email support",
     ],
     cta: "Start building",
-    href: "/login?plan=builder",
+    href: "/login?plan=starter",
     highlight: true,
   },
   {
@@ -53,7 +64,7 @@ const PRICING = [
       "Priority support",
     ],
     cta: "Get accelerated",
-    href: "/login?plan=accelerator",
+    href: "/login?plan=pro",
     highlight: false,
   },
 ];
@@ -176,6 +187,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Module Preview */}
+      <section className="bg-white px-6 py-20">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-4 text-[#1a1a1a]">What you&apos;ll build</h2>
+          <p className="text-center text-[#afafaf] mb-12 max-w-xl mx-auto">
+            8 modules. 8 deliverables. One complete plan for opening your coffee shop.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {MODULES.map((m) => (
+              <div key={m.num} className="bg-[#faf9f7] rounded-xl p-5 border border-[#efefef]">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 bg-[#155e63] text-white rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    {m.num}
+                  </div>
+                  <h3 className="font-semibold text-sm text-[#1a1a1a] leading-tight">{m.title}</h3>
+                </div>
+                <p className="text-xs text-[#afafaf] leading-relaxed">{m.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* AI Coach Demo */}
       <section className="bg-[#155e63] px-6 py-20 text-white">
         <div className="max-w-4xl mx-auto">
@@ -214,32 +248,48 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                icon: "📄",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                ),
                 title: "Concept Brief",
                 desc: "Your shop's identity, target customer, differentiator, and brand voice. It fits on one page.",
                 tags: ["Vision", "Positioning", "Brand"],
               },
               {
-                icon: "📊",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>
+                  </svg>
+                ),
                 title: "Financial Model",
                 desc: "Build-out costs, revenue projections, break-even analysis, and 3-year P&L, all editable.",
                 tags: ["Revenue", "Costs", "Break-even"],
               },
               {
-                icon: "🔧",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                  </svg>
+                ),
                 title: "Equipment List",
                 desc: "A complete, spec'd equipment list with sourcing notes and estimated costs for your specific model.",
                 tags: ["Bar setup", "Pricing", "Sourcing"],
               },
               {
-                icon: "📋",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                ),
                 title: "Business Readiness Document",
                 desc: "All 8 modules compiled into one comprehensive document: your opening playbook.",
                 tags: ["Operations", "Hiring", "Marketing"],
               },
             ].map((d) => (
               <div key={d.title} className="bg-[#faf9f7] rounded-2xl p-6 border border-[#efefef] flex flex-col">
-                <div className="text-3xl mb-4">{d.icon}</div>
+                <div className="mb-4 text-[#155e63]">{d.icon}</div>
                 <h3 className="font-semibold text-[#1a1a1a] mb-2">{d.title}</h3>
                 <p className="text-sm text-[#afafaf] leading-relaxed mb-4 flex-1">{d.desc}</p>
                 <div className="flex flex-wrap gap-2">
@@ -306,6 +356,22 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Trent credibility */}
+      <section className="bg-white px-6 py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="w-20 h-20 bg-[#155e63]/10 rounded-full mx-auto mb-6 flex items-center justify-center">
+            <span className="text-3xl">&#9749;</span>
+          </div>
+          <h2 className="text-2xl font-bold mb-4 text-[#1a1a1a]">Built by someone who&apos;s been there</h2>
+          <p className="text-[#afafaf] leading-relaxed mb-6">
+            Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty Trainer, and the founder of Timberline Coffee School. He&apos;s spent years teaching the Coffee Shop Basecamp curriculum to aspiring café owners and has personally opened and closed coffee businesses.
+          </p>
+          <p className="text-[#afafaf] leading-relaxed">
+            This platform is everything he teaches in live cohorts: the frameworks, the honest advice, the hard numbers, available to you 24 hours a day, at a fraction of the cost of a consultant.
+          </p>
         </div>
       </section>
 

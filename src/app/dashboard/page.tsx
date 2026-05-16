@@ -147,7 +147,7 @@ export default async function DashboardPage() {
         {/* AI Credits — low-visual-weight line in quick links area */}
         <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
           <span className="text-xs text-[#afafaf]">AI Coach credits</span>
-          {subscriptionTier === "accelerator" ? (
+          {subscriptionTier === "pro" ? (
             <span className="text-xs font-medium text-[#155e63]">Unlimited</span>
           ) : subscriptionTier === "free" || creditsRemaining === 0 ? (
             <Link href="/account" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>

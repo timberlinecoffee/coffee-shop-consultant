@@ -80,13 +80,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (profile.subscription_tier === "free") {
-    return Response.json({ error: "AI coaching requires a Builder or Accelerator plan. Upgrade to start coaching." }, { status: 403 });
+    return Response.json({ error: "AI coaching requires a paid plan. Upgrade to start coaching." }, { status: 403 });
   }
 
-  const isUnlimited = profile.subscription_tier === "accelerator";
+  const isUnlimited = profile.subscription_tier === "pro";
 
   if (!isUnlimited && profile.ai_credits_remaining < 1) {
-    return Response.json({ error: "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or wait for your monthly reset." }, { status: 402 });
+    return Response.json({ error: "You've used all your AI credits for this month. Upgrade to Pro for unlimited coaching, or wait for your monthly reset." }, { status: 402 });
   }
 
   const systemPrompt = buildSystemPrompt(onboardingData ?? {}, allResponses ?? {}, sectionKey);

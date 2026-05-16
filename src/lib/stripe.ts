@@ -17,49 +17,71 @@ export const stripe = new Proxy({} as Stripe, {
   },
 });
 
+// Groundwork pricing: Starter / Growth / Pro x monthly / annual
+// Price IDs are stored in env so revising a price (e.g. Pro) is a config change only.
 export const PLANS = {
-  builder_monthly: {
-    name: "Builder",
-    priceId: process.env.STRIPE_BUILDER_MONTHLY_PRICE_ID ?? "",
-    amount: 4900,
-    interval: "month" as const,
+  starter_monthly: {
+    name: "Starter",
+    tier: "starter" as const,
+    interval: "monthly" as const,
+    priceId: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID ?? "",
+    amount: 3900,
   },
-  builder_annual: {
-    name: "Builder",
-    priceId: process.env.STRIPE_BUILDER_ANNUAL_PRICE_ID ?? "",
-    amount: 46800,
-    interval: "year" as const,
+  starter_annual: {
+    name: "Starter",
+    tier: "starter" as const,
+    interval: "annual" as const,
+    priceId: process.env.STRIPE_STARTER_ANNUAL_PRICE_ID ?? "",
+    amount: 29900,
   },
-  accelerator_monthly: {
-    name: "Accelerator",
-    priceId: process.env.STRIPE_ACCELERATOR_MONTHLY_PRICE_ID ?? "",
+  growth_monthly: {
+    name: "Growth",
+    tier: "growth" as const,
+    interval: "monthly" as const,
+    priceId: process.env.STRIPE_GROWTH_MONTHLY_PRICE_ID ?? "",
     amount: 9900,
-    interval: "month" as const,
   },
-  accelerator_annual: {
-    name: "Accelerator",
-    priceId: process.env.STRIPE_ACCELERATOR_ANNUAL_PRICE_ID ?? "",
-    amount: 94800,
-    interval: "year" as const,
+  growth_annual: {
+    name: "Growth",
+    tier: "growth" as const,
+    interval: "annual" as const,
+    priceId: process.env.STRIPE_GROWTH_ANNUAL_PRICE_ID ?? "",
+    amount: 79900,
+  },
+  pro_monthly: {
+    name: "Pro",
+    tier: "pro" as const,
+    interval: "monthly" as const,
+    priceId: process.env.STRIPE_PRO_MONTHLY_PRICE_ID ?? "",
+    amount: 19900,
+  },
+  pro_annual: {
+    name: "Pro",
+    tier: "pro" as const,
+    interval: "annual" as const,
+    priceId: process.env.STRIPE_PRO_ANNUAL_PRICE_ID ?? "",
+    amount: 159900,
   },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
+export type Tier = "starter" | "growth" | "pro" | "free";
 
-export function tierFromPriceId(priceId: string): "builder" | "accelerator" | "free" {
-  if (
-    priceId === PLANS.builder_monthly.priceId ||
-    priceId === PLANS.builder_annual.priceId
-  ) return "builder";
-  if (
-    priceId === PLANS.accelerator_monthly.priceId ||
-    priceId === PLANS.accelerator_annual.priceId
-  ) return "accelerator";
+export function planKeyFromParams(tier: string, interval: string): PlanKey | null {
+  const key = `${tier}_${interval}` as PlanKey;
+  return key in PLANS ? key : null;
+}
+
+export function tierFromPriceId(priceId: string): Tier {
+  for (const plan of Object.values(PLANS)) {
+    if (plan.priceId && plan.priceId === priceId) return plan.tier;
+  }
   return "free";
 }
 
-export const MONTHLY_CREDITS: Record<string, number> = {
-  builder: 50,
-  accelerator: 0,
+export const MONTHLY_CREDITS: Record<Tier, number> = {
+  starter: 25,
+  growth: 100,
+  pro: 0,    // unlimited — tracked differently
   free: 0,
 };

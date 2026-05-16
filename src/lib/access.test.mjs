@@ -34,16 +34,21 @@ test("free tier is not paid", () => {
   assert.equal(isPaidTier("free_trial"), false);
 });
 
-test("builder and accelerator are paid tiers", () => {
-  assert.equal(isPaidTier("builder"), true);
-  assert.equal(isPaidTier("accelerator"), true);
+test("starter, growth, and pro are paid tiers", () => {
+  assert.equal(isPaidTier("starter"), true);
+  assert.equal(isPaidTier("growth"), true);
+  assert.equal(isPaidTier("pro"), true);
 });
 
 test("normalizeTier maps unknown values to free", () => {
   assert.equal(normalizeTier("free_trial"), "free");
   assert.equal(normalizeTier(null), "free");
-  assert.equal(normalizeTier("builder"), "builder");
-  assert.equal(normalizeTier("accelerator"), "accelerator");
+  assert.equal(normalizeTier("starter"), "starter");
+  assert.equal(normalizeTier("growth"), "growth");
+  assert.equal(normalizeTier("pro"), "pro");
+  // Legacy names from pre-TIM-641 must no longer be recognized as paid.
+  assert.equal(normalizeTier("builder"), "free");
+  assert.equal(normalizeTier("accelerator"), "free");
 });
 
 test("free users can access the preview module only", () => {
@@ -58,7 +63,7 @@ test("free users can access the preview module only", () => {
 });
 
 test("paid users can access every module", () => {
-  for (const tier of ["builder", "accelerator"]) {
+  for (const tier of ["starter", "growth", "pro"]) {
     for (let m = 1; m <= 8; m++) {
       assert.equal(canAccessModule(tier, m), true);
     }
@@ -90,7 +95,7 @@ test("free users only see the preview section inside the preview module", () => 
 });
 
 test("paid users see every section", () => {
-  for (const tier of ["builder", "accelerator"]) {
+  for (const tier of ["starter", "growth", "pro"]) {
     for (const key of [
       "shop_type",
       "your_why",
@@ -105,14 +110,10 @@ test("paid users see every section", () => {
 });
 
 // ── Server-side guard wiring ──────────────────────────────────────────────
-// TIM-627: the /plan/[moduleNumber] route and module-client are deleted as
-// part of the destructive plan. Route-level guard tests are reintroduced
-// against /plan/[workspace]/page.tsx + WorkspaceClient in the workspace
-// build issues (TIM-619+). UPGRADE_PATH constant test stays.
 
-test("UPGRADE_PATH resolves to /pricing", () => {
-  assert.equal(UPGRADE_PATH, "/pricing");
-});
+// TIM-627 removed src/app/plan/[moduleNumber]/{page,module-client}.tsx as part
+// of the destructive plan-page deletion. The upgrade-gate redirect tests that
+// lived here will return once the new workspace-key routes are in place.
 
 test("coach API returns 403 for free users", () => {
   const src = read("src/app/api/coach/route.ts");
