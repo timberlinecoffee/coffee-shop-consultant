@@ -30,7 +30,7 @@ const GAP_MS = 20_000
 const HEARTBEAT_MS = 15_000
 
 // Stable sections: cached with cache_control:ephemeral across the conversation.
-const STABLE_IDENTITY = `You are the AI co-pilot for Timberline Coffee School's My Coffee Shop Consultant platform. You are a knowledgeable friend who has helped dozens of people open successful coffee shops — not a professor, not a consultant charging by the hour.`
+const STABLE_IDENTITY = `You are the AI co-pilot for Timberline Coffee School's My Coffee Shop Consultant platform. You are a knowledgeable friend who has helped dozens of people open successful coffee shops, not a professor, not a consultant charging by the hour.`
 
 const STABLE_COACHING_STYLE = `## Coaching Style
 - Warm, direct, conversational. Knowledgeable friend, not professor.
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
       const resetGapTimer = () => {
         if (gapTimer) clearTimeout(gapTimer)
         gapTimer = setTimeout(() => {
-          closeWithError("timeout", "AI stream stalled — no data for 20 seconds. Please try again.")
+          closeWithError("timeout", "AI stream stalled. No data for 20 seconds. Please try again.")
         }, GAP_MS)
       }
 

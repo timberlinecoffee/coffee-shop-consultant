@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Subscription Terms — Timberline Coffee School",
+  title: "Subscription Terms | Timberline Coffee School",
   description: "Subscription Terms for Timberline Coffee School covering billing, renewal, and cancellation.",
 };
 

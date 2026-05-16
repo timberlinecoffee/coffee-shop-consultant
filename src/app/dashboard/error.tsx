@@ -21,7 +21,7 @@ export default function DashboardError({
         <div className="text-4xl mb-4">☕</div>
         <h1 className="text-xl font-bold text-[#1a1a1a] mb-2">Something went wrong</h1>
         <p className="text-sm text-[#afafaf] mb-6">
-          We hit a snag loading your dashboard. This is on us — your plan data is safe.
+          We hit a snag loading your dashboard. This is on us; your plan data is safe.
         </p>
         <div className="flex gap-3 justify-center">
           <button

@@ -21,7 +21,7 @@ export default function PlanError({
         <div className="text-4xl mb-4">☕</div>
         <h1 className="text-xl font-bold text-[#1a1a1a] mb-2">Something went wrong</h1>
         <p className="text-sm text-[#afafaf] mb-6">
-          We hit a snag loading this page. Your plan data is safe — go back to the dashboard to continue.
+          We hit a snag loading this page. Your plan data is safe; go back to the dashboard to continue.
           {error.digest && (
             <span className="block mt-2 font-mono text-xs text-[#cfcfcf]">
               ref: {error.digest}

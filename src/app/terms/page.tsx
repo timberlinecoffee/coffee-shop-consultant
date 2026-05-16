@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — Timberline Coffee School",
+  title: "Terms of Service | Timberline Coffee School",
   description: "Terms of Service for Timberline Coffee School.",
 };
 
