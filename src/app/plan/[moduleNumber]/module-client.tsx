@@ -1033,6 +1033,23 @@ function SectionFinancialSummary({
 
 // ── Coach Panel ───────────────────────────────────────────────────────────
 
+function parseSseErrorMessage(text: string): string | null {
+  for (const block of text.split("\n\n")) {
+    const lines = block.split("\n");
+    const isError = lines.some((l) => l === "event: error");
+    const dataLine = lines.find((l) => l.startsWith("data:"));
+    if (isError && dataLine) {
+      try {
+        const payload = JSON.parse(dataLine.slice(5).trim()) as { message?: string };
+        return payload.message ?? null;
+      } catch {
+        // ignore malformed data
+      }
+    }
+  }
+  return null;
+}
+
 function CoachPanel({
   isOpen,
   onClose,
@@ -1101,12 +1118,29 @@ function CoachPanel({
         return;
       }
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") ?? "";
+      const body = await res.text();
+
+      if (contentType.includes("text/event-stream")) {
+        const msg = parseSseErrorMessage(body);
+        setError(msg ?? "Connection error. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(body) as Record<string, unknown>;
+      } catch {
+        setError("Connection error. Please try again.");
+        setLoading(false);
+        return;
+      }
 
       if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError((data.error as string) ?? "Something went wrong. Please try again.");
       } else {
-        onMessages([...newMessages, { role: "assistant", content: data.message }]);
+        onMessages([...newMessages, { role: "assistant", content: data.message as string }]);
       }
     } catch {
       setError("Connection error. Please try again.");
