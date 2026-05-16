@@ -247,7 +247,8 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS)
 
       try {
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+        // QA FIXTURE: staging-bad-anthropic-key branch — always uses an invalid key to force upstream_error
+        const anthropic = new Anthropic({ apiKey: "sk-ant-QA-INVALID-KEY-FOR-UPSTREAM-ERROR-TESTING" })
 
         // System prompt: two blocks — stable (cached) + dynamic (busts cache on plan edits)
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
