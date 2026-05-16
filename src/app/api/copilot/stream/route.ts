@@ -247,6 +247,9 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS)
 
       try {
+        // QA FIXTURE: staging-timeout-fixture branch — sleep 12 s before API call to reliably fire TTFT timeout
+        await new Promise((resolve) => setTimeout(resolve, 12_000))
+
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
         // System prompt: two blocks — stable (cached) + dynamic (busts cache on plan edits)
