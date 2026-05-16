@@ -10,14 +10,13 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { UPGRADE_PATH } from "@/lib/access";
 import type { WorkspaceKey } from "@/types/supabase";
+import { ThreadBrowser, WORKSPACE_LABELS, type ThreadBrowserItem } from "./ThreadBrowser";
 import type {
   CopilotErrorState,
   CopilotFocus,
   CopilotMessage,
-  CopilotThreadSummary,
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
 
@@ -26,24 +25,6 @@ export interface CoPilotDrawerProps {
   planId: string;
   currentFocus?: CopilotFocus;
 }
-
-interface ThreadRow {
-  thread_id: string | null;
-  title: string | null;
-  last_message_at: string | null;
-  workspace_key: WorkspaceKey | null;
-  model_used: string | null;
-  messages: unknown;
-}
-
-const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
-  concept: "Concept",
-  location_lease: "Location & Lease",
-  financials: "Financials",
-  menu_pricing: "Menu & Pricing",
-  buildout_equipment: "Build-out & Equipment",
-  launch_plan: "Launch Plan",
-};
 
 function newThreadId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -102,13 +83,24 @@ export function CoPilotDrawer({
   currentFocus,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
-  const [threads, setThreads] = useState<CopilotThreadSummary[]>([]);
-  const [threadsLoading, setThreadsLoading] = useState(true);
-  const [threadsError, setThreadsError] = useState<string | null>(null);
+  // Track the prop separately so a parent-driven workspace switch resets the active
+  // workspace without us calling setState inside an effect body.
+  const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
+    key: workspaceKey,
+  }));
+  const [activeWorkspaceKey, setActiveWorkspaceKey] = useState<WorkspaceKey>(workspaceKey);
+  if (workspaceKeyVersion.key !== workspaceKey) {
+    setWorkspaceKeyVersion({ key: workspaceKey });
+    setActiveWorkspaceKey(workspaceKey);
+  }
   const [activeThreadId, setActiveThreadId] = useState<string>(() => newThreadId());
+  const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
+  const [browserRefreshKey, setBrowserRefreshKey] = useState(0);
+  const [loadingThread, setLoadingThread] = useState(false);
+  const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -121,108 +113,96 @@ export function CoPilotDrawer({
     reset,
   } = useCopilotStream();
 
-  const supabase = useMemo(() => createClient(), []);
-
-  const loadThreads = useCallback(async () => {
-    setThreadsLoading(true);
-    setThreadsError(null);
-    const { data, error: queryError } = await supabase
-      .from("ai_conversations")
-      .select("thread_id, title, last_message_at, workspace_key, model_used, messages")
-      .eq("plan_id", planId)
-      .eq("workspace_key", workspaceKey)
-      .order("last_message_at", { ascending: false, nullsFirst: false })
-      .limit(50);
-
-    if (queryError) {
-      setThreadsError(queryError.message);
-      setThreadsLoading(false);
-      return;
-    }
-
-    const rows = (data ?? []) as ThreadRow[];
-    const summaries: CopilotThreadSummary[] = rows
-      .filter((row): row is ThreadRow & { thread_id: string; workspace_key: WorkspaceKey } =>
-        Boolean(row.thread_id) && Boolean(row.workspace_key),
-      )
-      .map((row) => ({
-        threadId: row.thread_id,
-        title: row.title,
-        lastMessageAt: row.last_message_at ?? new Date(0).toISOString(),
-        workspaceKey: row.workspace_key,
-        modelUsed: row.model_used,
-      }));
-
-    setThreads(summaries);
-    setThreadsLoading(false);
-  }, [supabase, planId, workspaceKey]);
-
   const openDrawer = useCallback(() => {
     setOpen(true);
-    void loadThreads();
-  }, [loadThreads]);
+    setBrowserRefreshKey((n) => n + 1);
+  }, []);
 
   const closeDrawer = useCallback(() => {
     abort();
     setOpen(false);
   }, [abort]);
 
-  const loadThread = useCallback(
-    async (threadId: string) => {
-      const { data, error: queryError } = await supabase
-        .from("ai_conversations")
-        .select("messages")
-        .eq("plan_id", planId)
-        .eq("workspace_key", workspaceKey)
-        .eq("thread_id", threadId)
-        .maybeSingle();
-
-      if (queryError || !data) {
-        setMessages([]);
-        return;
-      }
-
-      const raw = data.messages;
-      if (!Array.isArray(raw)) {
-        setMessages([]);
-        return;
-      }
-      const parsed: CopilotMessage[] = raw
-        .filter(
-          (entry): entry is { role: "user" | "assistant"; content: string } =>
-            typeof entry === "object" &&
-            entry !== null &&
-            "role" in entry &&
-            "content" in entry &&
-            (entry as { role: unknown }).role !== "system",
-        )
-        .map((entry) => ({
-          role: entry.role,
-          content: String(entry.content ?? ""),
-        }));
-      setMessages(parsed);
-    },
-    [supabase, planId, workspaceKey],
-  );
-
-  const handleSelectThread = useCallback(
-    async (threadId: string) => {
-      abort();
-      reset();
-      setActiveThreadId(threadId);
-      await loadThread(threadId);
-    },
-    [abort, reset, loadThread],
-  );
-
   const handleNewThread = useCallback(() => {
     abort();
     reset();
     setActiveThreadId(newThreadId());
+    setActiveWorkspaceKey(workspaceKey);
+    setActiveThreadTitle(null);
     setMessages([]);
     setInput("");
     setPendingRetry(null);
-  }, [abort, reset]);
+  }, [abort, reset, workspaceKey]);
+
+  const handleSelectThread = useCallback(
+    async (item: ThreadBrowserItem) => {
+      if (item.id === activeThreadId && item.workspace_key === activeWorkspaceKey) return;
+      abort();
+      reset();
+      setLoadingThread(true);
+      setActiveThreadId(item.id);
+      setActiveWorkspaceKey(item.workspace_key);
+      setActiveThreadTitle(item.title);
+      setMessages([]);
+      setInput("");
+      setPendingRetry(null);
+      try {
+        const res = await fetch(
+          `/api/copilot/threads/${encodeURIComponent(item.id)}?planId=${encodeURIComponent(planId)}`,
+          { credentials: "same-origin" },
+        );
+        if (!res.ok) {
+          setMessages([]);
+          return;
+        }
+        const payload = (await res.json()) as {
+          messages: { role: "user" | "assistant"; content: string }[];
+          title: string | null;
+          workspace_key: WorkspaceKey;
+        };
+        setMessages(payload.messages ?? []);
+        setActiveThreadTitle(payload.title);
+        if (payload.workspace_key) setActiveWorkspaceKey(payload.workspace_key);
+      } finally {
+        setLoadingThread(false);
+      }
+    },
+    [abort, reset, planId, activeThreadId, activeWorkspaceKey],
+  );
+
+  const maybeRequestTitle = useCallback(
+    (threadId: string, fullMessages: CopilotMessage[]) => {
+      if (titleRequestedRef.current.has(threadId)) return;
+      if (activeThreadTitle && activeThreadTitle.trim().length > 0) return;
+      if (fullMessages.length < 3) return;
+      const firstUser = fullMessages.find((m) => m.role === "user");
+      if (!firstUser?.content.trim()) return;
+      titleRequestedRef.current.add(threadId);
+      void fetch(`/api/copilot/threads/${encodeURIComponent(threadId)}/title`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ planId, firstUserMessage: firstUser.content }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            titleRequestedRef.current.delete(threadId);
+            return null;
+          }
+          return (await res.json()) as { title?: string };
+        })
+        .then((payload) => {
+          if (payload?.title) {
+            setActiveThreadTitle(payload.title);
+            setBrowserRefreshKey((n) => n + 1);
+          }
+        })
+        .catch(() => {
+          titleRequestedRef.current.delete(threadId);
+        });
+    },
+    [planId, activeThreadTitle],
+  );
 
   const performSend = useCallback(
     async (prompt: string) => {
@@ -236,7 +216,7 @@ export function CoPilotDrawer({
 
       const result = await send({
         planId,
-        workspaceKey,
+        workspaceKey: activeWorkspaceKey,
         threadId: activeThreadId,
         history: messages,
         prompt: trimmed,
@@ -248,21 +228,23 @@ export function CoPilotDrawer({
         role: "assistant",
         content: result.assistant,
       };
-      setMessages([...nextHistory, assistantMessage]);
+      const finalMessages = [...nextHistory, assistantMessage];
+      setMessages(finalMessages);
       setPendingRetry(null);
       if (result.threadId !== activeThreadId) {
         setActiveThreadId(result.threadId);
       }
-      void loadThreads();
+      setBrowserRefreshKey((n) => n + 1);
+      maybeRequestTitle(result.threadId ?? activeThreadId, finalMessages);
     },
     [
       activeThreadId,
+      activeWorkspaceKey,
       isStreaming,
-      loadThreads,
+      maybeRequestTitle,
       messages,
       planId,
       send,
-      workspaceKey,
     ],
   );
 
@@ -276,7 +258,6 @@ export function CoPilotDrawer({
 
   const handleRetry = useCallback(() => {
     if (!pendingRetry) return;
-    // Drop the optimistic user message we left in place so we can re-send fresh.
     setMessages((current) => {
       if (current.length === 0) return current;
       const last = current[current.length - 1];
@@ -296,13 +277,14 @@ export function CoPilotDrawer({
   }, [messages, assistantBuffer, isThinking, error]);
 
   const errorBanner = error ? errorCopy(error) : null;
-  const showEmpty = !isStreaming && !assistantBuffer && messages.length === 0 && !error;
+  const showEmpty =
+    !isStreaming && !assistantBuffer && messages.length === 0 && !error && !loadingThread;
+
   const activeThreadLabel = useMemo(() => {
+    if (activeThreadTitle && activeThreadTitle.trim().length > 0) return activeThreadTitle;
     if (messages.length === 0 && !isStreaming) return "New conversation";
-    const persisted = threads.find((t) => t.threadId === activeThreadId);
-    if (persisted?.title) return persisted.title;
     return deriveTitle(messages);
-  }, [activeThreadId, isStreaming, messages, threads]);
+  }, [activeThreadTitle, isStreaming, messages]);
 
   return (
     <>
@@ -334,20 +316,15 @@ export function CoPilotDrawer({
             <header className="px-4 pt-4 pb-3 border-b border-[#efefef] flex items-center gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] uppercase tracking-wide text-[#888] font-semibold">
-                  {WORKSPACE_LABELS[workspaceKey]}
-                  {currentFocus?.label ? ` · ${currentFocus.label}` : ""}
+                  {WORKSPACE_LABELS[activeWorkspaceKey]}
+                  {currentFocus?.label && activeWorkspaceKey === workspaceKey
+                    ? ` · ${currentFocus.label}`
+                    : ""}
                 </p>
                 <h2 className="text-base font-semibold text-[#1a1a1a] truncate">
                   {activeThreadLabel}
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={handleNewThread}
-                className="text-xs font-medium text-[#155e63] hover:underline whitespace-nowrap"
-              >
-                + New
-              </button>
               <button
                 type="button"
                 aria-label="Close"
@@ -358,52 +335,23 @@ export function CoPilotDrawer({
               </button>
             </header>
 
-            <details className="border-b border-[#efefef] group" open={messages.length === 0}>
-              <summary className="px-4 py-2 text-xs font-medium text-[#666] cursor-pointer list-none flex items-center justify-between">
-                <span>Conversations ({threads.length})</span>
-                <span className="text-[#aaa] group-open:rotate-180 transition-transform">▾</span>
-              </summary>
-              <div className="max-h-48 overflow-y-auto px-2 pb-2">
-                {threadsLoading ? (
-                  <p className="px-2 py-3 text-xs text-[#888]">Loading threads…</p>
-                ) : threadsError ? (
-                  <p className="px-2 py-3 text-xs text-red-600">Couldn&apos;t load threads.</p>
-                ) : threads.length === 0 ? (
-                  <p className="px-2 py-3 text-xs text-[#888]">No saved conversations yet.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {threads.map((thread) => {
-                      const selected = thread.threadId === activeThreadId;
-                      return (
-                        <li key={thread.threadId}>
-                          <button
-                            type="button"
-                            onClick={() => void handleSelectThread(thread.threadId)}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                              selected
-                                ? "bg-[#155e63]/10 text-[#155e63]"
-                                : "hover:bg-[#f7f6f3] text-[#1a1a1a]"
-                            }`}
-                          >
-                            <span className="block truncate font-medium">
-                              {thread.title?.trim() || "Untitled conversation"}
-                            </span>
-                            <span className="block text-[11px] text-[#888]">
-                              {new Date(thread.lastMessageAt).toLocaleString()}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </details>
+            <ThreadBrowser
+              planId={planId}
+              activeWorkspaceKey={activeWorkspaceKey}
+              activeThreadId={activeThreadId}
+              onSelectThread={(item) => void handleSelectThread(item)}
+              onNewThread={handleNewThread}
+              refreshKey={browserRefreshKey}
+            />
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+              {loadingThread && (
+                <p className="text-xs text-[#888]">Loading conversation…</p>
+              )}
+
               {showEmpty && (
                 <div className="text-sm text-[#666] bg-[#faf9f7] border border-[#efefef] rounded-xl p-4">
-                  Ask anything about your {WORKSPACE_LABELS[workspaceKey].toLowerCase()} plan.
+                  Ask anything about your {WORKSPACE_LABELS[activeWorkspaceKey].toLowerCase()} plan.
                   The co-pilot can see your plan snapshot across every workspace.
                 </div>
               )}
