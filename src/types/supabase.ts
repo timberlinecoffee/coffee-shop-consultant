@@ -505,6 +505,119 @@ export interface Database {
           created_at?: string
         }
       }
+      // TIM-721 / TIM-623-A: Build-out & Equipment workspace tables
+      buildout_equipment_items: {
+        Row: {
+          id: string
+          plan_id: string
+          position: number
+          name: string
+          category:
+            | 'espresso'
+            | 'grinder'
+            | 'refrigeration'
+            | 'plumbing'
+            | 'electrical'
+            | 'furniture'
+            | 'smallwares'
+            | 'pos'
+            | 'signage'
+            | 'other'
+          vendor: string | null
+          model: string | null
+          quantity: number
+          unit_cost_cents: number
+          priority_tier: 'must_have' | 'important' | 'nice_to_have'
+          notes: string | null
+          archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          position?: number
+          name: string
+          category:
+            | 'espresso'
+            | 'grinder'
+            | 'refrigeration'
+            | 'plumbing'
+            | 'electrical'
+            | 'furniture'
+            | 'smallwares'
+            | 'pos'
+            | 'signage'
+            | 'other'
+          vendor?: string | null
+          model?: string | null
+          quantity?: number
+          unit_cost_cents?: number
+          priority_tier?: 'must_have' | 'important' | 'nice_to_have'
+          notes?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          position?: number
+          name?: string
+          category?:
+            | 'espresso'
+            | 'grinder'
+            | 'refrigeration'
+            | 'plumbing'
+            | 'electrical'
+            | 'furniture'
+            | 'smallwares'
+            | 'pos'
+            | 'signage'
+            | 'other'
+          vendor?: string | null
+          model?: string | null
+          quantity?: number
+          unit_cost_cents?: number
+          priority_tier?: 'must_have' | 'important' | 'nice_to_have'
+          notes?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      standard_equipment_reference: {
+        Row: {
+          id: string
+          menu_profile: 'espresso_focused' | 'espresso_plus_brew' | 'full_drip' | 'full_food'
+          category: string
+          name_canonical: string
+          must_have: boolean
+          rationale: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          menu_profile: 'espresso_focused' | 'espresso_plus_brew' | 'full_drip' | 'full_food'
+          category: string
+          name_canonical: string
+          must_have?: boolean
+          rationale?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          menu_profile?: 'espresso_focused' | 'espresso_plus_brew' | 'full_drip' | 'full_food'
+          category?: string
+          name_canonical?: string
+          must_have?: boolean
+          rationale?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
