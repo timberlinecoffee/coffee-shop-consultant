@@ -5,7 +5,6 @@ import HomeNav from "./_components/HomeNav";
 import HomepageHero from "./_components/HomepageHero";
 import {
   FadeUp,
-  FadeIn,
   ScaleIn,
   StaggerContainer,
   StaggerItem,
@@ -25,12 +24,13 @@ export const metadata: Metadata = {
 };
 
 // Pexels photos by Ketut Subiyanto (Pexels License — free for commercial use)
+// Selected for contextual fit: barista craft at work, warm/personal portrait
 const PEXELS = {
-  baristaSmiling:
-    "https://images.pexels.com/photos/4349736/pexels-photo-4349736.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
-  baristaBeard:
+  baristaAtWork:
     "https://images.pexels.com/photos/5553518/pexels-photo-5553518.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
-  cafeMachine:
+  baristaPortrait:
+    "https://images.pexels.com/photos/4349736/pexels-photo-4349736.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
+  cafeInterior:
     "https://images.pexels.com/photos/12859353/pexels-photo-12859353.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
 };
 
@@ -42,7 +42,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Eight guided modules",
-    body: "From concept and financials through build-out, menu, marketing, and launch: every decision gets its own planning tool.",
+    body: "Concept through launch — every decision gets its own planning workspace, in the right order.",
   },
   {
     icon: (
@@ -51,7 +51,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Live financial model",
-    body: "Your startup cost estimate and 12-month projection update as you fill in your actual lease terms, equipment, and staffing.",
+    body: "Your startup cost estimate and 12-month projection update as you fill in your actual lease, equipment, and staffing.",
   },
   {
     icon: (
@@ -59,8 +59,8 @@ const FEATURES = [
         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
       </svg>
     ),
-    title: "AI coach, coffee specific",
-    body: "Ask about your plan and get answers from a coach who has been in specialty coffee for fifteen years. Not general business advice.",
+    title: "AI coffee consultant",
+    body: "Ask questions, get specific answers. The AI coach is trained on specialty coffee expertise — not generic business advice.",
   },
   {
     icon: (
@@ -69,7 +69,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Export as PDF",
-    body: "Every module produces a document. All eight combine into your Business Readiness Document: a real plan for lenders and partners.",
+    body: "Every module produces a document. All eight combine into your Business Readiness Document for lenders and partners.",
   },
   {
     icon: (
@@ -78,7 +78,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Progress tracking",
-    body: "See exactly where you are across all eight modules. Pick up where you left off, on your phone, laptop, or tablet.",
+    body: "See where you are across all eight modules. Resume on any device, exactly where you left off.",
   },
   {
     icon: (
@@ -87,7 +87,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Built by someone who opened shops",
-    body: "Trent Rollings is a World Coffee Championships judge and SCA Authorized Trainer who has personally opened and closed coffee businesses.",
+    body: "Trent Rollings is a World Coffee Championships judge and SCA Authorized Trainer who has opened and closed real coffee businesses.",
   },
 ];
 
@@ -210,9 +210,7 @@ export default function LandingPage() {
       <HomeNav />
       <HomepageHero />
 
-      {/* ── Social proof / stats bar ──────────────────────────────────────────
-          Animated counters on scroll. White bg, simple divider layout.
-      ─────────────────────────────────────────────────────────────────────── */}
+      {/* ── Social proof / stats bar ──────────────────────────────────────────── */}
       <section className="bg-white border-b border-neutral-200" style={{ padding: "48px 24px" }}>
         <div className="max-w-4xl mx-auto">
           <FadeUp>
@@ -222,17 +220,17 @@ export default function LandingPage() {
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
             {[
-              { target: 1200, suffix: "+", label: "Plans started", prefix: "" },
-              { target: 8, suffix: "", label: "Planning modules", prefix: "" },
-              { target: 15, suffix: "+", label: "Years in specialty coffee", prefix: "" },
+              { target: 1200, suffix: "+", label: "Plans started" },
+              { target: 8, suffix: "", label: "Planning modules" },
+              { target: 15, suffix: "+", label: "Years in specialty coffee" },
             ].map((s) => (
               <StaggerItem key={s.label}>
                 <div>
                   <p
                     className="font-bold"
-                    style={{ fontSize: "40px", lineHeight: 1, color: "#155e63", letterSpacing: "-0.02em" }}
+                    style={{ fontSize: "40px", lineHeight: 1, color: "var(--teal)", letterSpacing: "-0.02em" }}
                   >
-                    <AnimatedCounter target={s.target} prefix={s.prefix} suffix={s.suffix} />
+                    <AnimatedCounter target={s.target} suffix={s.suffix} />
                   </p>
                   <p className="text-neutral-500 mt-1" style={{ fontSize: "14px" }}>
                     {s.label}
@@ -244,24 +242,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────────────────────
-          Staggered card entrance. Neutral-50 bg.
-      ─────────────────────────────────────────────────────────────────────── */}
+      {/* ── Features ─────────────────────────────────────────────────────────────
+          Teal heading. Staggered card entrance on scroll.
+      ─────────────────────────────────────────────────────────────────────────── */}
       <section id="how-it-works" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-14">
             <p
-              className="font-semibold uppercase mb-3 text-teal"
-              style={{ fontSize: "11px", letterSpacing: "0.12em" }}
+              className="font-semibold uppercase mb-3"
+              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
             >
               What&apos;s included
             </p>
             <h2
-              className="font-bold text-neutral-950"
+              className="font-bold"
               style={{
                 fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
                 lineHeight: 1.2,
                 fontWeight: 700,
+                color: "var(--teal)",
               }}
             >
               Eight sections. Everything a new coffee shop needs.
@@ -275,12 +274,15 @@ export default function LandingPage() {
                   style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
                 >
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-teal mb-4"
-                    style={{ background: "rgba(21,94,99,0.08)" }}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+                    style={{ background: "rgba(21,94,99,0.08)", color: "var(--teal)" }}
                   >
                     {f.icon}
                   </div>
-                  <h3 className="font-semibold text-neutral-950 mb-2" style={{ fontSize: "15px" }}>
+                  <h3
+                    className="font-semibold mb-2"
+                    style={{ fontSize: "15px", color: "var(--teal)" }}
+                  >
                     {f.title}
                   </h3>
                   <p className="text-neutral-600 leading-relaxed" style={{ fontSize: "14px" }}>
@@ -293,28 +295,112 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Value props — contained photo + numbered list ─────────────────────
+      {/* ── AI consultant companion ───────────────────────────────────────────────
+          Teal-tinted surface. Left: copy. Right: chat UI mockup.
+      ─────────────────────────────────────────────────────────────────────────── */}
+      <section
+        className="bg-white"
+        style={{ padding: "96px 24px" }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+            {/* Left — copy */}
+            <div>
+              <FadeUp>
+                <p
+                  className="font-semibold uppercase mb-4"
+                  style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
+                >
+                  AI consultant
+                </p>
+                <h2
+                  className="font-bold mb-5"
+                  style={{
+                    fontSize: "clamp(1.5rem, 3vw, 2rem)",
+                    lineHeight: 1.22,
+                    fontWeight: 700,
+                    color: "var(--teal)",
+                  }}
+                >
+                  Your personal coffee expert, always in your corner.
+                </h2>
+                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
+                  Groundwork isn&apos;t a form you fill out and submit. It&apos;s a planning
+                  companion that guides you — and when you have a question, a real specialty coffee
+                  expert answers it.
+                </p>
+                <StaggerContainer className="space-y-4">
+                  {[
+                    {
+                      title: "Specific, not generic",
+                      body: "Ask about your market, your lease terms, your equipment choices. Answers tailored to your actual plan.",
+                    },
+                    {
+                      title: "Trained on real expertise",
+                      body: "15 years in specialty coffee. World Coffee Championships judge. This is not a general business chatbot.",
+                    },
+                    {
+                      title: "Available at every step",
+                      body: "The consultant is integrated into every module — concept, financials, menu, build-out, launch.",
+                    },
+                  ].map((item) => (
+                    <StaggerItem key={item.title}>
+                      <div className="flex gap-3">
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{ background: "rgba(21,94,99,0.1)" }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <p
+                            className="font-semibold mb-0.5"
+                            style={{ fontSize: "14px", color: "var(--teal)" }}
+                          >
+                            {item.title}
+                          </p>
+                          <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.55 }}>
+                            {item.body}
+                          </p>
+                        </div>
+                      </div>
+                    </StaggerItem>
+                  ))}
+                </StaggerContainer>
+              </FadeUp>
+            </div>
+
+            {/* Right — chat mockup */}
+            <ScaleIn delay={0.1}>
+              <AIChatMockup />
+            </ScaleIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Value props — contained photo + numbered list ─────────────────────────
           Photo on the left in a rounded frame (not full-bleed). Text on right.
-      ─────────────────────────────────────────────────────────────────────── */}
-      <section className="bg-white" style={{ padding: "96px 24px" }}>
+      ─────────────────────────────────────────────────────────────────────────── */}
+      <section style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
             {/* Contained photo — 3 cols */}
             <ScaleIn className="lg:col-span-3 relative">
               <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
                 <Image
-                  src={PEXELS.baristaSmiling}
-                  alt="Barista serving coffee in a specialty cafe"
+                  src={PEXELS.baristaAtWork}
+                  alt="Specialty coffee barista focused on their craft"
                   fill
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 60vw"
                 />
-                {/* Subtle inner shadow overlay for depth */}
                 <div
                   className="absolute inset-0"
                   style={{
                     background:
-                      "linear-gradient(to bottom right, transparent 50%, rgba(14,68,72,0.15) 100%)",
+                      "linear-gradient(to bottom right, transparent 60%, rgba(14,68,72,0.18) 100%)",
                   }}
                 />
               </div>
@@ -328,7 +414,10 @@ export default function LandingPage() {
                   boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                 }}
               >
-                <p className="font-bold" style={{ fontSize: "22px", lineHeight: 1, color: "#155e63" }}>
+                <p
+                  className="font-bold"
+                  style={{ fontSize: "22px", lineHeight: 1, color: "var(--teal)" }}
+                >
                   8
                 </p>
                 <p className="text-neutral-600 mt-0.5" style={{ fontSize: "12px" }}>
@@ -341,17 +430,18 @@ export default function LandingPage() {
             <div className="lg:col-span-2 space-y-4">
               <FadeUp>
                 <p
-                  className="font-semibold uppercase text-teal mb-2"
-                  style={{ fontSize: "11px", letterSpacing: "0.12em" }}
+                  className="font-semibold uppercase mb-2"
+                  style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
                 >
                   A plan, not just advice
                 </p>
                 <h2
-                  className="font-bold text-neutral-950 mb-6"
+                  className="font-bold mb-6"
                   style={{
                     fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
                     lineHeight: 1.25,
                     fontWeight: 700,
+                    color: "var(--teal)",
                   }}
                 >
                   You leave with documents, not notes.
@@ -377,18 +467,18 @@ export default function LandingPage() {
                 ].map((item) => (
                   <StaggerItem key={item.num}>
                     <div
-                      className="flex gap-4 p-4 rounded-xl border border-neutral-200 bg-neutral-50 hover:border-teal/30 transition-colors"
+                      className="flex gap-4 p-4 rounded-xl border border-neutral-200 bg-white hover:border-teal/30 transition-colors"
                     >
                       <span
                         className="font-bold flex-shrink-0"
-                        style={{ fontSize: "13px", color: "#155e63", opacity: 0.5, marginTop: "2px" }}
+                        style={{ fontSize: "13px", color: "var(--teal)", opacity: 0.45, marginTop: "2px" }}
                       >
                         {item.num}
                       </span>
                       <div>
                         <p
-                          className="font-semibold text-neutral-950 mb-0.5"
-                          style={{ fontSize: "14px" }}
+                          className="font-semibold mb-0.5"
+                          style={{ fontSize: "14px", color: "var(--teal)" }}
                         >
                           {item.title}
                         </p>
@@ -414,21 +504,71 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ──────────────────────────────────────────────────────
-          White cards on neutral-50 bg. Lora italic quotes. Stagger on scroll.
-      ─────────────────────────────────────────────────────────────────────── */}
+      {/* ── Module snapshots strip ────────────────────────────────────────────────
+          3 mini browser-chrome cards showing different platform modules.
+      ─────────────────────────────────────────────────────────────────────────── */}
+      <section className="bg-white" style={{ padding: "96px 24px" }}>
+        <div className="max-w-6xl mx-auto">
+          <FadeUp className="text-center mb-14">
+            <p
+              className="font-semibold uppercase mb-3"
+              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
+            >
+              Inside the platform
+            </p>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)",
+                lineHeight: 1.2,
+                fontWeight: 700,
+                color: "var(--teal)",
+              }}
+            >
+              Every module, purpose-built for the decision it covers.
+            </h2>
+          </FadeUp>
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StaggerItem>
+              <ModuleCard
+                title="Financials"
+                description="Live startup cost estimate and 12-month projection. Updates as your plan details change."
+                mockup={<FinancialsMockup />}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <ModuleCard
+                title="Menu Pricing"
+                description="Build your menu with cost-per-cup analysis and margin targets built in."
+                mockup={<MenuMockup />}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <ModuleCard
+                title="Launch Plan"
+                description="A milestone-based launch checklist tied to your actual target open date."
+                mockup={<LaunchMockup />}
+              />
+            </StaggerItem>
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* ── Testimonials ──────────────────────────────────────────────────────────
+          Lora italic quotes. Stagger on scroll. Teal heading.
+      ─────────────────────────────────────────────────────────────────────────── */}
       <section style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
             <p
-              className="font-semibold uppercase mb-3 text-teal"
-              style={{ fontSize: "11px", letterSpacing: "0.12em" }}
+              className="font-semibold uppercase mb-3"
+              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
             >
               From people who used it
             </p>
             <h2
-              className="font-bold text-neutral-950"
-              style={{ fontSize: "clamp(1.5rem, 3.5vw, 2rem)", lineHeight: 1.25, fontWeight: 700 }}
+              className="font-bold"
+              style={{ fontSize: "clamp(1.5rem, 3.5vw, 2rem)", lineHeight: 1.25, fontWeight: 700, color: "var(--teal)" }}
             >
               Built for the part where you don&apos;t know what you don&apos;t know.
             </h2>
@@ -440,7 +580,6 @@ export default function LandingPage() {
                   className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/30 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
                   style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
                 >
-                  {/* Teal accent bar */}
                   <div className="w-8 h-0.5 mb-5" style={{ background: "var(--teal)" }} />
                   <blockquote
                     className="text-neutral-700 leading-relaxed mb-5 flex-1"
@@ -461,7 +600,10 @@ export default function LandingPage() {
                       {t.initial}
                     </div>
                     <div>
-                      <p className="font-semibold text-neutral-950" style={{ fontSize: "13px" }}>
+                      <p
+                        className="font-semibold"
+                        style={{ fontSize: "13px", color: "var(--teal)" }}
+                      >
                         {t.name}
                       </p>
                       <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
@@ -476,9 +618,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA break — gradient, no full-bleed photo ─────────────────────────
-          Clean teal gradient with noise texture. Premium feel.
-      ─────────────────────────────────────────────────────────────────────── */}
+      {/* ── CTA break — gradient, no photo ────────────────────────────────────── */}
       <section
         className="relative overflow-hidden"
         style={{
@@ -486,7 +626,6 @@ export default function LandingPage() {
           padding: "88px 24px",
         }}
       >
-        {/* Dot grid */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -528,24 +667,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Pricing — vertical 3-column cards ─────────────────────────────────
-          Standard SaaS layout. Accelerator center + teal bg.
-      ─────────────────────────────────────────────────────────────────────── */}
+      {/* ── Pricing ───────────────────────────────────────────────────────────── */}
       <section id="pricing" className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-14">
             <p
-              className="font-semibold uppercase mb-3 text-teal"
-              style={{ fontSize: "11px", letterSpacing: "0.12em" }}
+              className="font-semibold uppercase mb-3"
+              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
             >
               Pricing
             </p>
             <h2
-              className="font-bold text-neutral-950"
+              className="font-bold"
               style={{
                 fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
                 lineHeight: 1.2,
                 fontWeight: 700,
+                color: "var(--teal)",
               }}
             >
               Start free. Go deeper when you&apos;re ready.
@@ -566,17 +704,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── About ─────────────────────────────────────────────────────────────
-          Contained photo on left. Text on right. Neutral-50 bg.
-      ─────────────────────────────────────────────────────────────────────── */}
+      {/* ── About ─────────────────────────────────────────────────────────────── */}
       <section id="about" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <ScaleIn className="relative">
               <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
                 <Image
-                  src={PEXELS.cafeMachine}
-                  alt="Barista at a modern espresso machine in a specialty cafe"
+                  src={PEXELS.baristaPortrait}
+                  alt="Specialty coffee professional — warm and welcoming"
                   fill
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 50vw"
@@ -586,17 +722,18 @@ export default function LandingPage() {
             <div>
               <FadeUp>
                 <p
-                  className="font-semibold uppercase mb-4 text-teal"
-                  style={{ fontSize: "11px", letterSpacing: "0.12em" }}
+                  className="font-semibold uppercase mb-4"
+                  style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--teal)" }}
                 >
                   Who built this
                 </p>
                 <h2
-                  className="font-bold text-neutral-950 mb-5"
+                  className="font-bold mb-5"
                   style={{
                     fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
                     lineHeight: 1.25,
                     fontWeight: 700,
+                    color: "var(--teal)",
                   }}
                 >
                   Built by someone who&apos;s been there.
@@ -637,11 +774,7 @@ export default function LandingPage() {
               <div key={col.heading}>
                 <p
                   className="font-semibold uppercase mb-4"
-                  style={{
-                    color: "var(--neutral-500)",
-                    fontSize: "11px",
-                    letterSpacing: "0.08em",
-                  }}
+                  style={{ color: "var(--neutral-500)", fontSize: "11px", letterSpacing: "0.08em" }}
                 >
                   {col.heading}
                 </p>
@@ -651,11 +784,7 @@ export default function LandingPage() {
                       <Link
                         href={link.href}
                         className="transition-colors"
-                        style={{
-                          color: "var(--neutral-400)",
-                          fontSize: "14px",
-                          textDecoration: "none",
-                        }}
+                        style={{ color: "var(--neutral-400)", fontSize: "14px", textDecoration: "none" }}
                       >
                         {link.label}
                       </Link>
@@ -679,6 +808,374 @@ export default function LandingPage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+/* ── AIChatMockup ─────────────────────────────────────────────────────────── */
+
+function AIChatMockup() {
+  const messages = [
+    {
+      role: "user" as const,
+      text: "What startup cost should I plan for a 900 sq ft cafe in a mid-size city?",
+    },
+    {
+      role: "assistant" as const,
+      text: "For a 900 sq ft buildout in a mid-size market, I'd budget $110k–$165k all-in. Here's the breakdown I'd use:",
+    },
+    {
+      role: "assistant" as const,
+      list: [
+        "Espresso equipment: $22–38k",
+        "Renovation: $35–65k",
+        "FF&E: $12–22k",
+        "Working capital: $20–30k",
+      ],
+    },
+    {
+      role: "user" as const,
+      text: "How does that change if I go with a drive-through format?",
+    },
+  ];
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden border border-neutral-200"
+      style={{
+        boxShadow: "0 16px 48px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200"
+        style={{ background: "white" }}
+      >
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(21,94,99,0.1)" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <p className="font-semibold" style={{ fontSize: "13px", color: "var(--teal)" }}>
+            AI Coffee Consultant
+          </p>
+          <p style={{ color: "#8F8F85", fontSize: "11px" }}>
+            Trained on 15+ years of specialty coffee expertise
+          </p>
+        </div>
+        <div
+          className="ml-auto w-2 h-2 rounded-full"
+          style={{ background: "#2A6B4A", flexShrink: 0 }}
+        />
+      </div>
+
+      {/* Messages */}
+      <div className="p-4 space-y-3" style={{ background: "#FAFAF8" }}>
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            {msg.role === "assistant" && (
+              <div
+                className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mr-2 mt-0.5"
+                style={{ background: "rgba(21,94,99,0.1)", flexShrink: 0 }}
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2.5">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+            )}
+            <div
+              className="rounded-xl px-3 py-2 max-w-xs"
+              style={{
+                background: msg.role === "user" ? "var(--teal)" : "white",
+                borderRadius:
+                  msg.role === "user"
+                    ? "14px 14px 2px 14px"
+                    : "2px 14px 14px 14px",
+                border: msg.role === "assistant" ? "1px solid #E5E5E0" : "none",
+              }}
+            >
+              {msg.text && (
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: msg.role === "user" ? "rgba(255,255,255,0.92)" : "#2E2E28",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {msg.text}
+                </p>
+              )}
+              {msg.list && (
+                <ul className="space-y-1">
+                  {msg.list.map((item, j) => (
+                    <li key={j} className="flex gap-1.5">
+                      <span style={{ color: "var(--sage)", fontSize: "11px", flexShrink: 0 }}>
+                        &#10003;
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#2E2E28", lineHeight: 1.4 }}>
+                        {item}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Typing indicator */}
+        <div className="flex justify-start">
+          <div
+            className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mr-2"
+            style={{ background: "rgba(21,94,99,0.1)" }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div
+            className="rounded-xl px-3 py-2.5 flex items-center gap-1"
+            style={{
+              background: "white",
+              border: "1px solid #E5E5E0",
+              borderRadius: "2px 14px 14px 14px",
+            }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B8B8B0" }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B8B8B0" }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B8B8B0" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Input bar */}
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-t border-neutral-200"
+        style={{ background: "white" }}
+      >
+        <div
+          className="flex-1 rounded-lg px-3 py-2"
+          style={{ background: "#F7F7F5", fontSize: "12px", color: "#B8B8B0" }}
+        >
+          Ask about your plan...
+        </div>
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center"
+          style={{ background: "var(--teal)" }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ModuleCard ───────────────────────────────────────────────────────────── */
+
+function ModuleCard({
+  title,
+  description,
+  mockup,
+}: {
+  title: string;
+  description: string;
+  mockup: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden border border-neutral-200 bg-white hover:-translate-y-1 transition-all duration-200"
+      style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+    >
+      {/* Mini browser chrome */}
+      <div
+        className="flex items-center gap-1.5 px-3"
+        style={{ height: "28px", background: "#F0F0EE", borderBottom: "1px solid #E5E5E0" }}
+      >
+        <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
+        <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
+        <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
+      </div>
+      {/* Content */}
+      <div style={{ minHeight: "200px" }}>{mockup}</div>
+      {/* Label */}
+      <div className="px-5 py-4 border-t border-neutral-100">
+        <p className="font-semibold mb-1" style={{ fontSize: "14px", color: "var(--teal)" }}>
+          {title}
+        </p>
+        <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── FinancialsMockup ─────────────────────────────────────────────────────── */
+
+function FinancialsMockup() {
+  return (
+    <div className="p-4" style={{ background: "#FAFAF8" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>
+          Financials
+        </p>
+        <span style={{ color: "#76b39d", fontSize: "10px", fontWeight: 600 }}>67%</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {[
+          { label: "Startup cost", value: "$142,500" },
+          { label: "Monthly rent", value: "$4,200" },
+          { label: "Break-even", value: "Month 14" },
+          { label: "Year 1 revenue", value: "$328k" },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="rounded-lg p-2.5 border"
+            style={{ background: "white", borderColor: "#E5E5E0" }}
+          >
+            <p style={{ color: "#8F8F85", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>
+              {s.label}
+            </p>
+            <p style={{ color: "var(--teal)", fontSize: "14px", fontWeight: 700, lineHeight: 1 }}>
+              {s.value}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-lg p-3" style={{ background: "white", border: "1px solid #E5E5E0" }}>
+        <p style={{ color: "#8F8F85", fontSize: "9px", marginBottom: "6px" }}>12-month projection</p>
+        <div className="flex items-end gap-1 h-10">
+          {[20, 35, 45, 55, 60, 68, 75, 82, 88, 90, 95, 100].map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-sm"
+              style={{ height: `${h}%`, background: i < 6 ? "#E5E5E0" : "var(--sage)", opacity: i < 6 ? 0.6 : 1 }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── MenuMockup ───────────────────────────────────────────────────────────── */
+
+function MenuMockup() {
+  const items = [
+    { name: "Espresso", cost: "$0.48", price: "$3.50", margin: "86%" },
+    { name: "Oat Latte", cost: "$1.12", price: "$6.00", margin: "81%" },
+    { name: "Cold Brew", cost: "$0.85", price: "$5.50", margin: "85%" },
+    { name: "Matcha Latte", cost: "$1.45", price: "$6.50", margin: "78%" },
+  ];
+
+  return (
+    <div className="p-4" style={{ background: "#FAFAF8" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>
+          Menu Pricing
+        </p>
+        <span
+          className="rounded px-2 py-0.5"
+          style={{ background: "rgba(21,94,99,0.08)", color: "var(--teal)", fontSize: "10px", fontWeight: 600 }}
+        >
+          4 items
+        </span>
+      </div>
+      <div
+        className="rounded-lg overflow-hidden border"
+        style={{ borderColor: "#E5E5E0" }}
+      >
+        <div
+          className="grid grid-cols-4 px-3 py-1.5"
+          style={{ background: "#F0F0EE" }}
+        >
+          {["Item", "Cost", "Price", "Margin"].map((h) => (
+            <p key={h} style={{ fontSize: "9px", color: "#8F8F85", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {h}
+            </p>
+          ))}
+        </div>
+        {items.map((item, i) => (
+          <div
+            key={item.name}
+            className="grid grid-cols-4 px-3 py-2"
+            style={{
+              background: "white",
+              borderTop: i > 0 ? "1px solid #F0F0EE" : "none",
+            }}
+          >
+            <p style={{ fontSize: "11px", color: "var(--teal)", fontWeight: 500 }}>{item.name}</p>
+            <p style={{ fontSize: "11px", color: "#8F8F85" }}>{item.cost}</p>
+            <p style={{ fontSize: "11px", color: "#4A4A42" }}>{item.price}</p>
+            <p style={{ fontSize: "11px", color: "#2A6B4A", fontWeight: 600 }}>{item.margin}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── LaunchMockup ─────────────────────────────────────────────────────────── */
+
+function LaunchMockup() {
+  const milestones = [
+    { label: "Lease signed", done: true, date: "Mar 1" },
+    { label: "Permits filed", done: true, date: "Mar 15" },
+    { label: "Equipment ordered", done: true, date: "Apr 1" },
+    { label: "Staff hired", done: false, date: "May 1" },
+    { label: "Soft open", done: false, date: "Jun 1" },
+    { label: "Grand opening", done: false, date: "Jun 15" },
+  ];
+
+  return (
+    <div className="p-4" style={{ background: "#FAFAF8" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>
+          Launch Plan
+        </p>
+        <span style={{ color: "#76b39d", fontSize: "10px", fontWeight: 600 }}>3 of 6 done</span>
+      </div>
+      <div className="space-y-1.5">
+        {milestones.map((m) => (
+          <div
+            key={m.label}
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+            style={{ background: "white", border: "1px solid #F0F0EE" }}
+          >
+            <div
+              className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: m.done ? "#76b39d" : "#E5E5E0" }}
+            >
+              {m.done && (
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+            </div>
+            <p
+              style={{
+                fontSize: "11px",
+                color: m.done ? "#8F8F85" : "var(--teal)",
+                textDecoration: m.done ? "line-through" : "none",
+                flex: 1,
+              }}
+            >
+              {m.label}
+            </p>
+            <p style={{ fontSize: "10px", color: "#B8B8B0", flexShrink: 0 }}>{m.date}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -720,7 +1217,7 @@ function PricingCard({ plan }: { plan: PlanData }) {
         className="font-semibold mb-3"
         style={{
           fontSize: "18px",
-          color: plan.accent ? "white" : "#0D0D0B",
+          color: plan.accent ? "white" : "var(--teal)",
           fontWeight: 600,
         }}
       >
@@ -732,7 +1229,7 @@ function PricingCard({ plan }: { plan: PlanData }) {
             fontSize: "38px",
             fontWeight: 700,
             lineHeight: 1,
-            color: plan.accent ? "white" : "#0D0D0B",
+            color: plan.accent ? "white" : "var(--teal)",
             letterSpacing: "-0.02em",
           }}
         >
