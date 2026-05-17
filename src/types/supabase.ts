@@ -359,6 +359,88 @@ export interface Database {
           updated_at?: string
         }
       }
+      buildout_equipment_items: {
+        Row: {
+          id: string
+          plan_id: string
+          name: string
+          category: string
+          vendor: string | null
+          model: string | null
+          quantity: number
+          unit_cost_cents: number
+          priority_tier: 'must_have' | 'important' | 'nice_to_have'
+          notes: string | null
+          archived: boolean
+          position: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          name: string
+          category: string
+          vendor?: string | null
+          model?: string | null
+          quantity?: number
+          unit_cost_cents?: number
+          priority_tier?: 'must_have' | 'important' | 'nice_to_have'
+          notes?: string | null
+          archived?: boolean
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          name?: string
+          category?: string
+          vendor?: string | null
+          model?: string | null
+          quantity?: number
+          unit_cost_cents?: number
+          priority_tier?: 'must_have' | 'important' | 'nice_to_have'
+          notes?: string | null
+          archived?: boolean
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      standard_equipment_reference: {
+        Row: {
+          id: string
+          menu_profile: string
+          category: string
+          name_canonical: string
+          must_have: boolean
+          rationale: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          menu_profile: string
+          category: string
+          name_canonical: string
+          must_have?: boolean
+          rationale?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          menu_profile?: string
+          category?: string
+          name_canonical?: string
+          must_have?: boolean
+          rationale?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       menu_items: {
         Row: {
           id: string
