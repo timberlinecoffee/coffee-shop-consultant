@@ -71,6 +71,9 @@ export interface Database {
           plan_name: string
           current_module: number
           status: 'in_progress' | 'completed'
+          // TIM-736: cross-workspace readiness check
+          latest_readiness_check: Json | null
+          latest_readiness_check_at: string | null
           created_at: string
           updated_at: string
         }
@@ -80,6 +83,8 @@ export interface Database {
           plan_name?: string
           current_module?: number
           status?: 'in_progress' | 'completed'
+          latest_readiness_check?: Json | null
+          latest_readiness_check_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -89,6 +94,8 @@ export interface Database {
           plan_name?: string
           current_module?: number
           status?: 'in_progress' | 'completed'
+          latest_readiness_check?: Json | null
+          latest_readiness_check_at?: string | null
           created_at?: string
           updated_at?: string
         }

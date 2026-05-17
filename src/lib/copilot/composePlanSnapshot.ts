@@ -1,11 +1,14 @@
-// TIM-618-C + TIM-735: Workspace snapshot composer with launch_plan branch.
+// TIM-618-C + TIM-735 + TIM-736: Workspace snapshot composer.
 // Generic workspaces read workspace_documents; launch_plan queries structured tables directly.
+// composeAllWorkspacesSnapshot assembles compact cross-workspace input for the readiness check.
 
 import type { WorkspaceKey } from "@/types/supabase"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 const TOKEN_CHARS = 4 // rough chars-per-token
 const MAX_CHARS_PER_WORKSPACE = 600 * TOKEN_CHARS // ~600 tokens
+// TIM-736: per-workspace budget for the cross-workspace readiness snapshot (total ≤8k tokens)
+const MAX_CHARS_PER_WS_READINESS = 500 * TOKEN_CHARS // ~500 tokens × 6 workspaces = 3k tokens data
 
 export type LaunchMeta = {
   launchDate: string | null
@@ -230,4 +233,77 @@ async function composeLaunchPlanSnapshot(
     estimatedTokens: Math.ceil(snapshot.length / TOKEN_CHARS),
     launchMeta: { launchDate, today, tMinus, standardMilestoneTitles: stdTitles },
   }
+}
+
+// ── TIM-736: Cross-workspace readiness snapshot ───────────────────────────────
+
+export type WorkspaceReadinessSnapshot = {
+  key: WorkspaceKey
+  text: string
+  isEmpty: boolean
+}
+
+const GENERIC_WORKSPACE_KEYS: WorkspaceKey[] = [
+  "concept",
+  "location_lease",
+  "financials",
+  "menu_pricing",
+  "buildout_equipment",
+]
+
+export async function composeAllWorkspacesSnapshot(
+  planId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+): Promise<{
+  snapshots: WorkspaceReadinessSnapshot[]
+  totalChars: number
+  launchMeta?: LaunchMeta
+}> {
+  const [{ data: docs }, launchResult] = await Promise.all([
+    supabase
+      .from("workspace_documents")
+      .select("workspace_key, content")
+      .eq("plan_id", planId)
+      .in("workspace_key", GENERIC_WORKSPACE_KEYS),
+    composeLaunchPlanSnapshot(planId, supabase),
+  ])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const docMap = new Map<string, any>()
+  for (const doc of docs ?? []) {
+    docMap.set(doc.workspace_key as string, doc.content)
+  }
+
+  const snapshots: WorkspaceReadinessSnapshot[] = []
+
+  for (const key of GENERIC_WORKSPACE_KEYS) {
+    const content = docMap.get(key)
+    if (!content) {
+      snapshots.push({ key, text: "No data entered.", isEmpty: true })
+      continue
+    }
+    const raw = JSON.stringify(content)
+    const text =
+      raw.length > MAX_CHARS_PER_WS_READINESS
+        ? raw.slice(0, MAX_CHARS_PER_WS_READINESS) + "… [truncated]"
+        : raw
+    snapshots.push({ key, text, isEmpty: false })
+  }
+
+  const launchText =
+    launchResult.snapshot.length > MAX_CHARS_PER_WS_READINESS
+      ? launchResult.snapshot.slice(0, MAX_CHARS_PER_WS_READINESS) + "… [truncated]"
+      : launchResult.snapshot
+
+  const launchIsEmpty =
+    launchResult.snapshot.startsWith("No workspace documents") ||
+    launchResult.snapshot.includes("No milestones yet") &&
+    launchResult.snapshot.includes("No items yet") &&
+    launchResult.snapshot.includes("No roles yet")
+
+  snapshots.push({ key: "launch_plan", text: launchText, isEmpty: launchIsEmpty })
+
+  const totalChars = snapshots.reduce((sum, s) => sum + s.text.length, 0)
+  return { snapshots, totalChars, launchMeta: launchResult.launchMeta }
 }

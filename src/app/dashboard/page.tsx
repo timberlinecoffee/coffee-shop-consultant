@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       .single(),
     supabase
       .from("coffee_shop_plans")
-      .select("id")
+      .select("id, latest_readiness_check, latest_readiness_check_at")
       .eq("user_id", user.id)
       .single(),
   ]);
@@ -75,6 +75,23 @@ export default async function DashboardPage() {
 
   const isPaid = subscriptionTier !== "free";
 
+  // TIM-736: readiness check banner data
+  type ReadinessOverall = "green" | "yellow" | "red";
+  const readinessCheck = plan?.latest_readiness_check as { overall?: ReadinessOverall } | null | undefined;
+  const readinessAt = plan?.latest_readiness_check_at ?? null;
+  const readinessOverall: ReadinessOverall | null = readinessCheck?.overall ?? null;
+  // Show banner only if check is recent (within 7 days)
+  const readinessBannerVisible =
+    readinessOverall !== null &&
+    readinessAt !== null &&
+    Date.now() - new Date(readinessAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+
+  const READINESS_COLORS: Record<ReadinessOverall, { bg: string; text: string; dot: string; label: string }> = {
+    green: { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800", dot: "bg-emerald-500", label: "On track" },
+    yellow: { bg: "bg-amber-50 border-amber-200", text: "text-amber-800", dot: "bg-amber-400", label: "Gaps to address" },
+    red: { bg: "bg-red-50 border-red-200", text: "text-red-800", dot: "bg-red-500", label: "Critical blockers" },
+  };
+
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
       {/* Top bar */}
@@ -96,6 +113,28 @@ export default async function DashboardPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-10">
+        {/* TIM-736: Launch readiness banner */}
+        {readinessBannerVisible && readinessOverall && (
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border mb-6 ${READINESS_COLORS[readinessOverall].bg}`}>
+            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${READINESS_COLORS[readinessOverall].dot}`} />
+            <p className={`text-xs font-medium flex-1 ${READINESS_COLORS[readinessOverall].text}`}>
+              Last readiness check: <span className="font-semibold">{READINESS_COLORS[readinessOverall].label}</span>
+              {readinessAt && (
+                <span className="font-normal opacity-70">
+                  {" · "}
+                  {new Date(readinessAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              )}
+            </p>
+            <Link
+              href="/workspace/launch-plan"
+              className={`text-xs font-semibold flex-shrink-0 hover:underline ${READINESS_COLORS[readinessOverall].text}`}
+            >
+              View results →
+            </Link>
+          </div>
+        )}
+
         {/* Greeting + readiness */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
           <div>
