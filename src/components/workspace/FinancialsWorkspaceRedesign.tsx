@@ -246,6 +246,8 @@ const MODULE_ITEMS = [
   { number: 8, label: "Launch",     Icon: IconLaunch,     href: "/workspace/launch-plan" },
 ];
 
+const ACTIVE_MODULE_INDEX = MODULE_ITEMS.findIndex(({ href }) => href === "/workspace/financials");
+
 // ─── Live SVG cost breakdown chart ───────────────────────────────────────────
 
 interface CostBreakdownChartProps {
@@ -996,7 +998,7 @@ export function FinancialsWorkspaceRedesign({ planId }: FinancialsWorkspaceRedes
             Financials
           </span>
           <span style={{ fontSize: "var(--text-body-sm)", color: "var(--neutral-600)", fontWeight: 400 }}>
-            Section 2 of 8
+            Section {ACTIVE_MODULE_INDEX + 1} of {MODULE_ITEMS.length}
           </span>
           <ReadinessRingSmall pct={completionPct} />
           <button
@@ -1159,20 +1161,24 @@ export function FinancialsWorkspaceRedesign({ planId }: FinancialsWorkspaceRedes
                     {
                       label: "Monthly rent",
                       value: monthlyRentCents > 0 ? `$${fmtDollars(monthlyRentCents)}` : "Not set",
+                      tooltip: undefined as string | undefined,
                     },
                     {
                       label: "Break-even",
-                      value: grandTotal > 0 && monthlyRentCents > 0
-                        ? `Month ${Math.ceil(grandTotal / (monthlyRentCents * 0.3) / 100) + 12}`
-                        : "Add costs first",
+                      value: "—",
+                      tooltip: "Add all costs to estimate break-even",
                     },
                     {
                       label: "Startup total",
                       value: grandTotal > 0 ? `$${fmtDollars(grandTotal)}` : "Not set",
+                      tooltip: undefined as string | undefined,
                     },
-                  ].map(({ label, value }) => (
+                  ].map(({ label, value, tooltip }) => (
                     <div key={label}>
-                      <div style={{ fontSize: "var(--text-h3)", fontWeight: 700, color: "var(--neutral-950)", lineHeight: 1 }}>
+                      <div
+                        title={tooltip}
+                        style={{ fontSize: "var(--text-h3)", fontWeight: 700, color: "var(--neutral-950)", lineHeight: 1, cursor: tooltip ? "help" : undefined }}
+                      >
                         {value}
                       </div>
                       <div style={{ fontSize: "var(--text-body-sm)", color: "var(--neutral-600)", marginTop: 4, fontWeight: 400 }}>
