@@ -3,8 +3,10 @@ import { FinancialsClient } from "@/components/financials/FinancialsClient";
 import { AiFindingsSidebar } from "@/components/financials/AiFindingsSidebar";
 import { loadWorkspaceContext } from "../_shared";
 import { createClient } from "@/lib/supabase/server";
+import { mergeRolledStartupCosts } from "@/lib/buildout/mergeRolledStartupCosts";
 import type { FinancialInputs } from "@/lib/financials/calc";
 import type { Flag } from "@/lib/financials/sanityChecks";
+import type { StartupCostLine } from "@/types/financials";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,13 @@ function extractFinancialInputs(
   };
 }
 
+export type DerivedStartupCostRow = {
+  key: string;
+  label: string;
+  amount_cents: number;
+  _derived: true;
+};
+
 export default async function FinancialsWorkspacePage() {
   const { planId } = await loadWorkspaceContext();
   const supabase = await createClient();
@@ -51,10 +60,17 @@ export default async function FinancialsWorkspacePage() {
   const flags: Flag[] = aiFindings?.flags ?? [];
   const lastRunAt: string | null = aiFindings?.last_run_at ?? null;
 
+  // Gap 2: inject derived rows from buildout_equipment _digest
+  const existingStartupCosts = (content?.startup_costs as StartupCostLine[] | null) ?? [];
+  const allStartupCosts = await mergeRolledStartupCosts(planId, supabase, existingStartupCosts);
+  const derivedStartupCosts = allStartupCosts.filter(
+    (r): r is DerivedStartupCostRow => r._derived === true,
+  );
+
   return (
     <div className="flex gap-6 items-start">
       <div className="flex-1 min-w-0 space-y-6">
-        <FinancialsWorkspace planId={planId} />
+        <FinancialsWorkspace planId={planId} derivedStartupCosts={derivedStartupCosts} />
         <FinancialsClient planId={planId} inputs={financialInputs} />
       </div>
       {flags.length > 0 && (

@@ -60,18 +60,22 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     .eq("plan_id", plan.id)
     .in("workspace_key", wsKeys)
 
+  // Allow templates with a dataLoader to render even without a stored workspace doc.
   const primary = docs?.find((d) => d.workspace_key === tmpl.workspace_key)
-  if (!primary) {
+  if (!primary && !tmpl.dataLoader) {
     return Response.json({ error: "Workspace document not found" }, { status: 404 })
   }
 
   registerFonts()
 
+  const extra = tmpl.dataLoader ? await tmpl.dataLoader(supabase, plan.id) : undefined
+
   const ctx = {
-    content: primary.content,
+    content: primary?.content ?? null,
     brand: BRAND,
     user: { id: user.id, email: profile.email ?? null },
     plan: { id: plan.id, shop_name: plan.shop_name ?? null },
+    extra,
   }
 
   const element = (await tmpl.render(ctx)) as ReactElement<DocumentProps, string | JSXElementConstructor<unknown>>

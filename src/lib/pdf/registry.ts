@@ -1,23 +1,28 @@
 import type { ReactElement } from "react"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { BrandTokens } from "./brand"
 
-export type PdfRenderContext<TContent = unknown> = {
+export type PdfRenderContext<TContent = unknown, TExtra = unknown> = {
   content: TContent
   brand: BrandTokens
   user: { id: string; email: string | null }
   plan: { id: string; shop_name: string | null }
+  extra?: TExtra
 }
 
-export type PdfTemplate<TContent = unknown> = {
+export type PdfTemplate<TContent = unknown, TExtra = unknown> = {
   workspace_key: WorkspaceKey
   // Templates can be sync (pure layout) or async (need to pre-render charts,
   // fetch images, etc). The route awaits either way.
   render: (
-    ctx: PdfRenderContext<TContent>
+    ctx: PdfRenderContext<TContent, TExtra>
   ) => ReactElement | Promise<ReactElement>
-  filename: (ctx: PdfRenderContext<TContent>) => string
+  filename: (ctx: PdfRenderContext<TContent, TExtra>) => string
   also_load?: WorkspaceKey[]
+  // Optional: fetch extra data (e.g. from DB tables) before render.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dataLoader?: (supabase: SupabaseClient<any>, planId: string) => Promise<TExtra>
 }
 
 // Registry maps templateId → PdfTemplate.

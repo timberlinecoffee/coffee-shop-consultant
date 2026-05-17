@@ -21,6 +21,7 @@ import type {
   FixedCostCategory,
   FundingSource,
 } from "@/types/financials";
+import type { DerivedStartupCostRow } from "@/app/workspace/financials/page";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -283,9 +284,10 @@ function computeBreakEven(pnl: FinancialsContent["monthly_pnl"]) {
 
 interface FinancialsWorkspaceProps {
   planId: string;
+  derivedStartupCosts?: DerivedStartupCostRow[];
 }
 
-export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
+export function FinancialsWorkspace({ planId, derivedStartupCosts = [] }: FinancialsWorkspaceProps) {
   const [financials, setFinancials] =
     useState<FinancialsContent>(EMPTY_FINANCIALS);
   const [loading, setLoading] = useState(true);
@@ -541,10 +543,9 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
 
   const pnlSummary = computePnl(financials.monthly_pnl);
   const breakEven = computeBreakEven(financials.monthly_pnl);
-  const totalStartupCosts = financials.startup_costs.reduce(
-    (s, l) => s + l.amount_cents,
-    0
-  );
+  const derivedTotal = derivedStartupCosts.reduce((s, r) => s + r.amount_cents, 0);
+  const totalStartupCosts =
+    financials.startup_costs.reduce((s, l) => s + l.amount_cents, 0) + derivedTotal;
   const totalFunding = financials.funding.reduce(
     (s, l) => s + l.amount_cents,
     0
@@ -631,7 +632,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
               title="Startup Costs"
               description="One-time costs to open your shop."
             >
-              {financials.startup_costs.length === 0 ? (
+              {financials.startup_costs.length === 0 && derivedStartupCosts.length === 0 ? (
                 <EmptyState
                   message="No startup costs yet — add your first line item."
                   action={
@@ -654,6 +655,9 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
                         }
                         onRemove={() => removeStartupCost(line.id)}
                       />
+                    ))}
+                    {derivedStartupCosts.map((row) => (
+                      <DerivedStartupCostRowDisplay key={row.key} row={row} />
                     ))}
                   </div>
                   <div className="mt-4">
@@ -935,6 +939,26 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
 }
 
 // ─── row components ──────────────────────────────────────────────────────────
+
+function DerivedStartupCostRowDisplay({ row }: { row: DerivedStartupCostRow }) {
+  return (
+    <div
+      role="listitem"
+      aria-label={`${row.label} (auto-rolled from buildout)`}
+      className="flex flex-wrap gap-2 items-center opacity-60 pointer-events-none select-none"
+    >
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#efefef] text-[#6b6b6b] border border-[#e0e0e0] shrink-0">
+        auto-rolled
+      </span>
+      <span className="flex-1 min-w-[120px] text-sm text-[#6b6b6b]">{row.label}</span>
+      <span className="text-sm font-medium text-[#6b6b6b] w-28 text-right">
+        ${fmtMoney(row.amount_cents)}
+      </span>
+      {/* spacer to align with delete-button column */}
+      <span className="w-8" aria-hidden="true" />
+    </div>
+  );
+}
 
 function SubHeading({ children }: { children: React.ReactNode }) {
   return (
