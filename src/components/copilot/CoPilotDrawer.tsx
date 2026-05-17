@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { UPGRADE_PATH } from "@/lib/access";
 import type { WorkspaceKey } from "@/types/supabase";
@@ -320,6 +321,8 @@ export function CoPilotDrawer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const prefersReducedMotion = useReducedMotion();
+
   const errorBanner = error ? errorCopy(error) : null;
   const showEmpty =
     !isStreaming && !assistantBuffer && messages.length === 0 && !error && !loadingThread;
@@ -329,6 +332,15 @@ export function CoPilotDrawer({
     if (messages.length === 0 && !isStreaming) return "New conversation";
     return deriveTitle(messages);
   }, [activeThreadTitle, isStreaming, messages]);
+
+  // Moment 2 easing: cubic-bezier(0.25, 0.46, 0.45, 0.94) per §8
+  const drawerTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] as const };
+
+  const inputTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { delay: 0.1, duration: 0.1 };
 
   return (
     <>
@@ -344,7 +356,9 @@ export function CoPilotDrawer({
         </button>
       )}
 
-      {open && (
+      {/* Moment 2: drawer slides up from bottom per §8 */}
+      <AnimatePresence>
+        {open && (
         <div className="fixed inset-0 z-50 flex">
           <button
             type="button"
@@ -352,9 +366,13 @@ export function CoPilotDrawer({
             onClick={closeDrawer}
             className="flex-1 bg-black/40"
           />
-          <aside
+          <motion.aside
             role="dialog"
             aria-label="AI co-pilot"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={drawerTransition}
             className="w-full max-w-md bg-white flex flex-col h-full shadow-xl"
           >
             <header className="px-4 pt-4 pb-3 border-b border-[#efefef] flex items-center gap-2">
@@ -459,8 +477,12 @@ export function CoPilotDrawer({
               )}
             </div>
 
-            <form
+            {/* Text input fades in with 100ms delay per §8 */}
+            <motion.form
               onSubmit={handleSubmit}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={inputTransition}
               className="border-t border-[#efefef] px-3 py-3 flex items-end gap-2 safe-area-pb"
             >
               <textarea
@@ -494,10 +516,11 @@ export function CoPilotDrawer({
                   Send
                 </button>
               )}
-            </form>
-          </aside>
+            </motion.form>
+          </motion.aside>
         </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion, animate, useReducedMotion } from "framer-motion";
 
 /** One number per module (1-8), in the range 0-100. */
 export type ModulePercentages = [
@@ -69,14 +70,16 @@ const ARC = STEP - GAP;            // 41° effective arc
  * Filled segments use --color-teal. Unfilled segments use --neutral-300.
  * Center text shows the average completion in Poppins 700 H3.
  *
- * A single pulse animation (150ms, scale 1.0 → 1.03 → 1.0) fires once
- * when a segment transitions to 100%.
+ * Moment 3 (§8): segment pulses once — scale 1.0 → 1.03 → 1.0, 200ms ease-in-out —
+ * when a module crosses 100%. Counter increments smoothly over 300ms.
  */
 export function ReadinessRing({
   modulePercentages,
   size = 120,
   className = "",
 }: ReadinessRingProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   const percentages = Array.from({ length: 8 }, (_, i) =>
     clamp(modulePercentages[i] ?? 0)
   );
@@ -84,18 +87,21 @@ export function ReadinessRing({
   const prevPercentages = useRef<number[]>(percentages);
   const [pulsing, setPulsing] = useState<boolean[]>(new Array(8).fill(false));
 
+  // Moment 3 — pulse trigger: fires when a segment crosses to 100%
   useEffect(() => {
     const newPulsing = percentages.map(
       (p, i) => p === 100 && prevPercentages.current[i] !== 100
     );
     if (newPulsing.some(Boolean)) {
       setPulsing(newPulsing);
+      // Reset after animation completes (200ms pulse + buffer)
       const timer = setTimeout(() => setPulsing(new Array(8).fill(false)), 300);
       prevPercentages.current = percentages;
       return () => clearTimeout(timer);
     }
     prevPercentages.current = percentages;
-  }, [percentages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [percentages.join(",")]);
 
   const cx = size / 2;
   const cy = size / 2;
@@ -105,6 +111,35 @@ export function ReadinessRing({
   const overallPct = Math.round(
     percentages.reduce((sum, p) => sum + p, 0) / 8
   );
+
+  // Moment 3 — smooth counter: animate displayed number over 300ms
+  const counterRef = useRef<HTMLSpanElement>(null);
+  const prevOverallPct = useRef(overallPct);
+
+  useEffect(() => {
+    const from = prevOverallPct.current;
+    const to = overallPct;
+    prevOverallPct.current = to;
+
+    if (from === to || !counterRef.current) return;
+
+    if (prefersReducedMotion) {
+      counterRef.current.textContent = `${to}%`;
+      return;
+    }
+
+    // Moment 3: counter increments smoothly, 300ms per §8
+    const controls = animate(from, to, {
+      duration: 0.3,
+      ease: "easeOut",
+      onUpdate: (val) => {
+        if (counterRef.current) {
+          counterRef.current.textContent = `${Math.round(val)}%`;
+        }
+      },
+    });
+    return () => controls.stop();
+  }, [overallPct, prefersReducedMotion]);
 
   return (
     <div
@@ -124,20 +159,19 @@ export function ReadinessRing({
           const startAngle = i * STEP + GAP / 2;
           const endAngle = startAngle + ARC;
           const fillEndAngle = startAngle + ARC * (pct / 100);
-          const isComplete = pct === 100;
           const isPulsing = pulsing[i];
 
           return (
-            <g
+            // Moment 3: pulse scale 1.0 → 1.03 → 1.0, 200ms ease-in-out per §8
+            <motion.g
               key={i}
-              style={
-                isPulsing
-                  ? {
-                      transformOrigin: `${cx}px ${cy}px`,
-                      animation: `readiness-pulse var(--duration-fast) ease-in-out`,
-                    }
-                  : undefined
+              style={{ transformOrigin: `${cx}px ${cy}px` }}
+              animate={
+                isPulsing && !prefersReducedMotion
+                  ? { scale: [1, 1.03, 1] }
+                  : { scale: 1 }
               }
+              transition={{ duration: 0.2, ease: "easeInOut" }}
             >
               {/* Track (unfilled) */}
               <path
@@ -152,13 +186,14 @@ export function ReadinessRing({
                   fill="var(--color-teal)"
                 />
               )}
-            </g>
+            </motion.g>
           );
         })}
       </svg>
 
-      {/* Center percentage text */}
+      {/* Center percentage counter — animated smoothly per §8 */}
       <span
+        ref={counterRef}
         aria-hidden
         className="absolute font-bold text-[var(--neutral-950)] select-none"
         style={{
@@ -168,14 +203,6 @@ export function ReadinessRing({
       >
         {overallPct}%
       </span>
-
-      <style>{`
-        @keyframes readiness-pulse {
-          0%   { transform: scale(1); }
-          50%  { transform: scale(1.03); }
-          100% { transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 "use client"
 
 import { useCallback, useMemo, useState, useEffect } from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import type { WorkspaceKey } from "@/types/supabase"
 
 export const WORKSPACE_ORDER: WorkspaceKey[] = [
@@ -143,6 +144,8 @@ export function ThreadBrowser({
     [collapsed, activeWorkspaceKey],
   )
 
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <div className="border-b border-[#efefef]" data-testid="thread-browser">
       <div className="flex items-center justify-between px-4 py-2">
@@ -192,38 +195,53 @@ export function ThreadBrowser({
                       </span>
                     </span>
                   </button>
-                  {isOpen && (
-                    <ul className="mt-1 space-y-1 pl-3">
-                      {groupThreads.map((thread) => {
-                        const selected = thread.id === activeThreadId
-                        return (
-                          <li key={thread.id}>
-                            <button
-                              type="button"
-                              onClick={() => onSelectThread(thread)}
-                              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                                selected
-                                  ? "bg-[#155e63]/10 text-[#155e63]"
-                                  : "hover:bg-[#f7f6f3] text-[#1a1a1a]"
-                              }`}
-                            >
-                              <span className="block truncate font-medium">
-                                {titleOrFallback(thread.title)}
-                              </span>
-                              <span className="block text-[11px] text-[#888]">
-                                {formatTimestamp(thread.last_message_at)}
-                                {thread.message_count > 0
-                                  ? ` · ${thread.message_count} msg${
-                                      thread.message_count === 1 ? "" : "s"
-                                    }`
-                                  : ""}
-                              </span>
-                            </button>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
+                  {/* Moment 1: height 0 → auto, 150 ms, ease-out per §8 */}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.ul
+                        key="threads"
+                        initial={{ height: 0 }}
+                        animate={{ height: "auto" }}
+                        exit={{ height: 0 }}
+                        transition={
+                          prefersReducedMotion
+                            ? { duration: 0 }
+                            : { duration: 0.15, ease: "easeOut" }
+                        }
+                        style={{ overflow: "hidden" }}
+                        className="mt-1 space-y-1 pl-3"
+                      >
+                        {groupThreads.map((thread) => {
+                          const selected = thread.id === activeThreadId
+                          return (
+                            <li key={thread.id}>
+                              <button
+                                type="button"
+                                onClick={() => onSelectThread(thread)}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                                  selected
+                                    ? "bg-[#155e63]/10 text-[#155e63]"
+                                    : "hover:bg-[#f7f6f3] text-[#1a1a1a]"
+                                }`}
+                              >
+                                <span className="block truncate font-medium">
+                                  {titleOrFallback(thread.title)}
+                                </span>
+                                <span className="block text-[11px] text-[#888]">
+                                  {formatTimestamp(thread.last_message_at)}
+                                  {thread.message_count > 0
+                                    ? ` · ${thread.message_count} msg${
+                                        thread.message_count === 1 ? "" : "s"
+                                      }`
+                                    : ""}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </motion.ul>
+                    )}
+                  </AnimatePresence>
                 </li>
               )
             })}
