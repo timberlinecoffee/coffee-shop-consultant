@@ -74,7 +74,7 @@ export default async function FinancialsWorkspacePage() {
         <FinancialsClient planId={planId} inputs={financialInputs} />
       </div>
       {flags.length > 0 && (
-        <div className="w-72 shrink-0 sticky top-6">
+        <div className="hidden lg:block w-72 shrink-0 sticky top-6">
           <AiFindingsSidebar flags={flags} lastRunAt={lastRunAt} />
         </div>
       )}
