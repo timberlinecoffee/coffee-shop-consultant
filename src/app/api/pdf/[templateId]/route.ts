@@ -52,23 +52,30 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "No plan found" }, { status: 404 })
   }
 
-  const wsKeys = [tmpl.workspace_key, ...(tmpl.also_load ?? [])]
+  let content: unknown
 
-  const { data: docs } = await supabase
-    .from("workspace_documents")
-    .select("workspace_key, content")
-    .eq("plan_id", plan.id)
-    .in("workspace_key", wsKeys)
+  if (tmpl.dataLoader) {
+    content = await tmpl.dataLoader(plan.id, user.id, supabase)
+  } else {
+    const wsKeys = [tmpl.workspace_key, ...(tmpl.also_load ?? [])]
 
-  const primary = docs?.find((d) => d.workspace_key === tmpl.workspace_key)
-  if (!primary) {
-    return Response.json({ error: "Workspace document not found" }, { status: 404 })
+    const { data: docs } = await supabase
+      .from("workspace_documents")
+      .select("workspace_key, content")
+      .eq("plan_id", plan.id)
+      .in("workspace_key", wsKeys)
+
+    const primary = docs?.find((d: { workspace_key: string }) => d.workspace_key === tmpl.workspace_key)
+    if (!primary) {
+      return Response.json({ error: "Workspace document not found" }, { status: 404 })
+    }
+    content = primary.content
   }
 
   registerFonts()
 
   const ctx = {
-    content: primary.content,
+    content,
     brand: BRAND,
     user: { id: user.id, email: profile.email ?? null },
     plan: { id: plan.id, shop_name: plan.shop_name ?? null },

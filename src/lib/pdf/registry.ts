@@ -18,6 +18,10 @@ export type PdfTemplate<TContent = unknown> = {
   ) => ReactElement | Promise<ReactElement>
   filename: (ctx: PdfRenderContext<TContent>) => string
   also_load?: WorkspaceKey[]
+  // Optional: when present the route calls this instead of querying
+  // workspace_documents. Use for workspaces backed by row-based tables.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dataLoader?: (planId: string, userId: string, supabase: any) => Promise<TContent>
 }
 
 // Registry maps templateId → PdfTemplate.
