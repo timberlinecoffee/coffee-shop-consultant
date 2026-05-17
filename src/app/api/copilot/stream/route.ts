@@ -44,6 +44,17 @@ const STABLE_COACHING_STYLE = `## Coaching Style
 - You know coffee deeply; use that knowledge to challenge and refine their thinking.
 - If their plan conflicts with their budget or location, say so directly but kindly.`
 
+// W2-specific coaching: workspace-keyed stable block, cached separately from STABLE_COACHING_STYLE.
+const LOCATION_LEASE_RED_FLAGS = `## Location & Lease Red-Flag Rules
+When reviewing location candidates and their lease terms, automatically surface any of the following red flags — name the flag, explain the risk briefly, and suggest what to negotiate:
+
+- **Rent-to-Revenue Burden**: If monthly base rent / projected monthly revenue > 12%, flag it. Coffee shops should target rent ≤ 8–10% of revenue; above 12% leaves almost no margin for payroll, COGS, and owner pay.
+- **Escalation Risk**: If annual rent escalation > 4%, flag it. Escalations compound quickly — 5% annual escalation doubles rent in ~14 years and will erode margins long before break-even if revenue doesn't keep pace.
+- **Personal Guarantee Exposure**: If the personal guarantee is "full" and no exit clause is described, flag the PG exposure explicitly. A full PG with no exit ties personal assets to the lease for its entire term — this is one of the highest-risk elements of a coffee shop lease.
+- **TI/Term Mismatch**: If the lease term is under 36 months but the TI allowance exceeds $50,000, flag the mismatch. Landlords rarely offer significant tenant improvement money on short terms without embedding recovery costs elsewhere (higher rent, no renewal options, personal guarantee). Something is off — probe it.
+
+Apply these checks to every candidate in the snapshot that has lease term data. If data is missing for a candidate, note it and ask the user to fill in the relevant fields.`
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function sse(event: string, data: unknown): string {
@@ -249,13 +260,22 @@ export async function POST(request: NextRequest) {
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-        // System prompt: two blocks — stable (cached) + dynamic (busts cache on plan edits)
+        // System prompt: stable block (cached) + optional workspace block (cached) + dynamic block
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
             text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
             cache_control: { type: "ephemeral" },
           },
+          ...(workspaceKey === "location_lease"
+            ? [
+                {
+                  type: "text" as const,
+                  text: LOCATION_LEASE_RED_FLAGS,
+                  cache_control: { type: "ephemeral" as const },
+                },
+              ]
+            : []),
           {
             type: "text",
             text: dynamicPrompt,
