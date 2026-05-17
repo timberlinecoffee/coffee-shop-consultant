@@ -3,11 +3,13 @@
 // Returns 402 { reason: 'paywall', tier_required: 'starter' } for inactive subscriptions.
 // TIM-727: After any write to the buildout_equipment workspace, recomputes _digest.
 // TIM-722: Validates enum fields and seeds defaults on first save for buildout_equipment.
+// TIM-717: financials writes also recompute ai_findings and persist them.
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
 import { recomputeBuildoutDigest } from "@/lib/buildout/recomputeBuildoutDigest"
 import { validateBuildoutDocument, shouldSeedDefaults, seedBuildoutDocument } from "@/lib/buildout/seedDefaults"
+import { buildAiFindings } from "@/lib/financials/sanityChecks"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -102,15 +104,22 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
 
   // Seed defaults on first save if the document is empty.
-  let finalContent = body.content
+  let contentToSave = body.content
   if (workspaceKey === "buildout_equipment" && shouldSeedDefaults(body.content)) {
-    finalContent = seedBuildoutDocument(body.content as Record<string, unknown>)
+    contentToSave = seedBuildoutDocument(body.content as Record<string, unknown>)
+  }
+
+  // TIM-717: recompute AI findings on every financials write and embed them
+  // back into the content blob so the sidebar and co-pilot always see fresh flags.
+  if (workspaceKey === "financials" && typeof contentToSave === "object" && contentToSave !== null) {
+    const findings = buildAiFindings(contentToSave)
+    contentToSave = { ...(contentToSave as Record<string, unknown>), ai_findings: findings }
   }
 
   const { data, error } = await supabase
     .from("workspace_documents")
     .upsert(
-      { plan_id: plan.id, workspace_key: workspaceKey, content: finalContent },
+      { plan_id: plan.id, workspace_key: workspaceKey, content: contentToSave },
       { onConflict: "plan_id,workspace_key" }
     )
     .select("id, updated_at")
