@@ -1,9 +1,11 @@
 // TIM-643: Workspace document read/write endpoint.
 // GET is open (read-only preview). POST/PUT/PATCH require subscription_status === 'active'.
 // Returns 402 { reason: 'paywall', tier_required: 'starter' } for inactive subscriptions.
+// TIM-727: After any write to the buildout_equipment workspace, recomputes _digest.
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
+import { recomputeBuildoutDigest } from "@/lib/buildout/recomputeBuildoutDigest"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -98,6 +100,14 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
   if (error) {
     console.error("workspace_documents upsert error:", error)
     return Response.json({ error: "Failed to save" }, { status: 500 })
+  }
+
+  // After saving buildout_equipment, recompute _digest from live DB state.
+  // Fire-and-forget: digest errors must not fail the primary write.
+  if (workspaceKey === "buildout_equipment") {
+    recomputeBuildoutDigest(plan.id, supabase).catch((e) =>
+      console.error("recomputeBuildoutDigest after write:", e),
+    )
   }
 
   return Response.json({ id: data.id, updated_at: data.updated_at })
