@@ -38,8 +38,33 @@ async function loadLaunchPlanContext() {
   };
 }
 
+type TMinusBanner =
+  | { kind: "future"; days: number; label: string }
+  | { kind: "today"; label: string }
+  | { kind: "past"; days: number; label: string }
+  | null;
+
+function computeTMinus(launchDate: string | null): TMinusBanner {
+  if (!launchDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(launchDate);
+  target.setHours(0, 0, 0, 0);
+  const diffMs = target.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / 86_400_000);
+  const formatted = target.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  if (diffDays > 0) return { kind: "future", days: diffDays, label: formatted };
+  if (diffDays === 0) return { kind: "today", label: formatted };
+  return { kind: "past", days: Math.abs(diffDays), label: formatted };
+}
+
 export default async function LaunchPlanWorkspacePage() {
   const { planId, launchDate } = await loadLaunchPlanContext();
+  const tMinus = computeTMinus(launchDate);
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-0">
@@ -56,6 +81,27 @@ export default async function LaunchPlanWorkspacePage() {
           </span>
         </div>
       </nav>
+
+      {tMinus && (
+        <div
+          aria-label="Launch countdown"
+          className={`px-6 py-2.5 text-center text-sm font-medium ${
+            tMinus.kind === "today"
+              ? "bg-[#2d6a2d] text-white"
+              : tMinus.kind === "future"
+              ? "bg-[#155e63] text-white"
+              : "bg-[#6b6b6b] text-white"
+          }`}
+        >
+          {tMinus.kind === "future" && (
+            <>T-{tMinus.days} day{tMinus.days !== 1 ? "s" : ""} · Opening {tMinus.label}</>
+          )}
+          {tMinus.kind === "today" && <>Day 0 — Opening day! {tMinus.label}</>}
+          {tMinus.kind === "past" && (
+            <>Opened {tMinus.days} day{tMinus.days !== 1 ? "s" : ""} ago · {tMinus.label}</>
+          )}
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-6">
