@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — My Coffee Shop Consultant",
+  title: "Privacy Policy | My Coffee Shop Consultant",
   description: "Privacy Policy for Timberline Coffee School and My Coffee Shop Consultant.",
 };
 

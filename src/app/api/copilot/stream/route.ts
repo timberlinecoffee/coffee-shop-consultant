@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
       const resetGapTimer = () => {
         if (gapTimer) clearTimeout(gapTimer)
         gapTimer = setTimeout(() => {
-          closeWithError("timeout", "AI stream stalled — no data for 20 seconds. Please try again.")
+          closeWithError("timeout", "AI stream stalled. No data for 20 seconds. Please try again.")
         }, GAP_MS)
       }
 
