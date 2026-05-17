@@ -107,6 +107,7 @@ const SECTION_CONFIGS = [
   {
     key: "equipment" as const,
     label: "Equipment",
+    emptyStateText: "No items yet. Add the equipment you are budgeting for.",
     categories: ["equipment"] as StartupCostCategory[],
     defaultItems: [
       { label: "Espresso machine", tooltip: "Commercial machines range from $5,000 to $25,000 new." },
@@ -118,6 +119,7 @@ const SECTION_CONFIGS = [
   {
     key: "lease_buildout" as const,
     label: "Lease and Build-Out",
+    emptyStateText: "No items yet. Add the lease and build-out costs you are budgeting for.",
     categories: ["build_out"] as StartupCostCategory[],
     defaultItems: [
       { label: "Security deposit", tooltip: "Typically 2–3 months of base rent." },
@@ -129,6 +131,7 @@ const SECTION_CONFIGS = [
   {
     key: "pre_opening" as const,
     label: "Pre-Opening Costs",
+    emptyStateText: "No items yet. Add the pre-opening costs you are budgeting for.",
     categories: ["licenses", "deposits", "inventory", "other"] as StartupCostCategory[],
     defaultItems: [
       { label: "Business licenses", tooltip: "State, city, and county business registration fees." },
@@ -1092,7 +1095,7 @@ export function FinancialsWorkspaceRedesign({ planId }: FinancialsWorkspaceRedes
                       >
                         {lines.length === 0 ? (
                           <p style={{ fontSize: "var(--text-body-sm)", color: "var(--neutral-500)", margin: "4px 0 8px" }}>
-                            No items yet. Add the equipment you&apos;re budgeting for.
+                            {sec.emptyStateText}
                           </p>
                         ) : (
                           lines.map((line) => (
@@ -1165,7 +1168,7 @@ export function FinancialsWorkspaceRedesign({ planId }: FinancialsWorkspaceRedes
                     },
                     {
                       label: "Break-even",
-                      value: "—",
+                      value: "Not set",
                       tooltip: "Add all costs to estimate break-even",
                     },
                     {
