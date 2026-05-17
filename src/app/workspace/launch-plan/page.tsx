@@ -1,15 +1,45 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { LaunchTimelineCard } from "@/components/launch-plan/LaunchTimelineCard";
 import { SoftOpenPlanCard } from "@/components/launch-plan/SoftOpenPlanCard";
 import { MarketingKickoffChecklistCard } from "@/components/launch-plan/MarketingKickoffChecklistCard";
 import { HiringPlanCard } from "@/components/launch-plan/HiringPlanCard";
-import { loadWorkspaceContext } from "../_shared";
 
 export const dynamic = "force-dynamic";
 
+async function loadLaunchPlanContext() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const [planResult, profileResult] = await Promise.all([
+    supabase
+      .from("coffee_shop_plans")
+      .select("id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("target_opening_date")
+      .eq("id", user.id)
+      .single(),
+  ]);
+
+  if (!planResult.data) redirect("/onboarding");
+
+  return {
+    planId: planResult.data.id,
+    launchDate: profileResult.data?.target_opening_date ?? null,
+  };
+}
+
 export default async function LaunchPlanWorkspacePage() {
-  const { planId } = await loadWorkspaceContext();
+  const { planId, launchDate } = await loadLaunchPlanContext();
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-0">
@@ -35,7 +65,11 @@ export default async function LaunchPlanWorkspacePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
+          <LaunchTimelineCard launchDate={launchDate} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           <SoftOpenPlanCard />
           <MarketingKickoffChecklistCard />
           <HiringPlanCard />

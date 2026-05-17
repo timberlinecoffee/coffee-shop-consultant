@@ -1,4 +1,4 @@
-// Auto-generated from schema + TIM-629 copilot_v1 migration.
+// Auto-generated from schema + TIM-629 copilot_v1 migration + TIM-731 launch_plan_workspace.
 // Regenerate with: supabase gen types typescript --local > src/types/supabase.ts
 
 export type WorkspaceKey =
