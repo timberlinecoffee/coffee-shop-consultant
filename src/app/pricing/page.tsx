@@ -5,7 +5,22 @@ import Link from "next/link";
 
 type BillingInterval = "monthly" | "annual";
 
-const TIERS = [
+type Tier = {
+  key: string;
+  name: string;
+  monthlyPrice: string;
+  annualPrice: string;
+  annualBilled: string;
+  annualSavings: string;
+  description: string;
+  highlight: boolean;
+  features: string[];
+  notIncluded: string[];
+  cta: string;
+  ctaAnnual?: string;
+};
+
+const TIERS: Tier[] = [
   {
     key: "starter",
     name: "Starter",
@@ -29,7 +44,8 @@ const TIERS = [
       "Equipment sourcing assistance",
       "1-on-1 call at BRD completion",
     ],
-    cta: "Start with Starter",
+    cta: "Start building",
+    ctaAnnual: "Start building — pay annually",
   },
   {
     key: "growth",
@@ -267,7 +283,7 @@ export default function PricingPage() {
                       : "bg-[#155e63] text-white hover:bg-[#0e4448]"
                   }`}
                 >
-                  {loading === loadingKey ? "Loading..." : tier.cta}
+                  {loading === loadingKey ? "Loading..." : ((interval === "annual" && tier.ctaAnnual) || tier.cta)}
                 </button>
               </div>
             );
