@@ -2,10 +2,12 @@
 // GET is open (read-only preview). POST/PUT/PATCH require subscription_status === 'active'.
 // Returns 402 { reason: 'paywall', tier_required: 'starter' } for inactive subscriptions.
 // TIM-727: After any write to the buildout_equipment workspace, recomputes _digest.
+// TIM-722: Validates enum fields and seeds defaults on first save for buildout_equipment.
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
 import { recomputeBuildoutDigest } from "@/lib/buildout/recomputeBuildoutDigest"
+import { validateBuildoutDocument, shouldSeedDefaults, seedBuildoutDocument } from "@/lib/buildout/seedDefaults"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -80,6 +82,17 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "Missing content" }, { status: 400 })
   }
 
+  // Validate enum fields for buildout_equipment to prevent forged values.
+  if (workspaceKey === "buildout_equipment") {
+    const validation = validateBuildoutDocument(body.content)
+    if (!validation.valid) {
+      return Response.json(
+        { error: `Invalid value at ${validation.field}: ${validation.message}` },
+        { status: 400 }
+      )
+    }
+  }
+
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
     .select("id")
@@ -88,10 +101,16 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
 
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
 
+  // Seed defaults on first save if the document is empty.
+  let finalContent = body.content
+  if (workspaceKey === "buildout_equipment" && shouldSeedDefaults(body.content)) {
+    finalContent = seedBuildoutDocument(body.content as Record<string, unknown>)
+  }
+
   const { data, error } = await supabase
     .from("workspace_documents")
     .upsert(
-      { plan_id: plan.id, workspace_key: workspaceKey, content: body.content },
+      { plan_id: plan.id, workspace_key: workspaceKey, content: finalContent },
       { onConflict: "plan_id,workspace_key" }
     )
     .select("id, updated_at")
