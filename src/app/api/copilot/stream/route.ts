@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
+import type { LaunchMeta } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
@@ -73,6 +74,33 @@ The user is working in: **${currentWorkspace.replace(/_/g, " ")}**
 
 ## Their Plan So Far (all workspaces)
 ${planSnapshot}`
+}
+
+function buildLaunchPlanAnchor(meta: LaunchMeta): string {
+  const launchStr = meta.launchDate ?? "not set"
+  const tMinusStr =
+    meta.tMinus === null
+      ? "launch date not yet set"
+      : meta.tMinus >= 0
+        ? `T-minus ${meta.tMinus} day${meta.tMinus !== 1 ? "s" : ""}`
+        : `${Math.abs(meta.tMinus)} day${Math.abs(meta.tMinus) !== 1 ? "s" : ""} past planned launch`
+
+  const milestoneList =
+    meta.standardMilestoneTitles.length > 0
+      ? meta.standardMilestoneTitles.map((t) => `- ${t}`).join("\n")
+      : "- (no standard milestones loaded)"
+
+  return `## Launch Plan Review Mode
+You are reviewing a coffee-school launch plan. Today is ${meta.today}; planned launch is ${launchStr}; ${tMinusStr}.
+
+## Standard Milestone Reference
+These milestones are standard for a specialty coffee school opening. Flag any that are absent from the user's timeline:
+${milestoneList}
+
+## Response Format
+Close every response in the launch_plan workspace with:
+1. **≤5 prioritized recommendations** — numbered list, most urgent first
+2. **Readiness verdict**: **Green** (on track), **Yellow** (notable gaps), or **Red** (critical blockers exist)`
 }
 
 function countWorkspaceMentions(messages: Array<{ role: string; content: string }>): number {
@@ -174,7 +202,7 @@ export async function POST(request: NextRequest) {
   const svcClient = createServiceClient()
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = await composePlanSnapshot(
+  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, launchMeta } = await composePlanSnapshot(
     planId,
     workspaceKey,
     svcClient,
@@ -249,18 +277,21 @@ export async function POST(request: NextRequest) {
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-        // System prompt: two blocks — stable (cached) + dynamic (busts cache on plan edits)
+        // System prompt: stable block (cached) + optional workspace-local anchor + dynamic block.
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
             text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
             cache_control: { type: "ephemeral" },
           },
-          {
-            type: "text",
-            text: dynamicPrompt,
-          },
         ]
+
+        // Workspace-local anchor: launch_plan injects T-minus framing + milestone reference + output format.
+        if (workspaceKey === "launch_plan" && launchMeta) {
+          systemBlocks.push({ type: "text", text: buildLaunchPlanAnchor(launchMeta) })
+        }
+
+        systemBlocks.push({ type: "text", text: dynamicPrompt })
 
         const anthropicMessages: Anthropic.MessageParam[] = messages.map((m) => ({
           role: m.role,
