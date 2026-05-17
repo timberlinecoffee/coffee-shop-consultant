@@ -7,7 +7,9 @@ import type { PdfTemplate } from "../registry"
 import { financialsTemplate } from "./financials"
 import { launchPlanTemplate } from "./launch-plan"
 import { menuCardTemplate } from "./menu-card"
+import { buildoutPlanTemplate } from "./buildout-plan"
 
 registerTemplate("financials_full_report", financialsTemplate as PdfTemplate)
 registerTemplate("launch_plan_full_report", launchPlanTemplate as PdfTemplate)
 registerTemplate("menu_card_with_cost_analysis", menuCardTemplate as PdfTemplate) // TIM-708
+registerTemplate("buildout_plan", buildoutPlanTemplate as PdfTemplate) // TIM-728
