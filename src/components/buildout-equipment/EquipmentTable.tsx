@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { EquipmentBulkImportDrawer } from './EquipmentBulkImportDrawer'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ export function EquipmentTable({ planId, initialItems }: EquipmentTableProps) {
   const [rows, setRows] = useState<DraftRow[]>(() => initialItems.map(itemToDraft))
   const [showArchived, setShowArchived] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
+  const [bulkImportOpen, setBulkImportOpen] = useState(false)
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const tableRef = useRef<HTMLTableElement>(null)
@@ -196,6 +198,18 @@ export function EquipmentTable({ planId, initialItems }: EquipmentTableProps) {
     })
   }
 
+  // ── Bulk import callback ─────────────────────────────────────────────────
+  async function handleBulkImported(_count: number) {
+    // Reload items from DB to reflect new rows
+    const { data } = await supabase
+      .from('buildout_equipment_items')
+      .select('*')
+      .eq('plan_id', planId)
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: true })
+    if (data) setRows(data.map(itemToDraft))
+  }
+
   // ── Add row ──────────────────────────────────────────────────────────────
   function addRow() {
     const draft = newDraftRow(planId, rows.length)
@@ -244,14 +258,20 @@ export function EquipmentTable({ planId, initialItems }: EquipmentTableProps) {
 
   return (
     <div className="space-y-3">
+      <EquipmentBulkImportDrawer
+        planId={planId}
+        open={bulkImportOpen}
+        onOpenChange={setBulkImportOpen}
+        onImported={handleBulkImported}
+      />
+
       {/* Header bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Button variant="default" size="sm" onClick={addRow}>
             + Add item
           </Button>
-          {/* TIM-623-D: bulk import drawer placeholder */}
-          <Button variant="outline" size="sm" disabled title="Bulk import coming in TIM-623-D">
+          <Button variant="outline" size="sm" onClick={() => setBulkImportOpen(true)}>
             Bulk import
           </Button>
         </div>
