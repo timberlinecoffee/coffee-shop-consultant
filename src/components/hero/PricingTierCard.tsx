@@ -63,7 +63,7 @@ export function PricingTierCard({
               "relative flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6",
               "rounded-lg p-5 border",
               tier.isSelected
-                ? "border-[var(--color-teal)] border-l-[3px] bg-[var(--neutral-200)]"
+                ? "border-[var(--neutral-300)] border-l-2 [border-left-color:var(--color-teal)] bg-[var(--neutral-200)]"
                 : "border-[var(--neutral-300)] bg-[var(--color-white)]",
             ].join(" ")}
           >
@@ -81,7 +81,7 @@ export function PricingTierCard({
               <div className="flex items-baseline gap-1">
                 <span
                   className="font-bold text-[var(--neutral-950)]"
-                  style={{ fontSize: "var(--text-h1)", lineHeight: 1 }}
+                  style={{ fontSize: "var(--text-display)", lineHeight: 1 }}
                 >
                   ${tier.price}
                 </span>

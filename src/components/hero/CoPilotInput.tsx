@@ -92,6 +92,7 @@ export function CoPilotInput({
       className={[
         "w-full border-t border-[var(--neutral-300)] bg-[var(--color-white)]",
         "overflow-hidden",
+        "fixed bottom-0 left-0 right-0 md:relative md:bottom-auto md:left-auto md:right-auto",
         className,
       ].join(" ")}
       style={{
