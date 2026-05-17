@@ -63,7 +63,7 @@ const PRICING = [
       "30-min 1-on-1 call with Trent at BRD completion",
       "Priority support",
     ],
-    cta: "Get accelerated",
+    cta: "Start your Accelerator plan",
     href: "/login?plan=pro",
     highlight: false,
   },
