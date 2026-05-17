@@ -49,3 +49,26 @@ Against the live staging Supabase project (no local CLI required):
 ## Adding new seeded scenarios
 
 When a Module ships, add the section keys to the `module_responses` insert block in the seed file, set the appropriate `status`, and re-run. Keep the demo persona's progress representative of "halfway through what's currently built" so the board always sees a populated dashboard.
+
+## API endpoint inventory
+
+### Workspaces
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/workspaces/[workspaceKey]` | Read workspace document (open) |
+| `POST/PUT/PATCH` | `/api/workspaces/[workspaceKey]` | Upsert workspace document (active sub required) |
+| `DELETE` | `/api/workspaces/[workspaceKey]` | Delete workspace document (active sub required) |
+
+### Location & Lease — W2 (TIM-620-B)
+
+Auth: all routes require session. 401 = unauthed, 403 = cross-plan, 404 = no plan or not found.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/workspaces/location-lease/candidates` | List non-archived candidates for the user's plan |
+| `POST` | `/api/workspaces/location-lease/candidates` | Create a new candidate (`name` required) |
+| `PATCH` | `/api/workspaces/location-lease/candidates/[id]` | Update candidate fields |
+| `DELETE` | `/api/workspaces/location-lease/candidates/[id]` | Soft-archive candidate |
+| `PUT` | `/api/workspaces/location-lease/candidates/[id]/scores` | Upsert rubric scores (`{ scores: [{factor_key, score_1_5, notes?}] }`) |
+| `PUT` | `/api/workspaces/location-lease/candidates/[id]/lease-terms` | Upsert lease terms snapshot |
