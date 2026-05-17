@@ -1,21 +1,98 @@
 @import "tailwindcss";
 
+/*
+ * TIMBERLINE DESIGN TOKEN SYSTEM v1
+ * Source: DESIGN_DIRECTION.md v3, Sections 2, 3, 8
+ * Single source of truth for all color and typography values.
+ * Zero hardcoded hex values permitted in component files.
+ */
+
 :root {
-  --teal: #155e63;
-  --sage: #76b39d;
-  --off-white: #faf9f7;
-  --light-grey: #efefef;
-  --dark-grey: #afafaf;
-  --background: #faf9f7;
-  --foreground: #1a1a1a;
+  /* ── Brand Colors ────────────────────────────────────────────────────── */
+  --teal:        #155e63;
+  --sage:        #76b39d;
+  --grey-light:  #efefef;
+  --white:       #ffffff;
+
+  --color-teal:       var(--teal);
+  --color-sage:       var(--sage);
+  --color-grey-light: var(--grey-light);
+  --color-white:      var(--white);
+
+  /* ── Warm Accent Colors ──────────────────────────────────────────────── */
+  --crema:      #C8A882;
+  --bark:       #6B4226;
+  --teal-dark:  #0e4448;
+
+  --color-crema:     var(--crema);
+  --color-bark:      var(--bark);
+  --color-teal-dark: var(--teal-dark);
+
+  /* ── Neutral Palette (10 shades, warm undertone) ─────────────────────── */
+  --neutral-50:  #FAFAF8;
+  --neutral-100: #F7F7F5;
+  --neutral-200: #EBEBEA;
+  --neutral-300: #D4D4CC;
+  --neutral-400: #B8B8B0;
+  --neutral-500: #8F8F85;
+  --neutral-600: #6B6B60;
+  --neutral-700: #4A4A42;
+  --neutral-800: #2E2E28;
+  --neutral-900: #1C1C18;
+  --neutral-950: #0D0D0B;
+
+  /* ── Semantic Colors (editorial, not traffic-light) ──────────────────── */
+  --color-success: #2A6B4A;
+  --color-warning: #8B5E1A;
+  --color-danger:  #7A2E2E;
+
+  /* ── Page Defaults ───────────────────────────────────────────────────── */
+  --background: var(--neutral-100);
+  --foreground: var(--neutral-950);
+  --off-white:  #faf9f7;
+
+  /* ── Type Scale (px values per Section 3) ────────────────────────────── */
+  --text-display:    56px;  --text-display-lh:    64px;
+  --text-h1:         40px;  --text-h1-lh:         48px;
+  --text-h2:         32px;  --text-h2-lh:         40px;
+  --text-h3:         24px;  --text-h3-lh:         32px;
+  --text-h4:         20px;  --text-h4-lh:         28px;
+  --text-body-lg:    18px;  --text-body-lg-lh:    28px;
+  --text-body:       16px;  --text-body-lh:       24px;
+  --text-body-sm:    14px;  --text-body-sm-lh:    22px;
+  --text-caption:    13px;  --text-caption-lh:    20px;
+  --text-label:      12px;  --text-label-lh:      16px;
+  --text-label-tracking: 0.08em;
+
+  /* ── Motion Tokens (Section 8) ───────────────────────────────────────── */
+  --duration-fast:   150ms;
+  --duration-normal: 200ms;
+  --duration-slow:   300ms;
+  --ease-slide:      cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-teal: var(--teal);
-  --color-sage: var(--sage);
-  --color-off-white: var(--off-white);
+  --color-teal:        var(--teal);
+  --color-sage:        var(--sage);
+  --color-teal-dark:   var(--teal-dark);
+  --color-crema:       var(--crema);
+  --color-bark:        var(--bark);
+  --color-neutral-50:  var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-950: var(--neutral-950);
+  --color-success:     var(--color-success);
+  --color-warning:     var(--color-warning);
+  --color-danger:      var(--color-danger);
+  --color-background:  var(--background);
+  --color-foreground:  var(--foreground);
 }
 
 body {
