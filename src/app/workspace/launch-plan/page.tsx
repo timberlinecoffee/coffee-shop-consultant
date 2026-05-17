@@ -7,6 +7,7 @@ import { LaunchTimelineCard } from "@/components/launch-plan/LaunchTimelineCard"
 import { SoftOpenPlanCard } from "@/components/launch-plan/SoftOpenPlanCard";
 import { MarketingKickoffChecklistCard } from "@/components/launch-plan/MarketingKickoffChecklistCard";
 import { HiringPlanCard } from "@/components/launch-plan/HiringPlanCard";
+import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessButton";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,11 @@ export default async function LaunchPlanWorkspacePage() {
           <p className="text-sm text-[#6b6b6b] mt-1">
             Sequence pre-opening marketing, hiring, training, and opening-week operations.
           </p>
+        </div>
+
+        {/* TIM-736: Cross-workspace launch readiness check */}
+        <div className="mb-6">
+          <LaunchReadinessButton planId={planId} />
         </div>
 
         <div className="grid grid-cols-1 gap-6">
