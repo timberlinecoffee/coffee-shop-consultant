@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
   const svcClient = createServiceClient()
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = await composePlanSnapshot(
+  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, anchors } = await composePlanSnapshot(
     planId,
     workspaceKey,
     svcClient,
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-        // System prompt: two blocks — stable (cached) + dynamic (busts cache on plan edits)
+        // System prompt: stable (cached) + dynamic plan context + optional workspace anchors
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
@@ -261,6 +261,10 @@ export async function POST(request: NextRequest) {
             text: dynamicPrompt,
           },
         ]
+
+        if (anchors) {
+          systemBlocks.push({ type: "text", text: anchors })
+        }
 
         const anthropicMessages: Anthropic.MessageParam[] = messages.map((m) => ({
           role: m.role,

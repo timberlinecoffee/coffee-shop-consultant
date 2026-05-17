@@ -149,7 +149,7 @@ export function ReadinessRing({
               {pct > 0 && (
                 <path
                   d={segmentPath(cx, cy, outerR, innerR, startAngle, fillEndAngle)}
-                  fill={isComplete ? "var(--color-teal)" : "var(--color-sage)"}
+                  fill="var(--color-teal)"
                 />
               )}
             </g>
