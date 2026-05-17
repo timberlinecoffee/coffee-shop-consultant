@@ -505,6 +505,158 @@ export interface Database {
           created_at?: string
         }
       }
+      launch_timeline_items: {
+        Row: {
+          id: string
+          plan_id: string
+          milestone: string
+          target_date: string | null
+          status: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          depends_on: string | null
+          notes: string | null
+          order_index: number
+          digest: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          milestone: string
+          target_date?: string | null
+          status?: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          depends_on?: string | null
+          notes?: string | null
+          order_index?: number
+          digest?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          milestone?: string
+          target_date?: string | null
+          status?: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          depends_on?: string | null
+          notes?: string | null
+          order_index?: number
+          digest?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      soft_open_plan_items: {
+        Row: {
+          id: string
+          plan_id: string
+          day_offset: number
+          task: string
+          owner: string | null
+          status: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          day_offset: number
+          task: string
+          owner?: string | null
+          status?: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          day_offset?: number
+          task?: string
+          owner?: string | null
+          status?: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      marketing_kickoff_items: {
+        Row: {
+          id: string
+          plan_id: string
+          channel: string
+          asset: string
+          launch_date: string | null
+          status: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          responsible: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          channel: string
+          asset: string
+          launch_date?: string | null
+          status?: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          responsible?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          channel?: string
+          asset?: string
+          launch_date?: string | null
+          status?: 'pending' | 'in_progress' | 'done' | 'at_risk'
+          responsible?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hiring_plan_roles: {
+        Row: {
+          id: string
+          plan_id: string
+          role_title: string
+          headcount: number
+          start_date: string | null
+          monthly_cost_cents: number | null
+          status: 'planned' | 'posted' | 'interviewing' | 'hired'
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          role_title: string
+          headcount?: number
+          start_date?: string | null
+          monthly_cost_cents?: number | null
+          status?: 'planned' | 'posted' | 'interviewing' | 'hired'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          role_title?: string
+          headcount?: number
+          start_date?: string | null
+          monthly_cost_cents?: number | null
+          status?: 'planned' | 'posted' | 'interviewing' | 'hired'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -513,7 +665,11 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      launch_item_status: 'pending' | 'in_progress' | 'done' | 'at_risk'
+      hiring_role_status: 'planned' | 'posted' | 'interviewing' | 'hired'
     }
   }
 }
+
+export type LaunchItemStatus = 'pending' | 'in_progress' | 'done' | 'at_risk'
+export type HiringRoleStatus = 'planned' | 'posted' | 'interviewing' | 'hired'
