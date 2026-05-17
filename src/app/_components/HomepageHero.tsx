@@ -160,11 +160,29 @@ function BrowserMockup() {
                 >
                   {s.label}
                 </p>
-                <p style={{ color: "#0D0D0B", fontSize: "16px", fontWeight: 700, lineHeight: 1 }}>
+                <p style={{ color: "#155e63", fontSize: "16px", fontWeight: 700, lineHeight: 1 }}>
                   {s.value}
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* Benchmark bar */}
+          <div
+            className="rounded-lg px-3 py-2.5 mb-3 flex items-center gap-2"
+            style={{ background: "rgba(118,179,157,0.1)", border: "1px solid rgba(118,179,157,0.25)" }}
+          >
+            <div
+              className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: "#76b39d" }}
+            >
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <p style={{ color: "#155e63", fontSize: "11px", fontWeight: 500 }}>
+              Startup cost is within the healthy range for this market size
+            </p>
           </div>
 
           {/* AI chat bar */}
@@ -191,39 +209,6 @@ function BrowserMockup() {
               Ask about your financials...
             </p>
           </div>
-
-          {/* Progress bar row */}
-          <div className="mt-4 space-y-2">
-            {[
-              { label: "Concept", pct: 100, color: "#76b39d" },
-              { label: "Financials", pct: 67, color: "#155e63" },
-              { label: "Operations", pct: 20, color: "#155e63" },
-            ].map((row) => (
-              <div key={row.label} className="flex items-center gap-2">
-                <span
-                  style={{ color: "#8F8F85", fontSize: "10px", width: "68px", flexShrink: 0 }}
-                >
-                  {row.label}
-                </span>
-                <div
-                  className="flex-1 rounded-full overflow-hidden"
-                  style={{ height: "4px", background: "#EBEBEA" }}
-                >
-                  <div
-                    style={{
-                      height: "4px",
-                      width: `${row.pct}%`,
-                      background: row.color,
-                      borderRadius: "9999px",
-                    }}
-                  />
-                </div>
-                <span style={{ color: "#B8B8B0", fontSize: "10px", width: "26px", textAlign: "right" }}>
-                  {row.pct}%
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -248,19 +233,19 @@ export default function HomepageHero() {
         }}
       />
 
-      {/* Radial highlight — top left */}
+      {/* Sage radial highlight — top left */}
       <div
         className="absolute pointer-events-none"
         style={{
           top: "-200px",
           left: "-200px",
-          width: "600px",
-          height: "600px",
-          background: "radial-gradient(circle, rgba(118,179,157,0.18) 0%, transparent 70%)",
+          width: "700px",
+          height: "700px",
+          background: "radial-gradient(circle, rgba(118,179,157,0.22) 0%, transparent 70%)",
         }}
       />
 
-      {/* Radial highlight — bottom right */}
+      {/* Warm radial highlight — bottom right */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -319,8 +304,8 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.28, ease: EASE }}
           >
-            A planning tool for people serious about opening a coffee shop. Eight modules. A
-            financial model that updates as your plan does.
+            An AI planning companion for people serious about opening a coffee shop.
+            Guided decisions. Real benchmarks. Action, not just paperwork.
           </motion.p>
 
           <motion.div
@@ -357,8 +342,8 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.52, ease: "easeOut" }}
           >
             {[
-              { num: "8", label: "planning modules" },
-              { num: "$0", label: "to start" },
+              { num: "1,200+", label: "coffee shops planned" },
+              { num: "AI", label: "consultant built in" },
               { num: "15+", label: "years expertise" },
             ].map((s) => (
               <div key={s.label}>
@@ -385,13 +370,13 @@ export default function HomepageHero() {
         >
           <BrowserMockup />
 
-          {/* Floating "AI coach" accent card */}
+          {/* Floating "AI coach" accent card — sage tinted */}
           <motion.div
             className="absolute -bottom-4 -left-6 rounded-xl px-4 py-3 hidden sm:block"
             style={{
-              background: "rgba(255,255,255,0.12)",
+              background: "rgba(118,179,157,0.18)",
               backdropFilter: "blur(16px)",
-              border: "1px solid rgba(255,255,255,0.18)",
+              border: "1px solid rgba(118,179,157,0.35)",
               boxShadow: "0 8px 32px rgba(0,0,0,0.24)",
             }}
             initial={{ opacity: 0, x: -16 }}
@@ -399,20 +384,20 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.7, ease: EASE }}
           >
             <p className="font-semibold text-white" style={{ fontSize: "13px" }}>
-              AI coach
+              AI coffee consultant
             </p>
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", marginTop: "1px" }}>
-              Coffee-specific answers
+            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "11px", marginTop: "1px" }}>
+              Specialty-specific answers
             </p>
           </motion.div>
 
-          {/* Floating PDF accent card */}
+          {/* Floating benchmarking accent card */}
           <motion.div
             className="absolute -top-4 -right-4 rounded-xl px-4 py-3 hidden sm:block"
             style={{
-              background: "rgba(118,179,157,0.18)",
+              background: "rgba(255,255,255,0.12)",
               backdropFilter: "blur(16px)",
-              border: "1px solid rgba(118,179,157,0.3)",
+              border: "1px solid rgba(255,255,255,0.2)",
               boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
             }}
             initial={{ opacity: 0, x: 16 }}
@@ -420,10 +405,10 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.8, ease: EASE }}
           >
             <p className="font-semibold text-white" style={{ fontSize: "13px" }}>
-              Export as PDF
+              Benchmarked against real data
             </p>
             <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "11px", marginTop: "1px" }}>
-              Business-ready documents
+              Know if your plan is sustainable
             </p>
           </motion.div>
         </motion.div>
