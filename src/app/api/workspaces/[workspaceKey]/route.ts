@@ -1,9 +1,11 @@
 // TIM-643: Workspace document read/write endpoint.
 // GET is open (read-only preview). POST/PUT/PATCH require subscription_status === 'active'.
 // Returns 402 { reason: 'paywall', tier_required: 'starter' } for inactive subscriptions.
+// TIM-717: financials writes also recompute ai_findings and persist them.
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
+import { buildAiFindings } from "@/lib/financials/sanityChecks"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -86,10 +88,18 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
 
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
 
+  // TIM-717: recompute AI findings on every financials write and embed them
+  // back into the content blob so the sidebar and co-pilot always see fresh flags.
+  let contentToSave = body.content
+  if (workspaceKey === "financials" && typeof contentToSave === "object" && contentToSave !== null) {
+    const findings = buildAiFindings(contentToSave)
+    contentToSave = { ...(contentToSave as Record<string, unknown>), ai_findings: findings }
+  }
+
   const { data, error } = await supabase
     .from("workspace_documents")
     .upsert(
-      { plan_id: plan.id, workspace_key: workspaceKey, content: body.content },
+      { plan_id: plan.id, workspace_key: workspaceKey, content: contentToSave },
       { onConflict: "plan_id,workspace_key" }
     )
     .select("id, updated_at")
