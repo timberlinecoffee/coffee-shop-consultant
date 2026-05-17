@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Archive, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Archive, ExternalLink, ChevronDown, ChevronUp, Columns2 } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -12,6 +12,7 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { CompareModal } from './CompareModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -681,6 +682,7 @@ export function CandidateListCard({
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [adding, setAdding] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [compareOpen, setCompareOpen] = useState(false)
 
   // ── Add candidate ────────────────────────────────────────────────────────
 
@@ -756,6 +758,17 @@ export function CandidateListCard({
           <CardTitle>Location Shortlist</CardTitle>
           <CardAction>
             <div className="flex items-center gap-2">
+              {candidates.length >= 2 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCompareOpen(true)}
+                  aria-label="Compare shortlist"
+                >
+                  <Columns2 className="size-3.5" />
+                  <span className="hidden sm:inline ml-1">Compare shortlist</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -809,6 +822,16 @@ export function CandidateListCard({
           )}
         </CardContent>
       </Card>
+
+      {/* Compare modal */}
+      <CompareModal
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        candidates={candidates.filter(c => c.status !== 'passed')}
+        planId={planId}
+        aiCreditsRemaining={aiCreditsRemaining}
+        subscriptionTier={subscriptionTier}
+      />
 
       {/* CoPilot drawer — mounted at card root, not inside candidate rows */}
       <CoPilotDrawer
