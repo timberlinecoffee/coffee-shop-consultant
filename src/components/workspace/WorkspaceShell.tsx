@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -13,6 +14,7 @@ interface WorkspaceShellProps {
   icon: string;
   shipsWith: string;
   currentFocusLabel?: string;
+  actions?: React.ReactNode;
 }
 
 export function WorkspaceShell({
@@ -23,6 +25,7 @@ export function WorkspaceShell({
   icon,
   shipsWith,
   currentFocusLabel,
+  actions,
 }: WorkspaceShellProps) {
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-0">
@@ -34,9 +37,12 @@ export function WorkspaceShell({
           >
             ← Back to dashboard
           </Link>
-          <span className="text-xs text-[#6b6b6b]" data-workspace-key={workspaceKey}>
-            Workspace · {title}
-          </span>
+          <div className="flex items-center gap-3">
+            {actions}
+            <span className="text-xs text-[#6b6b6b] hidden sm:inline" data-workspace-key={workspaceKey}>
+              Workspace · {title}
+            </span>
+          </div>
         </div>
       </nav>
 

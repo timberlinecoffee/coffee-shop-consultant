@@ -1,4 +1,5 @@
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
+import { MenuPricingExportButton } from "@/components/menu-pricing/MenuPricingExportButton";
 import { loadWorkspaceContext } from "../_shared";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function MenuPricingWorkspacePage() {
       icon="🍽️"
       shipsWith="W4 — Menu & Pricing workspace (TIM-622)"
       currentFocusLabel="Menu & Pricing workspace overview"
+      actions={<MenuPricingExportButton />}
     />
   );
 }
