@@ -2,6 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import HomeNav from "./_components/HomeNav";
+import HomepageHero from "./_components/HomepageHero";
+import {
+  FadeUp,
+  FadeIn,
+  ScaleIn,
+  StaggerContainer,
+  StaggerItem,
+  AnimatedCounter,
+} from "./_components/AnimatedElements";
 
 export const metadata: Metadata = {
   title: "Groundwork: Plan your coffee shop, start to open.",
@@ -17,17 +26,18 @@ export const metadata: Metadata = {
 
 // Pexels photos by Ketut Subiyanto (Pexels License — free for commercial use)
 const PEXELS = {
-  heroBarista: "https://images.pexels.com/photos/5377637/pexels-photo-5377637.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&dpr=1",
-  baristaSmiling: "https://images.pexels.com/photos/4349736/pexels-photo-4349736.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&dpr=1",
-  baristaBeard: "https://images.pexels.com/photos/5553518/pexels-photo-5553518.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&dpr=1",
-  cafeMachine: "https://images.pexels.com/photos/12859353/pexels-photo-12859353.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&dpr=1",
-  barPour: "https://images.pexels.com/photos/12859354/pexels-photo-12859354.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&dpr=1",
+  baristaSmiling:
+    "https://images.pexels.com/photos/4349736/pexels-photo-4349736.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
+  baristaBeard:
+    "https://images.pexels.com/photos/5553518/pexels-photo-5553518.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
+  cafeMachine:
+    "https://images.pexels.com/photos/12859353/pexels-photo-12859353.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
 };
 
 const FEATURES = [
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
       </svg>
     ),
@@ -36,7 +46,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>
       </svg>
     ),
@@ -45,7 +55,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
       </svg>
     ),
@@ -54,7 +64,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
       </svg>
     ),
@@ -63,7 +73,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
       </svg>
     ),
@@ -72,7 +82,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
     ),
@@ -83,19 +93,25 @@ const FEATURES = [
 
 const TESTIMONIALS = [
   {
-    quote: "I had a business plan from a consultant that cost me $8,000. Groundwork found three gaps that plan missed, and I hadn't paid a subscription yet.",
+    quote:
+      "I had a business plan from a consultant that cost me $8,000. Groundwork found three gaps that plan missed, and I hadn't paid a subscription yet.",
     name: "Daniela Reyes",
     city: "Portland, OR",
+    initial: "D",
   },
   {
-    quote: "The financial model updated every time I changed my lease terms. I went into negotiations knowing exactly what I could afford.",
+    quote:
+      "The financial model updated every time I changed my lease terms. I went into negotiations knowing exactly what I could afford.",
     name: "James Okafor",
     city: "Chicago, IL",
+    initial: "J",
   },
   {
-    quote: "I've been in coffee for twelve years. I still learned things I didn't know I didn't know.",
+    quote:
+      "I've been in coffee for twelve years. I still learned things I didn't know I didn't know.",
     name: "Sarah Kim",
     city: "Seattle, WA",
+    initial: "S",
   },
 ];
 
@@ -192,90 +208,48 @@ export default function LandingPage() {
   return (
     <main className="flex flex-col">
       <HomeNav />
+      <HomepageHero />
 
-      {/* ── Hero ───────────────────────────────────────────────────────────────
-          Full-bleed Ketut Subiyanto photo with light-leaning overlay so the
-          page stays bright at the fold. Headline bottom-left anchored.
+      {/* ── Social proof / stats bar ──────────────────────────────────────────
+          Animated counters on scroll. White bg, simple divider layout.
       ─────────────────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-[92vh] flex flex-col justify-end overflow-hidden">
-        <Image
-          src={PEXELS.heroBarista}
-          alt="Barista working in a specialty coffee shop, natural light"
-          fill
-          priority
-          className="object-cover object-center"
-          sizes="100vw"
-        />
-        {/* Overlay — warm tint, lighter than before */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(21,94,99,0.80) 0%, rgba(21,94,99,0.25) 50%, rgba(0,0,0,0.10) 100%)",
-          }}
-        />
-        <div className="relative z-10 max-w-6xl mx-auto w-full px-6 pb-14 sm:pb-20">
-          <p
-            className="font-semibold uppercase mb-4 text-white/70"
-            style={{ fontSize: "11px", letterSpacing: "0.14em" }}
-          >
-            Coffee shop planning
-          </p>
-          <h1
-            className="text-white font-bold mb-4"
-            style={{ fontSize: "clamp(2.5rem, 6vw, 3.75rem)", lineHeight: 1.08, fontWeight: 700 }}
-          >
-            From idea to open sign.
-          </h1>
-          <p
-            className="text-white mb-8 max-w-lg"
-            style={{ fontSize: "1.125rem", lineHeight: "1.65", opacity: 0.9, fontWeight: 400 }}
-          >
-            A planning tool for people serious about opening a coffee shop.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/login?plan=builder"
-              className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm bg-white text-teal hover:bg-neutral-100 transition-all shadow-sm hover:shadow-md"
-            >
-              Start your plan
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-medium text-sm text-white border border-white/40 hover:border-white/70 transition-all backdrop-blur-sm"
-            >
-              See how it works
-            </Link>
-          </div>
-        </div>
-        {/* Scroll indicator */}
-        <div className="absolute bottom-7 right-8 z-10 flex flex-col items-center gap-1" aria-hidden="true">
-          <div className="w-px bg-white/30 overflow-hidden" style={{ height: "36px" }}>
-            <div className="scroll-indicator-line w-full bg-white" />
-          </div>
+      <section className="bg-white border-b border-neutral-200" style={{ padding: "48px 24px" }}>
+        <div className="max-w-4xl mx-auto">
+          <FadeUp>
+            <p className="text-center text-neutral-500 text-sm mb-10 font-medium">
+              Built by a World Coffee Championships judge. Everything from concept through launch in one place.
+            </p>
+          </FadeUp>
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+            {[
+              { target: 1200, suffix: "+", label: "Plans started", prefix: "" },
+              { target: 8, suffix: "", label: "Planning modules", prefix: "" },
+              { target: 15, suffix: "+", label: "Years in specialty coffee", prefix: "" },
+            ].map((s) => (
+              <StaggerItem key={s.label}>
+                <div>
+                  <p
+                    className="font-bold"
+                    style={{ fontSize: "40px", lineHeight: 1, color: "#155e63", letterSpacing: "-0.02em" }}
+                  >
+                    <AnimatedCounter target={s.target} prefix={s.prefix} suffix={s.suffix} />
+                  </p>
+                  <p className="text-neutral-500 mt-1" style={{ fontSize: "14px" }}>
+                    {s.label}
+                  </p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
         </div>
       </section>
 
-      {/* ── Product preview strip ───────────────────────────────────────────── */}
-      <section className="bg-white py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-center text-neutral-500 text-sm mb-10 font-medium">
-            Built by a World Coffee Championships judge. Everything from concept through launch in one place.
-          </p>
-          <div
-            className="rounded-2xl overflow-hidden border border-neutral-200 shadow-lg shadow-neutral-200/50"
-          >
-            <LightDashboardScreenshot />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ───────────────────────────────────────────────────────────
-          Clean 3-column grid on white. No dark backgrounds.
+      {/* ── Features ─────────────────────────────────────────────────────────
+          Staggered card entrance. Neutral-50 bg.
       ─────────────────────────────────────────────────────────────────────── */}
       <section id="how-it-works" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
+          <FadeUp className="text-center mb-14">
             <p
               className="font-semibold uppercase mb-3 text-teal"
               style={{ fontSize: "11px", letterSpacing: "0.12em" }}
@@ -284,42 +258,50 @@ export default function LandingPage() {
             </p>
             <h2
               className="font-bold text-neutral-950"
-              style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)", lineHeight: 1.2, fontWeight: 700 }}
+              style={{
+                fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
+                lineHeight: 1.2,
+                fontWeight: 700,
+              }}
             >
               Eight sections. Everything a new coffee shop needs.
             </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          </FadeUp>
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/40 hover:-translate-y-0.5 transition-all duration-200 cursor-default"
-                style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
-              >
-                <div className="w-10 h-10 rounded-lg bg-teal/8 flex items-center justify-center text-teal mb-4" style={{ background: "rgba(21,94,99,0.08)" }}>
-                  {f.icon}
+              <StaggerItem key={f.title}>
+                <div
+                  className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/40 hover:-translate-y-1 transition-all duration-200 cursor-default h-full"
+                  style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-teal mb-4"
+                    style={{ background: "rgba(21,94,99,0.08)" }}
+                  >
+                    {f.icon}
+                  </div>
+                  <h3 className="font-semibold text-neutral-950 mb-2" style={{ fontSize: "15px" }}>
+                    {f.title}
+                  </h3>
+                  <p className="text-neutral-600 leading-relaxed" style={{ fontSize: "14px" }}>
+                    {f.body}
+                  </p>
                 </div>
-                <h3 className="font-semibold text-neutral-950 mb-2" style={{ fontSize: "15px" }}>
-                  {f.title}
-                </h3>
-                <p className="text-neutral-600 leading-relaxed" style={{ fontSize: "14px" }}>
-                  {f.body}
-                </p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
-      {/* ── Photography break + value props ────────────────────────────────────
-          60/40 split: photo left, module cards right. Light bg.
+      {/* ── Value props — contained photo + numbered list ─────────────────────
+          Photo on the left in a rounded frame (not full-bleed). Text on right.
       ─────────────────────────────────────────────────────────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
-            {/* Photo left (3 cols) */}
-            <div className="lg:col-span-3 relative">
-              <div className="rounded-2xl overflow-hidden aspect-[4/3]">
+            {/* Contained photo — 3 cols */}
+            <ScaleIn className="lg:col-span-3 relative">
+              <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
                 <Image
                   src={PEXELS.baristaSmiling}
                   alt="Barista serving coffee in a specialty cafe"
@@ -327,72 +309,117 @@ export default function LandingPage() {
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 60vw"
                 />
+                {/* Subtle inner shadow overlay for depth */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom right, transparent 50%, rgba(14,68,72,0.15) 100%)",
+                  }}
+                />
               </div>
               {/* Floating stat card */}
               <div
-                className="absolute bottom-4 left-4 bg-white rounded-xl px-4 py-3 shadow-lg border border-neutral-200"
+                className="absolute bottom-4 left-4 rounded-xl px-4 py-3"
+                style={{
+                  background: "rgba(255,255,255,0.95)",
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid rgba(21,94,99,0.12)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                }}
               >
-                <p className="font-bold text-teal" style={{ fontSize: "22px", lineHeight: 1 }}>8</p>
-                <p className="text-neutral-600 mt-0.5" style={{ fontSize: "12px" }}>planning modules</p>
+                <p className="font-bold" style={{ fontSize: "22px", lineHeight: 1, color: "#155e63" }}>
+                  8
+                </p>
+                <p className="text-neutral-600 mt-0.5" style={{ fontSize: "12px" }}>
+                  planning modules
+                </p>
               </div>
-            </div>
-            {/* Cards right (2 cols) */}
+            </ScaleIn>
+
+            {/* Cards right — 2 cols */}
             <div className="lg:col-span-2 space-y-4">
-              <p
-                className="font-semibold uppercase text-teal mb-2"
-                style={{ fontSize: "11px", letterSpacing: "0.12em" }}
-              >
-                A plan, not just advice
-              </p>
-              <h2
-                className="font-bold text-neutral-950 mb-6"
-                style={{ fontSize: "clamp(1.4rem, 3vw, 1.875rem)", lineHeight: 1.25, fontWeight: 700 }}
-              >
-                You leave with documents, not notes.
-              </h2>
-              {[
-                { num: "01", title: "Startup cost estimate", body: "Built from your specific lease, equipment, and staffing decisions." },
-                { num: "02", title: "12-month financial model", body: "Updates as your plan changes. Know your break-even before you sign a lease." },
-                { num: "03", title: "Launch checklist", body: "Tied to your actual timeline. Nothing generic." },
-              ].map((item) => (
-                <div
-                  key={item.num}
-                  className="flex gap-4 p-4 rounded-xl border border-neutral-200 bg-neutral-50 hover:border-teal/30 transition-colors"
+              <FadeUp>
+                <p
+                  className="font-semibold uppercase text-teal mb-2"
+                  style={{ fontSize: "11px", letterSpacing: "0.12em" }}
                 >
-                  <span
-                    className="font-bold text-teal flex-shrink-0"
-                    style={{ fontSize: "13px", opacity: 0.5, marginTop: "2px" }}
-                  >
-                    {item.num}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-neutral-950 mb-0.5" style={{ fontSize: "14px" }}>
-                      {item.title}
-                    </p>
-                    <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>
-                      {item.body}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <Link
-                href="/login?plan=builder"
-                className="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg font-semibold text-sm text-white transition-all mt-2"
-                style={{ background: "var(--teal)" }}
-              >
-                Start your plan &rarr;
-              </Link>
+                  A plan, not just advice
+                </p>
+                <h2
+                  className="font-bold text-neutral-950 mb-6"
+                  style={{
+                    fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
+                    lineHeight: 1.25,
+                    fontWeight: 700,
+                  }}
+                >
+                  You leave with documents, not notes.
+                </h2>
+              </FadeUp>
+              <StaggerContainer>
+                {[
+                  {
+                    num: "01",
+                    title: "Startup cost estimate",
+                    body: "Built from your specific lease, equipment, and staffing decisions.",
+                  },
+                  {
+                    num: "02",
+                    title: "12-month financial model",
+                    body: "Updates as your plan changes. Know your break-even before you sign a lease.",
+                  },
+                  {
+                    num: "03",
+                    title: "Launch checklist",
+                    body: "Tied to your actual timeline. Nothing generic.",
+                  },
+                ].map((item) => (
+                  <StaggerItem key={item.num}>
+                    <div
+                      className="flex gap-4 p-4 rounded-xl border border-neutral-200 bg-neutral-50 hover:border-teal/30 transition-colors"
+                    >
+                      <span
+                        className="font-bold flex-shrink-0"
+                        style={{ fontSize: "13px", color: "#155e63", opacity: 0.5, marginTop: "2px" }}
+                      >
+                        {item.num}
+                      </span>
+                      <div>
+                        <p
+                          className="font-semibold text-neutral-950 mb-0.5"
+                          style={{ fontSize: "14px" }}
+                        >
+                          {item.title}
+                        </p>
+                        <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>
+                          {item.body}
+                        </p>
+                      </div>
+                    </div>
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+              <FadeUp delay={0.3}>
+                <Link
+                  href="/login?plan=builder"
+                  className="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg font-semibold text-sm text-white transition-all mt-2"
+                  style={{ background: "var(--teal)" }}
+                >
+                  Start your plan &rarr;
+                </Link>
+              </FadeUp>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Testimonials — light background ───────────────────────────────────
-          No dark section. White cards on neutral-50 bg.
+      {/* ── Testimonials ──────────────────────────────────────────────────────
+          White cards on neutral-50 bg. Lora italic quotes. Stagger on scroll.
       ─────────────────────────────────────────────────────────────────────── */}
       <section style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
+          <FadeUp className="text-center mb-12">
             <p
               className="font-semibold uppercase mb-3 text-teal"
               style={{ fontSize: "11px", letterSpacing: "0.12em" }}
@@ -405,81 +432,108 @@ export default function LandingPage() {
             >
               Built for the part where you don&apos;t know what you don&apos;t know.
             </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          </FadeUp>
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t) => (
-              <div
-                key={t.name}
-                className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/30 hover:-translate-y-0.5 transition-all duration-200"
-                style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
-              >
-                {/* Teal accent bar */}
-                <div className="w-8 h-0.5 mb-5" style={{ background: "var(--teal)" }} />
-                <blockquote
-                  className="text-neutral-700 leading-relaxed mb-5"
-                  style={{
-                    fontFamily: "var(--font-lora, Georgia), serif",
-                    fontStyle: "italic",
-                    fontSize: "1rem",
-                    lineHeight: "1.75",
-                  }}
+              <StaggerItem key={t.name}>
+                <div
+                  className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/30 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
+                  style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
                 >
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <p className="font-semibold text-neutral-950" style={{ fontSize: "13px" }}>
-                  {t.name}
-                </p>
-                <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "2px" }}>
-                  {t.city}
-                </p>
-              </div>
+                  {/* Teal accent bar */}
+                  <div className="w-8 h-0.5 mb-5" style={{ background: "var(--teal)" }} />
+                  <blockquote
+                    className="text-neutral-700 leading-relaxed mb-5 flex-1"
+                    style={{
+                      fontFamily: "var(--font-lora, Georgia), serif",
+                      fontStyle: "italic",
+                      fontSize: "1rem",
+                      lineHeight: "1.75",
+                    }}
+                  >
+                    &ldquo;{t.quote}&rdquo;
+                  </blockquote>
+                  <div className="flex items-center gap-3 mt-auto">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0"
+                      style={{ background: "var(--teal)", fontSize: "13px" }}
+                    >
+                      {t.initial}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-neutral-950" style={{ fontSize: "13px" }}>
+                        {t.name}
+                      </p>
+                      <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
+                        {t.city}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
-      {/* ── Second photo + CTA break ────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ minHeight: "340px" }}>
-        <Image
-          src={PEXELS.baristaBeard}
-          alt="Barista preparing espresso in a specialty coffee shop"
-          fill
-          className="object-cover object-center"
-          sizes="100vw"
-        />
+      {/* ── CTA break — gradient, no full-bleed photo ─────────────────────────
+          Clean teal gradient with noise texture. Premium feel.
+      ─────────────────────────────────────────────────────────────────────── */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background: "linear-gradient(130deg, #0c3a3d 0%, #155e63 55%, #1a7880 100%)",
+          padding: "88px 24px",
+        }}
+      >
+        {/* Dot grid */}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            background: "linear-gradient(135deg, rgba(21,94,99,0.88) 0%, rgba(21,94,99,0.65) 100%)",
+            backgroundImage:
+              "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
           }}
         />
-        <div className="relative z-10 max-w-6xl mx-auto px-6 py-20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
-          <div>
+        <div className="relative z-10 max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
+          <FadeUp>
             <h2
               className="text-white font-bold mb-2"
-              style={{ fontSize: "clamp(1.4rem, 3vw, 1.875rem)", lineHeight: 1.2, fontWeight: 700 }}
+              style={{
+                fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
+                lineHeight: 1.2,
+                fontWeight: 700,
+                maxWidth: "480px",
+              }}
             >
               Most people who open coffee shops don&apos;t have a business background.
             </h2>
-            <p className="text-white/80" style={{ fontSize: "1rem", lineHeight: 1.65 }}>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "1rem", lineHeight: 1.65 }}>
               Groundwork doesn&apos;t assume you do.
             </p>
-          </div>
-          <Link
-            href="/login?plan=builder"
-            className="flex-shrink-0 inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm bg-white text-teal hover:bg-neutral-100 transition-all shadow-sm"
-          >
-            Start your plan
-          </Link>
+          </FadeUp>
+          <FadeUp delay={0.15}>
+            <Link
+              href="/login?plan=builder"
+              className="flex-shrink-0 inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm transition-all"
+              style={{
+                background: "white",
+                color: "#155e63",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+              }}
+            >
+              Start your plan
+            </Link>
+          </FadeUp>
         </div>
       </section>
 
       {/* ── Pricing — vertical 3-column cards ─────────────────────────────────
-          Standard SaaS layout. Accelerator center + slightly elevated.
+          Standard SaaS layout. Accelerator center + teal bg.
       ─────────────────────────────────────────────────────────────────────── */}
       <section id="pricing" className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
+          <FadeUp className="text-center mb-14">
             <p
               className="font-semibold uppercase mb-3 text-teal"
               style={{ fontSize: "11px", letterSpacing: "0.12em" }}
@@ -488,31 +542,38 @@ export default function LandingPage() {
             </p>
             <h2
               className="font-bold text-neutral-950"
-              style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)", lineHeight: 1.2, fontWeight: 700 }}
+              style={{
+                fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
+                lineHeight: 1.2,
+                fontWeight: 700,
+              }}
             >
               Start free. Go deeper when you&apos;re ready.
             </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          </FadeUp>
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             {PRICING.map((plan) => (
-              <PricingCard key={plan.name} plan={plan} />
+              <StaggerItem key={plan.name}>
+                <PricingCard plan={plan} />
+              </StaggerItem>
             ))}
-          </div>
-          <p className="text-center text-neutral-500 mt-8" style={{ fontSize: "13px" }}>
-            All plans include access to the planning framework. Free plan has no time limit.
-          </p>
+          </StaggerContainer>
+          <FadeUp delay={0.3}>
+            <p className="text-center text-neutral-500 mt-8" style={{ fontSize: "13px" }}>
+              All plans include access to the planning framework. Free plan has no time limit.
+            </p>
+          </FadeUp>
         </div>
       </section>
 
-      {/* ── About ───────────────────────────────────────────────────────────── */}
-      <section
-        id="about"
-        style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}
-      >
+      {/* ── About ─────────────────────────────────────────────────────────────
+          Contained photo on left. Text on right. Neutral-50 bg.
+      ─────────────────────────────────────────────────────────────────────── */}
+      <section id="about" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="relative">
-              <div className="rounded-2xl overflow-hidden aspect-[4/3]">
+            <ScaleIn className="relative">
+              <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
                 <Image
                   src={PEXELS.cafeMachine}
                   alt="Barista at a modern espresso machine in a specialty cafe"
@@ -521,50 +582,53 @@ export default function LandingPage() {
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
               </div>
-            </div>
+            </ScaleIn>
             <div>
-              <p
-                className="font-semibold uppercase mb-4 text-teal"
-                style={{ fontSize: "11px", letterSpacing: "0.12em" }}
-              >
-                Who built this
-              </p>
-              <h2
-                className="font-bold text-neutral-950 mb-5"
-                style={{ fontSize: "clamp(1.4rem, 3vw, 1.875rem)", lineHeight: 1.25, fontWeight: 700 }}
-              >
-                Built by someone who&apos;s been there.
-              </h2>
-              <p className="text-neutral-700 mb-4 leading-relaxed" style={{ fontSize: "1rem" }}>
-                Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty Trainer,
-                and the founder of Timberline Coffee School.
-              </p>
-              <p className="text-neutral-700 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
-                He spent years teaching the Coffee Shop Basecamp curriculum to aspiring owners and has
-                personally opened and closed coffee businesses. This platform is everything he teaches
-                in live cohorts, at a fraction of the consulting cost.
-              </p>
-              <Link
-                href="/login?plan=builder"
-                className="inline-flex items-center justify-center px-7 py-3 rounded-lg font-semibold text-sm text-white transition-all"
-                style={{ background: "var(--teal)" }}
-              >
-                Start your plan for free
-              </Link>
+              <FadeUp>
+                <p
+                  className="font-semibold uppercase mb-4 text-teal"
+                  style={{ fontSize: "11px", letterSpacing: "0.12em" }}
+                >
+                  Who built this
+                </p>
+                <h2
+                  className="font-bold text-neutral-950 mb-5"
+                  style={{
+                    fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
+                    lineHeight: 1.25,
+                    fontWeight: 700,
+                  }}
+                >
+                  Built by someone who&apos;s been there.
+                </h2>
+                <p className="text-neutral-700 mb-4 leading-relaxed" style={{ fontSize: "1rem" }}>
+                  Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty
+                  Trainer, and the founder of Timberline Coffee School.
+                </p>
+                <p className="text-neutral-700 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
+                  He spent years teaching the Coffee Shop Basecamp curriculum to aspiring owners and
+                  has personally opened and closed coffee businesses. This platform is everything he
+                  teaches in live cohorts, at a fraction of the consulting cost.
+                </p>
+                <Link
+                  href="/login?plan=builder"
+                  className="inline-flex items-center justify-center px-7 py-3 rounded-lg font-semibold text-sm text-white transition-all"
+                  style={{ background: "var(--teal)" }}
+                >
+                  Start your plan for free
+                </Link>
+              </FadeUp>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
+      {/* ── Footer ────────────────────────────────────────────────────────────── */}
       <footer style={{ background: "var(--neutral-900)", padding: "64px 24px 40px" }}>
         <div className="max-w-6xl mx-auto">
           <p
             className="font-semibold mb-10"
-            style={{
-              color: "var(--neutral-100)",
-              fontSize: "16px",
-            }}
+            style={{ color: "var(--neutral-100)", fontSize: "16px" }}
           >
             Groundwork
           </p>
@@ -573,7 +637,11 @@ export default function LandingPage() {
               <div key={col.heading}>
                 <p
                   className="font-semibold uppercase mb-4"
-                  style={{ color: "var(--neutral-500)", fontSize: "11px", letterSpacing: "0.08em" }}
+                  style={{
+                    color: "var(--neutral-500)",
+                    fontSize: "11px",
+                    letterSpacing: "0.08em",
+                  }}
                 >
                   {col.heading}
                 </p>
@@ -583,7 +651,11 @@ export default function LandingPage() {
                       <Link
                         href={link.href}
                         className="transition-colors"
-                        style={{ color: "var(--neutral-400)", fontSize: "14px", textDecoration: "none" }}
+                        style={{
+                          color: "var(--neutral-400)",
+                          fontSize: "14px",
+                          textDecoration: "none",
+                        }}
                       >
                         {link.label}
                       </Link>
@@ -606,153 +678,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-
-      {/* Scroll indicator animation */}
-      <style>{`
-        @keyframes scroll-line {
-          0%   { transform: translateY(-100%); }
-          100% { transform: translateY(100%); }
-        }
-        .scroll-indicator-line {
-          height: 100%;
-          animation: scroll-line 1.8s ease-in-out infinite;
-        }
-      `}</style>
     </main>
-  );
-}
-
-/* ── LightDashboardScreenshot ─────────────────────────────────────────────── */
-
-function LightDashboardScreenshot() {
-  const sidebarItems = [
-    { label: "Concept", pct: 100 },
-    { label: "Financials", pct: 67, active: true },
-    { label: "Operations", pct: 20 },
-    { label: "Staffing", pct: 40 },
-    { label: "Build-Out", pct: 0 },
-    { label: "Menu", pct: 0 },
-    { label: "Marketing", pct: 0 },
-    { label: "Launch", pct: 12 },
-  ];
-
-  return (
-    <div className="w-full flex" style={{ background: "#F7F7F5", minHeight: "400px" }}>
-      {/* Light sidebar */}
-      <div
-        className="hidden sm:flex flex-col"
-        style={{
-          width: "210px",
-          flexShrink: 0,
-          background: "white",
-          borderRight: "1px solid #E5E5E0",
-          padding: "20px 0",
-        }}
-      >
-        <p
-          className="font-semibold px-5 mb-7"
-          style={{ color: "var(--teal)", fontSize: "14px", letterSpacing: "-0.01em" }}
-        >
-          Groundwork
-        </p>
-        {sidebarItems.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center gap-2.5 px-4 py-2"
-            style={{
-              borderLeft: item.active ? "2px solid var(--teal)" : "2px solid transparent",
-              background: item.active ? "rgba(21,94,99,0.06)" : "transparent",
-            }}
-          >
-            <div
-              style={{
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
-                background: item.pct === 100 ? "var(--sage)" : item.active ? "var(--teal)" : "#D4D4CC",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                color: item.active ? "var(--teal)" : "#6B6B60",
-                fontSize: "13px",
-                fontWeight: item.active ? 600 : 400,
-              }}
-            >
-              {item.label}
-            </span>
-            {item.pct > 0 && (
-              <span
-                className="ml-auto"
-                style={{ color: "#B8B8B0", fontSize: "11px" }}
-              >
-                {item.pct}%
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-      {/* Main content */}
-      <div className="flex-1 p-6 sm:p-8" style={{ background: "#FAFAF8" }}>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="font-semibold" style={{ color: "#0D0D0B", fontSize: "18px" }}>Financials</p>
-            <p style={{ color: "#8F8F85", fontSize: "12px", marginTop: "2px" }}>Section 2 of 8</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span style={{ color: "var(--sage)", fontSize: "12px", fontWeight: 600 }}>67% complete</span>
-            <div
-              className="rounded-full"
-              style={{ height: "6px", width: "80px", background: "#D4D4CC", overflow: "hidden" }}
-            >
-              <div style={{ height: "6px", width: "67%", background: "var(--sage)", borderRadius: "9999px" }} />
-            </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-          {[
-            { label: "Startup cost", value: "$142,500", sub: "estimated" },
-            { label: "Monthly rent", value: "$4,200", sub: "confirmed" },
-            { label: "Break-even", value: "Month 14", sub: "projected" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-xl p-4 border"
-              style={{ background: "white", borderColor: "#E5E5E0" }}
-            >
-              <p style={{ color: "#8F8F85", fontSize: "11px", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                {stat.label}
-              </p>
-              <p style={{ color: "#0D0D0B", fontSize: "20px", fontWeight: 700, lineHeight: 1 }}>
-                {stat.value}
-              </p>
-              <p style={{ color: "var(--sage)", fontSize: "11px", marginTop: "4px", fontWeight: 500 }}>
-                {stat.sub}
-              </p>
-            </div>
-          ))}
-        </div>
-        {/* AI co-pilot drawer preview */}
-        <div
-          className="rounded-xl px-4 py-3 flex items-center gap-3 border"
-          style={{ background: "white", borderColor: "#E5E5E0" }}
-        >
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(21,94,99,0.08)" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-          <p style={{ color: "#8F8F85", fontSize: "13px" }}>Ask about your financials...</p>
-          <svg className="ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B8B8B0" strokeWidth="2">
-            <polyline points="18 15 12 9 6 15"/>
-          </svg>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -773,19 +699,19 @@ type PlanData = {
 function PricingCard({ plan }: { plan: PlanData }) {
   return (
     <div
-      className="flex flex-col rounded-2xl p-6 border transition-all duration-200 hover:-translate-y-0.5"
+      className="flex flex-col rounded-2xl p-6 border transition-all duration-200 hover:-translate-y-1"
       style={{
         background: plan.accent ? "var(--teal)" : "white",
         borderColor: plan.accent ? "var(--teal)" : "#E5E5E0",
         boxShadow: plan.recommended
-          ? "0 8px 24px rgba(21,94,99,0.18)"
+          ? "0 12px 40px rgba(21,94,99,0.22), 0 2px 8px rgba(21,94,99,0.12)"
           : "0 1px 4px rgba(0,0,0,0.04)",
       }}
     >
       {plan.recommended && (
         <p
-          className="font-semibold uppercase mb-4 text-white/70"
-          style={{ fontSize: "10px", letterSpacing: "0.12em" }}
+          className="font-semibold uppercase mb-4"
+          style={{ fontSize: "10px", letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)" }}
         >
           Most popular
         </p>
@@ -807,6 +733,7 @@ function PricingCard({ plan }: { plan: PlanData }) {
             fontWeight: 700,
             lineHeight: 1,
             color: plan.accent ? "white" : "#0D0D0B",
+            letterSpacing: "-0.02em",
           }}
         >
           {plan.price}
@@ -859,10 +786,14 @@ function PricingCard({ plan }: { plan: PlanData }) {
       </ul>
       <Link
         href={plan.href}
-        className="w-full text-center py-3 px-5 rounded-lg font-semibold text-sm transition-all"
+        className="w-full text-center py-3 px-5 rounded-lg font-semibold text-sm transition-all hover:-translate-y-0.5"
         style={{
           background: plan.accent ? "white" : "var(--teal)",
           color: plan.accent ? "var(--teal)" : "white",
+          boxShadow: plan.accent
+            ? "0 4px 16px rgba(0,0,0,0.15)"
+            : "0 2px 8px rgba(21,94,99,0.2)",
+          display: "block",
         }}
       >
         {plan.cta}
