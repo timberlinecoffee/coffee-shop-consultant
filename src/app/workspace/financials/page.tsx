@@ -61,7 +61,7 @@ export default async function FinancialsWorkspacePage() {
   const lastRunAt: string | null = aiFindings?.last_run_at ?? null;
 
   // Gap 2: inject derived rows from buildout_equipment _digest
-  const existingStartupCosts = (content?.startup_costs as StartupCostLine[] | null) ?? [];
+  const existingStartupCosts = ((content?.startup_costs as StartupCostLine[] | null) ?? []) as unknown as Parameters<typeof mergeRolledStartupCosts>[2];
   const allStartupCosts = await mergeRolledStartupCosts(planId, supabase, existingStartupCosts);
   const derivedStartupCosts = allStartupCosts.filter(
     (r): r is DerivedStartupCostRow => r._derived === true,
