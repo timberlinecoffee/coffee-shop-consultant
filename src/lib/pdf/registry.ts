@@ -11,19 +11,27 @@ export type PdfRenderContext<TContent = unknown> = {
 
 export type PdfTemplate<TContent = unknown> = {
   workspace_key: WorkspaceKey
-  render: (ctx: PdfRenderContext<TContent>) => ReactElement
+  // Templates can be sync (pure layout) or async (need to pre-render charts,
+  // fetch images, etc). The route awaits either way.
+  render: (
+    ctx: PdfRenderContext<TContent>
+  ) => ReactElement | Promise<ReactElement>
   filename: (ctx: PdfRenderContext<TContent>) => string
   also_load?: WorkspaceKey[]
 }
 
 // Registry maps templateId → PdfTemplate.
 // To add a new template: write templates/<name>.tsx + add one line here.
-export const PDF_TEMPLATES: Record<string, PdfTemplate> = {
-  // financials_full_report: added by TIM-715
-  // menu_card_with_cost_analysis: added by TIM-708
-}
+// Templates register themselves into this map by calling `registerTemplate`
+// from `src/lib/pdf/templates/index.ts`. Keep this file free of `.tsx` imports
+// so it stays loadable by the Node test runner (strip-types).
+export const PDF_TEMPLATES: Record<string, PdfTemplate> = {}
 
-export type TemplateId = keyof typeof PDF_TEMPLATES
+export type TemplateId = string
+
+export function registerTemplate(id: string, tmpl: PdfTemplate): void {
+  PDF_TEMPLATES[id] = tmpl
+}
 
 export function getTemplate(id: string): PdfTemplate | null {
   return PDF_TEMPLATES[id] ?? null

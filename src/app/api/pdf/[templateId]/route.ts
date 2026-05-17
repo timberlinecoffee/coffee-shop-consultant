@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive } from "@/lib/access"
 import { getTemplate } from "@/lib/pdf/registry"
+import "@/lib/pdf/templates" // Side-effect: registers all templates
 import { BRAND, registerFonts } from "@/lib/pdf/brand"
 import type { NextRequest } from "next/server"
 import type { DocumentProps } from "@react-pdf/renderer"
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     plan: { id: plan.id, shop_name: plan.shop_name ?? null },
   }
 
-  const element = tmpl.render(ctx) as ReactElement<DocumentProps, string | JSXElementConstructor<unknown>>
+  const element = (await tmpl.render(ctx)) as ReactElement<DocumentProps, string | JSXElementConstructor<unknown>>
   const filename = tmpl.filename(ctx)
 
   const { renderToStream } = await import("@react-pdf/renderer")

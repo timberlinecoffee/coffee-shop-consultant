@@ -289,6 +289,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
   const [financials, setFinancials] =
     useState<FinancialsContent>(EMPTY_FINANCIALS);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState<{
     type: "success" | "error";
     msg: string;
@@ -350,6 +351,41 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
     setFinancials(next);
     scheduleAutosave(next);
   }
+
+  // ── PDF export ──────────────────────────────────────────────────────────────
+  const exportPdf = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await guardedFetch("/api/pdf/financials_full_report");
+      if (!res) return; // 402 handled by paywall guard
+      if (!res.ok) {
+        showToast("error", "Export failed — try again in a moment.");
+        return;
+      }
+      const blob = await res.blob();
+      const disp = res.headers.get("Content-Disposition") ?? "";
+      const m = /filename="([^"]+)"/.exec(disp);
+      const fallback = `groundwork-financials-${new Date()
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, "")}.pdf`;
+      const filename = m?.[1] ?? fallback;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("success", "Downloaded");
+    } catch {
+      showToast("error", "Export failed — try again in a moment.");
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, guardedFetch, showToast]);
 
   // ── startup costs ────────────────────────────────────────────────────────────
 
@@ -521,14 +557,42 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
     <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-12">
       {/* Nav */}
       <nav className="bg-white border-b border-[#efefef] px-4 sm:px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <Link
             href="/dashboard"
             className="text-sm text-[#155e63] font-medium hover:underline"
           >
             ← Back to dashboard
           </Link>
-          <span className="text-xs text-[#6b6b6b]">Workspace · Financials</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={exportPdf}
+              disabled={exporting || loading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#155e63] bg-white px-3 py-1.5 text-xs font-medium text-[#155e63] hover:bg-[#155e63] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Export financials as PDF"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {exporting ? "Exporting…" : "Export PDF"}
+            </button>
+            <span className="hidden sm:inline text-xs text-[#6b6b6b]">
+              Workspace · Financials
+            </span>
+          </div>
         </div>
       </nav>
 
