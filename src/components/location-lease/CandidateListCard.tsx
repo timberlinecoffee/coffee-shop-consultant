@@ -725,6 +725,7 @@ export function CandidateListCard({
     id: string,
     patch: Partial<Omit<Candidate, 'id' | 'position'>>
   ) => {
+    const snapshot = candidates
     // Optimistic update
     setCandidates(prev =>
       prev.map(c => c.id === id ? { ...c, ...patch } : c)
@@ -733,15 +734,18 @@ export function CandidateListCard({
     setSaving(s => ({ ...s, [id]: true }))
 
     try {
-      await fetch(`/api/workspaces/location-lease/candidates/${id}`, {
+      const res = await fetch(`/api/workspaces/location-lease/candidates/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       })
+      if (!res.ok) {
+        setCandidates(snapshot)
+      }
     } finally {
       setSaving(s => ({ ...s, [id]: false }))
     }
-  }, [])
+  }, [candidates])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
