@@ -85,15 +85,17 @@ function computeFooter(items: MenuItem[]) {
     weightedMargin = sumMix > 0 ? sumWeighted / sumMix : null;
   }
 
-  // Margin contribution per 100 covers (customers)
-  // Z = sum(mix_i * (price_i - cogs_i)) / totalMix / 100  [dollars]
+  // Margin per 100 covers (100 customers ordering by mix):
+  //   = sum( (mix_i/totalMix)*100 * (price_i-cogs_i)/100 )
+  //   = sum( mix_i * (price_i - cogs_i) ) / totalMix
+  //   The ×100 customers and ÷100 cents-to-dollars cancel, leaving just ÷totalMix.
   let marginPer100: number | null = null;
   if (totalMix > 0) {
     const sumContrib = active.reduce(
       (s, i) => s + i.expected_mix_pct * (i.price_cents - i.cogs_cents),
       0
     );
-    marginPer100 = sumContrib / totalMix / 100;
+    marginPer100 = sumContrib / totalMix;
   }
 
   return { count, avgMargin, weightedMargin, marginPer100 };
