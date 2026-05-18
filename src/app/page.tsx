@@ -25,10 +25,12 @@ export const metadata: Metadata = {
 
 // Pexels photos by Ketut Subiyanto (Pexels License — free for commercial use)
 const PEXELS = {
-  baristaWorking:
-    "https://images.pexels.com/photos/5377637/pexels-photo-5377637.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
-  baristaPortrait:
-    "https://images.pexels.com/photos/4349736/pexels-photo-4349736.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
+  // Coffee shop team at laptop — shows planning & collaboration in a real café
+  teamPlanning:
+    "https://images.pexels.com/photos/4350093/pexels-photo-4350093.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
+  // Specialty barista portrait — warm, minimal, professional
+  shopOwner:
+    "https://images.pexels.com/photos/4349812/pexels-photo-4349812.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
 };
 
 // The three pillars: what Groundwork actually is
@@ -422,8 +424,8 @@ export default function LandingPage() {
             <ScaleIn className="lg:col-span-3 relative">
               <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
                 <Image
-                  src={PEXELS.baristaWorking}
-                  alt="Coffee professional at work in a specialty shop"
+                  src={PEXELS.teamPlanning}
+                  alt="Coffee shop team reviewing their business plan together"
                   fill
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 60vw"
@@ -773,8 +775,8 @@ export default function LandingPage() {
             <ScaleIn className="relative">
               <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
                 <Image
-                  src={PEXELS.baristaPortrait}
-                  alt="Specialty coffee professional — warm and welcoming"
+                  src={PEXELS.shopOwner}
+                  alt="Specialty coffee professional ready to serve — warm and welcoming"
                   fill
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 50vw"
