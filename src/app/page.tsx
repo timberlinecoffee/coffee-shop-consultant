@@ -254,9 +254,9 @@ export default function LandingPage() {
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {PILLARS.map((p) => (
-              <StaggerItem key={p.title}>
+              <StaggerItem key={p.title} className="h-full">
                 <div
-                  className="bg-white rounded-xl p-5 border border-neutral-200 hover:-translate-y-1 transition-all duration-200 cursor-default flex items-center gap-4"
+                  className="bg-white rounded-xl p-5 border border-neutral-200 hover:-translate-y-1 transition-all duration-200 cursor-default flex items-center gap-4 h-full"
                   style={{
                     boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                     borderLeft: `3px solid ${p.color === "sage" ? "var(--sage)" : "var(--teal)"}`,
@@ -494,21 +494,21 @@ export default function LandingPage() {
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StaggerItem>
+            <StaggerItem className="h-full">
               <ModuleCard
                 title="Financials"
                 description="Startup costs and 12-month projections, benchmarked live."
                 mockup={<FinancialsMockup />}
               />
             </StaggerItem>
-            <StaggerItem>
+            <StaggerItem className="h-full">
               <ModuleCard
                 title="Menu Pricing"
                 description="Cost-per-cup analysis with margin targets and industry benchmarks."
                 mockup={<MenuMockup />}
               />
             </StaggerItem>
-            <StaggerItem>
+            <StaggerItem className="h-full">
               <ModuleCard
                 title="Launch Plan"
                 description="Milestone-based plan tied to your open date, with next actions always visible."
@@ -540,7 +540,7 @@ export default function LandingPage() {
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t, i) => (
-              <StaggerItem key={t.name}>
+              <StaggerItem key={t.name} className="h-full">
                 <div
                   className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/30 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
                   style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
@@ -658,9 +658,9 @@ export default function LandingPage() {
               Start free. Go deeper when you&apos;re ready.
             </h2>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {PRICING.map((plan) => (
-              <StaggerItem key={plan.name}>
+              <StaggerItem key={plan.name} className="h-full">
                 <PricingCard plan={plan} />
               </StaggerItem>
             ))}
@@ -897,7 +897,7 @@ function AIChatMockup() {
 function ModuleCard({ title, description, mockup }: { title: string; description: string; mockup: React.ReactNode }) {
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-neutral-200 bg-white hover:-translate-y-1 transition-all duration-200"
+      className="rounded-2xl overflow-hidden border border-neutral-200 bg-white hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
       style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
     >
       <div className="flex items-center gap-1.5 px-3" style={{ height: "28px", background: "#F0F0EE", borderBottom: "1px solid #E5E5E0" }}>
@@ -905,7 +905,7 @@ function ModuleCard({ title, description, mockup }: { title: string; description
         <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
         <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
       </div>
-      <div style={{ minHeight: "200px" }}>{mockup}</div>
+      <div className="flex-1" style={{ minHeight: "200px" }}>{mockup}</div>
       <div className="px-5 py-4 border-t border-neutral-100">
         <p className="font-semibold mb-1" style={{ fontSize: "14px", color: "var(--teal)" }}>{title}</p>
         <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>{description}</p>
@@ -1043,7 +1043,7 @@ type PlanData = {
 function PricingCard({ plan }: { plan: PlanData }) {
   return (
     <div
-      className="flex flex-col rounded-2xl p-6 border transition-all duration-200 hover:-translate-y-1"
+      className="flex flex-col rounded-2xl p-6 border transition-all duration-200 hover:-translate-y-1 h-full"
       style={{
         background: plan.accent ? "var(--teal)" : "white",
         borderColor: plan.accent ? "var(--teal)" : "#E5E5E0",
