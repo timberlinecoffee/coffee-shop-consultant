@@ -28,12 +28,8 @@ const PEXELS = {
   // Coffee shop team at laptop — shows planning & collaboration in a real café
   teamPlanning:
     "https://images.pexels.com/photos/4350093/pexels-photo-4350093.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
-  // Specialty barista portrait — warm, minimal, professional
-  shopOwner:
-    "https://images.pexels.com/photos/4349812/pexels-photo-4349812.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
 };
 
-// The three pillars: what Groundwork actually is
 const PILLARS = [
   {
     icon: (
@@ -43,7 +39,6 @@ const PILLARS = [
     ),
     color: "teal" as const,
     title: "AI-guided planning",
-    body: "A consultant trained on specialty coffee expertise walks with you through every decision — not just answers, but guidance on what matters next.",
   },
   {
     icon: (
@@ -53,7 +48,6 @@ const PILLARS = [
     ),
     color: "sage" as const,
     title: "Real benchmarking",
-    body: "Your plan is compared against what sustainable coffee shops actually look like — margins, costs, staffing ratios — with specific suggestions to close the gaps.",
   },
   {
     icon: (
@@ -63,7 +57,6 @@ const PILLARS = [
     ),
     color: "teal" as const,
     title: "Action at every step",
-    body: "Progress tracking that drives the next action. Not just where you are — what to do next, so the plan keeps moving toward opening day.",
   },
   {
     icon: (
@@ -72,8 +65,7 @@ const PILLARS = [
       </svg>
     ),
     color: "sage" as const,
-    title: "A complete planning suite",
-    body: "Concept, financials, location, build-out, staffing, menu, marketing, and launch — every decision covered, in the right sequence.",
+    title: "Complete planning suite",
   },
   {
     icon: (
@@ -83,17 +75,6 @@ const PILLARS = [
     ),
     color: "teal" as const,
     title: "Operational tools",
-    body: "Many of the tools continue to be useful after you open — menu costing, cost tracking, financial modeling. Built for the long run, not just launch.",
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-    ),
-    color: "sage" as const,
-    title: "Built by someone who opened shops",
-    body: "Trent Rollings is a World Coffee Championships judge and SCA Authorized Trainer who has personally opened and closed coffee businesses.",
   },
 ];
 
@@ -164,10 +145,10 @@ const PRICING = [
     features: [
       "Everything in Builder",
       "Unlimited AI consulting",
-      "Weekly async Q&A with Trent",
+      "Weekly expert Q&A",
       "Financial model stress-testing",
       "Equipment sourcing guidance",
-      "30-min call with Trent at plan completion",
+      "Strategy call at plan completion",
       "Priority support",
     ],
     cta: "Get the full plan",
@@ -190,7 +171,6 @@ const FOOTER_COLS = [
   {
     heading: "Company",
     links: [
-      { label: "About Trent", href: "#about" },
       { label: "Timberline Coffee School", href: "https://timberline.coffee" },
     ],
   },
@@ -221,7 +201,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <FadeUp>
             <p className="text-center text-neutral-500 text-sm mb-10 font-medium">
-              Built by a World Coffee Championships judge. An AI consultant, real benchmarks, and action at every step.
+              Guided decisions. Real benchmarks. Action toward opening.
             </p>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
@@ -271,26 +251,19 @@ export default function LandingPage() {
             >
               A guided suite for the whole journey.
             </h2>
-            <p
-              className="text-neutral-600 mt-4 mx-auto"
-              style={{ fontSize: "1.05rem", lineHeight: 1.7, maxWidth: "560px" }}
-            >
-              Not a form you fill out and print. An AI planning companion that guides your decisions,
-              benchmarks your plan, and keeps you moving forward.
-            </p>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {PILLARS.map((p) => (
               <StaggerItem key={p.title}>
                 <div
-                  className="bg-white rounded-xl p-6 border border-neutral-200 hover:-translate-y-1 transition-all duration-200 cursor-default h-full"
+                  className="bg-white rounded-xl p-5 border border-neutral-200 hover:-translate-y-1 transition-all duration-200 cursor-default flex items-center gap-4"
                   style={{
                     boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                     borderLeft: `3px solid ${p.color === "sage" ? "var(--sage)" : "var(--teal)"}`,
                   }}
                 >
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{
                       background: p.color === "sage" ? "rgba(118,179,157,0.12)" : "rgba(21,94,99,0.08)",
                       color: p.color === "sage" ? "var(--sage)" : "var(--teal)",
@@ -299,14 +272,11 @@ export default function LandingPage() {
                     {p.icon}
                   </div>
                   <h3
-                    className="font-semibold mb-2"
-                    style={{ fontSize: "15px", color: p.color === "sage" ? "var(--sage)" : "var(--teal)" }}
+                    className="font-semibold"
+                    style={{ fontSize: "14px", color: p.color === "sage" ? "var(--sage)" : "var(--teal)" }}
                   >
                     {p.title}
                   </h3>
-                  <p className="text-neutral-600 leading-relaxed" style={{ fontSize: "14px" }}>
-                    {p.body}
-                  </p>
                 </div>
               </StaggerItem>
             ))}
@@ -343,66 +313,26 @@ export default function LandingPage() {
                   Your personal coffee expert, always in your corner.
                 </h2>
                 <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
-                  Groundwork guides you through every decision — and when you have a question,
-                  a real specialty coffee expert answers it. Not general business advice. Coffee-specific.
+                  Ask about your market, lease terms, or equipment choices. Get coffee-specific answers tied to your actual plan — not generic business advice.
                 </p>
-                <StaggerContainer className="space-y-4">
+                <div className="flex flex-wrap gap-3">
                   {[
-                    {
-                      title: "Specific, not generic",
-                      body: "Ask about your market, your lease terms, your equipment choices. Answers tied to your actual plan.",
-                      color: "sage",
-                    },
-                    {
-                      title: "Benchmarking built in",
-                      body: "Your plan compared against what sustainable coffee shops actually look like — with specific suggested improvements.",
-                      color: "teal",
-                    },
-                    {
-                      title: "Trained on real expertise",
-                      body: "15 years in specialty coffee. World Coffee Championships judge. This is not a general business chatbot.",
-                      color: "sage",
-                    },
-                    {
-                      title: "Available at every step",
-                      body: "Integrated into every planning module — concept, financials, location, menu, build-out, launch.",
-                      color: "teal",
-                    },
-                  ].map((item) => (
-                    <StaggerItem key={item.title}>
-                      <div className="flex gap-3">
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                          style={{
-                            background: item.color === "sage" ? "rgba(118,179,157,0.18)" : "rgba(21,94,99,0.1)",
-                          }}
-                        >
-                          <svg
-                            width="10"
-                            height="10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke={item.color === "sage" ? "#76b39d" : "#155e63"}
-                            strokeWidth="2.5"
-                          >
-                            <polyline points="20 6 9 17 4 12"/>
-                          </svg>
-                        </div>
-                        <div>
-                          <p
-                            className="font-semibold mb-0.5"
-                            style={{ fontSize: "14px", color: item.color === "sage" ? "var(--sage)" : "var(--teal)" }}
-                          >
-                            {item.title}
-                          </p>
-                          <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.55 }}>
-                            {item.body}
-                          </p>
-                        </div>
-                      </div>
-                    </StaggerItem>
+                    { label: "Coffee-specific guidance", color: "sage" },
+                    { label: "Benchmarked against real data", color: "teal" },
+                    { label: "Available at every step", color: "sage" },
+                  ].map((tag) => (
+                    <span
+                      key={tag.label}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium"
+                      style={{
+                        background: tag.color === "sage" ? "rgba(118,179,157,0.12)" : "rgba(21,94,99,0.08)",
+                        color: tag.color === "sage" ? "var(--sage)" : "var(--teal)",
+                      }}
+                    >
+                      {tag.label}
+                    </span>
                   ))}
-                </StaggerContainer>
+                </div>
               </FadeUp>
             </div>
 
@@ -490,28 +420,13 @@ export default function LandingPage() {
               </FadeUp>
               <StaggerContainer>
                 {[
-                  {
-                    num: "01",
-                    title: "Get guided through every decision",
-                    body: "The AI consultant walks you through what matters and what to decide, in the right order.",
-                    color: "teal",
-                  },
-                  {
-                    num: "02",
-                    title: "See how your plan compares",
-                    body: "Benchmarked against what sustainable coffee shops actually look like. Know the gaps before they cost you.",
-                    color: "sage",
-                  },
-                  {
-                    num: "03",
-                    title: "Take action toward opening",
-                    body: "Progress tracking that shows the next step, not just where you are. Planning that drives you toward the door.",
-                    color: "teal",
-                  },
+                  { num: "01", title: "Get guided through every decision", color: "teal" },
+                  { num: "02", title: "See how your plan compares", color: "sage" },
+                  { num: "03", title: "Take action toward opening", color: "teal" },
                 ].map((item) => (
                   <StaggerItem key={item.num}>
                     <div
-                      className="flex gap-4 p-4 rounded-xl border transition-colors"
+                      className="flex items-center gap-4 p-4 rounded-xl border transition-colors"
                       style={{
                         borderColor: item.color === "sage" ? "rgba(118,179,157,0.25)" : "#E5E5E0",
                         background: item.color === "sage" ? "rgba(118,179,157,0.04)" : "var(--neutral-50, #FAFAF8)",
@@ -519,26 +434,16 @@ export default function LandingPage() {
                     >
                       <span
                         className="font-bold flex-shrink-0"
-                        style={{
-                          fontSize: "13px",
-                          color: item.color === "sage" ? "var(--sage)" : "var(--teal)",
-                          opacity: 0.5,
-                          marginTop: "2px",
-                        }}
+                        style={{ fontSize: "13px", color: item.color === "sage" ? "var(--sage)" : "var(--teal)", opacity: 0.5 }}
                       >
                         {item.num}
                       </span>
-                      <div>
-                        <p
-                          className="font-semibold mb-0.5"
-                          style={{ fontSize: "14px", color: item.color === "sage" ? "var(--sage)" : "var(--teal)" }}
-                        >
-                          {item.title}
-                        </p>
-                        <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>
-                          {item.body}
-                        </p>
-                      </div>
+                      <p
+                        className="font-semibold"
+                        style={{ fontSize: "14px", color: item.color === "sage" ? "var(--sage)" : "var(--teal)" }}
+                      >
+                        {item.title}
+                      </p>
                     </div>
                   </StaggerItem>
                 ))}
@@ -592,21 +497,21 @@ export default function LandingPage() {
             <StaggerItem>
               <ModuleCard
                 title="Financials"
-                description="Live startup cost estimate and 12-month projection, benchmarked against your market. Updates as your plan changes."
+                description="Startup costs and 12-month projections, benchmarked live."
                 mockup={<FinancialsMockup />}
               />
             </StaggerItem>
             <StaggerItem>
               <ModuleCard
                 title="Menu Pricing"
-                description="Build your menu with cost-per-cup analysis, margin targets, and benchmarks against specialty coffee industry averages."
+                description="Cost-per-cup analysis with margin targets and industry benchmarks."
                 mockup={<MenuMockup />}
               />
             </StaggerItem>
             <StaggerItem>
               <ModuleCard
                 title="Launch Plan"
-                description="A milestone-based launch plan tied to your actual target open date — with next actions at every stage."
+                description="Milestone-based plan tied to your open date, with next actions always visible."
                 mockup={<LaunchMockup />}
               />
             </StaggerItem>
@@ -765,62 +670,6 @@ export default function LandingPage() {
               All plans include access to the planning framework. Free plan has no time limit.
             </p>
           </FadeUp>
-        </div>
-      </section>
-
-      {/* ── About ─────────────────────────────────────────────────────────────── */}
-      <section id="about" className="bg-white" style={{ padding: "96px 24px" }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <ScaleIn className="relative">
-              <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
-                <Image
-                  src={PEXELS.shopOwner}
-                  alt="Specialty coffee professional ready to serve — warm and welcoming"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                />
-              </div>
-            </ScaleIn>
-            <div>
-              <FadeUp>
-                <p
-                  className="font-semibold uppercase mb-4"
-                  style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
-                >
-                  Who built this
-                </p>
-                <h2
-                  className="font-bold mb-5"
-                  style={{
-                    fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
-                    lineHeight: 1.25,
-                    fontWeight: 700,
-                    color: "var(--teal)",
-                  }}
-                >
-                  Built by someone who&apos;s been there.
-                </h2>
-                <p className="text-neutral-700 mb-4 leading-relaxed" style={{ fontSize: "1rem" }}>
-                  Trent Rollings is a World Coffee Championships judge, SCA Authorized Specialty
-                  Trainer, and the founder of Timberline Coffee School.
-                </p>
-                <p className="text-neutral-700 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
-                  He spent years teaching the Coffee Shop Basecamp curriculum to aspiring owners
-                  and has personally opened and closed coffee businesses. This platform is
-                  everything he teaches in live cohorts, at a fraction of the consulting cost.
-                </p>
-                <Link
-                  href="/login?plan=builder"
-                  className="inline-flex items-center justify-center px-7 py-3 rounded-lg font-semibold text-sm text-white transition-all"
-                  style={{ background: "var(--teal)" }}
-                >
-                  Start your plan for free
-                </Link>
-              </FadeUp>
-            </div>
-          </div>
         </div>
       </section>
 
