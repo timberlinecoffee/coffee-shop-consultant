@@ -112,7 +112,6 @@ export function CoPilotDrawer({
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
-  const hydratedRef = useRef(false);
 
   const {
     isStreaming,
