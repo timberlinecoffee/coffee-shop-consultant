@@ -5,6 +5,19 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EMPTY_CONCEPT, type ConceptDocument } from "@/lib/concept";
+import {
+  ShopVisionScreen,
+  TargetCustomerScreen,
+  DifferentiationScreen,
+  type ShopVisionMeta,
+  type TargetCustomerMeta,
+  type DifferentiationState,
+} from "./guided-screens";
+import type { ObservationEntry } from "@/components/onboarding/observation-tracker";
+
+// TIM-619: onboarding wizard.
+// TIM-821: mission / target_market / differentiation steps replaced by guided
+//   scaffolded screens (EducationBlock + ScaffoldedForm + ExampleDrawer).
 
 type LocationSelection = {
   city: string;
@@ -13,11 +26,7 @@ type LocationSelection = {
   displayName: string;
 };
 
-// TIM-619: onboarding wizard rewrite — questions feed the Concept workspace.
-// Vision, target customer, differentiation, brand pillars are captured here
-// and seeded directly into workspace_documents (concept) on completion.
-
-const DRAFT_KEY = "tim619_onboarding_draft_v1";
+const DRAFT_KEY = "tim619_onboarding_draft_v2";
 
 type Step =
   | { id: string; type: "welcome" }
@@ -52,7 +61,10 @@ type Step =
       max?: number;
     }
   | { id: string; type: "review"; question: string; hint: string }
-  | { id: string; type: "city-autocomplete"; question: string; hint: string };
+  | { id: string; type: "city-autocomplete"; question: string; hint: string }
+  | { id: string; type: "guided-shop-vision" }
+  | { id: string; type: "guided-target-customer" }
+  | { id: string; type: "guided-differentiation" };
 
 const STEPS: Step[] = [
   { id: "welcome", type: "welcome" },
@@ -75,35 +87,17 @@ const STEPS: Step[] = [
       "I want to leave my current career",
     ],
   },
-  {
-    id: "mission",
-    type: "textarea",
-    question: "In a sentence or two, what's the shop for?",
-    hint: "Don't overthink it. We'll refine this together in the Concept workspace.",
-    placeholder: "Serve a tight daily menu of espresso and slow-bar coffee to morning commuters in the South End.",
-    minChars: 20,
-  },
-  {
-    id: "target_market",
-    type: "textarea",
-    question: "Who is the shop for?",
-    hint: "Describe the regulars you want walking in every morning. Specificity beats demographics.",
-    placeholder: "Under-40 commuters from the South End who'll pay $5 for a cortado and pick up daily on the way to the T.",
-    minChars: 20,
-  },
-  {
-    id: "differentiation",
-    type: "textarea",
-    question: "What makes you different from the cafés already on that block?",
-    hint: "One or two things competitors can't easily copy. Don't say 'better coffee'.",
-    placeholder: "Direct-trade single-origin program locked in with a Roastery for two years; barista training that's run by a Q-grader.",
-    minChars: 20,
-  },
+  // TIM-821: replaces the cold-ask "In a sentence or two, what's the shop for?" textarea
+  { id: "shop_vision", type: "guided-shop-vision" },
+  // TIM-821: replaces the cold-ask "Who is the shop for?" textarea
+  { id: "target_customer", type: "guided-target-customer" },
+  // TIM-821: replaces the cold-ask "What makes you different?" textarea; deferrable
+  { id: "differentiation", type: "guided-differentiation" },
   {
     id: "brand_pillars",
     type: "multiselect",
     question: "How should the shop feel? Pick the words that should always come through.",
-    hint: "Pick 3–5. These become your brand voice pillars.",
+    hint: "Pick 3 to 5. These become your brand voice pillars.",
     options: [
       "Warm",
       "Direct",
@@ -136,9 +130,9 @@ const STEPS: Step[] = [
     question: "What kind of shop are you imagining?",
     hint: "Pick everything that resonates. You can change this any time.",
     options: [
-      "Full café with food",
+      "Full cafe with food",
       "Espresso bar (drinks only)",
-      "Roastery café",
+      "Roastery cafe",
       "Drive-through or kiosk",
       "Mobile cart or pop-up",
     ],
@@ -151,24 +145,67 @@ const STEPS: Step[] = [
   },
 ];
 
+// ─── Answer types ────────────────────────────────────────────────────────────
+
+const EMPTY_VISION_META: ShopVisionMeta = {
+  usage_types: [],
+  great_visit: "",
+  coffee_vs_experience: "",
+};
+
+const EMPTY_CUSTOMER_META: TargetCustomerMeta = {
+  neighborhood: "",
+  ideal_customer: "",
+  pre_post_visit: "",
+};
+
+const EMPTY_DIFF_STATE: DifferentiationState = {
+  observations: [],
+  meta: { gap_noticed: "", closest_competitor: "", unique_offering: "" },
+  synthesized: "",
+  deferred: false,
+  skippedObservation: false,
+};
+
 type Answers = Record<string, string | string[] | LocationSelection>;
 
-function readDraft(): Answers {
-  if (typeof window === "undefined") return {};
+// TIM-821 adds guided-screen state alongside the flat Answers map
+interface WizardState {
+  answers: Answers;
+  shopVisionMeta: ShopVisionMeta;
+  shopVisionText: string;
+  targetCustomerMeta: TargetCustomerMeta;
+  targetCustomerText: string;
+  diffState: DifferentiationState;
+}
+
+const EMPTY_WIZARD: WizardState = {
+  answers: {},
+  shopVisionMeta: EMPTY_VISION_META,
+  shopVisionText: "",
+  targetCustomerMeta: EMPTY_CUSTOMER_META,
+  targetCustomerText: "",
+  diffState: EMPTY_DIFF_STATE,
+};
+
+function readDraft(): WizardState {
+  if (typeof window === "undefined") return EMPTY_WIZARD;
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
-    if (!raw) return {};
+    if (!raw) return EMPTY_WIZARD;
     const parsed = JSON.parse(raw);
-    return typeof parsed === "object" && parsed ? (parsed as Answers) : {};
+    return typeof parsed === "object" && parsed
+      ? (parsed as WizardState)
+      : EMPTY_WIZARD;
   } catch {
-    return {};
+    return EMPTY_WIZARD;
   }
 }
 
-function writeDraft(answers: Answers) {
+function writeDraft(state: WizardState) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(answers));
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
   } catch {
     // ignore quota / private mode
   }
@@ -183,44 +220,96 @@ function clearDraft() {
   }
 }
 
-function buildConcept(answers: Answers, fallbackName: string): ConceptDocument {
+function buildConcept(state: WizardState, fallbackName: string): ConceptDocument {
   const concept: ConceptDocument = { ...EMPTY_CONCEPT };
   const get = (k: string): string =>
-    typeof answers[k] === "string" ? (answers[k] as string).trim() : "";
+    typeof state.answers[k] === "string"
+      ? (state.answers[k] as string).trim()
+      : "";
+
   concept.name = get("shop_name") || `${fallbackName}'s Coffee Shop`;
-  concept.mission = get("mission");
-  concept.target_market = get("target_market");
-  concept.differentiation = get("differentiation");
-  const pillars = Array.isArray(answers.brand_pillars)
-    ? (answers.brand_pillars as string[])
+  // TIM-821: synthesized answers feed concept fields
+  concept.mission = state.shopVisionText.trim();
+  concept.target_market = state.targetCustomerText.trim();
+  concept.differentiation = state.diffState.deferred
+    ? ""
+    : state.diffState.synthesized.trim();
+
+  const pillars = Array.isArray(state.answers.brand_pillars)
+    ? (state.answers.brand_pillars as string[])
     : [];
   concept.brand_voice = pillars.length > 0 ? pillars.join(", ") : "";
   return concept;
 }
 
-export function OnboardingFlow({ userId, firstName }: { userId: string; firstName: string }) {
+// serializes state into onboarding_data for DB storage
+function buildOnboardingData(state: WizardState): Record<string, unknown> {
+  return {
+    ...state.answers,
+    shop_vision: state.shopVisionText,
+    shop_vision_meta: state.shopVisionMeta,
+    target_customer: state.targetCustomerText,
+    target_customer_meta: state.targetCustomerMeta,
+    differentiation: state.diffState.deferred
+      ? null
+      : state.diffState.synthesized,
+    differentiation_meta: state.diffState.meta,
+    differentiation_observations: state.diffState.observations,
+    differentiation_deferred: state.diffState.deferred,
+  };
+}
+
+// ─── Step status for progress bar ────────────────────────────────────────────
+
+type StepStatus = "done" | "current" | "deferred" | "pending";
+
+function getStepStatus(
+  stepIndex: number,
+  currentStep: number,
+  diffDeferred: boolean,
+): StepStatus {
+  const step = STEPS[stepIndex];
+  if (stepIndex === currentStep) return "current";
+  if (stepIndex < currentStep) {
+    if (step.id === "differentiation" && diffDeferred) return "deferred";
+    return "done";
+  }
+  return "pending";
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function OnboardingFlow({
+  userId,
+  firstName,
+}: {
+  userId: string;
+  firstName: string;
+}) {
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Answers>({});
+  const [wizardState, setWizardState] = useState<WizardState>(EMPTY_WIZARD);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
-  // Hydrate any in-flight draft on mount so a refresh mid-wizard doesn't lose progress.
-  // localStorage is browser-only, so this can only run after mount, not in the initial
-  // useState initializer (would mismatch SSR hydration).
   useEffect(() => {
     const draft = readDraft();
-    if (Object.keys(draft).length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAnswers(draft);
+    const hasContent =
+      Object.keys(draft.answers).length > 0 ||
+      draft.shopVisionText ||
+      draft.targetCustomerText ||
+      draft.diffState.synthesized;
+    if (hasContent) {
+      setWizardState(draft);
     }
   }, []);
 
-  // Persist every answer change so reloads survive (TIM-619 success criterion).
   useEffect(() => {
-    writeDraft(answers);
-  }, [answers]);
+    writeDraft(wizardState);
+  }, [wizardState]);
+
+  const { answers, shopVisionMeta, shopVisionText, targetCustomerMeta, targetCustomerText, diffState } = wizardState;
 
   const currentStep = STEPS[step];
   const totalSteps = STEPS.length;
@@ -232,8 +321,12 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
       ? (answers[currentStep.id] as LocationSelection) ?? null
       : (answers[currentStep.id] as string) ?? "";
 
+  function setAnswers(updater: (prev: Answers) => Answers) {
+    setWizardState((s) => ({ ...s, answers: updater(s.answers) }));
+  }
+
   function handleSelect(value: string) {
-    setAnswers(prev => ({ ...prev, [currentStep.id]: value }));
+    setAnswers((prev) => ({ ...prev, [currentStep.id]: value }));
   }
 
   function handleMultiSelect(value: string) {
@@ -241,25 +334,40 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
     const current = (answers[currentStep.id] as string[]) ?? [];
     let updated: string[];
     if (current.includes(value)) {
-      updated = current.filter(v => v !== value);
+      updated = current.filter((v) => v !== value);
     } else {
-      const max = currentStep.max;
+      const max = (currentStep as { max?: number }).max;
       if (max && current.length >= max) {
-        // Cap reached — replace the oldest pick instead of doing nothing silently.
         updated = [...current.slice(1), value];
       } else {
         updated = [...current, value];
       }
     }
-    setAnswers(prev => ({ ...prev, [currentStep.id]: updated }));
+    setAnswers((prev) => ({ ...prev, [currentStep.id]: updated }));
   }
 
   function canAdvance(): boolean {
     if (currentStep.type === "welcome" || currentStep.type === "review") return true;
+
+    if (currentStep.type === "guided-shop-vision") {
+      return shopVisionText.trim().length > 0;
+    }
+    if (currentStep.type === "guided-target-customer") {
+      return targetCustomerText.trim().length > 0;
+    }
+    if (currentStep.type === "guided-differentiation") {
+      // Deferred counts as answered — founder can proceed
+      return diffState.deferred || diffState.synthesized.trim().length > 0;
+    }
+
     const ans = answers[currentStep.id];
     if (!ans) return false;
     if (currentStep.type === "city-autocomplete") {
-      return typeof ans === "object" && !Array.isArray(ans) && Boolean((ans as LocationSelection).city);
+      return (
+        typeof ans === "object" &&
+        !Array.isArray(ans) &&
+        Boolean((ans as LocationSelection).city)
+      );
     }
     if (Array.isArray(ans)) return ans.length > 0;
     const value = (ans as string).trim();
@@ -274,9 +382,7 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
     setSaving(true);
     setError(null);
     try {
-      // 1. Reuse the most-recent plan when one already exists (idempotent retry),
-      //    otherwise create one named from the wizard's shop_name.
-      const concept = buildConcept(answers, firstName || "My");
+      const concept = buildConcept(wizardState, firstName || "My");
       const planName = concept.name;
 
       const { data: existingPlan } = await supabase
@@ -292,38 +398,28 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
       if (!planId) {
         const { data: plan, error: planError } = await supabase
           .from("coffee_shop_plans")
-          .insert({
-            user_id: userId,
-            plan_name: planName,
-          })
+          .insert({ user_id: userId, plan_name: planName })
           .select("id")
           .single();
-        if (planError || !plan) {
-          throw planError ?? new Error("Could not create plan");
-        }
+        if (planError || !plan) throw planError ?? new Error("Could not create plan");
         planId = plan.id;
       } else {
-        // Rename existing plan to match the wizard answer.
         await supabase
           .from("coffee_shop_plans")
           .update({ plan_name: planName })
           .eq("id", planId);
       }
 
-      // 2. Mark onboarding complete + persist raw wizard answers for AI prompt context.
       const { error: profileError } = await supabase
         .from("users")
         .update({
           onboarding_completed: true,
-          onboarding_data: answers,
+          onboarding_data: buildOnboardingData(wizardState),
           readiness_score: 5,
         })
         .eq("id", userId);
       if (profileError) throw profileError;
 
-      // 3. Seed the Concept workspace document. RLS allows plan-owner writes;
-      //    we bypass /api/workspaces/concept here because that route is paywalled
-      //    and onboarding happens during free_trial.
       const { error: conceptError } = await supabase
         .from("workspace_documents")
         .upsert(
@@ -332,7 +428,6 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
         );
       if (conceptError) throw conceptError;
 
-      // 4. First-run milestones for the dashboard ring.
       await supabase.from("milestones").insert([
         {
           plan_id: planId,
@@ -345,14 +440,34 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
         {
           plan_id: planId,
           title: "Polish your Concept workspace",
-          description: "Refine mission, target market, differentiation, and brand voice with the co-pilot.",
-          target_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          description:
+            "Refine mission, target customer, differentiation, and brand voice with the co-pilot.",
+          target_date: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          )
+            .toISOString()
+            .split("T")[0],
           is_auto_generated: true,
         },
+        ...(diffState.deferred
+          ? [
+              {
+                plan_id: planId,
+                title: "Come back: How will you stand out?",
+                description:
+                  "You deferred the differentiation question. Visit a few local shops and come back to answer it.",
+                target_date: new Date(
+                  Date.now() + 14 * 24 * 60 * 60 * 1000,
+                )
+                  .toISOString()
+                  .split("T")[0],
+                is_auto_generated: true,
+              },
+            ]
+          : []),
       ]);
 
       clearDraft();
-      // Land the user directly in Concept with answers already populated.
       router.push("/workspace/concept");
     } catch (err) {
       console.error("onboarding finish failed", err);
@@ -367,7 +482,7 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
 
   async function handleNext() {
     if (step < totalSteps - 1) {
-      setStep(s => s + 1);
+      setStep((s) => s + 1);
     } else {
       await handleFinish();
     }
@@ -382,16 +497,36 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
           </Link>
-          <span className="text-xs text-[#afafaf]">Step {step + 1} of {totalSteps}</span>
+          <span className="text-xs text-[#afafaf]">
+            Step {step + 1} of {totalSteps}
+          </span>
         </div>
-        <div className="flex gap-1.5" aria-label={`Step ${step + 1} of ${totalSteps}`}>
-          {STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1 flex-1 rounded-full ${i <= step ? "bg-[#155e63]" : "bg-[#e7e5e0]"}`}
-            />
-          ))}
+        {/* Progress bar — amber for deferred, teal for done, gray for pending */}
+        <div
+          className="flex gap-1.5"
+          aria-label={`Step ${step + 1} of ${totalSteps}`}
+        >
+          {STEPS.map((_, i) => {
+            const status = getStepStatus(i, step, diffState.deferred);
+            return (
+              <span
+                key={i}
+                className={`h-1 flex-1 rounded-full ${
+                  status === "done" || status === "current"
+                    ? "bg-[#155e63]"
+                    : status === "deferred"
+                    ? "bg-[#f59e0b]"
+                    : "bg-[#e7e5e0]"
+                }`}
+              />
+            );
+          })}
         </div>
+        {diffState.deferred && (
+          <p className="text-xs text-[#92400e] bg-[#fffbeb] border border-[#fcd34d] rounded-lg px-3 py-1.5">
+            One question deferred: How will you stand out? You can finish onboarding and come back.
+          </p>
+        )}
       </header>
 
       <main className="flex-1 px-6 py-8 flex flex-col">
@@ -408,121 +543,194 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
           </div>
         )}
 
-        {currentStep.type !== "welcome" && currentStep.type !== "review" && (
-          <div>
-            <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
-              {currentStep.question}
-            </h1>
-            <p className="text-[#afafaf] text-sm mb-8">{currentStep.hint}</p>
+        {/* TIM-821: guided shop vision screen */}
+        {currentStep.type === "guided-shop-vision" && (
+          <ShopVisionScreen
+            meta={shopVisionMeta}
+            synthesized={shopVisionText}
+            onMetaChange={(meta) =>
+              setWizardState((s) => ({ ...s, shopVisionMeta: meta }))
+            }
+            onSynthesizedChange={(text) =>
+              setWizardState((s) => ({ ...s, shopVisionText: text }))
+            }
+          />
+        )}
 
-            {(currentStep.type === "cards" || currentStep.type === "radio") && (
-              <div className="space-y-3">
-                {currentStep.options.map((opt) => {
-                  const isSelected =
-                    typeof currentAnswer === "string" && currentAnswer === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => handleSelect(opt)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
-                        isSelected
-                          ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                          : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
-                      }`}
-                    >
-                      {currentStep.type === "radio" && (
-                        <span
-                          className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                            isSelected ? "border-[#155e63]" : "border-[#afafaf]"
+        {/* TIM-821: guided target customer screen */}
+        {currentStep.type === "guided-target-customer" && (
+          <TargetCustomerScreen
+            meta={targetCustomerMeta}
+            synthesized={targetCustomerText}
+            onMetaChange={(meta) =>
+              setWizardState((s) => ({ ...s, targetCustomerMeta: meta }))
+            }
+            onSynthesizedChange={(text) =>
+              setWizardState((s) => ({ ...s, targetCustomerText: text }))
+            }
+          />
+        )}
+
+        {/* TIM-821: guided differentiation screen — deferrable */}
+        {currentStep.type === "guided-differentiation" && (
+          <DifferentiationScreen
+            state={diffState}
+            onChange={(ds) =>
+              setWizardState((s) => ({ ...s, diffState: ds }))
+            }
+          />
+        )}
+
+        {currentStep.type !== "welcome" &&
+          currentStep.type !== "review" &&
+          currentStep.type !== "guided-shop-vision" &&
+          currentStep.type !== "guided-target-customer" &&
+          currentStep.type !== "guided-differentiation" && (
+            <div>
+              <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+                {(currentStep as { question: string }).question}
+              </h1>
+              <p className="text-[#afafaf] text-sm mb-8">
+                {(currentStep as { hint: string }).hint}
+              </p>
+
+              {(currentStep.type === "cards" ||
+                currentStep.type === "radio") && (
+                <div className="space-y-3">
+                  {(currentStep as { options: ReadonlyArray<string> }).options.map(
+                    (opt) => {
+                      const isSelected =
+                        typeof currentAnswer === "string" &&
+                        currentAnswer === opt;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => handleSelect(opt)}
+                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
+                            isSelected
+                              ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
+                              : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
                           }`}
                         >
-                          {isSelected && (
-                            <span className="w-2 h-2 rounded-full bg-[#155e63] block" />
+                          {currentStep.type === "radio" && (
+                            <span
+                              className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                                isSelected
+                                  ? "border-[#155e63]"
+                                  : "border-[#afafaf]"
+                              }`}
+                            >
+                              {isSelected && (
+                                <span className="w-2 h-2 rounded-full bg-[#155e63] block" />
+                              )}
+                            </span>
                           )}
-                        </span>
-                      )}
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                          {opt}
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+              )}
 
-            {currentStep.type === "text" && (
-              <input
-                type="text"
-                value={typeof currentAnswer === "string" ? currentAnswer : ""}
-                onChange={e => handleSelect(e.target.value)}
-                placeholder={currentStep.placeholder}
-                className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
-              />
-            )}
-
-            {currentStep.type === "city-autocomplete" && (
-              <CityAutocompleteInput
-                value={currentAnswer as LocationSelection | null}
-                onChange={(v) =>
-                  setAnswers(prev => {
-                    if (!v) {
-                      const next = { ...prev };
-                      delete next[currentStep.id];
-                      return next;
-                    }
-                    return { ...prev, [currentStep.id]: v };
-                  })
-                }
-              />
-            )}
-
-            {currentStep.type === "textarea" && (
-              <>
-                <textarea
-                  value={typeof currentAnswer === "string" ? currentAnswer : ""}
-                  onChange={e => handleSelect(e.target.value)}
-                  placeholder={currentStep.placeholder}
-                  rows={4}
-                  className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+              {currentStep.type === "text" && (
+                <input
+                  type="text"
+                  value={
+                    typeof currentAnswer === "string" ? currentAnswer : ""
+                  }
+                  onChange={(e) => handleSelect(e.target.value)}
+                  placeholder={(currentStep as { placeholder: string }).placeholder}
+                  className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
                 />
-                {currentStep.minChars ? (
-                  <p className="text-xs text-[#afafaf] mt-2">
-                    {Math.min((typeof currentAnswer === "string" ? currentAnswer : "").trim().length, currentStep.minChars)}/{currentStep.minChars} characters minimum
-                  </p>
-                ) : null}
-              </>
-            )}
+              )}
 
-            {currentStep.type === "multiselect" && (
-              <div className="space-y-3">
-                {currentStep.options.map((opt) => {
-                  const selected =
-                    Array.isArray(currentAnswer) && currentAnswer.includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => handleMultiSelect(opt)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
-                        selected
-                          ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                          : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
-                      }`}
-                    >
-                      <div
-                        className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
-                          selected ? "bg-[#155e63] border-[#155e63]" : "border-[#afafaf]"
+              {currentStep.type === "city-autocomplete" && (
+                <CityAutocompleteInput
+                  value={currentAnswer as LocationSelection | null}
+                  onChange={(v) =>
+                    setAnswers((prev) => {
+                      if (!v) {
+                        const next = { ...prev };
+                        delete next[currentStep.id];
+                        return next;
+                      }
+                      return { ...prev, [currentStep.id]: v };
+                    })
+                  }
+                />
+              )}
+
+              {currentStep.type === "textarea" && (
+                <>
+                  <textarea
+                    value={
+                      typeof currentAnswer === "string" ? currentAnswer : ""
+                    }
+                    onChange={(e) => handleSelect(e.target.value)}
+                    placeholder={(currentStep as { placeholder: string }).placeholder}
+                    rows={4}
+                    className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+                  />
+                  {(currentStep as { minChars?: number }).minChars ? (
+                    <p className="text-xs text-[#afafaf] mt-2">
+                      {Math.min(
+                        (
+                          typeof currentAnswer === "string"
+                            ? currentAnswer
+                            : ""
+                        ).trim().length,
+                        (currentStep as { minChars: number }).minChars,
+                      )}
+                      /
+                      {(currentStep as { minChars: number }).minChars}{" "}
+                      characters minimum
+                    </p>
+                  ) : null}
+                </>
+              )}
+
+              {currentStep.type === "multiselect" && (
+                <div className="space-y-3">
+                  {(
+                    currentStep as { options: ReadonlyArray<string> }
+                  ).options.map((opt) => {
+                    const selected =
+                      Array.isArray(currentAnswer) &&
+                      currentAnswer.includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => handleMultiSelect(opt)}
+                        className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
+                          selected
+                            ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
+                            : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
                         }`}
                       >
-                        {selected && <span className="text-white text-xs">&#10003;</span>}
-                      </div>
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                        <div
+                          className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
+                            selected
+                              ? "bg-[#155e63] border-[#155e63]"
+                              : "border-[#afafaf]"
+                          }`}
+                        >
+                          {selected && (
+                            <span className="text-white text-xs">
+                              &#10003;
+                            </span>
+                          )}
+                        </div>
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
         {currentStep.type === "review" && (
           <div>
@@ -530,8 +738,7 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
               {currentStep.question}
             </h1>
             <p className="text-[#afafaf] text-sm mb-6">{currentStep.hint}</p>
-
-            <ReviewSummary answers={answers} firstName={firstName} />
+            <ReviewSummary wizardState={wizardState} firstName={firstName} />
           </div>
         )}
 
@@ -549,7 +756,7 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
         {step > 0 && (
           <button
             type="button"
-            onClick={() => setStep(s => s - 1)}
+            onClick={() => setStep((s) => s - 1)}
             className="px-6 py-3 border border-[#efefef] rounded-xl text-sm text-[#afafaf] hover:border-[#afafaf] hover:text-[#1a1a1a] transition-colors"
           >
             Back
@@ -564,13 +771,15 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
           {saving
             ? "Saving your Concept..."
             : step === totalSteps - 1
-            ? "Open my Concept workspace →"
-            : "Next →"}
+            ? "Open my Concept workspace"
+            : "Next"}
         </button>
       </div>
     </div>
   );
 }
+
+// ─── City autocomplete ───────────────────────────────────────────────────────
 
 function CityAutocompleteInput({
   value,
@@ -590,7 +799,10 @@ function CityAutocompleteInput({
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -615,7 +827,9 @@ function CityAutocompleteInput({
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/cities/search?q=${encodeURIComponent(v.trim())}`);
+        const res = await fetch(
+          `/api/cities/search?q=${encodeURIComponent(v.trim())}`,
+        );
         if (res.ok) {
           const data = await res.json();
           const list: LocationSelection[] = data.results ?? [];
@@ -623,7 +837,7 @@ function CityAutocompleteInput({
           setOpen(list.length > 0);
         }
       } catch {
-        // silent fail — user can still type a city manually if API is unreachable
+        // silent fail
       } finally {
         setLoading(false);
       }
@@ -651,10 +865,10 @@ function CityAutocompleteInput({
     if (!open || results.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex(i => Math.min(i + 1, results.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, results.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex(i => Math.max(i - 1, -1));
+      setActiveIndex((i) => Math.max(i - 1, -1));
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
       handleSelect(results[activeIndex]);
@@ -674,7 +888,9 @@ function CityAutocompleteInput({
           aria-expanded={open}
           aria-autocomplete="list"
           aria-controls="city-listbox"
-          aria-activedescendant={activeIndex >= 0 ? `city-option-${activeIndex}` : undefined}
+          aria-activedescendant={
+            activeIndex >= 0 ? `city-option-${activeIndex}` : undefined
+          }
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -710,7 +926,10 @@ function CityAutocompleteInput({
               id={`city-option-${i}`}
               role="option"
               aria-selected={i === activeIndex}
-              onMouseDown={(e) => { e.preventDefault(); handleSelect(item); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(item);
+              }}
               className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
                 i === activeIndex
                   ? "bg-[#155e63]/10 text-[#155e63]"
@@ -731,13 +950,27 @@ function CityAutocompleteInput({
   );
 }
 
-function ReviewSummary({ answers, firstName }: { answers: Answers; firstName: string }) {
-  const concept = buildConcept(answers, firstName || "My");
-  const rows: Array<{ label: string; value: string }> = [
+// ─── Review summary ──────────────────────────────────────────────────────────
+
+function ReviewSummary({
+  wizardState,
+  firstName,
+}: {
+  wizardState: WizardState;
+  firstName: string;
+}) {
+  const concept = buildConcept(wizardState, firstName || "My");
+  const { diffState } = wizardState;
+
+  const rows: Array<{ label: string; value: string; deferred?: boolean }> = [
     { label: "Shop name", value: concept.name },
-    { label: "Mission", value: concept.mission },
-    { label: "Target customer", value: concept.target_market },
-    { label: "Differentiation", value: concept.differentiation },
+    { label: "What kind of shop", value: concept.mission },
+    { label: "Core customer", value: concept.target_market },
+    {
+      label: "Differentiation",
+      value: diffState.deferred ? "" : concept.differentiation,
+      deferred: diffState.deferred,
+    },
     { label: "Brand voice", value: concept.brand_voice },
   ];
 
@@ -745,10 +978,23 @@ function ReviewSummary({ answers, firstName }: { answers: Answers; firstName: st
     <div className="bg-white border border-[#efefef] rounded-2xl divide-y divide-[#efefef]">
       {rows.map((row) => (
         <div key={row.label} className="px-4 py-3">
-          <p className="text-xs text-[#afafaf] uppercase tracking-wide">{row.label}</p>
-          <p className="text-sm text-[#1a1a1a] mt-1 whitespace-pre-wrap">
-            {row.value ? row.value : <span className="text-[#afafaf]">—</span>}
+          <p className="text-xs text-[#afafaf] uppercase tracking-wide">
+            {row.label}
           </p>
+          {row.deferred ? (
+            <p className="text-sm text-[#92400e] mt-1 flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b]" />
+              Deferred: come back after your shop visits
+            </p>
+          ) : (
+            <p className="text-sm text-[#1a1a1a] mt-1 whitespace-pre-wrap">
+              {row.value ? (
+                row.value
+              ) : (
+                <span className="text-[#afafaf]">—</span>
+              )}
+            </p>
+          )}
         </div>
       ))}
     </div>
