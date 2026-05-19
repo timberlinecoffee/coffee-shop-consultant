@@ -48,8 +48,12 @@ export async function POST(request: NextRequest) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sub = subscription as unknown as any;
-      const priceId: string = sub.items?.data?.[0]?.price?.id ?? "";
+      const item = sub.items?.data?.[0];
+      const priceId: string = item?.price?.id ?? "";
       const tier = tierFromPriceId(priceId);
+      // In Stripe API 2026+, current_period_end/start moved to the subscription item
+      const periodStart = item?.current_period_start ?? sub.current_period_start;
+      const periodEnd = item?.current_period_end ?? sub.current_period_end;
 
       await supabase.from("subscriptions").upsert({
         user_id: userId,
@@ -57,8 +61,8 @@ export async function POST(request: NextRequest) {
         stripe_subscription_id: subscriptionId,
         tier,
         status: "active",
-        current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-        current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       }, { onConflict: "user_id" });
 
       await supabase.from("users").update({
@@ -81,7 +85,8 @@ export async function POST(request: NextRequest) {
     case "customer.subscription.updated": {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subscription = event.data.object as unknown as any;
-      const priceId: string = subscription.items?.data?.[0]?.price?.id ?? "";
+      const updatedItem = subscription.items?.data?.[0];
+      const priceId: string = updatedItem?.price?.id ?? "";
       const tier = tierFromPriceId(priceId);
       const status = subscription.status === "active" ? "active"
         : subscription.status === "canceled" ? "cancelled"
@@ -97,17 +102,16 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
-      const newPeriodEnd = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
+      // In Stripe API 2026+, current_period_end/start moved to the subscription item
+      const rawPeriodEnd = updatedItem?.current_period_end ?? subscription.current_period_end;
+      const rawPeriodStart = updatedItem?.current_period_start ?? subscription.current_period_start;
+      const newPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000).toISOString() : null;
       const isRenewal = newPeriodEnd !== sub.current_period_end;
 
       await supabase.from("subscriptions").update({
         tier,
         status,
-        current_period_start: subscription.current_period_start
-          ? new Date(subscription.current_period_start * 1000).toISOString()
-          : null,
+        current_period_start: rawPeriodStart ? new Date(rawPeriodStart * 1000).toISOString() : null,
         current_period_end: newPeriodEnd,
       }).eq("stripe_subscription_id", subscription.id);
 
