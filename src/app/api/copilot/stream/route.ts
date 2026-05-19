@@ -1,5 +1,4 @@
-// TIM-631 / TIM-618-B: Streaming co-pilot route with thinking, model routing, and SSE.
-// Replaces /api/coach for workspace-keyed conversations.
+// Streaming co-pilot route with thinking, model routing, and SSE.
 // SSE event names: text | thinking | error | done
 // Model routing: sonnet-4-6 default; opus-4-7 when snapshot >8000 tokens OR 3+ workspace mentions.
 
@@ -343,9 +342,6 @@ export async function POST(request: NextRequest) {
               cost_usd: costUsd,
               last_message_at: new Date().toISOString(),
               model_used: modelId,
-              // Legacy fields required by schema until TIM-618-H drops them
-              module_number: 0,
-              section_key: workspaceKey,
             })
           }
 
