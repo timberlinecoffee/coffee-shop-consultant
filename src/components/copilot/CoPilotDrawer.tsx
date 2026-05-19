@@ -13,6 +13,7 @@ import Link from "next/link";
 import { UPGRADE_PATH } from "@/lib/access";
 import type { WorkspaceKey } from "@/types/supabase";
 import { ThreadBrowser, WORKSPACE_LABELS, type ThreadBrowserItem } from "./ThreadBrowser";
+import { MarkdownMessage } from "./MarkdownMessage";
 import type {
   CopilotErrorState,
   CopilotFocus,
@@ -545,16 +546,19 @@ function MessageBubble({
   const isUser = role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap ${
-          isUser
-            ? "bg-[#155e63] text-white rounded-br-sm"
-            : "bg-[#faf9f7] text-[#1a1a1a] border border-[#efefef] rounded-bl-sm"
-        }`}
-      >
-        {content}
-        {streaming && <span className="ml-1 inline-block w-1.5 h-3 align-text-bottom bg-current animate-pulse" />}
-      </div>
+      {isUser ? (
+        <div className="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap bg-[#155e63] text-white rounded-br-sm">
+          {content}
+        </div>
+      ) : (
+        <div
+          className="max-w-[85%] rounded-2xl px-3.5 py-2.5 bg-[#faf9f7] text-[#1a1a1a] border border-[#efefef] rounded-bl-sm"
+          aria-live={streaming ? "polite" : undefined}
+          aria-atomic={streaming ? "false" : undefined}
+        >
+          <MarkdownMessage content={content} streaming={streaming} />
+        </div>
+      )}
     </div>
   );
 }
