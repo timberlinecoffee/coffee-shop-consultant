@@ -654,7 +654,7 @@ function CityAutocompleteInput({
       setActiveIndex(i => Math.min(i + 1, results.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex(i => Math.max(i - 1, 0));
+      setActiveIndex(i => Math.max(i - 1, -1));
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
       handleSelect(results[activeIndex]);
