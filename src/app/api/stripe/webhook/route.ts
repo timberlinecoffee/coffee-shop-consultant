@@ -161,7 +161,11 @@ export async function POST(request: NextRequest) {
     case "invoice.payment_failed": {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const invoice = event.data.object as unknown as any;
-      const stripeSubscriptionId: string = invoice.subscription ?? "";
+      // Stripe dahlia API moved subscription to parent.subscription_details.subscription
+      const stripeSubscriptionId: string =
+        invoice.subscription ??
+        invoice.parent?.subscription_details?.subscription ??
+        "";
       if (!stripeSubscriptionId) break;
 
       const { data: sub } = await supabase
