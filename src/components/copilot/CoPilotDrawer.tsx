@@ -72,6 +72,12 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
         cta: "Sign in",
         href: "/login",
       };
+    case "paywall":
+      return {
+        title: "Subscription paused — reactivate to keep using the co-pilot.",
+        cta: "Manage subscription",
+        href: "/account/billing",
+      };
     default:
       return { title: err.message, cta: "Retry", href: null };
   }
@@ -276,6 +282,34 @@ export function CoPilotDrawer({
     }
   }, [messages, assistantBuffer, isThinking, error]);
 
+  // External "Ask AI" hook (TIM-619): per-field buttons in workspace editors
+  // dispatch `copilot:open-with-prompt` to open the drawer with a seeded prompt
+  // so the user can refine a Concept field without retyping context.
+  const [externalFocusLabel, setExternalFocusLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ prompt?: string; focusLabel?: string }>).detail;
+      if (!detail) return;
+      openDrawer();
+      if (typeof detail.focusLabel === "string") {
+        setExternalFocusLabel(detail.focusLabel);
+      }
+      if (typeof detail.prompt === "string" && detail.prompt.trim().length > 0) {
+        setInput(detail.prompt);
+      }
+    };
+    window.addEventListener("copilot:open-with-prompt", handler);
+    return () => window.removeEventListener("copilot:open-with-prompt", handler);
+  }, [openDrawer]);
+
+  // Reset the external focus label when the user picks a different workspace
+  // or starts a fresh thread, so it doesn't stick around stale.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExternalFocusLabel(null);
+  }, [activeThreadId, activeWorkspaceKey]);
+
   const errorBanner = error ? errorCopy(error) : null;
   const showEmpty =
     !isStreaming && !assistantBuffer && messages.length === 0 && !error && !loadingThread;
@@ -317,7 +351,9 @@ export function CoPilotDrawer({
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] uppercase tracking-wide text-[#888] font-semibold">
                   {WORKSPACE_LABELS[activeWorkspaceKey]}
-                  {currentFocus?.label && activeWorkspaceKey === workspaceKey
+                  {externalFocusLabel && activeWorkspaceKey === workspaceKey
+                    ? ` · ${externalFocusLabel}`
+                    : currentFocus?.label && activeWorkspaceKey === workspaceKey
                     ? ` · ${currentFocus.label}`
                     : ""}
                 </p>

@@ -4,7 +4,7 @@ import { LoginForm } from "@/app/login/login-form";
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "Sign Up — My Coffee Shop Consultant",
+  title: "Sign Up | My Coffee Shop Consultant",
 };
 
 export default function SignupPage() {

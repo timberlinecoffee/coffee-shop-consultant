@@ -1,5 +1,4 @@
-// TIM-631 / TIM-618-B: Streaming co-pilot route with thinking, model routing, and SSE.
-// Replaces /api/coach for workspace-keyed conversations.
+// Streaming co-pilot route with thinking, model routing, and SSE.
 // SSE event names: text | thinking | error | done
 // Model routing: sonnet-4-6 default; opus-4-7 when snapshot >8000 tokens OR 3+ workspace mentions.
 
@@ -30,7 +29,7 @@ const GAP_MS = 20_000
 const HEARTBEAT_MS = 15_000
 
 // Stable sections: cached with cache_control:ephemeral across the conversation.
-const STABLE_IDENTITY = `You are the AI co-pilot for Timberline Coffee School's My Coffee Shop Consultant platform. You are a knowledgeable friend who has helped dozens of people open successful coffee shops — not a professor, not a consultant charging by the hour.`
+const STABLE_IDENTITY = `You are the AI co-pilot for Timberline Coffee School's My Coffee Shop Consultant platform. You are a knowledgeable friend who has helped dozens of people open successful coffee shops, not a professor, not a consultant charging by the hour.`
 
 const STABLE_COACHING_STYLE = `## Coaching Style
 - Warm, direct, conversational. Knowledgeable friend, not professor.
@@ -232,7 +231,7 @@ export async function POST(request: NextRequest) {
       const resetGapTimer = () => {
         if (gapTimer) clearTimeout(gapTimer)
         gapTimer = setTimeout(() => {
-          closeWithError("timeout", "AI stream stalled — no data for 20 seconds. Please try again.")
+          closeWithError("timeout", "AI stream stalled. No data for 20 seconds. Please try again.")
         }, GAP_MS)
       }
 
@@ -343,9 +342,6 @@ export async function POST(request: NextRequest) {
               cost_usd: costUsd,
               last_message_at: new Date().toISOString(),
               model_used: modelId,
-              // Legacy fields required by schema until TIM-618-H drops them
-              module_number: 0,
-              section_key: workspaceKey,
             })
           }
 

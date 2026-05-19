@@ -129,14 +129,11 @@ export interface Database {
         Row: {
           id: string
           plan_id: string
-          module_number: number
-          section_key: string | null
           messages: Json
           credits_used: number
           cost_usd: number | null
           created_at: string
           updated_at: string
-          // TIM-629 copilot_v1 additions
           workspace_key: WorkspaceKey | null
           thread_id: string | null
           title: string | null
@@ -146,8 +143,6 @@ export interface Database {
         Insert: {
           id?: string
           plan_id: string
-          module_number: number
-          section_key?: string | null
           messages?: Json
           credits_used?: number
           cost_usd?: number | null
@@ -162,8 +157,6 @@ export interface Database {
         Update: {
           id?: string
           plan_id?: string
-          module_number?: number
-          section_key?: string | null
           messages?: Json
           credits_used?: number
           cost_usd?: number | null

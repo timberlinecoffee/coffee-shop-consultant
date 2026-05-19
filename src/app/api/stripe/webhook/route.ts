@@ -20,6 +20,20 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // Idempotency: skip already-processed events (replay safety)
+  const { error: insertErr } = await supabase
+    .from("stripe_processed_events")
+    .insert({ event_id: event.id, event_type: event.type });
+
+  if (insertErr) {
+    // Unique violation means we already processed this event
+    if (insertErr.code === "23505") {
+      return Response.json({ received: true, skipped: true });
+    }
+    console.error("Failed to record stripe event:", insertErr);
+    return Response.json({ error: "Internal error" }, { status: 500 });
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -34,8 +48,12 @@ export async function POST(request: NextRequest) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sub = subscription as unknown as any;
-      const priceId: string = sub.items?.data?.[0]?.price?.id ?? "";
+      const item = sub.items?.data?.[0];
+      const priceId: string = item?.price?.id ?? "";
       const tier = tierFromPriceId(priceId);
+      // In Stripe API 2026+, current_period_end/start moved to the subscription item
+      const periodStart = item?.current_period_start ?? sub.current_period_start;
+      const periodEnd = item?.current_period_end ?? sub.current_period_end;
 
       await supabase.from("subscriptions").upsert({
         user_id: userId,
@@ -43,8 +61,8 @@ export async function POST(request: NextRequest) {
         stripe_subscription_id: subscriptionId,
         tier,
         status: "active",
-        current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-        current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       }, { onConflict: "user_id" });
 
       await supabase.from("users").update({
@@ -67,7 +85,8 @@ export async function POST(request: NextRequest) {
     case "customer.subscription.updated": {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subscription = event.data.object as unknown as any;
-      const priceId: string = subscription.items?.data?.[0]?.price?.id ?? "";
+      const updatedItem = subscription.items?.data?.[0];
+      const priceId: string = updatedItem?.price?.id ?? "";
       const tier = tierFromPriceId(priceId);
       const status = subscription.status === "active" ? "active"
         : subscription.status === "canceled" ? "cancelled"
@@ -83,17 +102,16 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
-      const newPeriodEnd = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
+      // In Stripe API 2026+, current_period_end/start moved to the subscription item
+      const rawPeriodEnd = updatedItem?.current_period_end ?? subscription.current_period_end;
+      const rawPeriodStart = updatedItem?.current_period_start ?? subscription.current_period_start;
+      const newPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000).toISOString() : null;
       const isRenewal = newPeriodEnd !== sub.current_period_end;
 
       await supabase.from("subscriptions").update({
         tier,
         status,
-        current_period_start: subscription.current_period_start
-          ? new Date(subscription.current_period_start * 1000).toISOString()
-          : null,
+        current_period_start: rawPeriodStart ? new Date(rawPeriodStart * 1000).toISOString() : null,
         current_period_end: newPeriodEnd,
       }).eq("stripe_subscription_id", subscription.id);
 
@@ -132,10 +150,39 @@ export async function POST(request: NextRequest) {
         status: "cancelled",
       }).eq("stripe_subscription_id", subscription.id);
 
+      // Downgrade immediately on hard cancellation
       await supabase.from("users").update({
         subscription_status: "cancelled",
         subscription_tier: "free",
       }).eq("id", sub.user_id);
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const invoice = event.data.object as unknown as any;
+      const stripeSubscriptionId: string = invoice.subscription ?? "";
+      if (!stripeSubscriptionId) break;
+
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("user_id")
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .single();
+
+      if (!sub) break;
+
+      // Mark past_due — Stripe will retry; paywall enforced on next write (TIM-643)
+      await supabase.from("subscriptions").update({
+        status: "past_due",
+      }).eq("stripe_subscription_id", stripeSubscriptionId);
+
+      await supabase.from("users").update({
+        subscription_status: "past_due",
+      }).eq("id", sub.user_id);
+
+      // After Stripe exhausts retries it fires customer.subscription.deleted;
+      // that handler downgrades to free. No grace-period timer needed here.
       break;
     }
   }
