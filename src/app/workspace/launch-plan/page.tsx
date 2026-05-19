@@ -12,7 +12,6 @@ export default async function LaunchPlanWorkspacePage() {
       workspaceKey="launch_plan"
       title="Launch Plan"
       description="Sequence pre-opening marketing, hiring, training, and opening-week operations. The Co-pilot tracks your milestones against your target opening date."
-      icon="🚀"
       shipsWith="W5 — Launch Plan workspace (TIM-624)"
       currentFocusLabel="Launch Plan workspace overview"
       trialMessagesUsed={trialMessagesUsed}

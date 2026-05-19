@@ -408,7 +408,7 @@ export function CoPilotDrawer({
           onClick={openDrawer}
           className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full bg-[#155e63] text-white shadow-lg shadow-[#155e63]/30 flex items-center gap-2 active:scale-95 transition-transform"
         >
-          <span aria-hidden className="text-lg">✦</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span className="text-sm font-semibold">Co-pilot</span>
         </button>
       )}
@@ -459,7 +459,7 @@ export function CoPilotDrawer({
                 onClick={closeDrawer}
                 className="ml-1 w-8 h-8 rounded-full hover:bg-[#f5f5f5] flex items-center justify-center text-[#888]"
               >
-                ✕
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </header>
 

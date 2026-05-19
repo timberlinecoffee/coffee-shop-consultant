@@ -235,9 +235,6 @@ export function ConceptWorkspace({
 
       <div className="max-w-3xl mx-auto px-6 py-10">
         <header className="mb-8">
-          <div className="text-4xl mb-3" aria-hidden="true">
-            ☕
-          </div>
           <h1 className="font-semibold text-2xl text-[#1a1a1a] mb-2">Concept</h1>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
             Shape the identity of your shop — mission, target customer,

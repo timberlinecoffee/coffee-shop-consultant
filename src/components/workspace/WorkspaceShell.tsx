@@ -10,7 +10,6 @@ interface WorkspaceShellProps {
   workspaceKey: WorkspaceKey;
   title: string;
   description: string;
-  icon: string;
   shipsWith: string;
   currentFocusLabel?: string;
   trialMessagesUsed?: number;
@@ -21,7 +20,6 @@ export function WorkspaceShell({
   workspaceKey,
   title,
   description,
-  icon,
   shipsWith,
   currentFocusLabel,
   trialMessagesUsed,
@@ -44,9 +42,6 @@ export function WorkspaceShell({
 
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="bg-white rounded-2xl border border-[#efefef] p-8">
-          <div className="text-5xl mb-4" aria-hidden="true">
-            {icon}
-          </div>
           <h1 className="font-semibold text-2xl text-[#1a1a1a] mb-2">{title}</h1>
           <p className="text-sm text-[#6b6b6b] mb-6 leading-relaxed">
             {description}

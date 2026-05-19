@@ -12,8 +12,7 @@ export default async function FinancialsWorkspacePage() {
       workspaceKey="financials"
       title="Financials"
       description="Build your startup budget, P&L, break-even, and cash-flow runway. The Co-pilot can answer follow-ups against the numbers you've already entered."
-      icon="📊"
-      shipsWith="W3 — Financials workspace (TIM-621)"
+shipsWith="W3 — Financials workspace (TIM-621)"
       currentFocusLabel="Financials workspace overview"
       trialMessagesUsed={trialMessagesUsed}
     />
