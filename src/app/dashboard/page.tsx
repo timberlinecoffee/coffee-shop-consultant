@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { isModuleAvailable } from "@/lib/modules";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { normalizeConcept, CONCEPT_FIELDS } from "@/lib/concept";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,32 +40,30 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const workspaceProgressMap: Record<number, number> = {};
-
+  // Count filled concept fields from workspace_documents (the authoritative store
+  // written by onboarding and the /workspace/concept editor). The old module_responses
+  // path is NOT used for workspace 1 — onboarding never wrote there.
+  let w1FilledCount = 0;
   if (plan?.id) {
-    const { data: responses } = await supabase
-      .from("module_responses")
-      .select("module_number, status")
-      .eq("plan_id", plan.id);
+    const { data: conceptDoc } = await supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", plan.id)
+      .eq("workspace_key", "concept")
+      .maybeSingle();
 
-    (responses ?? []).forEach((r) => {
-      if (r.status === "completed") {
-        workspaceProgressMap[r.module_number] = (workspaceProgressMap[r.module_number] ?? 0) + 1;
-      }
-    });
+    if (conceptDoc?.content) {
+      const concept = normalizeConcept(conceptDoc.content);
+      w1FilledCount = CONCEPT_FIELDS.filter((f) => concept[f.key].trim().length > 0).length;
+    }
   }
 
-  const availableWorkspaceSets = [WORKSPACE_1].filter((w) => isModuleAvailable(w.num));
-  const totalAvailableSections = availableWorkspaceSets.reduce((sum, w) => sum + w.totalSections, 0);
-  const completedSections = availableWorkspaceSets.reduce((sum, w) => sum + (workspaceProgressMap[w.num] ?? 0), 0);
-  const readinessScore = totalAvailableSections > 0
-    ? Math.round((completedSections / totalAvailableSections) * 100)
-    : (profile?.readiness_score ?? 0);
-
-  const w1Completed = (workspaceProgressMap[1] ?? 0) >= WORKSPACE_1.totalSections;
-  const w1Started = (workspaceProgressMap[1] ?? 0) > 0;
-  const w1Progress = workspaceProgressMap[1] ?? 0;
+  const w1Progress = w1FilledCount;
+  const w1Completed = w1Progress >= WORKSPACE_1.totalSections;
+  const w1Started = w1Progress > 0;
   const w1Pct = Math.round((w1Progress / WORKSPACE_1.totalSections) * 100);
+
+  const readinessScore = Math.round((w1Progress / WORKSPACE_1.totalSections) * 100);
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
