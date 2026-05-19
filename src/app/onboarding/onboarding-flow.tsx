@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EMPTY_CONCEPT, type ConceptDocument } from "@/lib/concept";
+
+type LocationSelection = {
+  city: string;
+  region: string;
+  countryCode: string;
+  displayName: string;
+};
 
 // TIM-619: onboarding wizard rewrite — questions feed the Concept workspace.
 // Vision, target customer, differentiation, brand pillars are captured here
@@ -44,7 +51,8 @@ type Step =
       options: ReadonlyArray<string>;
       max?: number;
     }
-  | { id: string; type: "review"; question: string; hint: string };
+  | { id: string; type: "review"; question: string; hint: string }
+  | { id: string; type: "city-autocomplete"; question: string; hint: string };
 
 const STEPS: Step[] = [
   { id: "welcome", type: "welcome" },
@@ -118,10 +126,9 @@ const STEPS: Step[] = [
   },
   {
     id: "location",
-    type: "text",
+    type: "city-autocomplete",
     question: "Where are you thinking of opening?",
     hint: "Don't have a spot yet? Just put your current city — we'll ask again when it matters.",
-    placeholder: "e.g. Austin, TX or Southeast London",
   },
   {
     id: "shop_type",
@@ -144,7 +151,7 @@ const STEPS: Step[] = [
   },
 ];
 
-type Answers = Record<string, string | string[]>;
+type Answers = Record<string, string | string[] | LocationSelection>;
 
 function readDraft(): Answers {
   if (typeof window === "undefined") return {};
@@ -218,9 +225,11 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
   const currentStep = STEPS[step];
   const totalSteps = STEPS.length;
 
-  const currentAnswer: string | string[] =
+  const currentAnswer: string | string[] | LocationSelection | null =
     currentStep.type === "multiselect"
       ? (answers[currentStep.id] as string[]) ?? []
+      : currentStep.type === "city-autocomplete"
+      ? (answers[currentStep.id] as LocationSelection) ?? null
       : (answers[currentStep.id] as string) ?? "";
 
   function handleSelect(value: string) {
@@ -249,6 +258,9 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
     if (currentStep.type === "welcome" || currentStep.type === "review") return true;
     const ans = answers[currentStep.id];
     if (!ans) return false;
+    if (currentStep.type === "city-autocomplete") {
+      return typeof ans === "object" && !Array.isArray(ans) && Boolean((ans as LocationSelection).city);
+    }
     if (Array.isArray(ans)) return ans.length > 0;
     const value = (ans as string).trim();
     if (currentStep.type === "textarea") {
@@ -447,6 +459,22 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
               />
             )}
 
+            {currentStep.type === "city-autocomplete" && (
+              <CityAutocompleteInput
+                value={currentAnswer as LocationSelection | null}
+                onChange={(v) =>
+                  setAnswers(prev => {
+                    if (!v) {
+                      const next = { ...prev };
+                      delete next[currentStep.id];
+                      return next;
+                    }
+                    return { ...prev, [currentStep.id]: v };
+                  })
+                }
+              />
+            )}
+
             {currentStep.type === "textarea" && (
               <>
                 <textarea
@@ -540,6 +568,165 @@ export function OnboardingFlow({ userId, firstName }: { userId: string; firstNam
             : "Next →"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function CityAutocompleteInput({
+  value,
+  onChange,
+}: {
+  value: LocationSelection | null;
+  onChange: (v: LocationSelection | null) => void;
+}) {
+  const [inputValue, setInputValue] = useState(value?.displayName ?? "");
+  const [results, setResults] = useState<LocationSelection[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value;
+    setInputValue(v);
+    setActiveIndex(-1);
+    if (value) onChange(null);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (v.trim().length < 2) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/cities/search?q=${encodeURIComponent(v.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          const list: LocationSelection[] = data.results ?? [];
+          setResults(list);
+          setOpen(list.length > 0);
+        }
+      } catch {
+        // silent fail — user can still type a city manually if API is unreachable
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  }
+
+  function handleSelect(item: LocationSelection) {
+    onChange(item);
+    setInputValue(item.displayName);
+    setOpen(false);
+    setResults([]);
+    setActiveIndex(-1);
+  }
+
+  function handleClear() {
+    onChange(null);
+    setInputValue("");
+    setResults([]);
+    setOpen(false);
+    setActiveIndex(-1);
+    inputRef.current?.focus();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || results.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex(i => Math.min(i + 1, results.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(results[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative flex items-center">
+        <input
+          ref={inputRef}
+          type="text"
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
+          aria-controls="city-listbox"
+          aria-activedescendant={activeIndex >= 0 ? `city-option-${activeIndex}` : undefined}
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a city name..."
+          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white pr-10"
+        />
+        {loading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <div className="w-4 h-4 border-2 border-[#155e63] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        {!loading && value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            aria-label="Clear city selection"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#afafaf] hover:text-[#1a1a1a] transition-colors text-xl leading-none"
+          >
+            &#215;
+          </button>
+        )}
+      </div>
+
+      {open && results.length > 0 && (
+        <ul
+          id="city-listbox"
+          role="listbox"
+          className="absolute z-50 w-full mt-1 bg-white border border-[#efefef] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+        >
+          {results.map((item, i) => (
+            <li
+              key={item.displayName}
+              id={`city-option-${i}`}
+              role="option"
+              aria-selected={i === activeIndex}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(item); }}
+              className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
+                i === activeIndex
+                  ? "bg-[#155e63]/10 text-[#155e63]"
+                  : "text-[#1a1a1a] hover:bg-[#f5f5f3]"
+              }`}
+            >
+              <span className="font-medium">{item.city}</span>
+              {(item.region || item.countryCode) && (
+                <span className="text-[#afafaf] ml-1.5">
+                  {[item.region, item.countryCode].filter(Boolean).join(", ")}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
