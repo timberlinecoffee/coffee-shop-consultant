@@ -10,7 +10,8 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { UPGRADE_PATH } from "@/lib/access";
+import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { PaywallModal } from "@/components/paywall-modal";
 import type { WorkspaceKey } from "@/types/supabase";
 import { ThreadBrowser, WORKSPACE_LABELS, type ThreadBrowserItem } from "./ThreadBrowser";
 import { MarkdownMessage } from "./MarkdownMessage";
@@ -25,6 +26,7 @@ export interface CoPilotDrawerProps {
   workspaceKey: WorkspaceKey;
   planId: string;
   currentFocus?: CopilotFocus;
+  initialTrialMessagesUsed?: number;
 }
 
 function newThreadId(): string {
@@ -46,7 +48,13 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "quota":
       return {
         title: err.message,
-        cta: "Upgrade",
+        cta: "See plans",
+        href: UPGRADE_PATH,
+      };
+    case "trial_exhausted":
+      return {
+        title: "You've used your 5 free coaching sessions.",
+        cta: "See plans",
         href: UPGRADE_PATH,
       };
     case "timeout":
@@ -74,10 +82,17 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
         href: "/login",
       };
     case "paywall":
+      if (err.paywallReason === "paused" || err.paywallReason === "expired") {
+        return {
+          title: "Your plan is paused — reactivate to keep using the co-pilot.",
+          cta: "Reactivate",
+          href: "/account/billing",
+        };
+      }
       return {
-        title: "Subscription paused — reactivate to keep using the co-pilot.",
-        cta: "Manage subscription",
-        href: "/account/billing",
+        title: "A paid plan is required to use the co-pilot.",
+        cta: "See plans",
+        href: UPGRADE_PATH,
       };
     default:
       return { title: err.message, cta: "Retry", href: null };
@@ -88,8 +103,11 @@ export function CoPilotDrawer({
   workspaceKey,
   planId,
   currentFocus,
+  initialTrialMessagesUsed = 0,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
+  const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
+  const [trialModalOpen, setTrialModalOpen] = useState(false);
   // Track the prop separately so a parent-driven workspace switch resets the active
   // workspace without us calling setState inside an effect body.
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
@@ -219,6 +237,13 @@ export function CoPilotDrawer({
     async (prompt: string) => {
       const trimmed = prompt.trim();
       if (!trimmed || isStreaming) return;
+
+      // TIM-819: Gate at attempt time if trial already exhausted (e.g. dismissed modal on msg 5).
+      if (trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
+        setTrialModalOpen(true);
+        return;
+      }
+
       setPendingRetry(trimmed);
       const optimistic: CopilotMessage = { role: "user", content: trimmed };
       const nextHistory = [...messages, optimistic];
@@ -247,6 +272,14 @@ export function CoPilotDrawer({
       }
       setBrowserRefreshKey((n) => n + 1);
       maybeRequestTitle(result.threadId ?? activeThreadId, finalMessages);
+
+      // TIM-819: Update trial counter from server-confirmed count and show modal at limit.
+      if (typeof result.trialMessagesUsed === "number") {
+        setTrialMessagesUsed(result.trialMessagesUsed);
+        if (result.trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
+          setTrialModalOpen(true);
+        }
+      }
     },
     [
       activeThreadId,
@@ -256,6 +289,7 @@ export function CoPilotDrawer({
       messages,
       planId,
       send,
+      trialMessagesUsed,
     ],
   );
 
@@ -362,6 +396,11 @@ export function CoPilotDrawer({
 
   return (
     <>
+      <PaywallModal
+        open={trialModalOpen}
+        onClose={() => setTrialModalOpen(false)}
+        variant="copilot_trial"
+      />
       {!open && (
         <button
           type="button"
@@ -401,6 +440,19 @@ export function CoPilotDrawer({
                   {activeThreadLabel}
                 </h2>
               </div>
+              {trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
+                <span
+                  className={`text-[11px] font-medium whitespace-nowrap ${
+                    COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed <= 2
+                      ? "text-amber-600"
+                      : "text-[#888]"
+                  }`}
+                >
+                  {trialMessagesUsed === 0
+                    ? `${COPILOT_FREE_TRIAL_LIMIT} free messages`
+                    : `${COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed} free messages left`}
+                </span>
+              )}
               <button
                 type="button"
                 aria-label="Close"

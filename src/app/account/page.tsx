@@ -15,9 +15,20 @@ export default async function AccountPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, email, subscription_tier, ai_credits_remaining, readiness_score")
+    .select("full_name, email, subscription_tier, subscription_status, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
     .eq("id", user.id)
     .single();
+
+  const TIER_DISPLAY_NAMES: Record<string, string> = {
+    free: "Free",
+    starter: "Builder",
+    growth: "Growth",
+    pro: "Accelerator",
+  };
+
+  const tierDisplayName = TIER_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
+  const isFree = (profile?.subscription_tier ?? "free") === "free";
+  const trialUsed = profile?.copilot_trial_messages_used ?? 0;
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
@@ -54,11 +65,17 @@ export default async function AccountPage() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-[#afafaf]">Plan</span>
-              <span className="text-[#1a1a1a] capitalize">{profile?.subscription_tier ?? "free"}</span>
+              <span className="text-[#1a1a1a]">{tierDisplayName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">AI credits remaining</span>
-              <span className="text-[#1a1a1a]">{profile?.ai_credits_remaining ?? 0}</span>
+              <span className="text-[#afafaf]">
+                {isFree ? "Coaching sessions" : "AI credits remaining"}
+              </span>
+              <span className="text-[#1a1a1a]">
+                {isFree
+                  ? `${trialUsed} of 5 free coaching sessions used`
+                  : profile?.ai_credits_remaining ?? 0}
+              </span>
             </div>
           </div>
           <Link

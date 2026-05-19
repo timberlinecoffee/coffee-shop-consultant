@@ -68,3 +68,6 @@ export function canAccessSection(
 // Where to send a free user who hits a paid surface. Centralized so the
 // upgrade link in copy and the redirect target never drift apart.
 export const UPGRADE_PATH = "/pricing";
+
+// Free users get this many Copilot messages before the trial-exhausted gate.
+export const COPILOT_FREE_TRIAL_LIMIT = 5;

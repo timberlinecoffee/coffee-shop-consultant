@@ -36,7 +36,7 @@ const PRICING = [
     features: [
       "Full access to all 8 modules",
       "All deliverable generation (concept brief, financial model, BRD)",
-      "50 AI coaching credits per month",
+      "50 AI coaching sessions a month",
       "Export everything as PDF",
       "Equipment list builder",
       "Financial model calculator",

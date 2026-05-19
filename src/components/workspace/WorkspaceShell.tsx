@@ -13,6 +13,7 @@ interface WorkspaceShellProps {
   icon: string;
   shipsWith: string;
   currentFocusLabel?: string;
+  trialMessagesUsed?: number;
 }
 
 export function WorkspaceShell({
@@ -23,6 +24,7 @@ export function WorkspaceShell({
   icon,
   shipsWith,
   currentFocusLabel,
+  trialMessagesUsed,
 }: WorkspaceShellProps) {
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-0">
@@ -69,6 +71,7 @@ export function WorkspaceShell({
         currentFocus={
           currentFocusLabel ? { label: currentFocusLabel } : undefined
         }
+        initialTrialMessagesUsed={trialMessagesUsed}
       />
 
       <BottomTabBar />

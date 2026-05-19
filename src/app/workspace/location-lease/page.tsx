@@ -4,7 +4,7 @@ import { loadWorkspaceContext } from "../_shared";
 export const dynamic = "force-dynamic";
 
 export default async function LocationLeaseWorkspacePage() {
-  const { planId } = await loadWorkspaceContext();
+  const { planId, trialMessagesUsed } = await loadWorkspaceContext();
 
   return (
     <WorkspaceShell
@@ -15,6 +15,7 @@ export default async function LocationLeaseWorkspacePage() {
       icon="🗺️"
       shipsWith="W2 — Location & Lease workspace (TIM-620)"
       currentFocusLabel="Location & Lease workspace overview"
+      trialMessagesUsed={trialMessagesUsed}
     />
   );
 }

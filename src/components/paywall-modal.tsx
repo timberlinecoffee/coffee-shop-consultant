@@ -1,17 +1,62 @@
 "use client";
 
-// TIM-643: Paywall modal — shown when any write action returns 402.
-// Copy follows voice mandate (TIM-538): direct, warm, no jargon.
+// TIM-643 / TIM-819: Paywall modal — shown on 402 write blocks or trial exhaustion.
+// Copy follows voice mandate (TIM-538): direct, warm, no jargon, no emojis (TIM-196).
 
 import { useEffect, useCallback } from "react";
 import Link from "next/link";
 
+export type PaywallVariant = "save" | "copilot_trial";
+export type PaywallReason = "no_subscription" | "paused" | "expired";
+
 interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
+  variant?: PaywallVariant;
+  reason?: PaywallReason;
 }
 
-export function PaywallModal({ open, onClose }: PaywallModalProps) {
+function getContent(
+  variant: PaywallVariant,
+  reason: PaywallReason,
+): { title: string; body: string; cta: string; href: string; dismiss: string } {
+  if (variant === "copilot_trial") {
+    return {
+      title: "You've used your 5 free coaching sessions",
+      body: "Your AI coach reads your full plan and gives advice based on your actual numbers — not generic tips. Start a plan to keep that conversation going.",
+      cta: "Choose a plan",
+      href: "/pricing",
+      dismiss: "Not now",
+    };
+  }
+
+  // variant === "save"
+  if (reason === "paused" || reason === "expired") {
+    return {
+      title: "Your plan is paused",
+      body: "Reactivate your subscription to pick up where you left off.",
+      cta: "Reactivate",
+      href: "/account/billing",
+      dismiss: "Not now",
+    };
+  }
+
+  // reason === "no_subscription" (default save variant)
+  return {
+    title: "Start a plan to save your work",
+    body: "You can explore for free. To save your answers and build your full plan, you need a Builder or Accelerator subscription.",
+    cta: "Choose a plan",
+    href: "/pricing",
+    dismiss: "Not now",
+  };
+}
+
+export function PaywallModal({
+  open,
+  onClose,
+  variant = "save",
+  reason = "no_subscription",
+}: PaywallModalProps) {
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -26,6 +71,8 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
   }, [open, handleKey]);
 
   if (!open) return null;
+
+  const content = getContent(variant, reason);
 
   return (
     <div
@@ -64,26 +111,25 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
           id="paywall-modal-title"
           className="text-lg font-bold text-[#1a1a1a] mb-2"
         >
-          This is a paid feature
+          {content.title}
         </h2>
         <p className="text-sm text-[#6b6b6b] leading-relaxed mb-6">
-          Saving your work requires an active plan. Free accounts can browse
-          but not build. Pick a plan and your progress saves from here on.
+          {content.body}
         </p>
 
         <div className="flex flex-col gap-3">
           <Link
-            href="/pricing"
+            href={content.href}
             className="block bg-[#155e63] text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
           >
-            Choose a plan
+            {content.cta}
           </Link>
           <button
             type="button"
             onClick={onClose}
             className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors py-1"
           >
-            Not now
+            {content.dismiss}
           </button>
         </div>
       </div>

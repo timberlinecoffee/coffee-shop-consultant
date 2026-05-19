@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive } from "@/lib/access"
+import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data")
+    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data")
     .eq("id", user.id)
     .single()
 
@@ -137,33 +137,46 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Map subscription_status to a paywall reason clients can use to pick the right modal variant.
+  function paywallReason(status: string): "no_subscription" | "paused" | "expired" {
+    if (status === "cancelled") return "paused"
+    if (status === "expired") return "expired"
+    return "no_subscription"
+  }
+
   // TIM-643: subscription_status gate — copilot is a write action.
   // Inactive subscriptions (free_trial, cancelled, expired) get a 402 paywall.
-  if (!isSubscriptionActive(profile.subscription_status)) {
+  // Free tier gets the trial gate below instead.
+  if (!isSubscriptionActive(profile.subscription_status) && profile.subscription_tier !== "free") {
     return new Response(
-      sse("error", { code: "paywall", reason: "paywall", tier_required: "starter" }),
+      sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
   }
 
+  // TIM-819: Free-tier trial gate.
   if (profile.subscription_tier === "free") {
-    return new Response(
-      sse("error", {
-        code: "quota",
-        message: "AI co-pilot requires a Starter, Growth, or Pro plan. Upgrade to start coaching.",
-      }),
-      { status: 403, headers: { "Content-Type": "text/event-stream" } },
-    )
+    const used = profile.copilot_trial_messages_used ?? 0
+    if (used >= COPILOT_FREE_TRIAL_LIMIT) {
+      return new Response(
+        sse("error", {
+          code: "trial_exhausted",
+          messages_used: COPILOT_FREE_TRIAL_LIMIT,
+          messages_allowed: COPILOT_FREE_TRIAL_LIMIT,
+        }),
+        { status: 402, headers: { "Content-Type": "text/event-stream" } },
+      )
+    }
   }
 
   const isUnlimited = profile.subscription_tier === "pro"
 
-  if (!isUnlimited && profile.ai_credits_remaining < 1) {
+  if (!isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
     return new Response(
       sse("error", {
         code: "quota",
         message:
-          "You've used all your AI credits for this month. Upgrade to Pro for unlimited coaching, or wait for your monthly reset.",
+          "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or your credits reset next month.",
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
@@ -345,21 +358,32 @@ export async function POST(request: NextRequest) {
             })
           }
 
-          if (!isUnlimited) {
+          const isFree = profile.subscription_tier === "free"
+
+          if (isFree) {
+            // Increment trial counter server-side on successful completion.
+            const newTrialCount = (profile.copilot_trial_messages_used ?? 0) + 1
             await supabase
               .from("users")
-              .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
+              .update({ copilot_trial_messages_used: newTrialCount })
               .eq("id", user.id)
+            send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId, trial_messages_used: newTrialCount }))
+          } else {
+            if (!isUnlimited) {
+              await supabase
+                .from("users")
+                .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
+                .eq("id", user.id)
 
-            await supabase.from("credit_transactions").insert({
-              user_id: user.id,
-              amount: -1,
-              type: "usage",
-              description: `Co-pilot: ${workspaceKey}`,
-            })
+              await supabase.from("credit_transactions").insert({
+                user_id: user.id,
+                amount: -1,
+                type: "usage",
+                description: `Co-pilot: ${workspaceKey}`,
+              })
+            }
+            send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId }))
           }
-
-          send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId }))
           controller.close()
         }
       } catch (err: unknown) {

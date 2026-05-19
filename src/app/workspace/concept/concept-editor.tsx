@@ -31,6 +31,7 @@ interface ConceptWorkspaceProps {
   initialConcept: ConceptDocument;
   initialUpdatedAt: string | null;
   canEdit: boolean;
+  trialMessagesUsed?: number;
 }
 
 function formatTimestamp(iso: string | null): string {
@@ -48,6 +49,7 @@ export function ConceptWorkspace({
   initialConcept,
   initialUpdatedAt,
   canEdit,
+  trialMessagesUsed,
 }: ConceptWorkspaceProps) {
   const [concept, setConcept] = useState<ConceptDocument>(initialConcept);
   const [saveState, setSaveState] = useState<SaveState>({
@@ -346,6 +348,7 @@ export function ConceptWorkspace({
         currentFocus={{
           label: "Concept workspace",
         }}
+        initialTrialMessagesUsed={trialMessagesUsed}
       />
 
       <BottomTabBar />

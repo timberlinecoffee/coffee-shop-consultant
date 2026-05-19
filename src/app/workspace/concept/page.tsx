@@ -38,13 +38,17 @@ export default async function ConceptWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
 
   const concept = normalizeConcept(doc?.content);
   const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const trialMessagesUsed =
+    profile?.subscription_tier === "free"
+      ? (profile.copilot_trial_messages_used ?? 0)
+      : undefined;
 
   return (
     <ConceptWorkspace
@@ -52,6 +56,7 @@ export default async function ConceptWorkspacePage() {
       initialConcept={concept}
       initialUpdatedAt={doc?.updated_at ?? null}
       canEdit={canEdit}
+      trialMessagesUsed={trialMessagesUsed}
     />
   );
 }

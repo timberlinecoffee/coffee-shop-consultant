@@ -4,7 +4,7 @@ import { loadWorkspaceContext } from "../_shared";
 export const dynamic = "force-dynamic";
 
 export default async function BuildoutEquipmentWorkspacePage() {
-  const { planId } = await loadWorkspaceContext();
+  const { planId, trialMessagesUsed } = await loadWorkspaceContext();
 
   return (
     <WorkspaceShell
@@ -15,6 +15,7 @@ export default async function BuildoutEquipmentWorkspacePage() {
       icon="🛠️"
       shipsWith="W4 — Build-out & Equipment workspace (TIM-623)"
       currentFocusLabel="Build-out & Equipment workspace overview"
+      trialMessagesUsed={trialMessagesUsed}
     />
   );
 }

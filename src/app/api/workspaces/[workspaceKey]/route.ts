@@ -1,6 +1,6 @@
-// TIM-643: Workspace document read/write endpoint.
+// TIM-643 / TIM-819: Workspace document read/write endpoint.
 // GET is open (read-only preview). POST/PUT/PATCH require subscription_status === 'active'.
-// Returns 402 { reason: 'paywall', tier_required: 'starter' } for inactive subscriptions.
+// Returns 402 { reason: 'no_subscription'|'paused'|'expired', tier_required: 'starter' } for inactive subscriptions.
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
@@ -11,6 +11,12 @@ type RouteContext = { params: Promise<{ workspaceKey: string }> }
 
 function isValidWorkspaceKey(key: string): key is WorkspaceKey {
   return MUTABLE_WORKSPACE_KEYS.has(key as WorkspaceKey)
+}
+
+function paywallReason(status: string): "no_subscription" | "paused" | "expired" {
+  if (status === "cancelled") return "paused"
+  if (status === "expired") return "expired"
+  return "no_subscription"
 }
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
@@ -62,7 +68,7 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
 
   if (!profile || !isSubscriptionActive(profile.subscription_status)) {
     return Response.json(
-      { reason: "paywall", tier_required: "starter" },
+      { reason: paywallReason(profile?.subscription_status ?? "free_trial"), tier_required: "starter" },
       { status: 402 }
     )
   }
@@ -126,7 +132,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   if (!profile || !isSubscriptionActive(profile.subscription_status)) {
     return Response.json(
-      { reason: "paywall", tier_required: "starter" },
+      { reason: paywallReason(profile?.subscription_status ?? "free_trial"), tier_required: "starter" },
       { status: 402 }
     )
   }

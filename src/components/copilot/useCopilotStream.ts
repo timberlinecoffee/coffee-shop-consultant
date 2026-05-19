@@ -27,6 +27,7 @@ interface UseCopilotStreamResult {
     threadId: string;
     modelUsed: string | null;
     assistant: string;
+    trialMessagesUsed?: number;
   } | null>;
   abort: () => void;
   reset: () => void;
@@ -119,6 +120,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
       let lastThinkingAt = 0;
       let resolvedThreadId = threadId;
       let resolvedModelUsed: string | null = null;
+      let resolvedTrialMessagesUsed: number | undefined = undefined;
       let finalError: CopilotErrorState | null = null;
 
       try {
@@ -150,10 +152,12 @@ export function useCopilotStream(): UseCopilotStreamResult {
                 const parsed = JSON.parse(evt.data) as {
                   code?: string;
                   message?: string;
+                  reason?: string;
                 };
                 finalError = {
                   code: (parsed.code as CopilotErrorState["code"]) ?? "upstream_error",
                   message: parsed.message ?? "Something went wrong.",
+                  paywallReason: parsed.reason as CopilotErrorState["paywallReason"],
                 };
               } catch {
                 finalError = {
@@ -166,9 +170,13 @@ export function useCopilotStream(): UseCopilotStreamResult {
                 const parsed = JSON.parse(evt.data) as {
                   threadId?: string;
                   modelUsed?: string;
+                  trial_messages_used?: number;
                 };
                 if (parsed.threadId) resolvedThreadId = parsed.threadId;
                 if (parsed.modelUsed) resolvedModelUsed = parsed.modelUsed;
+                if (typeof parsed.trial_messages_used === "number") {
+                  resolvedTrialMessagesUsed = parsed.trial_messages_used;
+                }
               } catch {
                 /* done frame without payload is fine */
               }
@@ -201,6 +209,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
         threadId: resolvedThreadId,
         modelUsed: resolvedModelUsed,
         assistant,
+        trialMessagesUsed: resolvedTrialMessagesUsed,
       };
     },
     [],

@@ -4,7 +4,7 @@ import { loadWorkspaceContext } from "../_shared";
 export const dynamic = "force-dynamic";
 
 export default async function LaunchPlanWorkspacePage() {
-  const { planId } = await loadWorkspaceContext();
+  const { planId, trialMessagesUsed } = await loadWorkspaceContext();
 
   return (
     <WorkspaceShell
@@ -15,6 +15,7 @@ export default async function LaunchPlanWorkspacePage() {
       icon="🚀"
       shipsWith="W5 — Launch Plan workspace (TIM-624)"
       currentFocusLabel="Launch Plan workspace overview"
+      trialMessagesUsed={trialMessagesUsed}
     />
   );
 }

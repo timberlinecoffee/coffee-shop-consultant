@@ -22,11 +22,13 @@ export type CopilotErrorCode =
   | "unauthorized"
   | "bad_request"
   | "network"
-  | "paywall";
+  | "paywall"
+  | "trial_exhausted";
 
 export interface CopilotErrorState {
   code: CopilotErrorCode;
   message: string;
+  paywallReason?: "no_subscription" | "paused" | "expired";
 }
 
 export interface CopilotFocus {

@@ -4,7 +4,7 @@ import { loadWorkspaceContext } from "../_shared";
 export const dynamic = "force-dynamic";
 
 export default async function FinancialsWorkspacePage() {
-  const { planId } = await loadWorkspaceContext();
+  const { planId, trialMessagesUsed } = await loadWorkspaceContext();
 
   return (
     <WorkspaceShell
@@ -15,6 +15,7 @@ export default async function FinancialsWorkspacePage() {
       icon="📊"
       shipsWith="W3 — Financials workspace (TIM-621)"
       currentFocusLabel="Financials workspace overview"
+      trialMessagesUsed={trialMessagesUsed}
     />
   );
 }

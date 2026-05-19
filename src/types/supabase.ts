@@ -24,6 +24,7 @@ export interface Database {
           subscription_status: 'free_trial' | 'active' | 'cancelled' | 'expired'
           subscription_tier: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining: number
+          copilot_trial_messages_used: number
           target_opening_date: string | null
           readiness_score: number
           onboarding_completed: boolean
@@ -40,6 +41,7 @@ export interface Database {
           subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired'
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
+          copilot_trial_messages_used?: number
           target_opening_date?: string | null
           readiness_score?: number
           onboarding_completed?: boolean
@@ -56,6 +58,7 @@ export interface Database {
           subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired'
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
+          copilot_trial_messages_used?: number
           target_opening_date?: string | null
           readiness_score?: number
           onboarding_completed?: boolean

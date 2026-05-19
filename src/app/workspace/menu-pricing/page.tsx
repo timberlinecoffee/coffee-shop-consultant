@@ -4,7 +4,7 @@ import { loadWorkspaceContext } from "../_shared";
 export const dynamic = "force-dynamic";
 
 export default async function MenuPricingWorkspacePage() {
-  const { planId } = await loadWorkspaceContext();
+  const { planId, trialMessagesUsed } = await loadWorkspaceContext();
 
   return (
     <WorkspaceShell
@@ -15,6 +15,7 @@ export default async function MenuPricingWorkspacePage() {
       icon="🍽️"
       shipsWith="W4 — Menu & Pricing workspace (TIM-622)"
       currentFocusLabel="Menu & Pricing workspace overview"
+      trialMessagesUsed={trialMessagesUsed}
     />
   );
 }
