@@ -3,6 +3,7 @@
 "use client"
 
 import { useCallback, useMemo, useState, useEffect } from "react"
+import { ChevronRight } from "lucide-react"
 import type { WorkspaceKey } from "@/types/supabase"
 
 export const WORKSPACE_ORDER: WorkspaceKey[] = [
@@ -180,12 +181,10 @@ export function ThreadBrowser({
                     className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-[#1a1a1a] hover:bg-[#f7f6f3] rounded-md"
                   >
                     <span className="flex items-center gap-2">
-                      <span
+                      <ChevronRight
                         aria-hidden
                         className={`inline-block transition-transform ${isOpen ? "rotate-90" : ""}`}
-                      >
-                        ▸
-                      </span>
+                      />
                       {WORKSPACE_LABELS[key]}
                       <span className="text-[10px] font-medium text-[#888]">
                         {groupThreads.length}

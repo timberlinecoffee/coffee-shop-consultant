@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { Coffee } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
 
 export default function DashboardError({
@@ -18,7 +19,7 @@ export default function DashboardError({
   return (
     <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center px-6">
       <div className="bg-white rounded-2xl border border-[#efefef] p-10 max-w-md w-full text-center">
-        <div className="text-4xl mb-4">☕</div>
+        <Coffee className="w-10 h-10 mb-4 mx-auto text-current" />
         <h1 className="text-xl font-bold text-[#1a1a1a] mb-2">Something went wrong</h1>
         <p className="text-sm text-[#afafaf] mb-6">
           We hit a snag loading your dashboard. This is on us; your plan data is safe.
