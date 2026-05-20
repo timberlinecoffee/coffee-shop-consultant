@@ -7,7 +7,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useCopilotStream } from "@/components/copilot/useCopilotStream";
 import {
@@ -321,34 +320,7 @@ export function ConceptWorkspace({
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] pb-24">
-      {/* Nav */}
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
-          <Link
-            href="/dashboard"
-            className="text-sm text-[#155e63] font-medium hover:underline shrink-0"
-          >
-            &larr; Dashboard
-          </Link>
-          <span className="text-xs text-[#afafaf] hidden sm:block">
-            Workspace &middot; Concept
-          </span>
-          <Link
-            href="/workspace/concept/print"
-            className={`shrink-0 text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors ${
-              complete
-                ? "bg-[#155e63] text-white hover:bg-[#0e4448]"
-                : "border border-[#d4d4d4] text-[#afafaf] cursor-default pointer-events-none"
-            }`}
-            aria-disabled={!complete}
-            tabIndex={complete ? 0 : -1}
-          >
-            Print document
-          </Link>
-        </div>
-      </nav>
-
+    <div className="bg-[#faf9f7]">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* Page header */}
         <header className="mb-8">
@@ -689,8 +661,6 @@ export function ConceptWorkspace({
           <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
         </div>
       </div>
-
-      <BottomTabBar />
 
       <PaywallModal
         open={paywallOpen}

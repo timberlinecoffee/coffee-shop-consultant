@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,18 +30,7 @@ export default async function AccountPage() {
   const trialUsed = profile?.copilot_trial_messages_used ?? 0;
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center">
-              <span className="text-white text-xs font-bold">TCS</span>
-            </div>
-            <span className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">← Dashboard</span>
-          </Link>
-        </div>
-      </nav>
-
+    <div className="bg-[#faf9f7]">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
         <h1 className="text-2xl font-bold text-[#1a1a1a]">Account settings</h1>
 
@@ -105,7 +93,6 @@ export default async function AccountPage() {
           </button>
         </form>
       </div>
-      <BottomTabBar />
     </div>
   );
 }
