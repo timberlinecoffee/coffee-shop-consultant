@@ -742,9 +742,6 @@ export interface Database {
           updated_at?: string
         }
       }
-          updated_at?: string
-        }
-      }
     }
     Views: {
       [_ in never]: never
