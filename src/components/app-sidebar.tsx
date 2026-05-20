@@ -104,7 +104,6 @@ function NavItem({
   if (!item.isUnlocked) {
     return (
       <span
-        role="listitem"
         aria-disabled="true"
         title="Coming soon"
         className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#afafaf] cursor-default select-none"
@@ -240,9 +239,13 @@ function SidebarContent({
   );
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function AppSidebar({ items }: AppSidebarProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   // Listen for hamburger trigger from WorkspaceTopBar
   useEffect(() => {
@@ -264,11 +267,34 @@ export function AppSidebar({ items }: AppSidebarProps) {
     };
   }, [drawerOpen]);
 
-  // Escape key closes drawer
+  // Keyboard: Escape closes drawer; Tab/Shift+Tab trapped within drawer
   useEffect(() => {
     if (!drawerOpen) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
+      if (e.key === "Escape") {
+        setDrawerOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const drawer = drawerRef.current;
+      if (!drawer) return;
+      const focusable = Array.from(
+        drawer.querySelectorAll<HTMLElement>(FOCUSABLE)
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
@@ -297,6 +323,7 @@ export function AppSidebar({ items }: AppSidebarProps) {
 
       {/* Mobile drawer */}
       <div
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label="Workspace navigation"
