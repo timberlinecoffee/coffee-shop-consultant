@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { planId, name, category, price_cents, cogs_cents, expected_mix_pct, prep_time_seconds, notes } = body;
 
-  if (!planId || !name || !category) {
-    return NextResponse.json({ error: "planId, name, and category are required" }, { status: 400 });
+  if (!planId || name === undefined || name === null || !category) {
+    return NextResponse.json({ error: "planId and category are required" }, { status: 400 });
   }
 
   const { data: plan } = await supabase

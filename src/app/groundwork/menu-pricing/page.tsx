@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { MenuItemsTable } from "@/components/menu-items/MenuItemsTable";
+import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import type { MenuItem } from "@/components/menu-items/MenuItemsTable";
 
 export const dynamic = "force-dynamic";
@@ -30,20 +31,28 @@ export default async function MenuPricingPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-neutral-900">Menu &amp; Pricing</h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          Build your menu, set prices, track margin per item.
-        </p>
+    <>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-neutral-900">Menu &amp; Pricing</h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            Build your menu, set prices, track margin per item.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+          <MenuItemsTable
+            planId={plan.id}
+            initialItems={(items ?? []) as MenuItem[]}
+          />
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
-        <MenuItemsTable
-          planId={plan.id}
-          initialItems={(items ?? []) as MenuItem[]}
-        />
-      </div>
-    </div>
+      <CoPilotDrawer
+        planId={plan.id}
+        workspaceKey="menu_pricing"
+        currentFocus={{ label: "Menu & Pricing" }}
+      />
+    </>
   );
 }
