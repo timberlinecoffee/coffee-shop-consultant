@@ -289,6 +289,20 @@ export function formatConceptV2ForAI(doc: ConceptDocumentV2): string {
   return lines.length > 0 ? lines.join("\n") : "_no concept fields filled in yet_";
 }
 
+// TIM-893: seed prompt for the per-field "Ask Co-pilot" buttons.
+// Written from the owner's POV so it drops cleanly into the drawer input.
+// Keep it conversational; the AI sees the full plan snapshot separately.
+export function buildFieldPrompt(
+  componentLabel: string,
+  currentContent: string
+): string {
+  const trimmed = currentContent.trim();
+  if (!trimmed) {
+    return `I'm working on the "${componentLabel}" section of my concept and haven't written anything yet. Ask me a couple of grounding questions so I can get a first draft down.`;
+  }
+  return `I'm working on the "${componentLabel}" section of my concept. Here's what I have so far:\n\n"${trimmed}"\n\nWhere is this tight, where is it vague? Push back on anything that sounds generic and help me make it more specific to my plan.`;
+}
+
 export function buildImprovePrompt(
   componentId: ConceptComponentId,
   componentLabel: string,
