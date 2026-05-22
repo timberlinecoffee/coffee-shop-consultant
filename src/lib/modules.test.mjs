@@ -37,11 +37,13 @@ test("Module 3 is not navigable until its sections ship", () => {
   );
 });
 
-test("dashboard filters workspace sets through isModuleAvailable", () => {
+test("dashboard computes plan readiness through computePlanReadiness", () => {
+  // TIM-903: readiness score must go through the shared formula so locked modules
+  // are weighted in the denominator, preventing 100% on a near-empty plan.
   const src = read("src/app/dashboard/page.tsx");
   assert.match(
     src,
-    /isModuleAvailable\(\w+\.num\)/,
-    "dashboard must filter workspace sets through isModuleAvailable"
+    /computePlanReadiness/,
+    "dashboard must call computePlanReadiness for the overall readiness score"
   );
 });

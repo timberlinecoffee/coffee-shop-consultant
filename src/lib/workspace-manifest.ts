@@ -1,4 +1,5 @@
 import { AVAILABLE_MODULES } from "./modules";
+import { computePlanReadiness as _computePlanReadiness } from "./plan-readiness";
 
 export interface WorkspaceManifestItem {
   moduleNumber: number;
@@ -35,4 +36,15 @@ export function buildNavItems(
     isUnlocked:
       AVAILABLE_MODULES.has(item.moduleNumber) && item.totalSections !== null,
   }));
+}
+
+/**
+ * Computes overall plan readiness as filled_sections / total_expected_sections.
+ * Locked modules contribute LOCKED_MODULE_WEIGHT sections to the denominator
+ * (see plan-readiness.ts), so completing only concept gives ~17%, not 100%.
+ */
+export function computePlanReadiness(
+  completedByModule: Map<number, number>
+): { filled: number; total: number } {
+  return _computePlanReadiness(WORKSPACE_MANIFEST, completedByModule);
 }

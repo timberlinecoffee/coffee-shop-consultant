@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
+import { computePlanReadiness } from "@/lib/workspace-manifest";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,11 +41,11 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  // Count filled concept fields from workspace_documents (the authoritative store
-  // written by onboarding and the /workspace/concept editor). The old module_responses
+  // completedByModule: module number → count of filled sections.
+  // Concept (module 1) reads from workspace_documents; the old module_responses
   // path is NOT used for workspace 1 — onboarding never wrote there.
-  let w1FilledCount = 0;
-  let w1TotalSections = 5; // default: 5 core included components
+  const completedByModule = new Map<number, number>();
+
   if (plan?.id) {
     const { data: conceptDoc } = await supabase
       .from("workspace_documents")
@@ -56,17 +57,25 @@ export default async function DashboardPage() {
     if (conceptDoc?.content) {
       const conceptV2 = normalizeConceptV2(conceptDoc.content);
       const progress = getConceptV2Progress(conceptV2);
-      w1FilledCount = progress.filled;
-      w1TotalSections = progress.total;
+      completedByModule.set(1, progress.filled);
     }
   }
 
+  // W1-specific counters for the "Start here" card (not the overall score).
+  const w1FilledCount = completedByModule.get(1) ?? 0;
+  const w1TotalSections = 5; // concept always has 5 core sections
   const w1Progress = w1FilledCount;
-  const w1Completed = w1TotalSections > 0 && w1Progress >= w1TotalSections;
+  const w1Completed = w1Progress >= w1TotalSections;
   const w1Started = w1Progress > 0;
-  const w1Pct = w1TotalSections > 0 ? Math.round((w1Progress / w1TotalSections) * 100) : 0;
+  const w1Pct = Math.round((w1Progress / w1TotalSections) * 100);
 
-  const readinessScore = w1TotalSections > 0 ? Math.round((w1Progress / w1TotalSections) * 100) : 0;
+  // Overall plan readiness: filled sections / total expected sections across ALL modules.
+  // computePlanReadiness weights locked modules at 5 sections each in the denominator,
+  // so completing only concept gives ~17% — not 100%. See workspace-manifest.ts.
+  const planReadiness = computePlanReadiness(completedByModule);
+  const readinessScore = planReadiness.total > 0
+    ? Math.round((planReadiness.filled / planReadiness.total) * 100)
+    : 0;
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
