@@ -49,7 +49,7 @@ export async function applyFieldEdit(
     };
     const msg =
       data.reason === "paywall"
-        ? "Subscription paused — reactivate to apply edits."
+        ? "Subscription paused. Reactivate to apply edits."
         : "Could not apply the change. Please try again.";
     throw new WorkspaceWriteError(msg, data.reason);
   }

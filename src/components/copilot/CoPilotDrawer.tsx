@@ -58,7 +58,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
       };
     case "upstream_error":
       return {
-        title: "AI service hiccup — your message wasn't sent.",
+        title: "AI service hiccup. Your message wasn't sent.",
         cta: "Retry",
         href: null,
       };
@@ -76,7 +76,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
       };
     case "paywall":
       return {
-        title: "Subscription paused — reactivate to keep using the co-pilot.",
+        title: "Subscription paused. Reactivate to keep using the co-pilot.",
         cta: "Manage subscription",
         href: "/account/billing",
       };
