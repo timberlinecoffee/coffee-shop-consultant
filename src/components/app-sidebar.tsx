@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { WorkspaceNavItem } from "@/lib/workspace-manifest";
+import type { WorkspaceNavItem, WorkspaceSectionItem } from "@/lib/workspace-manifest";
 
 export interface AppSidebarProps {
   items: WorkspaceNavItem[];
@@ -84,7 +84,33 @@ function AccountIcon() {
   );
 }
 
-function NavItem({
+function SectionItem({
+  section,
+  moduleHref,
+  onNavigate,
+}: {
+  section: WorkspaceSectionItem;
+  moduleHref: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <li>
+      <Link
+        href={`${moduleHref}#section-${section.id}`}
+        onClick={onNavigate}
+        className="flex items-center gap-2 py-1.5 pl-8 pr-3 rounded-md text-[#555] hover:text-[#1a1a1a] hover:bg-[#f5f4f0] transition-colors"
+      >
+        <span
+          className="w-1 h-1 rounded-full bg-[#155e63] flex-shrink-0"
+          aria-hidden="true"
+        />
+        <span className="text-xs">{section.label}</span>
+      </Link>
+    </li>
+  );
+}
+
+function ModuleItem({
   item,
   isActive,
   onNavigate,
@@ -96,62 +122,72 @@ function NavItem({
   const isComplete =
     item.totalSections !== null &&
     item.completedSections >= item.totalSections;
-  const isInProgress =
-    item.totalSections !== null &&
-    item.completedSections > 0 &&
-    item.completedSections < item.totalSections;
+
+  const moduleNum = String(item.moduleNumber).padStart(2, "0");
 
   if (!item.isUnlocked) {
     return (
-      <span
-        aria-disabled="true"
-        title="Coming soon"
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#afafaf] cursor-default select-none"
-      >
-        <LockIcon />
-        <span className="text-sm">{item.label}</span>
-      </span>
+      <li>
+        <span
+          aria-disabled="true"
+          title="Coming soon"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[#c0c0c0] cursor-default select-none"
+        >
+          <span
+            className="text-[10px] font-mono font-medium flex-shrink-0 w-5 text-right"
+            aria-hidden="true"
+          >
+            {moduleNum}
+          </span>
+          <span className="text-sm flex-1 truncate">{item.label}</span>
+          <LockIcon />
+        </span>
+      </li>
     );
   }
 
   return (
-    <Link
-      href={item.href}
-      aria-current={isActive ? "page" : undefined}
-      onClick={onNavigate}
-      className={`flex flex-col px-3 py-2 rounded-lg transition-colors ${
-        isActive
-          ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
-          : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm">{item.label}</span>
+    <li>
+      <Link
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
+        onClick={onNavigate}
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors ${
+          isActive
+            ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
+            : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
+        }`}
+      >
+        <span
+          className={`text-[10px] font-mono font-medium flex-shrink-0 w-5 text-right ${
+            isActive ? "text-[#155e63]" : "text-[#afafaf]"
+          }`}
+          aria-hidden="true"
+        >
+          {moduleNum}
+        </span>
+        <span className="text-sm flex-1 truncate">{item.label}</span>
         {isComplete && (
           <span className="text-[#155e63] flex-shrink-0">
             <CheckIcon />
           </span>
         )}
-      </div>
-      {isInProgress && item.totalSections && (
-        <>
-          <div className="mt-1.5 h-1 bg-[#efefef] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-amber-400 rounded-full"
-              style={{
-                width: `${(item.completedSections / item.totalSections) * 100}%`,
-              }}
+      </Link>
+
+      {/* Section sub-nav — only for the active module */}
+      {isActive && item.sections.length > 0 && (
+        <ul className="mt-0.5 mb-1 space-y-0" role="list">
+          {item.sections.map((section) => (
+            <SectionItem
+              key={section.id}
+              section={section}
+              moduleHref={item.href}
+              onNavigate={onNavigate}
             />
-          </div>
-          <span className="mt-1 text-xs text-[#afafaf]">
-            {item.completedSections} of {item.totalSections} sections
-          </span>
-        </>
+          ))}
+        </ul>
       )}
-      {isComplete && (
-        <div className="mt-1.5 h-1 bg-[#155e63] rounded-full" />
-      )}
-    </Link>
+    </li>
   );
 }
 
@@ -194,25 +230,24 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Workspace nav */}
+      {/* Module navigation */}
       <nav
-        aria-label="Workspace navigation"
+        aria-label="Module navigation"
         className="flex-1 px-2 py-4 overflow-y-auto"
       >
         <div className="mb-2 px-3">
           <span className="text-xs font-medium text-[#afafaf] uppercase tracking-wide">
-            Workspaces
+            Modules
           </span>
         </div>
         <ul role="list" className="space-y-0.5">
           {items.map((item) => (
-            <li key={item.moduleNumber}>
-              <NavItem
-                item={item}
-                isActive={pathname.startsWith(item.href)}
-                onNavigate={onClose}
-              />
-            </li>
+            <ModuleItem
+              key={item.moduleNumber}
+              item={item}
+              isActive={pathname.startsWith(item.href)}
+              onNavigate={onClose}
+            />
           ))}
         </ul>
       </nav>
@@ -307,7 +342,7 @@ export function AppSidebar({ items }: AppSidebarProps) {
       {/* Desktop fixed sidebar */}
       <aside
         className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[224px] bg-white border-r border-[#efefef] z-30"
-        aria-label="Workspace navigation"
+        aria-label="Module navigation"
       >
         <SidebarContent items={items} />
       </aside>
@@ -326,7 +361,7 @@ export function AppSidebar({ items }: AppSidebarProps) {
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Workspace navigation"
+        aria-label="Module navigation"
         className={`fixed top-0 left-0 h-screen w-[280px] bg-white z-50 lg:hidden transition-transform duration-200 ease-out ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}

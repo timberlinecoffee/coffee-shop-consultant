@@ -413,6 +413,7 @@ export function ConceptWorkspace({
             return (
               <div
                 key={meta.id}
+                id={`section-${meta.id}`}
                 className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
                   isExcluded
                     ? "border-dashed border-[#d4d4d4] bg-white"
