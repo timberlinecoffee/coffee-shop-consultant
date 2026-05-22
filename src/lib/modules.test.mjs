@@ -48,9 +48,12 @@ test("dashboard computes plan readiness through computePlanReadiness", () => {
   );
 });
 
-test("AVAILABLE_MODULES includes all modules with shipped content (1, 2, 3)", () => {
+test("AVAILABLE_MODULES includes exactly the modules with shipped content (1, 3) — TIM-916", () => {
+  // Module 2 (Financials) removed until TIM-621 ships real section content.
+  // totalSections is null in workspace-manifest.ts; keeping it in AVAILABLE_MODULES
+  // caused a locked sidebar entry despite the module being listed as available.
   const available = parseAvailableModules();
   assert.ok(available.has(1), "Module 1 (Concept) must be available");
-  assert.ok(available.has(2), "Module 2 must be available");
+  assert.ok(!available.has(2), "Module 2 (Financials) must NOT be available until TIM-621 ships");
   assert.ok(available.has(3), "Module 3 (Location & Lease) must be available");
 });
