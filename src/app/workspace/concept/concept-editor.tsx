@@ -735,7 +735,7 @@ export function ConceptWorkspace({
           })}
         </div>
 
-        {/* ── Concept Brief (Section 5 — TIM-865) ─────────── */}
+        {/* ── Concept Brief overview (unnumbered — TIM-865/TIM-886) ─────────── */}
         {progress.filled > 0 && (
           <ConceptBriefInline doc={doc} shopName={shopName} />
         )}
@@ -788,12 +788,12 @@ function ConceptBriefInline({
   if (briefSections.length === 0) return null;
 
   return (
-    <div className="mt-10">
-      {/* Section header */}
+    <div className="mt-10 pt-10 border-t border-[#efefef]">
+      {/* Section header — no section number; this is a preview, not a fillable step */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-0.5">
-            Section 5
+            Overview
           </p>
           <h2 className="text-base font-semibold text-[#1a1a1a]">
             Concept Brief
