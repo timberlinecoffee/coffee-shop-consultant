@@ -164,6 +164,26 @@ export function CoPilotDrawer({
     setPendingRetry(null);
   }, [abort, reset, workspaceKey]);
 
+  const handleRenameThread = useCallback(
+    (threadId: string, newTitle: string) => {
+      if (threadId === activeThreadId) {
+        setActiveThreadTitle(newTitle);
+      }
+      setBrowserRefreshKey((n) => n + 1);
+    },
+    [activeThreadId],
+  );
+
+  const handleDeleteThread = useCallback(
+    (threadId: string) => {
+      if (threadId === activeThreadId) {
+        handleNewThread();
+      }
+      setBrowserRefreshKey((n) => n + 1);
+    },
+    [activeThreadId, handleNewThread],
+  );
+
   const handleSelectThread = useCallback(
     async (item: ThreadBrowserItem) => {
       if (item.id === activeThreadId && item.workspace_key === activeWorkspaceKey) return;
@@ -470,6 +490,8 @@ export function CoPilotDrawer({
               activeThreadId={activeThreadId}
               onSelectThread={(item) => void handleSelectThread(item)}
               onNewThread={handleNewThread}
+              onRenameThread={handleRenameThread}
+              onDeleteThread={handleDeleteThread}
               refreshKey={browserRefreshKey}
             />
 
