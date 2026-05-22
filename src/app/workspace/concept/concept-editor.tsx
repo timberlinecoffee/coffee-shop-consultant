@@ -1,9 +1,10 @@
 "use client";
 
-// TIM-834: Concept workspace v2 card layout.
+// TIM-834 / TIM-865: Concept workspace v2 card layout + inline concept brief.
 // - Component cards with include/exclude toggle, Improve button, inline AI panel.
 // - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
 // - Print button active only when all included components are filled.
+// - Concept Brief section (TIM-865): inline rich document preview below input cards.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -18,6 +19,9 @@ import {
   type ConceptDocumentV2,
 } from "@/lib/concept";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+
+// IDs that get featured (tinted, slightly larger) treatment in the brief
+const BRIEF_FEATURED_IDS: ReadonlySet<ConceptComponentId> = new Set(["vision"]);
 
 const AUTOSAVE_DEBOUNCE_MS = 700;
 
@@ -635,6 +639,11 @@ export function ConceptWorkspace({
           })}
         </div>
 
+        {/* ── Concept Brief (Section 5 — TIM-865) ─────────── */}
+        {progress.filled > 0 && (
+          <ConceptBriefInline doc={doc} shopName={shopName} />
+        )}
+
         {/* Document footer CTA */}
         <div className="mt-8 border-t border-[#efefef] pt-6 text-center">
           {complete ? (
@@ -667,6 +676,132 @@ export function ConceptWorkspace({
         onClose={() => setPaywallOpen(false)}
         variant="copilot_trial"
       />
+    </div>
+  );
+}
+
+// ── Inline Concept Brief component ───────────────────────────────────────────
+// Renders a rich document preview within the workspace editor.
+// Mirrors the design of /workspace/concept/print but inline and toggleable.
+
+function ConceptBriefInline({
+  doc,
+  shopName,
+}: {
+  doc: ConceptDocumentV2;
+  shopName: string;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
+    if (meta.id === "shop_identity") return false;
+    const comp = doc.components[meta.id];
+    return comp.included && comp.content.trim().length > 0;
+  });
+
+  if (briefSections.length === 0) return null;
+
+  return (
+    <div className="mt-10">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-0.5">
+            Section 5
+          </p>
+          <h2 className="text-base font-semibold text-[#1a1a1a]">
+            Concept Brief
+          </h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/workspace/concept/print"
+            className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors"
+          >
+            Print
+          </Link>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            aria-expanded={expanded}
+          >
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+          {/* Document header */}
+          <div className="px-7 pt-7 pb-5 border-b border-[#efefef]">
+            <div className="h-[3px] bg-[#155e63] rounded-full mb-5 w-12" />
+            <h3
+              className="font-bold text-[#1a1a1a] leading-tight mb-1"
+              style={{ fontSize: "24px", letterSpacing: "-0.01em" }}
+            >
+              {shopName || <span className="italic text-[#afafaf]">Your shop name</span>}
+            </h3>
+            <p className="text-xs text-[#afafaf]">
+              {briefSections.length} section{briefSections.length !== 1 ? "s" : ""} included
+            </p>
+          </div>
+
+          {/* Section cards */}
+          <div className="divide-y divide-[#efefef]">
+            {briefSections.map((meta) => {
+              const comp = doc.components[meta.id];
+              const isFeatured = BRIEF_FEATURED_IDS.has(meta.id);
+
+              if (isFeatured) {
+                return (
+                  <div key={meta.id} className="px-7 py-5 bg-[#f4f9f8]">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                      {meta.label}
+                    </p>
+                    <p
+                      className="text-[#1a1a1a] font-medium leading-[1.75]"
+                      style={{ fontSize: "15px" }}
+                    >
+                      {comp.content.trim()}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={meta.id} className="flex">
+                  <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                  <div className="px-6 py-5 flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                      {meta.label}
+                    </p>
+                    <p
+                      className="text-[#1a1a1a] leading-[1.7]"
+                      style={{ fontSize: "14px" }}
+                    >
+                      {comp.content.trim()}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Document footer */}
+          <div className="px-7 py-4 border-t border-[#efefef] flex items-center justify-between">
+            <span className="text-xs text-[#afafaf]">
+              Timberline Coffee School
+            </span>
+            <Link
+              href="/workspace/concept/print"
+              className="text-xs font-medium text-[#155e63] hover:underline"
+            >
+              Open full document
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
