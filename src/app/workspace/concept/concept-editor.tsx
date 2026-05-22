@@ -3,7 +3,6 @@
 // TIM-834 / TIM-865: Concept workspace v2 card layout + inline concept brief.
 // - Component cards with include/exclude toggle, Improve button, inline AI panel.
 // - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
-// - Print button active only when all included components are filled.
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -743,7 +742,7 @@ export function ConceptWorkspace({
           </Link>
           {!complete && progress.total - progress.filled > 0 && (
             <p className="text-xs text-[#afafaf] mt-2">
-              {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled — fill them in for a more complete concept.
+              {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
             </p>
           )}
           <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
