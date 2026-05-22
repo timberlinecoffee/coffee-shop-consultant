@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { computePlanReadiness } from "@/lib/workspace-manifest";
@@ -176,7 +177,7 @@ export default async function DashboardPage() {
                 href="/workspace/concept"
                 className="inline-block text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-1.5 rounded-lg transition-colors"
               >
-                {w1Completed ? "Review \u2192" : w1Started ? "Continue \u2192" : "Start \u2192"}
+                {w1Completed ? "Review →" : w1Started ? "Continue →" : "Start →"}
               </Link>
             </div>
           </div>
@@ -211,7 +212,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 {allUnlocked && (
-                  <Link href={href} className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0">Open \u2192</Link>
+                  <Link href={href} className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0 inline-flex items-center gap-1">Open <ArrowRight size={12} /></Link>
                 )}
               </div>
             ))}
