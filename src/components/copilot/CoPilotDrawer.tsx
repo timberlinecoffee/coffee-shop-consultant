@@ -343,6 +343,14 @@ export function CoPilotDrawer({
     return () => window.removeEventListener("copilot:open-with-prompt", handler);
   }, [openDrawer]);
 
+  // TIM-880: WorkspaceTopBar dispatches `workspace-copilot-open` from its Co-pilot
+  // button. Wire it to openDrawer so clicking that button actually opens the drawer.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.addEventListener("workspace-copilot-open", openDrawer);
+    return () => window.removeEventListener("workspace-copilot-open", openDrawer);
+  }, [openDrawer]);
+
   // Reset the external focus label when the user picks a different workspace
   // or starts a fresh thread, so it doesn't stick around stale.
   useEffect(() => {
