@@ -27,7 +27,7 @@ export default async function LoginPage({
 
       <div className="bg-white rounded-2xl border border-[#efefef] p-8 w-full max-w-sm shadow-sm">
         <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">
-          {isSignup ? "Create your account" : "Welcome back"}
+          {isSignup ? "Create your account" : "Welcome Back"}
         </h1>
         <p className="text-[#afafaf] text-sm text-center mb-8">
           {isSignup ? "Start your coffee shop journey for free" : "Sign in to your coffee shop plan"}
@@ -45,7 +45,7 @@ export default async function LoginPage({
             <>
               Don&apos;t have an account?{" "}
               <Link href="/login?mode=signup" className="text-[#155e63] font-medium hover:underline">
-                Start for free
+                Start for Free
               </Link>
             </>
           )}
