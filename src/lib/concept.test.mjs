@@ -1,11 +1,12 @@
-// TIM-619: Concept helpers — normalizeConcept tolerates messy storage shape
-// and formatConceptForAI produces clean bullets for the co-pilot prompt.
+// TIM-619 / TIM-884: Concept helpers.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   EMPTY_CONCEPT,
+  EMPTY_CONCEPT_V2,
   formatConceptForAI,
+  getConceptV2Progress,
   isConceptComplete,
   normalizeConcept,
 } from "./concept.ts";
@@ -80,6 +81,70 @@ test("formatConceptForAI renders fields as labelled bullets", () => {
 
 test("formatConceptForAI returns empty marker when nothing is filled", () => {
   assert.equal(formatConceptForAI(EMPTY_CONCEPT), "_no concept fields filled in yet_");
+});
+
+// ── TIM-884: getConceptV2Progress — "filled" definition tests ────────────────
+// These pin the exact counting logic so both surfaces (main page and sidebar)
+// can be proven to use the same source of truth.
+
+test("getConceptV2Progress counts only included components toward total", () => {
+  const doc = {
+    ...EMPTY_CONCEPT_V2,
+    components: {
+      shop_identity:   { content: "Tide & Timber", included: true },
+      vision:          { content: "",              included: true },
+      target_customer: { content: "commuters",     included: true },
+      differentiation: { content: "direct-trade",  included: true },
+      brand_voice:     { content: "warm",           included: true },
+      location:        { content: "downtown",       included: false },
+      offering:        { content: "",               included: false },
+    },
+  };
+  const p = getConceptV2Progress(doc);
+  assert.equal(p.total, 5);
+  assert.equal(p.filled, 4);
+});
+
+test("getConceptV2Progress treats whitespace-only content as unfilled", () => {
+  const doc = {
+    ...EMPTY_CONCEPT_V2,
+    components: {
+      shop_identity:   { content: "  ",     included: true },
+      vision:          { content: "exists", included: true },
+      target_customer: { content: "",       included: true },
+      differentiation: { content: "diff",   included: true },
+      brand_voice:     { content: "warm",   included: true },
+      location:        { content: "",       included: false },
+      offering:        { content: "",       included: false },
+    },
+  };
+  const p = getConceptV2Progress(doc);
+  assert.equal(p.total, 5);
+  assert.equal(p.filled, 3);
+});
+
+test("getConceptV2Progress includes optional components when toggled in", () => {
+  const doc = {
+    ...EMPTY_CONCEPT_V2,
+    components: {
+      shop_identity:   { content: "Tide",     included: true },
+      vision:          { content: "vision",   included: true },
+      target_customer: { content: "target",   included: true },
+      differentiation: { content: "diff",     included: true },
+      brand_voice:     { content: "voice",    included: true },
+      location:        { content: "downtown", included: true },
+      offering:        { content: "",         included: false },
+    },
+  };
+  const p = getConceptV2Progress(doc);
+  assert.equal(p.total, 6);
+  assert.equal(p.filled, 6);
+});
+
+test("getConceptV2Progress returns 0/5 for the empty default document", () => {
+  const p = getConceptV2Progress(EMPTY_CONCEPT_V2);
+  assert.equal(p.total, 5);
+  assert.equal(p.filled, 0);
 });
 
 test("formatConceptForAI skips blank fields silently", () => {
