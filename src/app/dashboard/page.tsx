@@ -2,11 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { normalizeConcept, CONCEPT_FIELDS } from "@/lib/concept";
+import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 
 export const dynamic = 'force-dynamic';
 
-const WORKSPACE_1 = { num: 1, title: "Workspace 1: Concept", subtitle: "Define your shop identity", totalSections: 5 };
+const WORKSPACE_1 = { num: 1, title: "Workspace 1: Concept", subtitle: "Define your shop identity" };
 const WORKSPACE_2 = { num: 2 };
 
 export default async function DashboardPage() {
@@ -44,6 +44,7 @@ export default async function DashboardPage() {
   // written by onboarding and the /workspace/concept editor). The old module_responses
   // path is NOT used for workspace 1 — onboarding never wrote there.
   let w1FilledCount = 0;
+  let w1TotalSections = 5; // default: 5 core included components
   if (plan?.id) {
     const { data: conceptDoc } = await supabase
       .from("workspace_documents")
@@ -53,17 +54,19 @@ export default async function DashboardPage() {
       .maybeSingle();
 
     if (conceptDoc?.content) {
-      const concept = normalizeConcept(conceptDoc.content);
-      w1FilledCount = CONCEPT_FIELDS.filter((f) => concept[f.key].trim().length > 0).length;
+      const conceptV2 = normalizeConceptV2(conceptDoc.content);
+      const progress = getConceptV2Progress(conceptV2);
+      w1FilledCount = progress.filled;
+      w1TotalSections = progress.total;
     }
   }
 
   const w1Progress = w1FilledCount;
-  const w1Completed = w1Progress >= WORKSPACE_1.totalSections;
+  const w1Completed = w1TotalSections > 0 && w1Progress >= w1TotalSections;
   const w1Started = w1Progress > 0;
-  const w1Pct = Math.round((w1Progress / WORKSPACE_1.totalSections) * 100);
+  const w1Pct = w1TotalSections > 0 ? Math.round((w1Progress / w1TotalSections) * 100) : 0;
 
-  const readinessScore = Math.round((w1Progress / WORKSPACE_1.totalSections) * 100);
+  const readinessScore = w1TotalSections > 0 ? Math.round((w1Progress / w1TotalSections) * 100) : 0;
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
@@ -144,7 +147,7 @@ export default async function DashboardPage() {
                   />
                 </div>
                 <span className="text-xs text-[#afafaf] whitespace-nowrap flex-shrink-0">
-                  {w1Progress}/{WORKSPACE_1.totalSections} sections
+                  {w1Progress}/{w1TotalSections} sections
                 </span>
               </div>
               <Link

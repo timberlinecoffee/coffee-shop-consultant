@@ -1,21 +1,27 @@
 "use client";
 
-// TIM-619: Concept workspace client editor.
-// - Autosaves every field change to /api/workspaces/concept (debounced).
-// - Optimistic local state survives reload (server re-renders from workspace_documents).
-// - Emits a "copilot:focus-field" custom event so the CoPilotDrawer can pre-load
-//   a targeted prompt when the user asks the AI to refine a specific field.
+// TIM-834 / TIM-865: Concept workspace v2 card layout + inline concept brief.
+// - Component cards with include/exclude toggle, Improve button, inline AI panel.
+// - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
+// - Print button active only when all included components are filled.
+// - Concept Brief section (TIM-865): inline rich document preview below input cards.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { PaywallModal } from "@/components/paywall-modal";
+import { useCopilotStream } from "@/components/copilot/useCopilotStream";
 import {
-  CONCEPT_FIELDS,
-  isConceptComplete,
-  type ConceptDocument,
+  CONCEPT_COMPONENTS_V2,
+  buildImprovePrompt,
+  getConceptV2Progress,
+  isConceptV2Complete,
+  type ConceptComponentId,
+  type ConceptDocumentV2,
 } from "@/lib/concept";
-import { UPGRADE_PATH } from "@/lib/access";
+import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+
+// IDs that get featured (tinted, slightly larger) treatment in the brief
+const BRIEF_FEATURED_IDS: ReadonlySet<ConceptComponentId> = new Set(["vision"]);
 
 const AUTOSAVE_DEBOUNCE_MS = 700;
 
@@ -26,12 +32,20 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
+type PanelResult = {
+  rewrite: string;
+  gaps: string[];
+  competitorNote: string | null;
+};
+
+type PanelStatus = "idle" | "loading" | "done" | "error" | "trial_exhausted";
+
 interface ConceptWorkspaceProps {
   planId: string;
-  initialConcept: ConceptDocument;
+  initialDoc: ConceptDocumentV2;
   initialUpdatedAt: string | null;
   canEdit: boolean;
-  trialMessagesUsed?: number;
+  initialTrialMessagesUsed?: number;
 }
 
 function formatTimestamp(iso: string | null): string {
@@ -46,59 +60,48 @@ function formatTimestamp(iso: string | null): string {
 
 export function ConceptWorkspace({
   planId,
-  initialConcept,
+  initialDoc,
   initialUpdatedAt,
   canEdit,
-  trialMessagesUsed,
+  initialTrialMessagesUsed,
 }: ConceptWorkspaceProps) {
-  const [concept, setConcept] = useState<ConceptDocument>(initialConcept);
+  const [doc, setDoc] = useState<ConceptDocumentV2>(initialDoc);
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
     lastSavedAt: initialUpdatedAt,
   });
+  // Cards the user has clicked into (reveals textarea even when empty)
+  const [activatedCards, setActivatedCards] = useState<Set<ConceptComponentId>>(new Set());
+
+  const [openPanelId, setOpenPanelId] = useState<ConceptComponentId | null>(null);
+  const [panelStatus, setPanelStatus] = useState<PanelStatus>("idle");
+  const [panelResult, setPanelResult] = useState<PanelResult | null>(null);
+
+  const [trialMessagesUsed, setTrialMessagesUsed] = useState(
+    initialTrialMessagesUsed ?? 0
+  );
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestConceptRef = useRef<ConceptDocument>(initialConcept);
+  const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
-  const completion = useMemo(() => isConceptComplete(concept), [concept]);
+  const copilot = useCopilotStream();
 
-  // Persist to localStorage as belt-and-suspenders against tab close mid-edit.
-  // Server data is the source of truth on reload — this only matters if the
-  // user disconnects before the debounced PATCH lands.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(
-        `tim619_concept_unsaved_${planId}`,
-        JSON.stringify(concept),
-      );
-    } catch {
-      // ignore storage failures (private mode, quota)
-    }
-  }, [concept, planId]);
+  const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
+  const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
+  const shopName = doc.components.shop_identity.content.trim();
+  const pct = progress.total > 0 ? Math.round((progress.filled / progress.total) * 100) : 0;
 
-  // On mount, recover an unsaved local copy IFF it differs from server initial.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(`tim619_concept_unsaved_${planId}`);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as ConceptDocument;
-      if (JSON.stringify(parsed) === JSON.stringify(initialConcept)) {
-        // Local copy matches server — nothing to recover.
-        return;
-      }
-      // Otherwise we leave the user with what's currently in state from props.
-      // We don't auto-overwrite because the server is authoritative.
-    } catch {
-      // ignore parse failures
-    }
-    // We intentionally only run once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const lastSavedAt =
+    saveState.kind === "saved"
+      ? saveState.at
+      : saveState.kind === "idle"
+      ? saveState.lastSavedAt
+      : null;
 
   const persist = useCallback(
-    async (next: ConceptDocument) => {
+    async (next: ConceptDocumentV2) => {
       if (!canEdit) return;
       if (inFlightController.current) {
         inFlightController.current.abort();
@@ -120,50 +123,34 @@ export function ConceptWorkspace({
           });
           return;
         }
-        if (!res.ok) {
-          throw new Error(`save failed (${res.status})`);
-        }
+        if (!res.ok) throw new Error(`save failed (${res.status})`);
         const data = (await res.json()) as { updated_at?: string };
         const updatedAt = data?.updated_at ?? new Date().toISOString();
         setSaveState({ kind: "saved", at: updatedAt });
-        // Clear unsaved-local marker now that server has accepted.
-        try {
-          window.localStorage.removeItem(`tim619_concept_unsaved_${planId}`);
-          window.localStorage.setItem(
-            `tim619_concept_synced_${planId}`,
-            JSON.stringify(next),
-          );
-        } catch {
-          // ignore
-        }
       } catch (err) {
         if (controller.signal.aborted) return;
         setSaveState({
           kind: "error",
-          message:
-            err instanceof Error ? err.message : "Could not save. Will retry.",
+          message: err instanceof Error ? err.message : "Could not save. Will retry.",
         });
       }
     },
-    [canEdit, planId],
+    [canEdit]
   );
 
   const scheduleSave = useCallback(
-    (next: ConceptDocument) => {
-      latestConceptRef.current = next;
+    (next: ConceptDocumentV2) => {
+      latestDocRef.current = next;
       setSaveState({ kind: "dirty" });
-      if (pendingSaveTimer.current) {
-        clearTimeout(pendingSaveTimer.current);
-      }
+      if (pendingSaveTimer.current) clearTimeout(pendingSaveTimer.current);
       pendingSaveTimer.current = setTimeout(() => {
         pendingSaveTimer.current = null;
-        void persist(latestConceptRef.current);
+        void persist(latestDocRef.current);
       }, AUTOSAVE_DEBOUNCE_MS);
     },
-    [persist],
+    [persist]
   );
 
-  // Flush pending changes on unload (best-effort with sendBeacon).
   useEffect(() => {
     const handler = () => {
       if (!pendingSaveTimer.current) return;
@@ -172,10 +159,9 @@ export function ConceptWorkspace({
       if (!canEdit) return;
       try {
         const blob = new Blob(
-          [JSON.stringify({ content: latestConceptRef.current })],
-          { type: "application/json" },
+          [JSON.stringify({ content: latestDocRef.current })],
+          { type: "application/json" }
         );
-        // sendBeacon doesn't support PATCH; POST handler is identical (writeMutation).
         navigator.sendBeacon?.("/api/workspaces/concept", blob);
       } catch {
         // ignore
@@ -185,70 +171,202 @@ export function ConceptWorkspace({
     return () => window.removeEventListener("beforeunload", handler);
   }, [canEdit]);
 
-  function update<K extends keyof ConceptDocument>(key: K, value: string) {
-    setConcept((prev) => {
-      const next = { ...prev, [key]: value };
+  function updateContent(id: ConceptComponentId, content: string) {
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = {
+        ...prev,
+        components: {
+          ...prev.components,
+          [id]: { ...prev.components[id], content },
+        },
+      };
       scheduleSave(next);
       return next;
     });
   }
 
-  const focusOnField = useCallback(
-    (fieldKey: keyof ConceptDocument, label: string) => {
-      if (typeof window === "undefined") return;
-      const currentValue = latestConceptRef.current[fieldKey] || "(blank)";
-      const prompt = `Refine my Concept workspace's "${label}" field.\n\nCurrent value:\n${currentValue}\n\nGive me one tightened rewrite and one alternative direction. Keep it specific to my plan.`;
-      window.dispatchEvent(
-        new CustomEvent("copilot:open-with-prompt", {
-          detail: { prompt, focusLabel: `Concept · ${label}` },
-        }),
-      );
+  function toggleIncluded(id: ConceptComponentId) {
+    if (!canEdit) return;
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = {
+        ...prev,
+        components: {
+          ...prev.components,
+          [id]: { ...prev.components[id], included: !prev.components[id].included },
+        },
+      };
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  function activateCard(id: ConceptComponentId) {
+    setActivatedCards((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }
+
+  const handleImprove = useCallback(
+    async (id: ConceptComponentId) => {
+      if (openPanelId === id && panelStatus !== "loading") {
+        setOpenPanelId(null);
+        setPanelStatus("idle");
+        setPanelResult(null);
+        return;
+      }
+
+      setOpenPanelId(id);
+      setPanelStatus("loading");
+      setPanelResult(null);
+
+      const meta = CONCEPT_COMPONENTS_V2.find((m) => m.id === id)!;
+      const currentContent = latestDocRef.current.components[id].content;
+      const ctx = {
+        shopName: latestDocRef.current.components.shop_identity.content,
+        vision: latestDocRef.current.components.vision.content,
+        targetCustomer: latestDocRef.current.components.target_customer.content,
+      };
+      const prompt = buildImprovePrompt(id, meta.label, currentContent, ctx);
+
+      const result = await copilot.send({
+        planId,
+        workspaceKey: "concept",
+        threadId: crypto.randomUUID(),
+        history: [],
+        prompt,
+      });
+
+      if (!result) {
+        const err = copilot.error;
+        if (err?.code === "trial_exhausted") {
+          setPanelStatus("trial_exhausted");
+        } else if (err?.code === "paywall") {
+          setPaywallOpen(true);
+          setOpenPanelId(null);
+          setPanelStatus("idle");
+        } else {
+          setPanelStatus("error");
+        }
+        return;
+      }
+
+      if (result.trialMessagesUsed !== undefined) {
+        setTrialMessagesUsed(result.trialMessagesUsed);
+      }
+
+      try {
+        const raw = result.assistant
+          .trim()
+          .replace(/^```(?:json)?\s*/i, "")
+          .replace(/\s*```$/, "");
+        const parsed = JSON.parse(raw) as {
+          rewrite?: string;
+          gaps?: string[];
+          competitorNote?: string | null;
+        };
+        setPanelResult({
+          rewrite: typeof parsed.rewrite === "string" ? parsed.rewrite : "",
+          gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+          competitorNote:
+            typeof parsed.competitorNote === "string" ? parsed.competitorNote : null,
+        });
+        setPanelStatus("done");
+      } catch {
+        setPanelStatus("error");
+      }
     },
-    [],
+    [openPanelId, panelStatus, copilot, planId]
   );
 
-  const lastSavedAt =
-    saveState.kind === "saved"
-      ? saveState.at
-      : saveState.kind === "idle"
-      ? saveState.lastSavedAt
-      : null;
+  function handleUseThis() {
+    if (openPanelId && panelResult) {
+      updateContent(openPanelId, panelResult.rewrite);
+    }
+    setOpenPanelId(null);
+    setPanelStatus("idle");
+    setPanelResult(null);
+  }
+
+  function handleEditFirst() {
+    if (openPanelId && panelResult) {
+      const id = openPanelId;
+      updateContent(id, panelResult.rewrite);
+      activateCard(id);
+      setTimeout(() => document.getElementById(`concept-${id}`)?.focus(), 50);
+    }
+    setOpenPanelId(null);
+    setPanelStatus("idle");
+    setPanelResult(null);
+  }
+
+  function handleDismissPanel() {
+    setOpenPanelId(null);
+    setPanelStatus("idle");
+    setPanelResult(null);
+  }
+
+  let saveStatusCopy = formatTimestamp(lastSavedAt);
+  let saveStatusTone = "text-[#afafaf]";
+  if (saveState.kind === "saving") {
+    saveStatusCopy = "Saving...";
+    saveStatusTone = "text-[#155e63]";
+  } else if (saveState.kind === "dirty") {
+    saveStatusCopy = "Unsaved";
+    saveStatusTone = "text-[#6b6b6b]";
+  } else if (saveState.kind === "error") {
+    saveStatusCopy = saveState.message;
+    saveStatusTone = "text-[#a13d3d]";
+  }
+
+  const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
+  const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-24">
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="text-sm text-[#155e63] font-medium hover:underline"
-          >
-            ← Back to dashboard
-          </Link>
-          <span
-            className="text-xs text-[#6b6b6b]"
-            data-workspace-key="concept"
-          >
-            Workspace · Concept
-          </span>
-        </div>
-      </nav>
-
-      <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="bg-[#faf9f7]">
+      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
+        {/* Page header */}
         <header className="mb-8">
-          <h1 className="font-semibold text-2xl text-[#1a1a1a] mb-2">Concept</h1>
+          <h1 className="font-bold text-[#1a1a1a] mb-1" style={{ fontSize: "28px" }}>
+            {shopName ? (
+              shopName
+            ) : (
+              <span className="italic text-[#afafaf]">Your shop name</span>
+            )}
+          </h1>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
-            Shape the identity of your shop — mission, target customer,
-            differentiation, brand voice. Every other workspace reads from
-            this. The co-pilot can suggest edits to any field; tap{" "}
-            <span className="font-medium text-[#155e63]">Ask AI</span> to start.
+            Shape the identity of your shop. Every other workspace builds on this.
           </p>
+
+          {/* Progress row */}
+          <div className="mt-5 flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-[120px] h-1 bg-[#efefef] rounded-full overflow-hidden">
+              <div
+                className="h-1 bg-[#155e63] rounded-full transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {complete ? (
+              <span className="text-xs font-semibold text-[#155e63] shrink-0">
+                Ready to print
+              </span>
+            ) : (
+              <span className="text-xs text-[#afafaf] shrink-0">
+                {progress.filled} of {progress.total} sections filled
+              </span>
+            )}
+            <span
+              className={`text-xs shrink-0 ${saveStatusTone}`}
+              role="status"
+              aria-live="polite"
+            >
+              {saveStatusCopy}
+            </span>
+          </div>
         </header>
 
-        <div className="flex items-center gap-3 mb-6">
-          <CompletionPill complete={completion} />
-          <SaveStatus state={saveState} lastSavedAt={lastSavedAt} />
-        </div>
-
+        {/* Read-only banner */}
         {!canEdit && (
           <div
             role="alert"
@@ -256,12 +374,8 @@ export function ConceptWorkspace({
           >
             <p className="font-medium mb-1">Read-only preview</p>
             <p className="leading-relaxed">
-              Your subscription is paused so we&apos;ve locked editing. The
-              co-pilot can still reference your plan.{" "}
-              <Link
-                href={UPGRADE_PATH}
-                className="underline font-medium text-[#7a5a17]"
-              >
+              Your subscription is paused so we&apos;ve locked editing.{" "}
+              <Link href={UPGRADE_PATH} className="underline font-medium text-[#7a5a17]">
                 Reactivate to keep editing
               </Link>
               .
@@ -269,143 +383,425 @@ export function ConceptWorkspace({
           </div>
         )}
 
-        <form
-          className="space-y-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (pendingSaveTimer.current) {
-              clearTimeout(pendingSaveTimer.current);
-              pendingSaveTimer.current = null;
-            }
-            void persist(latestConceptRef.current);
-          }}
-        >
-          {CONCEPT_FIELDS.map((field) => {
-            const value = concept[field.key];
-            const id = `concept-${field.key}`;
+        {/* Trial limit notice */}
+        {showTrialWarning && (
+          <div className="mb-6 rounded-2xl border border-[#efefef] bg-white px-4 py-3 text-sm text-[#6b6b6b]">
+            {trialRemaining <= 0 ? (
+              <>
+                You&apos;ve used all 5 free AI sessions.{" "}
+                <Link href="/pricing" className="text-[#155e63] font-medium underline">
+                  Upgrade to keep improving
+                </Link>
+                .
+              </>
+            ) : (
+              <>{trialRemaining} AI session{trialRemaining === 1 ? "" : "s"} left in your free trial.</>
+            )}
+          </div>
+        )}
+
+        {/* Component cards */}
+        <div className="space-y-4">
+          {CONCEPT_COMPONENTS_V2.map((meta) => {
+            const comp = doc.components[meta.id];
+            const isEmpty = !comp.content.trim();
+            const isExcluded = !comp.included;
+            const isActivated = activatedCards.has(meta.id);
+            const showField = !isExcluded && (!isEmpty || isActivated);
+            const isPanelOpen = openPanelId === meta.id;
+
             return (
               <div
-                key={field.key}
-                className="bg-white border border-[#efefef] rounded-2xl p-5"
+                key={meta.id}
+                className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+                  isExcluded
+                    ? "border-dashed border-[#d4d4d4] bg-white"
+                    : "border-[#efefef] bg-white"
+                }`}
+                style={isExcluded ? { opacity: 0.55 } : undefined}
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div>
-                    <label
-                      htmlFor={id}
-                      className="block text-sm font-semibold text-[#1a1a1a]"
-                    >
-                      {field.label}
-                    </label>
-                    <p className="text-xs text-[#afafaf] mt-0.5">
-                      {field.hint}
-                    </p>
+                <div className="px-5 pt-5 pb-4">
+                  {/* Card header row */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-sm font-semibold text-[#1a1a1a]">
+                          {meta.label}
+                        </span>
+                        {meta.deferrable && (
+                          <span className="text-[10px] font-medium text-[#afafaf] border border-[#e0e0e0] rounded-full px-2 py-0.5 leading-none">
+                            Optional
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#afafaf]">{meta.hint}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Improve button */}
+                      <button
+                        type="button"
+                        onClick={() => void handleImprove(meta.id)}
+                        disabled={isEmpty || !canEdit || (isPanelOpen && panelStatus === "loading")}
+                        className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {isPanelOpen && panelStatus === "loading" ? "Thinking..." : "Improve"}
+                      </button>
+                      {/* Include/exclude toggle — only on deferrable components */}
+                      {meta.deferrable && (
+                        <button
+                          type="button"
+                          onClick={() => toggleIncluded(meta.id)}
+                          disabled={!canEdit}
+                          className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed whitespace-nowrap ${
+                            comp.included
+                              ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20 hover:bg-[#155e63]/15"
+                              : "bg-[#f4f3f1] text-[#6b6b6b] border-[#e0e0e0] hover:bg-[#efefef]"
+                          }`}
+                        >
+                          {comp.included ? "In doc" : "Skip"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => focusOnField(field.key, field.label)}
-                    className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors whitespace-nowrap"
-                  >
-                    Ask AI ↗
-                  </button>
+
+                  {/* Card body */}
+                  {isExcluded ? (
+                    <p className="mt-2 text-sm text-[#afafaf] italic">
+                      Not included in your document. Toggle on when you&apos;re ready to add {meta.label}.
+                    </p>
+                  ) : showField ? (
+                    meta.multiline ? (
+                      <textarea
+                        id={`concept-${meta.id}`}
+                        value={comp.content}
+                        onChange={(e) => updateContent(meta.id, e.target.value)}
+                        rows={meta.rows ?? 3}
+                        disabled={!canEdit}
+                        autoFocus={isEmpty && isActivated}
+                        className="mt-2 w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+                      />
+                    ) : (
+                      <input
+                        id={`concept-${meta.id}`}
+                        type="text"
+                        value={comp.content}
+                        onChange={(e) => updateContent(meta.id, e.target.value)}
+                        disabled={!canEdit}
+                        autoFocus={isEmpty && isActivated}
+                        className="mt-2 w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+                      />
+                    )
+                  ) : (
+                    /* Empty state: show prompt text, clicking activates the field */
+                    <p
+                      className="mt-2 text-sm text-[#afafaf] italic leading-relaxed cursor-text"
+                      onClick={() => {
+                        if (canEdit) activateCard(meta.id);
+                      }}
+                    >
+                      {meta.emptyPrompt}
+                    </p>
+                  )}
                 </div>
-                {field.multiline ? (
-                  <textarea
-                    id={id}
-                    value={value}
-                    onChange={(e) => update(field.key, e.target.value)}
-                    placeholder={field.placeholder}
-                    rows={field.rows ?? 3}
-                    disabled={!canEdit}
-                    className="mt-2 w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
-                  />
-                ) : (
-                  <input
-                    id={id}
-                    type="text"
-                    value={value}
-                    onChange={(e) => update(field.key, e.target.value)}
-                    placeholder={field.placeholder}
-                    disabled={!canEdit}
-                    className="mt-2 w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
-                  />
+
+                {/* AI improvement panel — inline below field */}
+                {isPanelOpen && (
+                  <div className="border-t border-[#efefef] px-5 py-4">
+                    {panelStatus === "loading" && (
+                      <div className="flex items-center gap-2 text-sm text-[#6b6b6b]">
+                        <span
+                          className="inline-block w-3 h-3 rounded-full border-2 border-[#155e63] border-t-transparent animate-spin"
+                          aria-hidden="true"
+                        />
+                        Reviewing your content...
+                      </div>
+                    )}
+
+                    {panelStatus === "trial_exhausted" && (
+                      <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4 text-sm">
+                        <p className="font-semibold text-[#1a1a1a] mb-1">
+                          You&apos;ve used your 5 free coaching sessions
+                        </p>
+                        <p className="text-[#6b6b6b] mb-3">
+                          Upgrade to keep improving each section with AI.
+                        </p>
+                        <Link
+                          href="/pricing"
+                          className="inline-block bg-[#155e63] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+                        >
+                          Choose a plan
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={handleDismissPanel}
+                          className="ml-3 text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
+                    {panelStatus === "error" && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-[#a13d3d]">Could not get suggestions. Try again.</span>
+                        <button
+                          type="button"
+                          onClick={handleDismissPanel}
+                          className="text-xs text-[#afafaf] hover:text-[#1a1a1a]"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
+                    {panelStatus === "done" && panelResult && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">
+                            AI Suggestions
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleDismissPanel}
+                            className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+                          >
+                            Dismiss all
+                          </button>
+                        </div>
+
+                        {/* Suggested rewrite */}
+                        <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
+                            Suggested rewrite
+                          </p>
+                          <p className="text-sm text-[#1a1a1a] leading-relaxed mb-3">
+                            {panelResult.rewrite}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={handleUseThis}
+                              className="text-xs font-semibold bg-[#155e63] text-white px-3 py-1.5 rounded-lg hover:bg-[#0e4448] transition-colors"
+                            >
+                              Use this
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleEditFirst}
+                              className="text-xs font-medium border border-[#155e63] text-[#155e63] px-3 py-1.5 rounded-lg hover:bg-[#155e63]/5 transition-colors"
+                            >
+                              Edit first
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDismissPanel}
+                              className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+                            >
+                              Keep mine
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Gap questions */}
+                        {panelResult.gaps.length > 0 && (
+                          <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
+                              What&apos;s missing
+                            </p>
+                            <ul className="space-y-1.5">
+                              {panelResult.gaps.map((gap, i) => (
+                                <li key={i} className="text-sm text-[#1a1a1a] flex items-start gap-2">
+                                  <span className="text-[#155e63] font-semibold shrink-0">?</span>
+                                  {gap}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Competitor note */}
+                        {panelResult.competitorNote && (
+                          <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
+                              Worth knowing
+                            </p>
+                            <p className="text-sm text-[#1a1a1a] leading-relaxed">
+                              {panelResult.competitorNote}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })}
+        </div>
 
-          <p className="text-xs text-[#afafaf] text-center">
-            Autosaves as you type. Reload-safe.
-          </p>
-        </form>
+        {/* ── Concept Brief (Section 5 — TIM-865) ─────────── */}
+        {progress.filled > 0 && (
+          <ConceptBriefInline doc={doc} shopName={shopName} />
+        )}
+
+        {/* Document footer CTA */}
+        <div className="mt-8 border-t border-[#efefef] pt-6 text-center">
+          {complete ? (
+            <Link
+              href="/workspace/concept/print"
+              className="inline-block bg-[#155e63] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+            >
+              Print document
+            </Link>
+          ) : (
+            <>
+              <p className="text-sm text-[#6b6b6b] mb-3">
+                Fill in all included sections to print.
+              </p>
+              <button
+                type="button"
+                disabled
+                className="border border-[#d4d4d4] text-[#afafaf] text-sm font-semibold px-6 py-2.5 rounded-xl cursor-not-allowed"
+              >
+                Print document
+              </button>
+            </>
+          )}
+          <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+        </div>
       </div>
 
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="concept"
-        currentFocus={{
-          label: "Concept workspace",
-        }}
-        initialTrialMessagesUsed={trialMessagesUsed}
+      <PaywallModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        variant="copilot_trial"
       />
-
-      <BottomTabBar />
     </div>
   );
 }
 
-function CompletionPill({ complete }: { complete: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-        complete
-          ? "bg-[#155e63]/10 text-[#155e63]"
-          : "bg-[#f4f3f1] text-[#6b6b6b]"
-      }`}
-      data-concept-complete={complete}
-    >
-      <span
-        className={`w-1.5 h-1.5 rounded-full ${
-          complete ? "bg-[#155e63]" : "bg-[#afafaf]"
-        }`}
-      />
-      {complete ? "Complete" : "In progress"}
-    </span>
-  );
-}
+// ── Inline Concept Brief component ───────────────────────────────────────────
+// Renders a rich document preview within the workspace editor.
+// Mirrors the design of /workspace/concept/print but inline and toggleable.
 
-function SaveStatus({
-  state,
-  lastSavedAt,
+function ConceptBriefInline({
+  doc,
+  shopName,
 }: {
-  state: SaveState;
-  lastSavedAt: string | null;
+  doc: ConceptDocumentV2;
+  shopName: string;
 }) {
-  let copy: string;
-  let tone = "text-[#afafaf]";
-  switch (state.kind) {
-    case "saving":
-      copy = "Saving…";
-      tone = "text-[#155e63]";
-      break;
-    case "dirty":
-      copy = "Unsaved changes";
-      tone = "text-[#6b6b6b]";
-      break;
-    case "saved":
-      copy = formatTimestamp(state.at);
-      break;
-    case "error":
-      copy = state.message;
-      tone = "text-[#a13d3d]";
-      break;
-    case "idle":
-    default:
-      copy = formatTimestamp(lastSavedAt);
-      break;
-  }
+  const [expanded, setExpanded] = useState(true);
+
+  const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
+    if (meta.id === "shop_identity") return false;
+    const comp = doc.components[meta.id];
+    return comp.included && comp.content.trim().length > 0;
+  });
+
+  if (briefSections.length === 0) return null;
+
   return (
-    <span className={`text-xs ${tone}`} role="status" aria-live="polite">
-      {copy}
-    </span>
+    <div className="mt-10">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-0.5">
+            Section 5
+          </p>
+          <h2 className="text-base font-semibold text-[#1a1a1a]">
+            Concept Brief
+          </h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/workspace/concept/print"
+            className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors"
+          >
+            Print
+          </Link>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            aria-expanded={expanded}
+          >
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+          {/* Document header */}
+          <div className="px-7 pt-7 pb-5 border-b border-[#efefef]">
+            <div className="h-[3px] bg-[#155e63] rounded-full mb-5 w-12" />
+            <h3
+              className="font-bold text-[#1a1a1a] leading-tight mb-1"
+              style={{ fontSize: "24px", letterSpacing: "-0.01em" }}
+            >
+              {shopName || <span className="italic text-[#afafaf]">Your shop name</span>}
+            </h3>
+            <p className="text-xs text-[#afafaf]">
+              {briefSections.length} section{briefSections.length !== 1 ? "s" : ""} included
+            </p>
+          </div>
+
+          {/* Section cards */}
+          <div className="divide-y divide-[#efefef]">
+            {briefSections.map((meta) => {
+              const comp = doc.components[meta.id];
+              const isFeatured = BRIEF_FEATURED_IDS.has(meta.id);
+
+              if (isFeatured) {
+                return (
+                  <div key={meta.id} className="px-7 py-5 bg-[#f4f9f8]">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                      {meta.label}
+                    </p>
+                    <p
+                      className="text-[#1a1a1a] font-medium leading-[1.75]"
+                      style={{ fontSize: "15px" }}
+                    >
+                      {comp.content.trim()}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={meta.id} className="flex">
+                  <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                  <div className="px-6 py-5 flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                      {meta.label}
+                    </p>
+                    <p
+                      className="text-[#1a1a1a] leading-[1.7]"
+                      style={{ fontSize: "14px" }}
+                    >
+                      {comp.content.trim()}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Document footer */}
+          <div className="px-7 py-4 border-t border-[#efefef] flex items-center justify-between">
+            <span className="text-xs text-[#afafaf]">
+              Timberline Coffee School
+            </span>
+            <Link
+              href="/workspace/concept/print"
+              className="text-xs font-medium text-[#155e63] hover:underline"
+            >
+              Open full document
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

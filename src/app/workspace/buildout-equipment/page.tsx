@@ -1,5 +1,6 @@
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 import { loadWorkspaceContext } from "../_shared";
+import { Wrench } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function BuildoutEquipmentWorkspacePage() {
       workspaceKey="buildout_equipment"
       title="Build-out & Equipment"
       description="Plan bar layout, equipment spec, and construction timeline. The Co-pilot ties equipment choices back to your menu and your build-out budget."
+      icon={Wrench}
       shipsWith="W4 — Build-out & Equipment workspace (TIM-623)"
       currentFocusLabel="Build-out & Equipment workspace overview"
       trialMessagesUsed={trialMessagesUsed}

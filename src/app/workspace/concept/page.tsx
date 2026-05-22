@@ -1,8 +1,8 @@
-// TIM-619: Concept workspace — feature-complete editor backed by workspace_documents.
+// TIM-834: Concept workspace v2 — backed by workspace_documents.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
-import { normalizeConcept } from "@/lib/concept";
+import { normalizeConceptV2 } from "@/lib/concept";
 import { ConceptWorkspace } from "./concept-editor";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +43,9 @@ export default async function ConceptWorkspacePage() {
       .maybeSingle(),
   ]);
 
-  const concept = normalizeConcept(doc?.content);
+  const initialDoc = normalizeConceptV2(doc?.content);
   const canEdit = isSubscriptionActive(profile?.subscription_status);
-  const trialMessagesUsed =
+  const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
@@ -53,10 +53,10 @@ export default async function ConceptWorkspacePage() {
   return (
     <ConceptWorkspace
       planId={plan.id}
-      initialConcept={concept}
+      initialDoc={initialDoc}
       initialUpdatedAt={doc?.updated_at ?? null}
       canEdit={canEdit}
-      trialMessagesUsed={trialMessagesUsed}
+      initialTrialMessagesUsed={initialTrialMessagesUsed}
     />
   );
 }

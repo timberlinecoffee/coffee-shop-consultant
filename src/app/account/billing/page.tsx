@@ -27,19 +27,8 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link href="/account" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center">
-              <span className="text-white text-xs font-bold">TCS</span>
-            </div>
-            <span className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">← Account</span>
-          </Link>
-        </div>
-      </nav>
-
-      <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+    <div className="bg-[#faf9f7] flex flex-col min-h-full">
+      <div className="max-w-3xl mx-auto px-6 py-10 space-y-6 flex-1">
         <h1 className="text-2xl font-bold text-[#1a1a1a]">Billing</h1>
 
 
