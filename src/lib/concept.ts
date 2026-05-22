@@ -1,4 +1,4 @@
-// TIM-619 / TIM-834: Concept workspace data shape + helpers.
+// TIM-619 / TIM-834 / TIM-879: Concept workspace data shape + helpers.
 // Stored in workspace_documents.content as jsonb where workspace_key='concept'.
 // V1 types kept for backward compat (onboarding-flow writes v1 format).
 
@@ -45,7 +45,7 @@ export const CONCEPT_FIELDS: ReadonlyArray<{
   },
   {
     key: "target_market",
-    label: "Target customer",
+    label: "Target Customer Personas",
     hint: "Who is this shop for? The more specific, the better.",
     placeholder: "Morning commuters from the South End — under 40, willing to pay for quality, picks up daily.",
     multiline: true,
@@ -110,6 +110,101 @@ export function formatConceptForAI(doc: ConceptDocument): string {
   return lines.join("\n");
 }
 
+// ── Persona types (TIM-879) ──────────────────────────────────────────────────
+
+export type PersonaAgeRange = "18-25" | "25-35" | "35-50" | "50+";
+export type PersonaIncomeRange = "under-40k" | "40k-80k" | "80k-120k" | "over-120k";
+export type PersonaVisitFrequency = "daily" | "several-per-week" | "weekly" | "occasional";
+export type PersonaSpendPerVisit = "under-6" | "6-10" | "10-15" | "over-15";
+export type PersonaValue =
+  | "price"
+  | "speed"
+  | "atmosphere"
+  | "craft"
+  | "community"
+  | "convenience"
+  | "consistency";
+
+export interface CustomerPersona {
+  id: string;
+  name: string;
+  photo?: string;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+  ageRange?: PersonaAgeRange;
+  occupation?: string;
+  incomeRange?: PersonaIncomeRange;
+  dailyContext?: string;
+  whyTheyVisit: string;
+  painPoints?: string;
+  values?: PersonaValue[];
+  visitFrequency?: PersonaVisitFrequency;
+  spendPerVisit?: PersonaSpendPerVisit;
+  notes?: string;
+}
+
+export const PERSONA_AGE_RANGE_LABELS: Record<PersonaAgeRange, string> = {
+  "18-25": "18-25",
+  "25-35": "25-35",
+  "35-50": "35-50",
+  "50+": "50+",
+};
+
+export const PERSONA_INCOME_RANGE_LABELS: Record<PersonaIncomeRange, string> = {
+  "under-40k": "Under $40k",
+  "40k-80k": "$40k to $80k",
+  "80k-120k": "$80k to $120k",
+  "over-120k": "Over $120k",
+};
+
+export const PERSONA_VISIT_FREQUENCY_LABELS: Record<PersonaVisitFrequency, string> = {
+  "daily": "Every day",
+  "several-per-week": "A few times a week",
+  "weekly": "Once a week",
+  "occasional": "Now and then",
+};
+
+export const PERSONA_SPEND_LABELS: Record<PersonaSpendPerVisit, string> = {
+  "under-6": "Under $6",
+  "6-10": "$6 to $10",
+  "10-15": "$10 to $15",
+  "over-15": "Over $15",
+};
+
+export const PERSONA_VALUE_LABELS: Record<PersonaValue, string> = {
+  "price": "Price",
+  "speed": "Speed",
+  "atmosphere": "Atmosphere",
+  "craft": "Craft",
+  "community": "Community",
+  "convenience": "Convenience",
+  "consistency": "Consistency",
+};
+
+export const PERSONA_VALUE_OPTIONS: PersonaValue[] = [
+  "price", "speed", "atmosphere", "craft", "community", "convenience", "consistency",
+];
+
+export const MAX_PERSONAS = 5;
+
+export function createPersonaId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `persona-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function setPersonaPrimary(personas: CustomerPersona[], targetId: string): CustomerPersona[] {
+  return personas.map((p) => ({ ...p, isPrimary: p.id === targetId }));
+}
+
+function isValidPersona(v: unknown): v is CustomerPersona {
+  if (!v || typeof v !== "object") return false;
+  const p = v as Record<string, unknown>;
+  return typeof p.id === "string" && typeof p.name === "string" && typeof p.isPrimary === "boolean";
+}
+
 // ── V2 ───────────────────────────────────────────────────────────────────────
 
 export type ConceptComponentId =
@@ -129,6 +224,7 @@ export interface ConceptComponentV2 {
 export interface ConceptDocumentV2 {
   version: 2;
   components: Record<ConceptComponentId, ConceptComponentV2>;
+  personas?: CustomerPersona[];
 }
 
 export const EMPTY_CONCEPT_V2: ConceptDocumentV2 = {
@@ -172,9 +268,9 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   },
   {
     id: "target_customer",
-    label: "Target customer",
-    hint: "Who is this shop for? The more specific, the better.",
-    emptyPrompt: "Describe the person who walks in every single morning. Age, job, what they want, what they do not want.",
+    label: "Target Customer Personas",
+    hint: "The clearer you are about who you serve, the better every decision gets.",
+    emptyPrompt: "Add your first customer persona to describe the real person you are making decisions for.",
     multiline: true,
     rows: 3,
     deferrable: false,
@@ -218,7 +314,9 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
 ];
 
 export function normalizeConceptV2(input: unknown): ConceptDocumentV2 {
-  if (!input || typeof input !== "object") return { ...EMPTY_CONCEPT_V2, components: { ...EMPTY_CONCEPT_V2.components } };
+  if (!input || typeof input !== "object") {
+    return { ...EMPTY_CONCEPT_V2, components: { ...EMPTY_CONCEPT_V2.components } };
+  }
   const obj = input as Record<string, unknown>;
 
   if (obj.version === 2 && obj.components) {
@@ -241,31 +339,79 @@ export function normalizeConceptV2(input: unknown): ConceptDocumentV2 {
         };
       }
     }
-    return { version: 2, components };
+
+    // Read stored personas
+    let personas: CustomerPersona[] | undefined;
+    if (Array.isArray(obj.personas)) {
+      const valid = obj.personas.filter(isValidPersona) as CustomerPersona[];
+      if (valid.length > 0) personas = valid;
+    }
+
+    // Migration: if no personas yet but target_customer.content is non-empty, seed a stub persona
+    if (!personas && components.target_customer.content.trim().length > 0) {
+      const now = new Date().toISOString();
+      personas = [{
+        id: createPersonaId(),
+        name: "My Customer",
+        isPrimary: true,
+        createdAt: now,
+        updatedAt: now,
+        whyTheyVisit: "",
+        notes: components.target_customer.content,
+      }];
+    }
+
+    return { version: 2, components, personas };
   }
 
-  // v1 migration
+  // V1 migration
   const pick = (key: string): string => {
     const v = (obj as Record<string, unknown>)[key];
     return typeof v === "string" ? v : "";
   };
+  const targetMarket = pick("target_market");
+  let personas: CustomerPersona[] | undefined;
+  if (targetMarket.trim().length > 0) {
+    const now = new Date().toISOString();
+    personas = [{
+      id: createPersonaId(),
+      name: "My Customer",
+      isPrimary: true,
+      createdAt: now,
+      updatedAt: now,
+      whyTheyVisit: "",
+      notes: targetMarket,
+    }];
+  }
   return {
     version: 2,
     components: {
-      shop_identity:   { content: pick("name"),          included: true },
-      vision:          { content: pick("mission"),        included: true },
-      target_customer: { content: pick("target_market"), included: true },
+      shop_identity:   { content: pick("name"),           included: true },
+      vision:          { content: pick("mission"),         included: true },
+      target_customer: { content: targetMarket,            included: true },
       differentiation: { content: pick("differentiation"), included: true },
-      brand_voice:     { content: pick("brand_voice"),   included: true },
-      location:        { content: "",                     included: false },
-      offering:        { content: "",                     included: false },
+      brand_voice:     { content: pick("brand_voice"),    included: true },
+      location:        { content: "",                      included: false },
+      offering:        { content: "",                      included: false },
     },
+    personas,
   };
 }
 
+function isTargetCustomerFilled(doc: ConceptDocumentV2): boolean {
+  return (
+    (doc.personas !== undefined && doc.personas.length > 0) ||
+    doc.components.target_customer.content.trim().length > 0
+  );
+}
+
 export function isConceptV2Complete(doc: ConceptDocumentV2): boolean {
-  return Object.values(doc.components).every(
-    (c) => !c.included || c.content.trim().length > 0
+  return (Object.entries(doc.components) as [ConceptComponentId, ConceptComponentV2][]).every(
+    ([id, c]) => {
+      if (!c.included) return true;
+      if (id === "target_customer") return isTargetCustomerFilled(doc);
+      return c.content.trim().length > 0;
+    }
   );
 }
 
@@ -273,16 +419,47 @@ export function getConceptV2Progress(doc: ConceptDocumentV2): {
   filled: number;
   total: number;
 } {
-  const included = Object.values(doc.components).filter((c) => c.included);
-  const filled = included.filter((c) => c.content.trim().length > 0);
-  return { filled: filled.length, total: included.length };
+  let filled = 0;
+  let total = 0;
+  for (const [id, c] of Object.entries(doc.components) as [ConceptComponentId, ConceptComponentV2][]) {
+    if (!c.included) continue;
+    total++;
+    if (id === "target_customer") {
+      if (isTargetCustomerFilled(doc)) filled++;
+    } else {
+      if (c.content.trim().length > 0) filled++;
+    }
+  }
+  return { filled, total };
 }
 
 export function formatConceptV2ForAI(doc: ConceptDocumentV2): string {
   const lines: string[] = [];
   for (const meta of CONCEPT_COMPONENTS_V2) {
     const c = doc.components[meta.id];
-    if (c?.content?.trim()) {
+    if (!c) continue;
+
+    if (meta.id === "target_customer") {
+      if (doc.personas && doc.personas.length > 0) {
+        const primary = doc.personas.find((p) => p.isPrimary) ?? doc.personas[0];
+        lines.push(`- **Target Customer Personas** (${doc.personas.length} total; primary: ${primary.name}):`);
+        doc.personas.forEach((p, i) => {
+          lines.push(`  ${i + 1}. ${p.name}${p.isPrimary ? " (primary)" : ""}`);
+          if (p.whyTheyVisit.trim()) lines.push(`     - Why they come: ${p.whyTheyVisit}`);
+          if (p.values && p.values.length > 0) {
+            lines.push(`     - Values: ${p.values.map((v) => PERSONA_VALUE_LABELS[v]).join(", ")}`);
+          }
+          const freq = p.visitFrequency ? PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency] : null;
+          const spend = p.spendPerVisit ? PERSONA_SPEND_LABELS[p.spendPerVisit] : null;
+          if (freq || spend) {
+            const parts = [freq && `visits: ${freq}`, spend && `spends ${spend}`].filter(Boolean);
+            lines.push(`     - ${parts.join(", ")}`);
+          }
+        });
+      } else if (c.content?.trim()) {
+        lines.push(`- **Target Customer Personas**: ${c.content.trim()}`);
+      }
+    } else if (c.content?.trim()) {
       lines.push(`- **${meta.label}**: ${c.content.trim()}`);
     }
   }

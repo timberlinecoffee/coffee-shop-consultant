@@ -974,7 +974,7 @@ function ReviewSummary({
   const rows: Array<{ label: string; value: string; deferred?: boolean }> = [
     { label: "Shop name", value: concept.name },
     { label: "What kind of shop", value: concept.mission },
-    { label: "Core customer", value: concept.target_market },
+    { label: "Target Customer Personas", value: concept.target_market },
     {
       label: "Differentiation",
       value: diffState.deferred ? "" : concept.differentiation,

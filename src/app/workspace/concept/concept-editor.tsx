@@ -22,7 +22,9 @@ import {
   isConceptV2Complete,
   type ConceptComponentId,
   type ConceptDocumentV2,
+  type CustomerPersona,
 } from "@/lib/concept";
+import { PersonaSection } from "@/components/concept/PersonaSection";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
@@ -204,6 +206,14 @@ export function ConceptWorkspace({
           [id]: { ...prev.components[id], content },
         },
       };
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  function updatePersonas(personas: CustomerPersona[]) {
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = { ...prev, personas };
       scheduleSave(next);
       return next;
     });
@@ -592,6 +602,12 @@ export function ConceptWorkspace({
                     <p className="mt-2 text-sm text-[#afafaf] italic">
                       Not included in your document. Toggle on when you&apos;re ready to add {meta.label}.
                     </p>
+                  ) : meta.id === "target_customer" ? (
+                    <PersonaSection
+                      personas={doc.personas ?? []}
+                      canEdit={canEdit}
+                      onUpdate={updatePersonas}
+                    />
                   ) : showField ? (
                     meta.multiline ? (
                       <textarea
@@ -818,7 +834,11 @@ function ConceptBriefInline({
   const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     if (meta.id === "shop_identity") return false;
     const comp = doc.components[meta.id];
-    return comp.included && comp.content.trim().length > 0;
+    if (!comp.included) return false;
+    if (meta.id === "target_customer") {
+      return (doc.personas && doc.personas.length > 0) || comp.content.trim().length > 0;
+    }
+    return comp.content.trim().length > 0;
   });
 
   if (briefSections.length === 0) return null;
@@ -874,6 +894,37 @@ function ConceptBriefInline({
             {briefSections.map((meta) => {
               const comp = doc.components[meta.id];
               const isFeatured = BRIEF_FEATURED_IDS.has(meta.id);
+
+              if (meta.id === "target_customer" && doc.personas && doc.personas.length > 0) {
+                return (
+                  <div key={meta.id} className="flex">
+                    <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                    <div className="px-6 py-5 flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                        {meta.label}
+                      </p>
+                      <div className="space-y-1.5">
+                        {doc.personas.map((p) => (
+                          <p key={p.id} className="text-sm text-[#1a1a1a]">
+                            <span className="font-medium">{p.name}</span>
+                            {p.isPrimary && (
+                              <span className="ml-1.5 text-[10px] text-[#155e63]">(primary)</span>
+                            )}
+                            {p.whyTheyVisit.trim() && (
+                              <span className="text-[#6b6b6b]">
+                                {" — "}
+                                {p.whyTheyVisit.trim().length > 70
+                                  ? p.whyTheyVisit.trim().slice(0, 70) + "..."
+                                  : p.whyTheyVisit.trim()}
+                              </span>
+                            )}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               if (isFeatured) {
                 return (
