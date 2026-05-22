@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type BillingInterval = "monthly" | "annual";
 
@@ -118,10 +120,20 @@ const FAQ = [
   },
 ];
 
-export default function PricingPage() {
+function PricingPageInner() {
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const searchParams = useSearchParams();
+  const returnPath = searchParams.get("return");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+    });
+  }, []);
 
   async function startCheckout(tier: string) {
     const key = `${tier}_${interval}`;
@@ -145,31 +157,48 @@ export default function PricingPage() {
     }
   }
 
+  const backHref = returnPath ?? "/dashboard";
+
   return (
     <div className="min-h-screen bg-[#faf9f7]">
       <nav className="bg-white border-b border-[#efefef] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
             <div className="w-8 h-8 bg-[#155e63] rounded-lg flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
             <span className="font-semibold text-[#155e63] text-sm hidden sm:block">Timberline Coffee School</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-[#155e63] font-medium hover:underline">Sign in</Link>
+            {isLoggedIn ? (
+              <Link
+                href={backHref}
+                className="text-sm text-[#155e63] font-medium hover:underline"
+              >
+                Back to dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="text-sm text-[#155e63] font-medium hover:underline">
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto px-6 py-16">
+      <div className="max-w-5xl mx-auto px-6 pt-12 pb-16">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">Groundwork pricing</h1>
-          <p className="text-[#6b6b6b] text-lg mb-8">
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">
+            {isLoggedIn ? "Choose your plan" : "Groundwork pricing"}
+          </h1>
+          <p className="text-[#6b6b6b] text-lg">
             Three tiers. Two intervals. One goal: open doors with a plan that works.
           </p>
+        </div>
 
-          {/* Billing toggle */}
+        {/* Billing toggle — sticky on mobile so it stays visible while scrolling cards */}
+        <div className="sticky sm:static top-0 z-10 bg-[#faf9f7]/95 backdrop-blur-sm sm:bg-transparent py-4 sm:py-0 -mx-6 px-6 sm:mx-0 sm:px-0 mb-8 text-center">
           <div className="inline-flex items-center bg-white border border-[#efefef] rounded-xl p-1 gap-1">
             <button
               onClick={() => setInterval("monthly")}
@@ -187,7 +216,7 @@ export default function PricingPage() {
             >
               Annual
               <span className="ml-2 text-xs bg-[#d4f0e8] text-[#155e63] px-1.5 py-0.5 rounded-full font-semibold">
-                2 months free
+                ~2 months free
               </span>
             </button>
           </div>
@@ -336,5 +365,13 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense>
+      <PricingPageInner />
+    </Suspense>
   );
 }

@@ -257,7 +257,7 @@ export default async function DashboardPage() {
               {creditsRemaining} coaching messages left this month
             </span>
           ) : (
-            <Link href="/account" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>
+            <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>
           )}
         </div>
       </div>
