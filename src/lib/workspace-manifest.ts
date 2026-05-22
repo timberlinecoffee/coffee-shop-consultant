@@ -21,7 +21,7 @@ export interface WorkspaceNavItem {
 export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 1, label: "Concept",             href: "/workspace/concept",           totalSections: 5 },
   { moduleNumber: 2, label: "Financials",           href: "/workspace/financials",         totalSections: null },
-  { moduleNumber: 3, label: "Location & Lease",     href: "/workspace/location-lease",     totalSections: null },
+  { moduleNumber: 3, label: "Location & Lease",     href: "/workspace/location-lease",     totalSections: 3 },
   { moduleNumber: 4, label: "Menu & Pricing",       href: "/workspace/menu-pricing",       totalSections: null },
   { moduleNumber: 5, label: "Buildout & Equipment", href: "/workspace/buildout-equipment", totalSections: null },
   { moduleNumber: 6, label: "Launch Plan",          href: "/workspace/launch-plan",        totalSections: null },
