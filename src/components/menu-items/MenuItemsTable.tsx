@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { BulkImportDrawer } from "./BulkImportDrawer";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -360,6 +361,7 @@ export function MenuItemsTable({ planId, initialItems = [] }: MenuItemsTableProp
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   // ── Sort logic ───────────────────────────────────────────────────────────
   const sorted = [...items].sort((a, b) => {
@@ -418,6 +420,11 @@ export function MenuItemsTable({ planId, initialItems = [] }: MenuItemsTableProp
     await fetch(`/api/menu-items/${id}`, { method: "DELETE" });
   }, []);
 
+  // ── Bulk import ──────────────────────────────────────────────────────────
+  const handleImported = useCallback((newItems: MenuItem[]) => {
+    setItems((prev) => [...prev, ...newItems]);
+  }, []);
+
   // ── Add new row ──────────────────────────────────────────────────────────
   const handleAddRow = useCallback(async () => {
     const res = await fetch("/api/menu-items", {
@@ -441,33 +448,80 @@ export function MenuItemsTable({ planId, initialItems = [] }: MenuItemsTableProp
   // ── Empty state ───────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mb-5">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l4-4 4 4 4-4 4 4"/>
-            <path d="M3 19h18"/>
-            <path d="M3 15h18"/>
-          </svg>
+      <>
+        <BulkImportDrawer
+          planId={planId}
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          onImported={handleImported}
+        />
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mb-5">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l4-4 4 4 4-4 4 4"/>
+              <path d="M3 19h18"/>
+              <path d="M3 15h18"/>
+            </svg>
+          </div>
+          <p className="text-neutral-700 font-medium mb-1">Your menu is empty</p>
+          <p className="text-sm text-neutral-500 mb-6 max-w-xs">
+            Add items to start tracking prices, costs, and margin across your menu.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleAddRow}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal text-white text-sm font-medium rounded-xl hover:bg-teal/90 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>
+              </svg>
+              Add your first item
+            </button>
+            <button
+              onClick={() => setBulkOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" x2="12" y1="3" y2="15"/>
+              </svg>
+              Bulk import
+            </button>
+          </div>
         </div>
-        <p className="text-neutral-700 font-medium mb-1">Your menu is empty</p>
-        <p className="text-sm text-neutral-500 mb-6 max-w-xs">
-          Add items to start tracking prices, costs, and margin across your menu.
-        </p>
-        <button
-          onClick={handleAddRow}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal text-white text-sm font-medium rounded-xl hover:bg-teal/90 transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>
-          </svg>
-          Add your first item
-        </button>
-      </div>
+      </>
     );
   }
 
   return (
+    <>
+      <BulkImportDrawer
+        planId={planId}
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onImported={handleImported}
+      />
+
     <div className="flex flex-col">
+      {/* Table header bar */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-100">
+        <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+          Menu items
+        </span>
+        <button
+          onClick={() => setBulkOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-600 border border-neutral-200 rounded-lg hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" x2="12" y1="3" y2="15"/>
+          </svg>
+          Bulk import
+        </button>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -530,5 +584,6 @@ export function MenuItemsTable({ planId, initialItems = [] }: MenuItemsTableProp
         </div>
       )}
     </div>
+    </>
   );
 }
