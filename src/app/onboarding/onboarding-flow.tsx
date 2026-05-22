@@ -14,6 +14,8 @@ import {
   type DifferentiationState,
 } from "./guided-screens";
 import type { ObservationEntry } from "@/components/onboarding/observation-tracker";
+import { FieldExamplePopover } from "@/components/ui/field-example-popover";
+import { FIELD_EXAMPLES } from "@/lib/field-examples";
 
 // TIM-619: onboarding wizard.
 // TIM-821: mission / target_market / differentiation steps replaced by guided
@@ -635,15 +637,20 @@ export function OnboardingFlow({
               )}
 
               {currentStep.type === "text" && (
-                <input
-                  type="text"
-                  value={
-                    typeof currentAnswer === "string" ? currentAnswer : ""
-                  }
-                  onChange={(e) => handleSelect(e.target.value)}
-                  placeholder={(currentStep as { placeholder: string }).placeholder}
-                  className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
-                />
+                <>
+                  {currentStep.id === "shop_name" && (
+                    <FieldExamplePopover examples={FIELD_EXAMPLES.shop_identity} />
+                  )}
+                  <input
+                    type="text"
+                    value={
+                      typeof currentAnswer === "string" ? currentAnswer : ""
+                    }
+                    onChange={(e) => handleSelect(e.target.value)}
+                    placeholder={(currentStep as { placeholder: string }).placeholder}
+                    className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
+                  />
+                </>
               )}
 
               {currentStep.type === "city-autocomplete" && (

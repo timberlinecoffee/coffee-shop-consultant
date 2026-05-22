@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Lightbulb, X } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useCopilotStream } from "@/components/copilot/useCopilotStream";
 import {
@@ -19,6 +20,7 @@ import {
   type ConceptDocumentV2,
 } from "@/lib/concept";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
 // IDs that get featured (tinted, slightly larger) treatment in the brief
 const BRIEF_FEATURED_IDS: ReadonlySet<ConceptComponentId> = new Set(["vision"]);
@@ -76,6 +78,9 @@ export function ConceptWorkspace({
   const [openPanelId, setOpenPanelId] = useState<ConceptComponentId | null>(null);
   const [panelStatus, setPanelStatus] = useState<PanelStatus>("idle");
   const [panelResult, setPanelResult] = useState<PanelResult | null>(null);
+
+  const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
+  const [exampleIdx, setExampleIdx] = useState(0);
 
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(
     initialTrialMessagesUsed ?? 0
@@ -170,6 +175,15 @@ export function ConceptWorkspace({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [canEdit]);
+
+  useEffect(() => {
+    if (!openExampleId) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenExampleId(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openExampleId]);
 
   function updateContent(id: ConceptComponentId, content: string) {
     setDoc((prev) => {
@@ -433,6 +447,27 @@ export function ConceptWorkspace({
                             Optional
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (openExampleId === meta.id) {
+                              setOpenExampleId(null);
+                            } else {
+                              setOpenExampleId(meta.id);
+                              setExampleIdx(0);
+                            }
+                          }}
+                          aria-expanded={openExampleId === meta.id}
+                          aria-label={`See a sample answer for ${meta.label}`}
+                          title="See a sample answer"
+                          className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[#155e63] ${
+                            openExampleId === meta.id
+                              ? "text-[#155e63]"
+                              : "text-[#c8c5be] hover:text-[#155e63]"
+                          }`}
+                        >
+                          <Lightbulb size={13} strokeWidth={2} aria-hidden="true" />
+                        </button>
                       </div>
                       <p className="text-xs text-[#afafaf]">{meta.hint}</p>
                     </div>
@@ -463,6 +498,60 @@ export function ConceptWorkspace({
                       )}
                     </div>
                   </div>
+
+                  {/* Example panel — inline, between card header and field */}
+                  {openExampleId === meta.id && !isExcluded && (() => {
+                    const examples = FIELD_EXAMPLES[meta.id as FieldExampleKey] ?? [];
+                    const ex = examples[exampleIdx % Math.max(examples.length, 1)];
+                    if (!ex) return null;
+                    return (
+                      <div
+                        className="mt-2 mb-1 bg-[#f5f3ef] border border-[#e0ddd8] rounded-xl p-4"
+                        role="region"
+                        aria-label="Sample answer from a fictional coffee shop"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-[10px] font-semibold text-[#155e63] uppercase tracking-wider leading-none">
+                              {ex.shopName}
+                            </p>
+                            <p className="text-[10px] text-[#6b6b6b] italic mt-0.5">
+                              {ex.shopType}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setOpenExampleId(null)}
+                            aria-label="Close example"
+                            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors focus:outline-none ml-2 shrink-0"
+                          >
+                            <X size={13} aria-hidden="true" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-[#4a4a4a] leading-relaxed italic border-l-2 border-[#c5c0b8] pl-3">
+                          {ex.answer}
+                        </p>
+                        <div className="flex items-center justify-between mt-3">
+                          {examples.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setExampleIdx((i) => (i + 1) % examples.length)}
+                              className="text-xs text-[#155e63] hover:underline focus:outline-none focus:text-[#0e4448]"
+                            >
+                              See another shop
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setOpenExampleId(null)}
+                            className="text-xs font-medium text-[#1a1a1a] hover:text-[#155e63] transition-colors focus:outline-none ml-auto"
+                          >
+                            Got it
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Card body */}
                   {isExcluded ? (

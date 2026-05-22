@@ -3,6 +3,7 @@
 // TIM-821: Three guided onboarding screens for shop_vision, target_customer,
 // and differentiation. Replaces the cold-ask textarea steps from TIM-619.
 // Each screen scaffolds the founder before asking for a synthesized answer.
+// TIM-867: Per-field example popovers added to all textareas.
 
 import { useState } from "react";
 import { EducationBlock } from "@/components/onboarding/education-block";
@@ -11,6 +12,8 @@ import {
   ObservationTracker,
   type ObservationEntry,
 } from "@/components/onboarding/observation-tracker";
+import { FieldExamplePopover } from "@/components/ui/field-example-popover";
+import { FIELD_EXAMPLES } from "@/lib/field-examples";
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -162,6 +165,7 @@ export function ShopVisionScreen({
             <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
               2. What does a great visit look like to your ideal customer?
             </p>
+            <FieldExamplePopover examples={FIELD_EXAMPLES.great_visit} />
             <p className="text-xs text-[#afafaf] mb-2">One or two sentences is enough.</p>
             <textarea
               value={meta.great_visit}
@@ -217,6 +221,7 @@ export function ShopVisionScreen({
         <label className="block text-sm font-semibold text-[#1a1a1a] mb-1">
           Describe your shop in a sentence or two.
         </label>
+        <FieldExamplePopover examples={FIELD_EXAMPLES.vision_synthesized} />
         <p className="text-xs text-[#afafaf] mb-2">
           {skipped
             ? "You can always come back and add more detail."
@@ -306,6 +311,7 @@ export function TargetCustomerScreen({
               1. Who lives or works within a 10-minute walk or drive of your
               location?
             </p>
+            <FieldExamplePopover examples={FIELD_EXAMPLES.neighborhood} />
             <textarea
               value={meta.neighborhood}
               onChange={(e) =>
@@ -322,6 +328,7 @@ export function TargetCustomerScreen({
               2. Who do you most want to serve? Whose success makes you feel
               like the day was worth it?
             </p>
+            <FieldExamplePopover examples={FIELD_EXAMPLES.ideal_customer} />
             <textarea
               value={meta.ideal_customer}
               onChange={(e) =>
@@ -338,6 +345,7 @@ export function TargetCustomerScreen({
               3. What does your customer do right before or right after they
               visit you?
             </p>
+            <FieldExamplePopover examples={FIELD_EXAMPLES.pre_post_visit} />
             <p className="text-xs text-[#afafaf] mb-2">
               Helps you understand their context.
             </p>
@@ -360,6 +368,7 @@ export function TargetCustomerScreen({
         <label className="block text-sm font-semibold text-[#1a1a1a] mb-1">
           Describe your core customer in a sentence or two.
         </label>
+        <FieldExamplePopover examples={FIELD_EXAMPLES.target_synthesized} />
         <p className="text-xs text-[#afafaf] mb-2">
           {skipped
             ? "You can always add more detail later."
@@ -495,6 +504,7 @@ export function DifferentiationScreen({
           <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
             1. What gap did you notice most often across the shops you visited?
           </p>
+          {step2Unlocked && <FieldExamplePopover examples={FIELD_EXAMPLES.gap_noticed} />}
           <textarea
             value={meta.gap_noticed}
             onChange={(e) =>
@@ -515,6 +525,7 @@ export function DifferentiationScreen({
             2. Who is your closest competitor? What do they do well, and what
             would you do differently?
           </p>
+          {step2Unlocked && <FieldExamplePopover examples={FIELD_EXAMPLES.closest_competitor} />}
           <textarea
             value={meta.closest_competitor}
             onChange={(e) =>
@@ -535,6 +546,7 @@ export function DifferentiationScreen({
             3. What will a customer get from you that they genuinely cannot get
             easily anywhere else nearby?
           </p>
+          {step2Unlocked && <FieldExamplePopover examples={FIELD_EXAMPLES.unique_offering} />}
           <textarea
             value={meta.unique_offering}
             onChange={(e) =>
@@ -557,6 +569,7 @@ export function DifferentiationScreen({
         <label className="block text-sm font-semibold text-[#1a1a1a] mb-1">
           What makes your shop different?
         </label>
+        <FieldExamplePopover examples={FIELD_EXAMPLES.diff_synthesized} />
         <p className="text-xs text-[#afafaf] mb-2">
           Be specific. "Better coffee" isn't a differentiator. "The only shop
           open past 9pm on the east side" is.
