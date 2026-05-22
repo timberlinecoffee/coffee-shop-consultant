@@ -796,7 +796,11 @@ export function ConceptWorkspace({
               {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
             </p>
           )}
-          <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+          {complete && (saveState.kind === "saved" || saveState.kind === "idle") ? (
+            <ConceptUnlockBanner />
+          ) : (
+            <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+          )}
         </div>
       </div>
 
@@ -814,6 +818,44 @@ export function ConceptWorkspace({
         currentFocus={{ label: "Concept" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
+    </div>
+  );
+}
+
+// ── Concept Unlock Banner ────────────────────────────────────────────────────
+
+function ConceptUnlockBanner() {
+  return (
+    <div
+      className="mt-4 bg-[#155e63]/[0.08] border border-[#155e63]/20 rounded-2xl px-5 py-4 transition-opacity duration-300"
+      role="status"
+    >
+      <div className="flex items-start gap-3">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#155e63"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 mt-0.5"
+          aria-hidden="true"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-[#155e63]">Your concept is set.</p>
+          <p className="text-xs text-[#155e63]/80 mt-0.5">Every other workspace is now open.</p>
+          <Link
+            href="/dashboard"
+            className="text-xs font-medium text-[#155e63] hover:underline mt-1.5 inline-block"
+          >
+            See all modules
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
