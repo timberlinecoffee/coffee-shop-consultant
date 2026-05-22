@@ -11,6 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { UPGRADE_PATH } from "@/lib/access";
+import { applyFieldEdit, WorkspaceWriteError } from "@/lib/workspace/applyFieldEdit";
 import type { WorkspaceKey } from "@/types/supabase";
 import { ThreadBrowser, WORKSPACE_LABELS, type ThreadBrowserItem } from "./ThreadBrowser";
 import type {
@@ -276,32 +277,11 @@ export function CoPilotDrawer({
     async (proposal: CopilotEditProposal) => {
       setProposalApplying(true);
       try {
-        // Fetch current workspace content, merge the proposed field, then PATCH.
-        const getRes = await fetch(
-          `/api/workspaces/${encodeURIComponent(proposal.workspaceKey)}`,
-          { credentials: "same-origin" },
+        const { merged } = await applyFieldEdit(
+          proposal.workspaceKey,
+          proposal.fieldPath,
+          proposal.newValue,
         );
-        const current = getRes.ok ? ((await getRes.json()) as { content: unknown }).content : {};
-        const merged = { ...(current as Record<string, unknown>), [proposal.fieldPath]: proposal.newValue };
-        const patchRes = await fetch(
-          `/api/workspaces/${encodeURIComponent(proposal.workspaceKey)}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            credentials: "same-origin",
-            body: JSON.stringify({ content: merged }),
-          },
-        );
-        if (!patchRes.ok) {
-          const data = (await patchRes.json().catch(() => ({}))) as { reason?: string };
-          const msg = data.reason === "paywall"
-            ? "Subscription paused — reactivate to apply edits."
-            : "Could not apply the change. Please try again.";
-          const ackMsg: CopilotMessage = { role: "assistant", content: msg };
-          setMessages((prev) => [...prev, ackMsg]);
-          clearEditProposal();
-          return;
-        }
         // Notify workspace editors that a field was updated without reload.
         window.dispatchEvent(
           new CustomEvent("copilot:field-updated", {
@@ -314,8 +294,11 @@ export function CoPilotDrawer({
         };
         setMessages((prev) => [...prev, ackMsg]);
         clearEditProposal();
-      } catch {
-        const ackMsg: CopilotMessage = { role: "assistant", content: "Something went wrong applying that change. Please try again." };
+      } catch (err) {
+        const msg = err instanceof WorkspaceWriteError
+          ? err.message
+          : "Something went wrong applying that change. Please try again.";
+        const ackMsg: CopilotMessage = { role: "assistant", content: msg };
         setMessages((prev) => [...prev, ackMsg]);
         clearEditProposal();
       } finally {
