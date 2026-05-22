@@ -350,16 +350,33 @@ function FooterSummary({ items }: { items: MenuItem[] }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
+export type MenuAnchor = "table_header" | "footer_summary";
+
 interface MenuItemsTableProps {
   planId: string;
   initialItems?: MenuItem[];
+  onAnchorChange?: (anchor: MenuAnchor) => void;
 }
 
-export function MenuItemsTable({ planId, initialItems = [] }: MenuItemsTableProps) {
+export function MenuItemsTable({ planId, initialItems = [], onAnchorChange }: MenuItemsTableProps) {
   const [items, setItems] = useState<MenuItem[]>(initialItems);
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const footerRef = useRef<HTMLDivElement>(null);
+
+  // Signal to parent which section is visible
+  useEffect(() => {
+    if (!onAnchorChange || !footerRef.current) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        onAnchorChange(entry.isIntersecting ? "footer_summary" : "table_header");
+      },
+      { threshold: 0.5 },
+    );
+    obs.observe(footerRef.current);
+    return () => obs.disconnect();
+  }, [onAnchorChange]);
 
   // ── Sort logic ───────────────────────────────────────────────────────────
   const sorted = [...items].sort((a, b) => {
@@ -519,8 +536,10 @@ export function MenuItemsTable({ planId, initialItems = [] }: MenuItemsTableProp
         </button>
       </div>
 
-      {/* Footer summary */}
-      <FooterSummary items={items} />
+      {/* Footer summary — ref used to detect visibility for CoPilot anchor */}
+      <div ref={footerRef}>
+        <FooterSummary items={items} />
+      </div>
 
       {/* Saving indicator */}
       {saving.size > 0 && (
