@@ -5,15 +5,19 @@
 // - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
 // - Print button active only when all included components are filled.
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
+// - TIM-893: per-field "Ask Co-pilot" buttons dispatch copilot:open-with-prompt and
+//   the drawer is mounted here so the listener fires on this page.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
+import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useCopilotStream } from "@/components/copilot/useCopilotStream";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   CONCEPT_COMPONENTS_V2,
+  buildFieldPrompt,
   buildImprovePrompt,
   getConceptV2Progress,
   isConceptV2Complete,
@@ -301,6 +305,20 @@ export function ConceptWorkspace({
     [openPanelId, panelStatus, copilot, planId]
   );
 
+  // TIM-893: open the Co-pilot drawer with a seed prompt scoped to one field.
+  // "Improve" stays the inline-suggestion path; "Ask Co-pilot" hands off to the
+  // drawer for a focused back-and-forth.
+  const askCopilot = useCallback((id: ConceptComponentId, label: string) => {
+    if (typeof window === "undefined") return;
+    const currentContent = latestDocRef.current.components[id].content;
+    const prompt = buildFieldPrompt(label, currentContent);
+    window.dispatchEvent(
+      new CustomEvent("copilot:open-with-prompt", {
+        detail: { prompt, focusLabel: label },
+      })
+    );
+  }, []);
+
   function handleUseThis() {
     if (openPanelId && panelResult) {
       updateContent(openPanelId, panelResult.rewrite);
@@ -479,7 +497,7 @@ export function ConceptWorkspace({
                       <p className="text-xs text-[#afafaf]">{meta.hint}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Improve button */}
+                      {/* Improve = inline AI suggestion. TIM-893: distinct from "Ask Co-pilot" below, which opens the drawer. */}
                       <button
                         type="button"
                         onClick={() => void handleImprove(meta.id)}
@@ -487,6 +505,16 @@ export function ConceptWorkspace({
                         className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {isPanelOpen && panelStatus === "loading" ? "Thinking..." : "Improve"}
+                      </button>
+                      {/* TIM-893: Ask Co-pilot opens the drawer with a field-scoped seed prompt. */}
+                      <button
+                        type="button"
+                        onClick={() => askCopilot(meta.id, meta.label)}
+                        disabled={!canEdit || isExcluded}
+                        aria-label={`Ask the co-pilot about ${meta.label}`}
+                        className="text-xs font-medium text-white bg-[#155e63] rounded-full px-3 py-1 hover:bg-[#0e4448] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        Ask Co-pilot
                       </button>
                       {/* Include/exclude toggle — only on deferrable components */}
                       {meta.deferrable && (
@@ -771,6 +799,15 @@ export function ConceptWorkspace({
         open={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         variant="copilot_trial"
+      />
+
+      {/* TIM-893: mount the drawer on this page so the per-field "Ask Co-pilot"
+          buttons (which dispatch copilot:open-with-prompt) actually open it. */}
+      <CoPilotDrawer
+        planId={planId}
+        workspaceKey="concept"
+        currentFocus={{ label: "Concept" }}
+        initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
   );
