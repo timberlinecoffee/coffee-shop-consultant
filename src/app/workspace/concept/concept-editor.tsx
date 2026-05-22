@@ -735,26 +735,16 @@ export function ConceptWorkspace({
 
         {/* Document footer CTA */}
         <div className="mt-8 border-t border-[#efefef] pt-6 text-center">
-          {complete ? (
-            <Link
-              href="/workspace/concept/print"
-              className="inline-block bg-[#155e63] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
-            >
-              Print document
-            </Link>
-          ) : (
-            <>
-              <p className="text-sm text-[#6b6b6b] mb-3">
-                Fill in all included sections to print.
-              </p>
-              <button
-                type="button"
-                disabled
-                className="border border-[#d4d4d4] text-[#afafaf] text-sm font-semibold px-6 py-2.5 rounded-xl cursor-not-allowed"
-              >
-                Print document
-              </button>
-            </>
+          <Link
+            href="/workspace/concept/print"
+            className="inline-block bg-[#155e63] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+          >
+            Print document
+          </Link>
+          {!complete && progress.total - progress.filled > 0 && (
+            <p className="text-xs text-[#afafaf] mt-2">
+              {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled — fill them in for a more complete concept.
+            </p>
           )}
           <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
         </div>
