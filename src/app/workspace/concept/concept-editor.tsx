@@ -656,7 +656,7 @@ export function ConceptWorkspace({
           ) : (
             <>
               <p className="text-sm text-[#6b6b6b] mb-3">
-                Fill in all included sections to unlock printing.
+                Fill in all included sections to print.
               </p>
               <button
                 type="button"
