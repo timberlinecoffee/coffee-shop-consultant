@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
+import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { useCopilotStream } from "@/components/copilot/useCopilotStream";
 import {
   CONCEPT_COMPONENTS_V2,
@@ -764,6 +765,16 @@ export function ConceptWorkspace({
         open={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         variant="copilot_trial"
+      />
+
+      {/* TIM-880: mount CoPilotDrawer so the WorkspaceTopBar Co-pilot button opens a
+          chat drawer. The drawer listens for workspace-copilot-open dispatched by the
+          top bar, giving users a general chat alongside the per-field Improve panels. */}
+      <CoPilotDrawer
+        planId={planId}
+        workspaceKey="concept"
+        currentFocus={{ label: "Concept workspace" }}
+        initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
   );
