@@ -75,7 +75,7 @@ const STEPS: Step[] = [
     type: "text",
     question: "What are you calling your shop?",
     hint: "Working title is fine — you can change it any time inside the Concept workspace.",
-    placeholder: "e.g. Tide & Timber Coffee",
+    placeholder: "e.g. Ironside Coffee",
   },
   {
     id: "motivation",
