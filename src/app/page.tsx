@@ -28,42 +28,54 @@ const PRICING = [
     highlight: false,
   },
   {
-    name: "Builder",
-    price: "$49",
+    name: "Starter",
+    price: "$39",
     period: "/month",
-    annualNote: "$39/mo billed annually",
-    description: "Everything you need to build your plan.",
+    annualNote: "$25/mo billed annually",
+    description: "Get your plan built and your numbers right.",
     features: [
-      "Full access to all 8 modules",
-      "All deliverable generation (concept brief, financial model, BRD)",
-      "50 AI coaching sessions a month",
-      "Export everything as PDF",
-      "Equipment list builder",
-      "Financial model calculator",
-      "Progress tracking & milestones",
+      "All 8 course modules",
+      "25 AI coaching credits/month",
+      "BRD and financial model generation",
+      "Export to PDF",
       "Email support",
     ],
     cta: "Start building",
     href: "/login?plan=starter",
+    highlight: false,
+  },
+  {
+    name: "Growth",
+    price: "$99",
+    period: "/month",
+    annualNote: "$67/mo billed annually",
+    description: "For owners who want to move fast with expert backup.",
+    features: [
+      "Everything in Starter",
+      "100 AI coaching credits/month",
+      "Weekly async Q&A with Trent",
+      "Financial model stress-testing",
+      "Priority support",
+    ],
+    cta: "Start with Growth",
+    href: "/login?plan=growth",
     highlight: true,
   },
   {
-    name: "Accelerator",
-    price: "$99",
+    name: "Pro",
+    price: "$199",
     period: "/month",
-    annualNote: "$79/mo billed annually",
-    description: "For serious owners who want to move fast.",
+    annualNote: "$133/mo billed annually",
+    description: "Full support from concept to open doors.",
     features: [
-      "Everything in Builder",
+      "Everything in Growth",
       "Unlimited AI coaching",
-      "Weekly async Q&A with Trent",
-      "Financial model stress-testing",
       "Equipment sourcing assistance",
       "Roaster matching recommendations",
       "30-min 1-on-1 call with Trent at BRD completion",
-      "Priority support",
+      "White-glove onboarding",
     ],
-    cta: "Start your Accelerator plan",
+    cta: "Start with Pro",
     href: "/login?plan=pro",
     highlight: false,
   },
@@ -312,7 +324,7 @@ export default function LandingPage() {
           <p className="text-center text-[#afafaf] mb-12 max-w-xl mx-auto">
             Start free. Upgrade when you&apos;re ready to go deep.
           </p>
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {PRICING.map((plan) => (
               <div
                 key={plan.name}

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,19 +19,11 @@ export default async function AccountPage() {
     .eq("id", user.id)
     .single();
 
-  const TIER_DISPLAY_NAMES: Record<string, string> = {
-    free: "Free",
-    starter: "Builder",
-    growth: "Growth",
-    pro: "Accelerator",
-  };
-
+  const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
   const FREE_TRIAL_COPILOT_LIMIT = 5;
   const isProUnlimited = profile?.subscription_tier === "pro";
   const isTrial = profile?.subscription_status === "free_trial";
   const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
-
-  const tierDisplayName = TIER_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
 
   return (
     <div className="bg-[#faf9f7]">
