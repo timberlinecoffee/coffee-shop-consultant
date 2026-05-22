@@ -84,7 +84,7 @@ export function UpgradeGate({
           href="/dashboard"
           className="inline-block border border-[#efefef] text-[#1a1a1a] text-sm font-medium px-5 py-2.5 rounded-xl hover:border-[#afafaf] transition-colors"
         >
-          Back to dashboard
+          Back to Dashboard
         </Link>
       </div>
     </div>

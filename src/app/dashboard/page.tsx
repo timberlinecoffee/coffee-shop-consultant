@@ -89,7 +89,7 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-4">
             <Link href="/account" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Account</Link>
             <form action="/auth/signout" method="POST">
-              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign out</button>
+              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign Out</button>
             </form>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
 
         {/* START HERE — Workspace 1 */}
         <div className="mb-2">
-          <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">Start here</p>
+          <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">Start Here</p>
           <div className="bg-white rounded-xl border border-[#155e63]/30 p-6 flex gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
               w1Completed ? "bg-[#155e63] text-white" :
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
 
         {/* COMING UP */}
         <div className="mb-10">
-          <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming up</p>
+          <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming Up</p>
           <div className="bg-white rounded-xl border border-[#efefef] divide-y divide-[#efefef]">
             {/* Workspace 2 */}
             <div className="p-5 flex items-center gap-3">
@@ -197,11 +197,11 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick links */}
-        <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick links</h2>
+        <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick Links</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           {[
             {
-              label: "Equipment list",
+              label: "Equipment List",
               href: "/workspace/buildout-equipment",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -210,7 +210,7 @@ export default async function DashboardPage() {
               ),
             },
             {
-              label: "Your numbers",
+              label: "Your Numbers",
               href: "/workspace/financials",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -219,7 +219,7 @@ export default async function DashboardPage() {
               ),
             },
             {
-              label: "Startup costs",
+              label: "Startup Costs",
               href: "/workspace/financials",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
 
         {/* AI coaching — low-visual-weight line in quick links area */}
         <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">AI coaching</span>
+          <span className="text-xs text-[#afafaf]">AI Coaching</span>
           {isPaid && creditsRemaining > 0 ? (
             <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
               {creditsRemaining} coaching messages left this month

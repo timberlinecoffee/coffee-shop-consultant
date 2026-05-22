@@ -16,18 +16,18 @@ const TIERS = [
     description: "Get your plan built and your numbers right.",
     highlight: false,
     features: [
-      "All course modules",
-      "25 AI coaching credits/month",
-      "Complete every exercise",
-      "BRD and financial model generation",
+      "All Course Modules",
+      "25 AI Coaching Credits/Month",
+      "Complete Every Exercise",
+      "BRD and Financial Model Generation",
       "Export to PDF",
-      "Email support",
+      "Email Support",
     ],
     notIncluded: [
-      "Weekly async Q&A",
-      "Financial model stress-testing",
-      "Equipment sourcing assistance",
-      "1-on-1 call at BRD completion",
+      "Weekly Async Q&A",
+      "Financial Model Stress-Testing",
+      "Equipment Sourcing Assistance",
+      "1-on-1 Call at BRD Completion",
     ],
     cta: "Start with Starter",
   },
@@ -42,14 +42,14 @@ const TIERS = [
     highlight: true,
     features: [
       "Everything in Starter",
-      "100 AI coaching credits/month",
-      "Weekly async Q&A with Trent",
-      "Financial model stress-testing",
-      "Priority support",
+      "100 AI Coaching Credits/Month",
+      "Weekly Async Q&A with Trent",
+      "Financial Model Stress-Testing",
+      "Priority Support",
     ],
     notIncluded: [
-      "Equipment sourcing assistance",
-      "1-on-1 call at BRD completion",
+      "Equipment Sourcing Assistance",
+      "1-on-1 Call at BRD Completion",
     ],
     cta: "Start with Growth",
   },
@@ -64,11 +64,11 @@ const TIERS = [
     highlight: false,
     features: [
       "Everything in Growth",
-      "Unlimited AI coaching",
-      "Equipment sourcing assistance",
-      "Roaster matching recommendations",
-      "30-min 1-on-1 call at BRD completion",
-      "White-glove onboarding",
+      "Unlimited AI Coaching",
+      "Equipment Sourcing Assistance",
+      "Roaster Matching Recommendations",
+      "30-Min 1-on-1 Call at BRD Completion",
+      "White-Glove Onboarding",
     ],
     notIncluded: [],
     cta: "Start with Pro",
@@ -140,7 +140,7 @@ export default function PricingPage() {
             <span className="font-semibold text-[#155e63] text-sm hidden sm:block">Timberline Coffee School</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-[#155e63] font-medium hover:underline">Sign in</Link>
+            <Link href="/login" className="text-sm text-[#155e63] font-medium hover:underline">Sign In</Link>
           </div>
         </div>
       </nav>
@@ -148,7 +148,7 @@ export default function PricingPage() {
       <div className="max-w-5xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">Groundwork pricing</h1>
+          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">Groundwork Pricing</h1>
           <p className="text-[#6b6b6b] text-lg mb-8">
             Three tiers. Two intervals. One goal: open doors with a plan that works.
           </p>
@@ -193,7 +193,7 @@ export default function PricingPage() {
                 {tier.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-[#f0b429] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                      Most popular
+                      Most Popular
                     </span>
                   </div>
                 )}
@@ -276,7 +276,7 @@ export default function PricingPage() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto mb-16">
-          <h2 className="text-2xl font-bold text-[#1a1a1a] text-center mb-8">Frequently asked questions</h2>
+          <h2 className="text-2xl font-bold text-[#1a1a1a] text-center mb-8">Frequently Asked Questions</h2>
           <div className="space-y-2">
             {FAQ.map((item, i) => (
               <div key={i} className="bg-white border border-[#efefef] rounded-xl overflow-hidden">
