@@ -468,7 +468,7 @@ function GanttStrip({ items, launchDate }: { items: TimelineItem[]; launchDate: 
               <View style={[styles.ganttDot, dotStyleForStatus(item.status)]} />
             </View>
             <View style={{ position: "absolute", left: `${Math.min(pct, 80)}%`, marginLeft: 6 }}>
-              <Text style={styles.ganttItemLabel} numberOfLines={1}>
+              <Text style={styles.ganttItemLabel}>
                 {item.milestone}
               </Text>
             </View>

@@ -4,7 +4,6 @@
 
 import React from "react"
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer"
-import type { ChartConfiguration } from "chart.js"
 import { BRAND } from "../brand"
 import { PdfDocument } from "../components/PdfDocument"
 import { PdfHeader } from "../components/PdfHeader"
@@ -12,7 +11,6 @@ import { PdfFooter } from "../components/PdfFooter"
 import { PdfSection } from "../components/PdfSection"
 import { PdfTable, type ColumnDef, type Row } from "../components/PdfTable"
 import { PdfChartImage } from "../components/PdfChartImage"
-import { chartToPng } from "../chart-to-png"
 import { parseFinancialsContent } from "@/lib/financials/schema"
 import type { PdfTemplate } from "../registry"
 import type {
@@ -137,7 +135,7 @@ function slugify(s: string | null | undefined): string {
 
 // ── chart configs ────────────────────────────────────────────────────────────
 
-function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
+function breakEvenChartConfig(pnl: MonthlyPnl): object {
   const { totalRevenue, totalLabor, totalFixed } = computePnl(pnl)
   const { breakEvenRevenue } = computeBreakEven(pnl)
   const maxX = Math.max(totalRevenue, breakEvenRevenue, 1) * 1.5
@@ -191,7 +189,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
         y: {
           title: { display: true, text: "Dollars" },
           ticks: {
-            callback: (v) => `$${Number(v).toLocaleString("en-US")}`,
+            callback: (v: unknown) => `$${Number(v).toLocaleString("en-US")}`,
           },
         },
       },
@@ -199,7 +197,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
   }
 }
 
-function monthlyBurnChartConfig(pnl: MonthlyPnl): ChartConfiguration {
+function monthlyBurnChartConfig(pnl: MonthlyPnl): object {
   const { cogs, totalLabor, totalFixed } = computePnl(pnl)
   return {
     type: "bar",
@@ -227,7 +225,7 @@ function monthlyBurnChartConfig(pnl: MonthlyPnl): ChartConfiguration {
         y: {
           title: { display: true, text: "Dollars per month" },
           ticks: {
-            callback: (v) => `$${Number(v).toLocaleString("en-US")}`,
+            callback: (v: unknown) => `$${Number(v).toLocaleString("en-US")}`,
           },
         },
       },
@@ -758,41 +756,17 @@ function AiFindingsSection({ content }: { content: FinancialsContent }) {
 
 // ── chart rendering with safe fallback ──────────────────────────────────────
 
-async function renderCharts(content: FinancialsContent): Promise<{
+// Chart rendering requires native Cairo/Pango bindings not available on Vercel.
+// Sections fall back to the text summaries already defined in BreakEvenChartSection
+// and MonthlyBurnChartSection. The config builders are kept for future use.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _unusedChartConfigs = { breakEvenChartConfig, monthlyBurnChartConfig }
+
+async function renderCharts(_content: FinancialsContent): Promise<{
   breakEvenPng: Buffer | null
   burnPng: Buffer | null
 }> {
-  const summary = computePnl(content.monthly_pnl)
-  const hasPnlData =
-    summary.totalRevenue > 0 ||
-    summary.totalLabor > 0 ||
-    summary.totalFixed > 0
-
-  if (!hasPnlData) {
-    return { breakEvenPng: null, burnPng: null }
-  }
-
-  let breakEvenPng: Buffer | null = null
-  let burnPng: Buffer | null = null
-  try {
-    breakEvenPng = await chartToPng({
-      config: breakEvenChartConfig(content.monthly_pnl),
-      width: 900,
-      height: 480,
-    })
-  } catch {
-    breakEvenPng = null
-  }
-  try {
-    burnPng = await chartToPng({
-      config: monthlyBurnChartConfig(content.monthly_pnl),
-      width: 900,
-      height: 480,
-    })
-  } catch {
-    burnPng = null
-  }
-  return { breakEvenPng, burnPng }
+  return { breakEvenPng: null, burnPng: null }
 }
 
 // ── top-level document ──────────────────────────────────────────────────────
