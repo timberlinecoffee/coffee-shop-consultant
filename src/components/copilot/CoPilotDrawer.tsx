@@ -310,7 +310,7 @@ export function CoPilotDrawer({
         );
         const ackMsg: CopilotMessage = {
           role: "assistant",
-          content: `Done — I've updated your ${proposal.fieldLabel} to "${proposal.newValue}". What's next?`,
+          content: `Done. I've updated your ${proposal.fieldLabel} to "${proposal.newValue}". What's next?`,
         };
         setMessages((prev) => [...prev, ackMsg]);
         clearEditProposal();
@@ -330,7 +330,7 @@ export function CoPilotDrawer({
       clearEditProposal();
       const ackMsg: CopilotMessage = {
         role: "assistant",
-        content: `No problem — I'll leave your ${proposal.fieldLabel} unchanged. Let me know if you'd like a different direction.`,
+        content: `No problem. I'll leave your ${proposal.fieldLabel} unchanged. Let me know if you'd like a different direction.`,
       };
       setMessages((prev) => [...prev, ackMsg]);
     },
