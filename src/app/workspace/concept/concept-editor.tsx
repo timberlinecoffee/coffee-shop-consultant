@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useCopilotStream } from "@/components/copilot/useCopilotStream";
+import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   CONCEPT_COMPONENTS_V2,
   buildImprovePrompt,
@@ -92,9 +93,15 @@ export function ConceptWorkspace({
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
   const copilot = useCopilotStream();
+  const { setModuleProgress } = useWorkspaceProgress();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
+
+  // Keep the sidebar counter in sync with the live in-page counter (TIM-884).
+  useEffect(() => {
+    setModuleProgress(1, progress.filled, progress.total);
+  }, [progress.filled, progress.total, setModuleProgress]);
   const shopName = doc.components.shop_identity.content.trim();
   const pct = progress.total > 0 ? Math.round((progress.filled / progress.total) * 100) : 0;
 
