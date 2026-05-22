@@ -1,7 +1,7 @@
 "use client";
 
-// TIM-834 / TIM-865: Concept workspace v2 card layout + inline concept brief.
-// - Component cards with include/exclude toggle, Improve button, inline AI panel.
+// TIM-834 / TIM-865 / TIM-881: Concept workspace v2 card layout + inline concept brief.
+// - Component cards with include/exclude toggle, "Improve with AI" opens AIAssistCallout modal.
 // - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
 // - Print button active only when all included components are filled.
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
@@ -11,10 +11,9 @@ import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
-import { useCopilotStream } from "@/components/copilot/useCopilotStream";
+import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import {
   CONCEPT_COMPONENTS_V2,
-  buildImprovePrompt,
   getConceptV2Progress,
   isConceptV2Complete,
   type ConceptComponentId,
@@ -34,14 +33,6 @@ type SaveState =
   | { kind: "saving" }
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
-
-type PanelResult = {
-  rewrite: string;
-  gaps: string[];
-  competitorNote: string | null;
-};
-
-type PanelStatus = "idle" | "loading" | "done" | "error" | "trial_exhausted";
 
 interface ConceptWorkspaceProps {
   planId: string;
@@ -76,9 +67,11 @@ export function ConceptWorkspace({
   // Cards the user has clicked into (reveals textarea even when empty)
   const [activatedCards, setActivatedCards] = useState<Set<ConceptComponentId>>(new Set());
 
-  const [openPanelId, setOpenPanelId] = useState<ConceptComponentId | null>(null);
-  const [panelStatus, setPanelStatus] = useState<PanelStatus>("idle");
-  const [panelResult, setPanelResult] = useState<PanelResult | null>(null);
+  const [aiAssistField, setAiAssistField] = useState<{
+    id: ConceptComponentId;
+    label: string;
+    currentValue: string;
+  } | null>(null);
 
   const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
   const [exampleIdx, setExampleIdx] = useState(0);
@@ -91,8 +84,6 @@ export function ConceptWorkspace({
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
-
-  const copilot = useCopilotStream();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
@@ -223,105 +214,6 @@ export function ConceptWorkspace({
     });
   }
 
-  const handleImprove = useCallback(
-    async (id: ConceptComponentId) => {
-      if (openPanelId === id && panelStatus !== "loading") {
-        setOpenPanelId(null);
-        setPanelStatus("idle");
-        setPanelResult(null);
-        return;
-      }
-
-      setOpenPanelId(id);
-      setPanelStatus("loading");
-      setPanelResult(null);
-
-      const meta = CONCEPT_COMPONENTS_V2.find((m) => m.id === id)!;
-      const currentContent = latestDocRef.current.components[id].content;
-      const ctx = {
-        shopName: latestDocRef.current.components.shop_identity.content,
-        vision: latestDocRef.current.components.vision.content,
-        targetCustomer: latestDocRef.current.components.target_customer.content,
-      };
-      const prompt = buildImprovePrompt(id, meta.label, currentContent, ctx);
-
-      const result = await copilot.send({
-        planId,
-        workspaceKey: "concept",
-        threadId: crypto.randomUUID(),
-        history: [],
-        prompt,
-      });
-
-      if (!result) {
-        const err = copilot.error;
-        if (err?.code === "trial_exhausted") {
-          setPanelStatus("trial_exhausted");
-        } else if (err?.code === "paywall") {
-          setPaywallOpen(true);
-          setOpenPanelId(null);
-          setPanelStatus("idle");
-        } else {
-          setPanelStatus("error");
-        }
-        return;
-      }
-
-      if (result.trialMessagesUsed !== undefined) {
-        setTrialMessagesUsed(result.trialMessagesUsed);
-      }
-
-      try {
-        const raw = result.assistant
-          .trim()
-          .replace(/^```(?:json)?\s*/i, "")
-          .replace(/\s*```$/, "");
-        const parsed = JSON.parse(raw) as {
-          rewrite?: string;
-          gaps?: string[];
-          competitorNote?: string | null;
-        };
-        setPanelResult({
-          rewrite: typeof parsed.rewrite === "string" ? parsed.rewrite : "",
-          gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
-          competitorNote:
-            typeof parsed.competitorNote === "string" ? parsed.competitorNote : null,
-        });
-        setPanelStatus("done");
-      } catch {
-        setPanelStatus("error");
-      }
-    },
-    [openPanelId, panelStatus, copilot, planId]
-  );
-
-  function handleUseThis() {
-    if (openPanelId && panelResult) {
-      updateContent(openPanelId, panelResult.rewrite);
-    }
-    setOpenPanelId(null);
-    setPanelStatus("idle");
-    setPanelResult(null);
-  }
-
-  function handleEditFirst() {
-    if (openPanelId && panelResult) {
-      const id = openPanelId;
-      updateContent(id, panelResult.rewrite);
-      activateCard(id);
-      setTimeout(() => document.getElementById(`concept-${id}`)?.focus(), 50);
-    }
-    setOpenPanelId(null);
-    setPanelStatus("idle");
-    setPanelResult(null);
-  }
-
-  function handleDismissPanel() {
-    setOpenPanelId(null);
-    setPanelStatus("idle");
-    setPanelResult(null);
-  }
-
   let saveStatusCopy = formatTimestamp(lastSavedAt);
   let saveStatusTone = "text-[#afafaf]";
   if (saveState.kind === "saving") {
@@ -423,7 +315,6 @@ export function ConceptWorkspace({
             const isExcluded = !comp.included;
             const isActivated = activatedCards.has(meta.id);
             const showField = !isExcluded && (!isEmpty || isActivated);
-            const isPanelOpen = openPanelId === meta.id;
 
             return (
               <div
@@ -473,15 +364,23 @@ export function ConceptWorkspace({
                       <p className="text-xs text-[#afafaf]">{meta.hint}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Improve button */}
-                      <button
-                        type="button"
-                        onClick={() => void handleImprove(meta.id)}
-                        disabled={isEmpty || !canEdit || (isPanelOpen && panelStatus === "loading")}
-                        className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {isPanelOpen && panelStatus === "loading" ? "Thinking..." : "Improve"}
-                      </button>
+                      {/* Improve with AI button — multiline fields only */}
+                      {meta.multiline && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAiAssistField({
+                              id: meta.id,
+                              label: meta.label,
+                              currentValue: latestDocRef.current.components[meta.id].content,
+                            })
+                          }
+                          disabled={!canEdit}
+                          className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          Improve with AI
+                        </button>
+                      )}
                       {/* Include/exclude toggle — only on deferrable components */}
                       {meta.deferrable && (
                         <button
@@ -594,136 +493,6 @@ export function ConceptWorkspace({
                   )}
                 </div>
 
-                {/* AI improvement panel — inline below field */}
-                {isPanelOpen && (
-                  <div className="border-t border-[#efefef] px-5 py-4">
-                    {panelStatus === "loading" && (
-                      <div className="flex items-center gap-2 text-sm text-[#6b6b6b]">
-                        <span
-                          className="inline-block w-3 h-3 rounded-full border-2 border-[#155e63] border-t-transparent animate-spin"
-                          aria-hidden="true"
-                        />
-                        Reviewing your content...
-                      </div>
-                    )}
-
-                    {panelStatus === "trial_exhausted" && (
-                      <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4 text-sm">
-                        <p className="font-semibold text-[#1a1a1a] mb-1">
-                          You&apos;ve used your 5 free coaching sessions
-                        </p>
-                        <p className="text-[#6b6b6b] mb-3">
-                          Upgrade to keep improving each section with AI.
-                        </p>
-                        <Link
-                          href="/pricing"
-                          className="inline-block bg-[#155e63] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
-                        >
-                          Choose a plan
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={handleDismissPanel}
-                          className="ml-3 text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    )}
-
-                    {panelStatus === "error" && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-[#a13d3d]">Could not get suggestions. Try again.</span>
-                        <button
-                          type="button"
-                          onClick={handleDismissPanel}
-                          className="text-xs text-[#afafaf] hover:text-[#1a1a1a]"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    )}
-
-                    {panelStatus === "done" && panelResult && (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">
-                            AI Suggestions
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleDismissPanel}
-                            className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
-                          >
-                            Dismiss all
-                          </button>
-                        </div>
-
-                        {/* Suggested rewrite */}
-                        <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
-                            Suggested rewrite
-                          </p>
-                          <p className="text-sm text-[#1a1a1a] leading-relaxed mb-3">
-                            {panelResult.rewrite}
-                          </p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={handleUseThis}
-                              className="text-xs font-semibold bg-[#155e63] text-white px-3 py-1.5 rounded-lg hover:bg-[#0e4448] transition-colors"
-                            >
-                              Use this
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleEditFirst}
-                              className="text-xs font-medium border border-[#155e63] text-[#155e63] px-3 py-1.5 rounded-lg hover:bg-[#155e63]/5 transition-colors"
-                            >
-                              Edit first
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleDismissPanel}
-                              className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
-                            >
-                              Keep mine
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Gap questions */}
-                        {panelResult.gaps.length > 0 && (
-                          <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
-                              What&apos;s missing
-                            </p>
-                            <ul className="space-y-1.5">
-                              {panelResult.gaps.map((gap, i) => (
-                                <li key={i} className="text-sm text-[#1a1a1a] flex items-start gap-2">
-                                  <span className="text-[#155e63] font-semibold shrink-0">?</span>
-                                  {gap}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Competitor note */}
-                        {panelResult.competitorNote && (
-                          <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
-                              Worth knowing
-                            </p>
-                            <p className="text-sm text-[#1a1a1a] leading-relaxed">
-                              {panelResult.competitorNote}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -767,9 +536,25 @@ export function ConceptWorkspace({
         variant="copilot_trial"
       />
 
+      {/* TIM-881: AIAssistCallout — per-field improvement modal */}
+      <AIAssistCallout
+        open={aiAssistField !== null}
+        onClose={() => setAiAssistField(null)}
+        fieldLabel={aiAssistField?.label ?? ""}
+        moduleLabel="Concept"
+        fieldKey={aiAssistField?.id ?? ""}
+        workspaceKey="concept"
+        planId={planId}
+        currentValue={aiAssistField?.currentValue ?? ""}
+        onApply={(newValue) => {
+          if (aiAssistField) updateContent(aiAssistField.id, newValue);
+          setAiAssistField(null);
+        }}
+      />
+
       {/* TIM-880: mount CoPilotDrawer so the WorkspaceTopBar Co-pilot button opens a
           chat drawer. The drawer listens for workspace-copilot-open dispatched by the
-          top bar, giving users a general chat alongside the per-field Improve panels. */}
+          top bar alongside the per-field Improve with AI modals. */}
       <CoPilotDrawer
         planId={planId}
         workspaceKey="concept"
