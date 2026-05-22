@@ -143,7 +143,7 @@ function computeFooter(items: MenuItemRow[]) {
       (s, i) => s + i.expected_mix_pct * (i.price_cents - i.cogs_cents),
       0
     )
-    marginPer100 = sumContrib / totalMix / 100
+    marginPer100 = sumContrib / totalMix
   }
 
   return { count: active.length, weightedMargin, marginPer100, totalMix }
@@ -151,7 +151,7 @@ function computeFooter(items: MenuItemRow[]) {
 
 function itemContribPer100(item: MenuItemRow, totalMix: number): number | null {
   if (totalMix <= 0) return null
-  return (item.expected_mix_pct * (item.price_cents - item.cogs_cents)) / totalMix / 100
+  return (item.expected_mix_pct * (item.price_cents - item.cogs_cents)) / totalMix
 }
 
 function groupByCategory(items: MenuItemRow[]): Map<MenuItemCategory, MenuItemRow[]> {
