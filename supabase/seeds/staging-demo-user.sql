@@ -243,4 +243,22 @@ begin
     (demo_plan_id, 'Concept brief locked', 'Module 1 complete', current_date - 4, now() - interval '4 days', 1, true),
     (demo_plan_id, 'Sign lease at Belmont & 34th', 'Letter of intent out; landlord countersign expected this week', current_date + 9, null, 3, true),
     (demo_plan_id, 'Equipment quotes in', 'Need 3 quotes per major SKU before purchase', current_date + 18, null, 4, true);
+
+  -- 11. workspace_documents: menu_pricing — enables fetchPricingBenchmarks (TIM-863).
+  --     region_benchmark_set = 'pnw' causes the stream route to inject the
+  --     pricing_benchmarks table into the CoPilot system prompt so the AI can
+  --     cite p25/p50/p75 values verbatim (test plan item 2.1).
+  insert into public.workspace_documents (plan_id, workspace_key, content)
+  values (
+    demo_plan_id,
+    'menu_pricing',
+    jsonb_build_object(
+      'region_benchmark_set', 'pnw',
+      'positioning', 'premium_specialty',
+      'notes', 'Inner-SE Portland; target $6–7 avg ticket on espresso drinks.'
+    )
+  )
+  on conflict (plan_id, workspace_key) do update set
+    content    = excluded.content,
+    updated_at = now();
 end $$;
