@@ -4,7 +4,7 @@
 export const TOTAL_MODULES = 8;
 
 // Modules with section content shipped to users.
-export const AVAILABLE_MODULES: ReadonlySet<number> = new Set([1, 2]);
+export const AVAILABLE_MODULES: ReadonlySet<number> = new Set([1, 2, 3]);
 
 export function isModuleAvailable(moduleNumber: number): boolean {
   return (

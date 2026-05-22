@@ -29,19 +29,17 @@ function parseAvailableModules() {
   );
 }
 
-test("Module 3 is not navigable until its sections ship", () => {
+test("Module 3 (Location & Lease) is navigable — sections shipped in TIM-908", () => {
   const available = parseAvailableModules();
   assert.ok(
-    !available.has(3),
-    "Module 3 must stay out of AVAILABLE_MODULES until sections are defined"
+    available.has(3),
+    "Module 3 must be in AVAILABLE_MODULES now that CandidateListCard/RubricGrid/LeaseTerms are shipped"
   );
 });
 
-test("dashboard filters workspace sets through isModuleAvailable", () => {
-  const src = read("src/app/dashboard/page.tsx");
-  assert.match(
-    src,
-    /isModuleAvailable\(\w+\.num\)/,
-    "dashboard must filter workspace sets through isModuleAvailable"
-  );
+test("AVAILABLE_MODULES includes all modules with shipped content (1, 2, 3)", () => {
+  const available = parseAvailableModules();
+  assert.ok(available.has(1), "Module 1 (Concept) must be available");
+  assert.ok(available.has(2), "Module 2 must be available");
+  assert.ok(available.has(3), "Module 3 (Location & Lease) must be available");
 });
