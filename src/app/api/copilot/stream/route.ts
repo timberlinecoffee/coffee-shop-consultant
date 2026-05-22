@@ -41,7 +41,20 @@ const STABLE_COACHING_STYLE = `## Coaching Style
 - NEVER use the words: actually, genuinely, honestly.
 - NEVER hallucinate specific prices, addresses, suppliers, or statistics.
 - You know coffee deeply; use that knowledge to challenge and refine their thinking.
-- If their plan conflicts with their budget or location, say so directly but kindly.`
+- If their plan conflicts with their budget or location, say so directly but kindly.
+
+## Edit Proposals
+When the user explicitly asks you to change, rename, update, or set a field value in their plan (e.g. "change the shop name to X", "update my mission to Y", "set my target customer to Z"), include an edit proposal at the very END of your response using this exact format on its own line:
+
+\n\nEDIT_PROPOSAL_JSON:{"workspaceKey":"<key>","fieldPath":"<fieldKey>","fieldLabel":"<label>","oldValue":"<current>","newValue":"<proposed>"}
+
+Rules:
+- workspaceKey: the workspace containing the field (e.g. "concept")
+- fieldPath: the exact field key (concept fields: "name", "mission", "target_market", "differentiation", "brand_voice")
+- fieldLabel: human-readable name (e.g. "Shop name", "Mission", "Target customer", "What makes you different", "Brand voice & pillars")
+- oldValue: the field's current value from their plan snapshot (empty string if blank)
+- newValue: the proposed new value (verbatim what they asked for, or your improved version)
+- Only ONE edit proposal per response. Only include it when the user explicitly wants the field changed — not for general suggestions or rewrites they haven't confirmed.`
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -304,6 +317,22 @@ export async function POST(request: NextRequest) {
         if (!closed) {
           clearTimers()
           closed = true
+
+          // Strip edit proposal marker from stored text and emit as a structured event.
+          const EDIT_MARKER = "\n\nEDIT_PROPOSAL_JSON:"
+          const markerIdx = fullText.indexOf(EDIT_MARKER)
+          let cleanText = fullText
+          if (markerIdx >= 0) {
+            const jsonStr = fullText.slice(markerIdx + EDIT_MARKER.length).trim()
+            cleanText = fullText.slice(0, markerIdx)
+            try {
+              const proposal = JSON.parse(jsonStr)
+              send(sse("edit_proposal", proposal))
+            } catch {
+              // Malformed marker — ignore, don't surface to user.
+            }
+          }
+          fullText = cleanText
 
           // Persist completed turn (only on clean stream close — dropped on disconnect)
           const costPerInputM = useOpus ? 15 : 3

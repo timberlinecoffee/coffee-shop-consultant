@@ -4,9 +4,12 @@ import { useCallback, useRef, useState } from "react";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "./sse";
 import type {
+  CopilotEditProposal,
   CopilotErrorState,
   CopilotMessage,
 } from "./types";
+
+const EDIT_PROPOSAL_MARKER = "\n\nEDIT_PROPOSAL_JSON:";
 
 interface SendArgs {
   planId: string;
@@ -21,6 +24,7 @@ interface UseCopilotStreamResult {
   isThinking: boolean;
   assistantBuffer: string;
   error: CopilotErrorState | null;
+  editProposal: CopilotEditProposal | null;
   lastThreadId: string | null;
   lastModelUsed: string | null;
   send: (args: SendArgs) => Promise<{
@@ -30,6 +34,7 @@ interface UseCopilotStreamResult {
   } | null>;
   abort: () => void;
   reset: () => void;
+  clearEditProposal: () => void;
 }
 
 export function useCopilotStream(): UseCopilotStreamResult {
@@ -37,15 +42,19 @@ export function useCopilotStream(): UseCopilotStreamResult {
   const [isThinking, setIsThinking] = useState(false);
   const [assistantBuffer, setAssistantBuffer] = useState("");
   const [error, setError] = useState<CopilotErrorState | null>(null);
+  const [editProposal, setEditProposal] = useState<CopilotEditProposal | null>(null);
   const [lastThreadId, setLastThreadId] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const clearEditProposal = useCallback(() => setEditProposal(null), []);
 
   const reset = useCallback(() => {
     setAssistantBuffer("");
     setError(null);
     setIsThinking(false);
     setIsStreaming(false);
+    setEditProposal(null);
   }, []);
 
   const abort = useCallback(() => {
@@ -138,12 +147,21 @@ export function useCopilotStream(): UseCopilotStreamResult {
                 const parsed = JSON.parse(evt.data) as { delta?: string };
                 if (parsed.delta) {
                   assistant += parsed.delta;
-                  setAssistantBuffer(assistant);
+                  // Hide the edit proposal marker from the displayed buffer.
+                  const markerIdx = assistant.indexOf(EDIT_PROPOSAL_MARKER);
+                  setAssistantBuffer(markerIdx >= 0 ? assistant.slice(0, markerIdx) : assistant);
                   lastTextAt = Date.now();
                   setIsThinking(false);
                 }
               } catch {
                 /* ignore malformed text frame */
+              }
+            } else if (evt.event === "edit_proposal") {
+              try {
+                const proposal = JSON.parse(evt.data) as CopilotEditProposal;
+                setEditProposal(proposal);
+              } catch {
+                /* ignore malformed proposal frame */
               }
             } else if (evt.event === "error") {
               try {
@@ -194,6 +212,13 @@ export function useCopilotStream(): UseCopilotStreamResult {
         return null;
       }
 
+      // Strip marker from the final text (server also strips it from DB, but
+      // the text deltas may have included it during streaming).
+      const markerIdx = assistant.indexOf(EDIT_PROPOSAL_MARKER);
+      if (markerIdx >= 0) {
+        assistant = assistant.slice(0, markerIdx);
+      }
+
       setLastThreadId(resolvedThreadId);
       setLastModelUsed(resolvedModelUsed);
 
@@ -211,10 +236,12 @@ export function useCopilotStream(): UseCopilotStreamResult {
     isThinking,
     assistantBuffer,
     error,
+    editProposal,
     lastThreadId,
     lastModelUsed,
     send,
     abort,
     reset,
+    clearEditProposal,
   };
 }

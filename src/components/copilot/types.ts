@@ -2,6 +2,14 @@ import type { WorkspaceKey } from "@/types/supabase";
 
 export type CopilotRole = "user" | "assistant";
 
+export interface CopilotEditProposal {
+  workspaceKey: WorkspaceKey;
+  fieldPath: string;
+  fieldLabel: string;
+  oldValue: string;
+  newValue: string;
+}
+
 export interface CopilotMessage {
   role: CopilotRole;
   content: string;

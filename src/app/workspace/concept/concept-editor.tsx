@@ -191,6 +191,22 @@ export function ConceptWorkspace({
     });
   }
 
+  // TIM-855: listen for Copilot-confirmed field edits so the live editor reflects
+  // them immediately without a page reload.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ workspaceKey?: string; content?: unknown }>).detail;
+      if (detail?.workspaceKey !== "concept" || !detail.content) return;
+      const next = detail.content as ConceptDocument;
+      setConcept(next);
+      latestConceptRef.current = next;
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    };
+    window.addEventListener("copilot:field-updated", handler);
+    return () => window.removeEventListener("copilot:field-updated", handler);
+  }, []);
+
   const focusOnField = useCallback(
     (fieldKey: keyof ConceptDocument, label: string) => {
       if (typeof window === "undefined") return;
