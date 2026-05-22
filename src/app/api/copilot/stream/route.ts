@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       sse("error", {
         code: "quota",
         message:
-          "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or your credits reset next month.",
+          "You've used all your AI credits for this month. Upgrade to Pro for unlimited coaching, or your credits reset next month.",
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
