@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import type { LaunchMeta } from "@/lib/copilot/composePlanSnapshot"
+import { fetchPricingBenchmarks } from "@/lib/copilot/fetchPricingBenchmarks"
 import { isSubscriptionActive } from "@/lib/access"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
@@ -32,6 +33,14 @@ const HEARTBEAT_MS = 15_000
 
 // Stable sections: cached with cache_control:ephemeral across the conversation.
 const STABLE_IDENTITY = `You are the AI co-pilot for Timberline Coffee School's My Coffee Shop Consultant platform. You are a knowledgeable friend who has helped dozens of people open successful coffee shops, not a professor, not a consultant charging by the hour.`
+
+// TIM-709: Anchors appended to stable system block only in menu_pricing workspace
+const MENU_PRICING_ANCHORS = `
+## Pricing Guidance
+When the user asks about pricing, cross-reference \`pricing_benchmarks\` for the user's \`region_benchmark_set\`. State the p25/p50/p75 from the table verbatim; do not fabricate.
+
+## Menu Simplification Guidance
+If asked to simplify, recommend dropping items whose \`margin_pct\` is in the bottom quartile AND \`expected_mix_pct\` < 5. Show the user the dollar contribution they'd lose vs gain.`.trim()
 
 const STABLE_COACHING_STYLE = `## Coaching Style
 - Warm, direct, conversational. Knowledgeable friend, not professor.
@@ -202,11 +211,17 @@ export async function POST(request: NextRequest) {
   const svcClient = createServiceClient()
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, launchMeta } = await composePlanSnapshot(
+  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, launchMeta, regionBenchmarkSet } = await composePlanSnapshot(
     planId,
     workspaceKey,
     svcClient,
   )
+
+  // TIM-709: Fetch benchmark data for menu_pricing workspace (injected into dynamic block)
+  let benchmarkBlock: string | null = null
+  if (workspaceKey === "menu_pricing" && regionBenchmarkSet) {
+    benchmarkBlock = await fetchPricingBenchmarks(regionBenchmarkSet, svcClient)
+  }
 
   const dynamicPrompt = buildDynamicPrompt(onboarding, planSnapshot, workspaceKey)
 
@@ -278,10 +293,15 @@ export async function POST(request: NextRequest) {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
         // System prompt: stable block (cached) + optional workspace-local anchor + dynamic block.
+        // TIM-709: menu_pricing appends MENU_PRICING_ANCHORS to the stable cached block.
+        const stableText = workspaceKey === "menu_pricing"
+          ? `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}\n\n${MENU_PRICING_ANCHORS}`
+          : `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`
+
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
-            text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
+            text: stableText,
             cache_control: { type: "ephemeral" },
           },
         ]
@@ -291,7 +311,8 @@ export async function POST(request: NextRequest) {
           systemBlocks.push({ type: "text", text: buildLaunchPlanAnchor(launchMeta) })
         }
 
-        systemBlocks.push({ type: "text", text: dynamicPrompt })
+        // TIM-709: menu_pricing benchmark data injected into dynamic block for p25/p50/p75 citation.
+        systemBlocks.push({ type: "text", text: benchmarkBlock ? `${dynamicPrompt}\n\n${benchmarkBlock}` : dynamicPrompt })
 
         const anthropicMessages: Anthropic.MessageParam[] = messages.map((m) => ({
           role: m.role,
