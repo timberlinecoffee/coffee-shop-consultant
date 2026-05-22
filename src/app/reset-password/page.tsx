@@ -27,7 +27,7 @@ export default async function ResetPasswordPage() {
       </Link>
 
       <div className="bg-white rounded-2xl border border-[#efefef] p-8 w-full max-w-sm shadow-sm">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Set a new password</h1>
+        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Set a New Password</h1>
         <p className="text-[#afafaf] text-sm text-center mb-8">
           Choose a password with at least 8 characters.
         </p>

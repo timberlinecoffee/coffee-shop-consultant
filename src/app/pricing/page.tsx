@@ -33,21 +33,21 @@ const TIERS: Tier[] = [
     description: "Get your plan built and your numbers right.",
     highlight: false,
     features: [
-      "All course modules",
-      "25 AI coaching credits/month",
-      "Complete every exercise",
-      "BRD and financial model generation",
+      "All Course Modules",
+      "25 AI Coaching Credits/Month",
+      "Complete Every Exercise",
+      "BRD and Financial Model Generation",
       "Export to PDF",
-      "Email support",
+      "Email Support",
     ],
     notIncluded: [
-      "Weekly async Q&A",
-      "Financial model stress-testing",
-      "Equipment sourcing assistance",
-      "1-on-1 call at BRD completion",
+      "Weekly Async Q&A",
+      "Financial Model Stress-Testing",
+      "Equipment Sourcing Assistance",
+      "1-on-1 Call at BRD Completion",
     ],
-    cta: "Start building",
-    ctaAnnual: "Start building — pay annually",
+    cta: "Start Building",
+    ctaAnnual: "Start Building, Pay Annually",
   },
   {
     key: "growth",
@@ -60,14 +60,14 @@ const TIERS: Tier[] = [
     highlight: true,
     features: [
       "Everything in Starter",
-      "100 AI coaching credits/month",
-      "Weekly async Q&A with Trent",
-      "Financial model stress-testing",
-      "Priority support",
+      "100 AI Coaching Credits/Month",
+      "Weekly Async Q&A with Trent",
+      "Financial Model Stress-Testing",
+      "Priority Support",
     ],
     notIncluded: [
-      "Equipment sourcing assistance",
-      "1-on-1 call at BRD completion",
+      "Equipment Sourcing Assistance",
+      "1-on-1 Call at BRD Completion",
     ],
     cta: "Start with Growth",
   },
@@ -82,11 +82,11 @@ const TIERS: Tier[] = [
     highlight: false,
     features: [
       "Everything in Growth",
-      "Unlimited AI coaching",
-      "Equipment sourcing assistance",
-      "Roaster matching recommendations",
-      "30-min 1-on-1 call at BRD completion",
-      "White-glove onboarding",
+      "Unlimited AI Coaching",
+      "Equipment Sourcing Assistance",
+      "Roaster Matching Recommendations",
+      "30-Min 1-on-1 Call at BRD Completion",
+      "White-Glove Onboarding",
     ],
     notIncluded: [],
     cta: "Start with Pro",
@@ -175,11 +175,11 @@ function PricingPageInner() {
                 href={backHref}
                 className="text-sm text-[#155e63] font-medium hover:underline"
               >
-                Back to dashboard
+                Back to Dashboard
               </Link>
             ) : (
               <Link href="/login" className="text-sm text-[#155e63] font-medium hover:underline">
-                Sign in
+                Sign In
               </Link>
             )}
           </div>
@@ -190,7 +190,7 @@ function PricingPageInner() {
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">
-            {isLoggedIn ? "Choose your plan" : "Groundwork pricing"}
+            {isLoggedIn ? "Choose Your Plan" : "Groundwork Pricing"}
           </h1>
           <p className="text-[#6b6b6b] text-lg">
             Three tiers. Two intervals. One goal: open doors with a plan that works.
@@ -238,7 +238,7 @@ function PricingPageInner() {
                 {tier.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-[#f0b429] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                      Most popular
+                      Most Popular
                     </span>
                   </div>
                 )}
@@ -321,7 +321,7 @@ function PricingPageInner() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto mb-16">
-          <h2 className="text-2xl font-bold text-[#1a1a1a] text-center mb-8">Frequently asked questions</h2>
+          <h2 className="text-2xl font-bold text-[#1a1a1a] text-center mb-8">Frequently Asked Questions</h2>
           <div className="space-y-2">
             {FAQ.map((item, i) => (
               <div key={i} className="bg-white border border-[#efefef] rounded-xl overflow-hidden">

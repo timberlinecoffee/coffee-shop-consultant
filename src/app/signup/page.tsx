@@ -18,7 +18,7 @@ export default function SignupPage() {
       </Link>
 
       <div className="bg-white rounded-2xl border border-[#efefef] p-8 w-full max-w-sm shadow-sm">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Create your account</h1>
+        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Create Your Account</h1>
         <p className="text-[#afafaf] text-sm text-center mb-8">Start your coffee shop journey for free</p>
         <LoginForm initialMode="signup" />
         <p className="text-center text-sm text-[#afafaf] mt-6">

@@ -85,7 +85,7 @@ export function ForgotPasswordForm() {
         disabled={loading || cooldown > 0}
         className="w-full bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-50"
       >
-        {loading ? "Sending..." : cooldown > 0 ? `Try again in ${cooldown}s` : "Send reset link"}
+        {loading ? "Sending..." : cooldown > 0 ? `Try again in ${cooldown}s` : "Send Reset Link"}
       </button>
     </form>
   );

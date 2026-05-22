@@ -53,7 +53,7 @@ export function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label htmlFor="password" className="block text-xs font-medium text-[#1a1a1a] mb-1">New password</label>
+        <label htmlFor="password" className="block text-xs font-medium text-[#1a1a1a] mb-1">New Password</label>
         <input
           id="password"
           type="password"
@@ -67,7 +67,7 @@ export function ResetPasswordForm() {
         />
       </div>
       <div>
-        <label htmlFor="confirm" className="block text-xs font-medium text-[#1a1a1a] mb-1">Confirm password</label>
+        <label htmlFor="confirm" className="block text-xs font-medium text-[#1a1a1a] mb-1">Confirm Password</label>
         <input
           id="confirm"
           type="password"
@@ -90,7 +90,7 @@ export function ResetPasswordForm() {
         disabled={loading}
         className="w-full bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-50"
       >
-        {loading ? "Saving..." : "Save new password"}
+        {loading ? "Saving..." : "Save New Password"}
       </button>
     </form>
   );

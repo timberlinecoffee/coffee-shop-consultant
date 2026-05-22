@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
       </Link>
 
       <div className="bg-white rounded-2xl border border-[#efefef] p-8 w-full max-w-sm shadow-sm">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Reset your password</h1>
+        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Reset Your Password</h1>
         <p className="text-[#afafaf] text-sm text-center mb-8">
           Enter the email tied to your account and we&apos;ll send a reset link.
         </p>
@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
         <p className="text-center text-sm text-[#afafaf] mt-6">
           Remember it?{" "}
           <Link href="/login" className="text-[#155e63] font-medium hover:underline">
-            Back to sign in
+            Back to Sign In
           </Link>
         </p>
       </div>
