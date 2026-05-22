@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { buildNavItems } from "@/lib/workspace-manifest";
-import { AppSidebar } from "@/components/app-sidebar";
-import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
+import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -61,12 +60,8 @@ export default async function WorkspaceLayout({
   const navItems = buildNavItems(completedByModule);
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f7]">
-      <AppSidebar items={navItems} />
-      <div className="flex-1 min-w-0 lg:pl-[224px] flex flex-col">
-        <WorkspaceTopBar items={navItems} />
-        <main className="flex-1">{children}</main>
-      </div>
-    </div>
+    <WorkspaceProgressProvider initialItems={navItems}>
+      {children}
+    </WorkspaceProgressProvider>
   );
 }
