@@ -75,7 +75,7 @@ const STEPS: Step[] = [
     type: "text",
     question: "What are you calling your shop?",
     hint: "Working title is fine — you can change it any time inside the Concept workspace.",
-    placeholder: "e.g. Tide & Timber Coffee",
+    placeholder: "e.g. Ironside Coffee",
   },
   {
     id: "motivation",
@@ -974,7 +974,7 @@ function ReviewSummary({
   const rows: Array<{ label: string; value: string; deferred?: boolean }> = [
     { label: "Shop name", value: concept.name },
     { label: "What kind of shop", value: concept.mission },
-    { label: "Core customer", value: concept.target_market },
+    { label: "Target Customer Personas", value: concept.target_market },
     {
       label: "Differentiation",
       value: diffState.deferred ? "" : concept.differentiation,

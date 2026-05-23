@@ -22,7 +22,9 @@ import {
   isConceptV2Complete,
   type ConceptComponentId,
   type ConceptDocumentV2,
+  type CustomerPersona,
 } from "@/lib/concept";
+import { PersonaSection } from "@/components/concept/PersonaSection";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
@@ -204,6 +206,14 @@ export function ConceptWorkspace({
           [id]: { ...prev.components[id], content },
         },
       };
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  function updatePersonas(personas: CustomerPersona[]) {
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = { ...prev, personas };
       scheduleSave(next);
       return next;
     });
@@ -592,6 +602,12 @@ export function ConceptWorkspace({
                     <p className="mt-2 text-sm text-[#afafaf] italic">
                       Not included in your document. Toggle on when you&apos;re ready to add {meta.label}.
                     </p>
+                  ) : meta.id === "target_customer" ? (
+                    <PersonaSection
+                      personas={doc.personas ?? []}
+                      canEdit={canEdit}
+                      onUpdate={updatePersonas}
+                    />
                   ) : showField ? (
                     meta.multiline ? (
                       <textarea
@@ -780,7 +796,11 @@ export function ConceptWorkspace({
               {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
             </p>
           )}
-          <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+          {complete && (saveState.kind === "saved" || saveState.kind === "idle") ? (
+            <ConceptUnlockBanner />
+          ) : (
+            <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+          )}
         </div>
       </div>
 
@@ -802,6 +822,44 @@ export function ConceptWorkspace({
   );
 }
 
+// ── Concept Unlock Banner ────────────────────────────────────────────────────
+
+function ConceptUnlockBanner() {
+  return (
+    <div
+      className="mt-4 bg-[#155e63]/[0.08] border border-[#155e63]/20 rounded-2xl px-5 py-4 transition-opacity duration-300"
+      role="status"
+    >
+      <div className="flex items-start gap-3">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#155e63"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 mt-0.5"
+          aria-hidden="true"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-[#155e63]">Your concept is set.</p>
+          <p className="text-xs text-[#155e63]/80 mt-0.5">Every other workspace is now open.</p>
+          <Link
+            href="/dashboard"
+            className="text-xs font-medium text-[#155e63] hover:underline mt-1.5 inline-block"
+          >
+            See all modules
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Inline Concept Brief component ───────────────────────────────────────────
 // Renders a rich document preview within the workspace editor.
 // Mirrors the design of /workspace/concept/print but inline and toggleable.
@@ -818,7 +876,11 @@ function ConceptBriefInline({
   const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     if (meta.id === "shop_identity") return false;
     const comp = doc.components[meta.id];
-    return comp.included && comp.content.trim().length > 0;
+    if (!comp.included) return false;
+    if (meta.id === "target_customer") {
+      return (doc.personas && doc.personas.length > 0) || comp.content.trim().length > 0;
+    }
+    return comp.content.trim().length > 0;
   });
 
   if (briefSections.length === 0) return null;
@@ -874,6 +936,37 @@ function ConceptBriefInline({
             {briefSections.map((meta) => {
               const comp = doc.components[meta.id];
               const isFeatured = BRIEF_FEATURED_IDS.has(meta.id);
+
+              if (meta.id === "target_customer" && doc.personas && doc.personas.length > 0) {
+                return (
+                  <div key={meta.id} className="flex">
+                    <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                    <div className="px-6 py-5 flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                        {meta.label}
+                      </p>
+                      <div className="space-y-1.5">
+                        {doc.personas.map((p) => (
+                          <p key={p.id} className="text-sm text-[#1a1a1a]">
+                            <span className="font-medium">{p.name}</span>
+                            {p.isPrimary && (
+                              <span className="ml-1.5 text-[10px] text-[#155e63]">(primary)</span>
+                            )}
+                            {p.whyTheyVisit.trim() && (
+                              <span className="text-[#6b6b6b]">
+                                {": "}
+                                {p.whyTheyVisit.trim().length > 70
+                                  ? p.whyTheyVisit.trim().slice(0, 70) + "..."
+                                  : p.whyTheyVisit.trim()}
+                              </span>
+                            )}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               if (isFeatured) {
                 return (

@@ -11,6 +11,10 @@ import {
   normalizeConceptV2,
   type ConceptDocumentV2,
   type ConceptComponentId,
+  type CustomerPersona,
+  PERSONA_VALUE_LABELS,
+  PERSONA_VISIT_FREQUENCY_LABELS,
+  PERSONA_SPEND_LABELS,
 } from "@/lib/concept";
 import { PrintButton } from "./print-button";
 
@@ -46,9 +50,15 @@ export default async function ConceptPrintPage() {
 
   const conceptDoc: ConceptDocumentV2 = normalizeConceptV2(doc?.content);
 
+  const personas = conceptDoc.personas ?? [];
+
   const sections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     const comp = conceptDoc.components[meta.id];
-    return comp.included && comp.content.trim().length > 0;
+    if (!comp.included) return false;
+    if (meta.id === "target_customer") {
+      return personas.length > 0 || comp.content.trim().length > 0;
+    }
+    return comp.content.trim().length > 0;
   });
 
   // Shop identity is the document title — exclude from body sections
@@ -150,6 +160,16 @@ export default async function ConceptPrintPage() {
               const comp = conceptDoc.components[meta.id];
               const isFeatured = FEATURED_IDS.has(meta.id);
 
+              if (meta.id === "target_customer" && personas.length > 0) {
+                return (
+                  <PersonasPrintBlock
+                    key={meta.id}
+                    label={meta.label}
+                    personas={personas}
+                  />
+                );
+              }
+
               if (isFeatured) {
                 return (
                   <div
@@ -205,6 +225,103 @@ export default async function ConceptPrintPage() {
           </span>
           <span className="text-xs text-[#afafaf]">Timberline Coffee School</span>
         </footer>
+      </div>
+    </div>
+  );
+}
+
+function PersonasPrintBlock({
+  label,
+  personas,
+}: {
+  label: string;
+  personas: CustomerPersona[];
+}) {
+  if (personas.length === 1) {
+    const p = personas[0];
+    const habitParts = [
+      p.visitFrequency ? PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency] : null,
+      p.spendPerVisit ? PERSONA_SPEND_LABELS[p.spendPerVisit] + " per visit" : null,
+    ].filter(Boolean);
+    const body = [
+      p.whyTheyVisit.trim(),
+      p.painPoints?.trim(),
+      habitParts.length > 0 ? habitParts.join(", ") : null,
+      p.notes?.trim(),
+    ]
+      .filter(Boolean)
+      .join(". ");
+
+    return (
+      <div className="section-card bg-white border border-[#efefef] rounded-2xl overflow-hidden flex">
+        <div className="w-1 bg-[#155e63] flex-shrink-0" />
+        <div className="px-6 py-5 flex-1 min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-2.5">
+            {label}
+          </p>
+          <p className="text-sm font-semibold text-[#1a1a1a] mb-1">{p.name}</p>
+          {body && (
+            <p className="text-[#1a1a1a] leading-[1.75]" style={{ fontSize: "14.5px" }}>
+              {body}
+            </p>
+          )}
+          {p.values && p.values.length > 0 && (
+            <p className="mt-1.5 text-xs text-[#6b6b6b]">
+              Values: {p.values.map((v) => PERSONA_VALUE_LABELS[v]).join(", ")}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple personas — block layout
+  return (
+    <div className="section-card bg-white border border-[#efefef] rounded-2xl overflow-hidden">
+      <div className="flex">
+        <div className="w-1 bg-[#155e63] flex-shrink-0" />
+        <div className="px-6 pt-5 pb-1 flex-1 min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-4">
+            {label}
+          </p>
+          <div className="space-y-4 pb-5">
+            {personas.map((p) => {
+              const habitParts = [
+                p.visitFrequency ? PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency] : null,
+                p.spendPerVisit ? PERSONA_SPEND_LABELS[p.spendPerVisit] + " per visit" : null,
+              ].filter(Boolean);
+              return (
+                <div key={p.id} className="border-t border-[#efefef] pt-4 first:border-t-0 first:pt-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-semibold text-[#1a1a1a]">{p.name}</p>
+                    {p.isPrimary && (
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-[#155e63] border border-[#cfe0e1] rounded-full px-1.5 py-0.5 leading-none">
+                        Primary
+                      </span>
+                    )}
+                  </div>
+                  {p.whyTheyVisit.trim() && (
+                    <p className="text-sm text-[#1a1a1a] leading-relaxed mb-1">
+                      {p.whyTheyVisit.trim()}
+                    </p>
+                  )}
+                  {(habitParts.length > 0 || (p.values && p.values.length > 0)) && (
+                    <p className="text-xs text-[#6b6b6b]">
+                      {[
+                        habitParts.length > 0 ? habitParts.join(", ") : null,
+                        p.values && p.values.length > 0
+                          ? p.values.map((v) => PERSONA_VALUE_LABELS[v]).join(", ")
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

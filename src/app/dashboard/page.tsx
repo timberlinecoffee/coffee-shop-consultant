@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { computePlanReadiness } from "@/lib/workspace-manifest";
 import { capitalizeFirst } from "@/lib/format";
+import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 
 export const dynamic = 'force-dynamic';
 
@@ -85,8 +88,12 @@ export default async function DashboardPage() {
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
 
-  // Workspace 2 unlocks after Workspace 1 complete
-  const w2Unlocked = w1Completed;
+  // All downstream modules unlock simultaneously when concept is complete
+  const allUnlocked = w1Completed;
+
+  const cookieStore = await cookies();
+  const noteDismissed = cookieStore.get("concept_unlock_note_dismissed")?.value === "1";
+  const showUnlockNote = allUnlocked && !noteDismissed;
 
   const isPaid = subscriptionTier !== "free";
   const isProUnlimited = subscriptionTier === "pro";
@@ -170,7 +177,7 @@ export default async function DashboardPage() {
                 href="/workspace/concept"
                 className="inline-block text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-1.5 rounded-lg transition-colors"
               >
-                {w1Completed ? "Review \u2192" : w1Started ? "Continue \u2192" : "Start \u2192"}
+                {w1Completed ? "Review →" : w1Started ? "Continue →" : "Start →"}
               </Link>
             </div>
           </div>
@@ -179,37 +186,36 @@ export default async function DashboardPage() {
         {/* COMING UP */}
         <div className="mb-10">
           <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming Up</p>
+          <ConceptUnlockNote show={showUnlockNote} />
           <div className="bg-white rounded-xl border border-[#efefef] divide-y divide-[#efefef]">
-            {/* Workspace 2 */}
-            <div className="p-5 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
-                {w2Unlocked ? (
-                  <span className="text-xs font-bold text-[#155e63]">2</span>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
+            {[
+              { num: 2, title: "Location & Lease", href: "/workspace/location-lease", lockedNote: <><span>Finish your Concept to open all modules.</span>{" "}<Link href="/workspace/concept" className="underline font-medium">Go to Concept</Link></> },
+              { num: 3, title: "Build-out & Equipment", href: "/workspace/buildout-equipment", lockedNote: <span>Opens with Concept</span> },
+              { num: 4, title: "Financials", href: "/workspace/financials", lockedNote: <span>Opens with Concept</span> },
+              { num: 5, title: "Menu & Pricing", href: "/workspace/menu-pricing", lockedNote: <span>Opens with Concept</span> },
+              { num: 6, title: "Launch Plan", href: "/workspace/launch-plan", lockedNote: <span>Opens with Concept</span> },
+            ].map(({ num, title, href, lockedNote }) => (
+              <div key={num} className="p-5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
+                  {allUnlocked ? (
+                    <span className="text-xs font-bold text-[#155e63]">{num}</span>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#1a1a1a]">Workspace {num}: {title}</p>
+                  <p className="text-xs text-[#afafaf]">
+                    {allUnlocked ? "Ready to start" : lockedNote}
+                  </p>
+                </div>
+                {allUnlocked && (
+                  <Link href={href} className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0 inline-flex items-center gap-1">Open <ArrowRight size={12} /></Link>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1a1a1a]">Workspace 2: Location &amp; Lease</p>
-                <p className="text-xs text-[#afafaf]">
-                  {w2Unlocked ? "Ready to start" : "Begin after Concept"}
-                </p>
-              </div>
-              {w2Unlocked && (
-                <Link href="/workspace/location-lease" className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0">Open \u2192</Link>
-              )}
-            </div>
-            {/* Workspaces 3-6 collapsed */}
-            <div className="px-5 py-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-              </div>
-              <p className="text-sm text-[#afafaf]">Workspaces 3{"\u20136"} unlock as you go</p>
-            </div>
+            ))}
           </div>
         </div>
 
