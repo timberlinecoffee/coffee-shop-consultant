@@ -39,7 +39,7 @@ Seeded by `supabase/seeds/staging-demo-user.sql`. Idempotent — safe to re-run 
 | --- | --- |
 | Email | `demo.owner@timberline.coffee` |
 | Plan | Cedar & Crema (demo) |
-| Subscription | Accelerator, active |
+| Subscription | Pro, active |
 | Progress | Module 1 complete, Module 2 in progress |
 | AI credits | 200 |
 | Readiness score | 42 |
