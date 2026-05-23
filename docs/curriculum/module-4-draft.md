@@ -154,4 +154,4 @@ Write your one-sentence shop model description and your category list. Mark each
 
 ---
 
-*Next: Lesson 2 — COGS and Pricing*
+*Next: Lesson 2: COGS and Pricing*
