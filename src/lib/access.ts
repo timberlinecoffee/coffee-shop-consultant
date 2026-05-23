@@ -11,6 +11,14 @@ export function isSubscriptionActive(status: string | null | undefined): boolean
   return status === 'active';
 }
 
+// TIM-925: Beta waiver bypass — true when betaWaiverUntil is a future timestamp.
+// Checked in paywall gates before enforcing subscription_status.
+export function isBetaWaived(betaWaiverUntil: string | Date | null | undefined): boolean {
+  if (!betaWaiverUntil) return false;
+  const expiry = typeof betaWaiverUntil === 'string' ? new Date(betaWaiverUntil) : betaWaiverUntil;
+  return expiry > new Date();
+}
+
 // Canonical set of workspace keys that require an active subscription to mutate.
 export const MUTABLE_WORKSPACE_KEYS = new Set([
   'concept',
