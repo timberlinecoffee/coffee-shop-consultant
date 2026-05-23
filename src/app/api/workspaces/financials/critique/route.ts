@@ -8,8 +8,8 @@ export const maxDuration = 45;
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
-import type { FinancialProjections } from "@/lib/financials";
-import { formatCurrency } from "@/lib/financials";
+import type { FinancialProjections } from "@/lib/financial-projection";
+import { formatCurrency } from "@/lib/financial-projection";
 
 const anthropic = new Anthropic();
 

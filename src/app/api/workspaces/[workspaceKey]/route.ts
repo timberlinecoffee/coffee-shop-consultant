@@ -106,6 +106,15 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "Failed to save" }, { status: 500 })
   }
 
+  // TIM-972: Stamp financial_models.needs_review_at when concept or menu_pricing change
+  // so the Financials workspace can show a non-blocking review callout.
+  if (workspaceKey === "concept" || workspaceKey === "menu_pricing") {
+    await supabase
+      .from("financial_models")
+      .update({ needs_review_at: new Date().toISOString() })
+      .eq("plan_id", plan.id)
+  }
+
   return Response.json({ id: data.id, updated_at: data.updated_at })
 }
 
