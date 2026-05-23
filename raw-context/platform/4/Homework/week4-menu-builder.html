@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 4 Menu Builder — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    .header { background: var(--primary); padding: 44px 40px 40px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 280px; height: 280px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header-inner { max-width: 960px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 18px; }
+    .header h1 { font-size: 30px; font-weight: 800; color: var(--white); line-height: 1.24; margin-bottom: 12px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 14px; color: rgba(255,255,255,0.75); line-height: 1.7; max-width: 580px; margin-bottom: 18px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 12.5px; font-weight: 600; padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 960px; margin: 0 auto; padding: 32px 40px 56px; }
+
+    /* ── DETAILS BAR ── */
+    .details-bar { background: var(--white); border-radius: 12px; padding: 18px 22px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .detail-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 6px; }
+    .detail-field .field-line { border-bottom: 1.5px solid #ddd; height: 26px; width: 100%; }
+
+    /* ── HOW TO USE ── */
+    .how-to { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; }
+    .how-to p { font-size: 13px; color: var(--amber-text); line-height: 1.68; }
+    .how-to strong { font-weight: 700; }
+
+    /* ── SECTION HEADING ── */
+    .section-heading { font-size: 16px; font-weight: 700; color: var(--white); background: var(--primary); padding: 10px 18px; border-radius: 8px 8px 0 0; margin-bottom: 0; }
+    .section-heading.secondary { background: var(--secondary); }
+
+    /* ── MENU TABLE ── */
+    .menu-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 24px; }
+    .menu-table thead tr { background: #f5f5f5; }
+    .menu-table thead th { padding: 10px 12px; text-align: left; font-size: 10.5px; font-weight: 700; color: var(--dark-grey); letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; }
+    .menu-table thead th.right { text-align: right; }
+    .menu-table thead th.center { text-align: center; }
+    .menu-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .menu-table tbody tr:last-child { border-bottom: none; }
+    .menu-table tbody tr:nth-child(even) { background: #fafafa; }
+    .menu-table td { padding: 10px 12px; font-size: 13px; vertical-align: middle; }
+    .menu-table td.write { border-bottom: 1px solid #e0e0e0; }
+    .write-cell { border-bottom: 1px solid #ccc; height: 28px; display: block; width: 100%; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .formula-note { font-size: 11px; color: var(--dark-grey); font-style: italic; }
+    .margin-box { background: var(--light-grey); border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 700; color: var(--primary); display: inline-block; }
+    .tag-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; }
+    .tag-anchor { background: var(--primary); color: white; }
+    .tag-sig { background: var(--secondary); color: white; }
+
+    /* ── ROASTER SECTION ── */
+    .roaster-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+    .roaster-card { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .roaster-card-header { background: var(--secondary); padding: 12px 16px; }
+    .roaster-card-header h4 { font-size: 13px; font-weight: 700; color: var(--white); }
+    .roaster-card-header .tag { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 2px; }
+    .roaster-card-body { padding: 14px 16px; }
+    .roaster-field { margin-bottom: 10px; }
+    .roaster-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 4px; }
+    .roaster-field .wline { border-bottom: 1px solid #ddd; height: 22px; }
+    .roaster-field .wline-tall { border-bottom: 1px solid #ddd; height: 22px; margin-bottom: 4px; }
+
+    /* ── SUMMARY BOX ── */
+    .summary-box { background: var(--primary); border-radius: 14px; padding: 24px 26px; margin-bottom: 24px; }
+    .summary-box h3 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+    .summary-field { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 14px; }
+    .summary-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
+    .summary-field .sum-line { border-bottom: 1px solid rgba(255,255,255,0.35); height: 24px; }
+
+    /* ── FOOD DECISION ── */
+    .food-decision { background: var(--white); border-radius: 14px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 24px; }
+    .food-decision h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 14px; }
+    .food-options { display: flex; gap: 10px; margin-bottom: 16px; }
+    .food-option { flex: 1; border: 2px solid #e0e0e0; border-radius: 10px; padding: 12px 14px; text-align: center; }
+    .food-option .icon { font-size: 20px; margin-bottom: 5px; }
+    .food-option h4 { font-size: 12px; font-weight: 700; color: var(--primary); }
+    .food-decision-notes label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 6px; }
+    .wline-notes { border-bottom: 1px solid #ddd; height: 26px; margin-bottom: 6px; }
+
+    /* ── FOOTER ── */
+    .footer { background: var(--primary); text-align: center; padding: 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 760px) {
+      .details-bar { grid-template-columns: 1fr 1fr; }
+      .roaster-cards { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .food-options { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Menu Builder &<br><span>Roaster Research Template</span></h1>
+    <p class="header-sub">Fill in every row. Price every drink. Calculate every margin. The goal isn't a perfect menu on the first try — it's a menu with numbers attached that you can defend.</p>
+    <div class="week-badge">☕ Week 4 — Menu Design, Coffee Program & Sourcing</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- SHOP DETAILS -->
+  <div class="details-bar">
+    <div class="detail-field"><label>Shop Name</label><div class="field-line"></div></div>
+    <div class="detail-field"><label>Shop Type (from Week 1)</label><div class="field-line"></div></div>
+    <div class="detail-field"><label>Target Roaster</label><div class="field-line"></div></div>
+    <div class="detail-field"><label>Date</label><div class="field-line"></div></div>
+  </div>
+
+  <div class="how-to">
+    <p><strong>How to use this template:</strong> Fill in the drink name, your planned price, and the estimated cost to make it (ingredients only — coffee, milk, syrups, cup, lid). Then calculate the margin: <strong>Margin % = (Price − Cost) ÷ Price × 100</strong>. Mark your anchor drink with ⚓ and your signature drink with ★. At the bottom, calculate your blended margin across all drinks.</p>
+  </div>
+
+  <!-- ESPRESSO SECTION -->
+  <div class="section-heading">Espresso-Based Drinks</div>
+  <table class="menu-table">
+    <thead>
+      <tr>
+        <th style="width:28%">Drink Name</th>
+        <th style="width:12%" class="right">Price ($)</th>
+        <th style="width:14%" class="right">Ingredient Cost ($)</th>
+        <th style="width:12%" class="center">Margin %</th>
+        <th>Notes / Variations (e.g. milk options, sizes)</th>
+        <th style="width:10%" class="center">Flag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- FILTER / DRIP -->
+  <div class="section-heading secondary">Filter & Drip Coffee</div>
+  <table class="menu-table">
+    <thead>
+      <tr>
+        <th style="width:28%">Drink Name</th>
+        <th style="width:12%" class="right">Price ($)</th>
+        <th style="width:14%" class="right">Ingredient Cost ($)</th>
+        <th style="width:12%" class="center">Margin %</th>
+        <th>Notes (e.g. brew method, origins offered)</th>
+        <th style="width:10%" class="center">Flag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- SPECIALTY DRINKS -->
+  <div class="section-heading">Specialty & Signature Drinks</div>
+  <table class="menu-table">
+    <thead>
+      <tr>
+        <th style="width:28%">Drink Name</th>
+        <th style="width:12%" class="right">Price ($)</th>
+        <th style="width:14%" class="right">Ingredient Cost ($)</th>
+        <th style="width:12%" class="center">Margin %</th>
+        <th>Recipe / Story (what makes this one yours?)</th>
+        <th style="width:10%" class="center">Flag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"><span class="tag-badge tag-sig">★ Sig</span></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- COLD DRINKS -->
+  <div class="section-heading secondary">Cold Drinks</div>
+  <table class="menu-table">
+    <thead>
+      <tr>
+        <th style="width:28%">Drink Name</th>
+        <th style="width:12%" class="right">Price ($)</th>
+        <th style="width:14%" class="right">Ingredient Cost ($)</th>
+        <th style="width:12%" class="center">Margin %</th>
+        <th>Notes</th>
+        <th style="width:10%" class="center">Flag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- NON-COFFEE -->
+  <div class="section-heading secondary">Non-Coffee Drinks</div>
+  <table class="menu-table">
+    <thead>
+      <tr>
+        <th style="width:28%">Drink Name</th>
+        <th style="width:12%" class="right">Price ($)</th>
+        <th style="width:14%" class="right">Ingredient Cost ($)</th>
+        <th style="width:12%" class="center">Margin %</th>
+        <th>Notes (e.g. tea brand, matcha source)</th>
+        <th style="width:10%" class="center">Flag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- FOOD -->
+  <div class="section-heading">Food Items</div>
+  <table class="menu-table">
+    <thead>
+      <tr>
+        <th style="width:28%">Item Name</th>
+        <th style="width:12%" class="right">Price ($)</th>
+        <th style="width:14%" class="right">Ingredient Cost ($)</th>
+        <th style="width:12%" class="center">Margin %</th>
+        <th>Source (made in-house / bakery partner / supplier)</th>
+        <th style="width:10%" class="center">Flag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+      <tr><td><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="right"><div class="write-cell"></div></td><td class="center"><div class="margin-box">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%</div></td><td><div class="write-cell"></div></td><td class="center"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- SUMMARY -->
+  <div class="summary-box">
+    <h3>Menu Summary</h3>
+    <div class="summary-grid">
+      <div class="summary-field"><label>Total drinks on menu</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Total food items</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Anchor drink name</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Signature drink name</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Estimated blended bev. margin %</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Lowest margin drink</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Highest margin drink</label><div class="sum-line"></div></div>
+      <div class="summary-field"><label>Est. average ticket ($)</label><div class="sum-line"></div></div>
+    </div>
+  </div>
+
+  <!-- BLENDED MARGIN NOTE -->
+  <div class="how-to" style="margin-bottom:24px;">
+    <p><strong>Calculating your blended margin:</strong> Take your three or four most commonly ordered drinks and estimate what % of your total orders each one represents. Multiply each drink's margin by its share of orders, then add them together. Example: if 40% of orders are lattes (72% margin) and 25% are batch brew (88% margin), those two drinks contribute 0.40×72 + 0.25×88 = 28.8 + 22.0 = 50.8 points toward your blended margin. Do this for your whole menu to get your full blended figure.</p>
+  </div>
+
+  <!-- ROASTER RESEARCH -->
+  <div class="section-heading" style="border-radius:8px; margin-bottom:16px;">Roaster Research</div>
+  <div class="roaster-cards">
+    <div class="roaster-card">
+      <div class="roaster-card-header"><div class="tag">Option 1</div><h4>Roaster Name</h4></div>
+      <div class="roaster-card-body">
+        <div class="roaster-field"><label>Roaster name & location</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Coffees offered at wholesale</label><div class="wline"></div><div class="wline"></div></div>
+        <div class="roaster-field"><label>Wholesale minimum (kg/week or $/order)</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Price per kg (espresso blend)</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Training / support offered?</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Exclusive in your area?</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Does their brand align with your concept?</label><div class="wline"></div><div class="wline"></div></div>
+        <div class="roaster-field"><label>Overall: would you work with them? Why?</label><div class="wline"></div><div class="wline"></div></div>
+      </div>
+    </div>
+    <div class="roaster-card">
+      <div class="roaster-card-header" style="background: var(--primary);"><div class="tag">Option 2</div><h4>Roaster Name</h4></div>
+      <div class="roaster-card-body">
+        <div class="roaster-field"><label>Roaster name & location</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Coffees offered at wholesale</label><div class="wline"></div><div class="wline"></div></div>
+        <div class="roaster-field"><label>Wholesale minimum (kg/week or $/order)</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Price per kg (espresso blend)</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Training / support offered?</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Exclusive in your area?</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Does their brand align with your concept?</label><div class="wline"></div><div class="wline"></div></div>
+        <div class="roaster-field"><label>Overall: would you work with them? Why?</label><div class="wline"></div><div class="wline"></div></div>
+      </div>
+    </div>
+    <div class="roaster-card">
+      <div class="roaster-card-header" style="background: #aaaaaa;"><div class="tag">Option 3 (optional)</div><h4>Roaster Name</h4></div>
+      <div class="roaster-card-body">
+        <div class="roaster-field"><label>Roaster name & location</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Coffees offered at wholesale</label><div class="wline"></div><div class="wline"></div></div>
+        <div class="roaster-field"><label>Wholesale minimum (kg/week or $/order)</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Price per kg (espresso blend)</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Training / support offered?</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Exclusive in your area?</label><div class="wline"></div></div>
+        <div class="roaster-field"><label>Does their brand align with your concept?</label><div class="wline"></div><div class="wline"></div></div>
+        <div class="roaster-field"><label>Overall: would you work with them? Why?</label><div class="wline"></div><div class="wline"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOD DECISION -->
+  <div class="food-decision">
+    <h3>Part C — Your Food Program Decision</h3>
+    <div class="food-options">
+      <div class="food-option"><div class="icon">🤝</div><h4>Partner with a bakery</h4></div>
+      <div class="food-option"><div class="icon">🍳</div><h4>Make it ourselves</h4></div>
+      <div class="food-option"><div class="icon">☕</div><h4>Coffee only — no food</h4></div>
+    </div>
+    <div class="food-decision-notes">
+      <label>My decision and why it fits my concept</label>
+      <div class="wline-notes"></div>
+      <div class="wline-notes"></div>
+      <div class="wline-notes"></div>
+      <div class="wline-notes"></div>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="food-decision-notes">
+        <label>If partnering — who am I partnering with, and what do they supply?</label>
+        <div class="wline-notes"></div>
+        <div class="wline-notes"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 4 Menu Builder & Roaster Research Template</p>
+</div>
+
+</body>
+</html>

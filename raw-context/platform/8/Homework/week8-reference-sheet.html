@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 8 Reference Sheet — Operations & What Comes Next</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --primary:#155e63; --secondary:#76b39d; --light-grey:#efefef; --dark-grey:#afafaf; --white:#ffffff; --amber:#e8a44a; --amber-bg:#fff8ee; --amber-text:#7a5120; }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Poppins',sans-serif; background:var(--light-grey); color:#2a2a2a; }
+
+    .header { background:var(--primary); padding:50px 40px 46px; position:relative; overflow:hidden; }
+    .header::before { content:''; position:absolute; top:-70px; right:-70px; width:300px; height:300px; border-radius:50%; background:rgba(118,179,157,0.16); }
+    .header::after  { content:''; position:absolute; bottom:-40px; left:30%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.05); }
+    .header-inner { max-width:900px; margin:0 auto; position:relative; z-index:1; }
+    .cohort-label { display:inline-block; background:var(--secondary); color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:5px 14px; border-radius:20px; margin-bottom:20px; }
+    .header h1 { font-size:34px; font-weight:800; color:#fff; line-height:1.22; margin-bottom:12px; }
+    .header h1 span { color:var(--secondary); }
+    .header-sub { font-size:14.5px; color:rgba(255,255,255,.78); line-height:1.72; max-width:620px; margin-bottom:22px; }
+    .week-badge { display:inline-block; background:rgba(255,255,255,.11); color:rgba(255,255,255,.88); font-size:13px; font-weight:600; padding:7px 18px; border-radius:8px; border:1px solid rgba(255,255,255,.2); }
+
+    .body { max-width:900px; margin:0 auto; padding:36px 40px 56px; }
+    .section-heading { font-size:21px; font-weight:700; color:var(--primary); margin-bottom:6px; }
+    .section-sub { font-size:13.5px; color:var(--dark-grey); line-height:1.6; margin-bottom:22px; }
+
+    .section-banner { background:var(--primary); border-radius:12px; padding:18px 24px; margin-bottom:22px; }
+    .section-banner .eyebrow { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--secondary); margin-bottom:6px; }
+    .section-banner h2 { font-size:18px; font-weight:700; color:#fff; }
+
+    .info-block { background:#fff; border-radius:14px; padding:24px 26px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:22px; }
+    .info-block .tag { font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary); margin-bottom:6px; }
+    .info-block h3 { font-size:16px; font-weight:700; color:var(--primary); margin-bottom:12px; }
+    .info-block p { font-size:13.5px; line-height:1.72; color:#444; margin-bottom:10px; }
+    .info-block p:last-child { margin-bottom:0; }
+    .info-block p strong { color:var(--primary); }
+
+    /* Cadence rows */
+    .cadence-table { border-radius:12px; overflow:hidden; margin-bottom:22px; border:1px solid #e0e0e0; }
+    .cadence-row { display:flex; border-bottom:1px solid #eee; }
+    .cadence-row:last-child { border-bottom:none; }
+    .cadence-freq { background:var(--primary); color:#fff; font-size:12px; font-weight:800; min-width:72px; width:72px; display:flex; align-items:center; justify-content:center; text-align:center; padding:10px 6px; letter-spacing:.04em; }
+    .cadence-row:nth-child(2) .cadence-freq { background:#1a7474; }
+    .cadence-row:nth-child(3) .cadence-freq { background:var(--secondary); }
+    .cadence-body { flex:1; background:#fff; padding:14px 18px; }
+    .cadence-row:nth-child(even) .cadence-body { background:#f7fbfb; }
+    .cadence-label { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--primary); margin-bottom:6px; }
+    .cadence-body ul { list-style:none; padding:0; }
+    .cadence-body ul li { font-size:13.5px; color:#444; line-height:1.68; padding:3px 0 3px 16px; position:relative; }
+    .cadence-body ul li::before { content:'–'; position:absolute; left:0; color:var(--secondary); }
+
+    /* Two column */
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
+    .col-block { background:#fff; border-radius:12px; padding:18px 20px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+    .col-block h4 { font-size:14px; font-weight:700; color:var(--primary); margin-bottom:10px; }
+    .col-block ul { list-style:none; padding:0; }
+    .col-block ul li { font-size:13px; color:#444; line-height:1.68; padding:4px 0 4px 14px; position:relative; border-bottom:1px solid var(--light-grey); }
+    .col-block ul li:last-child { border-bottom:none; }
+    .col-block ul li::before { content:'→'; position:absolute; left:0; color:var(--secondary); font-size:11px; top:6px; }
+
+    /* Growth card */
+    .growth-card { background:#fff; border-radius:14px; padding:22px 24px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:16px; }
+    .growth-card .eyebrow { font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary); margin-bottom:6px; }
+    .growth-card h3 { font-size:16px; font-weight:700; color:var(--primary); margin-bottom:10px; }
+    .growth-card p { font-size:13.5px; color:#444; line-height:1.72; margin-bottom:12px; }
+    .growth-attr { display:flex; gap:8px; margin-bottom:8px; font-size:13px; line-height:1.6; }
+    .growth-attr strong { color:var(--primary); min-width:120px; flex-shrink:0; }
+    .growth-attr span { color:#555; }
+
+    /* Do / Watch out grid */
+    .do-dont { display:grid; grid-template-columns:1fr 1fr; gap:0; border-radius:12px; overflow:hidden; margin-bottom:22px; }
+    .do-col { padding:20px 22px; }
+    .do-col-good { background:#e8f5f1; }
+    .do-col-bad  { background:#fef3f3; }
+    .do-col-label { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:12px; }
+    .do-col-good .do-col-label { color:#1a7a45; }
+    .do-col-bad  .do-col-label { color:#c0392b; }
+    .do-col ul { list-style:none; padding:0; }
+    .do-col ul li { font-size:13px; color:#333; line-height:1.65; padding:5px 0 5px 18px; position:relative; border-bottom:1px solid rgba(0,0,0,.06); }
+    .do-col ul li:last-child { border-bottom:none; }
+    .do-col-good ul li::before { content:'✓'; position:absolute; left:0; color:#1a7a45; font-weight:700; }
+    .do-col-bad  ul li::before { content:'✗'; position:absolute; left:0; color:#c0392b; font-weight:700; }
+
+    .amber-note { background:var(--amber-bg); border-left:4px solid var(--amber); border-radius:10px; padding:18px 22px; margin-bottom:22px; }
+    .amber-note p { font-size:13.5px; line-height:1.72; color:var(--amber-text); }
+    .amber-note strong { font-weight:700; }
+
+    .footer { background:var(--primary); text-align:center; padding:22px 20px; margin-top:40px; }
+    .footer p { font-size:12px; color:rgba(255,255,255,.5); }
+    .footer strong { color:var(--secondary); font-weight:600; }
+
+    @media(max-width:640px) {
+      .header { padding:36px 22px 32px; } .header h1 { font-size:26px; } .body { padding:24px 18px 44px; }
+      .two-col, .do-dont { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Week 8 <span>Reference Sheet</span></h1>
+    <p class="header-sub">Operations &amp; What Comes Next — the rhythms, the numbers, and the decisions that determine whether your business is still standing in three years.</p>
+    <div class="week-badge">Week 8 of 8 — Reference Sheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- SECTION 1 -->
+  <div class="section-banner">
+    <div class="eyebrow">Section 1</div>
+    <h2>The Operational Cadence — Daily, Weekly, Monthly</h2>
+  </div>
+
+  <div class="info-block">
+    <div class="tag">Core Principle</div>
+    <h3>The Rhythm of a Healthy Café</h3>
+    <p>Most café problems are not dramatic events — they are small things that compound quietly over weeks. A daily sales review catches a revenue slip before it becomes a pattern. A weekly labour check catches a scheduling problem before it becomes a payroll crisis. A monthly P&L review catches a drift from your projections before it becomes expensive to fix.</p>
+    <p>The operators who build sustainable businesses are not necessarily the ones who work hardest. They are the ones who know their numbers, check them consistently, and act before small problems become large ones.</p>
+  </div>
+
+  <div class="cadence-table">
+    <div class="cadence-row">
+      <div class="cadence-freq">DAILY</div>
+      <div class="cadence-body">
+        <div class="cadence-label">End-of-Day Sales &amp; Cash Review</div>
+        <ul>
+          <li>Compare total sales to the same day last week and last month.</li>
+          <li>Check average transaction value — is it trending up, flat, or down?</li>
+          <li>Reconcile cash in the drawer against the POS end-of-day report.</li>
+          <li>Note anything that affected trading: weather, events, staffing issues.</li>
+          <li>Flag anything needing follow-up tomorrow — not next week.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cadence-row">
+      <div class="cadence-freq">WEEKLY</div>
+      <div class="cadence-body">
+        <div class="cadence-label">COGS, Labour &amp; Waste Review</div>
+        <ul>
+          <li>Calculate your actual COGS as a percentage of revenue — target is typically 25–32% for a coffee-led menu.</li>
+          <li>Calculate your labour cost as a percentage of revenue — target is typically 30–35% for a small café.</li>
+          <li>Review wastage: coffee ground but not used, milk discarded, food not sold. Small waste numbers compound into large costs.</li>
+          <li>Check your week-on-week sales trend. Three consecutive down weeks is a signal, not a blip.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cadence-row">
+      <div class="cadence-freq">MONTHLY</div>
+      <div class="cadence-body">
+        <div class="cadence-label">P&amp;L vs. Projections &amp; Forward Planning</div>
+        <ul>
+          <li>Compare your actual monthly P&L to the model you built in Week 2. What was accurate? What was not?</li>
+          <li>Review your top-selling and bottom-selling items. Is the menu working as designed?</li>
+          <li>Look at your customer count trend — are you building regulars or still trading on novelty?</li>
+          <li>Identify one thing to change or improve in the next 30 days. Specific action, specific date.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="section-banner">
+    <div class="eyebrow">Section 2</div>
+    <h2>The 90-Day Adjustment Period</h2>
+  </div>
+
+  <p style="font-size:13.5px;color:#444;line-height:1.72;margin-bottom:18px;">The first 90 days after opening will not go to plan. This is not a problem — it is the process. Your concept will need tuning. Your staffing model will need adjustment. Your menu will have surprises. The question is not whether things will change, but whether you are watching closely enough to catch what needs changing.</p>
+
+  <div class="two-col">
+    <div class="col-block">
+      <h4>What typically shifts in the first 90 days</h4>
+      <ul>
+        <li>Your busiest times are rarely when you predicted — adjust staffing before adjusting the menu.</li>
+        <li>One or two menu items will dramatically outsell everything else. Lean into them.</li>
+        <li>Service speed improves significantly between week 2 and week 6. Don't over-hire for week-one service.</li>
+        <li>Your regulars start emerging around week 4–6. Notice who they are and what they order.</li>
+      </ul>
+    </div>
+    <div class="col-block">
+      <h4>What to protect during the adjustment period</h4>
+      <ul>
+        <li>Your concept. Small adjustments are healthy. Drifting from your positioning because one customer asked is not.</li>
+        <li>Your team. The first 90 days are when turnover risk is highest. Over-communicate and over-thank.</li>
+        <li>Your standards. It is tempting to relax quality under volume pressure. This is when your reputation is being formed.</li>
+        <li>Your energy. Burnout in the first 90 days is real and common. Plan rest days in advance.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>The 90-day check:</strong> At the end of month three, sit with your numbers and your original Week 2 projections and ask honestly: are the gaps explained by factors you understand and can act on — or by something more fundamental about the concept, the location, or the market? The answer shapes everything that follows.</p>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="section-banner">
+    <div class="eyebrow">Section 3</div>
+    <h2>Growth Decisions — How to Evaluate Them</h2>
+  </div>
+
+  <p style="font-size:13.5px;color:#444;line-height:1.72;margin-bottom:18px;">The most common growth mistake is adding complexity before the original business is stable. A second location, a wholesale account, a catering arm — each one sounds like an opportunity. But each one is also a full-time job that competes with the attention your main business still needs.</p>
+
+  <div class="growth-card">
+    <div class="eyebrow">Before Any Growth Decision</div>
+    <h3>The Two-Question Test</h3>
+    <p>Before committing to any expansion, answer these two questions honestly. They filter out most bad decisions without needing a spreadsheet.</p>
+    <div class="growth-attr"><strong>Question 1:</strong><span>Does my current business run consistently well without me being there every day?</span></div>
+    <div class="growth-attr"><strong>Question 2:</strong><span>Can I fund and manage this growth without compromising what already works?</span></div>
+    <div class="growth-attr"><strong>If both are yes:</strong><span>Proceed carefully, with a plan and a timeline.</span></div>
+    <div class="growth-attr"><strong>If either is no:</strong><span>Fix that first. Growth built on an unstable foundation makes the instability worse.</span></div>
+  </div>
+
+  <div class="two-col">
+    <div class="col-block">
+      <h4>Growth options worth evaluating</h4>
+      <ul>
+        <li>Wholesale beans to local offices and restaurants — recurring revenue, low overhead, builds brand.</li>
+        <li>Catering for local events — high margin if you already have the equipment and the team.</li>
+        <li>Second location — highest risk, highest reward. Only when the first is genuinely systemised.</li>
+        <li>Coffee education or tastings — low overhead, builds community, leverages your knowledge.</li>
+      </ul>
+    </div>
+    <div class="col-block">
+      <h4>Growth options to approach with caution</h4>
+      <ul>
+        <li>A food programme significantly more complex than what you opened with — this is a different business.</li>
+        <li>A second location before the first is consistently profitable and operationally independent.</li>
+        <li>Any growth that requires you to be in two places at once without the systems to support it.</li>
+        <li>Growth driven by a single large account — losing it leaves you over-extended.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 4 -->
+  <div class="section-banner">
+    <div class="eyebrow">Section 4</div>
+    <h2>Reading Your Numbers — What to Watch</h2>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-col do-col-good">
+      <div class="do-col-label">Do These Things</div>
+      <ul>
+        <li>Review your weekly revenue trend every Monday before you do anything else.</li>
+        <li>Know your COGS and labour percentages by heart. If they move more than 2–3 points in a week, find out why.</li>
+        <li>Track your average transaction value monthly. Slow growth here compounds into significant revenue over a year.</li>
+        <li>Know your break-even days per week — how many trading days at your average daily revenue cover fixed costs.</li>
+        <li>When something feels wrong, check the numbers before assuming. Often the thing that feels wrong is not the actual problem.</li>
+      </ul>
+    </div>
+    <div class="do-col do-col-bad">
+      <div class="do-col-label">Watch Out For These</div>
+      <ul>
+        <li>Ignoring a three-week revenue decline because you can explain each individual week.</li>
+        <li>Letting food or milk waste become a "it just happens" line in your head. It is a manageable cost.</li>
+        <li>Delaying a difficult staffing or menu decision because the numbers are uncomfortable to look at.</li>
+        <li>Assuming a strong opening month means the model is working — the first month is not representative of normal trading.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;|&nbsp; Coffee Shop Basecamp &nbsp;|&nbsp; Week 8 of 8 — Reference Sheet</p>
+</div>
+</body>
+</html>

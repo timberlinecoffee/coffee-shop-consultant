@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 3 Reference Sheet — Site Selection & Lease Strategy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--light-grey);
+      color: #2a2a2a;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--primary);
+      padding: 50px 40px 46px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -70px; right: -70px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(118,179,157,0.16);
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 30%;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cohort-label {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 34px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.22;
+      margin-bottom: 12px;
+    }
+    .header h1 span { color: var(--secondary); }
+    .header-sub {
+      font-size: 14.5px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.72;
+      max-width: 620px;
+      margin-bottom: 22px;
+    }
+    .week-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.11);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── BODY ── */
+    .body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 36px 40px 56px;
+    }
+
+    .section-heading {
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .section-sub {
+      font-size: 13.5px;
+      color: var(--dark-grey);
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    /* ── CRITERIA GRID ── */
+    .criteria-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+    .ccard {
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .ccard-header {
+      background: var(--secondary);
+      padding: 16px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ccard-header.primary-bg { background: var(--primary); }
+    .ccard-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .ccard-header-text .clabel {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 2px;
+    }
+    .ccard-header-text h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .ccard-body {
+      padding: 16px 20px 18px;
+    }
+    .ccard-body p {
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #444;
+    }
+    .ccard-warn {
+      margin-top: 10px;
+      background: var(--amber-bg);
+      border-radius: 6px;
+      padding: 10px 13px;
+      font-size: 12.5px;
+      color: var(--amber-text);
+      line-height: 1.65;
+    }
+
+    /* ── LEASE TERMS TABLE ── */
+    .terms-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 40px;
+    }
+    .terms-table thead tr {
+      background: var(--primary);
+    }
+    .terms-table thead th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .terms-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .terms-table tbody tr:last-child { border-bottom: none; }
+    .terms-table tbody tr:nth-child(even) { background: #fafafa; }
+    .terms-table td {
+      padding: 16px 20px;
+      font-size: 13.5px;
+      line-height: 1.65;
+      vertical-align: top;
+      color: #333;
+    }
+    .term-name {
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+      width: 24%;
+    }
+    .term-ask {
+      color: var(--secondary);
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+    .term-watch {
+      background: var(--amber-bg);
+      border-radius: 5px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--amber-text);
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+
+    /* ── GLOSSARY TABLE ── */
+    .glossary-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 40px;
+    }
+    .glossary-table thead tr {
+      background: var(--secondary);
+    }
+    .glossary-table thead th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .glossary-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .glossary-table tbody tr:last-child { border-bottom: none; }
+    .glossary-table tbody tr:nth-child(even) { background: #fafafa; }
+    .glossary-table td {
+      padding: 14px 20px;
+      font-size: 13.5px;
+      line-height: 1.68;
+      vertical-align: top;
+      color: #333;
+    }
+    .term { font-weight: 700; color: var(--primary); width: 26%; }
+
+    /* ── MISTAKES GRID ── */
+    .mistakes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+    .mcard {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-top: 3px solid var(--amber);
+    }
+    .mcard-icon { font-size: 22px; margin-bottom: 10px; }
+    .mcard h3 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 7px;
+    }
+    .mcard p {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.68;
+    }
+
+    /* ── LOI BOX ── */
+    .loi-box {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 40px;
+    }
+    .loi-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+    .loi-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .loi-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 16px;
+      border-radius: 8px;
+    }
+    .loi-item:nth-child(odd) { background: var(--light-grey); }
+    .loi-item .loi-num {
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 800;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .loi-item h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+    .loi-item p {
+      font-size: 12.5px;
+      color: #555;
+      line-height: 1.62;
+    }
+
+    /* ── CLOSING ── */
+    .closing-box {
+      background: var(--primary);
+      border-radius: 14px;
+      padding: 28px 32px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+    .closing-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+    .closing-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .closing-box p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: rgba(255,255,255,0.78);
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--primary);
+      text-align: center;
+      padding: 22px 20px;
+      margin-top: 1px;
+    }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    /* ── PRINT STYLES (Letter 8.5 × 11) ── */
+    @page {
+      size: letter;
+      margin: 0.5in;
+    }
+    @media print {
+      *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body {
+        background: #fff !important;
+        font-size: 11pt;
+      }
+      /* HEADER */
+      .header {
+        padding: 24px 30px 22px !important;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        border-radius: 6px;
+      }
+      .header::before, .header::after { display: none !important; }
+      .header h1 { font-size: 22pt !important; line-height: 1.2 !important; margin-bottom: 8px !important; }
+      .header-sub { font-size: 10pt !important; line-height: 1.5 !important; margin-bottom: 12px !important; max-width: 100% !important; }
+      .cohort-label { font-size: 8pt !important; padding: 3px 10px !important; margin-bottom: 10px !important; }
+      .week-badge { font-size: 9pt !important; padding: 4px 12px !important; }
+
+      /* BODY */
+      .body {
+        max-width: 100% !important;
+        padding: 16px 0 0 0 !important;
+      }
+
+      /* SECTION HEADINGS stick with following content */
+      .section-heading {
+        font-size: 14pt !important;
+        margin-top: 18px !important;
+        margin-bottom: 4px !important;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+      }
+      .section-sub {
+        font-size: 9pt !important;
+        margin-bottom: 10px !important;
+        page-break-after: avoid;
+      }
+
+      /* CARDS — never split mid-card */
+      .ccard, .mcard, .closing-box, .loi-box, .loi-item,
+      .terms-table, .glossary-table, .term, .criteria-grid,
+      .mistakes-grid {
+        page-break-inside: avoid !important;
+      }
+
+      /* Allow grids to break between items but not within them */
+      .criteria-grid, .mistakes-grid {
+        gap: 10px !important;
+      }
+
+      /* Compact card spacing */
+      .ccard, .closing-box, .loi-box, .terms-table, .glossary-table {
+        margin-bottom: 12px !important;
+      }
+
+      /* Card body text sized for print */
+      .ccard p, .ccard li, .mcard p, .closing-box p,
+      .loi-item p, .terms-table p, .term p,
+      .glossary-table p, .glossary-table td {
+        font-size: 10pt !important;
+        line-height: 1.55 !important;
+      }
+
+      /* White cards get a border for visibility on white page */
+      .ccard, .mcard, .loi-box, .terms-table, .glossary-table {
+        box-shadow: none !important;
+        border: 1px solid #e0e0e0 !important;
+      }
+
+      /* Tables — keep rows together */
+      .terms-table tr, .glossary-table tr { page-break-inside: avoid !important; }
+
+      /* FOOTER */
+      .footer {
+        margin-top: 16px !important;
+        padding: 12px 16px !important;
+        page-break-inside: avoid !important;
+      }
+      .footer p { font-size: 8.5pt !important; }
+    }
+
+    @media (max-width: 680px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 26px; }
+      .body { padding: 28px 22px 44px; }
+      .criteria-grid { grid-template-columns: 1fr; }
+      .mistakes-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Finding the Right Space<br><span>and Signing the Right Lease</span></h1>
+    <p class="header-sub">The eight physical things to evaluate in any space, the lease terms that matter most, what to ask for, and what to watch out for. Keep this open while you work through your scorecard.</p>
+    <div class="week-badge">📋 Week 3 — Site Selection & Lease Strategy Reference Sheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- PHYSICAL CRITERIA -->
+  <div class="section-heading">The eight physical criteria that matter</div>
+  <div class="section-sub">Before you fall in love with the aesthetics of a space, check these eight things. They're not the only things that matter — but they're the ones most commonly missed, and the ones most likely to cost you money if you get them wrong.</div>
+
+  <div class="criteria-grid">
+
+    <div class="ccard">
+      <div class="ccard-header">
+        <div class="ccard-icon">🚿</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 1</div>
+          <h3>Plumbing Access</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>You need floor drains, a grease trap, hot and cold water supply, and enough drainage capacity for commercial equipment. Coffee shops use a lot of water — and getting plumbing that isn't already there is expensive and slow.</p>
+        <div class="ccard-warn">⚠️ Check whether the space has ever been a food or beverage business. If it hasn't, assume significant plumbing costs.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header">
+        <div class="ccard-icon">⚡</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 2</div>
+          <h3>Electrical Capacity</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>Commercial espresso machines and grinders draw significant power — often 20–30 amps on dedicated circuits, per machine. You need to know the existing electrical panel capacity and how close it is to where your bar will be.</p>
+        <div class="ccard-warn">⚠️ Upgrading electrical service is one of the most expensive and time-consuming parts of a café build-out. Get an electrician in early.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header primary-bg">
+        <div class="ccard-icon">☀️</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 3</div>
+          <h3>Natural Light</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>Light affects how people feel in a space and how long they stay. A dark, basement-level café can work — but it has to be a deliberate design choice, not an afterthought. Visit the space at different times of day before deciding.</p>
+        <div class="ccard-warn">⚠️ What looks fine at midday can feel oppressive at 7am in winter. Check it when your customers will actually be there.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header primary-bg">
+        <div class="ccard-icon">🚶</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 4</div>
+          <h3>Foot Traffic</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>Not all foot traffic is the same. You want traffic that moves past your door, not just through an area. Commuter routes, school run paths, and office workers heading to lunch are all different from weekend shoppers. Count the actual people going past — at the times that matter for your concept.</p>
+        <div class="ccard-warn">⚠️ "It's a busy area" is not enough. Stand outside and count for an hour. You'll know immediately whether the numbers work.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header">
+        <div class="ccard-icon">🅿️</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 5</div>
+          <h3>Parking & Access</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>This matters a lot more for some models than others. A drive-through lives and dies by parking and access. A neighbourhood café on a walkable street needs it much less. Know your customer — do they walk, drive, or cycle? Does the space support that?</p>
+        <div class="ccard-warn">⚠️ A great space with no parking in a car-dependent suburb is a tough model. A café on a cycling route without bike racks is a missed opportunity.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header">
+        <div class="ccard-icon">🏢</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 6</div>
+          <h3>Employment Density</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>Office workers and people commuting to jobs in the area are some of the most reliable morning customers a café can have. If you're planning a grab-and-go model or counting on a strong morning rush, check how many offices, businesses, or employment hubs are within a five-minute walk.</p>
+        <div class="ccard-warn">⚠️ Remote work has changed this. A space that relied on a single large employer — especially tech or finance — may have less daytime foot traffic than it did a few years ago.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header primary-bg">
+        <div class="ccard-icon">👁️</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 7</div>
+          <h3>Visibility</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>Can people walking or driving past clearly see your shop? Is there window space for signage? Is the frontage welcoming or does it hide behind pillars and setbacks? Visibility matters most for new businesses — once you're established and known, people will find you. Until then, you need to be seen.</p>
+        <div class="ccard-warn">⚠️ A "hidden gem" positioning only works if people actually discover you. That discovery is expensive and slow if you're tucked away.</div>
+      </div>
+    </div>
+
+    <div class="ccard">
+      <div class="ccard-header primary-bg">
+        <div class="ccard-icon">🏗️</div>
+        <div class="ccard-header-text">
+          <div class="clabel">Criterion 8</div>
+          <h3>Raw vs. Shell vs. Fitted</h3>
+        </div>
+      </div>
+      <div class="ccard-body">
+        <p>A raw space has nothing — concrete floor, exposed walls, no services. A shell space has basic services roughed in. A fitted space has a previous tenant's build-out you may or may not be able to use. Each has very different cost and timeline implications. Know exactly what you're working with before you price your build-out.</p>
+        <div class="ccard-warn">⚠️ A cheap rent on a raw space can cost more to open than a higher rent on a space that's already fitted for food service.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LEASE TERMS -->
+  <div class="section-heading">The lease terms you need to understand</div>
+  <div class="section-sub">These are the terms that come up most often in commercial café leases — and the ones with the most room to negotiate. You don't need to win every point. You need to understand every point before you sign.</div>
+
+  <table class="terms-table">
+    <thead>
+      <tr>
+        <th>Term</th>
+        <th>What it means</th>
+        <th>What to ask for</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="term-name">Tenant Improvement Allowance (TI)</td>
+        <td>
+          Money the landlord gives you to fit out the space. It's usually a dollar amount per square foot — sometimes enough to cover basic build-out, sometimes just a contribution. You spend it; you own the work.
+          <div class="term-watch">⚠️ TI is negotiable — especially if you're signing a longer lease. A landlord who wants a good tenant in a tough market may offer more than they initially say.</div>
+        </td>
+        <td><span class="term-ask">→ Ask for as much as you can justify. Longer leases typically unlock more TI. Get it in writing with clear terms on what it covers.</span></td>
+      </tr>
+      <tr>
+        <td class="term-name">Rent Abatement</td>
+        <td>
+          A rent-free period — usually during the build-out phase, sometimes extending into the first weeks of trading. It means you're not paying rent while you're spending money getting the space ready.
+          <div class="term-watch">⚠️ Build-outs almost always take longer than planned. Abatement that runs out before you open means paying rent on a space you're not making money from yet.</div>
+        </td>
+        <td><span class="term-ask">→ Ask for abatement that covers your entire build-out period plus a buffer. Be realistic about how long the build will take, then add 30%.</span></td>
+      </tr>
+      <tr>
+        <td class="term-name">Exclusivity Clause</td>
+        <td>
+          A clause that prevents the landlord from renting to another direct competitor in the same building or development. If you're in a multi-tenancy building or shopping centre, this matters a lot.
+          <div class="term-watch">⚠️ Without exclusivity, a landlord could put another coffee shop right next door — or just down the corridor. It happens.</div>
+        </td>
+        <td><span class="term-ask">→ Ask for exclusivity on "coffee and espresso-based beverage sales" rather than just "coffee shop." Draft it broadly enough to cover your concept.</span></td>
+      </tr>
+      <tr>
+        <td class="term-name">Percentage Rent</td>
+        <td>
+          A clause where once your revenue exceeds a certain threshold, you pay the landlord a percentage of the excess. Common in shopping centres and high-traffic retail locations.
+          <div class="term-watch">⚠️ The threshold ("natural breakpoint") matters enormously. If it's set too low, you pay more rent the moment you start doing well. Model it carefully.</div>
+        </td>
+        <td><span class="term-ask">→ If you can't eliminate it, push for a high natural breakpoint — ideally one that only triggers if you're genuinely trading at full capacity.</span></td>
+      </tr>
+      <tr>
+        <td class="term-name">Personal Guarantee</td>
+        <td>
+          A commitment that makes you personally liable for the lease obligations if your business entity can't pay. If the business fails, you still owe the rent — potentially for the full remaining lease term.
+          <div class="term-watch">⚠️ This is real financial exposure. A personal guarantee on a five-year lease at $5,000/month means you could owe $300,000 if the business closes in year one.</div>
+        </td>
+        <td><span class="term-ask">→ Try to limit the guarantee to 12–24 months rather than the full lease term. Many landlords will negotiate this, especially if you have strong financials to show them.</span></td>
+      </tr>
+      <tr>
+        <td class="term-name">Assignment Rights</td>
+        <td>
+          The right to transfer your lease to a new tenant if you sell the business. Without this, you could build something valuable and not be able to sell it — because the buyer can't take on your lease.
+          <div class="term-watch">⚠️ This is often overlooked at the start. It becomes critical the moment you want to sell, bring in a partner, or need to exit. Negotiate it now.</div>
+        </td>
+        <td><span class="term-ask">→ Ask for the right to assign the lease with landlord consent — and that consent cannot be unreasonably withheld. Get this language in the lease explicitly.</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- READING AN LOI -->
+  <div class="section-heading">Reading a Letter of Intent (LOI)</div>
+  <div class="section-sub">A Letter of Intent is a short document that outlines the key terms before the full lease is written. It feels informal, but it sets the baseline for everything that follows. These are the things to check before you sign it.</div>
+
+  <div class="loi-box">
+    <div class="loi-items">
+      <div class="loi-item">
+        <div class="loi-num">1</div>
+        <div>
+          <h4>Term and option to renew</h4>
+          <p>How long is the lease, and do you have the right to renew at the end? A five-year lease with one five-year option gives you ten years of security if you want it — but you're only committed to five.</p>
+        </div>
+      </div>
+      <div class="loi-item">
+        <div class="loi-num">2</div>
+        <div>
+          <h4>Base rent and escalation</h4>
+          <p>What's the starting rent, and how does it increase each year? Annual increases of 3–4% are common. Make sure you can model the rent in year five, not just year one.</p>
+        </div>
+      </div>
+      <div class="loi-item">
+        <div class="loi-num">3</div>
+        <div>
+          <h4>What's included in the rent</h4>
+          <p>Is it a gross lease (you pay one amount, landlord covers expenses) or a net lease (you pay base rent plus a share of property taxes, insurance, and maintenance)? Net leases are common in commercial real estate and add to your monthly cost.</p>
+        </div>
+      </div>
+      <div class="loi-item">
+        <div class="loi-num">4</div>
+        <div>
+          <h4>Permitted use</h4>
+          <p>This section defines exactly what you're allowed to do in the space. "Coffee shop" is not specific enough. Make sure your full concept — including any food service, alcohol, or events — is explicitly permitted.</p>
+        </div>
+      </div>
+      <div class="loi-item">
+        <div class="loi-num">5</div>
+        <div>
+          <h4>Commencement date and fit-out period</h4>
+          <p>When does the lease officially start, and how long do you have to fit out before the rent clock begins? These should not be the same date.</p>
+        </div>
+      </div>
+      <div class="loi-item">
+        <div class="loi-num">6</div>
+        <div>
+          <h4>TI allowance and delivery condition</h4>
+          <p>What is the landlord contributing to the fit-out, and what state will the space be in when you take possession? Both need to be specific — not general commitments.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="section-heading">Words you'll need to know</div>
+  <div class="section-sub">Plain-language definitions for the terms that come up most in site selection and lease conversations.</div>
+
+  <table class="glossary-table">
+    <thead>
+      <tr>
+        <th>Term</th>
+        <th>What it means in plain language</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="term">Foot Traffic</td>
+        <td>The number of people who physically walk past or through a location. More important than total area population — you want people who are actually moving past your door at the times you're open.</td>
+      </tr>
+      <tr>
+        <td class="term">Competitive Density</td>
+        <td>How many similar businesses are already in the area. A little competition is healthy — it means there's a market. Too much means you're fighting for the same customers with no differentiation advantage.</td>
+      </tr>
+      <tr>
+        <td class="term">Raw Space</td>
+        <td>A completely empty space — concrete floors, bare walls, no services connected. The lowest rent, but the highest build-out cost and timeline. Usually only worth it if the TI allowance is strong.</td>
+      </tr>
+      <tr>
+        <td class="term">Shell Space</td>
+        <td>A space with basic services roughed in — plumbing and electrical stubbed but not completed. Faster and cheaper to fit out than raw, but still requires significant work.</td>
+      </tr>
+      <tr>
+        <td class="term">Gross Lease</td>
+        <td>A lease where you pay one fixed amount and the landlord covers property taxes, insurance, and maintenance. Simpler to budget. More common in older buildings and smaller markets.</td>
+      </tr>
+      <tr>
+        <td class="term">Net Lease (NNN)</td>
+        <td>A lease where you pay base rent plus your share of property taxes, insurance, and maintenance. More common in commercial real estate. Your actual monthly cost can be significantly higher than the listed rent.</td>
+      </tr>
+      <tr>
+        <td class="term">Letter of Intent (LOI)</td>
+        <td>A short document that sets out the key terms before the full lease is drafted. It's not legally binding in most cases, but it establishes the baseline — so negotiate it carefully before you sign it.</td>
+      </tr>
+      <tr>
+        <td class="term">TI (Tenant Improvement Allowance)</td>
+        <td>Money the landlord gives you toward the cost of fitting out the space. Usually stated as a dollar amount per square foot. More room, longer lease, and a strong tenant profile all tend to unlock more TI.</td>
+      </tr>
+      <tr>
+        <td class="term">Abatement</td>
+        <td>A rent-free period. Usually covers some or all of the build-out phase so you're not paying rent before you're generating revenue. One of the most valuable things to negotiate for.</td>
+      </tr>
+      <tr>
+        <td class="term">Personal Guarantee</td>
+        <td>A legal commitment that makes you personally responsible for the lease if the business can't pay. This is a major risk factor. Understand exactly what you're guaranteeing and for how long before you sign.</td>
+      </tr>
+      <tr>
+        <td class="term">Permitted Use Clause</td>
+        <td>The part of the lease that says what you're allowed to do in the space. This needs to cover your full concept — including food service, signage, hours of operation, and any future plans like events or alcohol.</td>
+      </tr>
+      <tr>
+        <td class="term">Assignment Rights</td>
+        <td>The right to transfer your lease to someone else — typically when you sell the business. Without these rights, your business may be very hard to sell because the new owner can't take over your lease.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- COMMON MISTAKES -->
+  <div class="section-heading">The most common site selection mistakes</div>
+  <div class="section-sub">These come up in almost every lease and location discussion. Go through them before you sign anything.</div>
+
+  <div class="mistakes-grid">
+
+    <div class="mcard">
+      <div class="mcard-icon">❤️</div>
+      <h3>Falling in love with the space before checking the lease</h3>
+      <p>It happens all the time. Someone finds a space they love, then discovers the lease is terrible — but they're already emotionally committed. Score the space first. Read the lease terms second. Fall in love third, if everything still checks out.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">🕐</div>
+      <h3>Underestimating how long the build-out will take</h3>
+      <p>Most café build-outs take longer than planned — sometimes significantly longer. Permitting delays, contractor availability, and unexpected structural issues are all common. If your abatement runs out before you open, you'll be paying rent on an empty space.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">📋</div>
+      <h3>Not reading the full lease before signing the LOI</h3>
+      <p>The LOI sets the terms. The lease fills in the detail. But people often treat them as separate documents when they're really part of the same negotiation. Ask to see the standard lease before you sign the LOI, so you know what you're getting into.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">👤</div>
+      <h3>Agreeing to an unlimited personal guarantee</h3>
+      <p>A personal guarantee for the full lease term is a significant financial commitment — potentially hundreds of thousands of dollars if things go wrong. It's negotiable. Always push for a capped or time-limited guarantee before you sign.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">📍</div>
+      <h3>Confusing "good area" with "right location"</h3>
+      <p>A great neighbourhood is not the same as a great location within it. The difference between a site that gets your commuter foot traffic and one that doesn't — even if they're on the same street — can be the difference between profitable and not.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">🔧</div>
+      <h3>Not getting a building and services inspection done</h3>
+      <p>Before you sign anything, get a qualified inspector to look at the plumbing, electrical, and HVAC. Structural and mechanical problems that the landlord didn't disclose — or didn't know about — become your problems the moment the lease is signed.</p>
+    </div>
+
+  </div>
+
+  <!-- CLOSING -->
+  <div class="closing-box">
+    <div class="closing-icon">💡</div>
+    <div>
+      <h3>Location is not just about where you are — it's about what you're signing</h3>
+      <p>The right space in the wrong lease can trap you. The wrong space in a short, flexible lease gives you a chance to move. Most of the variables in a lease are negotiable — but only before you sign. Once the ink is dry, the conversation is over. Use the reference sheet, use the scorecard, and don't rush a decision this important. It's the foundation everything else sits on.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 3 Reference Sheet</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 3 Site Evaluation Scorecard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--light-grey);
+      color: #2a2a2a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--primary);
+      padding: 44px 40px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -70px; right: -70px;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: rgba(118,179,157,0.16);
+    }
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cohort-label {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+    }
+    .header h1 {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.24;
+      margin-bottom: 12px;
+    }
+    .header h1 span { color: var(--secondary); }
+    .header-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.7;
+      max-width: 580px;
+      margin-bottom: 18px;
+    }
+    .week-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.11);
+      color: rgba(255,255,255,0.88);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── BODY ── */
+    .body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 40px 56px;
+    }
+
+    /* ── DETAILS BAR ── */
+    .details-bar {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .detail-field label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dark-grey);
+      margin-bottom: 6px;
+    }
+    .detail-field .field-line {
+      border-bottom: 1.5px solid #ddd;
+      height: 28px;
+      width: 100%;
+    }
+
+    /* ── HOW TO SCORE ── */
+    .how-to {
+      background: var(--amber-bg);
+      border-left: 4px solid var(--amber);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+    }
+    .how-to p {
+      font-size: 13px;
+      color: var(--amber-text);
+      line-height: 1.68;
+    }
+    .how-to strong { font-weight: 700; }
+    .score-legend {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .score-chip {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--amber-text);
+      border: 1px solid rgba(232,164,74,0.4);
+    }
+
+    /* ── SECTION HEADING ── */
+    .section-heading {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--secondary);
+    }
+
+    /* ── SCORECARD TABLE ── */
+    .scorecard {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 28px;
+    }
+    .scorecard thead tr {
+      background: var(--primary);
+    }
+    .scorecard thead th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .scorecard thead th.score-col {
+      text-align: center;
+      width: 90px;
+    }
+    .scorecard thead th.notes-col { width: 34%; }
+    .scorecard tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .scorecard tbody tr:last-child { border-bottom: none; }
+    .scorecard tbody tr:nth-child(even) { background: #fafafa; }
+    .scorecard td {
+      padding: 16px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      vertical-align: top;
+      color: #333;
+    }
+    .criteria-name {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 13px;
+    }
+    .criteria-desc {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.55;
+      margin-top: 3px;
+    }
+    .score-boxes {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 2px;
+    }
+    .score-box {
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid #ccc;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--dark-grey);
+      font-weight: 700;
+    }
+    .notes-line {
+      border-bottom: 1px solid #e0e0e0;
+      height: 22px;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+
+    /* ── TOTALS ROW ── */
+    .total-row td {
+      background: var(--primary) !important;
+      color: var(--white) !important;
+      font-weight: 700;
+      font-size: 13.5px;
+      padding: 14px 16px;
+    }
+    .total-row .total-label { color: var(--white); }
+
+    /* ── LEASE TERMS SECTION ── */
+    .lease-card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 14px;
+    }
+    .lease-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .lease-term-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .priority-tag {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .lease-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .lease-field label {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--dark-grey);
+      margin-bottom: 5px;
+    }
+    .write-lines .write-line {
+      border-bottom: 1px solid #e0e0e0;
+      height: 24px;
+      margin-bottom: 4px;
+    }
+    .write-lines-wide .write-line {
+      border-bottom: 1px solid #e0e0e0;
+      height: 24px;
+      margin-bottom: 4px;
+    }
+
+    /* ── CASE FOR LOCATION ── */
+    .case-box {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 24px 26px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 28px;
+      border-left: 4px solid var(--primary);
+    }
+    .case-box h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .case-box .case-prompt {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.65;
+      margin-bottom: 14px;
+    }
+    .write-area {
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 100px;
+    }
+    .write-area .write-line {
+      border-bottom: 1px solid #eee;
+      height: 28px;
+    }
+
+    /* ── SUMMARY BOX ── */
+    .summary-box {
+      background: var(--primary);
+      border-radius: 14px;
+      padding: 26px 28px;
+      margin-bottom: 28px;
+    }
+    .summary-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 16px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .summary-field {
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .summary-field label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+    }
+    .summary-field .sum-line {
+      border-bottom: 1px solid rgba(255,255,255,0.35);
+      height: 26px;
+    }
+
+    /* ── RECOMMENDATION BOX ── */
+    .rec-section {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 22px 26px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 28px;
+    }
+    .rec-section h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 14px;
+    }
+    .rec-options {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .rec-option {
+      flex: 1;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .rec-option .rec-icon { font-size: 22px; margin-bottom: 6px; }
+    .rec-option h4 {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+    .rec-option p {
+      font-size: 11px;
+      color: var(--dark-grey);
+      line-height: 1.4;
+    }
+    .rec-notes label {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--dark-grey);
+      margin-bottom: 6px;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--primary);
+      text-align: center;
+      padding: 20px 20px;
+    }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media print {
+      .body { padding: 20px; }
+      .header { padding: 30px 40px; }
+    }
+
+    @media (max-width: 640px) {
+      .header { padding: 32px 22px 28px; }
+      .header h1 { font-size: 23px; }
+      .body { padding: 22px 18px 44px; }
+      .details-bar { grid-template-columns: 1fr; }
+      .lease-fields { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .rec-options { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Site Evaluation<br><span>Scorecard</span></h1>
+    <p class="header-sub">Work through this scorecard for any space you're seriously considering. Score each physical criterion honestly, identify your key lease priorities, and write your one-paragraph case for the location.</p>
+    <div class="week-badge">📍 Week 3 — Site Selection & Lease Strategy</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- SPACE DETAILS -->
+  <div class="details-bar">
+    <div class="detail-field">
+      <label>Location / Address</label>
+      <div class="field-line"></div>
+    </div>
+    <div class="detail-field">
+      <label>Approx. Size (sq ft)</label>
+      <div class="field-line"></div>
+    </div>
+    <div class="detail-field">
+      <label>Monthly Rent (asking)</label>
+      <div class="field-line"></div>
+    </div>
+    <div class="detail-field">
+      <label>Lease Type (gross / net / other)</label>
+      <div class="field-line"></div>
+    </div>
+    <div class="detail-field">
+      <label>Space Condition (raw / shell / fitted)</label>
+      <div class="field-line"></div>
+    </div>
+    <div class="detail-field">
+      <label>Date Visited</label>
+      <div class="field-line"></div>
+    </div>
+  </div>
+
+  <!-- HOW TO SCORE -->
+  <div class="how-to">
+    <p><strong>How to score:</strong> For each criterion, give an honest score from 1 to 5. There are no bonus points for being optimistic — the value of this exercise is in seeing clearly where the space is strong and where it isn't. Use the notes column to record what you found, what you'd need to fix, and anything you'd need to negotiate.</p>
+    <div class="score-legend">
+      <div class="score-chip">1 — Significant problem</div>
+      <div class="score-chip">2 — Needs major work</div>
+      <div class="score-chip">3 — Acceptable, could improve</div>
+      <div class="score-chip">4 — Good</div>
+      <div class="score-chip">5 — Excellent</div>
+    </div>
+  </div>
+
+  <!-- PART A: PHYSICAL SCORECARD -->
+  <div class="section-heading">Part A — Physical Space Evaluation</div>
+
+  <table class="scorecard">
+    <thead>
+      <tr>
+        <th>Criterion</th>
+        <th class="score-col">Score (1–5)</th>
+        <th class="notes-col">Your Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="criteria-name">1. Plumbing Access</div>
+          <div class="criteria-desc">Floor drains, grease trap, hot &amp; cold water supply. Has this space been a food or beverage business before?</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">2. Electrical Capacity</div>
+          <div class="criteria-desc">Panel size, dedicated circuits for equipment. How close is the panel to where your bar will be?</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">3. Natural Light</div>
+          <div class="criteria-desc">Quality and direction of light. Visit at 7am and again at midday — they can feel very different.</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">4. Foot Traffic</div>
+          <div class="criteria-desc">Number of people actually passing the door during your trading hours. Count them if you can.</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">5. Parking &amp; Access</div>
+          <div class="criteria-desc">Relevant to your concept and customer. How do your customers get there — car, foot, bike, transit?</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">6. Employment Density</div>
+          <div class="criteria-desc">How many offices, businesses, or employment hubs are within a 5-minute walk? Morning rush depends on this.</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">7. Visibility</div>
+          <div class="criteria-desc">Can people see the space from the street? Signage potential, window frontage, setback from the pavement.</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="criteria-name">8. Space Condition</div>
+          <div class="criteria-desc">Raw, shell, or fitted? What's actually there and what would need to be built? Any existing food service infrastructure?</div>
+        </td>
+        <td>
+          <div class="score-boxes">
+            <div class="score-box">1</div>
+            <div class="score-box">2</div>
+            <div class="score-box">3</div>
+            <div class="score-box">4</div>
+            <div class="score-box">5</div>
+          </div>
+        </td>
+        <td>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+      <tr class="total-row">
+        <td><span class="total-label">TOTAL SCORE</span></td>
+        <td style="text-align:center;">_____ / 40</td>
+        <td style="font-size:12px; font-weight:400; color:rgba(255,255,255,0.75);">25+ = strong foundation &nbsp;|&nbsp; 16–24 = workable with negotiation &nbsp;|&nbsp; Below 16 = proceed with caution</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- PART B: LEASE PRIORITIES -->
+  <div class="section-heading">Part B — Your Top Three Lease Priorities</div>
+
+  <p style="font-size:13px; color:#666; line-height:1.65; margin-bottom:18px;">From the six lease terms covered this week (TI, abatement, exclusivity, percentage rent, personal guarantee, assignment rights), identify the three that matter most for your situation. For each one, write what you'd ask for and why it matters to your specific concept and finances.</p>
+
+  <div class="lease-card">
+    <div class="lease-card-header">
+      <div class="lease-term-name">Priority 1</div>
+      <div class="priority-tag">Most important</div>
+    </div>
+    <div class="lease-fields">
+      <div>
+        <label>Lease Term</label>
+        <div class="write-lines"><div class="write-line"></div></div>
+        <label style="margin-top:10px; display:block;">What I'd ask for</label>
+        <div class="write-lines"><div class="write-line"></div><div class="write-line"></div></div>
+      </div>
+      <div>
+        <label>Why this matters for my situation</label>
+        <div class="write-lines"><div class="write-line"></div><div class="write-line"></div><div class="write-line"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lease-card">
+    <div class="lease-card-header">
+      <div class="lease-term-name">Priority 2</div>
+      <div class="priority-tag" style="background: var(--secondary);">Second priority</div>
+    </div>
+    <div class="lease-fields">
+      <div>
+        <label>Lease Term</label>
+        <div class="write-lines"><div class="write-line"></div></div>
+        <label style="margin-top:10px; display:block;">What I'd ask for</label>
+        <div class="write-lines"><div class="write-line"></div><div class="write-line"></div></div>
+      </div>
+      <div>
+        <label>Why this matters for my situation</label>
+        <div class="write-lines"><div class="write-line"></div><div class="write-line"></div><div class="write-line"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lease-card" style="margin-bottom:28px;">
+    <div class="lease-card-header">
+      <div class="lease-term-name">Priority 3</div>
+      <div class="priority-tag" style="background: #aaa;">Third priority</div>
+    </div>
+    <div class="lease-fields">
+      <div>
+        <label>Lease Term</label>
+        <div class="write-lines"><div class="write-line"></div></div>
+        <label style="margin-top:10px; display:block;">What I'd ask for</label>
+        <div class="write-lines"><div class="write-line"></div><div class="write-line"></div></div>
+      </div>
+      <div>
+        <label>Why this matters for my situation</label>
+        <div class="write-lines"><div class="write-line"></div><div class="write-line"></div><div class="write-line"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART C: CASE FOR THE LOCATION -->
+  <div class="section-heading">Part C — Your Case for This Location</div>
+
+  <div class="case-box">
+    <h3>Write your one-paragraph case</h3>
+    <p class="case-prompt">Why does this space or market work for your concept? What's the evidence? What are you betting on? Keep it to one paragraph. Be specific — "it's a great area" doesn't count. What makes it right <em>for you</em>?</p>
+    <div class="write-area">
+      <div class="write-line"></div>
+      <div class="write-line"></div>
+      <div class="write-line"></div>
+      <div class="write-line"></div>
+      <div class="write-line"></div>
+      <div class="write-line"></div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-box">
+    <h3>Summary — My verdict on this space</h3>
+    <div class="summary-grid">
+      <div class="summary-field">
+        <label>Physical Score (out of 40)</label>
+        <div class="sum-line"></div>
+      </div>
+      <div class="summary-field">
+        <label>Biggest physical strength</label>
+        <div class="sum-line"></div>
+      </div>
+      <div class="summary-field">
+        <label>Biggest physical concern</label>
+        <div class="sum-line"></div>
+      </div>
+      <div class="summary-field">
+        <label>Most important lease term to negotiate</label>
+        <div class="sum-line"></div>
+      </div>
+      <div class="summary-field">
+        <label>Estimated fit-out cost (rough)</label>
+        <div class="sum-line"></div>
+      </div>
+      <div class="summary-field">
+        <label>Have I had a professional inspect it?</label>
+        <div class="sum-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECOMMENDATION -->
+  <div class="rec-section">
+    <h3>My current thinking on this space</h3>
+    <div class="rec-options">
+      <div class="rec-option">
+        <div class="rec-icon">✅</div>
+        <h4>I want to proceed</h4>
+        <p>The score is strong, the lease looks negotiable, and I'm ready to move forward.</p>
+      </div>
+      <div class="rec-option">
+        <div class="rec-icon">⏸️</div>
+        <h4>Need more information</h4>
+        <p>Some criteria need a professional inspection or more research before I can decide.</p>
+      </div>
+      <div class="rec-option">
+        <div class="rec-icon">🔍</div>
+        <h4>Continue looking</h4>
+        <p>The score is too low, the lease terms aren't workable, or this doesn't fit my concept.</p>
+      </div>
+    </div>
+    <div class="rec-notes">
+      <label>What would need to change for me to say yes?</label>
+      <div class="write-lines-wide">
+        <div class="write-line"></div>
+        <div class="write-line"></div>
+        <div class="write-line"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 3 Site Evaluation Scorecard</p>
+</div>
+
+</body>
+</html>

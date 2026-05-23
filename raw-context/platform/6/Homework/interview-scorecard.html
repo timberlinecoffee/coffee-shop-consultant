@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Interview Scorecard — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 36px 40px 32px; }
+    .header-inner { max-width: 820px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-title { font-size: 24px; font-weight: 800; color: var(--white); }
+    .header-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+    .header-tag { background: var(--secondary); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; white-space: nowrap; margin-top: 4px; }
+
+    .body { max-width: 820px; margin: 0 auto; padding: 28px 40px 48px; }
+
+    /* Meta info */
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .meta-field { background: var(--white); border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark-grey); margin-bottom: 5px; }
+    .meta-line { border-bottom: 1.5px solid #d8d8d8; height: 22px; }
+
+    /* Score dimensions */
+    .score-section { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .score-section-header { background: var(--primary); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .score-section-header h3 { font-size: 14px; font-weight: 700; color: var(--white); }
+    .score-scale { display: flex; gap: 6px; }
+    .scale-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7); }
+    .score-rows { }
+    .score-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--light-grey); }
+    .score-row:last-child { border-bottom: none; }
+    .score-criterion { flex: 1; padding: 12px 16px; }
+    .score-criterion-name { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 3px; }
+    .score-criterion-desc { font-size: 11.5px; color: #666; line-height: 1.5; }
+    .score-boxes { display: flex; align-items: center; gap: 0; padding: 12px 16px 12px 0; flex-shrink: 0; }
+    .score-box { width: 36px; height: 36px; border: 1.5px solid #d0d0d0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--dark-grey); margin-left: 6px; background: var(--light-grey); }
+    .score-box:hover { border-color: var(--primary); }
+    .score-notes { padding: 10px 16px; background: #fafafa; border-top: 1px solid var(--light-grey); }
+    .score-notes-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-grey); margin-bottom: 4px; }
+    .score-notes-line { border-bottom: 1.5px solid #d8d8d8; height: 20px; margin-bottom: 5px; }
+
+    /* Score key */
+    .score-key { background: var(--light-grey); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .score-key-label { font-size: 11px; font-weight: 700; color: var(--dark-grey); text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
+    .key-items { display: flex; gap: 16px; flex-wrap: wrap; }
+    .key-item { display: flex; align-items: center; gap: 6px; }
+    .key-num { width: 26px; height: 26px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--white); }
+    .k1 { background: #c0392b; }
+    .k2 { background: #e8a44a; }
+    .k3 { background: #76b39d; }
+    .k4 { background: #155e63; }
+    .k5 { background: #0d4a4e; }
+    .key-item p { font-size: 11.5px; color: #555; }
+
+    /* Observations box */
+    .obs-box { background: var(--white); border-radius: 14px; padding: 20px 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .obs-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); margin-bottom: 10px; }
+    .obs-line { border-bottom: 1.5px solid #d8d8d8; height: 22px; margin-bottom: 6px; }
+
+    /* Strengths/concerns grid */
+    .sc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .sc-card { background: var(--white); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .sc-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+    .sc-strengths .sc-label { color: #1a7a45; }
+    .sc-concerns  .sc-label { color: #c0392b; }
+    .sc-line { border-bottom: 1.5px solid #d8d8d8; height: 22px; margin-bottom: 6px; }
+
+    /* Recommendation */
+    .rec-box { background: var(--primary); border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; }
+    .rec-options { display: flex; gap: 12px; margin-bottom: 16px; }
+    .rec-option { flex: 1; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; padding: 14px 16px; text-align: center; }
+    .rec-option-label { font-size: 15px; font-weight: 800; color: var(--white); margin-bottom: 4px; }
+    .rec-option-sub { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .rec-circle { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; margin: 0 auto 8px; }
+    .rec-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+    .rec-line { border-bottom: 1.5px solid rgba(255,255,255,0.25); height: 22px; margin-bottom: 6px; }
+
+    /* Sign-off */
+    .signoff { display: flex; gap: 14px; }
+    .signoff-field { flex: 1; background: var(--white); border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .signoff-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark-grey); margin-bottom: 6px; }
+    .signoff-line { border-bottom: 1.5px solid #d8d8d8; height: 24px; }
+
+    .footer { background: var(--primary); text-align: center; padding: 18px; margin-top: 8px; }
+    .footer p { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); }
+
+    @media (max-width: 640px) {
+      .meta-grid { grid-template-columns: 1fr; }
+      .sc-grid { grid-template-columns: 1fr; }
+      .rec-options { flex-direction: column; }
+      .body { padding: 22px 18px 36px; }
+    }
+    @media print {
+      body { background: white; }
+      .score-section { box-shadow: none; border: 1px solid #e0e0e0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">Interview Scorecard</div>
+      <div class="header-sub">Working Interview Assessment — Coffee Shop Basecamp</div>
+    </div>
+    <div class="header-tag">Operational Template</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- META INFO -->
+  <div class="meta-grid" style="margin-top:8px;">
+    <div class="meta-field"><div class="meta-label">Candidate Name</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Role Applied For</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Date of Working Interview</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Shift Duration</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Shift Type (opening / mid / close)</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Assessed By</div><div class="meta-line"></div></div>
+  </div>
+
+  <!-- SCORE KEY -->
+  <div class="score-key">
+    <div class="score-key-label">Score Key</div>
+    <div class="key-items">
+      <div class="key-item"><div class="key-num k1">1</div><p>Well below standard</p></div>
+      <div class="key-item"><div class="key-num k2">2</div><p>Below standard</p></div>
+      <div class="key-item"><div class="key-num k3">3</div><p>Meets standard</p></div>
+      <div class="key-item"><div class="key-num k4">4</div><p>Above standard</p></div>
+      <div class="key-item"><div class="key-num k5">5</div><p>Exceptional</p></div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: BEFORE THE SHIFT -->
+  <div class="score-section">
+    <div class="score-section-header">
+      <h3>Before the Shift — First Impressions</h3>
+    </div>
+    <div class="score-rows">
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Punctuality and Preparation</div>
+          <div class="score-criterion-desc">Arrived on time or early. Communicated clearly in advance if there were any questions or changes. Came dressed appropriately without being asked.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">First Impression — Warmth and Energy</div>
+          <div class="score-criterion-desc">Seemed genuinely present and interested. Introduced themselves naturally. Energy felt appropriate for a café environment, not forced.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+    </div>
+    <div class="score-notes">
+      <div class="score-notes-label">Notes</div>
+      <div class="score-notes-line"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: WITH GUESTS -->
+  <div class="score-section">
+    <div class="score-section-header">
+      <h3>Guest Interaction</h3>
+    </div>
+    <div class="score-rows">
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Warmth and Hospitality</div>
+          <div class="score-criterion-desc">Greeted guests naturally. Made eye contact. Remembered names or orders. Made people feel genuinely welcome rather than just processed.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Communication and Clarity</div>
+          <div class="score-criterion-desc">Communicated drink status clearly. Asked good questions when uncertain rather than guessing. Handled modifications without making guests feel difficult.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Consistency Across Guest Types</div>
+          <div class="score-criterion-desc">Treated regulars and first-timers with the same standard of warmth. Did not visibly treat friendly guests differently than difficult or quiet ones.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+    </div>
+    <div class="score-notes">
+      <div class="score-notes-label">Notes</div>
+      <div class="score-notes-line"></div><div class="score-notes-line"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: TECHNICAL -->
+  <div class="score-section">
+    <div class="score-section-header">
+      <h3>Technical Baseline</h3>
+    </div>
+    <div class="score-rows">
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Bar Awareness and Movement</div>
+          <div class="score-criterion-desc">Moved confidently behind the bar without getting in the way. Understood the basic logic of a bar workflow even if the setup was unfamiliar.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Drink Preparation</div>
+          <div class="score-criterion-desc">Made drinks to an adequate standard given their stated experience level. Applied technique correctly or flagged when unsure. Did not cut corners silently.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Speed Under Pressure</div>
+          <div class="score-criterion-desc">Maintained an appropriate pace during busy periods. Did not slow down or freeze under pressure. Prioritised correctly when multiple things needed attention.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+    </div>
+    <div class="score-notes">
+      <div class="score-notes-label">Notes</div>
+      <div class="score-notes-line"></div><div class="score-notes-line"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: CULTURE FIT -->
+  <div class="score-section">
+    <div class="score-section-header">
+      <h3>Culture Alignment and Work Ethic</h3>
+    </div>
+    <div class="score-rows">
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Initiative and Self-Direction</div>
+          <div class="score-criterion-desc">Found things to do without being told. Stayed busy during quiet moments. Did not stand around waiting for direction between tasks.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Response to Feedback</div>
+          <div class="score-criterion-desc">Took feedback in the moment without becoming defensive or deflated. Adjusted behavior and did not need to be told twice. Showed they can be coached.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-criterion">
+          <div class="score-criterion-name">Culture Fit — Observable</div>
+          <div class="score-criterion-desc">Behavior during the shift felt aligned with the culture you are building. Their natural approach — not performed — matched the kind of team you want.</div>
+        </div>
+        <div class="score-boxes">
+          <div class="score-box">1</div><div class="score-box">2</div><div class="score-box">3</div><div class="score-box">4</div><div class="score-box">5</div>
+        </div>
+      </div>
+    </div>
+    <div class="score-notes">
+      <div class="score-notes-label">Notes</div>
+      <div class="score-notes-line"></div><div class="score-notes-line"></div>
+    </div>
+  </div>
+
+  <!-- OVERALL OBSERVATIONS -->
+  <div class="obs-box">
+    <div class="obs-label">Key Observations from the Shift</div>
+    <div class="obs-line"></div><div class="obs-line"></div><div class="obs-line"></div>
+    <div style="margin-top:14px;"><div class="obs-label">Anything That Surprised You — Positively or Negatively</div>
+    <div class="obs-line"></div><div class="obs-line"></div></div>
+  </div>
+
+  <!-- STRENGTHS / CONCERNS -->
+  <div class="sc-grid">
+    <div class="sc-card sc-strengths">
+      <div class="sc-label">Strengths Observed</div>
+      <div class="sc-line"></div><div class="sc-line"></div><div class="sc-line"></div><div class="sc-line"></div>
+    </div>
+    <div class="sc-card sc-concerns">
+      <div class="sc-label">Concerns or Questions</div>
+      <div class="sc-line"></div><div class="sc-line"></div><div class="sc-line"></div><div class="sc-line"></div>
+    </div>
+  </div>
+
+  <!-- RECOMMENDATION -->
+  <div class="rec-box">
+    <div class="rec-label">Overall Recommendation — Circle One</div>
+    <div class="rec-options">
+      <div class="rec-option">
+        <div class="rec-circle"></div>
+        <div class="rec-option-label">Yes — Offer</div>
+        <div class="rec-option-sub">Strong candidate, move forward</div>
+      </div>
+      <div class="rec-option">
+        <div class="rec-circle"></div>
+        <div class="rec-option-label">Hold — Second Look</div>
+        <div class="rec-option-sub">Some concerns, want to see more</div>
+      </div>
+      <div class="rec-option">
+        <div class="rec-circle"></div>
+        <div class="rec-option-label">No — Pass</div>
+        <div class="rec-option-sub">Not the right fit for this role</div>
+      </div>
+    </div>
+    <div class="rec-label" style="margin-top:4px;">Rationale (one or two sentences)</div>
+    <div class="rec-line"></div><div class="rec-line"></div>
+  </div>
+
+  <!-- SIGN-OFF -->
+  <div class="signoff">
+    <div class="signoff-field"><div class="signoff-label">Total Score (max 40)</div><div class="signoff-line"></div></div>
+    <div class="signoff-field" style="flex:2;"><div class="signoff-label">Compared to Other Candidates — Notes</div><div class="signoff-line"></div></div>
+    <div class="signoff-field"><div class="signoff-label">Follow-Up Date if Applicable</div><div class="signoff-line"></div></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Interview Scorecard — Operational Template</p>
+</div>
+
+</body>
+</html>

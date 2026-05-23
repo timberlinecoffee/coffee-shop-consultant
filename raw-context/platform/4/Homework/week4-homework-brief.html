@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 4 Homework Brief — Menu Design, Coffee Program & Sourcing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 50px 40px 46px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 300px; height: 300px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header::after { content: ''; position: absolute; bottom: -40px; left: 32%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .header-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .header h1 { font-size: 36px; font-weight: 800; color: var(--white); line-height: 1.22; margin-bottom: 14px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 15px; color: rgba(255,255,255,0.78); line-height: 1.72; max-width: 600px; margin-bottom: 24px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 860px; margin: 0 auto; padding: 36px 40px 56px; }
+
+    .intro-box { background: var(--white); border-radius: 12px; padding: 26px 28px; border-left: 4px solid var(--secondary); margin-bottom: 32px; }
+    .intro-box p { font-size: 14.5px; line-height: 1.78; color: #3a3a3a; }
+    .intro-box p + p { margin-top: 12px; }
+    .intro-box strong { color: var(--primary); }
+
+    .section-heading { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .section-sub { font-size: 13.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 20px; }
+
+    .task-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
+    .task { background: var(--white); border-radius: 14px; padding: 22px 24px; display: flex; gap: 18px; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .task-num { background: var(--primary); color: var(--white); font-size: 13px; font-weight: 800; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .task-body h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 7px; }
+    .task-body p { font-size: 13.5px; color: #444; line-height: 1.72; }
+    .task-body p + p { margin-top: 10px; }
+    .task-tag { display: inline-block; background: var(--secondary); color: var(--white); font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+    .task-hint { margin-top: 10px; background: var(--light-grey); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #555; line-height: 1.65; }
+    .task-hint strong { color: var(--primary); }
+
+    .bring-box { background: var(--primary); border-radius: 14px; padding: 30px 32px; display: flex; gap: 20px; align-items: flex-start; margin-bottom: 32px; }
+    .bring-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+    .bring-box h3 { font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .bring-box p { font-size: 13.5px; line-height: 1.72; color: rgba(255,255,255,0.78); }
+
+    .resources-box { background: var(--white); border-radius: 14px; padding: 26px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 32px; }
+    .resources-box h3 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 16px; }
+    .resource-list { display: flex; flex-direction: column; gap: 12px; }
+    .resource-item { display: flex; gap: 14px; align-items: flex-start; }
+    .resource-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .resource-item h4 { font-size: 13.5px; font-weight: 700; color: #2a2a2a; margin-bottom: 3px; }
+    .resource-item p { font-size: 13px; color: #666; line-height: 1.6; }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 18px 22px; margin-bottom: 32px; }
+    .amber-note p { font-size: 13.5px; line-height: 1.72; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 27px; }
+      .body { padding: 28px 22px 44px; }
+      .task { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Does Your Menu<br><span>Actually Reflect Your Concept?</span></h1>
+    <p class="header-sub">You've built the financial model and scoped your location. This week you build the thing customers will actually order from. Your menu is not a list of drinks — it's an operational document, a financial tool, and a statement of who you are. It needs to work on all three levels.</p>
+    <div class="week-badge">☕ Week 4 — Menu Design, Coffee Program & Sourcing &nbsp;·&nbsp; Homework Brief</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="intro-box">
+    <p>There are two things most new owners get wrong with their menu. The first is designing it without knowing who their roaster is — which means the coffee program is built on assumptions that may not survive contact with reality. The second is building a menu they love without checking whether their team can actually execute it during a morning rush.</p>
+    <p>This week fixes both. You'll research real roasters, draft a real menu with real prices and margins, and make a deliberate decision about food. <strong>By the end of this week, you should be able to hand someone your menu and your cost sheet and explain every number on both.</strong></p>
+  </div>
+
+  <div class="section-heading">Your Three Tasks This Week</div>
+  <div class="section-sub">Work through all three before the live call. Start with the roaster research — it informs everything else.</div>
+
+  <div class="task-list">
+
+    <div class="task">
+      <div class="task-num">1</div>
+      <div class="task-body">
+        <div class="task-tag">Sourcing Task</div>
+        <h3>Research two or three roasters you're genuinely considering</h3>
+        <p>Find two or three specialty roasters you could realistically work with as a wholesale partner. For each one, document: what coffees they offer at wholesale, how their wholesale relationship works (minimum order quantities, pricing, delivery), whether they offer any training or support for wholesale accounts, and whether they have exclusivity in your market — or whether another café nearby is already using them.</p>
+        <p>Most importantly: does their coffee and their story align with the concept you defined in Week 1? Your roaster is part of your brand. Customers who care about coffee will ask who you use.</p>
+        <div class="task-hint">
+          <strong>How to approach this:</strong> Most specialty roasters have a wholesale inquiry form on their website or a listed wholesale contact. Reaching out directly — even just to ask questions — is completely appropriate at this stage. You're not committing to anything. You're doing your homework.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">2</div>
+      <div class="task-body">
+        <div class="task-tag">Main Task</div>
+        <h3>Draft your full opening menu with prices and margins</h3>
+        <p>Using the Menu Builder template from your Week 4 materials, draft your complete opening menu. For every drink, you need: the name, the price, the estimated cost to make it (ingredients only — beans, milk, syrups, cup), and the resulting margin. Then identify two drinks in particular:</p>
+        <p><strong>Your anchor drink</strong> — the one that most customers will order. This is probably your standard flat white, latte, or drip coffee. It sets expectations and drives volume.</p>
+        <p><strong>Your signature drink</strong> — the one that's distinctly yours. A seasonal special, a house recipe, something that gives people a reason to talk about your shop. It doesn't have to have the highest margin — but it should have a story.</p>
+        <div class="task-hint">
+          <strong>On complexity:</strong> Count how many steps are in your most complicated drink. Then ask yourself: can one person make it in under 90 seconds during a 20-transaction-per-hour rush? If the answer is no, reconsider it for the opening menu. You can always add complexity once the team is trained.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">3</div>
+      <div class="task-body">
+        <div class="task-tag">Decision Task</div>
+        <h3>Make your food decision and document your reasoning</h3>
+        <p>Every coffee shop owner has to decide how they'll handle food. There are three real options: make or bake it yourself (scratch), buy it wholesale from a local bakery or food producer (partner), or don't offer food at all. Each has real tradeoffs in cost, complexity, margin, and the type of customer you attract and keep.</p>
+        <p>Write a short paragraph explaining your decision. What are you doing, who are you partnering with or sourcing from, and why does it fit your concept? If you're not doing food, explain why that's the right call for your shop specifically.</p>
+        <div class="task-hint">
+          <strong>The honest tradeoff:</strong> Food increases average ticket and extends dwell time — but it also increases COGS, requires more staff training, adds waste, and can pull your focus from coffee. Most first-time operators underestimate how much complexity food adds. Make the decision with your eyes open.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="amber-note">
+    <p><strong>On pricing:</strong> Most first menus are underpriced. Owners worry about scaring customers off and end up charging less than the coffee costs to make well. Check your numbers honestly — if your margins don't work on paper, they won't work in the real world. It is much easier to launch at the right price than to raise prices six months after opening.</p>
+  </div>
+
+  <div class="bring-box">
+    <div class="bring-icon">📋</div>
+    <div>
+      <h3>What to bring to the live call</h3>
+      <p>Bring your roaster shortlist and your completed menu with margins — even if the numbers aren't perfect yet. The live call will include roaster discussion first (everyone has questions here and the group dynamic is valuable) and then menu reviews: pricing, complexity, and whether the menu actually reflects the concept from Week 1. Two or three menus will be walked through in detail. You don't need everything finished — you need something real to react to.</p>
+    </div>
+  </div>
+
+  <div class="resources-box">
+    <h3>What's included in your Week 4 materials</h3>
+    <div class="resource-list">
+      <div class="resource-item">
+        <div class="resource-icon">📄</div>
+        <div>
+          <h4>This brief (you're reading it)</h4>
+          <p>Your assignment and what to focus on this week.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">☕</div>
+        <div>
+          <h4>Menu Builder Template</h4>
+          <p>A structured worksheet for building out your opening menu. Enter each drink, its price, and its ingredient cost — the template calculates your margin per drink and your blended beverage margin automatically.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">📋</div>
+        <div>
+          <h4>Menu Design & Coffee Sourcing Reference Sheet</h4>
+          <p>How to structure a café menu, what a healthy drink margin looks like, how to approach roaster relationships, and a plain-language glossary of every term you'll encounter in your coffee program and menu pricing.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-heading">Outside resources worth looking at</div>
+  <div class="section-sub">You don't need to read everything — but these are worth having in your back pocket this week.</div>
+
+  <div class="resources-box" style="margin-top: 0;">
+    <div class="resource-list">
+      <div class="resource-item">
+        <div class="resource-icon">🔍</div>
+        <div>
+          <h4>Specialty roaster websites in your area (and beyond)</h4>
+          <p>Look at five to ten roasters before shortlisting two or three. Read their sourcing stories, look at their wholesale pages, and check what cafés in your area are already using them. The SCA (Specialty Coffee Association) has a roaster directory worth browsing.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">🏪</div>
+        <div>
+          <h4>Walk into coffee shops you admire and study their menus</h4>
+          <p>How long is the menu? How is it organised? What's the anchor drink? Can you tell what kind of shop they are just from reading it? A menu tells you a lot about a business — use other people's menus as research before you write your own.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">💬</div>
+        <div>
+          <h4>Ask a barista about their busiest drink</h4>
+          <p>If you can get five minutes with a working barista, ask them: what's the most complicated drink they make regularly, and what's the most common mistake on it? You'll learn something about menu execution that no course can teach you.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">🥐</div>
+        <div>
+          <h4>Local bakeries and food producers near your target location</h4>
+          <p>If you're thinking about a food partnership, identify two or three local bakeries or food producers you'd actually want to work with. Look at their wholesale terms, minimums, and delivery schedules. Even rough numbers help you evaluate the partnership model vs. making it yourself.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 4 Homework Brief</p>
+</div>
+
+</body>
+</html>

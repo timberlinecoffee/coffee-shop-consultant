@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 7 Homework Brief — Pre-Opening & Marketing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 50px 40px 46px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 300px; height: 300px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header::after  { content: ''; position: absolute; bottom: -40px; left: 32%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .header-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .header h1 { font-size: 36px; font-weight: 800; color: var(--white); line-height: 1.22; margin-bottom: 14px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 15px; color: rgba(255,255,255,0.78); line-height: 1.72; max-width: 600px; margin-bottom: 24px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 860px; margin: 0 auto; padding: 36px 40px 56px; }
+
+    .intro-box { background: var(--white); border-radius: 12px; padding: 26px 28px; border-left: 4px solid var(--secondary); margin-bottom: 28px; }
+    .intro-box p { font-size: 14.5px; line-height: 1.78; color: #3a3a3a; }
+    .intro-box p + p { margin-top: 12px; }
+    .intro-box strong { color: var(--primary); }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 18px 22px; margin-bottom: 28px; }
+    .amber-note p { font-size: 13.5px; line-height: 1.72; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    .section-heading { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .section-sub { font-size: 13.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 20px; }
+
+    .task-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
+    .task { background: var(--white); border-radius: 14px; padding: 22px 24px; display: flex; gap: 18px; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .task-num { background: var(--primary); color: var(--white); font-size: 13px; font-weight: 800; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .task-body { flex: 1; }
+    .task-tag { display: inline-block; background: var(--secondary); color: var(--white); font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+    .task-body h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+    .task-body > p { font-size: 13.5px; color: #444; line-height: 1.72; margin-bottom: 10px; }
+
+    .sub-tasks { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .sub-task { background: var(--light-grey); border-radius: 10px; padding: 12px 16px; }
+    .sub-task-label { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--primary); margin-bottom: 5px; }
+    .sub-task p { font-size: 13px; color: #444; line-height: 1.68; }
+
+    .task-hint { margin-top: 12px; background: var(--light-grey); border-left: 3px solid var(--secondary); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: #555; line-height: 1.65; }
+
+    .bring-box { background: var(--primary); border-radius: 14px; padding: 30px 32px; display: flex; gap: 20px; align-items: flex-start; margin-bottom: 32px; }
+    .bring-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+    .bring-box h3 { font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .bring-box p { font-size: 13.5px; line-height: 1.72; color: rgba(255,255,255,0.78); }
+
+    .resources-box { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 32px; }
+    .resources-title { padding: 18px 24px 14px; border-bottom: 1px solid var(--light-grey); }
+    .resources-title h3 { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .resource-item { display: flex; gap: 14px; align-items: flex-start; padding: 14px 24px; border-bottom: 1px solid #f0f0f0; }
+    .resource-item:last-child { border-bottom: none; }
+    .resource-item:nth-child(even) { background: #fafafa; }
+    .resource-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .resource-item h4 { font-size: 13.5px; font-weight: 700; color: #2a2a2a; margin-bottom: 3px; }
+    .resource-item p { font-size: 13px; color: #666; line-height: 1.6; }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; margin-top: 40px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 27px; }
+      .body { padding: 28px 22px 44px; }
+      .task { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-inner">
+      <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+      <h1>Pre-Opening<br/><span>&amp; Marketing</span></h1>
+      <p class="header-sub">The 60 days before you open will do more for your first 60 days of trading than any decision you make after the doors are open. This week you build the plan, write your story, and make your first real moves in the community.</p>
+      <div class="week-badge">Week 7 of 8 — Homework Brief</div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <div class="intro-box">
+      <p>The video this week covered a lot of ground — the pre-opening checklist, how to build a neighbourhood presence before you open, email list building, local press outreach, social media (and its limits), loyalty programs, community partnerships, and what opening day actually looks like when you are in the middle of it.</p>
+      <p>This homework asks you to turn that into action. <strong>Three tasks. All practical.</strong> Together they produce your Pre-Opening Marketing Plan — the last major piece of your Business Readiness Document before the Week 8 capstone.</p>
+    </div>
+
+    <div class="amber-note">
+      <p><strong>A note on specificity:</strong> The most common version of a weak pre-opening plan is a list of channels — "post on Instagram, email local press, do a soft opening." That is not a plan. A plan has specific actions, specific dates, and specific people. Push yourself to be that specific in every task this week.</p>
+    </div>
+
+    <div class="section-heading">Your Three Tasks</div>
+    <p class="section-sub">Complete all three before the live call. Bring what you have made — at least one of the three will be reviewed with the group.</p>
+
+    <div class="task-list">
+
+      <div class="task">
+        <div class="task-num">1</div>
+        <div class="task-body">
+          <div class="task-tag">Opening Story</div>
+          <h3>Write your opening story in three formats</h3>
+          <p>Your opening story is the honest answer to three questions: why are you opening a coffee shop, why here, and why now. It is not a mission statement or a tagline. It is the real answer — the one that sounds like a person, not a brand.</p>
+          <div class="sub-tasks">
+            <div class="sub-task">
+              <div class="sub-task-label">Format A — The Press Pitch (150–200 words)</div>
+              <p>Written for a local journalist who does not know you. Lead with what is interesting or specific about your shop — not just that you are opening. Include your opening date, your location, and a quote from you. Structure it so a journalist could lift a paragraph from it directly.</p>
+            </div>
+            <div class="sub-task">
+              <div class="sub-task-label">Format B — The Instagram Caption (50–80 words)</div>
+              <p>Write the caption itself, not a description of what you would post. No brand language. No "we are excited to announce." Read it out loud — if it sounds like a press release, rewrite it. End with something that gives people a reason to pay attention.</p>
+            </div>
+            <div class="sub-task">
+              <div class="sub-task-label">Format C — The Neighbour Conversation (2–3 sentences)</div>
+              <p>The answer you give when someone on the street asks what you are opening. Would you actually say it out loud? If not, rewrite it. Write Format C first — in your own words, with no audience in mind — then work back to the others.</p>
+            </div>
+          </div>
+          <div class="task-hint">
+            The three-format test: If all three versions sound the same, the press pitch is probably right and the others are too formal. The natural version is almost always better than the polished one.
+          </div>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-num">2</div>
+        <div class="task-body">
+          <div class="task-tag">30-Day Plan</div>
+          <h3>Build your 30-day pre-opening marketing plan</h3>
+          <p>Map out the 30 days before you open. Not everything — the right things, in the right order. The 30-Day Pre-Opening Marketing Calendar template is your working document for this task.</p>
+          <div class="sub-tasks">
+            <div class="sub-task">
+              <div class="sub-task-label">Week 1 — Days 1–7: Lay the Foundation</div>
+              <p>Digital presence live (Google Business claimed and complete, Instagram set up). Email sign-up in place. Personal network told by direct message — not a broadcast post. First two community contacts made in person.</p>
+            </div>
+            <div class="sub-task">
+              <div class="sub-task-label">Week 2 — Days 8–14: Tell Your Story</div>
+              <p>Opening story posted on Instagram. Press pitch sent to at least two local journalists or bloggers. Two to three behind-the-scenes posts showing the space, the product, or the team.</p>
+            </div>
+            <div class="sub-task">
+              <div class="sub-task-label">Week 3 — Days 15–21: Build Anticipation</div>
+              <p>Soft opening (if running one) for 20–40 invited people. All five community relationships initiated. Opening date confirmed publicly with a specific day — not "coming soon."</p>
+            </div>
+            <div class="sub-task">
+              <div class="sub-task-label">Week 4 — Days 22–30: Open Strong</div>
+              <p>Team briefed on opening day plan. Over-staffed. Under-promised on speed. Contact details collected from every person who walks in on day one. Team debrief after first service.</p>
+            </div>
+          </div>
+          <div class="task-hint">
+            The calendar is a tool, not a contract. Real openings never go exactly to plan. What matters is that you understand the logic — so when something shifts, you know what to adjust and what to protect.
+          </div>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-num">3</div>
+        <div class="task-body">
+          <div class="task-tag">Community Relationships</div>
+          <h3>Identify and initiate five community relationships</h3>
+          <p>The most durable marketing a local coffee shop can do is not digital — it is relational. Identify five specific businesses, organisations, or individuals you want to build a relationship with before you open. Then take the first real step on each one.</p>
+          <div class="sub-tasks">
+            <div class="sub-task">
+              <div class="sub-task-label">Who counts as a good community relationship?</div>
+              <p>Local offices and co-working spaces — a single corporate coffee arrangement can be worth thousands annually. Fitness businesses — gyms, yoga studios, running clubs. Creative businesses — bookshops, galleries, design studios. Schools or universities if you are nearby. Neighbourhood associations, residents groups, or local bloggers with a genuine local following.</p>
+            </div>
+            <div class="sub-task">
+              <div class="sub-task-label">What does initiating a relationship look like?</div>
+              <p>Walk in. Introduce yourself as a neighbour who is opening nearby. Bring coffee or something from your menu if you can. You are not pitching a deal on the first contact — you are starting a conversation. For each of your five, write who they are, why they make sense for your concept, and what the first step looks like. Then take it.</p>
+            </div>
+          </div>
+          <div class="task-hint">
+            A relationship counts when you have made real first contact — an email sent, a door knocked on, a conversation had. Not planned. Done. Come to the live call with at least three of the five showing real contact, not intentions.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="bring-box">
+      <div class="bring-icon">📋</div>
+      <div>
+        <h3>What to Bring to the Live Call</h3>
+        <p>Bring all three tasks — even if some are drafts. Your opening story will be reviewed together on the call; the group is very good at spotting where it sounds like marketing rather than a person talking. Come ready to walk through your 30-day plan and explain your priorities. And come with something real to report on the community relationships — even one conversation had is more useful to discuss than five plans that have not happened yet. We will also be talking about opening day logistics and what the first week actually looks like. Think through your team coverage and your plan for collecting feedback before you arrive.</p>
+      </div>
+    </div>
+
+    <div class="resources-box">
+      <div class="resources-title">
+        <h3>Resources for This Week</h3>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">📄</div>
+        <div>
+          <h4>Week 7 Reference Sheet — Pre-Opening &amp; Marketing</h4>
+          <p>Covers every channel honestly — what works, what is table stakes, and what is not worth the time pre-opening. Includes the opening story framework, community relationship strategy, and an opening day do and don't guide.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">✏️</div>
+        <div>
+          <h4>Week 7 Planning Worksheet</h4>
+          <p>Structured working space for all three tasks in order. The opening story section feeds directly into the 30-day plan — work through it that way.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">📅</div>
+        <div>
+          <h4>30-Day Pre-Opening Marketing Calendar</h4>
+          <p>Day-by-day template across the four weeks before opening. Bring the completed version to the live call — it is the main document you will be discussing.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">💬</div>
+        <div>
+          <h4>Opening Story Template</h4>
+          <p>Guided prompts for your core story answers first, then all three formats. Includes worked examples for each format so you can see what the right level of specificity looks like.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">🤝</div>
+        <div>
+          <h4>Community Outreach Tracker</h4>
+          <p>One card per relationship. Who they are, why they make sense, what you said, what happened, what happens next. Bring it to the call with real entries — not blank rows.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="amber-note">
+      <p><strong>On social media:</strong> Instagram is table stakes — you need to be there and post consistently. But it is not a strategy on its own. The cafes that build genuine communities do it through a product worth talking about and real relationships in the neighbourhood. Social media amplifies what already exists. It does not create it from nothing.</p>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <p><strong>Timberline Coffee School</strong> &nbsp;|&nbsp; Coffee Shop Basecamp &nbsp;|&nbsp; Week 7 of 8 — Homework Brief</p>
+  </div>
+
+</body>
+</html>

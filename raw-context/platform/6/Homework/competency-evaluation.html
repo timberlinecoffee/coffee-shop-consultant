@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Competency Evaluation Form — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 36px 40px 32px; }
+    .header-inner { max-width: 820px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-title { font-size: 24px; font-weight: 800; color: var(--white); }
+    .header-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+    .header-tag { background: var(--secondary); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; white-space: nowrap; margin-top: 4px; }
+
+    .body { max-width: 820px; margin: 0 auto; padding: 28px 40px 48px; }
+
+    /* Meta */
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .meta-field { background: var(--white); border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark-grey); margin-bottom: 5px; }
+    .meta-line { border-bottom: 1.5px solid #d8d8d8; height: 22px; }
+
+    /* Score key */
+    .score-key { display: flex; gap: 0; border-radius: 10px; overflow: hidden; margin-bottom: 22px; }
+    .key-item { flex: 1; padding: 10px 8px; text-align: center; }
+    .k1 { background: #c0392b; }
+    .k2 { background: #e8a44a; }
+    .k3 { background: #76b39d; }
+    .k4 { background: var(--primary); }
+    .k5 { background: #0d4a4e; }
+    .key-num { font-size: 18px; font-weight: 800; color: var(--white); }
+    .key-text { font-size: 10.5px; color: rgba(255,255,255,0.8); line-height: 1.4; margin-top: 3px; }
+
+    /* Eval sections */
+    .eval-section { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 18px; }
+    .eval-section-header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .esh-primary   { background: var(--primary); }
+    .esh-secondary { background: var(--secondary); }
+    .esh-teal      { background: #2a8080; }
+    .esh-dark      { background: #1a1a2e; }
+    .eval-section-header h3 { font-size: 14px; font-weight: 700; color: var(--white); }
+    .eval-section-header p  { font-size: 11px; color: rgba(255,255,255,0.65); }
+
+    /* Competency rows */
+    .comp-row { display: flex; border-bottom: 1px solid var(--light-grey); align-items: stretch; }
+    .comp-row:last-child { border-bottom: none; }
+    .comp-text { flex: 1; padding: 10px 16px; }
+    .comp-name { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 3px; }
+    .comp-desc { font-size: 11.5px; color: #666; line-height: 1.5; }
+    .comp-scores { display: flex; align-items: center; padding: 10px 12px; gap: 6px; flex-shrink: 0; }
+    .comp-score-box { width: 32px; height: 32px; border-radius: 6px; border: 1.5px solid #ddd; background: var(--light-grey); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--dark-grey); }
+    .comp-comment { padding: 8px 14px; background: #fafafa; border-top: 1px solid var(--light-grey); }
+    .comp-comment-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-grey); margin-bottom: 4px; }
+    .comp-line { border-bottom: 1.5px solid #ddd; height: 18px; }
+
+    /* Section intro note */
+    .section-note { font-size: 12px; color: #777; font-style: italic; padding: 10px 16px; background: #fafafa; border-bottom: 1px solid var(--light-grey); }
+
+    /* Development goals */
+    .dev-box { background: var(--white); border-radius: 14px; padding: 20px 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 18px; }
+    .dev-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); margin-bottom: 10px; }
+    .dev-line { border-bottom: 1.5px solid #ddd; height: 22px; margin-bottom: 6px; }
+    .dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* Totals + sig */
+    .totals-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .total-card { background: var(--white); border-radius: 10px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .total-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-grey); margin-bottom: 6px; }
+    .total-line { border-bottom: 2px solid var(--primary); height: 26px; }
+
+    .sig-box { background: var(--primary); border-radius: 14px; padding: 20px 24px; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .sig-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 6px; }
+    .sig-line { border-bottom: 1.5px solid rgba(255,255,255,0.3); height: 24px; }
+
+    .footer { background: var(--primary); text-align: center; padding: 18px; margin-top: 8px; }
+    .footer p { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); }
+
+    @media (max-width: 640px) {
+      .meta-grid, .dev-grid, .totals-row, .sig-grid { grid-template-columns: 1fr 1fr; }
+      .body { padding: 20px 16px 36px; }
+    }
+    @media print {
+      body { background: white; }
+      .eval-section { box-shadow: none; border: 1px solid #e0e0e0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">Competency Evaluation Form</div>
+      <div class="header-sub">Staff Performance Review — Coffee Shop Basecamp</div>
+    </div>
+    <div class="header-tag">Operational Template</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="meta-grid" style="margin-top:8px;">
+    <div class="meta-field"><div class="meta-label">Staff Member Name</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Role</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Review Date</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Review Type (30-day / 90-day / Annual)</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Reviewed By</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Time in Current Role</div><div class="meta-line"></div></div>
+  </div>
+
+  <!-- SCORE KEY -->
+  <div class="score-key">
+    <div class="key-item k1"><div class="key-num">1</div><div class="key-text">Not meeting standard</div></div>
+    <div class="key-item k2"><div class="key-num">2</div><div class="key-text">Developing</div></div>
+    <div class="key-item k3"><div class="key-num">3</div><div class="key-text">Meets standard</div></div>
+    <div class="key-item k4"><div class="key-num">4</div><div class="key-text">Exceeds standard</div></div>
+    <div class="key-item k5"><div class="key-num">5</div><div class="key-text">Exceptional</div></div>
+  </div>
+
+  <!-- SECTION 1: TECHNICAL SKILLS -->
+  <div class="eval-section">
+    <div class="eval-section-header esh-primary">
+      <h3>Technical Skills</h3>
+      <p>Coffee preparation and bar execution</p>
+    </div>
+    <div class="section-note">Score against your specific menu and bar standard — not a generic ideal.</div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Espresso Extraction and Calibration</div>
+        <div class="comp-desc">Consistently produces espresso to your shop's standard. Recognises when calibration is needed and addresses it proactively rather than waiting to be asked.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Milk Technique and Drink Consistency</div>
+        <div class="comp-desc">Milk steaming meets your standard across volume. Drinks are consistent across the shift, not just when being observed.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Speed and Workflow Efficiency</div>
+        <div class="comp-desc">Maintains pace during service without sacrificing quality. Manages multiple tickets correctly and does not create bottlenecks.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Equipment Care and Cleanliness</div>
+        <div class="comp-desc">Follows cleaning and maintenance routines without being prompted. Equipment is left in good condition for the next shift.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+  </div>
+
+  <!-- SECTION 2: GUEST EXPERIENCE -->
+  <div class="eval-section">
+    <div class="eval-section-header esh-secondary">
+      <h3>Guest Experience</h3>
+      <p>Hospitality and service standard</p>
+    </div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Warmth and Presence</div>
+        <div class="comp-desc">Greets guests genuinely and makes them feel welcome, not processed. Warmth is consistent across the shift, not just during quiet periods.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Handling Complaints and Difficult Interactions</div>
+        <div class="comp-desc">Responds to complaints calmly and resolves them in line with your approach. Does not escalate or become defensive. Knows when to involve the owner or lead.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Product Knowledge</div>
+        <div class="comp-desc">Can describe every item on the menu accurately and confidently. Answers guest questions without hesitation or guessing.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+  </div>
+
+  <!-- SECTION 3: RELIABILITY AND OWNERSHIP -->
+  <div class="eval-section">
+    <div class="eval-section-header esh-teal">
+      <h3>Reliability and Ownership</h3>
+      <p>Work ethic and accountability</p>
+    </div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Punctuality and Dependability</div>
+        <div class="comp-desc">Shows up on time, ready to work. Communicates in advance when there are issues. Does not require chasing or reminders about scheduled shifts.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Initiative — Sees What Needs Doing</div>
+        <div class="comp-desc">Does not wait to be told. Spots tasks that need doing and does them. Stays busy productively during quiet periods.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Accountability — Owns Mistakes</div>
+        <div class="comp-desc">Calls out their own mistakes rather than hoping they go unnoticed. Does not blame equipment, other staff, or guests. Focuses on fixing, not explaining.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+  </div>
+
+  <!-- SECTION 4: CULTURE AND TEAM -->
+  <div class="eval-section">
+    <div class="eval-section-header esh-dark">
+      <h3>Culture and Team</h3>
+      <p>Alignment with your specific culture document</p>
+    </div>
+    <div class="section-note">Score against the specific behaviors in your culture document — not generic "team player" language.</div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Upholds Culture When Not Observed</div>
+        <div class="comp-desc">Behavior and standard are consistent whether or not you are watching. Standard does not drop on shifts when you are absent or during quiet periods.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Team Support and Communication</div>
+        <div class="comp-desc">Communicates clearly with other staff. Does not create friction or conflict on shift. Supports teammates, especially during busy periods, without being asked.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+
+    <div class="comp-row">
+      <div class="comp-text">
+        <div class="comp-name">Response to Coaching and Feedback</div>
+        <div class="comp-desc">Receives feedback without becoming defensive. Makes adjustments. Shows improvement over time rather than needing the same feedback repeatedly.</div>
+      </div>
+      <div class="comp-scores">
+        <div class="comp-score-box">1</div><div class="comp-score-box">2</div><div class="comp-score-box">3</div><div class="comp-score-box">4</div><div class="comp-score-box">5</div>
+      </div>
+    </div>
+    <div class="comp-comment"><div class="comp-comment-label">Evidence / Comment</div><div class="comp-line"></div></div>
+  </div>
+
+  <!-- DEVELOPMENT GOALS -->
+  <div class="dev-box">
+    <div class="dev-label">Development Focus — Next Review Period</div>
+    <div class="dev-grid">
+      <div>
+        <div style="font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:8px;">Goal 1 — Skill or Behavior to Improve</div>
+        <div class="dev-line"></div><div class="dev-line"></div>
+        <div style="font-size:11px;color:#888;margin-top:6px;margin-bottom:4px;">How we will measure progress</div>
+        <div class="dev-line"></div>
+      </div>
+      <div>
+        <div style="font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:8px;">Goal 2 — Development Opportunity</div>
+        <div class="dev-line"></div><div class="dev-line"></div>
+        <div style="font-size:11px;color:#888;margin-top:6px;margin-bottom:4px;">How we will measure progress</div>
+        <div class="dev-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOTALS -->
+  <div class="totals-row">
+    <div class="total-card"><div class="total-label">Technical Score (max 20)</div><div class="total-line"></div></div>
+    <div class="total-card"><div class="total-label">Guest Experience Score (max 15)</div><div class="total-line"></div></div>
+    <div class="total-card"><div class="total-label">Reliability Score (max 15)</div><div class="total-line"></div></div>
+    <div class="total-card"><div class="total-label">Total Score (max 65)</div><div class="total-line"></div></div>
+  </div>
+
+  <!-- SIGNATURE -->
+  <div class="sig-box">
+    <div style="font-size:14px;font-weight:700;color:var(--white);margin-bottom:14px;">Summary &amp; Sign-Off</div>
+    <div style="margin-bottom:12px;"><div class="sig-field-label">Overall narrative — one paragraph on this person's performance and trajectory</div><div class="sig-line" style="margin-bottom:6px;"></div><div class="sig-line"></div></div>
+    <div class="sig-grid">
+      <div><div class="sig-field-label">Reviewer Name and Signature</div><div class="sig-line"></div></div>
+      <div><div class="sig-field-label">Staff Member Acknowledgement</div><div class="sig-line"></div></div>
+      <div><div class="sig-field-label">Date of Review</div><div class="sig-line"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Competency Evaluation Form — Operational Template</p>
+</div>
+
+</body>
+</html>

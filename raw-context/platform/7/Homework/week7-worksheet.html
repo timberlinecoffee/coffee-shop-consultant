@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 7 Planning Worksheet — Pre-Opening & Marketing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 36px 40px 32px; }
+    .header-inner { max-width: 820px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-left h1 { font-size: 22px; font-weight: 800; color: var(--white); }
+    .header-left p  { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .week-badge { background: var(--secondary); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; white-space: nowrap; margin-top: 4px; }
+
+    .body { max-width: 820px; margin: 0 auto; padding: 28px 40px 48px; }
+
+    .section-block { background: var(--white); border-radius: 14px; padding: 24px 26px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .section-label { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; }
+    .sl-primary   { background: var(--primary);   color: var(--white); }
+    .sl-secondary { background: var(--secondary); color: var(--white); }
+    .section-title { font-size: 17px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .section-intro { font-size: 13px; color: #666; line-height: 1.7; margin-bottom: 20px; }
+
+    .field-row { margin-bottom: 16px; }
+    .field-label { font-size: 11.5px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .field-hint  { font-size: 11px; color: var(--dark-grey); margin-bottom: 6px; font-style: italic; }
+    .field { width: 100%; }
+    .line { border-bottom: 1.5px solid #d0d0d0; height: 26px; margin-bottom: 4px; }
+    .lines-2 .line { }
+    .lines-3 .line { }
+    .lines-4 .line { }
+
+    .sub-section { background: var(--light-grey); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+    .sub-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); margin-bottom: 10px; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .col-sub { background: var(--light-grey); border-radius: 10px; padding: 14px 16px; }
+
+    .story-formats { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+    .story-format { border-left: 3px solid var(--secondary); padding-left: 14px; }
+    .story-format-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--secondary); margin-bottom: 4px; }
+    .story-format-name { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+
+    .partner-grid { display: flex; flex-direction: column; gap: 12px; }
+    .partner-row { background: var(--light-grey); border-radius: 10px; padding: 14px 16px; }
+    .partner-num { font-size: 11px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+    .partner-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .week-plan { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .week-row { display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; }
+    .week-tag { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; padding: 12px 8px; font-size: 11px; font-weight: 800; color: var(--white); text-align: center; line-height: 1.3; }
+    .wt-1 { background: var(--primary); }
+    .wt-2 { background: #1a7474; }
+    .wt-3 { background: var(--secondary); }
+    .wt-4 { background: #5a9f8a; }
+    .week-content { flex: 1; background: var(--light-grey); padding: 12px 14px; }
+    .week-focus { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--primary); margin-bottom: 6px; }
+    .week-content .line { border-bottom: 1.5px solid #c8c8c8; }
+
+    .decision-box { background: var(--primary); border-radius: 14px; padding: 24px 26px; margin-bottom: 20px; }
+    .decision-box h3 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+    .decision-line { border-bottom: 1.5px solid rgba(255,255,255,0.25); height: 26px; margin-bottom: 5px; }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; }
+    .amber-note p { font-size: 12.5px; line-height: 1.7; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; margin-top: 8px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .two-col, .partner-fields { grid-template-columns: 1fr; }
+      .body { padding: 20px 16px 36px; }
+    }
+    @media print { body { background: white; } .section-block { box-shadow: none; border: 1px solid #e0e0e0; } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <h1>Week 7 Planning Worksheet</h1>
+      <p>Coffee Shop Basecamp &nbsp;·&nbsp; Pre-Opening &amp; Marketing</p>
+    </div>
+    <div class="week-badge">Week 7</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- SECTION 1: CONTEXT -->
+  <div class="section-block">
+    <div class="section-label sl-primary">Section 1</div>
+    <div class="section-title">Your Opening Context</div>
+    <p class="section-intro">Answer these before you start writing anything. They will shape everything else in this worksheet.</p>
+    <div class="two-col">
+      <div class="field-row">
+        <div class="field-label">Planned opening date (or target window)</div>
+        <div class="line"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Location — street, neighbourhood, city</div>
+        <div class="line"></div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Who is your primary customer — be specific</div>
+      <div class="field-hint">Not "everyone who likes coffee." Who specifically — commuters, students, remote workers, local families, specialty coffee enthusiasts?</div>
+      <div class="line"></div><div class="line"></div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">What is the one thing that makes your shop different from other options nearby?</div>
+      <div class="line"></div><div class="line"></div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">What is your biggest marketing concern going into opening?</div>
+      <div class="field-hint">Being honest here helps you focus your plan on what actually matters for your situation.</div>
+      <div class="line"></div><div class="line"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: OPENING STORY -->
+  <div class="section-block">
+    <div class="section-label sl-secondary">Section 2</div>
+    <div class="section-title">Your Opening Story</div>
+    <p class="section-intro">Start by answering these three questions in a sentence or two each. Your answers are the raw material for all three story formats below.</p>
+
+    <div class="sub-section">
+      <div class="sub-label">The Core Story — Answer These First</div>
+      <div class="field-row">
+        <div class="field-label">Why are you opening a coffee shop?</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Why here — this location, this neighbourhood?</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Why now — what has made this the right moment?</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+
+    <div class="story-formats">
+      <div class="story-format">
+        <div class="story-format-tag">Format A</div>
+        <div class="story-format-name">The Press Pitch — 150–200 words, written for a local journalist</div>
+        <div class="field-hint" style="margin-bottom:8px;">Lead with what is interesting or different, not just "new café opens." Include your opening date, your location, and a specific angle. End with your name and contact details.</div>
+        <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+      </div>
+      <div class="story-format">
+        <div class="story-format-tag">Format B</div>
+        <div class="story-format-name">The Instagram Caption — 50–80 words, written as an actual post</div>
+        <div class="field-hint" style="margin-bottom:8px;">Write the caption itself, not a description of it. End with a call to action. Read it out loud — it should sound like you, not a brand.</div>
+        <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+      </div>
+      <div class="story-format">
+        <div class="story-format-tag">Format C</div>
+        <div class="story-format-name">The Neighbour Conversation — 2–3 sentences maximum</div>
+        <div class="field-hint" style="margin-bottom:8px;">What you say when someone asks what you are opening. No jargon. Should sound exactly like how you actually talk.</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+
+    <div class="amber-note">
+      <p><strong>Check:</strong> Does Format C sound like you talking? If you would not say it out loud at a bus stop, rewrite it. That version — the natural one — is almost always better than the polished one.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 3: 30-DAY PLAN -->
+  <div class="section-block">
+    <div class="section-label sl-primary">Section 3</div>
+    <div class="section-title">Your 30-Day Pre-Opening Marketing Plan</div>
+    <p class="section-intro">Map out the four weeks before opening. Do not try to do everything — choose the actions that make most sense for your concept, location, and capacity. Use the 30-Day Marketing Calendar for the full day-by-day version.</p>
+
+    <div class="week-plan">
+      <div class="week-row">
+        <div class="week-tag wt-1">Week 1<br/>Days 1–7</div>
+        <div class="week-content">
+          <div class="week-focus">Lay the Foundation — What will you set up or launch this week?</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-tag wt-2">Week 2<br/>Days 8–14</div>
+        <div class="week-content">
+          <div class="week-focus">Tell Your Story — How and where will you share it?</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-tag wt-3">Week 3<br/>Days 15–21</div>
+        <div class="week-content">
+          <div class="week-focus">Build Anticipation — Are you running a soft opening? What comes before the doors open?</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-tag wt-4">Week 4<br/>Days 22–30</div>
+        <div class="week-content">
+          <div class="week-focus">Open Strong — What does opening day look like?</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="field-row">
+        <div class="field-label">Are you running a soft opening? (Yes / No / Maybe)</div>
+        <div class="line"></div>
+        <div class="field-label" style="margin-top:10px;">If yes — who will you invite and when?</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Will you launch a loyalty program from day one?</div>
+        <div class="line"></div>
+        <div class="field-label" style="margin-top:10px;">If yes — what format (stamp card, app, other)?</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">What is the one thing you most want to communicate before you open?</div>
+      <div class="field-hint">Not your full story — just the single most important thing you want people to know or feel about your shop before they walk in.</div>
+      <div class="line"></div><div class="line"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: COMMUNITY RELATIONSHIPS -->
+  <div class="section-block">
+    <div class="section-label sl-secondary">Section 4</div>
+    <div class="section-title">Your Five Community Relationships</div>
+    <p class="section-intro">Identify five specific people, businesses, or organisations you want to build a relationship with before you open. Then take the first step on each one before the live call.</p>
+
+    <div class="partner-grid">
+      <div class="partner-row">
+        <div class="partner-num">Relationship 1</div>
+        <div class="partner-fields">
+          <div class="field-row"><div class="field-label">Who are they?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Why do they make sense for your concept?</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">First contact — what did you do or plan to do?</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">What happened?</div><div class="line"></div></div>
+      </div>
+      <div class="partner-row">
+        <div class="partner-num">Relationship 2</div>
+        <div class="partner-fields">
+          <div class="field-row"><div class="field-label">Who are they?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Why do they make sense for your concept?</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">First contact — what did you do or plan to do?</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">What happened?</div><div class="line"></div></div>
+      </div>
+      <div class="partner-row">
+        <div class="partner-num">Relationship 3</div>
+        <div class="partner-fields">
+          <div class="field-row"><div class="field-label">Who are they?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Why do they make sense for your concept?</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">First contact — what did you do or plan to do?</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">What happened?</div><div class="line"></div></div>
+      </div>
+      <div class="partner-row">
+        <div class="partner-num">Relationship 4</div>
+        <div class="partner-fields">
+          <div class="field-row"><div class="field-label">Who are they?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Why do they make sense for your concept?</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">First contact — what did you do or plan to do?</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">What happened?</div><div class="line"></div></div>
+      </div>
+      <div class="partner-row">
+        <div class="partner-num">Relationship 5</div>
+        <div class="partner-fields">
+          <div class="field-row"><div class="field-label">Who are they?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Why do they make sense for your concept?</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">First contact — what did you do or plan to do?</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">What happened?</div><div class="line"></div></div>
+      </div>
+    </div>
+
+    <div class="amber-note">
+      <p><strong>Before the live call:</strong> At least three of these five should have had a real first contact — an email sent, a door knocked on, a message delivered. Not planned. Done. Come to the call with something to report back.</p>
+    </div>
+  </div>
+
+  <!-- DECISION BOX -->
+  <div class="decision-box">
+    <h3>Before the Live Call — Bring These</h3>
+    <div class="field-row"><div class="field-label" style="color:rgba(255,255,255,0.7);">Which of the three homework tasks are you most confident about?</div><div class="decision-line"></div></div>
+    <div class="field-row"><div class="field-label" style="color:rgba(255,255,255,0.7);">Which one do you most want feedback on?</div><div class="decision-line"></div></div>
+    <div class="field-row"><div class="field-label" style="color:rgba(255,255,255,0.7);">What is the one thing about your pre-opening plan that you are still uncertain about?</div><div class="decision-line"></div><div class="decision-line"></div></div>
+    <div class="field-row"><div class="field-label" style="color:rgba(255,255,255,0.7);">What is the first concrete thing you will do after this week before Week 8 begins?</div><div class="decision-line"></div></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Week 7 Planning Worksheet</p>
+</div>
+
+</body>
+</html>

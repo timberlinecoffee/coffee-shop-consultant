@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 4 Reference Sheet — Menu Design & Coffee Sourcing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 50px 40px 46px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 300px; height: 300px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header::after { content: ''; position: absolute; bottom: -40px; left: 30%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .header-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .header h1 { font-size: 34px; font-weight: 800; color: var(--white); line-height: 1.22; margin-bottom: 12px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 14.5px; color: rgba(255,255,255,0.78); line-height: 1.72; max-width: 620px; margin-bottom: 22px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 900px; margin: 0 auto; padding: 36px 40px 56px; }
+    .section-heading { font-size: 21px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .section-sub { font-size: 13.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 22px; }
+
+    /* ── BENCHMARK GRID ── */
+    .benchmark-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px; }
+    .bcard { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .bcard-header { background: var(--secondary); padding: 18px 20px 14px; }
+    .bcard-header.primary { background: var(--primary); }
+    .bcard-header .blabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.72); margin-bottom: 4px; }
+    .bcard-header h3 { font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+    .bcard-number { font-size: 32px; font-weight: 800; color: var(--white); line-height: 1; }
+    .bcard-number span { font-size: 14px; font-weight: 500; opacity: 0.8; }
+    .bcard-body { padding: 16px 20px 20px; }
+    .bcard-body p { font-size: 13.5px; line-height: 1.7; color: #444; }
+    .bcard-warn { margin-top: 12px; background: var(--amber-bg); border-radius: 6px; padding: 10px 13px; font-size: 12.5px; color: var(--amber-text); line-height: 1.65; }
+
+    /* ── FOOD OPTIONS ── */
+    .food-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 40px; }
+    .food-card { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .food-card-header { background: var(--primary); padding: 16px 18px 12px; }
+    .food-card-header h3 { font-size: 15px; font-weight: 700; color: var(--white); }
+    .food-card-header .tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 4px; }
+    .food-card-body { padding: 16px 18px 18px; }
+    .food-card-body p { font-size: 13px; line-height: 1.68; color: #444; margin-bottom: 10px; }
+    .pro-con { font-size: 12px; line-height: 1.6; color: #555; }
+    .pro-con span.label { font-weight: 700; }
+    .pro-con span.green { color: #1a7a45; }
+    .pro-con span.red { color: var(--amber-text); }
+
+    /* ── ROASTER TABLE ── */
+    .roaster-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 40px; }
+    .roaster-table thead tr { background: var(--primary); }
+    .roaster-table thead th { padding: 14px 20px; text-align: left; font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 0.06em; text-transform: uppercase; }
+    .roaster-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .roaster-table tbody tr:last-child { border-bottom: none; }
+    .roaster-table tbody tr:nth-child(even) { background: #fafafa; }
+    .roaster-table td { padding: 14px 20px; font-size: 13.5px; line-height: 1.65; vertical-align: top; color: #333; }
+    .roaster-table td:first-child { font-weight: 700; color: var(--primary); width: 28%; }
+    .tip { display: block; font-size: 12px; font-weight: 400; color: var(--dark-grey); margin-top: 3px; }
+
+    /* ── GLOSSARY TABLE ── */
+    .glossary-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 40px; }
+    .glossary-table thead tr { background: var(--secondary); }
+    .glossary-table thead th { padding: 14px 20px; text-align: left; font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,0.9); letter-spacing: 0.06em; text-transform: uppercase; }
+    .glossary-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .glossary-table tbody tr:last-child { border-bottom: none; }
+    .glossary-table tbody tr:nth-child(even) { background: #fafafa; }
+    .glossary-table td { padding: 14px 20px; font-size: 13.5px; line-height: 1.68; vertical-align: top; color: #333; }
+    .term { font-weight: 700; color: var(--primary); width: 26%; }
+
+    /* ── MISTAKES GRID ── */
+    .mistakes-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 40px; }
+    .mcard { background: var(--white); border-radius: 12px; padding: 20px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 3px solid var(--amber); }
+    .mcard-icon { font-size: 22px; margin-bottom: 10px; }
+    .mcard h3 { font-size: 13.5px; font-weight: 700; color: var(--primary); margin-bottom: 7px; }
+    .mcard p { font-size: 13px; color: #555; line-height: 1.68; }
+
+    /* ── MENU ANATOMY ── */
+    .anatomy-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 40px; }
+    .anatomy-table thead tr { background: var(--secondary); }
+    .anatomy-table thead th { padding: 14px 20px; text-align: left; font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,0.9); letter-spacing: 0.06em; text-transform: uppercase; }
+    .anatomy-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .anatomy-table tbody tr:last-child { border-bottom: none; }
+    .anatomy-table tbody tr:nth-child(even) { background: #fafafa; }
+    .anatomy-table td { padding: 14px 20px; font-size: 13.5px; line-height: 1.65; vertical-align: top; color: #333; }
+    .anatomy-table td:first-child { font-weight: 700; color: var(--primary); width: 22%; white-space: nowrap; }
+
+    /* ── CLOSING ── */
+    .closing-box { background: var(--primary); border-radius: 14px; padding: 28px 32px; display: flex; gap: 18px; align-items: flex-start; }
+    .closing-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+    .closing-box h3 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .closing-box p { font-size: 13.5px; line-height: 1.72; color: rgba(255,255,255,0.78); }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; margin-top: 1px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 680px) {
+      .header { padding: 36px 22px 32px; } .header h1 { font-size: 26px; }
+      .body { padding: 28px 22px 44px; }
+      .benchmark-grid, .food-grid, .mistakes-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Building a Menu That<br><span>Works as Hard as You Do</span></h1>
+    <p class="header-sub">Drink margin targets, menu structure principles, how to evaluate a roaster relationship, your food program options, and a full glossary of the terms you'll encounter this week. Keep this open while you build your menu.</p>
+    <div class="week-badge">📋 Week 4 — Menu Design & Coffee Sourcing Reference Sheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- MARGIN BENCHMARKS -->
+  <div class="section-heading">The margin benchmarks that matter for your menu</div>
+  <div class="section-sub">These are the targets healthy coffee shops build their menus around. They're not rules — but if you're consistently below them, your menu is working against your financial model.</div>
+
+  <div class="benchmark-grid">
+    <div class="bcard">
+      <div class="bcard-header">
+        <div class="blabel">Beverage Margin Target</div>
+        <h3>What you keep per drink</h3>
+        <div class="bcard-number">68–75% <span>gross margin</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>After subtracting your ingredient cost (coffee, milk, syrups, cup, lid), you should keep roughly 68–75 cents of every dollar a drink brings in. This is before rent, wages, or any other cost.</p>
+        <div class="bcard-warn">⚠️ Milk-heavy drinks and high-syrup specialty drinks often run closer to 60–65%. That's fine for a signature item — just make sure your high-volume drinks stay in range.</div>
+      </div>
+    </div>
+    <div class="bcard">
+      <div class="bcard-header">
+        <div class="blabel">Food Margin Target</div>
+        <h3>What you keep per food item</h3>
+        <div class="bcard-number">60–70% <span>gross margin</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>Food margins are lower than beverage margins because ingredients cost more and there's more waste. Wholesale-purchased pastries and pre-made items often run 60–65%. Anything made in-house can be higher, but only if you manage waste tightly.</p>
+        <div class="bcard-warn">⚠️ Food waste is one of the most common hidden costs in a café. Pastries that don't sell by end of day, over-ordered produce, and preparation waste all eat into your margins silently.</div>
+      </div>
+    </div>
+    <div class="bcard primary">
+      <div class="bcard-header primary">
+        <div class="blabel">Blended Beverage COGS</div>
+        <h3>What you spend making what you sell</h3>
+        <div class="bcard-number">25–32% <span>of revenue</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>Your blended beverage COGS — the weighted average cost across your whole drink menu — should sit between 25 and 32% of revenue. This already appeared in your Week 2 financial model. Your actual menu needs to confirm that assumption.</p>
+        <div class="bcard-warn">⚠️ If your menu is specialty-heavy with complex preparation and premium ingredients, your blended COGS can push toward 35%. Make sure your pricing accounts for this.</div>
+      </div>
+    </div>
+    <div class="bcard primary">
+      <div class="bcard-header primary">
+        <div class="blabel">Average Ticket Target</div>
+        <h3>What each customer spends</h3>
+        <div class="bcard-number">$6–$10 <span>per visit</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>A coffee-only customer in the morning is probably a $5–$7 ticket. Add food and you're at $9–$14. Your blended average across all transactions — across all times of day — is the number that drives your revenue model. It needs to match what you put in your Week 2 spreadsheet.</p>
+        <div class="bcard-warn">⚠️ This is where menu design and financial modeling connect. If your projected average ticket was $7.50, go back and check whether your actual menu — at the prices you're planning to charge — actually produces that.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU ANATOMY -->
+  <div class="section-heading">How to structure your opening menu</div>
+  <div class="section-sub">A well-designed café menu has a clear structure. Each section serves a different purpose. Here's what belongs where — and why.</div>
+
+  <table class="anatomy-table">
+    <thead>
+      <tr>
+        <th>Section</th>
+        <th>What goes here</th>
+        <th>Why it matters</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Espresso<span class="tip">Your core</span></td>
+        <td>Espresso, double espresso, macchiato, cortado, flat white, cappuccino, latte. These are the foundation — the drinks most customers know by name and order by habit.</td>
+        <td>This section drives the majority of your volume. Keep the milk options clear (regular, oat, almond, etc.) and price add-ons cleanly. Complexity here kills your throughput.</td>
+      </tr>
+      <tr>
+        <td>Filter / Drip<span class="tip">Your margin hero</span></td>
+        <td>Batch brew, pour-over, or cold brew. Batch brew is the lowest cost, highest throughput, highest margin option in your whole business.</td>
+        <td>Don't underestimate this section. A $4–$5 drip coffee costs roughly $0.50–$0.80 to make. Customers who just want "a coffee" are your most profitable customers.</td>
+      </tr>
+      <tr>
+        <td>Specialty<span class="tip">Your story</span></td>
+        <td>Your house signature drink(s). Seasonal specials. Anything that's distinctly yours and gives people a reason to tell someone else about you.</td>
+        <td>Limit this to two or three items on opening. These are your marketing, not your volume. They need a story — why this drink, why these ingredients, why now.</td>
+      </tr>
+      <tr>
+        <td>Cold Drinks<span class="tip">Your afternoon revenue</span></td>
+        <td>Iced lattes, cold brew, iced teas, house sodas. Cold drinks are one of the fastest-growing categories in independent cafés and often have strong margins.</td>
+        <td>Even if you open in winter, people order cold drinks year-round. A small, focused cold menu extends your revenue across the full trading day without much added complexity.</td>
+      </tr>
+      <tr>
+        <td>Non-Coffee<span class="tip">Your inclusivity</span></td>
+        <td>Matcha, chai, hot chocolate, tea. These exist for the person who comes in with a coffee-drinking friend.</td>
+        <td>Don't build these out as a full alternative menu. Three to four well-executed non-coffee options is enough to welcome everyone without adding operational complexity.</td>
+      </tr>
+      <tr>
+        <td>Food<span class="tip">Your ticket builder</span></td>
+        <td>Pastries, snacks, simple food items appropriate to your concept. Keep it shorter than you think. A curated food menu is always better than a long one with middling execution.</td>
+        <td>Food is a ticket builder, not a restaurant menu. The goal is to give people something to add to their order — not to compete with the lunch spot next door.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ROASTER SECTION -->
+  <div class="section-heading">What to look for in a roaster relationship</div>
+  <div class="section-sub">Your roaster is one of your most important vendor relationships. Here's what to evaluate when you're choosing who to work with.</div>
+
+  <table class="roaster-table">
+    <thead>
+      <tr>
+        <th>What to evaluate</th>
+        <th>What it means and what to ask</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Coffee quality &amp; consistency<span class="tip">Non-negotiable</span></td>
+        <td>Taste their espresso and filter offerings across at least two or three visits or samples before committing. Consistency matters more than the best single bag — you need the same quality every week, not just the first time.</td>
+      </tr>
+      <tr>
+        <td>Minimum order quantities<span class="tip">Practical concern</span></td>
+        <td>Most specialty roasters have wholesale minimums — often 5kg or 10kg per order. Make sure their minimums match your likely weekly coffee use, especially in your first few months when volume is lower. Being locked into a 20kg weekly minimum before you've built the customer base is a real problem.</td>
+      </tr>
+      <tr>
+        <td>Training &amp; support<span class="tip">Often undervalued</span></td>
+        <td>The best wholesale relationships include training support — helping your team dial in espresso, troubleshoot extraction issues, and stay educated. Ask directly: what do you offer wholesale accounts beyond just the coffee? Some roasters offer this, many don't. It matters if your team is new.</td>
+      </tr>
+      <tr>
+        <td>Market exclusivity<span class="tip">Ask the question</span></td>
+        <td>Are you going to be the only café in your area using this roaster — or will your neighbour across the street be serving the same beans? This matters more for some concepts than others. If your brand story is closely tied to your roaster partner, you want to know who else is telling that story.</td>
+      </tr>
+      <tr>
+        <td>Brand alignment<span class="tip">Often overlooked</span></td>
+        <td>Does their story match yours? If you're building a casual neighbourhood café, a roaster whose brand is aggressively high-end and technical may not be the right fit — even if the coffee is excellent. Customers who care about coffee will ask who you use, and your answer is part of your brand.</td>
+      </tr>
+      <tr>
+        <td>Delivery reliability<span class="tip">Operational reality</span></td>
+        <td>How do they deliver, how often, and what's their lead time? Running out of your house espresso on a Tuesday morning because delivery is delayed is a problem you only want to experience once. Ask about their logistics, their backup plan, and what happens if there's a sourcing issue with a specific coffee.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- FOOD PROGRAM OPTIONS -->
+  <div class="section-heading">Your three food program options</div>
+  <div class="section-sub">Every café owner has to make this decision. There is no universally right answer — only the right answer for your concept, your space, and your capacity.</div>
+
+  <div class="food-grid">
+    <div class="food-card">
+      <div class="food-card-header">
+        <div class="tag">Option A</div>
+        <h3>Partner with a bakery or food producer</h3>
+      </div>
+      <div class="food-card-body">
+        <p>You buy finished goods wholesale from a local baker, pastry chef, or food producer and sell them in your shop. You don't make anything — you curate.</p>
+        <p class="pro-con"><span class="label green">Pros: </span>Lower complexity, no kitchen needed, supports local makers, great story to tell customers.</p>
+        <p class="pro-con"><span class="label red">Cons: </span>Lower margins than in-house production, less control over consistency and supply, you're dependent on someone else's schedule.</p>
+        <div style="margin-top:10px; background: var(--amber-bg); border-radius:6px; padding:9px 12px; font-size:12px; color:var(--amber-text);">Best for: First-time operators, small spaces with no kitchen, or shops where coffee is clearly the main focus.</div>
+      </div>
+    </div>
+    <div class="food-card">
+      <div class="food-card-header">
+        <div class="tag">Option B</div>
+        <h3>Make it yourself (scratch kitchen)</h3>
+      </div>
+      <div class="food-card-body">
+        <p>You prepare some or all of your food in-house — baking, cooking, or assembling on site. Higher investment, higher margin, more control.</p>
+        <p class="pro-con"><span class="label green">Pros: </span>Higher margins, full quality control, strong differentiation, customers notice when everything is made with care.</p>
+        <p class="pro-con"><span class="label red">Cons: </span>Requires kitchen space, equipment, permits, and staff who can cook. Adds significant operational complexity and a second set of costs to manage.</p>
+        <div style="margin-top:10px; background: var(--amber-bg); border-radius:6px; padding:9px 12px; font-size:12px; color:var(--amber-text);">Best for: Operators with food experience, larger spaces, and a concept where food is part of the identity.</div>
+      </div>
+    </div>
+    <div class="food-card">
+      <div class="food-card-header">
+        <div class="tag">Option C</div>
+        <h3>No food (coffee-only)</h3>
+      </div>
+      <div class="food-card-body">
+        <p>You sell drinks only. No pastries, no snacks, no sandwiches. Every square foot and every staff minute goes to coffee.</p>
+        <p class="pro-con"><span class="label green">Pros: </span>Maximum simplicity, lower COGS, easier to train staff, easier to manage. Your team can focus entirely on making excellent coffee.</p>
+        <p class="pro-con"><span class="label red">Cons: </span>Lower average ticket, shorter dwell time, you miss out on the food revenue that sustains many cafés through slow periods.</p>
+        <div style="margin-top:10px; background: var(--amber-bg); border-radius:6px; padding:9px 12px; font-size:12px; color:var(--amber-text);">Best for: Grab-and-go models, kiosks, drive-throughs, or highly focused specialty shops with a clear "coffee only" positioning.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="section-heading">Words you'll need to know</div>
+  <div class="section-sub">Plain-language definitions for terms that come up in menu design, coffee sourcing, and drink pricing this week.</div>
+
+  <table class="glossary-table">
+    <thead>
+      <tr><th>Term</th><th>What it means in plain language</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="term">Anchor Drink</td><td>The drink most of your customers will order. Usually your flat white, latte, or standard coffee. It drives volume, sets the tone for your menu, and is the thing that brings people back. Your anchor drink needs to be excellent, consistent, and priced correctly.</td></tr>
+      <tr><td class="term">Signature Drink</td><td>A drink that's distinctly yours — a house recipe, seasonal creation, or something with a story. It might not be your highest-volume seller, but it gives people something to talk about and remember. Often your most effective marketing.</td></tr>
+      <tr><td class="term">Drink Margin</td><td>The percentage of a drink's price that remains after subtracting the ingredient cost. A flat white that costs $1.20 to make and sells for $5.00 has a margin of 76%. This is before rent, wages, or any other cost.</td></tr>
+      <tr><td class="term">Blended Margin</td><td>The weighted average margin across all the drinks you sell, accounting for how often each is ordered. Your high-volume anchor drink has more impact on your blended margin than your low-volume specialty drinks.</td></tr>
+      <tr><td class="term">House Espresso Blend</td><td>A specific espresso recipe sourced consistently from your roaster — designed to be stable across milk-based drinks and espresso shots. Most cafés have one. It's the coffee your team will pull hundreds of times a day.</td></tr>
+      <tr><td class="term">Single Origin</td><td>Coffee from one specific farm, region, or country — as opposed to a blend of multiple origins. Single origins often have distinctive, traceable flavour profiles. Some cafés rotate single origins on their filter menu to keep things interesting and tell sourcing stories.</td></tr>
+      <tr><td class="term">Wholesale Relationship</td><td>The commercial agreement between a coffee roaster and a café. It covers pricing per kilo, minimum order quantities, delivery terms, and any support the roaster provides (like training or equipment). It's a vendor relationship, but the best ones feel like partnerships.</td></tr>
+      <tr><td class="term">Minimum Order Quantity (MOQ)</td><td>The smallest amount a roaster will sell to a wholesale account per order. If a roaster's MOQ is 10kg per week and you only need 5kg, you either over-order or find a different roaster. Understanding MOQs matters especially when you're just starting out and volume is lower.</td></tr>
+      <tr><td class="term">Dialling In</td><td>The process of adjusting grind size, dose (the amount of coffee), and extraction time to get the espresso tasting exactly right for a specific coffee. Every time you switch to a new bag or a new roast, someone needs to dial it in. It takes time and some waste — factor this into your staff planning.</td></tr>
+      <tr><td class="term">Batch Brew</td><td>Coffee brewed in larger quantities ahead of time and kept hot (or cold) for service, rather than made to order. The highest-margin item on most café menus — fast to serve, very low ingredient cost, and consistent when done well.</td></tr>
+      <tr><td class="term">SKU</td><td>Stock Keeping Unit — a single distinct item on your menu. Every drink variation, size, and modification is technically a SKU. More SKUs means more to train, more to track, more chances for mistakes during a rush. Simpler menus have fewer SKUs.</td></tr>
+      <tr><td class="term">Menu Complexity</td><td>How many different drinks and food items your team has to make, in how many variations, and how quickly. High menu complexity is one of the most common causes of slow service, inconsistent quality, and staff frustration. More items than your busiest barista can execute cleanly is too many items.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- COMMON MISTAKES -->
+  <div class="section-heading">The most common menu and sourcing mistakes</div>
+  <div class="section-sub">These come up consistently in first-time café menus. Go through each one before you finalise yours.</div>
+
+  <div class="mistakes-grid">
+    <div class="mcard">
+      <div class="mcard-icon">📋</div>
+      <h3>Making the menu too long</h3>
+      <p>Every item you add to your menu adds training time, slows your team during a rush, and increases the chance of mistakes. A focused menu of 12–18 drinks executed brilliantly will always beat 30 drinks executed inconsistently. Cut ruthlessly before you open.</p>
+    </div>
+    <div class="mcard">
+      <div class="mcard-icon">💸</div>
+      <h3>Underpricing because of fear</h3>
+      <p>The most common pricing mistake. Owners worry customers will balk at a $6 flat white and price at $4.80. But if it costs $1.50 to make and you need a 70% margin to hit your financial model, $4.80 doesn't work. Price for the margin you need, not the fear you feel.</p>
+    </div>
+    <div class="mcard">
+      <div class="mcard-icon">☕</div>
+      <h3>Building the menu before choosing a roaster</h3>
+      <p>Your espresso extraction profile, your batch brew programme, and the story behind your coffee all depend on who you're sourcing from. Don't finalise your menu until you know who your roaster is — or at least which two you're seriously considering.</p>
+    </div>
+    <div class="mcard">
+      <div class="mcard-icon">🥛</div>
+      <h3>Forgetting to cost milk properly</h3>
+      <p>Milk is often the second-biggest ingredient cost in a café — and alternative milks (oat, almond, soy) cost significantly more per litre. If half your customers order oat milk and you've priced assuming dairy, your actual COGS is higher than your model shows. Charge for the add-on. Most customers expect it.</p>
+    </div>
+    <div class="mcard">
+      <div class="mcard-icon">🏪</div>
+      <h3>Choosing a roaster on vibes alone</h3>
+      <p>A roaster with a great Instagram, a beautiful bag, and a compelling story can still have MOQs that don't match your volume, inconsistent supply, or no real wholesale support. Evaluate the relationship, not just the coffee.</p>
+    </div>
+    <div class="mcard">
+      <div class="mcard-icon">🍰</div>
+      <h3>Adding food without running the numbers</h3>
+      <p>Food feels like easy extra revenue — but the cost of waste, storage, additional training, and permits adds up fast. Before you add food, build the numbers into your financial model. Does the extra revenue justify the extra cost and complexity? Sometimes yes. Sometimes no.</p>
+    </div>
+  </div>
+
+  <!-- CLOSING -->
+  <div class="closing-box">
+    <div class="closing-icon">💡</div>
+    <div>
+      <h3>Your menu is a financial document as much as a customer-facing one</h3>
+      <p>Every item on your menu has a margin. The collection of those items — weighted by how often each is ordered — produces your blended COGS, which feeds directly into your financial model from Week 2. If the numbers don't line up, something has to change: the price, the portion, the ingredient, or the item itself. Your menu is not finished until the numbers work.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 4 Reference Sheet</p>
+</div>
+
+</body>
+</html>

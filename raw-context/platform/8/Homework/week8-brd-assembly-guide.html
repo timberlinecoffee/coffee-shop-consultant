@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Business Readiness Document Assembly Guide — Week 8</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --primary:#155e63; --secondary:#76b39d; --light-grey:#efefef; --dark-grey:#afafaf; --white:#ffffff; --amber:#e8a44a; --amber-bg:#fff8ee; --amber-text:#7a5120; }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Poppins',sans-serif; background:var(--light-grey); color:#2a2a2a; }
+
+    .header { background:var(--primary); padding:50px 40px 46px; position:relative; overflow:hidden; }
+    .header::before { content:''; position:absolute; top:-70px; right:-70px; width:300px; height:300px; border-radius:50%; background:rgba(118,179,157,0.16); }
+    .header::after  { content:''; position:absolute; bottom:-40px; left:30%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.05); }
+    .header-inner { max-width:900px; margin:0 auto; position:relative; z-index:1; }
+    .cohort-label { display:inline-block; background:var(--secondary); color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:5px 14px; border-radius:20px; margin-bottom:20px; }
+    .header h1 { font-size:32px; font-weight:800; color:#fff; line-height:1.22; margin-bottom:6px; }
+    .header h1 span { color:var(--secondary); }
+    .header-sub { font-size:14.5px; color:rgba(255,255,255,.78); line-height:1.72; max-width:620px; margin-bottom:22px; }
+    .week-badge { display:inline-block; background:rgba(255,255,255,.11); color:rgba(255,255,255,.88); font-size:13px; font-weight:600; padding:7px 18px; border-radius:8px; border:1px solid rgba(255,255,255,.2); }
+
+    .body { max-width:900px; margin:0 auto; padding:36px 40px 56px; }
+
+    .info-block { background:#fff; border-radius:14px; padding:24px 26px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:22px; }
+    .info-block .tag { font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary); margin-bottom:6px; }
+    .info-block h3 { font-size:16px; font-weight:700; color:var(--primary); margin-bottom:12px; }
+    .info-block p { font-size:13.5px; line-height:1.72; color:#444; margin-bottom:10px; }
+    .info-block p:last-child { margin-bottom:0; }
+
+    /* Component rows */
+    .component-list { display:flex; flex-direction:column; gap:0; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:22px; }
+    .component-row { display:flex; border-bottom:1px solid #e8e8e8; }
+    .component-row:last-child { border-bottom:none; }
+    .component-num { background:var(--primary); color:#fff; min-width:60px; width:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px 6px; }
+    .component-num .num { font-size:20px; font-weight:800; line-height:1; }
+    .component-num .source { font-size:10px; color:rgba(255,255,255,.65); text-align:center; margin-top:4px; line-height:1.3; }
+    .component-row:nth-child(even) .component-num { background:#1a7474; }
+    .component-body { flex:1; background:#fff; padding:14px 20px; }
+    .component-row:nth-child(even) .component-body { background:#f7fbfb; }
+    .component-title { font-size:14px; font-weight:700; color:var(--primary); margin-bottom:10px; }
+    .check-list { list-style:none; padding:0; }
+    .check-list li { font-size:13px; color:#444; line-height:1.68; padding:3px 0 3px 22px; position:relative; border-bottom:1px solid rgba(0,0,0,.04); }
+    .check-list li:last-child { border-bottom:none; }
+    .check-list li::before { content:'☐'; position:absolute; left:0; color:var(--secondary); font-size:13px; }
+
+    .amber-note { background:var(--amber-bg); border-left:4px solid var(--amber); border-radius:10px; padding:18px 22px; margin-bottom:22px; }
+    .amber-note p { font-size:13.5px; line-height:1.72; color:var(--amber-text); }
+    .amber-note strong { font-weight:700; }
+
+    /* Confidence tracker */
+    .tracker { background:#fff; border-radius:14px; padding:22px 24px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:22px; }
+    .tracker h3 { font-size:16px; font-weight:700; color:var(--primary); margin-bottom:6px; }
+    .tracker p { font-size:13px; color:#666; line-height:1.6; margin-bottom:16px; }
+    .tracker-row { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--light-grey); }
+    .tracker-row:last-child { border-bottom:none; }
+    .tracker-num { background:var(--primary); color:#fff; font-size:11px; font-weight:800; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .tracker-row:nth-child(even) .tracker-num { background:var(--secondary); }
+    .tracker-label { font-size:13px; font-weight:600; color:#2a2a2a; flex:1; }
+    .tracker-score { font-size:12px; color:var(--dark-grey); white-space:nowrap; }
+    .score-boxes { display:flex; gap:4px; }
+    .score-box { width:20px; height:20px; border:1.5px solid #d0d0d0; border-radius:4px; }
+
+    .footer { background:var(--primary); text-align:center; padding:22px 20px; margin-top:40px; }
+    .footer p { font-size:12px; color:rgba(255,255,255,.5); }
+    .footer strong { color:var(--secondary); font-weight:600; }
+
+    @media(max-width:640px) {
+      .header { padding:36px 22px 32px; } .header h1 { font-size:26px; } .body { padding:24px 18px 44px; }
+      .component-num { min-width:46px; width:46px; }
+    }
+    @media print { body { background:#fff; } .component-list, .tracker { box-shadow:none; border:1px solid #e0e0e0; } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — Capstone Resource</div>
+    <h1>Business Readiness<br/><span>Document Assembly Guide</span></h1>
+    <p class="header-sub">Use this to check every component before the live call. Each checkbox is a completeness check — tick it when you are confident the section is done, not just started.</p>
+    <div class="week-badge">Week 8 of 8 — Capstone Assembly Guide</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="info-block">
+    <div class="tag">How to Use This Guide</div>
+    <h3>Three steps before the live call</h3>
+    <p><strong>Step 1 — Gather.</strong> Find each component document from the relevant homework week and bring them together in one place — a folder, a document, a drive.</p>
+    <p><strong>Step 2 — Check.</strong> For each component below, go through the checkboxes. These are the specific things that should be present and complete.</p>
+    <p><strong>Step 3 — Connect.</strong> Read the full document from start to finish and check for consistency. Does your concept in Component 1 match your menu in Component 5? Do your staffing costs in Component 7 match your financials in Component 2? Flag any gaps or inconsistencies to raise at the live call.</p>
+  </div>
+
+  <div class="component-list">
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">1</span><span class="source">Week 1</span></div>
+      <div class="component-body">
+        <div class="component-title">Concept Brief</div>
+        <ul class="check-list">
+          <li>Shop type and positioning are clearly defined.</li>
+          <li>Target customer is specific — not "anyone who likes coffee."</li>
+          <li>Competitive advantage is stated in one or two sentences.</li>
+          <li>The concept still reflects what you have built across weeks 2–7.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">2</span><span class="source">Week 2</span></div>
+      <div class="component-body">
+        <div class="component-title">Financial Model</div>
+        <ul class="check-list">
+          <li>12-month revenue and cost projections are complete.</li>
+          <li>Startup cost estimate is itemised and realistic.</li>
+          <li>Assumptions are documented and still match your final concept.</li>
+          <li>Break-even point is calculated and understood.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">3</span><span class="source">Week 3</span></div>
+      <div class="component-body">
+        <div class="component-title">Site &amp; Market Analysis</div>
+        <ul class="check-list">
+          <li>Your location (confirmed or target) is described with supporting rationale.</li>
+          <li>Key lease terms you are targeting or have agreed are noted.</li>
+          <li>Competitor density and foot traffic analysis is included.</li>
+          <li>The "case for this location" paragraph is written and compelling.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">4</span><span class="source">Week 4</span></div>
+      <div class="component-body">
+        <div class="component-title">Coffee Program &amp; Roaster Research</div>
+        <ul class="check-list">
+          <li>Your roaster selection (or shortlist) is documented with reasoning.</li>
+          <li>Sourcing approach (direct, relationship, spot market) is defined.</li>
+          <li>The coffee program connects clearly to your Week 1 concept.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">5</span><span class="source">Week 4</span></div>
+      <div class="component-body">
+        <div class="component-title">Full Menu with Pricing &amp; Margins</div>
+        <ul class="check-list">
+          <li>Every menu item is listed with cost price, sale price, and gross margin.</li>
+          <li>Menu pricing is consistent with your Week 2 revenue assumptions.</li>
+          <li>Your highest-margin items are easy to identify.</li>
+          <li>The menu reflects your shop type and target customer from Week 1.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">6</span><span class="source">Week 5</span></div>
+      <div class="component-body">
+        <div class="component-title">Bar Layout &amp; Equipment Plan</div>
+        <ul class="check-list">
+          <li>Bar layout is described or sketched with three-zone structure noted.</li>
+          <li>Equipment list is complete with estimated cost per item.</li>
+          <li>Total equipment cost is included in your startup cost model.</li>
+          <li>The layout supports the service speed your financial model assumes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">7</span><span class="source">Week 6</span></div>
+      <div class="component-body">
+        <div class="component-title">Staffing &amp; Training Plan</div>
+        <ul class="check-list">
+          <li>Job description for first hire is written and specific.</li>
+          <li>Job description for lead barista is written.</li>
+          <li>Two-week training outline is documented.</li>
+          <li>Culture document includes specific observable behaviors.</li>
+          <li>Staffing costs match the labour assumptions in your financial model.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">8</span><span class="source">Week 7</span></div>
+      <div class="component-body">
+        <div class="component-title">Pre-Opening Marketing Plan</div>
+        <ul class="check-list">
+          <li>30-day marketing calendar is complete.</li>
+          <li>Opening story exists in all three formats (press, Instagram, conversation).</li>
+          <li>Five community relationships are identified with first contact noted.</li>
+          <li>Opening day plan is documented.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">9</span><span class="source">Week 8</span></div>
+      <div class="component-body">
+        <div class="component-title">90-Day Operations Checklist</div>
+        <ul class="check-list">
+          <li>Weekly operational priorities for weeks 1–13 are mapped.</li>
+          <li>Daily, weekly, and monthly review cadence is documented.</li>
+          <li>Key metrics to track are identified with target ranges.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="component-row">
+      <div class="component-num"><span class="num">10</span><span class="source">Week 8</span></div>
+      <div class="component-body">
+        <div class="component-title">Three-Year Vision</div>
+        <ul class="check-list">
+          <li>A clear, specific statement of what success looks like in three years.</li>
+          <li>Not a growth plan — a personal and business direction statement.</li>
+          <li>Written honestly for yourself, not for an investor or an audience.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="amber-note">
+    <p><strong>The consistency check:</strong> After ticking all the boxes, read Components 1, 2, 5, and 7 back to back. These four should form a coherent argument — this is who I am building for, this is the financial model, this is what I will sell and at what margin, and this is the team that will deliver it. If they do not feel connected, that is the most important thing to work on before the live call.</p>
+  </div>
+
+  <div class="tracker">
+    <h3>Assembly Tracker</h3>
+    <p>Rate your confidence in each component — 1 is "not started or very rough," 5 is "complete and consistent." Be honest, not optimistic.</p>
+    <div class="tracker-row"><div class="tracker-num">1</div><div class="tracker-label">Concept Brief</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">2</div><div class="tracker-label">Financial Model</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">3</div><div class="tracker-label">Site &amp; Market Analysis</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">4</div><div class="tracker-label">Coffee Program &amp; Roaster Research</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">5</div><div class="tracker-label">Full Menu with Pricing &amp; Margins</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">6</div><div class="tracker-label">Bar Layout &amp; Equipment Plan</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">7</div><div class="tracker-label">Staffing &amp; Training Plan</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">8</div><div class="tracker-label">Pre-Opening Marketing Plan</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">9</div><div class="tracker-label">90-Day Operations Checklist</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+    <div class="tracker-row"><div class="tracker-num">10</div><div class="tracker-label">Three-Year Vision</div><div class="tracker-score"><div class="score-boxes"><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div><div class="score-box"></div></div></div></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;|&nbsp; Coffee Shop Basecamp &nbsp;|&nbsp; Week 8 of 8 — BRD Assembly Guide</p>
+</div>
+</body>
+</html>

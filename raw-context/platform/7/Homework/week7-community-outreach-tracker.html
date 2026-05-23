@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Community Outreach Tracker — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--primary:#155e63;--secondary:#76b39d;--light-grey:#efefef;--dark-grey:#afafaf;--white:#ffffff;--amber:#e8a44a;--amber-bg:#fff8ee;--amber-text:#7a5120;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Poppins',sans-serif;background:var(--light-grey);color:#2a2a2a;}
+    .header{background:var(--primary);padding:24px 28px 20px;display:flex;justify-content:space-between;align-items:center;}
+    .header-title{font-size:20px;font-weight:800;color:var(--white);}
+    .header-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;}
+    .header-tag{background:var(--secondary);color:var(--white);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:20px;}
+    .body{max-width:860px;margin:0 auto;padding:22px 28px 40px;}
+    .meta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:22px;}
+    .meta-field{background:var(--white);border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    .meta-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark-grey);margin-bottom:5px;}
+    .meta-line{border-bottom:1.5px solid #d0d0d0;height:22px;}
+    .amber-note{background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:10px;padding:14px 18px;margin-bottom:20px;}
+    .amber-note p{font-size:12.5px;color:var(--amber-text);line-height:1.7;}
+    .amber-note strong{font-weight:700;}
+    .partner-card{background:var(--white);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:16px;}
+    .partner-header{background:var(--primary);padding:12px 20px;display:flex;align-items:center;gap:14px;}
+    .partner-num{background:rgba(255,255,255,.2);color:var(--white);font-size:13px;font-weight:800;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .partner-name-area{flex:1;}
+    .partner-name-label{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px;}
+    .partner-name-line{border-bottom:1.5px solid rgba(255,255,255,.35);height:20px;min-width:200px;}
+    .status-area{display:flex;gap:8px;align-items:center;}
+    .status-label{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.07em;}
+    .status-options{display:flex;gap:6px;}
+    .status-opt{background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.2);}
+    .partner-body{padding:16px 20px;}
+    .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    .field-row{margin-bottom:10px;}
+    .field-label{font-size:11px;font-weight:700;color:var(--primary);margin-bottom:5px;}
+    .line{border-bottom:1.5px solid #d0d0d0;height:22px;margin-bottom:3px;}
+    .contact-row{background:var(--light-grey);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
+    .contact-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);margin-bottom:8px;}
+    .contact-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+    .outcome-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .outcome-box{border-radius:8px;padding:12px 14px;}
+    .ob-green{background:#e8f5f1;}
+    .ob-amber{background:var(--amber-bg);}
+    .ob-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;}
+    .green-label{color:#1a7a45;}
+    .amber-label{color:var(--amber-text);}
+    .footer{background:var(--primary);text-align:center;padding:16px;margin-top:8px;}
+    .footer p{font-size:11px;color:rgba(255,255,255,.5);}
+    .footer strong{color:var(--secondary);}
+    @media(max-width:640px){.meta-row,.field-grid,.contact-grid,.outcome-row{grid-template-columns:1fr;}.body{padding:16px 14px 32px;}}
+    @media print{body{background:white;}.partner-card{box-shadow:none;border:1px solid #ddd;}}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div><div class="header-title">Community Outreach Tracker</div><div class="header-sub">Coffee Shop Basecamp — Week 7 Operational Template</div></div>
+  <div class="header-tag">Operational Template</div>
+</div>
+<div class="body">
+  <div class="meta-row">
+    <div class="meta-field"><div class="meta-label">Shop Name</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Opening Date</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Tracker Started</div><div class="meta-line"></div></div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>Goal:</strong> Five genuine community relationships initiated before you open. A relationship counts when you have made real first contact — an email sent, a door knocked on, a conversation had. Not planned. Done. Bring this tracker to the live call with at least three rows showing real contact.</p>
+  </div>
+
+  <!-- PARTNER CARDS x5 -->
+  <div class="partner-card">
+    <div class="partner-header">
+      <div class="partner-num">1</div>
+      <div class="partner-name-area"><div class="partner-name-label">Partner / Contact Name</div><div class="partner-name-line"></div></div>
+      <div class="status-area"><div class="status-label">Status</div><div class="status-options"><div class="status-opt">Not started</div><div class="status-opt">Contacted</div><div class="status-opt">Responded</div><div class="status-opt">Active</div></div></div>
+    </div>
+    <div class="partner-body">
+      <div class="field-grid">
+        <div class="field-row"><div class="field-label">Type of business or organisation</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">Why does this relationship make sense for your concept?</div><div class="line"></div></div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-label">First Contact</div>
+        <div class="contact-grid">
+          <div class="field-row"><div class="field-label">How did you make contact?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Date of first contact</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Contact name / email / phone</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">What did you say or send?</div><div class="line"></div><div class="line"></div></div>
+      </div>
+      <div class="outcome-row">
+        <div class="outcome-box ob-green"><div class="ob-label green-label">What happened / their response</div><div class="line" style="border-color:#b2dece;"></div><div class="line" style="border-color:#b2dece;"></div></div>
+        <div class="outcome-box ob-amber"><div class="ob-label amber-label">Next step / follow-up action</div><div class="line" style="border-color:#f0c98a;"></div><div class="line" style="border-color:#f0c98a;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="partner-card">
+    <div class="partner-header">
+      <div class="partner-num">2</div>
+      <div class="partner-name-area"><div class="partner-name-label">Partner / Contact Name</div><div class="partner-name-line"></div></div>
+      <div class="status-area"><div class="status-label">Status</div><div class="status-options"><div class="status-opt">Not started</div><div class="status-opt">Contacted</div><div class="status-opt">Responded</div><div class="status-opt">Active</div></div></div>
+    </div>
+    <div class="partner-body">
+      <div class="field-grid">
+        <div class="field-row"><div class="field-label">Type of business or organisation</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">Why does this relationship make sense for your concept?</div><div class="line"></div></div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-label">First Contact</div>
+        <div class="contact-grid">
+          <div class="field-row"><div class="field-label">How did you make contact?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Date of first contact</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Contact name / email / phone</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">What did you say or send?</div><div class="line"></div><div class="line"></div></div>
+      </div>
+      <div class="outcome-row">
+        <div class="outcome-box ob-green"><div class="ob-label green-label">What happened / their response</div><div class="line" style="border-color:#b2dece;"></div><div class="line" style="border-color:#b2dece;"></div></div>
+        <div class="outcome-box ob-amber"><div class="ob-label amber-label">Next step / follow-up action</div><div class="line" style="border-color:#f0c98a;"></div><div class="line" style="border-color:#f0c98a;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="partner-card">
+    <div class="partner-header">
+      <div class="partner-num">3</div>
+      <div class="partner-name-area"><div class="partner-name-label">Partner / Contact Name</div><div class="partner-name-line"></div></div>
+      <div class="status-area"><div class="status-label">Status</div><div class="status-options"><div class="status-opt">Not started</div><div class="status-opt">Contacted</div><div class="status-opt">Responded</div><div class="status-opt">Active</div></div></div>
+    </div>
+    <div class="partner-body">
+      <div class="field-grid">
+        <div class="field-row"><div class="field-label">Type of business or organisation</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">Why does this relationship make sense for your concept?</div><div class="line"></div></div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-label">First Contact</div>
+        <div class="contact-grid">
+          <div class="field-row"><div class="field-label">How did you make contact?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Date of first contact</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Contact name / email / phone</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">What did you say or send?</div><div class="line"></div><div class="line"></div></div>
+      </div>
+      <div class="outcome-row">
+        <div class="outcome-box ob-green"><div class="ob-label green-label">What happened / their response</div><div class="line" style="border-color:#b2dece;"></div><div class="line" style="border-color:#b2dece;"></div></div>
+        <div class="outcome-box ob-amber"><div class="ob-label amber-label">Next step / follow-up action</div><div class="line" style="border-color:#f0c98a;"></div><div class="line" style="border-color:#f0c98a;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="partner-card">
+    <div class="partner-header">
+      <div class="partner-num">4</div>
+      <div class="partner-name-area"><div class="partner-name-label">Partner / Contact Name</div><div class="partner-name-line"></div></div>
+      <div class="status-area"><div class="status-label">Status</div><div class="status-options"><div class="status-opt">Not started</div><div class="status-opt">Contacted</div><div class="status-opt">Responded</div><div class="status-opt">Active</div></div></div>
+    </div>
+    <div class="partner-body">
+      <div class="field-grid">
+        <div class="field-row"><div class="field-label">Type of business or organisation</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">Why does this relationship make sense for your concept?</div><div class="line"></div></div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-label">First Contact</div>
+        <div class="contact-grid">
+          <div class="field-row"><div class="field-label">How did you make contact?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Date of first contact</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Contact name / email / phone</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">What did you say or send?</div><div class="line"></div><div class="line"></div></div>
+      </div>
+      <div class="outcome-row">
+        <div class="outcome-box ob-green"><div class="ob-label green-label">What happened / their response</div><div class="line" style="border-color:#b2dece;"></div><div class="line" style="border-color:#b2dece;"></div></div>
+        <div class="outcome-box ob-amber"><div class="ob-label amber-label">Next step / follow-up action</div><div class="line" style="border-color:#f0c98a;"></div><div class="line" style="border-color:#f0c98a;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="partner-card">
+    <div class="partner-header">
+      <div class="partner-num">5</div>
+      <div class="partner-name-area"><div class="partner-name-label">Partner / Contact Name</div><div class="partner-name-line"></div></div>
+      <div class="status-area"><div class="status-label">Status</div><div class="status-options"><div class="status-opt">Not started</div><div class="status-opt">Contacted</div><div class="status-opt">Responded</div><div class="status-opt">Active</div></div></div>
+    </div>
+    <div class="partner-body">
+      <div class="field-grid">
+        <div class="field-row"><div class="field-label">Type of business or organisation</div><div class="line"></div></div>
+        <div class="field-row"><div class="field-label">Why does this relationship make sense for your concept?</div><div class="line"></div></div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-label">First Contact</div>
+        <div class="contact-grid">
+          <div class="field-row"><div class="field-label">How did you make contact?</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Date of first contact</div><div class="line"></div></div>
+          <div class="field-row"><div class="field-label">Contact name / email / phone</div><div class="line"></div></div>
+        </div>
+        <div class="field-row" style="margin-top:8px;"><div class="field-label">What did you say or send?</div><div class="line"></div><div class="line"></div></div>
+      </div>
+      <div class="outcome-row">
+        <div class="outcome-box ob-green"><div class="ob-label green-label">What happened / their response</div><div class="line" style="border-color:#b2dece;"></div><div class="line" style="border-color:#b2dece;"></div></div>
+        <div class="outcome-box ob-amber"><div class="ob-label amber-label">Next step / follow-up action</div><div class="line" style="border-color:#f0c98a;"></div><div class="line" style="border-color:#f0c98a;"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="footer"><p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Community Outreach Tracker</p></div>
+</body>
+</html>

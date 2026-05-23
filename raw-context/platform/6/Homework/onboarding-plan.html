@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>30-Day Onboarding Plan — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 36px 40px 32px; }
+    .header-inner { max-width: 820px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-title { font-size: 24px; font-weight: 800; color: var(--white); }
+    .header-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+    .header-tag { background: var(--secondary); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; white-space: nowrap; margin-top: 4px; }
+
+    .body { max-width: 820px; margin: 0 auto; padding: 28px 40px 48px; }
+
+    /* Meta grid */
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .meta-field { background: var(--white); border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark-grey); margin-bottom: 5px; }
+    .meta-line { border-bottom: 1.5px solid #d8d8d8; height: 22px; }
+
+    /* Phase blocks */
+    .phase { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .phase-header { padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; }
+    .ph-1 { background: var(--primary); }
+    .ph-2 { background: var(--secondary); }
+    .ph-3 { background: #2a8080; }
+    .phase-header h3 { font-size: 15px; font-weight: 800; color: var(--white); }
+    .phase-header p  { font-size: 11.5px; color: rgba(255,255,255,0.7); }
+    .phase-body { padding: 0; }
+
+    /* Day rows */
+    .day-row { display: flex; border-bottom: 1px solid var(--light-grey); align-items: stretch; }
+    .day-row:last-child { border-bottom: none; }
+    .day-tag { width: 56px; min-width: 56px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: var(--white); text-align: center; padding: 6px 4px; }
+    .dt-primary  { background: var(--primary); }
+    .dt-secondary { background: var(--secondary); }
+    .dt-teal     { background: #2a8080; }
+    .day-focus { flex: 1; padding: 10px 14px; background: var(--white); border-right: 1px solid var(--light-grey); }
+    .day-focus-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); margin-bottom: 3px; }
+    .day-focus p { font-size: 12.5px; color: #444; line-height: 1.55; }
+    .day-notes { width: 200px; min-width: 200px; padding: 10px 12px; background: #fafafa; }
+    .day-notes-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-grey); margin-bottom: 5px; }
+    .day-line { border-bottom: 1.5px solid #ddd; height: 18px; margin-bottom: 4px; }
+
+    /* Checkpoints */
+    .checkpoint { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 8px; padding: 12px 16px; margin: 6px 0 0; }
+    .checkpoint p { font-size: 12px; color: var(--amber-text); line-height: 1.6; }
+    .checkpoint strong { font-weight: 700; }
+    .phase-body > .checkpoint { margin: 8px 16px; border-radius: 8px; }
+
+    /* Sign-off areas */
+    .signoff-section { background: var(--primary); border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; }
+    .signoff-section h3 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+    .signoff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .signoff-item { border-bottom: 1.5px solid rgba(255,255,255,0.25); height: 26px; margin-bottom: 4px; }
+    .signoff-label { font-size: 10.5px; color: rgba(255,255,255,0.65); margin-bottom: 5px; }
+
+    .footer { background: var(--primary); text-align: center; padding: 18px; margin-top: 8px; }
+    .footer p { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); }
+
+    @media (max-width: 640px) {
+      .meta-grid { grid-template-columns: 1fr; }
+      .day-notes { display: none; }
+      .body { padding: 20px 16px 36px; }
+    }
+    @media print {
+      body { background: white; }
+      .phase { box-shadow: none; border: 1px solid #e0e0e0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">30-Day Onboarding Plan</div>
+      <div class="header-sub">New Hire Onboarding — Coffee Shop Basecamp</div>
+    </div>
+    <div class="header-tag">Operational Template</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="meta-grid" style="margin-top:8px;">
+    <div class="meta-field"><div class="meta-label">New Hire Name</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Role</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Start Date</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Training Lead / Supervisor</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Target Independent Shift Date</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">30-Day Review Date</div><div class="meta-line"></div></div>
+  </div>
+
+  <!-- PHASE 1: DAYS 1–5 -->
+  <div class="phase">
+    <div class="phase-header ph-1">
+      <h3>Phase 1 — Foundation</h3>
+      <p>Days 1–5 &nbsp;·&nbsp; No live service until Day 5</p>
+    </div>
+    <div class="phase-body">
+      <div class="day-row">
+        <div class="day-tag dt-primary">Day 1</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Welcome &amp; Concept</div>
+          <p>Welcome conversation, concept and culture walkthrough, culture document review, bar tour, team introductions, food safety and hygiene basics.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-primary">Day 2</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Equipment &amp; Bar Layout</div>
+          <p>Equipment orientation (espresso machine, grinder, filter setup), bar zone walkthrough, safety and cleaning procedures, POS system basics.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-primary">Day 3</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Espresso &amp; Milk</div>
+          <p>Espresso extraction fundamentals, dialing in, milk steaming to your standard, every milk-based drink on your menu practiced multiple times.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-primary">Day 4</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Full Menu &amp; Workflow</div>
+          <p>Filter and batch coffee, cold drinks, food/pastry items (if applicable), full run-through of the order-to-handoff workflow, opening checklist practice.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-primary">Day 5</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Menu Sign-Off &amp; First Live Shadow</div>
+          <p>Competency check across full menu. First live service — shadow only, observing workflow and guest interaction. Closing checklist. End-of-week debrief.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="checkpoint"><p><strong>Week 1 Check:</strong> Can they make every drink on your menu without asking? Do they know the POS, opening, and closing checklists? Have you had an explicit conversation about culture expectations?</p></div>
+    </div>
+  </div>
+
+  <!-- PHASE 2: DAYS 6–14 -->
+  <div class="phase">
+    <div class="phase-header ph-2">
+      <h3>Phase 2 — Building Confidence</h3>
+      <p>Days 6–14 &nbsp;·&nbsp; On bar with supervision</p>
+    </div>
+    <div class="phase-body">
+      <div class="day-row">
+        <div class="day-tag dt-secondary">Day 6–7</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Supervised Service</div>
+          <p>On bar during live service with trainer present. They take orders and make drinks — trainer supports but does not take over. Debrief after each shift.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-secondary">Day 8</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Rush Handling &amp; Modifications</div>
+          <p>Practice maintaining workflow during a busy period. How to handle drink modifications, substitutions, and complaints — your specific approach.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-secondary">Day 9–10</div>
+        <div class="day-focus">
+          <div class="day-focus-label">First Supervised Solo</div>
+          <p>Trainer on site but not actively on bar. New hire runs the shift. Trainer observes and gives feedback at the end. Not left entirely alone yet.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-secondary">Day 11–14</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Consolidation &amp; Consistency</div>
+          <p>Mix of supervised and semi-independent shifts. Focus on consistency of quality, speed, and guest interactions across different shift types and volumes.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="checkpoint"><p><strong>Week 2 Check:</strong> Are they holding their standard under pressure? How are they handling guest interactions independently? Is there anything specific that still needs focused attention before moving to independent shifts?</p></div>
+    </div>
+  </div>
+
+  <!-- PHASE 3: DAYS 15–30 -->
+  <div class="phase">
+    <div class="phase-header ph-3">
+      <h3>Phase 3 — Independence &amp; Integration</h3>
+      <p>Days 15–30 &nbsp;·&nbsp; Independent shifts with check-ins</p>
+    </div>
+    <div class="phase-body">
+      <div class="day-row">
+        <div class="day-tag dt-teal">Day 15</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Sign-Off Conversation</div>
+          <p>Formal conversation: are they ready for fully independent shifts? Review strengths and any remaining development areas. Set expectations for Phase 3.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-teal">Day 16–25</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Independent Shifts</div>
+          <p>Fully independent shifts across different times and volumes. Check in briefly before or after each shift in the first week. Note any patterns in how they handle pressure or service decisions.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-teal">Day 26–29</div>
+        <div class="day-focus">
+          <div class="day-focus-label">Development Focus</div>
+          <p>Identify one or two specific areas to develop further — a technical skill, a guest interaction pattern, or a culture behavior. Set a concrete goal for the 30-day review.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+      <div class="day-row">
+        <div class="day-tag dt-teal">Day 30</div>
+        <div class="day-focus">
+          <div class="day-focus-label">30-Day Review</div>
+          <p>Formal check-in: performance against training standard, culture alignment, any adjustments needed. Discuss their experience and what support they need going forward.</p>
+        </div>
+        <div class="day-notes"><div class="day-notes-label">Notes / Tick when done</div><div class="day-line"></div><div class="day-line"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 30-DAY SIGN-OFF -->
+  <div class="signoff-section">
+    <h3>30-Day Review Sign-Off</h3>
+    <div class="signoff-grid">
+      <div><div class="signoff-label">Overall assessment of the hire</div><div class="signoff-item"></div><div class="signoff-item"></div></div>
+      <div><div class="signoff-label">Key strengths demonstrated over 30 days</div><div class="signoff-item"></div><div class="signoff-item"></div></div>
+      <div><div class="signoff-label">Areas for development going forward</div><div class="signoff-item"></div><div class="signoff-item"></div></div>
+      <div><div class="signoff-label">Any adjustments to their role or responsibilities</div><div class="signoff-item"></div><div class="signoff-item"></div></div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:16px;">
+      <div style="flex:1;"><div class="signoff-label">Trainer / Supervisor</div><div class="signoff-item"></div></div>
+      <div style="flex:1;"><div class="signoff-label">New Hire Acknowledgement</div><div class="signoff-item"></div></div>
+      <div style="flex:1;"><div class="signoff-label">Date</div><div class="signoff-item"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; 30-Day Onboarding Plan — Operational Template</p>
+</div>
+
+</body>
+</html>

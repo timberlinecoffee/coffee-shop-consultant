@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Opening Story Template — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--primary:#155e63;--secondary:#76b39d;--light-grey:#efefef;--dark-grey:#afafaf;--white:#ffffff;--amber:#e8a44a;--amber-bg:#fff8ee;--amber-text:#7a5120;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Poppins',sans-serif;background:var(--light-grey);color:#2a2a2a;}
+    .header{background:var(--primary);padding:24px 28px 20px;display:flex;justify-content:space-between;align-items:center;}
+    .header-title{font-size:20px;font-weight:800;color:var(--white);}
+    .header-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;}
+    .header-tag{background:var(--secondary);color:var(--white);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:20px;}
+    .body{max-width:820px;margin:0 auto;padding:24px 32px 44px;}
+    .meta-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;}
+    .meta-field{background:var(--white);border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    .meta-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark-grey);margin-bottom:5px;}
+    .meta-line{border-bottom:1.5px solid #d0d0d0;height:22px;}
+    .core-block{background:var(--white);border-radius:14px;padding:22px 24px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:18px;border-left:4px solid var(--secondary);}
+    .core-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--secondary);margin-bottom:10px;}
+    .core-title{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:4px;}
+    .core-hint{font-size:12px;color:#888;font-style:italic;margin-bottom:14px;line-height:1.6;}
+    .field-label{font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:6px;margin-top:12px;}
+    .line{border-bottom:1.5px solid #d0d0d0;height:26px;margin-bottom:4px;}
+    .format-block{background:var(--white);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:18px;}
+    .format-header{padding:14px 22px;}
+    .fh-a{background:var(--primary);}
+    .fh-b{background:var(--secondary);}
+    .fh-c{background:#2a8080;}
+    .format-tag{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:4px;}
+    .format-name{font-size:16px;font-weight:800;color:var(--white);}
+    .format-desc{font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;}
+    .format-body{padding:18px 22px;}
+    .format-body .hint{font-size:11.5px;color:#888;font-style:italic;margin-bottom:14px;line-height:1.65;background:var(--light-grey);border-radius:8px;padding:10px 12px;}
+    .format-body .hint strong{color:var(--primary);font-style:normal;}
+    .prompt{margin-bottom:10px;}
+    .prompt-q{font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:5px;}
+    .example-box{background:#e8f5f1;border-radius:8px;padding:12px 14px;margin-bottom:12px;}
+    .example-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#1a7a45;margin-bottom:5px;}
+    .example-box p{font-size:12px;color:#2a2a2a;line-height:1.7;font-style:italic;}
+    .amber-note{background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:10px;padding:14px 18px;margin-bottom:18px;}
+    .amber-note p{font-size:12.5px;line-height:1.72;color:var(--amber-text);}
+    .amber-note strong{font-weight:700;}
+    .footer{background:var(--primary);text-align:center;padding:16px;margin-top:8px;}
+    .footer p{font-size:11px;color:rgba(255,255,255,.5);}
+    .footer strong{color:var(--secondary);}
+    @media(max-width:640px){.meta-row{grid-template-columns:1fr;}.body{padding:18px 16px 36px;}}
+    @media print{body{background:white;}.format-block{box-shadow:none;border:1px solid #ddd;}}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div><div class="header-title">Opening Story Template</div><div class="header-sub">Coffee Shop Basecamp — Week 7 Operational Template</div></div>
+  <div class="header-tag">Operational Template</div>
+</div>
+<div class="body">
+  <div class="meta-row">
+    <div class="meta-field"><div class="meta-label">Shop Name</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Owner Name</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Location</div><div class="meta-line"></div></div>
+    <div class="meta-field"><div class="meta-label">Opening Date</div><div class="meta-line"></div></div>
+  </div>
+
+  <!-- CORE STORY -->
+  <div class="core-block">
+    <div class="core-label">Start Here — Answer These Three Questions First</div>
+    <div class="core-title">Your Core Story</div>
+    <p class="core-hint">Do not write for an audience yet. Just answer honestly. Your three formats below come from these answers.</p>
+    <div class="field-label">Why are you opening a coffee shop?</div>
+    <div class="line"></div><div class="line"></div>
+    <div class="field-label">Why here — this location, this neighbourhood?</div>
+    <div class="line"></div><div class="line"></div>
+    <div class="field-label">Why now — what has made this the right moment for you?</div>
+    <div class="line"></div><div class="line"></div>
+    <div class="field-label">What is the one thing you most want someone to feel when they walk in for the first time?</div>
+    <div class="line"></div><div class="line"></div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>Before you write any of the three formats below:</strong> re-read your answers above. The best version of your opening story is almost always the honest one — not the polished one. The press pitch needs structure, but the feeling behind it should come from these answers.</p>
+  </div>
+
+  <!-- FORMAT A: PRESS PITCH -->
+  <div class="format-block">
+    <div class="format-header fh-a">
+      <div class="format-tag">Format A</div>
+      <div class="format-name">The Press Pitch</div>
+      <div class="format-desc">150–200 words &nbsp;·&nbsp; Written for a local journalist who does not know you</div>
+    </div>
+    <div class="format-body">
+      <div class="hint"><strong>Structure it like this:</strong> Opening hook (what makes this interesting?) → What the shop is and what makes it different → Your story in one sentence → Opening date and location → A quote from you → Your name and contact details. Journalists are busy. Give them everything they need in 200 words.</div>
+
+      <div class="prompt"><div class="prompt-q">Opening hook — what is the most interesting or specific thing about your shop?</div><div class="line"></div><div class="line"></div></div>
+      <div class="prompt"><div class="prompt-q">One sentence on what makes you different from other options nearby</div><div class="line"></div><div class="line"></div></div>
+      <div class="prompt"><div class="prompt-q">Your opening date and address</div><div class="line"></div></div>
+      <div class="prompt"><div class="prompt-q">A quote from you — something specific, not generic</div><div class="line"></div><div class="line"></div></div>
+
+      <div class="example-box">
+        <div class="example-label">Example (for reference only — write your own)</div>
+        <p>"A new specialty coffee shop focused on single-origin filter coffee is opening in [neighbourhood] on [date]. [Shop name], owned by [name], will offer rotating seasonal coffees sourced directly from small producers, alongside a short menu of house-made pastries. Unlike the chain options nearby, [shop name] is designed as a place to slow down — with communal tables, no wi-fi passwords, and staff who can tell you exactly where your coffee came from. 'I wanted to open the kind of place I always wished existed here,' says [name]. 'Somewhere that takes the coffee seriously without taking itself too seriously.' [Shop name] opens at [address] on [date]. For press enquiries: [email]."</p>
+      </div>
+
+      <div class="field-label">Write your full press pitch here</div>
+      <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+    </div>
+  </div>
+
+  <!-- FORMAT B: INSTAGRAM -->
+  <div class="format-block">
+    <div class="format-header fh-b">
+      <div class="format-tag">Format B</div>
+      <div class="format-name">The Instagram Caption</div>
+      <div class="format-desc">50–80 words &nbsp;·&nbsp; Written as an actual post, not a description of one</div>
+    </div>
+    <div class="format-body">
+      <div class="hint"><strong>Rules:</strong> Write the caption, not a plan for it. No brand language. No "we are thrilled to announce." Read it out loud — if it sounds like a press release, rewrite it until it sounds like you talking. End with something people can do: follow, share, tell a friend, come find you.</div>
+
+      <div class="prompt"><div class="prompt-q">First line — the one thing that makes someone stop scrolling</div><div class="line"></div></div>
+      <div class="prompt"><div class="prompt-q">The human bit — why you, why here, in your own voice</div><div class="line"></div><div class="line"></div></div>
+      <div class="prompt"><div class="prompt-q">The call to action — what do you want them to do?</div><div class="line"></div></div>
+
+      <div class="example-box">
+        <div class="example-label">Example (for reference only)</div>
+        <p>"We've been building something here for a while now. [Shop name] opens in [neighbourhood] on [date] — a small specialty café where the coffee is the point and the room feels like it belongs to the street. Come find us. Tell someone who'd love it. We'll have the kettle on. 📍[address]"</p>
+      </div>
+
+      <div class="field-label">Write your full Instagram caption here</div>
+      <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+    </div>
+  </div>
+
+  <!-- FORMAT C: NEIGHBOUR -->
+  <div class="format-block">
+    <div class="format-header fh-c">
+      <div class="format-tag">Format C</div>
+      <div class="format-name">The Neighbour Conversation</div>
+      <div class="format-desc">2–3 sentences &nbsp;·&nbsp; What you say when someone on the street asks what you are opening</div>
+    </div>
+    <div class="format-body">
+      <div class="hint"><strong>The test:</strong> Would you actually say this out loud, right now, to someone you just met? If you would not say it, rewrite it. This is not a tagline — it is a real answer a real person gives in a real conversation. The version that sounds most like you is usually the best one.</div>
+
+      <div class="example-box">
+        <div class="example-label">Example (for reference only)</div>
+        <p>"We're opening a coffee shop just around the corner on [street] — small place, really focused on the coffee itself. Filter, espresso, a few things to eat. We open on [date]. You should come in."</p>
+      </div>
+
+      <div class="field-label">Write your neighbour conversation here</div>
+      <div class="line"></div><div class="line"></div><div class="line"></div>
+
+      <div class="field-label" style="margin-top:16px;">Now read it out loud. Does it sound like you? What would you change?</div>
+      <div class="line"></div><div class="line"></div>
+    </div>
+  </div>
+
+</div>
+<div class="footer"><p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Opening Story Template</p></div>
+</body>
+</html>

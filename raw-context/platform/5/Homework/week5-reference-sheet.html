@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 5 Reference Sheet — Bar Layout & Equipment</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 50px 40px 46px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 300px; height: 300px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header::after { content: ''; position: absolute; bottom: -40px; left: 30%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .header-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .header h1 { font-size: 34px; font-weight: 800; color: var(--white); line-height: 1.22; margin-bottom: 12px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 14.5px; color: rgba(255,255,255,0.78); line-height: 1.72; max-width: 620px; margin-bottom: 22px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 900px; margin: 0 auto; padding: 36px 40px 56px; }
+    .section-heading { font-size: 21px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .section-sub { font-size: 13.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 22px; }
+
+    /* ── DESIGN BEST PRACTICES ── */
+    .practice-block { background: var(--white); border-radius: 14px; padding: 26px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 18px; }
+    .practice-header { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+    .practice-icon { font-size: 24px; width: 46px; height: 46px; background: var(--light-grey); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 800; color: var(--primary); }
+    .practice-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--secondary); margin-bottom: 4px; }
+    .practice-title { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .practice-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+    .practice-body-single { margin-bottom: 16px; }
+    .practice-body-single p, .practice-col p { font-size: 13.5px; line-height: 1.72; color: #444; margin-bottom: 10px; }
+    .practice-body-single p:last-child, .practice-col p:last-child { margin-bottom: 0; }
+    .practice-col { background: var(--light-grey); border-radius: 10px; padding: 16px 18px; }
+    .practice-col-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 12px; display: inline-block; margin-bottom: 10px; }
+    .customer-label { background: #e0f2f1; color: #0a6a5e; }
+    .barista-label  { background: #e8eaf6; color: #3949ab; }
+    .practice-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--amber-text); line-height: 1.65; margin-top: 6px; }
+    .practice-note strong { font-weight: 700; }
+
+    /* Customer journey steps */
+    .journey-steps { display: flex; flex-direction: column; gap: 0; }
+    .journey-step { display: flex; gap: 0; }
+    .journey-num { background: var(--primary); color: var(--white); font-size: 13px; font-weight: 800; width: 32px; min-width: 32px; display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; }
+    .journey-content { border-left: none; border-bottom: 1px solid var(--light-grey); padding: 12px 16px 14px; flex: 1; }
+    .journey-content:last-child { border-bottom: none; }
+    .journey-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--primary); margin-bottom: 6px; }
+    .journey-content p { font-size: 13.5px; line-height: 1.72; color: #444; margin: 0; }
+    .journey-content p strong { color: var(--primary); }
+    .journey-step:first-child .journey-num { border-radius: 8px 0 0 0; }
+    .journey-step:last-child .journey-num  { border-radius: 0 0 0 8px; }
+    .journey-step:first-child .journey-content { border-radius: 0 8px 0 0; }
+    .journey-step:last-child .journey-content  { border-radius: 0 0 8px 0; }
+    .journey-steps { border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .journey-content { background: #f8f8f8; }
+    .journey-step:nth-child(even) .journey-content { background: var(--white); }
+
+    /* Retail block */
+    .retail-block { border: 2px solid var(--secondary); }
+    .retail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .retail-card { border-radius: 10px; padding: 16px 18px; }
+    .retail-card-good { background: #e8f5f1; }
+    .retail-card-bad  { background: #fef3f3; }
+    .retail-card-header { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+    .retail-card-good .retail-card-header { color: #1a7a45; }
+    .retail-card-bad  .retail-card-header { color: #c0392b; }
+    .retail-card p { font-size: 13px; line-height: 1.7; color: #444; }
+
+    /* Friction grid */
+    .friction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .friction-col { background: var(--light-grey); border-radius: 10px; padding: 16px 18px; }
+    .friction-col-header { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 12px; display: inline-block; margin-bottom: 14px; }
+    .friction-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+    .friction-item:last-child { margin-bottom: 0; }
+    .friction-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+    .customer-dot { background: #0a6a5e; }
+    .barista-dot  { background: #3949ab; }
+    .friction-item div:last-child { font-size: 13px; line-height: 1.68; color: #444; }
+    .friction-item strong { color: var(--primary); }
+
+    /* ── THREE ZONES ── */
+    .zone-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 40px; }
+    .zone-card { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .zone-header { padding: 18px 20px 14px; }
+    .zone-header.order    { background: var(--secondary); }
+    .zone-header.prod     { background: var(--primary); }
+    .zone-header.handoff  { background: #3a8a6e; }
+    .zone-num { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 4px; }
+    .zone-name { font-size: 17px; font-weight: 800; color: var(--white); margin-bottom: 4px; }
+    .zone-tag { font-size: 12px; color: rgba(255,255,255,0.75); }
+    .zone-body { padding: 16px 18px 18px; }
+    .zone-body p { font-size: 13px; line-height: 1.7; color: #444; margin-bottom: 10px; }
+    .zone-body p:last-child { margin-bottom: 0; }
+    .zone-body strong { color: var(--primary); }
+    .zone-tip { background: var(--light-grey); border-radius: 7px; padding: 9px 12px; font-size: 12px; color: #555; line-height: 1.6; margin-top: 10px; }
+
+    /* ── PRINCIPLES TABLE ── */
+    .principle-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 40px; }
+    .principle-table thead tr { background: var(--primary); }
+    .principle-table thead th { padding: 13px 20px; text-align: left; font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 0.06em; text-transform: uppercase; }
+    .principle-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .principle-table tbody tr:last-child { border-bottom: none; }
+    .principle-table tbody tr:nth-child(even) { background: #fafafa; }
+    .principle-table td { padding: 14px 20px; font-size: 13.5px; line-height: 1.68; vertical-align: top; color: #333; }
+    .principle-table td:first-child { font-weight: 700; color: var(--primary); width: 28%; }
+    .tip { display: block; font-size: 12px; font-weight: 400; color: var(--dark-grey); margin-top: 3px; }
+
+    /* ── EQUIPMENT GRID ── */
+    .equip-section { background: var(--white); border-radius: 14px; padding: 26px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 40px; }
+    .equip-section h3 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--light-grey); padding-bottom: 10px; }
+    .equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .equip-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: var(--light-grey); border-radius: 8px; }
+    .equip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .equip-item h4 { font-size: 13px; font-weight: 700; color: #222; margin-bottom: 2px; }
+    .equip-item p { font-size: 12px; color: #666; line-height: 1.5; }
+    .equip-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .badge-essential { background: #e0f2f1; color: var(--primary); }
+    .badge-optional  { background: #f3f3f3; color: var(--dark-grey); }
+
+    /* ── MISTAKE GRID ── */
+    .mistake-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 40px; }
+    .mistake-card { background: var(--white); border-radius: 12px; padding: 18px 18px 20px; border-top: 3px solid var(--amber); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .mistake-card h4 { font-size: 13.5px; font-weight: 700; color: #222; margin-bottom: 8px; }
+    .mistake-card p { font-size: 12.5px; line-height: 1.68; color: #555; }
+    .mistake-card .fix { margin-top: 9px; font-size: 12px; color: var(--primary); font-weight: 600; }
+
+    /* ── BUY VS LEASE ── */
+    .decision-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 40px; }
+    .decision-card { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .decision-card-header { padding: 14px 18px 10px; }
+    .decision-card-header.new    { background: var(--primary); }
+    .decision-card-header.used   { background: var(--secondary); }
+    .decision-card-header.lease  { background: #3a8a6e; }
+    .decision-card-header h3 { font-size: 15px; font-weight: 700; color: var(--white); }
+    .decision-card-header .dtag { font-size: 10px; color: rgba(255,255,255,0.65); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 3px; }
+    .decision-card-body { padding: 14px 18px 18px; }
+    .decision-card-body p { font-size: 13px; line-height: 1.68; color: #444; margin-bottom: 10px; }
+    .pro  { font-size: 12.5px; color: #1a7a45; font-weight: 600; margin-bottom: 5px; }
+    .con  { font-size: 12.5px; color: var(--amber-text); font-weight: 600; margin-bottom: 5px; }
+    .best { font-size: 12px; color: #555; margin-top: 8px; font-style: italic; }
+
+    /* ── AMBER NOTE ── */
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 18px 22px; margin-bottom: 32px; }
+    .amber-note p { font-size: 13.5px; line-height: 1.72; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    /* ── FOOTER ── */
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 700px) {
+      .zone-grid, .mistake-grid, .decision-grid { grid-template-columns: 1fr; }
+      .equip-grid { grid-template-columns: 1fr; }
+      .body { padding: 28px 22px 44px; }
+      .practice-body, .retail-grid, .friction-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Bar Layout &<br><span>Equipment Reference</span></h1>
+    <p class="header-sub">Everything you need to design a bar that actually works — the three service zones, equipment placement principles, what you need to open, and the most expensive mistakes to avoid before you build anything.</p>
+    <div class="week-badge">Week 5 — Bar Layout & Equipment &nbsp;·&nbsp; Reference Sheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- THREE ZONES -->
+  <div class="section-heading">The Three Service Zones</div>
+  <p class="section-sub">Every coffee bar — regardless of size or shop type — has three distinct zones. Designing each one deliberately, and keeping them from colliding with each other, is the single most important layout decision you'll make.</p>
+
+  <div class="zone-grid">
+    <div class="zone-card">
+      <div class="zone-header order">
+        <div class="zone-num">Zone 1</div>
+        <div class="zone-name">Order Zone</div>
+        <div class="zone-tag">Where the customer places their order and pays</div>
+      </div>
+      <div class="zone-body">
+        <p>This is where the customer interacts directly with staff. It needs to feel welcoming and unhurried — even when the queue is long. The menu should be clearly visible from this point before the customer reaches the counter.</p>
+        <p><strong>Keep it simple:</strong> till, payment terminal, a spot to stand. Don't clutter this area with equipment, cups, or coffee kit. It's the customer's zone, not the barista's.</p>
+        <div class="zone-tip">If your order zone and handoff zone are in the same place, your queue will always block the pickup — that slows down service and frustrates customers who've already paid.</div>
+      </div>
+    </div>
+
+    <div class="zone-card">
+      <div class="zone-header prod">
+        <div class="zone-num">Zone 2</div>
+        <div class="zone-name">Production Zone</div>
+        <div class="zone-tag">Where every drink gets made</div>
+      </div>
+      <div class="zone-body">
+        <p>This is your engine room. It should be your largest zone, your most ergonomically considered space, and the one you spend the most time thinking about. Everything a barista needs to make every drink on your menu must be within a short reach — without crossing paths with another person.</p>
+        <p><strong>The golden triangle:</strong> espresso machine, grinder, and milk fridge should form a tight triangle that a barista can work within without turning around or taking more than one step in any direction.</p>
+        <div class="zone-tip">Every step a barista takes during a rush is time lost. If making your most common drink requires four body movements, redesign until it requires two.</div>
+      </div>
+    </div>
+
+    <div class="zone-card">
+      <div class="zone-header handoff">
+        <div class="zone-num">Zone 3</div>
+        <div class="zone-name">Handoff Zone</div>
+        <div class="zone-tag">Where the finished drink is collected</div>
+      </div>
+      <div class="zone-body">
+        <p>Separate from the order zone wherever possible. Customers collecting their drinks should not be standing in the same physical space as customers placing their orders — that creates a pinch point that slows everything down.</p>
+        <p><strong>Name boards, buzzers, or a simple call-out</strong> all work fine. The key is that the person collecting does not need to stand in the queue to do it.</p>
+        <div class="zone-tip">For grab-and-go bars, even a 40cm separation between order and handoff makes a meaningful difference to queue flow during peak times.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESIGN BEST PRACTICES -->
+  <div class="section-heading">Design Best Practices</div>
+  <p class="section-sub">These principles apply before you think about equipment. They're about how people — both customers and baristas — move through your space. Get the flow right first, then figure out where the machines go.</p>
+
+  <!-- ONE-DIRECTIONAL FLOW -->
+  <div class="practice-block">
+    <div class="practice-header">
+      <div class="practice-icon">→</div>
+      <div>
+        <div class="practice-tag">Flow Principle 1</div>
+        <div class="practice-title">Design for one-directional flow — for everyone</div>
+      </div>
+    </div>
+    <div class="practice-body">
+      <div class="practice-col">
+        <div class="practice-col-label customer-label">Customer flow</div>
+        <p>Customers should move through your space in one direction — enter, browse or queue, order, wait or move aside, collect, leave. If customers are doubling back on themselves to collect a drink, or cutting across people still waiting to order, your layout is working against you.</p>
+        <p>Think of it like a river with a clear current. You want every person to know instinctively which way to go next without having to read a sign or ask someone. That clarity comes from layout, not signage.</p>
+      </div>
+      <div class="practice-col">
+        <div class="practice-col-label barista-label">Barista flow</div>
+        <p>The same principle applies behind the bar. A barista's movement through a drink — from grind to tamp to extract to steam to pour to serve — should flow in one direction along the bar, not zigzag back and forth. If making a flat white requires a barista to move left, then right, then left again, the bar is fighting them.</p>
+        <p>Watch a well-designed bar during a rush and you'll see baristas moving with a rhythm. Watch a poorly designed one and you'll see them dancing around each other, reaching past each other, and losing seconds on every drink.</p>
+      </div>
+    </div>
+    <div class="practice-note">
+      <strong>The test:</strong> Draw arrows on your bar sketch showing where the customer walks and where the barista moves to make your most common drink. If either set of arrows doubles back on itself, that's where your flow breaks down.
+    </div>
+  </div>
+
+  <!-- CUSTOMER EXPERIENCE PERSPECTIVE -->
+  <div class="practice-block">
+    <div class="practice-header">
+      <div class="practice-icon">👁</div>
+      <div>
+        <div class="practice-tag">Flow Principle 2</div>
+        <div class="practice-title">Design the customer journey before you order anything</div>
+      </div>
+    </div>
+    <div class="practice-body-single">
+      <p>Walk your space — or your sketched space — as if you are a customer entering for the first time. Ask yourself at each step: <em>What do I see? What am I drawn toward? Where do I go next? When do I feel comfortable?</em></p>
+      <p>The customer journey in a coffee shop typically has five moments. Each one is a design opportunity — or a friction point waiting to happen.</p>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step">
+        <div class="journey-num">1</div>
+        <div class="journey-content">
+          <div class="journey-label">Enter</div>
+          <p>Can they immediately see where to go? Is there a clear visual pull toward the ordering point? Or do they stop, look around, and feel uncertain? Uncertain customers slow down the flow before they've even joined the queue.</p>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-num">2</div>
+        <div class="journey-content">
+          <div class="journey-label">Browse &amp; queue</div>
+          <p>Can they read the menu from where they're standing before they reach the till? This is where <strong>retail products and the pastry display belong</strong> — along the customer's path before they reach the Point of Sale. Not after it. Not beside it. Before it. A customer who passes your retail display and pastry case on the way to the till has already considered adding something. A customer who only sees it after they've paid has already closed their wallet mentally.</p>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-num">3</div>
+        <div class="journey-content">
+          <div class="journey-label">Order &amp; pay</div>
+          <p>Is the ordering experience calm for the staff member taking the order? If the person on the till is also making drinks, or reaching across the bar, or being interrupted by workflow behind them, the customer feels that tension. The order zone should feel like a clear, dedicated interaction — not a side task.</p>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-num">4</div>
+        <div class="journey-content">
+          <div class="journey-label">Wait</div>
+          <p>Where does the customer go after ordering? If there's nowhere natural to wait — or if the waiting area puts them in the path of people still ordering — you'll get a pinch point. Give people somewhere obvious to stand or sit that keeps them out of the queue and within earshot of the handoff call.</p>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-num">5</div>
+        <div class="journey-content">
+          <div class="journey-label">Collect &amp; leave (or stay)</div>
+          <p>Is the handoff point visible and clearly theirs to approach? Does collecting their drink require walking back through the queue? A smooth handoff is the last impression of the service experience — it should feel frictionless, not like an obstacle course.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RETAIL & PASTRY PLACEMENT -->
+  <div class="practice-block retail-block">
+    <div class="practice-header">
+      <div class="practice-icon">🥐</div>
+      <div>
+        <div class="practice-tag">Revenue Principle</div>
+        <div class="practice-title">Retail and pastry display: before the till, not beside it</div>
+      </div>
+    </div>
+    <div class="practice-body-single">
+      <p>This is one of the highest-leverage layout decisions you can make for average transaction value — and most first-time operators get it wrong by accident. The pastry display and any retail products (coffee bags, merchandise, gift cards) should sit along the customer's path <em>before</em> they reach the POS. Here is why this matters:</p>
+    </div>
+    <div class="retail-grid">
+      <div class="retail-card retail-card-good">
+        <div class="retail-card-header">Before the POS ✓</div>
+        <p>Customer walks in, sees the pastry display, pauses to consider. By the time they reach the till, they've already half-decided to add a croissant. The barista asks "anything with your coffee?" and the answer is yes more often. The decision was made in the walk, not at the counter.</p>
+      </div>
+      <div class="retail-card retail-card-bad">
+        <div class="retail-card-header">Beside or after the POS ✗</div>
+        <p>Customer reaches the till, gives their order, pays. The transaction is complete in their mind. Even if there's a beautiful pastry display right beside them, they've mentally closed the purchase. Add-on rates drop significantly once someone has already paid.</p>
+      </div>
+    </div>
+    <div class="practice-note">
+      <strong>Practical note:</strong> If your layout genuinely cannot place the display before the POS, the next best option is having it visible and reachable from the ordering position — so the barista can point to it naturally. A display that is behind the customer, or in a corner they passed before they decided to queue, does very little work.
+    </div>
+  </div>
+
+  <!-- REDUCING FRICTION -->
+  <div class="practice-block">
+    <div class="practice-header">
+      <div class="practice-icon">⚡</div>
+      <div>
+        <div class="practice-tag">Flow Principle 3</div>
+        <div class="practice-title">Identify and remove friction points — for both people</div>
+      </div>
+    </div>
+    <div class="practice-body-single">
+      <p>A friction point is anything that causes either the customer or the barista to slow down, hesitate, or work harder than they should. Most friction points are invisible until you're in the middle of a morning rush — which is exactly why you need to find them in the planning stage.</p>
+    </div>
+    <div class="friction-grid">
+      <div class="friction-col">
+        <div class="friction-col-header customer-label">Customer friction points to eliminate</div>
+        <div class="friction-item">
+          <div class="friction-dot customer-dot"></div>
+          <div><strong>Not knowing where to queue.</strong> If the queue direction isn't obvious, the first few customers will work it out — but every new customer arriving during a rush has to figure it out again. A clear, physical queue line (even just counter design) removes this entirely.</div>
+        </div>
+        <div class="friction-item">
+          <div class="friction-dot customer-dot"></div>
+          <div><strong>Can't read the menu until they reach the counter.</strong> They hold up the queue while they decide. The solution is a menu board visible from at least 3 metres back, not at the point of ordering.</div>
+        </div>
+        <div class="friction-item">
+          <div class="friction-dot customer-dot"></div>
+          <div><strong>Nowhere natural to wait after ordering.</strong> They either hover at the till (blocking the next order) or drift too far from the handoff point and miss their name being called. A designated waiting area — even just a visual cue — solves this.</div>
+        </div>
+        <div class="friction-item">
+          <div class="friction-dot customer-dot"></div>
+          <div><strong>Having to walk back through the queue to collect.</strong> If the handoff point is at the start of the queue, collected customers are walking against the flow of people still arriving. Separate these wherever possible.</div>
+        </div>
+      </div>
+      <div class="friction-col">
+        <div class="friction-col-header barista-label">Barista friction points to eliminate</div>
+        <div class="friction-item">
+          <div class="friction-dot barista-dot"></div>
+          <div><strong>Any reach that requires crossing the body.</strong> Reaching across yourself to access equipment or ingredients is a micro-inefficiency that adds up. Every regular movement should be a natural extension of where the barista already is.</div>
+        </div>
+        <div class="friction-item">
+          <div class="friction-dot barista-dot"></div>
+          <div><strong>Shared access points between two baristas.</strong> If both baristas need the same piece of equipment or the same part of the bench at the same time during peak service, one of them is always waiting. Design around this or duplicate the equipment.</div>
+        </div>
+        <div class="friction-item">
+          <div class="friction-dot barista-dot"></div>
+          <div><strong>No clear home for everything.</strong> Anything without a defined place will drift — and staff will spend time looking for things mid-service. Every piece of equipment, every tool, every supply should have one place it lives and returns to.</div>
+        </div>
+        <div class="friction-item">
+          <div class="friction-dot barista-dot"></div>
+          <div><strong>Cleaning access that conflicts with service flow.</strong> If the bin is in the way of the workflow, it won't be emptied on time. If the cleaning sink requires crossing the bar, it won't be used mid-service. Design cleaning into the workflow, not as an afterthought.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLACEMENT PRINCIPLES -->
+  <div class="section-heading">Equipment Placement Principles</div>
+  <p class="section-sub">These aren't design preferences — they're operational rules that experienced baristas and fit-out specialists have learned the hard way.</p>
+
+  <table class="principle-table">
+    <thead><tr><th>Principle</th><th>What it means in practice</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Put the espresso machine where the barista faces the customer<span class="tip">Standard for most cafés</span></td>
+        <td>The barista should be able to look up and make eye contact with the customer while pulling shots. It creates connection, speeds up communication about the order, and lets them call out names without turning around.</td>
+      </tr>
+      <tr>
+        <td>Grinder goes immediately to the left or right of the machine<span class="tip">Never across the bar</span></td>
+        <td>Every time a barista has to reach across themselves — or worse, step away — to get ground coffee, you're adding 5–10 seconds to every drink. Over 100 drinks a day, that's real time. Keep the grinder within one arm's reach of the group head.</td>
+      </tr>
+      <tr>
+        <td>Milk fridge at knee height, directly below the steam wand<span class="tip">Or as close as possible</span></td>
+        <td>Reaching behind for milk is one of the most common layout errors. Underbench fridges directly below the steam wand mean a barista can grab milk, steam it, and return it without moving their feet. This one change can dramatically speed up service.</td>
+      </tr>
+      <tr>
+        <td>Cups live between the grinder and the handoff point<span class="tip">Not at the far end of the bar</span></td>
+        <td>If a barista has to walk three steps to get a cup at the start of every drink, cup placement is your bottleneck. Cups should be stacked within the production zone, within reach of where the drink starts being built.</td>
+      </tr>
+      <tr>
+        <td>Keep the filter and espresso stations physically separate<span class="tip">For bars serving both</span></td>
+        <td>If you're serving both espresso drinks and filter coffee, treat them as two distinct workstations. A barista working batch brew should not be crossing the espresso bar to do so. This matters most when two people are working simultaneously.</td>
+      </tr>
+      <tr>
+        <td>Plan 900mm of clear working space per barista<span class="tip">Per person, not shared</span></td>
+        <td>Each barista working the bar needs approximately 900mm of counter space to work in without getting in someone else's way. A bar with 1800mm of working counter can comfortably accommodate two people. Less than that and they'll be bumping into each other during the rush.</td>
+      </tr>
+      <tr>
+        <td>Waste and knock box go where the barista naturally stands<span class="tip">Not somewhere convenient for cleaning</span></td>
+        <td>The knock box should be directly at the barista's working position — not across the bar where it's easier to clean. If a barista has to lean or step to knock spent grounds, that friction accumulates across hundreds of drinks a day.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- EQUIPMENT YOU NEED TO OPEN -->
+  <div class="section-heading">Equipment You Need to Open</div>
+  <p class="section-sub">This is a guide to what's essential and what's optional depending on your shop type and menu. Use the Equipment Checklist to record your actual quotes alongside these categories.</p>
+
+  <div class="equip-section">
+    <h3>Espresso Bar — Core Equipment</h3>
+    <div class="equip-grid">
+      <div class="equip-item">
+        <div class="equip-icon">☕</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Commercial espresso machine</h4>
+          <p>2-group minimum for most cafés. Consider a 3-group if you're expecting high volume. Brands like La Marzocco, Synesso, Victoria Arduino, and Sanremo are industry standards. New: $12,000–$25,000+. Used: $4,000–$10,000.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">⚙️</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Espresso grinder (×2 recommended)</h4>
+          <p>One for your house blend, one for single origin or decaf. Brands: Mahlkönig, Mythos, Eureka. A single grinder forces staff to re-dial between coffees — not practical during a rush. New: $2,500–$5,000 each.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🧊</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Underbench milk fridge</h4>
+          <p>Commercial underbench refrigeration directly below or adjacent to the steam wand. Must hold temperature below 4°C. Factor in capacity for your peak milk volume — running out mid-service is a real problem.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">💧</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Water filtration system</h4>
+          <p>Protects your espresso machine from scale and mineral build-up, and significantly affects flavour. Often overlooked and always regretted when skipped. Factor in ongoing filter cartridge costs.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🔧</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Tamper, distribution tool, knock box</h4>
+          <p>Quality tamping and distribution tools pay for themselves in shot consistency. Knock box should be built-in to the bench or at minimum mounted — freestanding knock boxes shift and slow the workflow.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🌡️</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Steam wand thermometers / milk pitchers</h4>
+          <p>Multiple pitchers in different sizes (300ml, 600ml, 1L) for different drink volumes. Thermometers for training and consistency — particularly important if you're training staff who don't yet have reliable temperature feel.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="equip-section">
+    <h3>Filter & Cold — Based on Your Menu</h3>
+    <div class="equip-grid">
+      <div class="equip-item">
+        <div class="equip-icon">☕</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential if serving filter</span>
+          <h4>Commercial batch brewer</h4>
+          <p>Fetco, Marco, or similar commercial batch brewers. Must hold temperature without continuing to cook the coffee. Batch brew is your highest-margin drink — don't underinvest here. New: $2,500–$5,000.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">⚖️</div>
+        <div>
+          <span class="equip-badge badge-optional">Optional / specialty</span>
+          <h4>Pour-over station and scales</h4>
+          <p>If you're offering manual pour-over. Requires a grinder capable of filter grind sizes (usually a separate grinder from espresso), quality scales, and a gooseneck kettle. Adds time per drink — factor into workflow.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🧊</div>
+        <div>
+          <span class="equip-badge badge-optional">Optional / recommended</span>
+          <h4>Cold brew equipment</h4>
+          <p>If cold brew is on your menu, you'll need a large cold brew brewing vessel (stainless, commercial grade) and refrigerated storage. Cold brew takes 12–18 hours to brew — plan storage accordingly.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🥤</div>
+        <div>
+          <span class="equip-badge badge-optional">Optional</span>
+          <h4>Commercial blender</h4>
+          <p>Only if you're serving blended drinks (frappes, smoothies). Vitamix or Blendtec commercial models. Factor in noise — a blender running during quiet mornings is noticeable. Needs its own designated counter space.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="equip-section">
+    <h3>Operations & Technology</h3>
+    <div class="equip-grid">
+      <div class="equip-item">
+        <div class="equip-icon">💳</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Point of sale (POS) system</h4>
+          <p>Square, Lightspeed, Kounta, or similar. Needs to handle split payments, run basic sales reports, and ideally integrate with your accounting software. Factor in monthly subscription costs, not just hardware.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🖨️</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Receipt and order printers</h4>
+          <p>Thermal receipt printer for the till, and a kitchen/bar printer if your workflow needs printed drink tickets. Wireless printers reduce cable runs but require a reliable Wi-Fi connection.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">📦</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Commercial dishwasher</h4>
+          <p>A commercial underbench glasswasher is the minimum for a sit-down café. For takeaway-heavy operations, assess your cup and vessel volume — you may be able to manage with a smaller unit initially.</p>
+        </div>
+      </div>
+      <div class="equip-item">
+        <div class="equip-icon">🔌</div>
+        <div>
+          <span class="equip-badge badge-essential">Essential</span>
+          <h4>Power and electrical fit-out</h4>
+          <p>Commercial espresso machines require 3-phase power in most markets. Your electrician needs to be involved before you finalise bar placement — not after. Moving a machine because power can't reach it is expensive.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW VS USED VS LEASE -->
+  <div class="section-heading">New, Used, or Leased?</div>
+  <p class="section-sub">There's no universally right answer — but there are right answers for your situation. Here's how to think through each option honestly.</p>
+
+  <div class="decision-grid">
+    <div class="decision-card">
+      <div class="decision-card-header new">
+        <div class="dtag">Option 1</div>
+        <h3>Buy New</h3>
+      </div>
+      <div class="decision-card-body">
+        <p>Full warranty, known history, current technology. You own the asset outright and have no ongoing payments.</p>
+        <p class="pro">✓ Warranty and manufacturer support. No surprises on reliability. May qualify for tax depreciation.</p>
+        <p class="con">✗ Highest upfront cost. Ties up capital you might need elsewhere in the first year.</p>
+        <p class="best">Best for: Operators with solid opening capital who want zero maintenance risk in year one.</p>
+      </div>
+    </div>
+    <div class="decision-card">
+      <div class="decision-card-header used">
+        <div class="dtag">Option 2</div>
+        <h3>Buy Used</h3>
+      </div>
+      <div class="decision-card-body">
+        <p>Significant savings on commercial machines that hold their value well. A well-maintained used La Marzocco can outlast a poorly maintained new machine.</p>
+        <p class="pro">✓ Major cost saving. Quality machines depreciate — buying 3 years old means someone else absorbed that hit.</p>
+        <p class="con">✗ No warranty. Unknown service history. Budget for a full service check before purchase — always.</p>
+        <p class="best">Best for: Budget-conscious operators who can source machines through reputable dealers with service records.</p>
+      </div>
+    </div>
+    <div class="decision-card">
+      <div class="decision-card-header lease">
+        <div class="dtag">Option 3</div>
+        <h3>Lease</h3>
+      </div>
+      <div class="decision-card-body">
+        <p>Lower upfront cost. Often includes a service agreement. Some roasters offer equipment as part of their wholesale deal — worth asking.</p>
+        <p class="pro">✓ Preserves opening capital. Service often included. Roaster-supplied equipment can come with training.</p>
+        <p class="con">✗ Total cost over term is usually more than buying outright. Read the terms on what happens if you exit early.</p>
+        <p class="best">Best for: Operators with limited opening capital, or those whose roaster offers a tied equipment arrangement.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMON MISTAKES -->
+  <div class="section-heading">The Most Common Layout Mistakes</div>
+  <p class="section-sub">These are the ones that show up most often — and the ones that are most expensive to fix after you've already built.</p>
+
+  <div class="mistake-grid">
+    <div class="mistake-card">
+      <h4>Ordering and handoff in the same spot</h4>
+      <p>The queue for ordering clogs the area where completed drinks sit. People reaching past queueing customers to collect their drinks slows everything down and creates friction.</p>
+      <p class="fix">Fix: Physically separate the handoff point from the till by at least 60–80cm.</p>
+    </div>
+    <div class="mistake-card">
+      <h4>Grinder too far from the machine</h4>
+      <p>Even 30cm extra reach per shot adds up to minutes per hour. Over 80 drinks a day, it's genuinely significant — and it's usually caused by aesthetic decisions, not operational ones.</p>
+      <p class="fix">Fix: Grinder goes immediately beside the machine. Non-negotiable.</p>
+    </div>
+    <div class="mistake-card">
+      <h4>Milk fridge behind the barista</h4>
+      <p>Reaching behind yourself to retrieve milk means turning your back to the machine mid-drink, risking over-extraction while you're turned away. Underbench storage solves this completely.</p>
+      <p class="fix">Fix: Underbench fridge directly below or beside the steam wand position.</p>
+    </div>
+    <div class="mistake-card">
+      <h4>Not testing the layout with two people</h4>
+      <p>Most bar layouts are designed by one person imagining one person working. The morning rush usually involves two. If two people can't move freely without bumping into each other, the layout will create daily frustration.</p>
+      <p class="fix">Fix: Walk through your bar sketch with a second person before anything is built.</p>
+    </div>
+    <div class="mistake-card">
+      <h4>Designing for how it looks in photos</h4>
+      <p>Open shelving looks great on Instagram. Cold brew towers look impressive. Exposed copper fixtures look beautiful. None of them help your team make drinks faster. Operational function should win every time there's a conflict with aesthetics.</p>
+      <p class="fix">Fix: If an aesthetic choice makes the workflow worse, cut it.</p>
+    </div>
+    <div class="mistake-card">
+      <h4>No plan for a menu board that's readable</h4>
+      <p>Customers who can't read the menu before they reach the till cause queue slowdowns. A menu board that requires the customer to be standing at the counter to read it means every customer takes longer to order.</p>
+      <p class="fix">Fix: Menu board visible from at least 3 metres back in the queue.</p>
+    </div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>The one thing most people don't think about until it's too late:</strong> Where does water go? Every commercial espresso machine needs a drain line. Every cleaning station needs a sink. Before you finalise bar placement, check where plumbing currently runs — moving it is expensive. The position of your drains often determines more of your bar layout than anything else.</p>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 5 Reference Sheet</p>
+</div>
+
+</body>
+</html>
