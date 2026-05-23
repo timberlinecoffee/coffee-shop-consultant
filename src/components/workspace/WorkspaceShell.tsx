@@ -10,7 +10,6 @@ interface WorkspaceShellProps {
   title: string;
   description: string;
   icon: LucideIcon;
-  shipsWith: string;
   currentFocusLabel?: string;
   trialMessagesUsed?: number;
 }
@@ -20,34 +19,48 @@ export function WorkspaceShell({
   workspaceKey,
   title,
   description,
-  icon,
-  shipsWith,
+  icon: Icon,
   currentFocusLabel,
   trialMessagesUsed,
 }: WorkspaceShellProps) {
-  const Icon = icon;
   return (
     <div className="bg-[#faf9f7]">
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <div className="bg-white rounded-2xl border border-[#efefef] p-8">
-          <div className="mb-4" aria-hidden="true">
-            <Icon className="w-8 h-8" />
+      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
+        {/* Page header — matches Concept page header pattern */}
+        <header className="mb-8">
+          <div className="flex items-center gap-2 mb-1">
+            <Icon
+              className="w-5 h-5 text-[#155e63] flex-shrink-0"
+              aria-hidden="true"
+            />
+            <h1
+              className="font-bold text-[#1a1a1a]"
+              style={{ fontSize: "28px" }}
+            >
+              {title}
+            </h1>
           </div>
-          <h1 className="font-semibold text-2xl text-[#1a1a1a] mb-2">{title}</h1>
-          <p className="text-sm text-[#6b6b6b] mb-6 leading-relaxed">
+          <p className="text-sm text-[#6b6b6b] leading-relaxed">
             {description}
           </p>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#faf9f7] rounded-full border border-[#efefef] mb-6">
-            <span className="text-xs font-medium text-[#155e63]">
-              Workspace shell stub
-            </span>
-            <span className="text-xs text-[#6b6b6b]">· {shipsWith}</span>
+        </header>
+
+        {/* Placeholder content card — matches Concept card design */}
+        <div className="rounded-2xl border border-[#efefef] bg-white">
+          <div className="px-5 pt-5 pb-4">
+            <div className="mb-2">
+              <span className="text-sm font-semibold text-[#1a1a1a]">
+                This workspace is being built
+              </span>
+              <p className="text-xs text-[#afafaf] mt-0.5">
+                Full tools are on the way.
+              </p>
+            </div>
+            <p className="mt-2 text-sm text-[#afafaf] italic leading-relaxed">
+              The Co-pilot can answer questions and help you plan right now. Tap
+              the Co-pilot button to get started.
+            </p>
           </div>
-          <p className="text-xs text-[#888] leading-relaxed">
-            The Co-pilot is live in this workspace today. Tap the floating
-            button to ask questions — it has access to your plan context across
-            all 6 workspaces.
-          </p>
         </div>
       </div>
 
