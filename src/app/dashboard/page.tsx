@@ -31,7 +31,8 @@ export default async function DashboardPage() {
       .single(),
   ]);
 
-  const firstName = capitalizeFirst(profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there");
+  const rawName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0];
+  const firstName = rawName ? capitalizeFirst(rawName) : "there";
   const subscriptionTier = profile?.subscription_tier ?? "free";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
   const onboardingData = (profile?.onboarding_data as Record<string, string> | null) ?? {};
