@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const COOLDOWN_SECONDS = 60;
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ errorMessage }: { errorMessage?: string | null } = {}) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -62,6 +62,14 @@ export function ForgotPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {errorMessage && (
+        <div
+          role="status"
+          className="bg-[#fff8eb] border border-[#f3e0b0] rounded-xl px-4 py-3 text-sm text-[#7a5a13]"
+        >
+          {errorMessage}
+        </div>
+      )}
       <div>
         <label htmlFor="email" className="block text-xs font-medium text-[#1a1a1a] mb-1">Email</label>
         <input

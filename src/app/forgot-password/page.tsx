@@ -7,7 +7,21 @@ export const metadata = {
   title: "Reset Password | My Coffee Shop Consultant",
 };
 
-export default function ForgotPasswordPage() {
+function errorBannerFor(error: string | undefined): string | null {
+  if (error === "expired") {
+    return "That link has expired or was already used. Enter your email to get a new one.";
+  }
+  return null;
+}
+
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const banner = errorBannerFor(error);
+
   return (
     <div className="min-h-screen bg-[#faf9f7] flex flex-col items-center justify-center px-4 py-12">
       <Link href="/" className="flex items-center gap-2 mb-10">
@@ -22,7 +36,7 @@ export default function ForgotPasswordPage() {
         <p className="text-[#afafaf] text-sm text-center mb-8">
           Enter the email tied to your account and we&apos;ll send a reset link.
         </p>
-        <ForgotPasswordForm />
+        <ForgotPasswordForm errorMessage={banner} />
         <p className="text-center text-sm text-[#afafaf] mt-6">
           Remember it?{" "}
           <Link href="/login" className="text-[#155e63] font-medium hover:underline">
