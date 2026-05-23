@@ -1,0 +1,100 @@
+// TIM-965: CRUD for staff_competencies (plan-level competency template).
+import { createClient } from "@/lib/supabase/server"
+import type { NextRequest } from "next/server"
+
+async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase
+    .from("coffee_shop_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
+export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const planId = await getPlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
+
+  const { data, error } = await supabase
+    .from("staff_competencies")
+    .select("*")
+    .eq("plan_id", planId)
+    .order("order_index")
+
+  if (error) return Response.json({ error: "Failed to fetch competencies" }, { status: 500 })
+  return Response.json(data)
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const planId = await getPlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
+
+  let body: Record<string, unknown>
+  try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
+
+  if (!body.skill || typeof body.skill !== "string") {
+    return Response.json({ error: "Missing required field: skill" }, { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from("staff_competencies")
+    .insert({
+      plan_id: planId,
+      skill: body.skill,
+      rubric: (body.rubric as string | undefined) ?? "",
+      required_for_role: (body.required_for_role as string | undefined) ?? null,
+      weight: (body.weight as number | undefined) ?? 1,
+      order_index: (body.order_index as number | undefined) ?? 0,
+    })
+    .select()
+    .single()
+
+  if (error) return Response.json({ error: "Failed to create competency" }, { status: 500 })
+  return Response.json(data, { status: 201 })
+}
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  let body: Record<string, unknown>
+  try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
+
+  const id = body.id as string | undefined
+  if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
+
+  const { id: _id, ...rest } = body
+  const { data, error } = await supabase
+    .from("staff_competencies")
+    .update(rest)
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) return Response.json({ error: "Failed to update competency" }, { status: 500 })
+  return Response.json(data)
+}
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const id = request.nextUrl.searchParams.get("id")
+  if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
+
+  const { error } = await supabase.from("staff_competencies").delete().eq("id", id)
+  if (error) return Response.json({ error: "Failed to delete competency" }, { status: 500 })
+  return Response.json({ ok: true })
+}

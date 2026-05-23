@@ -25,6 +25,7 @@ const WORKSPACE_KEYS: WorkspaceKey[] = [
   "menu_pricing",
   "buildout_equipment",
   "launch_plan",
+  "hiring",
 ]
 
 const TTFT_MS = 8_000

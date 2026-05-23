@@ -8,6 +8,7 @@ export type WorkspaceKey =
   | 'menu_pricing'
   | 'buildout_equipment'
   | 'launch_plan'
+  | 'hiring'
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
