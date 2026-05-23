@@ -380,7 +380,7 @@ export function normalizeConceptV2(input: unknown): ConceptDocumentV2 {
       createdAt: now,
       updatedAt: now,
       whyTheyVisit: "",
-      notes: targetMarket,
+      notes: `[Migrated from V1 target_market field]\n${targetMarket}`,
     }];
   }
   return {
