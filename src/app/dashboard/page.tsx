@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { computePlanReadiness } from "@/lib/workspace-manifest";
+import { capitalizeFirst } from "@/lib/format";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,8 @@ export default async function DashboardPage() {
       .single(),
   ]);
 
-  const firstName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
+  const rawName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0];
+  const firstName = rawName ? capitalizeFirst(rawName) : "there";
   const subscriptionTier = profile?.subscription_tier ?? "free";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
   const onboardingData = (profile?.onboarding_data as Record<string, string> | null) ?? {};

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { OnboardingFlow } from "./onboarding-flow";
+import { capitalizeFirst } from "@/lib/format";
 
 export const dynamic = 'force-dynamic';
 
@@ -22,12 +23,12 @@ export default async function OnboardingPage() {
 
   if (profile?.onboarding_completed) redirect("/dashboard");
 
-  const firstName =
+  const rawName =
     profile?.full_name?.split(" ")[0] ??
     (user.user_metadata?.full_name as string | undefined)?.split(" ")[0] ??
     (user.user_metadata?.name as string | undefined)?.split(" ")[0] ??
-    user.email?.split("@")[0] ??
-    "there";
+    user.email?.split("@")[0];
+  const firstName = rawName ? capitalizeFirst(rawName) : "there";
 
   return <OnboardingFlow userId={user.id} firstName={firstName} />;
 }
