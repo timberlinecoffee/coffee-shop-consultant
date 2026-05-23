@@ -954,7 +954,7 @@ function ConceptBriefInline({
                             )}
                             {p.whyTheyVisit.trim() && (
                               <span className="text-[#6b6b6b]">
-                                {" — "}
+                                {": "}
                                 {p.whyTheyVisit.trim().length > 70
                                   ? p.whyTheyVisit.trim().slice(0, 70) + "..."
                                   : p.whyTheyVisit.trim()}
