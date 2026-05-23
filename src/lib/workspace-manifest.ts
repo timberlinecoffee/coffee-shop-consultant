@@ -5,7 +5,7 @@ export interface WorkspaceManifestItem {
   moduleNumber: number;
   label: string;
   href: string;
-  /** null = content not yet shipped; renders as locked with "Coming soon" tooltip */
+  /** null = no section-based progress tracking; page still accessible */
   totalSections: number | null;
 }
 
@@ -33,8 +33,7 @@ export function buildNavItems(
   return WORKSPACE_MANIFEST.map((item) => ({
     ...item,
     completedSections: completedByModule.get(item.moduleNumber) ?? 0,
-    isUnlocked:
-      AVAILABLE_MODULES.has(item.moduleNumber) && item.totalSections !== null,
+    isUnlocked: AVAILABLE_MODULES.has(item.moduleNumber),
   }));
 }
 
