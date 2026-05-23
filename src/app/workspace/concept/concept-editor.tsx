@@ -276,8 +276,8 @@ export function ConceptWorkspace({
         return;
       }
 
-      if (result.trialMessagesUsed !== undefined) {
-        setTrialMessagesUsed(result.trialMessagesUsed);
+      if (result.trialRemaining !== null) {
+        setTrialMessagesUsed(COPILOT_FREE_TRIAL_LIMIT - result.trialRemaining);
       }
 
       try {
