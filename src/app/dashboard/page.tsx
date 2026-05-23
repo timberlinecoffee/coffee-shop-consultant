@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining, onboarding_data")
+      .select("full_name, readiness_score, subscription_tier, subscription_status, onboarding_completed, ai_credits_remaining, copilot_trial_messages_used, onboarding_data")
       .eq("id", user.id)
       .single(),
     supabase
@@ -35,7 +35,10 @@ export default async function DashboardPage() {
   const rawName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0];
   const firstName = rawName ? capitalizeFirst(rawName) : "there";
   const subscriptionTier = profile?.subscription_tier ?? "free";
+  const subscriptionStatus = profile?.subscription_status ?? "free_trial";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
+  const trialMessagesUsed = profile?.copilot_trial_messages_used ?? 0;
+  const FREE_TRIAL_COPILOT_LIMIT = 5;
   const onboardingData = (profile?.onboarding_data as Record<string, string> | null) ?? {};
   const targetTimeline: string | null = onboardingData?.timeline ?? null;
 
@@ -86,6 +89,8 @@ export default async function DashboardPage() {
   const w2Unlocked = w1Completed;
 
   const isPaid = subscriptionTier !== "free";
+  const isProUnlimited = subscriptionTier === "pro";
+  const isTrial = subscriptionStatus === "free_trial";
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
@@ -262,10 +267,20 @@ export default async function DashboardPage() {
 
         {/* AI coaching — low-visual-weight line in quick links area */}
         <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">AI Coaching</span>
-          {isPaid && creditsRemaining > 0 ? (
+          <span className="text-xs text-[#afafaf]">AI coaching</span>
+          {isProUnlimited ? (
+            <span className="text-xs font-medium text-[#155e63]">Unlimited (Pro)</span>
+          ) : isTrial ? (
+            trialMessagesUsed < FREE_TRIAL_COPILOT_LIMIT ? (
+              <span className={`text-xs font-medium ${FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed <= 1 ? "text-amber-500" : "text-[#155e63]"}`}>
+                {FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed} of {FREE_TRIAL_COPILOT_LIMIT} trial messages left
+              </span>
+            ) : (
+              <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Trial used — upgrade to continue</Link>
+            )
+          ) : isPaid && creditsRemaining > 0 ? (
             <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
-              {creditsRemaining} coaching messages left this month
+              {creditsRemaining} messages left this month
             </span>
           ) : (
             <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>

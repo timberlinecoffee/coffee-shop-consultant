@@ -19,6 +19,7 @@ export type CopilotErrorCode =
   | "upstream_error"
   | "timeout"
   | "quota"
+  | "trial_exhausted"
   | "unauthorized"
   | "bad_request"
   | "network"

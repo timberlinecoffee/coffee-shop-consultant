@@ -112,7 +112,7 @@ const FAQ = [
   },
   {
     q: "Is there a free trial?",
-    a: "There is no free trial, but you can cancel within 7 days of your first payment for a full refund -- no questions asked.",
+    a: "Yes — new accounts get 5 free Copilot messages to try the AI co-pilot before subscribing. You can also cancel within 7 days of your first payment for a full refund, no questions asked.",
   },
   {
     q: "What payment methods do you accept?",

@@ -1,4 +1,5 @@
 // Streaming co-pilot route with thinking, model routing, and SSE.
+// TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
 // SSE event names: text | thinking | error | done
 // Model routing: sonnet-4-6 default; opus-4-7 when snapshot >8000 tokens OR 3+ workspace mentions.
 
@@ -14,6 +15,8 @@ import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
 // ── Constants ────────────────────────────────────────────────────────────────
+
+const FREE_TRIAL_COPILOT_LIMIT = 5
 
 const WORKSPACE_KEYS: WorkspaceKey[] = [
   "concept",
@@ -147,40 +150,51 @@ export async function POST(request: NextRequest) {
   // TIM-925: Beta waiver — bypass all paywall/credit gates for the beta window.
   const isWaived = isBetaWaived(profile.beta_waiver_until)
 
-  // TIM-643: subscription_status gate — copilot is a write action.
-  // Inactive subscriptions (free_trial, cancelled, expired) get a 402 paywall.
-  // Free tier gets the trial gate below instead. Beta-waived accounts skip this gate.
-  if (!isWaived && !isSubscriptionActive(profile.subscription_status) && profile.subscription_tier !== "free") {
-    return new Response(
-      sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
-      { status: 402, headers: { "Content-Type": "text/event-stream" } },
-    )
-  }
+  const isTrial = profile.subscription_status === "free_trial"
+  const isActive = isSubscriptionActive(profile.subscription_status)
 
-  // TIM-819: Free-tier trial gate. Beta-waived accounts skip this gate.
-  if (!isWaived && profile.subscription_tier === "free") {
+  // Free trial: allow up to FREE_TRIAL_COPILOT_LIMIT messages before showing paywall.
+  // Beta-waived accounts skip the trial gate.
+  if (!isWaived && isTrial) {
     const used = profile.copilot_trial_messages_used ?? 0
-    if (used >= COPILOT_FREE_TRIAL_LIMIT) {
+    const remaining = FREE_TRIAL_COPILOT_LIMIT - used
+    if (remaining <= 0) {
       return new Response(
         sse("error", {
           code: "trial_exhausted",
-          messages_used: COPILOT_FREE_TRIAL_LIMIT,
-          messages_allowed: COPILOT_FREE_TRIAL_LIMIT,
+          message: "You've used your 5 trial messages — upgrade to keep planning with Copilot.",
+          trialUsed: used,
+          trialLimit: FREE_TRIAL_COPILOT_LIMIT,
         }),
         { status: 402, headers: { "Content-Type": "text/event-stream" } },
       )
     }
+  } else if (!isWaived && !isActive) {
+    // Cancelled or expired subscriptions: paywall without trial messaging.
+    return new Response(
+      sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
+      { status: 402, headers: { "Content-Type": "text/event-stream" } },
+    )
+  } else if (!isWaived && profile.subscription_tier === "free") {
+    // Active status but free tier — shouldn't normally occur; gate for safety.
+    return new Response(
+      sse("error", {
+        code: "quota",
+        message: "AI co-pilot requires a Starter, Growth, or Pro plan. Upgrade to start coaching.",
+      }),
+      { status: 403, headers: { "Content-Type": "text/event-stream" } },
+    )
   }
 
   // Beta-waived accounts are treated as unlimited (pro) for model routing and credit deduction.
   const isUnlimited = isWaived || profile.subscription_tier === "pro"
 
-  if (!isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
+  if (!isTrial && !isUnlimited && profile.ai_credits_remaining < 1) {
+    const tierName = profile.subscription_tier === "starter" ? "Starter" : "Growth"
     return new Response(
       sse("error", {
         code: "quota",
-        message:
-          "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or your credits reset next month.",
+        message: `You've used all your ${tierName} plan AI messages for this month. Upgrade to Pro for unlimited coaching, or wait for your monthly reset.`,
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
@@ -362,32 +376,30 @@ export async function POST(request: NextRequest) {
             })
           }
 
-          const isFree = !isWaived && profile.subscription_tier === "free"
-
-          if (isFree) {
-            // Increment trial counter server-side on successful completion.
-            const newTrialCount = (profile.copilot_trial_messages_used ?? 0) + 1
+          if (isTrial && !isWaived) {
             await supabase
               .from("users")
-              .update({ copilot_trial_messages_used: newTrialCount })
+              .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
               .eq("id", user.id)
-            send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId, trial_messages_used: newTrialCount }))
-          } else {
-            if (!isUnlimited) {
-              await supabase
-                .from("users")
-                .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
-                .eq("id", user.id)
+          } else if (!isUnlimited) {
+            await supabase
+              .from("users")
+              .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
+              .eq("id", user.id)
 
-              await supabase.from("credit_transactions").insert({
-                user_id: user.id,
-                amount: -1,
-                type: "usage",
-                description: `Co-pilot: ${workspaceKey}`,
-              })
-            }
-            send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId }))
+            await supabase.from("credit_transactions").insert({
+              user_id: user.id,
+              amount: -1,
+              type: "usage",
+              description: `Co-pilot: ${workspaceKey}`,
+            })
           }
+
+          const trialRemaining = (isTrial && !isWaived)
+            ? FREE_TRIAL_COPILOT_LIMIT - ((profile.copilot_trial_messages_used ?? 0) + 1)
+            : null
+
+          send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId, trialRemaining }))
           controller.close()
         }
       } catch (err: unknown) {

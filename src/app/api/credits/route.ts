@@ -1,4 +1,7 @@
+// TIM-866: returns usage state used by the Copilot drawer to show pre-cap indicators.
 import { createClient } from "@/lib/supabase/server";
+
+const FREE_TRIAL_COPILOT_LIMIT = 5;
 
 export async function GET() {
   const supabase = await createClient();
@@ -10,7 +13,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier")
+    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status")
     .eq("id", user.id)
     .single();
 
@@ -18,9 +21,25 @@ export async function GET() {
     return Response.json({ error: "Profile not found" }, { status: 404 });
   }
 
+  const isTrial = profile.subscription_status === "free_trial";
+  const isUnlimited = profile.subscription_tier === "pro";
+
+  if (isTrial) {
+    const used = profile.copilot_trial_messages_used ?? 0;
+    return Response.json({
+      mode: "trial",
+      trialUsed: used,
+      trialLimit: FREE_TRIAL_COPILOT_LIMIT,
+      trialRemaining: Math.max(0, FREE_TRIAL_COPILOT_LIMIT - used),
+      unlimited: false,
+      tier: profile.subscription_tier,
+    });
+  }
+
   return Response.json({
-    remaining: profile.subscription_tier === "pro" ? null : profile.ai_credits_remaining,
-    unlimited: profile.subscription_tier === "pro",
+    mode: isUnlimited ? "unlimited" : "credits",
+    remaining: isUnlimited ? null : profile.ai_credits_remaining,
+    unlimited: isUnlimited,
     tier: profile.subscription_tier,
   });
 }

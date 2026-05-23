@@ -25,9 +25,12 @@ export default async function AccountPage() {
     pro: "Accelerator",
   };
 
+  const FREE_TRIAL_COPILOT_LIMIT = 5;
+  const isProUnlimited = profile?.subscription_tier === "pro";
+  const isTrial = profile?.subscription_status === "free_trial";
+  const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
+
   const tierDisplayName = TIER_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
-  const isFree = (profile?.subscription_tier ?? "free") === "free";
-  const trialUsed = profile?.copilot_trial_messages_used ?? 0;
 
   return (
     <div className="bg-[#faf9f7]">
@@ -56,13 +59,13 @@ export default async function AccountPage() {
               <span className="text-[#1a1a1a]">{tierDisplayName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">
-                {isFree ? "Coaching sessions" : "AI credits remaining"}
-              </span>
+              <span className="text-[#afafaf]">AI coaching</span>
               <span className="text-[#1a1a1a]">
-                {isFree
-                  ? `${trialUsed} of 5 free coaching sessions used`
-                  : profile?.ai_credits_remaining ?? 0}
+                {isProUnlimited
+                  ? "Unlimited"
+                  : isTrial
+                    ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
+                    : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
               </span>
             </div>
           </div>

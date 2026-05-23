@@ -1,4 +1,4 @@
-// Auto-generated from schema + TIM-629 copilot_v1 migration.
+// Auto-generated from schema + TIM-629 copilot_v1 migration + TIM-731 launch_plan_workspace + TIM-866 copilot_trial_messages + TIM-925 beta_waiver.
 // Regenerate with: supabase gen types typescript --local > src/types/supabase.ts
 
 export type WorkspaceKey =
@@ -25,6 +25,7 @@ export interface Database {
           subscription_tier: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining: number
           copilot_trial_messages_used: number
+          beta_waiver_until: string | null
           target_opening_date: string | null
           readiness_score: number
           onboarding_completed: boolean
@@ -42,6 +43,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
+          beta_waiver_until?: string | null
           target_opening_date?: string | null
           readiness_score?: number
           onboarding_completed?: boolean
@@ -59,6 +61,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
+          beta_waiver_until?: string | null
           target_opening_date?: string | null
           readiness_score?: number
           onboarding_completed?: boolean
