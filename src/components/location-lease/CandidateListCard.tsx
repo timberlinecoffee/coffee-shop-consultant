@@ -122,10 +122,10 @@ function InlineInput({
   }
 
   const cls =
-    'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0'
+    'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[#888]/50 focus-visible:ring-0'
 
   const wrapCls =
-    'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-border focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30'
+    'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[#efefef] focus-within:border-[#155e63] focus-within:ring-2 focus-within:ring-[#155e63]/30'
 
   if (multiline) {
     return (
@@ -144,7 +144,7 @@ function InlineInput({
 
   return (
     <div className={wrapCls}>
-      {prefix && <span className="shrink-0 text-sm text-muted-foreground">{prefix}</span>}
+      {prefix && <span className="shrink-0 text-sm text-[#888]">{prefix}</span>}
       <input
         type={type}
         value={local}
@@ -153,7 +153,7 @@ function InlineInput({
         placeholder={placeholder}
         className={cls}
       />
-      {suffix && <span className="shrink-0 text-sm text-muted-foreground">{suffix}</span>}
+      {suffix && <span className="shrink-0 text-sm text-[#888]">{suffix}</span>}
     </div>
   )
 }
@@ -196,21 +196,21 @@ function StatusPillSelector({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 rounded-xl border bg-card shadow-lg py-1 min-w-[150px]">
+        <div className="absolute left-0 top-full z-30 mt-1 rounded-xl border bg-white shadow-lg py-1 min-w-[150px]">
           {STATUS_ORDER.map(s => (
             <button
               key={s}
               type="button"
               onClick={() => { onChange(s); setOpen(false) }}
               className={cn(
-                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-muted transition-colors',
+                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#f7f6f3] transition-colors',
                 s === status && 'font-semibold'
               )}
             >
               <span className={cn('rounded-full border px-2 py-0.5', STATUS_CONFIG[s].className)}>
                 {STATUS_CONFIG[s].label}
               </span>
-              {s === status && <span className="ml-auto text-[10px] text-muted-foreground">current</span>}
+              {s === status && <span className="ml-auto text-[10px] text-[#888]">current</span>}
             </button>
           ))}
         </div>
@@ -222,7 +222,7 @@ function StatusPillSelector({
 // ── FieldLabel ─────────────────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{children}</span>
+  return <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">{children}</span>
 }
 
 // ── CandidateRow ──────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ function CandidateRow({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
       {/* ── Summary row (always visible) ── */}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Name — inline editable */}
@@ -273,14 +273,14 @@ function CandidateRow({
         />
 
         {saving && (
-          <span className="shrink-0 text-[10px] italic text-muted-foreground">saving…</span>
+          <span className="shrink-0 text-[10px] italic text-[#888]">saving…</span>
         )}
 
         <button
           type="button"
           onClick={() => setExpanded(p => !p)}
           aria-label={expanded ? 'Collapse details' : 'Expand details'}
-          className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[#f7f6f3] hover:text-[#1a1a1a]"
         >
           {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
         </button>
@@ -290,7 +290,7 @@ function CandidateRow({
           onClick={() => onArchive(candidate.id)}
           aria-label="Archive candidate"
           title="Archive this location"
-          className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-red-600/10 hover:text-red-600"
         >
           <Archive className="size-4" />
         </button>
@@ -298,7 +298,7 @@ function CandidateRow({
 
       {/* ── Expanded details ── */}
       {expanded && (
-        <div className="border-t border-border px-4 py-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="border-t border-[#efefef] px-4 py-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Address */}
           <div className="sm:col-span-2 flex flex-col gap-1">
             <FieldLabel>Address</FieldLabel>
@@ -369,7 +369,7 @@ function CandidateRow({
                   href={candidate.listing_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  className="shrink-0 p-1 text-[#888] hover:text-[#1a1a1a] transition-colors"
                   aria-label="Open listing"
                 >
                   <ExternalLink className="size-3.5" />
@@ -535,25 +535,25 @@ function CoPilotDrawer({
       />
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 bg-card shadow-2xl flex flex-col border-l border-border">
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 bg-white shadow-2xl flex flex-col border-l border-[#efefef]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
           <div>
             <p className="text-sm font-semibold text-foreground">Co-Pilot</p>
-            <p className="text-xs text-muted-foreground">Location &amp; Lease workspace</p>
+            <p className="text-xs text-[#888]">Location &amp; Lease workspace</p>
           </div>
           <div className="flex items-center gap-3">
             {subscriptionTier === 'pro' ? (
               <span className="text-xs text-emerald-600 font-medium">Unlimited</span>
             ) : (
-              <span className={cn('text-xs font-medium', aiCreditsRemaining <= 10 && aiCreditsRemaining > 0 ? 'text-amber-500' : 'text-muted-foreground')}>
+              <span className={cn('text-xs font-medium', aiCreditsRemaining <= 10 && aiCreditsRemaining > 0 ? 'text-amber-500' : 'text-[#888]')}>
                 {aiCreditsRemaining} credits
               </span>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              className="flex size-7 items-center justify-center rounded-lg bg-[#f7f6f3] hover:bg-[#f7f6f3]/80 transition-colors"
               aria-label="Close co-pilot"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -574,7 +574,7 @@ function CoPilotDrawer({
                 </svg>
               </div>
               <p className="text-sm font-medium text-foreground mb-1">Your co-pilot is ready</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">Ask about any of your shortlisted locations, lease terms, or site selection strategy.</p>
+              <p className="text-xs text-[#888] leading-relaxed">Ask about any of your shortlisted locations, lease terms, or site selection strategy.</p>
             </div>
           )}
 
@@ -584,7 +584,7 @@ function CoPilotDrawer({
                 'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                 msg.role === 'user'
                   ? 'bg-[#155e63] text-white rounded-br-sm'
-                  : 'bg-muted text-foreground rounded-bl-sm'
+                  : 'bg-[#f7f6f3] text-foreground rounded-bl-sm'
               )}>
                 {msg.content}
               </div>
@@ -594,7 +594,7 @@ function CoPilotDrawer({
           {/* Streaming partial */}
           {loading && streamText && (
             <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3 text-sm leading-relaxed text-foreground">
                 {streamText}
               </div>
             </div>
@@ -602,10 +602,10 @@ function CoPilotDrawer({
 
           {loading && !streamText && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3">
+              <div className="rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3">
                 <div className="flex gap-1">
                   {[0, 150, 300].map(delay => (
-                    <div key={delay} className="size-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: `${delay}ms` }} />
+                    <div key={delay} className="size-2 rounded-full bg-[#888]/60 animate-bounce" style={{ animationDelay: `${delay}ms` }} />
                   ))}
                 </div>
               </div>
@@ -613,21 +613,21 @@ function CoPilotDrawer({
           )}
 
           {error && (
-            <p className="text-center text-xs text-destructive px-2">{error}</p>
+            <p className="text-center text-xs text-red-600 px-2">{error}</p>
           )}
 
           <div ref={bottomRef} />
         </div>
 
         {/* Input */}
-        <div className="border-t border-border px-4 py-4">
+        <div className="border-t border-[#efefef] px-4 py-4">
           {subscriptionTier === 'free' ? (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-[#888]">
               AI co-pilot requires a paid plan.{' '}
               <a href="/account" className="text-[#155e63] underline">Upgrade →</a>
             </p>
           ) : aiCreditsRemaining === 0 ? (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-[#888]">
               You&apos;re out of credits for this month.{' '}
               <a href="/account" className="text-[#155e63] underline">Upgrade for unlimited →</a>
             </p>
@@ -644,7 +644,7 @@ function CoPilotDrawer({
                 }}
                 rows={2}
                 placeholder="Ask about your shortlisted locations…"
-                className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="flex-1 resize-none rounded-xl border border-[#efefef] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/50 outline-none focus-visible:border-[#155e63] focus-visible:ring-2 focus-visible:ring-[#155e63]/30"
               />
               <button
                 type="button"
@@ -798,7 +798,7 @@ export function CandidateListCard({
         <CardContent className="pt-4">
           {candidates.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-muted-foreground mb-3">No locations yet.</p>
+              <p className="text-sm text-[#888] mb-3">No locations yet.</p>
               <Button size="sm" onClick={handleAdd} disabled={adding}>
                 <Plus className="size-3.5 mr-1" />
                 Add your first location

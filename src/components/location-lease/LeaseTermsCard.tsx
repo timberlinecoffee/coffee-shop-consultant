@@ -98,7 +98,7 @@ function displayToPayload(d: TermsDisplay): TermsPayload {
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <label className="text-xs font-medium text-[#888]">{label}</label>
       {children}
     </div>
   )
@@ -115,14 +115,14 @@ function CurrencyInput({
 }) {
   return (
     <div className="relative flex items-center">
-      <span className="pointer-events-none absolute left-3 text-sm text-muted-foreground">$</span>
+      <span className="pointer-events-none absolute left-3 text-sm text-[#888]">$</span>
       <input
         type="text"
         inputMode="decimal"
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-border bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground/50"
+        className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
       />
     </div>
   )
@@ -145,15 +145,15 @@ function PctInput({
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-border bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground/50"
+        className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
       />
-      <span className="pointer-events-none absolute right-3 text-sm text-muted-foreground">%</span>
+      <span className="pointer-events-none absolute right-3 text-sm text-[#888]">%</span>
     </div>
   )
 }
 
 const TEXTAREA_CLASS =
-  'w-full rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground/50 resize-y'
+  'w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y'
 
 // ── Per-candidate collapsible section ─────────────────────────────────
 
@@ -203,22 +203,22 @@ function CandidateTermsSection({ candidate, initialDisplay }: CandidateSectionPr
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-lg border border-[#efefef]">
       {/* Collapse toggle */}
       <button
         type="button"
         onClick={() => setOpen(prev => !prev)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/40"
+        className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[#f7f6f3]/40"
       >
         <span className="text-sm font-medium">{candidate.name}</span>
         <span className="flex shrink-0 items-center gap-2">
           {saving && (
-            <span className="text-[10px] italic text-muted-foreground">saving…</span>
+            <span className="text-[10px] italic text-[#888]">saving…</span>
           )}
           <ChevronDown
             className={cn(
-              'size-4 text-muted-foreground transition-transform duration-200',
+              'size-4 text-[#888] transition-transform duration-200',
               open && 'rotate-180'
             )}
           />
@@ -229,7 +229,7 @@ function CandidateTermsSection({ candidate, initialDisplay }: CandidateSectionPr
       <div
         aria-hidden={!open}
         className={cn(
-          'border-t border-border transition-all duration-200',
+          'border-t border-[#efefef] transition-all duration-200',
           open ? 'block' : 'hidden'
         )}
       >
@@ -273,7 +273,7 @@ function CandidateTermsSection({ candidate, initialDisplay }: CandidateSectionPr
                 value={display.term_months}
                 onChange={e => update('term_months', e.target.value)}
                 placeholder="24"
-                className="h-8 w-full rounded-lg border border-border bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground/50"
+                className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
               />
             </FieldGroup>
           </div>
@@ -364,7 +364,7 @@ export function LeaseTermsCard() {
   if (loading) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+        <CardContent className="py-12 text-center text-sm text-[#888]">
           Loading lease terms…
         </CardContent>
       </Card>
@@ -374,7 +374,7 @@ export function LeaseTermsCard() {
   if (error) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-destructive">
+        <CardContent className="py-8 text-center text-sm text-red-600">
           {error}
         </CardContent>
       </Card>
@@ -388,7 +388,7 @@ export function LeaseTermsCard() {
           <CardTitle>Lease Terms</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[#888]">
             Add candidates to your shortlist to capture their lease terms.
           </p>
         </CardContent>
