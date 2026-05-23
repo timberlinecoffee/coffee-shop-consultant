@@ -492,7 +492,7 @@ function CompareCoPilotDrawer({
             <p className="text-center text-xs text-[#888]">
               You&apos;re out of credits for this month.{' '}
               <a href="/account" className="text-[#155e63] underline">
-                Upgrade for unlimited →
+                Upgrade for more messages →
               </a>
             </p>
           ) : (

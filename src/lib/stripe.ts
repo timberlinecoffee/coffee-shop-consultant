@@ -79,9 +79,11 @@ export function tierFromPriceId(priceId: string): Tier {
   return "free";
 }
 
+// TIM-929: No tier is unlimited. Every paid tier has a hard monthly credit cap.
+// Pro cap is a placeholder (500) pending CEO confirmation — see TIM-929 comment.
 export const MONTHLY_CREDITS: Record<Tier, number> = {
   starter: 25,
   growth: 100,
-  pro: 0,    // unlimited — tracked differently
+  pro: 500,
   free: 0,
 };

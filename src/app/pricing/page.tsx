@@ -104,7 +104,7 @@ const FAQ = [
   },
   {
     q: "What counts as an AI coaching credit?",
-    a: "Each message you send to the AI coach uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro is unlimited.",
+    a: "Each message you send to the AI coach uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
   },
   {
     q: "What is the weekly async Q&A?",

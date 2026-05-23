@@ -19,8 +19,7 @@ export async function GET() {
   }
 
   return Response.json({
-    remaining: profile.subscription_tier === "pro" ? null : profile.ai_credits_remaining,
-    unlimited: profile.subscription_tier === "pro",
+    remaining: profile.ai_credits_remaining,
     tier: profile.subscription_tier,
   });
 }

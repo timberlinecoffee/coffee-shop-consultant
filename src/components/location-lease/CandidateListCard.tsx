@@ -629,7 +629,7 @@ function CoPilotDrawer({
           ) : aiCreditsRemaining === 0 ? (
             <p className="text-center text-xs text-[#888]">
               You&apos;re out of credits for this month.{' '}
-              <a href="/account" className="text-[#155e63] underline">Upgrade for unlimited →</a>
+              <a href="/account" className="text-[#155e63] underline">Upgrade for more messages →</a>
             </p>
           ) : (
             <div className="flex gap-2">
