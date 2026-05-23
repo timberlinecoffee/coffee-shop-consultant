@@ -8,6 +8,14 @@
   --dark-grey: #afafaf;
   --background: #faf9f7;
   --foreground: #1a1a1a;
+  /* Semantic tokens used by component library */
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --border: #efefef;
+  --muted: #f4f3f1;
+  --muted-foreground: #6b6b6b;
+  --ring: #155e63;
+  --destructive: #dc2626;
 }
 
 @theme inline {
@@ -16,6 +24,13 @@
   --color-teal: var(--teal);
   --color-sage: var(--sage);
   --color-off-white: var(--off-white);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
 }
 
 body {
