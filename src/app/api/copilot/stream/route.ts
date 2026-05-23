@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data")
+    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
@@ -144,18 +144,21 @@ export async function POST(request: NextRequest) {
     return "no_subscription"
   }
 
+  // TIM-925: Beta waiver — bypass all paywall/credit gates for the beta window.
+  const isWaived = isBetaWaived(profile.beta_waiver_until)
+
   // TIM-643: subscription_status gate — copilot is a write action.
   // Inactive subscriptions (free_trial, cancelled, expired) get a 402 paywall.
-  // Free tier gets the trial gate below instead.
-  if (!isSubscriptionActive(profile.subscription_status) && profile.subscription_tier !== "free") {
+  // Free tier gets the trial gate below instead. Beta-waived accounts skip this gate.
+  if (!isWaived && !isSubscriptionActive(profile.subscription_status) && profile.subscription_tier !== "free") {
     return new Response(
       sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
   }
 
-  // TIM-819: Free-tier trial gate.
-  if (profile.subscription_tier === "free") {
+  // TIM-819: Free-tier trial gate. Beta-waived accounts skip this gate.
+  if (!isWaived && profile.subscription_tier === "free") {
     const used = profile.copilot_trial_messages_used ?? 0
     if (used >= COPILOT_FREE_TRIAL_LIMIT) {
       return new Response(
@@ -169,7 +172,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const isUnlimited = profile.subscription_tier === "pro"
+  // Beta-waived accounts are treated as unlimited (pro) for model routing and credit deduction.
+  const isUnlimited = isWaived || profile.subscription_tier === "pro"
 
   if (!isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
     return new Response(
@@ -358,7 +362,7 @@ export async function POST(request: NextRequest) {
             })
           }
 
-          const isFree = profile.subscription_tier === "free"
+          const isFree = !isWaived && profile.subscription_tier === "free"
 
           if (isFree) {
             // Increment trial counter server-side on successful completion.
