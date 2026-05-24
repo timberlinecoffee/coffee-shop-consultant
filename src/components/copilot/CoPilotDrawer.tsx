@@ -92,7 +92,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "paywall":
       if (err.paywallReason === "past_due") {
         return {
-          title: "Your payment didn't go through — update billing to keep coaching.",
+          title: "Your payment didn't go through. Update billing to keep coaching.",
           cta: "Update billing",
           href: "/account/billing",
         };
