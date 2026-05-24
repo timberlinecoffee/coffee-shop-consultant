@@ -55,7 +55,7 @@ const PRICING = [
     description: "For serious owners who want to move fast.",
     features: [
       "Everything in Builder",
-      "Unlimited AI coaching",
+      "500 AI coaching credits/month",
       "Weekly async Q&A with Trent",
       "Financial model stress-testing",
       "Equipment sourcing assistance",

@@ -82,7 +82,7 @@ const TIERS: Tier[] = [
     highlight: false,
     features: [
       "Everything in Growth",
-      "Unlimited AI Coaching",
+      "500 AI Coaching Credits/Month",
       "Equipment Sourcing Assistance",
       "Roaster Matching Recommendations",
       "30-Min 1-on-1 Call at BRD Completion",

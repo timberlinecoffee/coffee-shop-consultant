@@ -544,7 +544,7 @@ function CoPilotDrawer({
           </div>
           <div className="flex items-center gap-3">
             {subscriptionTier === 'pro' ? (
-              <span className="text-xs text-emerald-600 font-medium">Unlimited</span>
+              <span className="text-xs text-emerald-600 font-medium">500 credits/mo</span>
             ) : (
               <span className={cn('text-xs font-medium', aiCreditsRemaining <= 10 && aiCreditsRemaining > 0 ? 'text-amber-500' : 'text-[#888]')}>
                 {aiCreditsRemaining} credits
