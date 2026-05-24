@@ -293,6 +293,7 @@ function CompareCoPilotDrawer({
   planId,
   aiCreditsRemaining,
   subscriptionTier,
+  isBetaWaived,
   initialPrompt,
 }: {
   open: boolean
@@ -300,6 +301,7 @@ function CompareCoPilotDrawer({
   planId: string
   aiCreditsRemaining: number
   subscriptionTier: string
+  isBetaWaived: boolean
   initialPrompt: string
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -326,7 +328,9 @@ function CompareCoPilotDrawer({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamText, open])
 
-  const canUse = subscriptionTier !== 'free' && aiCreditsRemaining > 0
+  // TIM-943: beta-waived accounts bypass the paid-tier/credit gate; server-side
+  // enforcement in /api/copilot/stream still runs (see TIM-925).
+  const canUse = isBetaWaived || (subscriptionTier !== 'free' && aiCreditsRemaining > 0)
 
   const sendMessage = useCallback(
     async (overrideInput?: string) => {
@@ -437,7 +441,9 @@ function CompareCoPilotDrawer({
             <p className="text-xs text-muted-foreground">Location comparison assistant</p>
           </div>
           <div className="flex items-center gap-3">
-            {subscriptionTier === 'pro' ? (
+            {isBetaWaived ? (
+              <span className="text-xs text-emerald-600 font-medium">Beta access</span>
+            ) : subscriptionTier === 'pro' ? (
               <span className="text-xs text-emerald-600 font-medium">Unlimited</span>
             ) : (
               <span
@@ -519,14 +525,14 @@ function CompareCoPilotDrawer({
         </div>
 
         <div className="border-t border-border px-4 py-4">
-          {subscriptionTier === 'free' ? (
+          {!isBetaWaived && subscriptionTier === 'free' ? (
             <p className="text-center text-xs text-muted-foreground">
               AI co-pilot requires a paid plan.{' '}
               <a href="/account" className="text-[#155e63] underline">
                 Upgrade →
               </a>
             </p>
-          ) : aiCreditsRemaining === 0 ? (
+          ) : !isBetaWaived && aiCreditsRemaining === 0 ? (
             <p className="text-center text-xs text-muted-foreground">
               You&apos;re out of credits for this month.{' '}
               <a href="/account" className="text-[#155e63] underline">
@@ -574,6 +580,7 @@ export interface CompareModalProps {
   planId: string
   aiCreditsRemaining: number
   subscriptionTier: string
+  isBetaWaived: boolean
 }
 
 export function CompareModal({
@@ -583,6 +590,7 @@ export function CompareModal({
   planId,
   aiCreditsRemaining,
   subscriptionTier,
+  isBetaWaived,
 }: CompareModalProps) {
   const [columnData, setColumnData] = useState<CandidateData[]>([])
   const [loading, setLoading] = useState(false)
@@ -830,6 +838,7 @@ export function CompareModal({
         planId={planId}
         aiCreditsRemaining={aiCreditsRemaining}
         subscriptionTier={subscriptionTier}
+        isBetaWaived={isBetaWaived}
         initialPrompt={copilotPrompt}
       />
     </>

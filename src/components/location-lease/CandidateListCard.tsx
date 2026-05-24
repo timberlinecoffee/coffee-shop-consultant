@@ -425,12 +425,14 @@ function CoPilotDrawer({
   planId,
   aiCreditsRemaining,
   subscriptionTier,
+  isBetaWaived,
 }: {
   open: boolean
   onClose: () => void
   planId: string
   aiCreditsRemaining: number
   subscriptionTier: string
+  isBetaWaived: boolean
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -444,7 +446,9 @@ function CoPilotDrawer({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamText, open])
 
-  const canUse = subscriptionTier !== 'free' && aiCreditsRemaining > 0
+  // TIM-943: beta-waived accounts bypass the paid-tier/credit gate; server-side
+  // enforcement in /api/copilot/stream still runs (see TIM-925).
+  const canUse = isBetaWaived || (subscriptionTier !== 'free' && aiCreditsRemaining > 0)
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || loading || !canUse) return
@@ -556,7 +560,9 @@ function CoPilotDrawer({
             <p className="text-xs text-muted-foreground">Location &amp; Lease workspace</p>
           </div>
           <div className="flex items-center gap-3">
-            {subscriptionTier === 'pro' ? (
+            {isBetaWaived ? (
+              <span className="text-xs text-emerald-600 font-medium">Beta access</span>
+            ) : subscriptionTier === 'pro' ? (
               <span className="text-xs text-emerald-600 font-medium">Unlimited</span>
             ) : (
               <span className={cn('text-xs font-medium', aiCreditsRemaining <= 10 && aiCreditsRemaining > 0 ? 'text-amber-500' : 'text-muted-foreground')}>
@@ -634,12 +640,12 @@ function CoPilotDrawer({
 
         {/* Input */}
         <div className="border-t border-border px-4 py-4">
-          {subscriptionTier === 'free' ? (
+          {!isBetaWaived && subscriptionTier === 'free' ? (
             <p className="text-center text-xs text-muted-foreground">
               AI co-pilot requires a paid plan.{' '}
               <a href="/account" className="text-[#155e63] underline">Upgrade →</a>
             </p>
-          ) : aiCreditsRemaining === 0 ? (
+          ) : !isBetaWaived && aiCreditsRemaining === 0 ? (
             <p className="text-center text-xs text-muted-foreground">
               You&apos;re out of credits for this month.{' '}
               <a href="/account" className="text-[#155e63] underline">Upgrade for unlimited →</a>
@@ -683,6 +689,7 @@ export interface CandidateListCardProps {
   planId: string
   aiCreditsRemaining: number
   subscriptionTier: string
+  isBetaWaived: boolean
 }
 
 export function CandidateListCard({
@@ -690,6 +697,7 @@ export function CandidateListCard({
   planId,
   aiCreditsRemaining,
   subscriptionTier,
+  isBetaWaived,
 }: CandidateListCardProps) {
   const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates)
   const [saving, setSaving] = useState<Record<string, boolean>>({})
@@ -846,6 +854,7 @@ export function CandidateListCard({
         planId={planId}
         aiCreditsRemaining={aiCreditsRemaining}
         subscriptionTier={subscriptionTier}
+        isBetaWaived={isBetaWaived}
       />
 
       {/* CoPilot drawer — mounted at card root, not inside candidate rows */}
@@ -855,6 +864,7 @@ export function CandidateListCard({
         planId={planId}
         aiCreditsRemaining={aiCreditsRemaining}
         subscriptionTier={subscriptionTier}
+        isBetaWaived={isBetaWaived}
       />
 
       {/* Scorecard modal */}
@@ -867,6 +877,7 @@ export function CandidateListCard({
           planId={planId}
           aiCreditsRemaining={aiCreditsRemaining}
           subscriptionTier={subscriptionTier}
+          isBetaWaived={isBetaWaived}
         />
       )}
     </>

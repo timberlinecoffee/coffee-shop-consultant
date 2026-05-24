@@ -468,6 +468,7 @@ export interface ScorecardModalProps {
   planId: string
   aiCreditsRemaining: number
   subscriptionTier: string
+  isBetaWaived: boolean
 }
 
 export function ScorecardModal({
@@ -478,12 +479,15 @@ export function ScorecardModal({
   planId: _planId,
   aiCreditsRemaining,
   subscriptionTier,
+  isBetaWaived,
 }: ScorecardModalProps) {
   const [scores, setScores] = useState<ScoreMap>({})
   const [loading, setLoading] = useState(false)
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  const canUseAI = subscriptionTier !== 'free' && aiCreditsRemaining > 0
+  // TIM-943: beta-waived accounts bypass the paid-tier/credit gate; server-side
+  // enforcement in /api/copilot/stream still runs (see TIM-925).
+  const canUseAI = isBetaWaived || (subscriptionTier !== 'free' && aiCreditsRemaining > 0)
 
   // Load existing scores on open
   useEffect(() => {

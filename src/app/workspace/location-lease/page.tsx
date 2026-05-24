@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CandidateListCard } from "@/components/location-lease/CandidateListCard";
 import type { Candidate } from "@/components/location-lease/CandidateListCard";
+import { isBetaWaived } from "@/lib/access";
 import { MapPin } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export default async function LocationLeaseWorkspacePage() {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("ai_credits_remaining, subscription_tier")
+      .select("ai_credits_remaining, subscription_tier, beta_waiver_until")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -81,6 +82,7 @@ export default async function LocationLeaseWorkspacePage() {
           planId={plan.id}
           aiCreditsRemaining={profile?.ai_credits_remaining ?? 0}
           subscriptionTier={profile?.subscription_tier ?? "free"}
+          isBetaWaived={isBetaWaived(profile?.beta_waiver_until)}
         />
       </div>
     </div>
