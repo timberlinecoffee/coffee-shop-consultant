@@ -1,0 +1,22 @@
+{
+  "note": "Pre-TIM-950 drift grandfathered by CTO review. Lint hard-fails on NEW remote-only versions only. These versions emit soft-warns with recovery snippet. Chip away over time per TIM-950 follow-up.",
+  "grandfatheredVersions": [
+    "20260516024516",
+    "20260516025358",
+    "20260516144935",
+    "20260516145858",
+    "20260516151033",
+    "20260516151652",
+    "20260516151908",
+    "20260516172148",
+    "20260517190335",
+    "20260519182321",
+    "20260522050830",
+    "20260522050836",
+    "20260522161224",
+    "20260523213910",
+    "20260523215848",
+    "20260523221849",
+    "20260523221939"
+  ]
+}

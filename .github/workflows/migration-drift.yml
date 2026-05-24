@@ -7,7 +7,9 @@ name: Migration drift check
 #
 # Required repo secret:
 #   SUPABASE_DB_URL — full Postgres connection string for the live project:
-#     postgresql://postgres.<project-ref>:<service-role-key>@aws-0-<region>.pooler.supabase.com:5432/postgres
+#     postgresql://postgres.<project-ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.com:5432/postgres
+#     NOTE: <DB_PASSWORD> is the project database password (not the service-role JWT).
+#     Find it at: Supabase dashboard → Project Settings → Database → Connection string.
 
 on:
   pull_request:
