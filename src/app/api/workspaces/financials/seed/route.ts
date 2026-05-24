@@ -1,20 +1,51 @@
-// TIM-964: AI equipment-seed endpoint for the Financial Suite.
-// Reads the user's concept doc and generates a starter equipment list.
+// TIM-972: Equipment seed endpoint — uses standard_equipment_reference instead of Claude.
+// Derives menu_profile from concept + menu workspace docs, then seeds all must_have=true
+// rows into buildout_equipment_items as source=ai_suggested.
 // POST /api/workspaces/financials/seed
 
-export const runtime = "nodejs";
-export const maxDuration = 45;
-
-import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
-import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
-import type { EquipmentItem, FinancingMethod, EquipmentCategory } from "@/lib/financials";
+import { normalizeConceptV2 } from "@/lib/concept";
 
-const anthropic = new Anthropic();
+type MenuProfile = "espresso_focused" | "espresso_plus_brew" | "full_drip" | "full_food";
 
-function makeId(): string {
-  return Math.random().toString(36).slice(2, 10);
+function deriveMenuProfile(
+  conceptContent: Record<string, unknown> | null,
+  menuContent: Record<string, unknown> | null
+): MenuProfile {
+  const concept = conceptContent ?? {};
+  const conceptType = String(concept.business_type ?? concept.type ?? "").toLowerCase();
+  const conceptStyle = String(concept.service_style ?? concept.style ?? "").toLowerCase();
+
+  // Check menu content for food signals
+  const hasFood = menuContent
+    ? JSON.stringify(menuContent).toLowerCase().includes("food")
+    : false;
+
+  // Check for drive-through / kiosk signals → espresso_focused
+  const isDriveThru =
+    conceptType.includes("drive") ||
+    conceptType.includes("kiosk") ||
+    conceptStyle.includes("drive");
+
+  if (isDriveThru) return "espresso_focused";
+
+  // Full café with food
+  if (hasFood && (conceptType.includes("cafe") || conceptType.includes("café"))) {
+    return "full_food";
+  }
+
+  // Espresso bar with some filter/drip
+  if (
+    conceptType.includes("espresso") ||
+    conceptStyle.includes("espresso") ||
+    conceptType.includes("specialty")
+  ) {
+    return "espresso_plus_brew";
+  }
+
+  // Default: espresso_plus_brew for a typical specialty coffee shop
+  return "espresso_plus_brew";
 }
 
 export async function POST() {
@@ -48,85 +79,99 @@ export async function POST() {
 
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 });
 
-  // Load concept doc for context
-  const { data: conceptDoc } = await supabase
-    .from("workspace_documents")
-    .select("content")
-    .eq("plan_id", plan.id)
-    .eq("workspace_key", "concept")
-    .maybeSingle();
+  // Load concept + menu docs for profile derivation
+  const [{ data: conceptDoc }, { data: menuDoc }] = await Promise.all([
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", plan.id)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", plan.id)
+      .eq("workspace_key", "menu_pricing")
+      .maybeSingle(),
+  ]);
 
-  const conceptText = conceptDoc?.content
-    ? formatConceptV2ForAI(normalizeConceptV2(conceptDoc.content))
-    : "No concept details yet — assume a standard espresso bar.";
+  const conceptNormalized = conceptDoc?.content
+    ? normalizeConceptV2(conceptDoc.content)
+    : null;
 
-  const prompt = `You are an expert coffee shop consultant helping a new owner plan their startup equipment list.
+  const menuProfile = deriveMenuProfile(
+    conceptNormalized as Record<string, unknown> | null,
+    menuDoc?.content as Record<string, unknown> | null
+  );
 
-Based on the following coffee shop concept, generate a realistic startup equipment and supplies list. Include both major equipment (espresso machines, grinders, refrigeration, POS) and minor supplies (tampers, pitchers, cleaning supplies, smallwares).
+  // Fetch must_have reference items for this profile
+  const { data: refItems, error: refError } = await supabase
+    .from("standard_equipment_reference")
+    .select("id, category, name_canonical, must_have, rationale")
+    .eq("menu_profile", menuProfile)
+    .eq("must_have", true)
+    .order("category");
 
-## Coffee Shop Concept
-${conceptText}
+  if (refError) {
+    console.error("standard_equipment_reference select error:", refError);
+    return Response.json({ error: "Failed to fetch equipment reference" }, { status: 500 });
+  }
 
-## Instructions
-Return a JSON array of equipment items. Each item must have these exact fields:
-- name: string (e.g. "La Marzocco Linea Micra")
-- brand: string (e.g. "La Marzocco")
-- model: string (e.g. "Linea Micra 2-Group")
-- supplier: string (e.g. "Espresso Parts")
-- cost_usd: number (realistic market cost)
-- financing: one of "cash", "loan", "in_house_financing", "other"
-- category: "major" for big equipment (>$500), "minor" for small items
-- notes: string (brief note on why this item or key spec)
+  if (!refItems || refItems.length === 0) {
+    // Fallback: fetch any profile's must_have items
+    const { data: fallback } = await supabase
+      .from("standard_equipment_reference")
+      .select("id, category, name_canonical, must_have, rationale")
+      .eq("must_have", true)
+      .limit(20);
 
-Rules:
-- Include 12-18 items total (mix of major and minor)
-- Major items (espresso machine, grinders, refrigeration, POS system, furniture) should use "loan" or "in_house_financing" for anything over $3,000
-- Minor items (pitchers, tampers, cleaning supplies, etc.) should be "cash"
-- Use realistic 2024-2025 market pricing
-- Tailor selections to the concept type (e.g., espresso bar vs drive-through vs cafe)
-- Do NOT include rent, utilities, or inventory — equipment and durable supplies only
-
-Return ONLY the JSON array, no other text.`;
-
-  try {
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const rawText =
-      message.content[0]?.type === "text" ? message.content[0].text : "";
-
-    // Extract JSON array from response
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      return Response.json({ error: "No JSON array in AI response" }, { status: 500 });
+    if (!fallback || fallback.length === 0) {
+      return Response.json({ seeded: 0, menu_profile: menuProfile });
     }
 
-    const rawItems = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>;
-
-    const items: EquipmentItem[] = rawItems.map((item) => ({
-      id: makeId(),
-      name: String(item.name ?? ""),
-      brand: String(item.brand ?? ""),
-      model: String(item.model ?? ""),
-      supplier: String(item.supplier ?? ""),
-      cost_usd: Number(item.cost_usd ?? 0),
-      financing: (["cash", "loan", "in_house_financing", "other"].includes(
-        String(item.financing)
-      )
-        ? item.financing
-        : "cash") as FinancingMethod,
-      category: (["major", "minor"].includes(String(item.category))
-        ? item.category
-        : "minor") as EquipmentCategory,
-      notes: String(item.notes ?? ""),
-    }));
-
-    return Response.json({ items });
-  } catch (err) {
-    console.error("financials seed error:", err);
-    return Response.json({ error: "AI generation failed" }, { status: 500 });
+    return upsertItems(supabase, plan.id, menuProfile, fallback);
   }
+
+  return upsertItems(supabase, plan.id, menuProfile, refItems);
+}
+
+async function upsertItems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string,
+  menuProfile: MenuProfile,
+  refItems: Array<{ category: string; name_canonical: string; rationale: string }>
+) {
+  // Remove any existing ai_suggested items before re-seeding
+  await supabase
+    .from("buildout_equipment_items")
+    .update({ archived: true })
+    .eq("plan_id", planId)
+    .eq("source", "ai_suggested");
+
+  const rows = refItems.map((ref, idx) => ({
+    plan_id: planId,
+    name: ref.name_canonical,
+    category: ref.category,
+    vendor: null,
+    model: null,
+    quantity: 1,
+    unit_cost_cents: 0,
+    priority_tier: "must_have" as const,
+    financing_method: "cash" as const,
+    source: "ai_suggested" as const,
+    notes: ref.rationale,
+    position: idx,
+  }));
+
+  const { data, error } = await supabase
+    .from("buildout_equipment_items")
+    .insert(rows)
+    .select();
+
+  if (error) {
+    console.error("buildout_equipment_items seed insert error:", error);
+    return Response.json({ error: "Failed to seed equipment items" }, { status: 500 });
+  }
+
+  return Response.json({ seeded: data?.length ?? 0, menu_profile: menuProfile });
 }
