@@ -25,6 +25,7 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 4, label: "Menu & Pricing",       href: "/workspace/menu-pricing",       totalSections: null },
   { moduleNumber: 5, label: "Buildout & Equipment", href: "/workspace/buildout-equipment", totalSections: null },
   { moduleNumber: 6, label: "Launch Plan",          href: "/workspace/launch-plan",        totalSections: null },
+  { moduleNumber: 7, label: "Hiring & Onboarding",  href: "/workspace/hiring",             totalSections: 4 },
 ];
 
 export function buildNavItems(
