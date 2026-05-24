@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Archive, ExternalLink, ChevronDown, ChevronUp, Columns2 } from 'lucide-react'
+import { Plus, Archive, ExternalLink, ChevronDown, ChevronUp, Columns2, ClipboardList } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CompareModal } from './CompareModal'
+import { ScorecardModal } from './ScorecardModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -232,11 +233,13 @@ function CandidateRow({
   saving,
   onPatch,
   onArchive,
+  onScore,
 }: {
   candidate: Candidate
   saving: boolean
   onPatch: (id: string, patch: Partial<Omit<Candidate, 'id' | 'position'>>) => void
   onArchive: (id: string) => void
+  onScore: (id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -283,6 +286,16 @@ function CandidateRow({
           className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onScore(candidate.id)}
+          aria-label="Score this location"
+          title="Score this location"
+          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[#155e63]/10 hover:text-[#155e63]"
+        >
+          <ClipboardList className="size-4" />
         </button>
 
         <button
@@ -683,6 +696,7 @@ export function CandidateListCard({
   const [adding, setAdding] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
+  const [scorecardCandidateId, setScorecardCandidateId] = useState<string | null>(null)
 
   // ── Add candidate ────────────────────────────────────────────────────────
 
@@ -816,6 +830,7 @@ export function CandidateListCard({
                     saving={!!saving[candidate.id]}
                     onPatch={handlePatch}
                     onArchive={handleArchive}
+                    onScore={id => setScorecardCandidateId(id)}
                   />
                 ))}
             </div>
@@ -841,6 +856,19 @@ export function CandidateListCard({
         aiCreditsRemaining={aiCreditsRemaining}
         subscriptionTier={subscriptionTier}
       />
+
+      {/* Scorecard modal */}
+      {scorecardCandidateId && (
+        <ScorecardModal
+          open={!!scorecardCandidateId}
+          onClose={() => setScorecardCandidateId(null)}
+          candidateId={scorecardCandidateId}
+          candidateName={candidates.find(c => c.id === scorecardCandidateId)?.name ?? 'Location'}
+          planId={planId}
+          aiCreditsRemaining={aiCreditsRemaining}
+          subscriptionTier={subscriptionTier}
+        />
+      )}
     </>
   )
 }

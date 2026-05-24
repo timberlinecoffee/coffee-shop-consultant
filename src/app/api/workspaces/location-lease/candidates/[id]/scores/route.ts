@@ -1,4 +1,5 @@
 // TIM-776 / TIM-620-B: Upsert rubric scores for a location candidate.
+// TIM-930: Extended to include scorecard factor keys.
 // Body: { scores: Array<{ factor_key, score_1_5, notes? }> }
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
@@ -6,12 +7,27 @@ import type { NextRequest } from "next/server"
 type RouteContext = { params: Promise<{ id: string }> }
 
 const VALID_FACTORS = new Set([
+  // Original rubric factors
   "foot_traffic",
   "parking_transit",
   "visibility",
   "neighborhood_fit",
   "buildout_cost_estimate",
   "lease_terms",
+  // Scorecard factors (TIM-930)
+  "foot_traffic_weekday",
+  "foot_traffic_weekend",
+  "street_visibility",
+  "parking",
+  "public_transit",
+  "surrounding_businesses",
+  "demographics_fit",
+  "lease_cost_vs_market",
+  "space_layout",
+  "buildout_condition",
+  "permits_zoning",
+  "safety_perception",
+  "gut_feel",
 ])
 
 export async function PUT(request: NextRequest, { params }: RouteContext) {

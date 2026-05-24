@@ -1,4 +1,5 @@
 // TIM-780: CompareModal — side-by-side 2–3 column desktop, swipeable mobile.
+// TIM-930: Added scorecard average to each column.
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -35,6 +36,21 @@ const FACTOR_KEYS: FactorKey[] = [
   'lease_terms',
 ]
 
+const SCORECARD_FACTOR_KEYS = [
+  'foot_traffic_weekday',
+  'foot_traffic_weekend',
+  'street_visibility',
+  'parking',
+  'public_transit',
+  'surrounding_businesses',
+  'demographics_fit',
+  'lease_cost_vs_market',
+  'space_layout',
+  'buildout_condition',
+  'permits_zoning',
+  'safety_perception',
+] as const
+
 type ScoreRow = {
   candidate_id: string
   factor_key: FactorKey
@@ -58,6 +74,7 @@ type CandidateData = {
   weaknesses: RubricPoint[]
   rentPerSqFt: string | null
   leaseTermSummary: string
+  scorecardAvg: string | null
 }
 
 // ── Status config (mirrors CandidateListCard) ──────────────────────────────
@@ -116,6 +133,17 @@ function computeStrengthsWeaknesses(
   }
 }
 
+function computeScorecardAvg(
+  candidateId: string,
+  scores: ScoreRow[]
+): string | null {
+  const candidateScores = scores
+    .filter(r => r.candidate_id === candidateId && SCORECARD_FACTOR_KEYS.includes(r.factor_key as typeof SCORECARD_FACTOR_KEYS[number]) && r.score_1_5 != null)
+  if (candidateScores.length === 0) return null
+  const avg = candidateScores.reduce((s, r) => s + r.score_1_5!, 0) / candidateScores.length
+  return `${avg.toFixed(1)} / 5`
+}
+
 function buildLeaseTermSummary(row: LeaseRow | undefined): string {
   if (!row) return '—'
   const parts: string[] = []
@@ -152,7 +180,7 @@ function ScoreBadge({ score }: { score: number }) {
 // ── CandidateColumn ────────────────────────────────────────────────────────
 
 function CandidateColumn({ data }: { data: CandidateData }) {
-  const { candidate, strengths, weaknesses, rentPerSqFt, leaseTermSummary } = data
+  const { candidate, strengths, weaknesses, rentPerSqFt, leaseTermSummary, scorecardAvg } = data
   const status = STATUS_CONFIG[candidate.status]
 
   return (
@@ -233,6 +261,16 @@ function CandidateColumn({ data }: { data: CandidateData }) {
           </ul>
         )}
       </div>
+
+      {/* Scorecard average */}
+      {scorecardAvg && (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">
+            Scorecard Average
+          </span>
+          <p className="text-sm font-semibold text-[#155e63]">{scorecardAvg}</p>
+        </div>
+      )}
 
       {/* Lease term summary */}
       <div className="flex flex-col gap-0.5">
@@ -563,11 +601,14 @@ export function CompareModal({
         const supabase = createClient()
         const ids = candidates.map(c => c.id)
 
+        const allFactorKeys = [...FACTOR_KEYS, ...SCORECARD_FACTOR_KEYS]
+
         const [{ data: scoreRows }, { data: leaseRows }] = await Promise.all([
           supabase
             .from('location_rubric_scores')
             .select('candidate_id, factor_key, score_1_5, notes')
-            .in('candidate_id', ids),
+            .in('candidate_id', ids)
+            .in('factor_key', allFactorKeys),
           supabase
             .from('location_lease_terms')
             .select('candidate_id, base_rent_cents, rent_escalation_pct, term_months, options_text')
@@ -591,6 +632,7 @@ export function CompareModal({
             weaknesses,
             rentPerSqFt: computeRentPerSqFt(candidate),
             leaseTermSummary: buildLeaseTermSummary(leaseRow),
+            scorecardAvg: computeScorecardAvg(candidate.id, (scoreRows ?? []) as ScoreRow[]),
           }
         })
 
