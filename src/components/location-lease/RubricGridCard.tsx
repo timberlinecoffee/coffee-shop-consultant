@@ -244,7 +244,7 @@ export function RubricGridCard() {
   if (loading) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+        <CardContent className="py-12 text-center text-sm text-[#888]">
           Loading rubric…
         </CardContent>
       </Card>
@@ -254,7 +254,7 @@ export function RubricGridCard() {
   if (error) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-destructive">
+        <CardContent className="py-8 text-center text-sm text-red-600">
           {error}
         </CardContent>
       </Card>
@@ -268,7 +268,7 @@ export function RubricGridCard() {
           <CardTitle>Location Rubric</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[#888]">
             Add candidates to your shortlist to start scoring.
           </p>
         </CardContent>
@@ -291,8 +291,8 @@ export function RubricGridCard() {
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
                 weightPopoverOpen
-                  ? 'border-border bg-muted text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'border-[#efefef] bg-[#f7f6f3] text-foreground'
+                  : 'border-[#efefef] text-[#888] hover:bg-[#f7f6f3] hover:text-[#1a1a1a]'
               )}
             >
               <Settings2 className="size-3.5" />
@@ -304,19 +304,19 @@ export function RubricGridCard() {
                 ref={popoverRef}
                 role="dialog"
                 aria-label="Factor weights"
-                className="absolute right-0 top-full z-30 mt-2 w-60 rounded-xl border bg-card shadow-lg p-3"
+                className="absolute right-0 top-full z-30 mt-2 w-60 rounded-xl border bg-white shadow-lg p-3"
               >
                 <p className="text-xs font-semibold mb-1 text-foreground">
                   Factor Weights
                 </p>
-                <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
+                <p className="text-[10px] text-[#888] mb-3 leading-relaxed">
                   Higher weight = more impact on weighted total.
                 </p>
                 {FACTORS.map(f => (
                   <div key={f.key} className="flex items-center gap-2 mb-2">
                     <label
                       htmlFor={`weight-${f.key}`}
-                      className="text-xs text-muted-foreground flex-1 min-w-0 truncate"
+                      className="text-xs text-[#888] flex-1 min-w-0 truncate"
                     >
                       {f.label}
                     </label>
@@ -328,7 +328,7 @@ export function RubricGridCard() {
                       step="0.5"
                       value={weights[f.key]}
                       onChange={e => handleWeightChange(f.key, e.target.value)}
-                      className="w-14 text-xs rounded border border-border bg-background px-1.5 py-0.5 text-right focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-14 text-xs rounded border border-[#efefef] bg-background px-1.5 py-0.5 text-right focus:outline-none focus:ring-1 focus:ring-[#155e63]"
                     />
                   </div>
                 ))}
@@ -348,7 +348,7 @@ export function RubricGridCard() {
             }}
           >
             {/* ── Header row ── */}
-            <div className="sticky left-0 z-20 bg-card border-b border-r px-3 py-2" />
+            <div className="sticky left-0 z-20 bg-white border-b border-r px-3 py-2" />
             {candidates.map(candidate => (
               <div key={candidate.id} className="border-b border-r px-3 py-2 min-h-[40px]">
                 <div className="flex items-center gap-1">
@@ -356,7 +356,7 @@ export function RubricGridCard() {
                     {candidate.name}
                   </span>
                   {saving[candidate.id] && (
-                    <span className="shrink-0 text-[10px] text-muted-foreground italic">
+                    <span className="shrink-0 text-[10px] text-[#888] italic">
                       saving…
                     </span>
                   )}
@@ -368,7 +368,7 @@ export function RubricGridCard() {
             {FACTORS.map(factor => (
               <React.Fragment key={factor.key}>
                 {/* Sticky factor label */}
-                <div className="sticky left-0 z-10 bg-card border-b border-r px-3 py-3 flex items-start">
+                <div className="sticky left-0 z-10 bg-white border-b border-r px-3 py-3 flex items-start">
                   <span className="text-xs font-medium leading-tight">{factor.label}</span>
                 </div>
 
@@ -393,7 +393,7 @@ export function RubricGridCard() {
                               'size-7 rounded text-xs font-semibold transition-colors border',
                               cell?.score === n
                                 ? 'bg-[#155e63] text-white border-[#155e63]'
-                                : 'bg-background text-muted-foreground border-border hover:border-[#155e63]/60 hover:text-[#155e63]'
+                                : 'bg-background text-[#888] border-[#efefef] hover:border-[#155e63]/60 hover:text-[#155e63]'
                             )}
                           >
                             {n}
@@ -409,7 +409,7 @@ export function RubricGridCard() {
                         }
                         placeholder="Notes…"
                         rows={2}
-                        className="w-full text-[11px] leading-relaxed text-muted-foreground bg-transparent resize-none outline-none placeholder:text-muted-foreground/40"
+                        className="w-full text-[11px] leading-relaxed text-[#888] bg-transparent resize-none outline-none placeholder:text-[#888]/40"
                       />
                     </div>
                   )
@@ -418,13 +418,13 @@ export function RubricGridCard() {
             ))}
 
             {/* ── Weighted total footer ── */}
-            <div className="sticky left-0 z-10 bg-muted/40 border-r px-3 py-3 flex items-center">
+            <div className="sticky left-0 z-10 bg-[#f7f6f3]/40 border-r px-3 py-3 flex items-center">
               <span className="text-xs font-semibold">Weighted Total</span>
             </div>
             {candidates.map(candidate => (
               <div
                 key={candidate.id}
-                className="bg-muted/40 border-r px-3 py-3 flex items-center"
+                className="bg-[#f7f6f3]/40 border-r px-3 py-3 flex items-center"
               >
                 <span className="text-sm font-bold text-[#155e63]">
                   {computeWeightedTotal(candidate.id, scores, weights)}

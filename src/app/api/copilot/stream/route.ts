@@ -187,15 +187,21 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Beta-waived accounts are treated as unlimited (pro) for model routing and credit deduction.
-  const isUnlimited = isWaived || profile.subscription_tier === "pro"
+  // Beta-waived accounts skip credit deduction. All paid tiers have a defined monthly cap.
+  const isUnlimited = isWaived
 
-  if (!isTrial && !isUnlimited && profile.ai_credits_remaining < 1) {
-    const tierName = profile.subscription_tier === "starter" ? "Starter" : "Growth"
+  if (!isTrial && !isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
+    const tier = profile.subscription_tier as string
+    const upgradeHint =
+      tier === "starter"
+        ? "Upgrade to Growth for 100 messages/month, or your credits reset next month."
+        : tier === "growth"
+          ? "Upgrade to Pro for 500 messages/month, or your credits reset next month."
+          : "Your credits reset at the start of next month."
     return new Response(
       sse("error", {
         code: "quota",
-        message: `You've used all your ${tierName} plan AI messages for this month. Upgrade to Pro for unlimited coaching, or wait for your monthly reset.`,
+        message: `You've used all your Copilot messages for this month. ${upgradeHint}`,
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )

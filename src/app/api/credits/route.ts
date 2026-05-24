@@ -22,7 +22,6 @@ export async function GET() {
   }
 
   const isTrial = profile.subscription_status === "free_trial";
-  const isUnlimited = profile.subscription_tier === "pro";
 
   if (isTrial) {
     const used = profile.copilot_trial_messages_used ?? 0;
@@ -31,15 +30,13 @@ export async function GET() {
       trialUsed: used,
       trialLimit: FREE_TRIAL_COPILOT_LIMIT,
       trialRemaining: Math.max(0, FREE_TRIAL_COPILOT_LIMIT - used),
-      unlimited: false,
       tier: profile.subscription_tier,
     });
   }
 
   return Response.json({
-    mode: isUnlimited ? "unlimited" : "credits",
-    remaining: isUnlimited ? null : profile.ai_credits_remaining,
-    unlimited: isUnlimited,
+    mode: "credits",
+    remaining: profile.ai_credits_remaining,
     tier: profile.subscription_tier,
   });
 }

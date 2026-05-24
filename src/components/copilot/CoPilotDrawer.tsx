@@ -27,7 +27,6 @@ const FREE_TRIAL_COPILOT_LIMIT = 5;
 
 type CreditsState =
   | { mode: "trial"; trialUsed: number; trialLimit: number; trialRemaining: number }
-  | { mode: "unlimited" }
   | { mode: "credits"; remaining: number }
   | null;
 

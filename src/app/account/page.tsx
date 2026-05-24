@@ -21,7 +21,6 @@ export default async function AccountPage() {
 
   const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
   const FREE_TRIAL_COPILOT_LIMIT = 5;
-  const isProUnlimited = profile?.subscription_tier === "pro";
   const isTrial = profile?.subscription_status === "free_trial";
   const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
 
@@ -54,11 +53,9 @@ export default async function AccountPage() {
             <div className="flex justify-between">
               <span className="text-[#afafaf]">AI coaching</span>
               <span className="text-[#1a1a1a]">
-                {isProUnlimited
-                  ? "Unlimited"
-                  : isTrial
-                    ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
-                    : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
+                {isTrial
+                  ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
+                  : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
               </span>
             </div>
           </div>

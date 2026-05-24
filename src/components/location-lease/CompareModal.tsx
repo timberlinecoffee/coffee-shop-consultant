@@ -184,7 +184,7 @@ function CandidateColumn({ data }: { data: CandidateData }) {
   const status = STATUS_CONFIG[candidate.status]
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 min-w-0">
+    <div className="flex flex-col gap-4 rounded-xl border border-[#efefef] bg-white p-4 min-w-0">
       {/* Name + status */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-start justify-between gap-2">
@@ -199,26 +199,26 @@ function CandidateColumn({ data }: { data: CandidateData }) {
           </span>
         </div>
         {candidate.address && (
-          <p className="text-xs text-muted-foreground leading-tight">{candidate.address}</p>
+          <p className="text-xs text-[#888] leading-tight">{candidate.address}</p>
         )}
         {candidate.neighborhood && !candidate.address && (
-          <p className="text-xs text-muted-foreground leading-tight">{candidate.neighborhood}</p>
+          <p className="text-xs text-[#888] leading-tight">{candidate.neighborhood}</p>
         )}
       </div>
 
       {/* Rent / sq ft */}
       <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Rent</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">Rent</span>
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-semibold text-foreground">
             {candidate.asking_rent_cents ? centsToK(candidate.asking_rent_cents) : '—'}
           </span>
           {rentPerSqFt && (
-            <span className="text-[10px] text-muted-foreground">{rentPerSqFt}</span>
+            <span className="text-[10px] text-[#888]">{rentPerSqFt}</span>
           )}
         </div>
         {candidate.sq_ft && (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-[#888]">
             {candidate.sq_ft.toLocaleString()} sq ft
           </span>
         )}
@@ -230,7 +230,7 @@ function CandidateColumn({ data }: { data: CandidateData }) {
           Top Strengths
         </span>
         {strengths.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No scores yet</p>
+          <p className="text-xs text-[#888] italic">No scores yet</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {strengths.map(s => (
@@ -249,7 +249,7 @@ function CandidateColumn({ data }: { data: CandidateData }) {
           Weaknesses
         </span>
         {weaknesses.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No scores yet</p>
+          <p className="text-xs text-[#888] italic">No scores yet</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {weaknesses.map(s => (
@@ -274,7 +274,7 @@ function CandidateColumn({ data }: { data: CandidateData }) {
 
       {/* Lease term summary */}
       <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">
           Lease Terms
         </span>
         <p className="text-xs text-foreground leading-relaxed">{leaseTermSummary}</p>
@@ -430,22 +430,22 @@ function CompareCoPilotDrawer({
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-[60] lg:hidden" onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 z-[70] w-full sm:w-96 bg-card shadow-2xl flex flex-col border-l border-border">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+      <div className="fixed right-0 top-0 bottom-0 z-[70] w-full sm:w-96 bg-white shadow-2xl flex flex-col border-l border-[#efefef]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
           <div>
             <p className="text-sm font-semibold text-foreground">Co-Pilot · Compare</p>
-            <p className="text-xs text-muted-foreground">Location comparison assistant</p>
+            <p className="text-xs text-[#888]">Location comparison assistant</p>
           </div>
           <div className="flex items-center gap-3">
             {subscriptionTier === 'pro' ? (
-              <span className="text-xs text-emerald-600 font-medium">Unlimited</span>
+              <span className="text-xs text-emerald-600 font-medium">500 credits/mo</span>
             ) : (
               <span
                 className={cn(
                   'text-xs font-medium',
                   aiCreditsRemaining <= 10 && aiCreditsRemaining > 0
                     ? 'text-amber-500'
-                    : 'text-muted-foreground'
+                    : 'text-[#888]'
                 )}
               >
                 {aiCreditsRemaining} credits
@@ -454,7 +454,7 @@ function CompareCoPilotDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              className="flex size-7 items-center justify-center rounded-lg bg-[#f7f6f3] hover:bg-[#f7f6f3]/80 transition-colors"
               aria-label="Close co-pilot"
             >
               <X className="size-3.5" />
@@ -469,7 +469,7 @@ function CompareCoPilotDrawer({
                 <MessageSquare className="size-5 text-[#155e63]" />
               </div>
               <p className="text-sm font-medium text-foreground mb-1">Ready to compare</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-xs text-[#888] leading-relaxed">
                 Hit send to ask your co-pilot to compare your shortlisted candidates.
               </p>
             </div>
@@ -482,7 +482,7 @@ function CompareCoPilotDrawer({
                   'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                   msg.role === 'user'
                     ? 'bg-[#155e63] text-white rounded-br-sm'
-                    : 'bg-muted text-foreground rounded-bl-sm'
+                    : 'bg-[#f7f6f3] text-foreground rounded-bl-sm'
                 )}
               >
                 {msg.content}
@@ -492,7 +492,7 @@ function CompareCoPilotDrawer({
 
           {loading && streamText && (
             <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3 text-sm leading-relaxed text-foreground">
                 {streamText}
               </div>
             </div>
@@ -500,12 +500,12 @@ function CompareCoPilotDrawer({
 
           {loading && !streamText && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3">
+              <div className="rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3">
                 <div className="flex gap-1">
                   {[0, 150, 300].map(delay => (
                     <div
                       key={delay}
-                      className="size-2 rounded-full bg-muted-foreground/60 animate-bounce"
+                      className="size-2 rounded-full bg-[#888]/60 animate-bounce"
                       style={{ animationDelay: `${delay}ms` }}
                     />
                   ))}
@@ -514,23 +514,23 @@ function CompareCoPilotDrawer({
             </div>
           )}
 
-          {error && <p className="text-center text-xs text-destructive px-2">{error}</p>}
+          {error && <p className="text-center text-xs text-red-600 px-2">{error}</p>}
           <div ref={bottomRef} />
         </div>
 
-        <div className="border-t border-border px-4 py-4">
+        <div className="border-t border-[#efefef] px-4 py-4">
           {subscriptionTier === 'free' ? (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-[#888]">
               AI co-pilot requires a paid plan.{' '}
               <a href="/account" className="text-[#155e63] underline">
                 Upgrade →
               </a>
             </p>
           ) : aiCreditsRemaining === 0 ? (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-[#888]">
               You&apos;re out of credits for this month.{' '}
               <a href="/account" className="text-[#155e63] underline">
-                Upgrade for unlimited →
+                Upgrade for more messages →
               </a>
             </p>
           ) : (
@@ -546,7 +546,7 @@ function CompareCoPilotDrawer({
                 }}
                 rows={3}
                 placeholder="Ask about your shortlisted locations…"
-                className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="flex-1 resize-none rounded-xl border border-[#efefef] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/50 outline-none focus-visible:border-[#155e63] focus-visible:ring-2 focus-visible:ring-[#155e63]/30"
               />
               <button
                 type="button"
@@ -708,10 +708,10 @@ export function CompareModal({
         className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-2xl bg-background shadow-2xl lg:inset-x-auto lg:inset-y-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(92vw,1200px)] lg:max-h-[88vh] lg:rounded-2xl"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#efefef] px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">Compare Locations</h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#888]">
               {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} · side-by-side
             </p>
           </div>
@@ -728,7 +728,7 @@ export function CompareModal({
               type="button"
               onClick={onClose}
               aria-label="Close compare"
-              className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+              className="flex size-8 items-center justify-center rounded-lg bg-[#f7f6f3] text-[#888] hover:bg-[#f7f6f3]/80 hover:text-[#1a1a1a] transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -738,11 +738,11 @@ export function CompareModal({
         {/* Body */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center py-16 text-sm text-[#888]">
               Loading comparison…
             </div>
           ) : candidates.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center py-16 text-sm text-[#888]">
               No candidates to compare.
             </div>
           ) : (
@@ -784,7 +784,7 @@ export function CompareModal({
                       onClick={() => scrollTo(Math.max(0, activeIdx - 1))}
                       disabled={activeIdx === 0}
                       aria-label="Previous candidate"
-                      className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30 hover:bg-muted transition-colors"
+                      className="flex size-7 items-center justify-center rounded-full border border-[#efefef] text-[#888] disabled:opacity-30 hover:bg-[#f7f6f3] transition-colors"
                     >
                       <ChevronLeft className="size-4" />
                     </button>
@@ -800,7 +800,7 @@ export function CompareModal({
                             'rounded-full transition-all',
                             i === activeIdx
                               ? 'w-4 h-2 bg-[#155e63]'
-                              : 'size-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                              : 'size-2 bg-[#f7f6f3]-foreground/30 hover:bg-[#f7f6f3]-foreground/50'
                           )}
                         />
                       ))}
@@ -811,7 +811,7 @@ export function CompareModal({
                       onClick={() => scrollTo(Math.min(candidates.length - 1, activeIdx + 1))}
                       disabled={activeIdx === candidates.length - 1}
                       aria-label="Next candidate"
-                      className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30 hover:bg-muted transition-colors"
+                      className="flex size-7 items-center justify-center rounded-full border border-[#efefef] text-[#888] disabled:opacity-30 hover:bg-[#f7f6f3] transition-colors"
                     >
                       <ChevronRight className="size-4" />
                     </button>

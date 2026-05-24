@@ -82,7 +82,7 @@ const TIERS: Tier[] = [
     highlight: false,
     features: [
       "Everything in Growth",
-      "Unlimited AI Coaching",
+      "500 AI Coaching Credits/Month",
       "Equipment Sourcing Assistance",
       "Roaster Matching Recommendations",
       "30-Min 1-on-1 Call at BRD Completion",
@@ -104,7 +104,7 @@ const FAQ = [
   },
   {
     q: "What counts as an AI coaching credit?",
-    a: "Each message you send to the AI coach uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro is unlimited.",
+    a: "Each message you send to the AI coach uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
   },
   {
     q: "What is the weekly async Q&A?",

@@ -32,7 +32,7 @@ const TIERS = [
   },
   {
     name: "Pro",
-    description: "Everything in Growth + unlimited coaching + 1-on-1 sessions",
+    description: "Everything in Growth + 500 AI coaching credits + 1-on-1 sessions",
     monthly: { amount: 19900, envKey: "STRIPE_PRO_MONTHLY_PRICE_ID" },
     annual:  { amount: 159900, envKey: "STRIPE_PRO_ANNUAL_PRICE_ID" },
   },

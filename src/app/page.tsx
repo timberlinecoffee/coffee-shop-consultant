@@ -144,7 +144,7 @@ const PRICING = [
     note: "$79/mo billed annually",
     features: [
       "Everything in Builder",
-      "Unlimited AI consulting",
+      "500 AI coaching credits/month",
       "Weekly expert Q&A",
       "Financial model stress-testing",
       "Equipment sourcing guidance",

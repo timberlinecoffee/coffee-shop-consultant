@@ -96,7 +96,6 @@ export default async function DashboardPage() {
   const showUnlockNote = allUnlocked && !noteDismissed;
 
   const isPaid = subscriptionTier !== "free";
-  const isProUnlimited = subscriptionTier === "pro";
   const isTrial = subscriptionStatus === "free_trial";
 
   return (
@@ -274,9 +273,7 @@ export default async function DashboardPage() {
         {/* AI coaching — low-visual-weight line in quick links area */}
         <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
           <span className="text-xs text-[#afafaf]">AI coaching</span>
-          {isProUnlimited ? (
-            <span className="text-xs font-medium text-[#155e63]">Unlimited (Pro)</span>
-          ) : isTrial ? (
+          {isTrial ? (
             trialMessagesUsed < FREE_TRIAL_COPILOT_LIMIT ? (
               <span className={`text-xs font-medium ${FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed <= 1 ? "text-amber-500" : "text-[#155e63]"}`}>
                 {FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed} of {FREE_TRIAL_COPILOT_LIMIT} trial messages left
