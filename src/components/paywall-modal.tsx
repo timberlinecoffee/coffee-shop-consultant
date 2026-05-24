@@ -7,7 +7,7 @@ import { useEffect, useCallback } from "react";
 import Link from "next/link";
 
 export type PaywallVariant = "save" | "copilot_trial";
-export type PaywallReason = "no_subscription" | "paused" | "expired";
+export type PaywallReason = "no_subscription" | "paused" | "expired" | "past_due";
 
 interface PaywallModalProps {
   open: boolean;
@@ -31,6 +31,16 @@ function getContent(
   }
 
   // variant === "save"
+  if (reason === "past_due") {
+    return {
+      title: "Your payment didn't go through",
+      body: "Update your billing info to keep saving your work. Your plan stays paused until the next charge succeeds.",
+      cta: "Update billing",
+      href: "/account/billing",
+      dismiss: "Not now",
+    };
+  }
+
   if (reason === "paused" || reason === "expired") {
     return {
       title: "Your plan is paused",

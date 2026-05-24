@@ -28,6 +28,7 @@ export function usePaywallGuard() {
           const payload = (await cloned.json()) as { reason?: string };
           if (payload.reason === "paused") setPaywallReason("paused");
           else if (payload.reason === "expired") setPaywallReason("expired");
+          else if (payload.reason === "past_due") setPaywallReason("past_due");
           else setPaywallReason("no_subscription");
         } catch {
           setPaywallReason("no_subscription");

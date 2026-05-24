@@ -90,6 +90,13 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
         href: "/login",
       };
     case "paywall":
+      if (err.paywallReason === "past_due") {
+        return {
+          title: "Your payment didn't go through — update billing to keep coaching.",
+          cta: "Update billing",
+          href: "/account/billing",
+        };
+      }
       if (err.paywallReason === "paused" || err.paywallReason === "expired") {
         return {
           title: "Your plan is paused — reactivate to keep using the co-pilot.",

@@ -4,8 +4,9 @@
 // in `users.subscription_tier`: 'free' | 'starter' | 'growth' | 'pro'.
 //
 // Write-gate rule (TIM-643): workspace mutations require subscription_status === 'active'.
-// free_trial, cancelled, and expired are all read-only.
-export type SubscriptionStatus = 'free_trial' | 'active' | 'cancelled' | 'expired';
+// free_trial, cancelled, expired, and past_due are all read-only.
+// past_due (TIM-959): Stripe payment failed; user is gated until billing is updated.
+export type SubscriptionStatus = 'free_trial' | 'active' | 'cancelled' | 'expired' | 'past_due';
 
 export function isSubscriptionActive(status: string | null | undefined): boolean {
   return status === 'active';

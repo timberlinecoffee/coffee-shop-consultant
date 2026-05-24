@@ -97,6 +97,9 @@ export default async function DashboardPage() {
 
   const isPaid = subscriptionTier !== "free";
   const isTrial = subscriptionStatus === "free_trial";
+  // TIM-959: payment-failure banner — Stripe set status to past_due via webhook,
+  // so writes are blocked until the user updates billing.
+  const isPastDue = subscriptionStatus === "past_due";
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
@@ -119,6 +122,44 @@ export default async function DashboardPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-10">
+        {isPastDue && (
+          <div
+            role="alert"
+            className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3"
+          >
+            <div className="flex items-start gap-3">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#b45309"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="mt-0.5 flex-shrink-0"
+              >
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-[#92400e]">Your payment didn&apos;t go through</p>
+                <p className="text-xs text-[#92400e]/80">
+                  Update your billing info to keep saving your work. Stripe will retry the charge once your card is fixed.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/account/billing"
+              className="self-start sm:self-auto inline-block rounded-lg bg-[#b45309] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#92400e] transition-colors"
+            >
+              Update billing
+            </Link>
+          </div>
+        )}
+
         {/* Greeting + readiness */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
           <div>

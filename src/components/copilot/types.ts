@@ -29,7 +29,7 @@ export type CopilotErrorCode =
 export interface CopilotErrorState {
   code: CopilotErrorCode;
   message: string;
-  paywallReason?: "no_subscription" | "paused" | "expired";
+  paywallReason?: "no_subscription" | "paused" | "expired" | "past_due";
 }
 
 export interface CopilotFocus {

@@ -1,6 +1,7 @@
 // TIM-643 / TIM-819: Workspace document read/write endpoint.
 // GET is open (read-only preview). POST/PUT/PATCH require subscription_status === 'active'.
-// Returns 402 { reason: 'no_subscription'|'paused'|'expired', tier_required: 'starter' } for inactive subscriptions.
+// Returns 402 { reason: 'no_subscription'|'paused'|'expired'|'past_due', tier_required: 'starter' } for inactive subscriptions.
+// TIM-959: 'past_due' routes to a billing-failure modal variant distinct from 'no_subscription'.
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, isBetaWaived, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
@@ -13,9 +14,10 @@ function isValidWorkspaceKey(key: string): key is WorkspaceKey {
   return MUTABLE_WORKSPACE_KEYS.has(key as WorkspaceKey)
 }
 
-function paywallReason(status: string): "no_subscription" | "paused" | "expired" {
+function paywallReason(status: string): "no_subscription" | "paused" | "expired" | "past_due" {
   if (status === "cancelled") return "paused"
   if (status === "expired") return "expired"
+  if (status === "past_due") return "past_due"
   return "no_subscription"
 }
 

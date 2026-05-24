@@ -142,9 +142,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Map subscription_status to a paywall reason clients can use to pick the right modal variant.
-  function paywallReason(status: string): "no_subscription" | "paused" | "expired" {
+  // past_due (TIM-959) routes to a billing-failure copy variant distinct from no_subscription.
+  function paywallReason(status: string): "no_subscription" | "paused" | "expired" | "past_due" {
     if (status === "cancelled") return "paused"
     if (status === "expired") return "expired"
+    if (status === "past_due") return "past_due"
     return "no_subscription"
   }
 
