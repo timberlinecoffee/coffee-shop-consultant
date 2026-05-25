@@ -1107,7 +1107,7 @@ export function FinancialsWorkspace({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            monthly_projections: nextMp,
+            forecast_inputs: nextMp,
             ...(nextCritique !== undefined ? { critique: nextCritique } : {}),
           }),
           signal: controller.signal,
