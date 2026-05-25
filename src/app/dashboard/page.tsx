@@ -376,7 +376,7 @@ export default async function DashboardPage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-[#1a1a1a]">Export Business Plan</p>
               <p className="text-xs text-[#afafaf]">
-                One printable document — concept, team, menu, equipment, financials, and more.
+                One printable document: concept, team, menu, equipment, financials, and more.
               </p>
             </div>
             <ArrowRight size={16} className="text-[#155e63] flex-shrink-0" />

@@ -457,7 +457,7 @@ function ConceptSection({ concept }: { concept: ConceptDocumentV2 }) {
 
   if (filled.length === 0) {
     return (
-      <EmptyState message="No concept details added yet — visit the Concept workspace to populate this section." />
+      <EmptyState message="No concept details yet. Visit the Concept workspace to add them." />
     );
   }
 
@@ -540,7 +540,7 @@ type RoleRow = {
 function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
   if (roles.length === 0) {
     return (
-      <EmptyState message="No roles added yet — visit the Hiring workspace to populate this section." />
+      <EmptyState message="No roles added yet. Visit the Hiring workspace to add them." />
     );
   }
   const totalHeadcount = roles.reduce((s, r) => s + (r.headcount ?? 0), 0);
@@ -601,7 +601,7 @@ type MenuRow = {
 function MenuSection({ items }: { items: MenuRow[] }) {
   if (items.length === 0) {
     return (
-      <EmptyState message="No menu items added yet — visit the Menu & Pricing workspace to populate this section." />
+      <EmptyState message="No menu items yet. Visit the Menu & Pricing workspace to add them." />
     );
   }
   const byCategory: Record<string, MenuRow[]> = {};
@@ -659,7 +659,7 @@ type EquipmentRow = {
 function EquipmentSection({ items }: { items: EquipmentRow[] }) {
   if (items.length === 0) {
     return (
-      <EmptyState message="No equipment added yet — visit the Build-out & Equipment workspace to populate this section." />
+      <EmptyState message="No equipment yet. Visit the Build-out & Equipment workspace to add it." />
     );
   }
   const total = items.reduce((s, e) => s + (e.cost_usd ?? 0), 0);
@@ -750,7 +750,7 @@ function BuildoutSection({
 
   if (!hasAny) {
     return (
-      <EmptyState message="No build-out details yet — visit the Build-out & Equipment and Location & Lease workspaces to populate this section." />
+      <EmptyState message="No build-out details yet. Visit the Build-out and Location workspaces to add them." />
     );
   }
 
@@ -830,7 +830,7 @@ type LaunchRow = {
 function LaunchSection({ items }: { items: LaunchRow[] }) {
   if (items.length === 0) {
     return (
-      <EmptyState message="No launch milestones yet — visit the Launch Plan workspace to populate this section." />
+      <EmptyState message="No milestones yet. Visit the Launch Plan workspace to add them." />
     );
   }
   return (
@@ -898,7 +898,7 @@ function MarketingSection({
     !!brand && Boolean(brand.positioning_statement?.trim() || brand.brand_pillar_1?.trim());
   if (!hasBrand && presence.length === 0 && campaigns.length === 0) {
     return (
-      <EmptyState message="No marketing plan yet — visit the Marketing workspace to populate this section." />
+      <EmptyState message="No marketing plan yet. Visit the Marketing workspace to add one." />
     );
   }
   const pillars = [brand?.brand_pillar_1, brand?.brand_pillar_2, brand?.brand_pillar_3]
@@ -976,7 +976,7 @@ function MarketingSection({
 function SuppliersSection() {
   // TIM-1059: Suppliers workspace is not yet built. Render the spec'd empty state.
   return (
-    <EmptyState message="No suppliers added yet — visit the Suppliers workspace to populate this section." />
+    <EmptyState message="No suppliers added yet. Visit the Suppliers workspace to add them." />
   );
 }
 
@@ -985,7 +985,7 @@ function SuppliersSection() {
 function OperationsSection({ playbook }: { playbook: OperationsPlaybookDocument }) {
   if (isPlaybookEmpty(playbook)) {
     return (
-      <EmptyState message="No SOPs added yet — visit the Operations Playbook workspace to populate this section." />
+      <EmptyState message="No SOPs yet. Visit the Operations Playbook workspace to add them." />
     );
   }
   return (
@@ -1041,7 +1041,7 @@ function FinancialsSection({
 }) {
   if (!financialModel) {
     return (
-      <EmptyState message="No financial model yet — visit the Financials workspace to populate this section." />
+      <EmptyState message="No financial model yet. Visit the Financials workspace to add one." />
     );
   }
 
