@@ -1,8 +1,9 @@
 "use client";
 
 // TIM-967: Menu & Pricing workspace — drink overview, recipe builder, ingredient costing, and AI price suggestion.
+// TIM-1020: (1) searchable ingredient combobox, (2) COGS+GP on overview rows, (3) concept-aware AI price suggestion.
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   Utensils,
   Plus,
@@ -12,8 +13,8 @@ import {
   X,
   Sparkles,
   Package,
-  Tag,
   Edit2,
+  Search,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -28,6 +29,13 @@ import {
   costPerUnit,
 } from "@/lib/menu";
 
+interface ConceptContext {
+  shop_identity?: string;
+  location?: string;
+  target_customer?: string;
+  vision?: string;
+}
+
 interface Props {
   planId: string;
   canEdit: boolean;
@@ -35,6 +43,7 @@ interface Props {
   initialItems: MenuItemWithCogs[];
   initialIngredients: MenuIngredient[];
   initialItemIngredients: MenuItemIngredient[];
+  conceptContext?: ConceptContext;
 }
 
 function makeLocalId() {
@@ -54,6 +63,145 @@ type PriceSuggestion = {
   margin_pct: number;
   commentary: string;
 };
+
+// ─── Searchable ingredient combobox (TIM-1020) ───────────────────────────────
+
+function IngredientCombobox({
+  ingredients,
+  onSelect,
+  disabled,
+}: {
+  ingredients: MenuIngredient[];
+  onSelect: (ingredientId: string) => void;
+  disabled?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [highlightIdx, setHighlightIdx] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const sorted = useMemo(
+    () => [...ingredients].sort((a, b) => a.name.localeCompare(b.name)),
+    [ingredients]
+  );
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return sorted;
+    const q = query.toLowerCase();
+    return sorted.filter((i) => i.name.toLowerCase().includes(q));
+  }, [sorted, query]);
+
+  useEffect(() => {
+    setHighlightIdx(0);
+  }, [filtered]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (
+        inputRef.current &&
+        !inputRef.current.closest("[data-combobox]")?.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "Enter") setOpen(true);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIdx((i) => Math.min(i + 1, filtered.length - 1));
+      scrollHighlighted(highlightIdx + 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIdx((i) => Math.max(i - 1, 0));
+      scrollHighlighted(highlightIdx - 1);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filtered[highlightIdx]) pick(filtered[highlightIdx].id);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
+  function scrollHighlighted(idx: number) {
+    if (!listRef.current) return;
+    const li = listRef.current.children[idx] as HTMLElement | undefined;
+    li?.scrollIntoView({ block: "nearest" });
+  }
+
+  function pick(id: string) {
+    onSelect(id);
+    setQuery("");
+    setOpen(false);
+  }
+
+  return (
+    <div data-combobox className="relative">
+      <label className={labelCls}>Add ingredient</label>
+      <div className="relative">
+        <Search
+          size={12}
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#afafaf] pointer-events-none"
+        />
+        <input
+          ref={inputRef}
+          type="text"
+          className={inputCls + " pl-8"}
+          value={query}
+          disabled={disabled}
+          placeholder="Search ingredients…"
+          autoComplete="off"
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <ul
+          ref={listRef}
+          className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-[#e0e0e0] bg-white shadow-md text-sm"
+          role="listbox"
+        >
+          {filtered.map((ing, idx) => (
+            <li
+              key={ing.id}
+              role="option"
+              aria-selected={idx === highlightIdx}
+              className={`px-3 py-2 cursor-pointer transition-colors ${
+                idx === highlightIdx
+                  ? "bg-[#e8f4f5] text-[#155e63] font-medium"
+                  : "text-[#1a1a1a] hover:bg-[#faf9f7]"
+              }`}
+              onMouseEnter={() => setHighlightIdx(idx)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(ing.id);
+              }}
+            >
+              {ing.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && filtered.length === 0 && query.trim() !== "" && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-[#e0e0e0] bg-white shadow-md px-3 py-2 text-xs text-[#afafaf]">
+          No ingredients match &ldquo;{query}&rdquo;
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface MenuTabProps {
   planId: string;
@@ -408,20 +556,16 @@ function ItemEditorPanel({
     if (cents !== item.price_cents) onUpdateItem({ price_cents: cents });
   }
 
-  function handleAddIngredientSelect(
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) {
-    const ingredientId = e.target.value;
-    if (!ingredientId) return;
+  function handleIngredientSelect(ingredientId: string) {
     const ing = ingredients.find((i) => i.id === ingredientId);
     if (!ing) return;
-    e.target.value = "";
     onAddRecipeLine(ingredientId, 1, ing.package_unit);
   }
 
   const usedIngredientIds = new Set(recipeLines.map((l) => l.ingredient_id));
-  const availableIngredients = ingredients.filter(
-    (i) => !usedIngredientIds.has(i.id)
+  const availableIngredients = useMemo(
+    () => ingredients.filter((i) => !usedIngredientIds.has(i.id)),
+    [ingredients, usedIngredientIds]
   );
 
   return (
@@ -526,23 +670,10 @@ function ItemEditorPanel({
           )}
 
           {canEdit && availableIngredients.length > 0 && (
-            <div>
-              <label className={labelCls}>Add ingredient</label>
-              <select
-                className={inputCls}
-                defaultValue=""
-                onChange={handleAddIngredientSelect}
-              >
-                <option value="" disabled>
-                  Select an ingredient…
-                </option>
-                {availableIngredients.map((ing) => (
-                  <option key={ing.id} value={ing.id}>
-                    {ing.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <IngredientCombobox
+              ingredients={availableIngredients}
+              onSelect={handleIngredientSelect}
+            />
           )}
 
           {canEdit && availableIngredients.length === 0 && ingredients.length === 0 && (
@@ -598,18 +729,22 @@ function ItemEditorPanel({
 
             {priceSuggestion && (
               <div className="mt-3 rounded-lg border border-[#d4e8e9] bg-[#f0f8f8] p-4 space-y-2">
-                <div>
-                  <p className="text-xs text-[#6b6b6b]">Suggested price</p>
-                  <p className="text-2xl font-bold text-[#155e63]">
-                    ${(priceSuggestion.suggested_price_cents / 100).toFixed(2)}
-                  </p>
+                <div className="flex items-baseline gap-2">
+                  <div>
+                    <p className="text-xs text-[#6b6b6b]">Recommended</p>
+                    <p className="text-2xl font-bold text-[#155e63]">
+                      ${(priceSuggestion.suggested_price_cents / 100).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
                 <p className="text-xs text-[#6b6b6b]">
-                  Market range: ${(priceSuggestion.low_cents / 100).toFixed(2)}{" "}
-                  – ${(priceSuggestion.high_cents / 100).toFixed(2)}
+                  Market range:{" "}
+                  <span className="font-medium text-[#1a1a1a]">
+                    ${(priceSuggestion.low_cents / 100).toFixed(2)} – ${(priceSuggestion.high_cents / 100).toFixed(2)}
+                  </span>
                 </p>
                 <p className="text-xs text-[#6b6b6b]">
-                  Margin at suggested price:{" "}
+                  Margin at recommended price:{" "}
                   <span className="font-semibold text-[#155e63]">
                     {(priceSuggestion.margin_pct * 100).toFixed(1)}%
                   </span>
@@ -822,6 +957,7 @@ function MenuTab({
   );
 }
 
+// TIM-1020: Overview row shows price (large) + COGS + GP $ and %.
 function MenuItemRow({
   item,
   isSelected,
@@ -850,6 +986,12 @@ function MenuItemRow({
       ? item.computed_cogs_cents
       : (item.cogs_cents ?? 0);
 
+  const gpCents = item.price_cents > 0 ? item.price_cents - cogs : null;
+  const gpPct =
+    item.price_cents > 0 && cogs > 0
+      ? Math.round(((item.price_cents - cogs) / item.price_cents) * 100)
+      : null;
+
   return (
     <div
       className={`flex items-center gap-3 px-5 py-3 transition-colors cursor-pointer hover:bg-[#faf9f7] ${
@@ -859,6 +1001,7 @@ function MenuItemRow({
       }`}
       onClick={onSelect}
     >
+      {/* Name + inline edit */}
       <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
         {editingName ? (
           <input
@@ -886,18 +1029,39 @@ function MenuItemRow({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {cogs > 0 && (
-          <span className="text-[10px] font-medium text-[#6b6b6b] bg-[#f5f5f5] border border-[#efefef] px-2 py-0.5 rounded-full">
-            COGS {formatCents(cogs)}
-          </span>
-        )}
-        {item.price_cents > 0 && (
-          <span className="text-[10px] font-semibold text-[#155e63] bg-[#e8f4f5] border border-[#c5e2e3] px-2 py-0.5 rounded-full">
+
+      {/* Price + COGS + GP column */}
+      <div className="text-right shrink-0">
+        {item.price_cents > 0 ? (
+          <p className="text-sm font-semibold text-[#155e63]">
             {formatCents(item.price_cents)}
-          </span>
+          </p>
+        ) : (
+          <p className="text-sm text-[#d0d0d0]">—</p>
         )}
-        {canEdit && (
+        {(cogs > 0 || gpCents !== null) && (
+          <p className="text-[10px] text-[#6b6b6b] mt-0.5 whitespace-nowrap">
+            {cogs > 0 && (
+              <span>COGS {formatCents(cogs)}</span>
+            )}
+            {gpCents !== null && cogs > 0 && (
+              <span className="mx-1">·</span>
+            )}
+            {gpCents !== null && (
+              <span>
+                GP {formatCents(gpCents)}
+                {gpPct !== null && (
+                  <span className="text-[#afafaf]"> ({gpPct}%)</span>
+                )}
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      {canEdit && (
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={(e) => {
@@ -908,8 +1072,6 @@ function MenuItemRow({
           >
             <Edit2 size={12} />
           </button>
-        )}
-        {canEdit && (
           <button
             type="button"
             onClick={(e) => {
@@ -920,8 +1082,8 @@ function MenuItemRow({
           >
             <Trash2 size={12} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -935,6 +1097,7 @@ export function MenuWorkspace({
   initialItems,
   initialIngredients,
   initialItemIngredients,
+  conceptContext,
 }: Props) {
   const [items, setItems] = useState<MenuItemWithCogs[]>(initialItems);
   const [ingredients, setIngredients] =
@@ -1174,6 +1337,7 @@ export function MenuWorkspace({
     }
   }
 
+  // TIM-1020: Pass concept context (location, identity, target customer) to the price suggestion endpoint.
   async function suggestPrice(item: MenuItemWithCogs) {
     setPriceLoading(true);
     setPriceSuggestion(null);
@@ -1196,9 +1360,9 @@ export function MenuWorkspace({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          item_name: item.name,
           cogs_cents: cogsCents,
-          concept_type: "specialty",
-          market: "US",
+          concept_context: conceptContext ?? {},
         }),
       });
       if (res.status === 402) {
