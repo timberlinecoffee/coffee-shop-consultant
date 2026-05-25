@@ -18,6 +18,7 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   buildout_equipment: "Build-out & Equipment",
   launch_plan: "Launch Plan",
   hiring: "Hiring & Onboarding",
+  marketing: "Marketing",
 }
 
 function renderContent(workspaceKey: WorkspaceKey, content: unknown): string {
