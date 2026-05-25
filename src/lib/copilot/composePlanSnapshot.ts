@@ -59,3 +59,26 @@ export async function composePlanSnapshot(
   const snapshot = sections.join("\n\n")
   return { snapshot, estimatedTokens: Math.ceil(snapshot.length / TOKEN_CHARS) }
 }
+
+export async function composeAllWorkspacesSnapshot(
+  planId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+): Promise<{ snapshots: { key: string; text: string }[]; totalChars: number }> {
+  const { data: docs } = await supabase
+    .from("workspace_documents")
+    .select("workspace_key, content")
+    .eq("plan_id", planId)
+
+  if (!docs || docs.length === 0) {
+    return { snapshots: [], totalChars: 0 }
+  }
+
+  const snapshots = docs.map((doc) => ({
+    key: doc.workspace_key as string,
+    text: renderContent(doc.workspace_key as WorkspaceKey, doc.content),
+  }))
+
+  const totalChars = snapshots.reduce((sum, s) => sum + s.text.length, 0)
+  return { snapshots, totalChars }
+}
