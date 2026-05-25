@@ -147,6 +147,7 @@ function newBlankItem(planId: string, position: number): EquipmentItem {
     id: `__new_${Date.now()}`,
     plan_id: planId,
     position,
+    section_id: null,
     name: "",
     category: "miscellaneous",
     vendor: null,
