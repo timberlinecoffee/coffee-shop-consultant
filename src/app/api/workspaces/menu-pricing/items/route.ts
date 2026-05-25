@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
 
-  if (!body.name || typeof body.name !== "string") {
+  if (typeof body.name !== "string") {
     return Response.json({ error: "Missing required field: name" }, { status: 400 })
   }
   if (!body.category || typeof body.category !== "string") {
