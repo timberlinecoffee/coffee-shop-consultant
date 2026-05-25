@@ -10,6 +10,7 @@ export type WorkspaceKey =
   | 'launch_plan'
   | 'hiring'
   | 'marketing'
+  | 'marketing_pre_launch'
 
 export type LaunchItemStatus = 'pending' | 'in_progress' | 'done' | 'at_risk'
 

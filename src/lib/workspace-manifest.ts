@@ -41,6 +41,7 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 7, label: "Hiring & Onboarding",    href: "/workspace/hiring",             icon: "users",      totalSections: 4 },
   { moduleNumber: 8, label: "Business Plan",           href: "/workspace/business-plan",      icon: "file-text",  totalSections: null },
   { moduleNumber: 9, label: "Marketing",               href: "/workspace/marketing",          icon: "megaphone",  totalSections: null },
+  { moduleNumber: 10, label: "Marketing & Pre-Launch", href: "/workspace/marketing-pre-launch", icon: "megaphone", totalSections: 5 },
 ];
 
 export function buildNavItems(
