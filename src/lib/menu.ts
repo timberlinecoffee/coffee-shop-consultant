@@ -59,7 +59,7 @@ export function formatCents(cents: number | null): string {
 }
 
 export function costPerUnit(ingredient: MenuIngredient): number {
-  return ingredient.package_cost_cents / ingredient.package_size
+  return ingredient.package_cost_cents / ingredient.package_size / 100
 }
 
 export function computeItemCogs(item: MenuItemWithCogs): number {

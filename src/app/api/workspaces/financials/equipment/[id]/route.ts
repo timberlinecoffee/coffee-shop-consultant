@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   const allowed = [
-    "name", "category", "vendor", "model", "quantity",
+    "name", "category", "vendor", "model", "supplier", "quantity",
     "unit_cost_cents", "priority_tier", "financing_method", "notes", "position",
   ] as const;
 

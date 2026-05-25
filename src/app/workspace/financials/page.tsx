@@ -57,7 +57,7 @@ export default async function FinancialsWorkspacePage() {
       .from("financial_models")
       .insert({
         plan_id: plan.id,
-        monthly_projections: defaultMonthlyProjections(),
+        forecast_inputs: defaultMonthlyProjections(),
         startup_costs: { total_equipment_cents: 0 },
       })
       .select()
@@ -65,7 +65,10 @@ export default async function FinancialsWorkspacePage() {
     modelRow = created;
   }
 
-  const initialProjections = normalizeMonthlyProjections(modelRow?.monthly_projections);
+  const initialProjections = normalizeMonthlyProjections(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (modelRow as any)?.forecast_inputs ?? modelRow?.monthly_projections
+  );
   const initialCritique = (modelRow?.critique as CritiqueResult | null) ?? null;
   const initialModelUpdatedAt = modelRow?.updated_at ?? null;
   const initialNeedsReviewAt = modelRow?.needs_review_at ?? null;

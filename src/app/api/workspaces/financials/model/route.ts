@@ -37,7 +37,7 @@ export async function GET() {
     .from("financial_models")
     .insert({
       plan_id: plan.id,
-      monthly_projections: defaultMonthlyProjections(),
+      forecast_inputs: defaultMonthlyProjections(),
       startup_costs: { total_equipment_cents: 0 },
     })
     .select()
@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const allowed = [
-    "monthly_projections", "startup_costs", "revenue_scenarios",
+    "forecast_inputs", "monthly_projections", "startup_costs", "revenue_scenarios",
     "break_even_analysis", "critique", "needs_review_at",
   ] as const;
 
