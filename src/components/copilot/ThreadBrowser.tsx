@@ -1,9 +1,10 @@
 // TIM-634 / TIM-618-E: Conversation thread browser
 // Grouped-by-workspace collapsible list. Click loads a thread into the drawer.
+// TIM-906: Inline rename (pencil icon) and delete (trash icon + confirm) added.
 "use client"
 
-import { useCallback, useMemo, useState, useEffect } from "react"
-import { ChevronRight } from "lucide-react"
+import { useCallback, useMemo, useState, useEffect, useRef } from "react"
+import { ChevronRight, Pencil, Trash2 } from "lucide-react"
 import type { WorkspaceKey } from "@/types/supabase"
 
 export const WORKSPACE_ORDER: WorkspaceKey[] = [
@@ -40,6 +41,8 @@ export interface ThreadBrowserProps {
   activeThreadId: string | null
   onSelectThread: (item: ThreadBrowserItem) => void
   onNewThread: () => void
+  onRenameThread?: (threadId: string, newTitle: string) => void
+  onDeleteThread?: (threadId: string) => void
   /** Bump this number from the parent (after a successful send) to force a refresh. */
   refreshKey?: number
 }
@@ -71,11 +74,17 @@ export function ThreadBrowser({
   activeThreadId,
   onSelectThread,
   onNewThread,
+  onRenameThread,
+  onDeleteThread,
   refreshKey = 0,
 }: ThreadBrowserProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" })
   // Manual collapse overrides — group is open unless explicitly closed by the user.
   const [collapsed, setCollapsed] = useState<Partial<Record<WorkspaceKey, boolean>>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingValue, setEditingValue] = useState("")
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const editInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -103,6 +112,14 @@ export function ThreadBrowser({
       })
     return () => controller.abort()
   }, [planId, refreshKey])
+
+  // Focus + select-all when rename input mounts
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [editingId])
 
   const items = useMemo(
     () => (state.kind === "ready" ? state.items : []),
@@ -145,6 +162,77 @@ export function ThreadBrowser({
       return !collapsed[key]
     },
     [collapsed, activeWorkspaceKey],
+  )
+
+  const startEdit = useCallback((thread: ThreadBrowserItem) => {
+    setPendingDeleteId(null)
+    setEditingValue(titleOrFallback(thread.title))
+    setEditingId(thread.id)
+  }, [])
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null)
+    setEditingValue("")
+  }, [])
+
+  const saveEdit = useCallback(
+    async (threadId: string) => {
+      const newTitle = editingValue.trim()
+      setEditingId(null)
+      setEditingValue("")
+      if (!newTitle) return
+
+      // Optimistic update
+      setState((prev) => {
+        if (prev.kind !== "ready") return prev
+        return {
+          ...prev,
+          items: prev.items.map((item) =>
+            item.id === threadId ? { ...item, title: newTitle } : item,
+          ),
+        }
+      })
+
+      try {
+        const res = await fetch(`/api/copilot/threads/${encodeURIComponent(threadId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ planId, title: newTitle }),
+        })
+        if (res.ok) {
+          onRenameThread?.(threadId, newTitle)
+        }
+      } catch {
+        // leave optimistic state
+      }
+    },
+    [editingValue, planId, onRenameThread],
+  )
+
+  const confirmDelete = useCallback(
+    async (threadId: string) => {
+      setPendingDeleteId(null)
+
+      // Optimistic removal
+      setState((prev) => {
+        if (prev.kind !== "ready") return prev
+        return { ...prev, items: prev.items.filter((item) => item.id !== threadId) }
+      })
+
+      try {
+        const res = await fetch(
+          `/api/copilot/threads/${encodeURIComponent(threadId)}?planId=${encodeURIComponent(planId)}`,
+          { method: "DELETE", credentials: "same-origin" },
+        )
+        if (res.ok || res.status === 204) {
+          onDeleteThread?.(threadId)
+        }
+      } catch {
+        // leave optimistic state
+      }
+    },
+    [planId, onDeleteThread],
   )
 
   return (
@@ -195,32 +283,114 @@ export function ThreadBrowser({
                     </span>
                   </button>
                   {isOpen && (
-                    <ul className="mt-1 space-y-1 pl-3">
+                    <ul className="mt-1 space-y-0.5 pl-3">
                       {groupThreads.map((thread) => {
                         const selected = thread.id === activeThreadId
+                        const isEditing = editingId === thread.id
+                        const isPendingDelete = pendingDeleteId === thread.id
+
+                        if (isPendingDelete) {
+                          return (
+                            <li key={thread.id}>
+                              <div className="px-3 py-2 rounded-lg border border-red-200 bg-red-50">
+                                <p className="text-xs text-[#1a1a1a] mb-2">
+                                  Delete this conversation? This can&#39;t be undone.
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPendingDeleteId(null)}
+                                    className="text-xs px-2 py-1 rounded border border-[#e5e3df] bg-white text-[#555] hover:bg-[#f7f6f3]"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void confirmDelete(thread.id)}
+                                    className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </li>
+                          )
+                        }
+
                         return (
                           <li key={thread.id}>
-                            <button
-                              type="button"
-                              onClick={() => onSelectThread(thread)}
-                              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                            <div
+                              className={`group flex items-center rounded-lg transition-colors ${
                                 selected
-                                  ? "bg-[#155e63]/10 text-[#155e63]"
-                                  : "hover:bg-[#f7f6f3] text-[#1a1a1a]"
+                                  ? "bg-[#155e63]/10"
+                                  : "hover:bg-[#f7f6f3]"
                               }`}
                             >
-                              <span className="block truncate font-medium">
-                                {titleOrFallback(thread.title)}
-                              </span>
-                              <span className="block text-[11px] text-[#888]">
-                                {formatTimestamp(thread.last_message_at)}
-                                {thread.message_count > 0
-                                  ? ` · ${thread.message_count} msg${
-                                      thread.message_count === 1 ? "" : "s"
-                                    }`
-                                  : ""}
-                              </span>
-                            </button>
+                              {isEditing ? (
+                                <div className="flex-1 min-w-0 px-3 py-2">
+                                  <input
+                                    ref={editInputRef}
+                                    type="text"
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onBlur={() => void saveEdit(thread.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault()
+                                        void saveEdit(thread.id)
+                                      }
+                                      if (e.key === "Escape") cancelEdit()
+                                    }}
+                                    maxLength={200}
+                                    className="w-full text-sm font-medium bg-transparent border-b border-[#155e63] outline-none text-[#1a1a1a]"
+                                  />
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectThread(thread)}
+                                  className={`flex-1 min-w-0 px-3 py-2 text-left ${
+                                    selected ? "text-[#155e63]" : "text-[#1a1a1a]"
+                                  }`}
+                                >
+                                  <span className="block truncate font-medium text-sm">
+                                    {titleOrFallback(thread.title)}
+                                  </span>
+                                  <span className="block text-[11px] text-[#888]">
+                                    {formatTimestamp(thread.last_message_at)}
+                                    {thread.message_count > 0
+                                      ? ` · ${thread.message_count} msg${
+                                          thread.message_count === 1 ? "" : "s"
+                                        }`
+                                      : ""}
+                                  </span>
+                                </button>
+                              )}
+
+                              {!isEditing && (
+                                <div className="pr-1 shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                                  <button
+                                    type="button"
+                                    aria-label="Rename"
+                                    onClick={() => startEdit(thread)}
+                                    className="w-6 h-6 flex items-center justify-center rounded text-[#aaa] hover:text-[#155e63] hover:bg-[#155e63]/10"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-label="Delete"
+                                    onClick={() => {
+                                      setEditingId(null)
+                                      setPendingDeleteId(thread.id)
+                                    }}
+                                    className="w-6 h-6 flex items-center justify-center rounded text-[#aaa] hover:text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </li>
                         )
                       })}

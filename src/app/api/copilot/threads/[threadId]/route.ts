@@ -1,5 +1,6 @@
 // TIM-634 / TIM-618-E: Single-thread fetch — returns the messages array
 // so the drawer can replace history with initialMessages on selection.
+// TIM-906: PATCH (rename) and DELETE added.
 
 export const runtime = "nodejs"
 
@@ -65,4 +66,71 @@ export async function GET(
     last_message_at: data.last_message_at,
     messages,
   })
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ threadId: string }> },
+) {
+  const { threadId } = await context.params
+  if (!threadId) return NextResponse.json({ error: "threadId is required" }, { status: 400 })
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  const { planId, title } = body as { planId?: unknown; title?: unknown }
+  if (typeof planId !== "string" || !planId) {
+    return NextResponse.json({ error: "planId is required" }, { status: 400 })
+  }
+  if (typeof title !== "string" || !title.trim()) {
+    return NextResponse.json({ error: "title must be a non-empty string" }, { status: 400 })
+  }
+  const cleanTitle = title.trim().slice(0, 200)
+
+  const { error } = await supabase
+    .from("ai_conversations")
+    .update({ title: cleanTitle })
+    .eq("plan_id", planId)
+    .eq("thread_id", threadId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ id: threadId, title: cleanTitle })
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ threadId: string }> },
+) {
+  const { threadId } = await context.params
+  if (!threadId) return NextResponse.json({ error: "threadId is required" }, { status: 400 })
+
+  const planId = request.nextUrl.searchParams.get("planId")
+  if (!planId) return NextResponse.json({ error: "planId is required" }, { status: 400 })
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { error } = await supabase
+    .from("ai_conversations")
+    .delete()
+    .eq("plan_id", planId)
+    .eq("thread_id", threadId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return new NextResponse(null, { status: 204 })
 }
