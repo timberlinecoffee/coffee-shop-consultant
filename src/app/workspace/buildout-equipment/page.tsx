@@ -1,21 +1,67 @@
-import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
-import { loadWorkspaceContext } from "../_shared";
-import { Wrench } from "lucide-react";
+// TIM-1029: Build Out & Equipment workspace — Equipment table promoted out of Financials.
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { isSubscriptionActive } from "@/lib/access";
+import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import { BuildoutEquipmentWorkspace } from "./buildout-workspace";
 
 export const dynamic = "force-dynamic";
 
-export default async function BuildoutEquipmentWorkspacePage() {
-  const { planId, trialMessagesUsed } = await loadWorkspaceContext();
+export default async function BuildoutEquipmentPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: plan } = await supabase
+    .from("coffee_shop_plans")
+    .select("id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!plan) redirect("/onboarding");
+
+  const [equipmentResult, modelResult, profileResult] = await Promise.all([
+    supabase
+      .from("buildout_equipment_items")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .eq("archived", false)
+      .order("position"),
+    supabase
+      .from("financial_models")
+      .select("updated_at, needs_review_at")
+      .eq("plan_id", plan.id)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
+
+  const equipment = (equipmentResult.data ?? []) as EquipmentItem[];
+  const modelRow = modelResult.data;
+  const profile = profileResult.data;
+  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const initialTrialMessagesUsed =
+    profile?.subscription_tier === "free"
+      ? (profile.copilot_trial_messages_used ?? 0)
+      : undefined;
 
   return (
-    <WorkspaceShell
-      planId={planId}
-      workspaceKey="buildout_equipment"
-      title="Build-out & Equipment"
-      description="Plan bar layout, equipment spec, and construction timeline. The Co-pilot ties equipment choices back to your menu and your build-out budget."
-      icon={Wrench}
-currentFocusLabel="Build-out & Equipment workspace overview"
-      trialMessagesUsed={trialMessagesUsed}
+    <BuildoutEquipmentWorkspace
+      planId={plan.id}
+      initialEquipment={equipment}
+      initialModelUpdatedAt={modelRow?.updated_at ?? null}
+      initialNeedsReviewAt={modelRow?.needs_review_at ?? null}
+      initialModelUpdatedAtForReview={modelRow?.updated_at ?? null}
+      canEdit={canEdit}
+      initialTrialMessagesUsed={initialTrialMessagesUsed}
     />
   );
 }

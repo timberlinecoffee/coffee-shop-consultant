@@ -382,7 +382,6 @@ export interface Database {
           monthly_projections: Json
           revenue_scenarios: Json
           break_even_analysis: Json
-          accounting_inputs: Json
           updated_at: string
         }
         Insert: {
@@ -392,7 +391,6 @@ export interface Database {
           monthly_projections?: Json
           revenue_scenarios?: Json
           break_even_analysis?: Json
-          accounting_inputs?: Json
           updated_at?: string
         }
         Update: {
@@ -402,7 +400,6 @@ export interface Database {
           monthly_projections?: Json
           revenue_scenarios?: Json
           break_even_analysis?: Json
-          accounting_inputs?: Json
           updated_at?: string
         }
       }

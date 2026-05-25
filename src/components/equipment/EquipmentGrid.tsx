@@ -1,6 +1,7 @@
 "use client";
 
 // TIM-1005: Spreadsheet-style equipment data entry (replaces expand-card).
+// TIM-1029: Column visibility toggle with localStorage persistence.
 // Uses TanStack Table v8 for sort/filter/selection state; hand-rolled cell editors.
 
 import {
@@ -20,14 +21,41 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type RowSelectionState,
+  type VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Settings2 } from "lucide-react";
 import type {
   EquipmentItem,
   EquipmentCategory,
   FinancingMethod,
 } from "@/app/workspace/financials/financials-workspace";
 import { formatCurrency } from "@/lib/financial-projection";
+
+const COL_VISIBILITY_KEY = "tcs-equipment-col-visibility";
+
+const TOGGLEABLE_COLS: { id: string; label: string }[] = [
+  { id: "vendor",           label: "Brand" },
+  { id: "model",            label: "Model" },
+  { id: "supplier",         label: "Supplier" },
+  { id: "unit_cost_cents",  label: "Cost" },
+  { id: "financing_method", label: "Financing" },
+  { id: "category",         label: "Category" },
+  { id: "notes",            label: "Notes" },
+];
+
+function loadColVisibility(): VisibilityState {
+  try {
+    const raw = localStorage.getItem(COL_VISIBILITY_KEY);
+    if (raw) return JSON.parse(raw) as VisibilityState;
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveColVisibility(v: VisibilityState) {
+  try {
+    localStorage.setItem(COL_VISIBILITY_KEY, JSON.stringify(v));
+  } catch { /* ignore */ }
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -448,7 +476,27 @@ export function EquipmentGrid({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [colPickerOpen, setColPickerOpen] = useState(false);
+  const colPickerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Load saved column visibility on mount
+  useEffect(() => {
+    setColumnVisibility(loadColVisibility());
+  }, []);
+
+  // Close column picker on outside click
+  useEffect(() => {
+    if (!colPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) {
+        setColPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [colPickerOpen]);
 
   // Debounce timers per row
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -1000,10 +1048,17 @@ export function EquipmentGrid({
   const table = useReactTable({
     data: items,
     columns,
-    state: { sorting, columnFilters, rowSelection },
+    state: { sorting, columnFilters, rowSelection, columnVisibility },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
+    onColumnVisibilityChange: (updater) => {
+      setColumnVisibility((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        saveColVisibility(next);
+        return next;
+      });
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -1041,28 +1096,72 @@ export function EquipmentGrid({
   return (
     <div className="space-y-3">
       {/* Stats bar */}
-      {items.length > 0 && (
-        <div className="flex items-center gap-4 text-xs text-[#6b6b6b] px-1">
-          <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
-          <span className="text-[#efefef]">|</span>
-          <span className="font-semibold text-[#1a1a1a]">
-            Total: {formatCurrency(totalCents / 100)}
-          </span>
-          {selectedCount > 0 && (
+      <div className="flex items-center justify-between gap-4 px-1">
+        <div className="flex items-center gap-4 text-xs text-[#6b6b6b]">
+          {items.length > 0 && (
             <>
+              <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
               <span className="text-[#efefef]">|</span>
-              <button
-                type="button"
-                onClick={deleteSelected}
-                className="flex items-center gap-1 text-xs font-medium text-[#a13d3d] hover:text-[#7a2d2d] transition-colors"
-              >
-                <Trash2 size={12} />
-                Delete {selectedCount} selected
-              </button>
+              <span className="font-semibold text-[#1a1a1a]">
+                Total: {formatCurrency(totalCents / 100)}
+              </span>
+              {selectedCount > 0 && (
+                <>
+                  <span className="text-[#efefef]">|</span>
+                  <button
+                    type="button"
+                    onClick={deleteSelected}
+                    className="flex items-center gap-1 text-xs font-medium text-[#a13d3d] hover:text-[#7a2d2d] transition-colors"
+                  >
+                    <Trash2 size={12} />
+                    Delete {selectedCount} selected
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
-      )}
+
+        {/* Column visibility picker */}
+        <div className="relative flex-shrink-0" ref={colPickerRef}>
+          <button
+            type="button"
+            onClick={() => setColPickerOpen((o) => !o)}
+            title="Column settings"
+            aria-label="Column settings"
+            className="flex items-center gap-1.5 text-xs text-[#6b6b6b] hover:text-[#1a1a1a] border border-[#e8e8e8] rounded-lg px-2 py-1.5 hover:bg-[#f5f4f0] transition-colors"
+          >
+            <Settings2 size={12} />
+            Columns
+          </button>
+          {colPickerOpen && (
+            <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1 min-w-[160px]">
+              <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">
+                Show / hide columns
+              </p>
+              {TOGGLEABLE_COLS.map((col) => {
+                const column = table.getColumn(col.id);
+                if (!column) return null;
+                const visible = column.getIsVisible();
+                return (
+                  <label
+                    key={col.id}
+                    className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#faf9f7] cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-[#155e63] cursor-pointer"
+                      checked={visible}
+                      onChange={() => column.toggleVisibility(!visible)}
+                    />
+                    {col.label}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Spreadsheet table */}
       <div className="border border-[#efefef] rounded-xl overflow-hidden">

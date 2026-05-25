@@ -1,19 +1,21 @@
 "use client";
 
 // TIM-884: Single source of truth for sidebar progress counters.
-// A client-side context that lets workspace editors push live progress updates
-// so the sidebar counter matches the in-page counter at all times.
+// TIM-1029: Add sidebar collapse state with localStorage persistence.
 
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import type { WorkspaceNavItem } from "@/lib/workspace-manifest";
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
+
+const SIDEBAR_COLLAPSED_KEY = "tcs-sidebar-collapsed";
 
 interface WorkspaceProgressContextValue {
   setModuleProgress: (moduleNumber: number, filled: number, total: number) => void;
@@ -37,6 +39,29 @@ export function WorkspaceProgressProvider({
   const [overrides, setOverrides] = useState<
     Map<number, { filled: number; total: number }>
   >(new Map());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Restore collapse preference from localStorage after mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (stored === "true") setSidebarCollapsed(true);
+    } catch {
+      // localStorage unavailable — ignore
+    }
+  }, []);
+
+  const handleToggleCollapse = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const setModuleProgress = useCallback(
     (moduleNumber: number, filled: number, total: number) => {
@@ -65,11 +90,17 @@ export function WorkspaceProgressProvider({
     [initialItems, overrides]
   );
 
+  const contentPadding = sidebarCollapsed ? "lg:pl-[64px]" : "lg:pl-[224px]";
+
   return (
     <WorkspaceProgressContext.Provider value={{ setModuleProgress }}>
       <div className="flex min-h-screen bg-[#faf9f7]">
-        <AppSidebar items={navItems} />
-        <div className="flex-1 min-w-0 lg:pl-[224px] flex flex-col">
+        <AppSidebar
+          items={navItems}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+        />
+        <div className={`flex-1 min-w-0 ${contentPadding} flex flex-col transition-all duration-200`}>
           <WorkspaceTopBar items={navItems} />
           <main className="flex-1">{children}</main>
         </div>
