@@ -2,26 +2,27 @@
 
 // TIM-972: Financial Suite — DB-backed architecture.
 // TIM-1004: Per-day schedule + itemized operating expenses.
-// TIM-1005: Equipment spreadsheet UI.
+// TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle } from "lucide-react";
+import { BarChart2, X, AlertTriangle, Save } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
-import { EquipmentGrid } from "@/components/equipment/EquipmentGrid";
 import {
   type MonthlyProjections,
   type FinancialProjections,
+  type MonthlySlice,
   type DayKey,
   type DaySchedule,
   type OpexLine,
   computeProjections,
+  computeMonthlySlices,
   computeDayHours,
   computeWeeklyHours,
   formatCurrency,
-  normalizeMonthlyProjections,
 } from "@/lib/financial-projection";
+import { PLTab } from "./tabs/pl-tab";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -70,11 +71,10 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "equipment" | "forecast" | "projections";
+type Tab = "forecast" | "projections";
 
 interface Props {
   planId: string;
-  initialEquipment: EquipmentItem[];
   initialProjections: MonthlyProjections;
   initialModelUpdatedAt: string | null;
   initialCritique: CritiqueResult | null;
@@ -121,91 +121,6 @@ function Sparkline({ values }: { values: number[] }) {
         points={pts.join(" ")}
       />
     </svg>
-  );
-}
-
-// ── Equipment tab ─────────────────────────────────────────────────────────────
-
-function EquipmentTab({
-  planId,
-  canEdit,
-  items,
-  onItemsChange,
-}: {
-  planId: string;
-  canEdit: boolean;
-  items: EquipmentItem[];
-  onItemsChange: (items: EquipmentItem[]) => void;
-}) {
-  const [seedStatus, setSeedStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [seedDismissed, setSeedDismissed] = useState(
-    items.some((i) => i.source === "ai_suggested")
-  );
-
-  const aiSeeded = items.some((i) => i.source === "ai_suggested");
-
-  async function handleSeed() {
-    setSeedStatus("loading");
-    try {
-      const res = await fetch("/api/workspaces/financials/seed", { method: "POST" });
-      if (!res.ok) throw new Error(`seed failed (${res.status})`);
-      const listRes = await fetch("/api/workspaces/financials/equipment");
-      if (!listRes.ok) throw new Error(`reload failed (${listRes.status})`);
-      const newItems = (await listRes.json()) as EquipmentItem[];
-      onItemsChange(newItems);
-      setSeedStatus("done");
-      setSeedDismissed(true);
-    } catch {
-      setSeedStatus("error");
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      {!seedDismissed && !aiSeeded && canEdit && (
-        <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#155e63] mb-1">
-                Generate a starter equipment list
-              </p>
-              <p className="text-xs text-[#6b6b6b] leading-relaxed">
-                Based on your concept and menu profile, we&apos;ll suggest typical equipment
-                for a coffee shop like yours. Edit or remove anything after.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSeedDismissed(true)}
-              className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
-              aria-label="Dismiss"
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSeed}
-              disabled={seedStatus === "loading"}
-              className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
-            >
-              {seedStatus === "loading" ? "Generating..." : "Generate list"}
-            </button>
-            {seedStatus === "error" && (
-              <span className="text-xs text-[#a13d3d]">Could not generate. Try again.</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      <EquipmentGrid
-        planId={planId}
-        canEdit={canEdit}
-        items={items}
-        onItemsChange={onItemsChange}
-      />
-    </div>
   );
 }
 
@@ -705,6 +620,154 @@ function ForecastTab({
           </div>
         </div>
       </div>
+
+      {/* Ramp Period */}
+      <div>
+        <p className={sectionLabelCls}>Ramp Period</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Reduced revenue assumptions while you build awareness in the first months.
+          </p>
+          <div className="mb-4">
+            <label className={labelCls}>Ramp period (months)</label>
+            <input
+              className={`${inputCls} max-w-[120px]`}
+              type="number"
+              min={0}
+              max={12}
+              step={1}
+              value={mp.ramp_months ?? 0}
+              onChange={(e) => {
+                const n = Math.min(12, Math.max(0, parseInt(e.target.value, 10) || 0));
+                const current = mp.ramp_multipliers ?? [];
+                const defaults = [30, 55, 80];
+                const next = Array.from({ length: n }, (_, i) =>
+                  current[i] !== undefined ? current[i] : (defaults[i] ?? 100)
+                );
+                update({ ramp_months: n, ramp_multipliers: next });
+              }}
+              placeholder="0"
+              disabled={!canEdit}
+            />
+            <p className="text-[10px] text-[#afafaf] mt-1">0 = no ramp; 1–12 months</p>
+          </div>
+          {(mp.ramp_months ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[#6b6b6b] mb-2">Revenue multiplier per ramp month (%)</p>
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${Math.min(mp.ramp_months ?? 0, 6)}, minmax(0,1fr))` }}
+              >
+                {Array.from({ length: mp.ramp_months ?? 0 }).map((_, i) => {
+                  const val = (mp.ramp_multipliers ?? [])[i] ?? 100;
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-[#afafaf]">M{i + 1}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={200}
+                        step={5}
+                        value={val}
+                        disabled={!canEdit}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value) || 0;
+                          const next = [...(mp.ramp_multipliers ?? [])];
+                          next[i] = v;
+                          update({ ramp_multipliers: next });
+                        }}
+                        className="w-full text-center text-xs border border-[#e0e0e0] rounded-md py-1.5 px-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                      />
+                      <span className="text-[10px] text-[#c0c0c0]">%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Monthly Growth Rate */}
+      <div>
+        <p className={sectionLabelCls}>Monthly Growth Rate</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <div className="flex items-center gap-1 mb-4 bg-[#faf9f7] border border-[#e0e0e0] rounded-lg p-1 w-fit">
+            {(["simple", "custom"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                disabled={!canEdit}
+                onClick={() => update({ growth_mode: mode })}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors capitalize disabled:opacity-50 ${
+                  (mp.growth_mode ?? "simple") === mode
+                    ? "bg-[#155e63] text-white"
+                    : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
+          {(mp.growth_mode ?? "simple") === "simple" ? (
+            <div>
+              <label className={labelCls}>Monthly growth %</label>
+              <input
+                className={`${inputCls} max-w-[140px]`}
+                type="number"
+                min={-100}
+                max={100}
+                step={0.1}
+                value={mp.growth_monthly_pct ?? 0}
+                onChange={(e) => update({ growth_monthly_pct: parseFloat(e.target.value) || 0 })}
+                placeholder="2"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Compounded monthly after ramp period ends. 2% / month ≈ 27% annually.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs text-[#6b6b6b] mb-3">
+                Per-month growth % after ramp ends. Month 1 is the first post-ramp month.
+              </p>
+              <div className="grid grid-cols-6 gap-2">
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-[#afafaf]">M{i + 1}</span>
+                      <input
+                        type="number"
+                        min={-100}
+                        max={100}
+                        step={0.1}
+                        value={val}
+                        disabled={!canEdit}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value) || 0;
+                          const base = mp.growth_monthly_pct ?? 0;
+                          const next = Array.from({ length: 12 }, (_, j) =>
+                            j === i ? v : ((mp.growth_custom_monthly ?? [])[j] ?? base)
+                          );
+                          update({ growth_custom_monthly: next });
+                        }}
+                        className="w-full text-center text-xs border border-[#e0e0e0] rounded-md py-1.5 px-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                      />
+                      <span className="text-[10px] text-[#c0c0c0]">%</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-[#afafaf] mt-3">
+                Months 13+ use the last entered rate. Switch to Simple for uniform growth.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -763,13 +826,68 @@ function MetricRow({
   );
 }
 
+// ── Inline revenue chart ──────────────────────────────────────────────────────
+
+function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
+  const y1 = slices.filter((s) => s.year === 1);
+  if (y1.length === 0) return null;
+  const values = y1.map((s) => s.revenue_cents / 100);
+  const max = Math.max(...values, 1);
+  const w = 100;
+  const h = 48;
+  const pad = 2;
+  const pts = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1 || 1)) * (w - pad * 2);
+    const y = h - pad - ((v / max) * (h - pad * 2));
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  return (
+    <div className="rounded-xl border border-[#efefef] bg-white p-4 mb-4">
+      <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-3">
+        Year 1 Monthly Revenue
+      </p>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        style={{ height: 80 }}
+        aria-hidden="true"
+        preserveAspectRatio="none"
+      >
+        <polyline
+          fill="none"
+          stroke="#155e63"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={pts.join(" ")}
+        />
+        {y1.map((_, i) => {
+          const x = pad + (i / (y1.length - 1 || 1)) * (w - pad * 2);
+          const v = values[i];
+          const y = h - pad - ((v / max) * (h - pad * 2));
+          return <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="1.2" fill="#155e63" />;
+        })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-[#afafaf] mt-1">
+        <span>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][0]}</span>
+        <span>{formatCurrency(minV)} – {formatCurrency(maxV)}</span>
+        <span>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][11]}</span>
+      </div>
+    </div>
+  );
+}
+
 function ProjectionsTab({
   projections,
+  slices,
   canEdit,
   critique,
   onCritiqueUpdate,
 }: {
   projections: FinancialProjections;
+  slices: MonthlySlice[];
   canEdit: boolean;
   critique: CritiqueResult | null;
   onCritiqueUpdate: (c: CritiqueResult | null) => void;
@@ -805,139 +923,13 @@ function ProjectionsTab({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-4 pt-4 pb-2 border-b border-[#efefef]">
-          <p className="text-xs font-semibold text-[#1a1a1a]">Year 1 / 3 / 5 Projections</p>
-          <p className="text-[10px] text-[#afafaf] mt-0.5">
-            Based on forecast inputs. Assumes ~30% growth to Year 3, ~55% to Year 5.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px]">
-            <thead>
-              <tr className="border-b border-[#efefef]">
-                <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
-                  Metric
-                </th>
-                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
-                  Year 1
-                </th>
-                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
-                  Year 3
-                </th>
-                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
-                  Year 5
-                </th>
-                <th className="py-2.5 pr-4 pl-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
-                  Trend
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f5f5f5]">
-              <MetricRow label="Revenue" y1={y1.revenue} y3={y3.revenue} y5={y5.revenue} bold />
-              <MetricRow label="COGS" y1={-y1.cogs} y3={-y3.cogs} y5={-y5.cogs} negative indent />
-              <MetricRow
-                label="Gross Profit"
-                y1={y1.gross_profit}
-                y3={y3.gross_profit}
-                y5={y5.gross_profit}
-                bold
-                highlight
-                separator
-              />
+      {/* Inline revenue trajectory chart */}
+      <RevenueChart slices={slices} />
 
-              {/* Operating Expenses */}
-              <MetricRow label="Labor" y1={-y1.labor} y3={-y3.labor} y5={-y5.labor} negative indent separator />
-              <MetricRow label="Rent" y1={-y1.rent} y3={-y3.rent} y5={-y5.rent} negative indent />
-              <MetricRow label="Marketing" y1={-y1.marketing} y3={-y3.marketing} y5={-y5.marketing} negative indent />
-              <MetricRow label="Utilities" y1={-y1.utilities} y3={-y3.utilities} y5={-y5.utilities} negative indent />
-              <MetricRow label="Insurance" y1={-y1.insurance} y3={-y3.insurance} y5={-y5.insurance} negative indent />
-              <MetricRow label="Tech & Software" y1={-y1.tech} y3={-y3.tech} y5={-y5.tech} negative indent />
-              <MetricRow label="Maintenance" y1={-y1.maintenance} y3={-y3.maintenance} y5={-y5.maintenance} negative indent />
-              <MetricRow label="Supplies" y1={-y1.supplies} y3={-y3.supplies} y5={-y5.supplies} negative indent />
-              <MetricRow label="Other" y1={-y1.other_misc} y3={-y3.other_misc} y5={-y5.other_misc} negative indent />
-              <MetricRow
-                label="Total Operating Expenses"
-                y1={-y1.total_opex}
-                y3={-y3.total_opex}
-                y5={-y5.total_opex}
-                bold
-                negative
-              />
-              <MetricRow
-                label="Operating Income"
-                y1={y1.operating_income}
-                y3={y3.operating_income}
-                y5={y5.operating_income}
-                bold
-                highlight
-                separator
-              />
+      {/* Monthly / Quarterly / Annual P&L table — defaults to monthly Y1 */}
+      <PLTab slices={slices} />
 
-              {/* Below the line */}
-              {projections.financed_total > 0 && (
-                <MetricRow
-                  label="Depreciation"
-                  y1={-y1.depreciation}
-                  y3={-y3.depreciation}
-                  y5={-y5.depreciation}
-                  negative
-                  indent
-                  separator
-                />
-              )}
-              {(y1.interest > 0 || y3.interest > 0) && (
-                <MetricRow
-                  label="Interest"
-                  y1={-y1.interest}
-                  y3={-y3.interest}
-                  y5={-y5.interest}
-                  negative
-                  indent
-                  separator={projections.financed_total === 0}
-                />
-              )}
-              <MetricRow
-                label="Income Before Taxes"
-                y1={y1.income_before_taxes}
-                y3={y3.income_before_taxes}
-                y5={y5.income_before_taxes}
-                bold
-                separator
-              />
-              <MetricRow label="Taxes" y1={-y1.taxes} y3={-y3.taxes} y5={-y5.taxes} negative indent />
-              <MetricRow
-                label="Net Income"
-                y1={y1.net_income}
-                y3={y3.net_income}
-                y5={y5.net_income}
-                bold
-                highlight
-                separator
-              />
-            </tbody>
-          </table>
-        </div>
-        {projections.startup_equipment_total > 0 && (
-          <div className="px-4 py-3 border-t border-[#efefef] flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6b6b6b]">
-            <span>
-              Equipment total:{" "}
-              <span className="font-semibold text-[#1a1a1a]">
-                {formatCurrency(projections.startup_equipment_total)}
-              </span>
-            </span>
-            {projections.financed_total > 0 && (
-              <span>
-                Financed (7yr depreciation):{" "}
-                <span className="font-semibold text-[#1a1a1a]">
-                  {formatCurrency(projections.financed_total)}
-                </span>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
+      {/* KPI summary tiles */}
       <div className="grid grid-cols-3 gap-3">
         {[
           {
@@ -974,6 +966,7 @@ function ProjectionsTab({
         ))}
       </div>
 
+      {/* AI Critique */}
       <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
           <div>
@@ -1035,7 +1028,6 @@ function ProjectionsTab({
 
 export function FinancialsWorkspace({
   planId,
-  initialEquipment,
   initialProjections,
   initialModelUpdatedAt,
   initialCritique,
@@ -1044,10 +1036,9 @@ export function FinancialsWorkspace({
   canEdit,
   initialTrialMessagesUsed,
 }: Props) {
-  const [equipment, setEquipment] = useState<EquipmentItem[]>(initialEquipment);
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
-  const [activeTab, setActiveTab] = useState<Tab>("equipment");
+  const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
     lastSavedAt: initialModelUpdatedAt,
@@ -1069,27 +1060,25 @@ export function FinancialsWorkspace({
     new Date(initialNeedsReviewAt) > new Date(initialModelUpdatedAtForReview);
 
   const progress = useMemo(() => {
-    const hasEquipment = equipment.length > 0 ? 1 : 0;
     const hasFlow = Object.values(mp.daily_flow).some((v) => v > 0) ? 1 : 0;
     const hasCosts = mp.monthly_rent_cents > 0 && mp.avg_ticket_cents > 0 ? 1 : 0;
-    return { filled: hasEquipment + hasFlow + hasCosts, total: 3 };
-  }, [equipment, mp]);
+    return { filled: hasFlow + hasCosts, total: 2 };
+  }, [mp]);
 
   useEffect(() => {
     setModuleProgress(2, progress.filled, progress.total);
   }, [progress.filled, progress.total, setModuleProgress]);
 
-  const equipmentSummary = useMemo(() => {
-    const total_cost_cents = equipment.reduce((s, e) => s + e.unit_cost_cents * e.quantity, 0);
-    const financed_cost_cents = equipment
-      .filter((e) => e.financing_method === "loan" || e.financing_method === "lease")
-      .reduce((s, e) => s + e.unit_cost_cents * e.quantity, 0);
-    return { total_cost_cents, financed_cost_cents };
-  }, [equipment]);
+  const equipment = useMemo(() => ({ total_cost_cents: 0, financed_cost_cents: 0 }), []);
 
   const projections = useMemo(
-    () => computeProjections(mp, equipmentSummary),
-    [mp, equipmentSummary]
+    () => computeProjections(mp, equipment),
+    [mp, equipment]
+  );
+
+  const slices = useMemo(
+    () => computeMonthlySlices(mp, equipment, {}),
+    [mp, equipment]
   );
 
   const lastSavedAt =
@@ -1158,6 +1147,15 @@ export function FinancialsWorkspace({
     void persist(latestMpRef.current, c);
   }
 
+  function handleManualSave() {
+    if (!canEdit) return;
+    if (pendingSaveTimer.current) {
+      clearTimeout(pendingSaveTimer.current);
+      pendingSaveTimer.current = null;
+    }
+    void persist(latestMpRef.current, latestCritiqueRef.current);
+  }
+
   const saveLabel =
     saveState.kind === "saving"
       ? "Saving..."
@@ -1168,7 +1166,6 @@ export function FinancialsWorkspace({
       : formatTimestamp(lastSavedAt);
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "equipment", label: "Equipment" },
     { id: "forecast", label: "Forecast Inputs" },
     { id: "projections", label: "Projections" },
   ];
@@ -1196,8 +1193,7 @@ export function FinancialsWorkspace({
                 Your concept or menu has changed
               </p>
               <p className="text-xs text-amber-600 mt-0.5">
-                Review your equipment list and forecast inputs to make sure they still reflect your
-                plan.
+                Review your forecast inputs to make sure they still reflect your plan.
               </p>
             </div>
             <button
@@ -1211,7 +1207,7 @@ export function FinancialsWorkspace({
           </div>
         )}
 
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between gap-3">
           <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1">
             {tabs.map((t) => (
               <button
@@ -1228,27 +1224,33 @@ export function FinancialsWorkspace({
               </button>
             ))}
           </nav>
-          <span
-            className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
-          >
-            {saveLabel}
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
+            >
+              {saveLabel}
+            </span>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleManualSave}
+                disabled={saveState.kind === "saving"}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+              >
+                <Save size={12} aria-hidden="true" />
+                Save
+              </button>
+            )}
+          </div>
         </div>
 
-        {activeTab === "equipment" && (
-          <EquipmentTab
-            planId={planId}
-            canEdit={canEdit}
-            items={equipment}
-            onItemsChange={setEquipment}
-          />
-        )}
         {activeTab === "forecast" && (
           <ForecastTab mp={mp} canEdit={canEdit} onUpdateMp={handleMpUpdate} />
         )}
         {activeTab === "projections" && (
           <ProjectionsTab
             projections={projections}
+            slices={slices}
             canEdit={canEdit}
             critique={critique}
             onCritiqueUpdate={handleCritiqueUpdate}

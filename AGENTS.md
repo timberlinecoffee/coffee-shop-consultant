@@ -79,17 +79,26 @@ How to apply:
 <!-- BEGIN:merge-verification-sweeper -->
 # Ship-issue close discipline: branch MUST be merged to `main` before `done` (TIM-1018)
 
-The `merge-verification-sweeper` routine fires every 4h and auto-reopens any `done` ship-issue whose referenced branch still has commits not on `main` (squash-aware via `git cherry`). Don't bother closing pre-merge — it'll come right back, loudly.
+The `merge-verification-sweeper` routine fires every 4h and auto-reopens any `done` ship-issue whose referenced branch still has commits not on `main`. The check is layered (see [TIM-1027](/TIM/issues/TIM-1027)): `git cherry` patch-id match, branch-tip-tree reachability on `main`, and a squash-merge marker scan for the issue identifier in recent `main` commit messages. Any one of those clears the branch as merged. Don't bother closing pre-merge — it'll come right back, loudly.
 
 **Before you `PATCH status=done` on a ship issue:**
 
 ```bash
 cd coffee-shop-consultant
 git fetch origin --prune
-git cherry origin/main origin/<your-branch> | grep '^+' && echo "UNMERGED — do not close" || echo "merged"
+BRANCH=<your-branch>; ID=TIM-NNN
+# (1) cherry — clean for rebase/cherry-pick merges
+git cherry origin/main "origin/$BRANCH" | grep -q '^+' && CHERRY=ahead || CHERRY=clean
+# (2) tip-tree — squash of a rebased branch leaves matching tree on main
+TREE=$(git rev-parse "origin/$BRANCH^{tree}")
+git log origin/main -500 --format=%T | grep -qx "$TREE" && TREE_MATCH=yes || TREE_MATCH=no
+# (3) marker — squash subjects typically embed the issue id
+git log origin/main -500 --grep "$ID" --format=%H | grep -q . && MARKER=yes || MARKER=no
+[ "$CHERRY" = clean ] || [ "$TREE_MATCH" = yes ] || [ "$MARKER" = yes ] \
+  && echo "merged" || echo "UNMERGED — do not close"
 ```
 
-If the check prints `UNMERGED`, your branch has commits not in main (by patch-id, so squash merges count as merged). Open a PR and merge it before closing the issue.
+If the check prints `UNMERGED`, your branch is unmerged by all three signals. Open a PR and merge it before closing the issue.
 
 **Branch-only-reclose pattern ([TIM-879](/TIM/issues/TIM-879) / [TIM-893](/TIM/issues/TIM-893)):**
 Parent issue is closed at staging-QA on the branch, then a follow-up merge issue is spawned with `inheritExecutionWorkspaceFromIssueId`. The sweeper recognizes this pattern *only if* the child issue's title or description names the same branch and contains "merge", "deploy", or "ship". If you spawn a merge-child, name the branch in its title (e.g. "Merge `feat/tim-XXX` → main and verify production").

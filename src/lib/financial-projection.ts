@@ -48,6 +48,14 @@ export interface MonthlyProjections {
   // Below-the-line items
   interest_monthly_cents: number;
   taxes_pct: number;
+
+  // Ramp / warm-up period (TIM-1035)
+  ramp_months: number;         // 0–12; months at reduced capacity before steady-state
+  ramp_multipliers: number[];  // per-ramp-month revenue %, length === ramp_months
+  // Month-to-month forecasted growth (TIM-1035)
+  growth_mode: "simple" | "custom";
+  growth_monthly_pct: number;        // simple mode: compounding % per month after ramp
+  growth_custom_monthly: number[];   // custom mode: per-month % rates (up to 60 entries)
 }
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -81,6 +89,11 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     other_monthly_cents: 20000,
     interest_monthly_cents: 0,
     taxes_pct: 25,
+    ramp_months: 3,
+    ramp_multipliers: [30, 55, 80],
+    growth_mode: "simple",
+    growth_monthly_pct: 2,
+    growth_custom_monthly: [],
   };
 }
 
@@ -206,6 +219,20 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       ? Math.round(legacyOther * 0.15)
       : defaults.other_monthly_cents;
 
+  // Ramp + growth fields — default to 0/empty for backward compat with existing stored data.
+  const ramp_months =
+    typeof r.ramp_months === "number" ? Math.min(12, Math.max(0, Math.round(r.ramp_months))) : 0;
+  const ramp_multipliers = Array.isArray(r.ramp_multipliers)
+    ? (r.ramp_multipliers as number[]).slice(0, 12)
+    : [];
+  const growth_mode: "simple" | "custom" =
+    r.growth_mode === "custom" ? "custom" : "simple";
+  const growth_monthly_pct =
+    typeof r.growth_monthly_pct === "number" ? r.growth_monthly_pct : 0;
+  const growth_custom_monthly = Array.isArray(r.growth_custom_monthly)
+    ? (r.growth_custom_monthly as number[]).slice(0, 60)
+    : [];
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -225,6 +252,11 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       typeof r.interest_monthly_cents === "number" ? r.interest_monthly_cents : defaults.interest_monthly_cents,
     taxes_pct:
       typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
+    ramp_months,
+    ramp_multipliers,
+    growth_mode,
+    growth_monthly_pct,
+    growth_custom_monthly,
   };
 }
 
@@ -316,12 +348,33 @@ export function computeWeeklyHours(schedule: WeekSchedule): number {
 
 // ── Projection math ───────────────────────────────────────────────────────────
 
-function yearGrowthFactor(year: number): number {
-  if (year === 1) return 1.0;
-  if (year === 2) return 1.15;
-  if (year === 3) return 1.3;
-  if (year === 4) return 1.425;
-  return 1.55; // year 5
+// Compute a revenue multiplier for a given 1-based month index (1–60).
+// During ramp: uses ramp_multipliers[i-1] / 100 (clamped to stored length).
+// After ramp: compounds growth_monthly_pct per month (simple) or uses
+// per-entry growth_custom_monthly rates (custom mode).
+function monthRevenueFactor(
+  monthIndex: number,
+  ramp_months: number,
+  ramp_multipliers: number[],
+  growth_mode: "simple" | "custom",
+  growth_monthly_pct: number,
+  growth_custom_monthly: number[]
+): number {
+  if (ramp_months > 0 && monthIndex <= ramp_months) {
+    return (ramp_multipliers[monthIndex - 1] ?? 100) / 100;
+  }
+  // Months after ramp end: k = how many months past ramp end (1 = first post-ramp month)
+  const k = monthIndex - ramp_months;
+  if (growth_mode === "custom" && growth_custom_monthly.length > 0) {
+    // Compound the custom monthly rates for months 1..k-1 (k-1 growth steps)
+    let factor = 1.0;
+    for (let i = 0; i < k - 1; i++) {
+      factor *= 1 + (growth_custom_monthly[i] ?? growth_monthly_pct) / 100;
+    }
+    return factor;
+  }
+  // Simple compounding: first post-ramp month = 1.0x, then grows
+  return Math.pow(1 + growth_monthly_pct / 100, k - 1);
 }
 
 export function computeMonthlyProjections(
@@ -337,13 +390,26 @@ export function computeMonthlyProjections(
     (equipment.financed_cost_cents / 100 / 7 / 12) * 100
   );
 
+  const ramp_months = mp.ramp_months ?? 0;
+  const ramp_multipliers = mp.ramp_multipliers ?? [];
+  const growth_mode = mp.growth_mode ?? "simple";
+  const growth_monthly_pct = mp.growth_monthly_pct ?? 0;
+  const growth_custom_monthly = mp.growth_custom_monthly ?? [];
+
   const rows: MonthlyProjectionRow[] = [];
 
   for (let year = 1; year <= 5; year++) {
-    const monthlyRevenueCents = Math.round(baseMonthlyRevenueCents * yearGrowthFactor(year));
-
     for (let month = 1; month <= 12; month++) {
-      const revenue_cents = monthlyRevenueCents;
+      const month_index_abs = (year - 1) * 12 + month;
+      const revFactor = monthRevenueFactor(
+        month_index_abs,
+        ramp_months,
+        ramp_multipliers,
+        growth_mode,
+        growth_monthly_pct,
+        growth_custom_monthly
+      );
+      const revenue_cents = Math.round(baseMonthlyRevenueCents * revFactor);
       const cogs_cents = Math.round(revenue_cents * (mp.cogs_pct / 100));
       const gross_profit_cents = revenue_cents - cogs_cents;
 
@@ -474,4 +540,253 @@ export function formatCurrency(n: number): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(n);
+}
+
+// ── Phase 2 additions (TIM-1019) ─────────────────────────────────────────────
+
+// MonthlySlice: richer per-month record for 5-year statement tabs.
+// Extends MonthlyProjectionRow with break-even, cash-flow, and balance-sheet fields.
+export interface MonthlySlice extends MonthlyProjectionRow {
+  // P&L extras
+  gross_revenue_cents: number;
+  loyalty_discounts_cents: number;
+  net_revenue_cents: number;
+  total_cogs_cents: number;
+  payment_processing_cents: number;
+  spoilage_cents: number;
+  beverage_cogs_cents: number;
+  food_cogs_cents: number;
+  retail_cogs_cents: number;
+  other_opex_cents: number;
+  ebitda_cents: number;
+  avg_ticket_cents: number;
+  // Cash-flow statement
+  net_cash_cents: number;
+  loan_repayment_cents: number;
+  capex_cents: number;
+  cash_cents: number;
+  // Balance sheet — assets
+  accounts_receivable_cents: number;
+  inventory_cents: number;
+  fixed_assets_gross_cents: number;
+  accumulated_depreciation_cents: number;
+  net_fixed_assets_cents: number;
+  other_assets_cents: number;
+  total_assets_cents: number;
+  // Balance sheet — liabilities
+  accounts_payable_cents: number;
+  current_debt_cents: number;
+  long_term_debt_cents: number;
+  total_liabilities_cents: number;
+  // Balance sheet — equity
+  owner_equity_cents: number;
+  retained_earnings_cents: number;
+  total_equity_cents: number;
+  total_liabilities_and_equity_cents: number;
+}
+
+// FinancialInputs: extended model inputs used by the Startup / Inputs tabs.
+export interface FinancialInputs {
+  // Daily operations
+  days_per_week: number;
+  hours_per_day: number;
+  avg_ticket_cents: number;
+  customers_per_day: number;
+  // Revenue mix (pct, must sum to 100)
+  beverage_revenue_pct: number;
+  food_revenue_pct: number;
+  retail_revenue_pct: number;
+  // COGS by category (pct)
+  beverage_cogs_pct: number;
+  food_cogs_pct: number;
+  retail_cogs_pct: number;
+  // Operating expenses
+  rent_cents: number;
+  labor_pct: number;
+  marketing_pct: number;
+  utilities_cents: number;
+  insurance_cents: number;
+  tech_cents: number;
+  maintenance_cents: number;
+  supplies_cents: number;
+  payment_processing_pct: number;
+  spoilage_pct: number;
+  loyalty_discount_pct: number;
+  other_opex_cents: number;
+  // Startup costs
+  buildout_cost_cents: number;
+  equipment_cost_cents: number;
+  rent_deposits_cents: number;
+  license_permits_cents: number;
+  pre_opening_marketing_cents: number;
+  initial_inventory_cents: number;
+  working_capital_reserve_cents: number;
+  opening_cash_buffer_cents: number;
+  // Funding
+  owner_capital_cents: number;
+  loan_amount_cents: number;
+  loan_term_months: number;
+  loan_annual_rate_pct: number;
+  // Depreciation & taxes
+  depreciation_years: number;
+  tax_rate_pct: number;
+  // Working capital cycle
+  days_inventory: number;
+  days_payable: number;
+  days_receivable: number;
+}
+
+// fmt: format a cents value as a compact dollar string.
+export function fmt(cents: number): string {
+  return formatCurrency(cents / 100);
+}
+
+// pct: express numerator / denominator as a percentage string with one decimal.
+export function pct(numerator: number, denominator: number): string {
+  if (!denominator) return "—";
+  return `${((numerator / denominator) * 100).toFixed(1)}%`;
+}
+
+// sumSlices: sum a list of MonthlySlice objects into a single Partial<MonthlySlice>.
+export function sumSlices(slices: MonthlySlice[]): Partial<MonthlySlice> {
+  if (slices.length === 0) return {};
+  const numericKeys = Object.keys(slices[0]).filter(
+    (k) => k !== "year" && k !== "month" && k !== "month_index"
+  ) as (keyof MonthlySlice)[];
+
+  const result: Partial<MonthlySlice> = {};
+  for (const key of numericKeys) {
+    let sum = 0;
+    for (const s of slices) {
+      const v = s[key];
+      if (typeof v === "number") sum += v;
+    }
+    (result as Record<string, number>)[key] = sum;
+  }
+  return result;
+}
+
+// getQuarterSlices: return slices that fall in the given year + quarter (1–4).
+export function getQuarterSlices(
+  slices: MonthlySlice[],
+  year: number,
+  quarter: number
+): MonthlySlice[] {
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+  return slices.filter(
+    (s) => s.year === year && s.month >= startMonth && s.month <= endMonth
+  );
+}
+
+// computeMonthlySlices: produce MonthlySlice[] from MonthlyProjections + FinancialInputs.
+// Extends computeMonthlyProjections with P&L extras, cash-flow, and balance-sheet fields.
+export function computeMonthlySlices(
+  mp: MonthlyProjections,
+  equipment: EquipmentSummary,
+  inputs: Partial<FinancialInputs> = {}
+): MonthlySlice[] {
+  const rows = computeMonthlyProjections(mp, equipment);
+
+  const paymentProcessingPct = (inputs.payment_processing_pct ?? 0) / 100;
+  const spoilagePct = (inputs.spoilage_pct ?? 0) / 100;
+  const bevRevPct = (inputs.beverage_revenue_pct ?? 70) / 100;
+  const foodRevPct = (inputs.food_revenue_pct ?? 20) / 100;
+  const bevCogsPct = (inputs.beverage_cogs_pct ?? 30) / 100;
+  const foodCogsPct = (inputs.food_cogs_pct ?? 35) / 100;
+  const daysInventory = inputs.days_inventory ?? 7;
+  const daysPayable = inputs.days_payable ?? 30;
+  const daysReceivable = inputs.days_receivable ?? 0;
+  const ownerCapital = inputs.owner_capital_cents ?? 0;
+  const loanAmount = inputs.loan_amount_cents ?? 0;
+  const loanRate = (inputs.loan_annual_rate_pct ?? 0) / 100 / 12;
+  const loanTerms = inputs.loan_term_months ?? 0;
+  const fixedAssetsGross = (inputs.equipment_cost_cents ?? 0) + (inputs.buildout_cost_cents ?? 0);
+  const openingCash = (inputs.opening_cash_buffer_cents ?? 0) + (inputs.working_capital_reserve_cents ?? 0);
+
+  let cumulativeNetIncome = 0;
+  let cumulativeDepreciation = 0;
+  let cashBalance = openingCash;
+  let loanBalance = loanAmount;
+
+  return rows.map((row) => {
+    const rev = row.revenue_cents;
+    const loyaltyDiscountPct = (inputs.loyalty_discount_pct ?? 0) / 100;
+    const loyaltyDiscountCents = Math.round(rev * loyaltyDiscountPct);
+    const grossRevenueCents = rev;
+    const paymentProcessingCents = Math.round(rev * paymentProcessingPct);
+    const spoilageCents = Math.round(row.cogs_cents * spoilagePct);
+    const netRevenueCents = rev - paymentProcessingCents;
+    const bevRevCents = Math.round(rev * bevRevPct);
+    const foodRevCents = Math.round(rev * foodRevPct);
+    const retailRevCents = Math.round(rev * ((inputs.retail_revenue_pct ?? 10) / 100));
+    const bevCogsCents = Math.round(bevRevCents * bevCogsPct);
+    const foodCogsCents = Math.round(foodRevCents * foodCogsPct);
+    const retailCogsCents = Math.round(retailRevCents * ((inputs.retail_cogs_pct ?? 40) / 100));
+    const ebitdaCents = row.operating_income_cents + row.depreciation_cents;
+
+    cumulativeNetIncome += row.net_income_cents;
+    cumulativeDepreciation += row.depreciation_cents;
+
+    // Loan amortization
+    let loanRepaymentCents = 0;
+    if (loanBalance > 0 && loanTerms > 0) {
+      const interest = Math.round(loanBalance * loanRate);
+      const monthlyPayment = loanRate > 0
+        ? Math.round(loanAmount * loanRate * Math.pow(1 + loanRate, loanTerms) / (Math.pow(1 + loanRate, loanTerms) - 1))
+        : Math.round(loanAmount / loanTerms);
+      const principal = Math.min(monthlyPayment - interest, loanBalance);
+      loanBalance = Math.max(0, loanBalance - principal);
+      loanRepaymentCents = principal;
+    }
+
+    // Cash flow: net income + depreciation (add back) - loan repayment
+    const netCashCents = row.net_income_cents + row.depreciation_cents - loanRepaymentCents;
+    cashBalance += netCashCents;
+
+    // Balance sheet
+    const arCents = Math.round(rev * (daysReceivable / 30));
+    const inventoryCents = Math.round(row.cogs_cents * (daysInventory / 30));
+    const netFixedAssets = Math.max(0, fixedAssetsGross - cumulativeDepreciation);
+    const totalAssets = cashBalance + arCents + inventoryCents + netFixedAssets;
+    const apCents = Math.round(row.cogs_cents * (daysPayable / 30));
+    const totalLiabilities = apCents + loanBalance;
+    const retainedEarnings = cumulativeNetIncome;
+    const totalEquity = ownerCapital + retainedEarnings;
+
+    return {
+      ...row,
+      gross_revenue_cents: grossRevenueCents,
+      loyalty_discounts_cents: loyaltyDiscountCents,
+      net_revenue_cents: netRevenueCents,
+      total_cogs_cents: row.cogs_cents,
+      payment_processing_cents: paymentProcessingCents,
+      spoilage_cents: spoilageCents,
+      beverage_cogs_cents: bevCogsCents,
+      food_cogs_cents: foodCogsCents,
+      retail_cogs_cents: retailCogsCents,
+      other_opex_cents: row.other_misc_cents,
+      ebitda_cents: ebitdaCents,
+      avg_ticket_cents: mp.avg_ticket_cents,
+      net_cash_cents: netCashCents,
+      loan_repayment_cents: loanRepaymentCents,
+      capex_cents: 0,
+      cash_cents: Math.max(0, cashBalance),
+      accounts_receivable_cents: arCents,
+      inventory_cents: inventoryCents,
+      fixed_assets_gross_cents: fixedAssetsGross,
+      accumulated_depreciation_cents: cumulativeDepreciation,
+      net_fixed_assets_cents: netFixedAssets,
+      other_assets_cents: 0,
+      total_assets_cents: Math.max(0, totalAssets),
+      accounts_payable_cents: apCents,
+      current_debt_cents: 0,
+      long_term_debt_cents: loanBalance,
+      total_liabilities_cents: totalLiabilities,
+      owner_equity_cents: ownerCapital,
+      retained_earnings_cents: retainedEarnings,
+      total_equity_cents: totalEquity,
+      total_liabilities_and_equity_cents: totalLiabilities + totalEquity,
+    };
+  });
 }
