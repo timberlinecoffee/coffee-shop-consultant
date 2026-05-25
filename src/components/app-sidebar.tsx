@@ -98,6 +98,15 @@ function NavIconGlyph({ icon, size = 15 }: { icon: NavIcon; size?: number }) {
           <path d="M3 11l19-9-9 19-2-8-8-2z" />
         </svg>
       );
+    case "truck":
+      return (
+        <svg {...props}>
+          <path d="M1 3h15v13H1z" />
+          <path d="M16 8h4l3 3v5h-7V8z" />
+          <circle cx="5.5" cy="18.5" r="2.5" />
+          <circle cx="18.5" cy="18.5" r="2.5" />
+        </svg>
+      );
     default:
       return null;
   }

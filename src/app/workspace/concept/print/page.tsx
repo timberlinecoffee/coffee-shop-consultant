@@ -16,6 +16,12 @@ import {
   PERSONA_VISIT_FREQUENCY_LABELS,
   PERSONA_SPEND_LABELS,
 } from "@/lib/concept";
+import {
+  VENDOR_CATEGORY_KEYS,
+  VENDOR_CATEGORY_LABELS,
+  type VendorCategoryKey,
+  type VendorDecision,
+} from "@/lib/suppliers";
 import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
@@ -41,12 +47,26 @@ export default async function ConceptPrintPage() {
 
   if (!plan) redirect("/onboarding");
 
-  const { data: doc } = await supabase
-    .from("workspace_documents")
-    .select("content, updated_at")
-    .eq("plan_id", plan.id)
-    .eq("workspace_key", "concept")
-    .maybeSingle();
+  const [{ data: doc }, { data: decisionsData }] = await Promise.all([
+    supabase
+      .from("workspace_documents")
+      .select("content, updated_at")
+      .eq("plan_id", plan.id)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+    supabase
+      .from("vendor_decisions")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .eq("is_current", true)
+      .order("category", { ascending: true }),
+  ]);
+
+  const supplierDecisions = (decisionsData ?? []) as VendorDecision[];
+  const decisionsByCategory = new Map<VendorCategoryKey, VendorDecision>();
+  for (const d of supplierDecisions) {
+    decisionsByCategory.set(d.category, d);
+  }
 
   const conceptDoc: ConceptDocumentV2 = normalizeConceptV2(doc?.content);
 
@@ -215,6 +235,43 @@ export default async function ConceptPrintPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ── Suppliers locked in ──────────────────────── */}
+        {supplierDecisions.length > 0 && (
+          <div className="section-card mt-5 bg-white border border-[#efefef] rounded-2xl overflow-hidden flex">
+            <div className="w-1 bg-[#155e63] flex-shrink-0" />
+            <div className="px-6 py-5 flex-1 min-w-0">
+              <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-3">
+                Suppliers Locked In
+              </p>
+              <ul className="space-y-2.5">
+                {VENDOR_CATEGORY_KEYS.map((key) => {
+                  const decision = decisionsByCategory.get(key);
+                  if (!decision) return null;
+                  return (
+                    <li key={key} className="text-[#1a1a1a]" style={{ fontSize: "14.5px", lineHeight: 1.6 }}>
+                      <span className="font-semibold">{VENDOR_CATEGORY_LABELS[key]}:</span>{" "}
+                      {decision.vendor_name}
+                      <span className="text-[#afafaf] text-xs">
+                        {" "}
+                        · {new Date(decision.decided_on).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                      {decision.reason && (
+                        <p className="text-xs text-[#6b6b6b] mt-0.5 leading-relaxed">
+                          {decision.reason}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         )}
 
