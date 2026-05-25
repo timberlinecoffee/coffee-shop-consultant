@@ -87,19 +87,20 @@ export async function POST(request: NextRequest) {
     .eq("plan_id", plan.id)
     .eq("archived", false);
 
-  // TIM-1002: name/vendor/model are label-shaped — enforce Title Case at the
-  // boundary regardless of whether the caller is the seed endpoint, the UI,
-  // or a future AI suggester.
+  // TIM-1002: name/vendor/model/supplier are label-shaped — enforce Title Case
+  // at the boundary regardless of caller (seed, UI, AI suggester).
   const vendorRaw = body.vendor as string | undefined;
   const modelRaw = body.model as string | undefined;
+  const supplierRaw = body.supplier as string | undefined;
   const { data, error } = await supabase
     .from("buildout_equipment_items")
     .insert({
       plan_id: plan.id,
       name: toTitleCase(body.name as string),
-      category: (body.category as string | undefined) ?? "other",
+      category: (body.category as string | undefined) ?? "miscellaneous",
       vendor: vendorRaw ? toTitleCase(vendorRaw) : null,
       model: modelRaw ? toTitleCase(modelRaw) : null,
+      supplier: supplierRaw ? toTitleCase(supplierRaw) : null,
       quantity: (body.quantity as number | undefined) ?? 1,
       unit_cost_cents: (body.unit_cost_cents as number | undefined) ?? 0,
       priority_tier: (body.priority_tier as string | undefined) ?? "must_have",

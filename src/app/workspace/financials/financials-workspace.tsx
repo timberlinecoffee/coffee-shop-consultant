@@ -2,12 +2,14 @@
 
 // TIM-972: Financial Suite — DB-backed architecture.
 // TIM-1004: Per-day schedule + itemized operating expenses.
+// TIM-1005: Equipment spreadsheet UI.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, ChevronDown, ChevronUp, Plus, Trash2, X, AlertTriangle } from "lucide-react";
+import { BarChart2, X, AlertTriangle } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
+import { EquipmentGrid } from "@/components/equipment/EquipmentGrid";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -27,10 +29,17 @@ const AUTOSAVE_DEBOUNCE_MS = 800;
 // ── DB row shape from buildout_equipment_items ────────────────────────────────
 
 export type EquipmentCategory =
-  | "espresso" | "grinder" | "refrigeration" | "plumbing" | "electrical"
-  | "furniture" | "smallwares" | "pos" | "signage" | "other";
+  // 14 current categories
+  | "espresso_platform" | "brew_platform" | "milk_beverage_prep" | "refrigeration"
+  | "plumbing_water" | "electrical" | "pos_tech" | "furniture_fixtures"
+  | "signage_decor" | "smallwares" | "ceramics" | "glassware" | "to_go_ware" | "miscellaneous"
+  // legacy values kept for backward compat
+  | "espresso" | "grinder" | "plumbing" | "furniture" | "pos" | "signage" | "other";
 
-export type FinancingMethod = "cash" | "loan" | "lease" | "credit";
+export type FinancingMethod =
+  | "cash" | "in_house_financing" | "loan" | "lease" | "credit_card" | "other"
+  | "credit"; // legacy
+
 export type PriorityTier = "must_have" | "nice_to_have";
 export type EquipmentSource = "ai_suggested" | "user_added";
 
@@ -42,6 +51,7 @@ export interface EquipmentItem {
   category: EquipmentCategory;
   vendor: string | null;
   model: string | null;
+  supplier: string | null;
   quantity: number;
   unit_cost_cents: number;
   priority_tier: PriorityTier;
@@ -74,30 +84,6 @@ interface Props {
   initialTrialMessagesUsed?: number;
 }
 
-const CATEGORY_LABELS: Record<EquipmentCategory, string> = {
-  espresso: "Espresso",
-  grinder: "Grinder",
-  refrigeration: "Refrigeration",
-  plumbing: "Plumbing",
-  electrical: "Electrical",
-  furniture: "Furniture",
-  smallwares: "Smallwares",
-  pos: "POS",
-  signage: "Signage",
-  other: "Other",
-};
-
-const FINANCING_LABELS: Record<FinancingMethod, string> = {
-  cash: "Cash",
-  loan: "Loan",
-  lease: "Lease",
-  credit: "Credit",
-};
-
-const PRIORITY_LABELS: Record<PriorityTier, string> = {
-  must_have: "Must-have",
-  nice_to_have: "Nice-to-have",
-};
 
 function formatTimestamp(iso: string | null): string {
   if (!iso) return "Not saved yet";
@@ -140,210 +126,6 @@ function Sparkline({ values }: { values: number[] }) {
 
 // ── Equipment tab ─────────────────────────────────────────────────────────────
 
-function newItem(planId: string, position: number): EquipmentItem {
-  return {
-    id: "",
-    plan_id: planId,
-    position,
-    name: "",
-    category: "other",
-    vendor: null,
-    model: null,
-    quantity: 1,
-    unit_cost_cents: 0,
-    priority_tier: "must_have",
-    financing_method: "cash",
-    source: "user_added",
-    notes: null,
-    archived: false,
-  };
-}
-
-function EquipmentRow({
-  item,
-  canEdit,
-  onUpdate,
-  onRemove,
-  saving,
-}: {
-  item: EquipmentItem;
-  canEdit: boolean;
-  onUpdate: (patch: Partial<EquipmentItem>) => void;
-  onRemove: () => void;
-  saving?: boolean;
-}) {
-  const [expanded, setExpanded] = useState(!item.id);
-
-  const inputCls =
-    "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-  const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
-
-  const totalCents = item.unit_cost_cents * item.quantity;
-
-  return (
-    <div className={`border border-[#efefef] rounded-xl bg-white overflow-hidden ${saving ? "opacity-60" : ""}`}>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <span
-          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ${
-            item.priority_tier === "must_have"
-              ? "bg-[#155e63]/10 text-[#155e63]"
-              : "bg-[#f0f0f0] text-[#6b6b6b]"
-          }`}
-        >
-          {PRIORITY_LABELS[item.priority_tier]}
-        </span>
-        {item.source === "ai_suggested" && (
-          <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 shrink-0">
-            AI
-          </span>
-        )}
-        <span className="text-sm font-medium text-[#1a1a1a] flex-1 truncate min-w-0">
-          {item.name || <span className="text-[#afafaf] font-normal">Unnamed item</span>}
-        </span>
-        <span className="text-sm font-semibold text-[#1a1a1a] shrink-0">
-          {totalCents ? formatCurrency(totalCents / 100) : "—"}
-        </span>
-        <span className="text-xs text-[#afafaf] shrink-0 hidden sm:block">
-          {FINANCING_LABELS[item.financing_method]}
-        </span>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 p-1"
-          aria-label={expanded ? "Collapse" : "Expand"}
-        >
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-[#afafaf] hover:text-[#a13d3d] transition-colors shrink-0 p-1"
-            aria-label="Remove item"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
-      </div>
-
-      {expanded && (
-        <div className="border-t border-[#efefef] px-4 py-4 bg-[#faf9f7]">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Item name</label>
-              <input
-                className={inputCls}
-                value={item.name}
-                onChange={(e) => onUpdate({ name: e.target.value })}
-                placeholder="e.g. Espresso machine"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Category</label>
-              <select
-                className={inputCls}
-                value={item.category}
-                onChange={(e) => onUpdate({ category: e.target.value as EquipmentCategory })}
-                disabled={!canEdit}
-              >
-                {(Object.keys(CATEGORY_LABELS) as EquipmentCategory[]).map((k) => (
-                  <option key={k} value={k}>
-                    {CATEGORY_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Vendor / Brand</label>
-              <input
-                className={inputCls}
-                value={item.vendor ?? ""}
-                onChange={(e) => onUpdate({ vendor: e.target.value || null })}
-                placeholder="e.g. La Marzocco"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Model</label>
-              <input
-                className={inputCls}
-                value={item.model ?? ""}
-                onChange={(e) => onUpdate({ model: e.target.value || null })}
-                placeholder="e.g. Linea Micra 2-Group"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Quantity</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={1}
-                value={item.quantity}
-                onChange={(e) => onUpdate({ quantity: parseInt(e.target.value, 10) || 1 })}
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Unit cost (USD)</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={50}
-                value={item.unit_cost_cents ? item.unit_cost_cents / 100 : ""}
-                onChange={(e) =>
-                  onUpdate({ unit_cost_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="0"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Priority</label>
-              <select
-                className={inputCls}
-                value={item.priority_tier}
-                onChange={(e) => onUpdate({ priority_tier: e.target.value as PriorityTier })}
-                disabled={!canEdit}
-              >
-                <option value="must_have">Must-have</option>
-                <option value="nice_to_have">Nice-to-have</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Financing method</label>
-              <select
-                className={inputCls}
-                value={item.financing_method}
-                onChange={(e) => onUpdate({ financing_method: e.target.value as FinancingMethod })}
-                disabled={!canEdit}
-              >
-                {(Object.keys(FINANCING_LABELS) as FinancingMethod[]).map((k) => (
-                  <option key={k} value={k}>
-                    {FINANCING_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Notes</label>
-              <input
-                className={inputCls}
-                value={item.notes ?? ""}
-                onChange={(e) => onUpdate({ notes: e.target.value || null })}
-                placeholder="Brief note (spec, why this item, etc.)"
-                disabled={!canEdit}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function EquipmentTab({
   planId,
   canEdit,
@@ -359,85 +141,8 @@ function EquipmentTab({
   const [seedDismissed, setSeedDismissed] = useState(
     items.some((i) => i.source === "ai_suggested")
   );
-  const [savingId, setSavingId] = useState<string | null>(null);
 
   const aiSeeded = items.some((i) => i.source === "ai_suggested");
-  const totalCents = items.reduce((s, e) => s + e.unit_cost_cents * e.quantity, 0);
-  const mustHaveCount = items.filter((e) => e.priority_tier === "must_have").length;
-  const niceToHaveCount = items.filter((e) => e.priority_tier === "nice_to_have").length;
-
-  async function addItem() {
-    if (!canEdit) return;
-    const placeholder = newItem(planId, items.length);
-    const tempId = `__new_${Date.now()}`;
-    const optimistic = { ...placeholder, id: tempId };
-    onItemsChange([...items, optimistic]);
-
-    try {
-      const res = await fetch("/api/workspaces/financials/equipment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: placeholder.name || "New item",
-          category: placeholder.category,
-          quantity: placeholder.quantity,
-          unit_cost_cents: placeholder.unit_cost_cents,
-          priority_tier: placeholder.priority_tier,
-          financing_method: placeholder.financing_method,
-          source: "user_added",
-          position: items.length,
-        }),
-      });
-      if (!res.ok) throw new Error(`create failed (${res.status})`);
-      const created = (await res.json()) as EquipmentItem;
-      onItemsChange(
-        [...items, optimistic].map((i) => (i.id === tempId ? created : i))
-      );
-    } catch {
-      onItemsChange(items);
-    }
-  }
-
-  async function updateItem(id: string, patch: Partial<EquipmentItem>) {
-    if (!canEdit) return;
-    const next = items.map((i) => (i.id === id ? { ...i, ...patch } : i));
-    onItemsChange(next);
-
-    if (!id || id.startsWith("__new_")) return;
-
-    setSavingId(id);
-    try {
-      const res = await fetch(`/api/workspaces/financials/equipment/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error(`update failed (${res.status})`);
-      const updated = (await res.json()) as EquipmentItem;
-      onItemsChange(items.map((i) => (i.id === id ? updated : i)));
-    } catch {
-      onItemsChange(items);
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  async function removeItem(id: string) {
-    if (!canEdit) return;
-    const next = items.filter((i) => i.id !== id);
-    onItemsChange(next);
-
-    if (!id || id.startsWith("__new_")) return;
-
-    try {
-      const res = await fetch(`/api/workspaces/financials/equipment/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error(`delete failed (${res.status})`);
-    } catch {
-      onItemsChange(items);
-    }
-  }
 
   async function handleSeed() {
     setSeedStatus("loading");
@@ -494,50 +199,12 @@ function EquipmentTab({
         </div>
       )}
 
-      {items.length > 0 && (
-        <div className="flex items-center gap-4 text-xs text-[#6b6b6b] px-1">
-          <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
-          <span className="text-[#efefef]">|</span>
-          <span>{mustHaveCount} must-have, {niceToHaveCount} nice-to-have</span>
-          <span className="text-[#efefef]">|</span>
-          <span className="font-semibold text-[#1a1a1a]">
-            Total: {formatCurrency(totalCents / 100)}
-          </span>
-        </div>
-      )}
-
-      {items.length > 0 ? (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <EquipmentRow
-              key={item.id}
-              item={item}
-              canEdit={canEdit}
-              onUpdate={(patch) => updateItem(item.id, patch)}
-              onRemove={() => removeItem(item.id)}
-              saving={savingId === item.id}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-[#e0e0e0] py-10 text-center">
-          <p className="text-sm text-[#afafaf]">No equipment added yet.</p>
-          <p className="text-xs text-[#c0c0c0] mt-1">
-            Generate a starter list above or add items manually.
-          </p>
-        </div>
-      )}
-
-      {canEdit && (
-        <button
-          type="button"
-          onClick={addItem}
-          className="flex items-center gap-2 text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors w-full justify-center"
-        >
-          <Plus size={14} aria-hidden="true" />
-          Add item
-        </button>
-      )}
+      <EquipmentGrid
+        planId={planId}
+        canEdit={canEdit}
+        items={items}
+        onItemsChange={onItemsChange}
+      />
     </div>
   );
 }
