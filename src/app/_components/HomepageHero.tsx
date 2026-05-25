@@ -263,16 +263,17 @@ export default function HomepageHero() {
           <motion.h1
             className="font-bold text-white mb-5"
             style={{
-              fontSize: "clamp(2.6rem, 5.5vw, 3.75rem)",
+              fontSize: "clamp(2.25rem, 5.5vw, 3.75rem)",
               lineHeight: 1.07,
               fontWeight: 700,
               letterSpacing: "-0.02em",
+              textWrap: "balance",
             }}
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.52, delay: 0.18, ease: EASE }}
           >
-            From Coffee Shop Idea
+            From <span style={{ whiteSpace: "nowrap" }}>Coffee Shop Idea</span>
             <br />
             to Open Sign.
           </motion.h1>
