@@ -1185,7 +1185,7 @@ export function MenuWorkspace({
     if (recipeLines.length > 0) {
       for (const line of recipeLines) {
         const ing = ingredients.find((i) => i.id === line.ingredient_id);
-        if (ing) cogsCents += Math.round(line.amount * costPerUnit(ing));
+        if (ing) cogsCents += Math.round(line.amount * costPerUnit(ing) * 100);
       }
     } else {
       cogsCents = item.cogs_cents ?? item.computed_cogs_cents ?? 0;
