@@ -706,7 +706,7 @@ export function LaunchPlanWorkspace({
         {/* First-visit copy (no milestones, no launch date) */}
         {milestones.length === 0 && !config.lastGeneratedAt && (
           <div className="rounded-xl bg-white border border-slate-200 px-5 py-4 text-sm text-slate-500">
-            Complete your Concept, Location, and Equipment sections first — your launch plan will be much more accurate.
+            Complete your Concept, Location, and Equipment sections first. Your launch plan will be much more accurate.
           </div>
         )}
 
@@ -740,7 +740,7 @@ export function LaunchPlanWorkspace({
             <p className="text-sm font-semibold text-red-700">Lead-time conflicts detected:</p>
             {conflicts.map((c) => (
               <p key={c.milestoneId} className="text-xs text-red-600">
-                <strong>{c.title}</strong> needs {c.requiredDays} days but only {c.availableDays} days available — adjust the timeline or your launch date.
+                <strong>{c.title}</strong> needs {c.requiredDays} days but only {c.availableDays} days available. Adjust the timeline or your launch date.
               </p>
             ))}
           </div>
@@ -798,7 +798,7 @@ export function LaunchPlanWorkspace({
           )}
           {milestones.length > 0 && !generating && config.lastGeneratedAt && (
             <p className="mt-2 text-xs text-slate-400">
-              After completing other sections, regenerate for a more tailored plan.
+              After completing other sections, regenerate for a more accurate plan.
             </p>
           )}
         </div>
