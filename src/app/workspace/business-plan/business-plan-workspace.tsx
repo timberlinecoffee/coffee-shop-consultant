@@ -283,18 +283,30 @@ export function BusinessPlanWorkspace({
         </header>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 gap-3">
           <p className="text-xs text-[#888]">
             {visibleCount} of {sections.length} sections visible
           </p>
-          <button
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || !canEdit}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#155e63] text-[#155e63] text-sm font-medium hover:bg-[#155e63] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Download className="w-3.5 h-3.5" />
-            {isExportingPdf ? "Exporting..." : "Export PDF"}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* TIM-1062: HTML print bundles every workspace into one printable doc */}
+            <a
+              href="/workspace/business-plan/print"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#155e63] text-[#155e63] text-sm font-medium hover:bg-[#155e63] hover:text-white transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Print full plan
+            </a>
+            <button
+              onClick={handleExportPdf}
+              disabled={isExportingPdf || !canEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#155e63] text-[#155e63] text-sm font-medium hover:bg-[#155e63] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {isExportingPdf ? "Exporting..." : "Export PDF"}
+            </button>
+          </div>
         </div>
 
         {globalError && (
