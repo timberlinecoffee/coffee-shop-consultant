@@ -986,7 +986,7 @@ function MenuItemRow({
       ? item.computed_cogs_cents
       : (item.cogs_cents ?? 0);
 
-  const gpCents = item.price_cents > 0 ? item.price_cents - cogs : null;
+  const gpCents = item.price_cents > 0 && cogs > 0 ? item.price_cents - cogs : null;
   const gpPct =
     item.price_cents > 0 && cogs > 0
       ? Math.round(((item.price_cents - cogs) / item.price_cents) * 100)
