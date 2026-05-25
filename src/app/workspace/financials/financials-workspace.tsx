@@ -1,8 +1,7 @@
 "use client";
 
 // TIM-972: Financial Suite — DB-backed architecture.
-// Equipment → buildout_equipment_items (REST). Forecast → financial_models (REST).
-// Projections computed client-side from DB-backed state.
+// TIM-1004: Per-day schedule + itemized operating expenses.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart2, ChevronDown, ChevronUp, Plus, Trash2, X, AlertTriangle } from "lucide-react";
@@ -12,7 +11,12 @@ import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressPr
 import {
   type MonthlyProjections,
   type FinancialProjections,
+  type DayKey,
+  type DaySchedule,
+  type OpexLine,
   computeProjections,
+  computeDayHours,
+  computeWeeklyHours,
   formatCurrency,
   normalizeMonthlyProjections,
 } from "@/lib/financial-projection";
@@ -365,7 +369,6 @@ function EquipmentTab({
   async function addItem() {
     if (!canEdit) return;
     const placeholder = newItem(planId, items.length);
-    // Optimistic: add with temp id
     const tempId = `__new_${Date.now()}`;
     const optimistic = { ...placeholder, id: tempId };
     onItemsChange([...items, optimistic]);
@@ -391,14 +394,12 @@ function EquipmentTab({
         [...items, optimistic].map((i) => (i.id === tempId ? created : i))
       );
     } catch {
-      // Revert
       onItemsChange(items);
     }
   }
 
   async function updateItem(id: string, patch: Partial<EquipmentItem>) {
     if (!canEdit) return;
-    // Optimistic update
     const next = items.map((i) => (i.id === id ? { ...i, ...patch } : i));
     onItemsChange(next);
 
@@ -415,7 +416,6 @@ function EquipmentTab({
       const updated = (await res.json()) as EquipmentItem;
       onItemsChange(items.map((i) => (i.id === id ? updated : i)));
     } catch {
-      // Revert
       onItemsChange(items);
     } finally {
       setSavingId(null);
@@ -424,7 +424,6 @@ function EquipmentTab({
 
   async function removeItem(id: string) {
     if (!canEdit) return;
-    // Optimistic
     const next = items.filter((i) => i.id !== id);
     onItemsChange(next);
 
@@ -436,7 +435,6 @@ function EquipmentTab({
       });
       if (!res.ok) throw new Error(`delete failed (${res.status})`);
     } catch {
-      // Revert
       onItemsChange(items);
     }
   }
@@ -446,7 +444,6 @@ function EquipmentTab({
     try {
       const res = await fetch("/api/workspaces/financials/seed", { method: "POST" });
       if (!res.ok) throw new Error(`seed failed (${res.status})`);
-      // Reload equipment from DB
       const listRes = await fetch("/api/workspaces/financials/equipment");
       if (!listRes.ok) throw new Error(`reload failed (${listRes.status})`);
       const newItems = (await listRes.json()) as EquipmentItem[];
@@ -460,7 +457,6 @@ function EquipmentTab({
 
   return (
     <div className="space-y-4">
-      {/* AI Seed callout */}
       {!seedDismissed && !aiSeeded && canEdit && (
         <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4">
           <div className="flex items-start justify-between gap-3">
@@ -498,7 +494,6 @@ function EquipmentTab({
         </div>
       )}
 
-      {/* Summary bar */}
       {items.length > 0 && (
         <div className="flex items-center gap-4 text-xs text-[#6b6b6b] px-1">
           <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
@@ -511,7 +506,6 @@ function EquipmentTab({
         </div>
       )}
 
-      {/* Equipment list */}
       {items.length > 0 ? (
         <div className="space-y-2">
           {items.map((item) => (
@@ -550,11 +544,165 @@ function EquipmentTab({
 
 // ── Forecast tab ──────────────────────────────────────────────────────────────
 
-type DayKey = keyof MonthlyProjections["daily_flow"];
+const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 const DAY_LABELS: Record<DayKey, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
+
+const DAY_FULL_LABELS: Record<DayKey, string> = {
+  mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday",
+  fri: "Friday", sat: "Saturday", sun: "Sunday",
+};
+
+// OpexLine input: % of revenue or flat $/month toggle
+function OpexLineInput({
+  label,
+  hint,
+  value,
+  canEdit,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: OpexLine;
+  canEdit: boolean;
+  onChange: (v: OpexLine) => void;
+}) {
+  const inputCls =
+    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-[#f5f5f5] last:border-0">
+      <div className="w-32 shrink-0">
+        <p className="text-sm text-[#1a1a1a]">{label}</p>
+        <p className="text-[10px] text-[#afafaf] mt-0.5 leading-snug">{hint}</p>
+      </div>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        {canEdit ? (
+          <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => onChange({ ...value, mode: "pct" })}
+              className={`text-xs px-2.5 py-1.5 font-medium transition-colors ${
+                value.mode === "pct"
+                  ? "bg-[#155e63] text-white"
+                  : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
+              }`}
+            >
+              %
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ ...value, mode: "flat" })}
+              className={`text-xs px-2.5 py-1.5 font-medium transition-colors ${
+                value.mode === "flat"
+                  ? "bg-[#155e63] text-white"
+                  : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
+              }`}
+            >
+              $
+            </button>
+          </div>
+        ) : (
+          <span className="text-[10px] font-medium text-[#6b6b6b] shrink-0 bg-[#f0f0f0] px-2 py-1 rounded">
+            {value.mode === "pct" ? "%" : "$"}
+          </span>
+        )}
+        {value.mode === "pct" ? (
+          <div className="relative flex-1 min-w-0 max-w-[120px]">
+            <input
+              className={`${inputCls} w-full pr-8`}
+              type="number"
+              min={0}
+              max={100}
+              step={0.5}
+              value={value.pct || ""}
+              onChange={(e) => onChange({ ...value, pct: parseFloat(e.target.value) || 0 })}
+              placeholder="0"
+              disabled={!canEdit}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+              %
+            </span>
+          </div>
+        ) : (
+          <div className="relative flex-1 min-w-0 max-w-[120px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+              $
+            </span>
+            <input
+              className={`${inputCls} w-full pl-6`}
+              type="number"
+              min={0}
+              step={50}
+              value={value.flat_cents ? value.flat_cents / 100 : ""}
+              onChange={(e) =>
+                onChange({ ...value, flat_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
+              }
+              placeholder="0"
+              disabled={!canEdit}
+            />
+          </div>
+        )}
+        <span className="text-[10px] text-[#afafaf] shrink-0">
+          {value.mode === "pct" ? "% of revenue" : "/ mo"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FlatLineInput({
+  label,
+  hint,
+  valueCents,
+  canEdit,
+  step,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  valueCents: number;
+  canEdit: boolean;
+  step?: number;
+  onChange: (cents: number) => void;
+}) {
+  const inputCls =
+    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-[#f5f5f5] last:border-0">
+      <div className="w-32 shrink-0">
+        <p className="text-sm text-[#1a1a1a]">{label}</p>
+        <p className="text-[10px] text-[#afafaf] mt-0.5 leading-snug">{hint}</p>
+      </div>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <span className="text-[10px] font-medium text-[#6b6b6b] shrink-0 bg-[#f0f0f0] px-2.5 py-1.5 rounded-lg border border-[#e0e0e0]">
+          $
+        </span>
+        <div className="relative flex-1 min-w-0 max-w-[120px]">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+            $
+          </span>
+          <input
+            className={`${inputCls} w-full pl-6`}
+            type="number"
+            min={0}
+            step={step ?? 50}
+            value={valueCents ? valueCents / 100 : ""}
+            onChange={(e) =>
+              onChange(Math.round((parseFloat(e.target.value) || 0) * 100))
+            }
+            placeholder="0"
+            disabled={!canEdit}
+          />
+        </div>
+        <span className="text-[10px] text-[#afafaf] shrink-0">/ mo</span>
+      </div>
+    </div>
+  );
+}
 
 function ForecastTab({
   mp,
@@ -573,10 +721,22 @@ function ForecastTab({
     update({ daily_flow: { ...mp.daily_flow, [day]: val } });
   }
 
-  const totalWeeklyCustomers = (Object.keys(DAY_LABELS) as DayKey[]).reduce(
-    (sum, d) => sum + (mp.daily_flow[d] || 0),
-    0
-  );
+  function updateScheduleDay(day: DayKey, patch: Partial<DaySchedule>) {
+    update({
+      weekly_schedule: {
+        ...mp.weekly_schedule,
+        [day]: { ...mp.weekly_schedule[day], ...patch },
+      },
+    });
+  }
+
+  function updateOpexLine(field: "labor" | "marketing", val: OpexLine) {
+    update({ [field]: val });
+  }
+
+  const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
+  const totalWeeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
+  const weeklyHours = computeWeeklyHours(mp.weekly_schedule);
 
   const inputCls =
     "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
@@ -585,16 +745,22 @@ function ForecastTab({
 
   return (
     <div className="space-y-6">
+      {/* Customer Flow */}
       <div>
-        <p className={sectionLabelCls}>Customer flow by day</p>
+        <p className={sectionLabelCls}>Customer Flow by Day</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
-            Estimated customers per day. Used to calculate annual revenue.
+            Estimated customers per open day. Closed days are excluded from revenue calculations.
           </p>
-          <div className="grid grid-cols-7 gap-2">
-            {(Object.keys(DAY_LABELS) as DayKey[]).map((day) => {
+          <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
+            {DAY_KEYS.map((day) => {
+              const isOpen = mp.weekly_schedule[day].open;
+              if (!isOpen) return null;
               const val = mp.daily_flow[day] || 0;
-              const maxVal = Math.max(...Object.values(mp.daily_flow).map(Number), 1);
+              const maxVal = Math.max(
+                ...openDays.map((d) => mp.daily_flow[d] || 0),
+                1
+              );
               const barPct = (val / maxVal) * 100;
               return (
                 <div key={day} className="flex flex-col items-center gap-1">
@@ -614,22 +780,108 @@ function ForecastTab({
                     onChange={(e) => updateFlow(day, parseInt(e.target.value, 10) || 0)}
                     placeholder="0"
                     disabled={!canEdit}
-                    aria-label={`Customers on ${DAY_LABELS[day]}`}
+                    aria-label={`Customers on ${DAY_FULL_LABELS[day]}`}
                   />
                 </div>
               );
             })}
           </div>
+          {openDays.length === 0 && (
+            <p className="text-xs text-[#afafaf] text-center py-4">No open days selected.</p>
+          )}
           <p className="text-xs text-[#afafaf] mt-3">
-            Weekly total: {totalWeeklyCustomers.toLocaleString()} customers
+            Weekly total: {totalWeeklyCustomers.toLocaleString()} customers across {openDays.length} open day{openDays.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
 
+      {/* Operating Schedule */}
       <div>
-        <p className={sectionLabelCls}>Revenue drivers</p>
+        <p className={sectionLabelCls}>Operating Schedule</p>
+        <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px]">
+              <thead>
+                <tr className="border-b border-[#efefef] bg-[#faf9f7]">
+                  <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Day</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Open</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Opens</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Closes</th>
+                  <th className="py-2.5 pl-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Hrs</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f5f5f5]">
+                {DAY_KEYS.map((day) => {
+                  const sched = mp.weekly_schedule[day];
+                  const hours = computeDayHours(sched);
+                  return (
+                    <tr key={day} className={!sched.open ? "bg-[#faf9f7]" : ""}>
+                      <td className="py-2.5 pl-4 pr-2 text-sm font-medium text-[#1a1a1a]">
+                        {DAY_LABELS[day]}
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <input
+                          type="checkbox"
+                          checked={sched.open}
+                          onChange={(e) => updateScheduleDay(day, { open: e.target.checked })}
+                          disabled={!canEdit}
+                          className="w-4 h-4 accent-[#155e63] cursor-pointer disabled:cursor-default"
+                          aria-label={`${DAY_FULL_LABELS[day]} open`}
+                        />
+                      </td>
+                      <td className="py-2 px-2">
+                        {sched.open ? (
+                          <input
+                            type="time"
+                            value={sched.open_time}
+                            onChange={(e) => updateScheduleDay(day, { open_time: e.target.value })}
+                            disabled={!canEdit}
+                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-28"
+                          />
+                        ) : (
+                          <span className="text-sm text-[#c0c0c0]">—</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-2">
+                        {sched.open ? (
+                          <input
+                            type="time"
+                            value={sched.close_time}
+                            onChange={(e) => updateScheduleDay(day, { close_time: e.target.value })}
+                            disabled={!canEdit}
+                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-28"
+                          />
+                        ) : (
+                          <span className="text-sm text-[#c0c0c0]">—</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pl-2 pr-4 text-right text-sm text-[#6b6b6b]">
+                        {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-[#e0e0e0] bg-[#faf9f7]">
+                  <td colSpan={4} className="py-2.5 pl-4 pr-2 text-xs font-semibold text-[#6b6b6b]">
+                    Weekly total
+                  </td>
+                  <td className="py-2.5 pl-2 pr-4 text-right text-sm font-semibold text-[#1a1a1a]">
+                    {weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Revenue Drivers */}
+      <div>
+        <p className={sectionLabelCls}>Revenue Drivers</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Average ticket (USD)</label>
               <input
@@ -647,40 +899,6 @@ function ForecastTab({
               <p className="text-[10px] text-[#afafaf] mt-1">Typical espresso bar: $6–$10</p>
             </div>
             <div>
-              <label className={labelCls}>Open days per week</label>
-              <select
-                className={inputCls}
-                value={mp.open_days_per_week}
-                onChange={(e) => update({ open_days_per_week: parseInt(e.target.value, 10) })}
-                disabled={!canEdit}
-              >
-                {[5, 6, 7].map((n) => (
-                  <option key={n} value={n}>{n} days/week</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Hours open per day</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={1}
-                max={24}
-                value={mp.hours_per_day || ""}
-                onChange={(e) => update({ hours_per_day: parseInt(e.target.value, 10) || 0 })}
-                placeholder="10"
-                disabled={!canEdit}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className={sectionLabelCls}>Costs</p>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
               <label className={labelCls}>COGS % of revenue</label>
               <input
                 className={inputCls}
@@ -694,65 +912,128 @@ function ForecastTab({
               />
               <p className="text-[10px] text-[#afafaf] mt-1">Typical coffee shop: 28–35%</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Operating Expenses */}
+      <div>
+        <p className={sectionLabelCls}>Operating Expenses</p>
+        <div className="rounded-xl border border-[#efefef] bg-white px-4 py-2">
+          <p className="text-xs text-[#6b6b6b] pt-2 pb-3">
+            For each line item, choose % of revenue or a flat monthly amount.
+          </p>
+
+          <OpexLineInput
+            label="Labor"
+            hint="Wages, payroll taxes, benefits. Typical: 28–32%"
+            value={mp.labor}
+            canEdit={canEdit}
+            onChange={(v) => updateOpexLine("labor", v)}
+          />
+
+          <FlatLineInput
+            label="Rent"
+            hint="Monthly base rent"
+            valueCents={mp.monthly_rent_cents}
+            canEdit={canEdit}
+            step={100}
+            onChange={(c) => update({ monthly_rent_cents: c })}
+          />
+
+          <OpexLineInput
+            label="Marketing"
+            hint="Ads, promotions, social. Typical: 1–3%"
+            value={mp.marketing}
+            canEdit={canEdit}
+            onChange={(v) => updateOpexLine("marketing", v)}
+          />
+
+          <FlatLineInput
+            label="Utilities"
+            hint="Gas, electric, water, internet"
+            valueCents={mp.utilities_monthly_cents}
+            canEdit={canEdit}
+            onChange={(c) => update({ utilities_monthly_cents: c })}
+          />
+
+          <FlatLineInput
+            label="Insurance"
+            hint="General liability, workers comp, property"
+            valueCents={mp.insurance_monthly_cents}
+            canEdit={canEdit}
+            onChange={(c) => update({ insurance_monthly_cents: c })}
+          />
+
+          <FlatLineInput
+            label="Tech & Software"
+            hint="POS, payment processing, scheduling, SaaS"
+            valueCents={mp.tech_monthly_cents}
+            canEdit={canEdit}
+            onChange={(c) => update({ tech_monthly_cents: c })}
+          />
+
+          <FlatLineInput
+            label="Maintenance"
+            hint="Equipment repairs, upkeep"
+            valueCents={mp.maintenance_monthly_cents}
+            canEdit={canEdit}
+            onChange={(c) => update({ maintenance_monthly_cents: c })}
+          />
+
+          <FlatLineInput
+            label="Supplies"
+            hint="Cleaning, paper, smallwares replenishment"
+            valueCents={mp.supplies_monthly_cents}
+            canEdit={canEdit}
+            onChange={(c) => update({ supplies_monthly_cents: c })}
+          />
+
+          <FlatLineInput
+            label="Other"
+            hint="Miscellaneous operating expenses"
+            valueCents={mp.other_monthly_cents}
+            canEdit={canEdit}
+            onChange={(c) => update({ other_monthly_cents: c })}
+          />
+        </div>
+      </div>
+
+      {/* Below the line */}
+      <div>
+        <p className={sectionLabelCls}>Below the Line</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Labor % of revenue</label>
+              <label className={labelCls}>Monthly interest (USD)</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                step={50}
+                value={mp.interest_monthly_cents ? mp.interest_monthly_cents / 100 : ""}
+                onChange={(e) =>
+                  update({ interest_monthly_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
+                }
+                placeholder="0"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">Loan interest payments</p>
+            </div>
+            <div>
+              <label className={labelCls}>Tax rate %</label>
               <input
                 className={inputCls}
                 type="number"
                 min={0}
                 max={100}
-                value={mp.labor_pct || ""}
-                onChange={(e) => update({ labor_pct: parseFloat(e.target.value) || 0 })}
-                placeholder="35"
+                step={1}
+                value={mp.taxes_pct || ""}
+                onChange={(e) => update({ taxes_pct: parseFloat(e.target.value) || 0 })}
+                placeholder="25"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">Healthy range: 30–38%</p>
-            </div>
-            <div>
-              <label className={labelCls}>Monthly rent (USD)</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={100}
-                value={mp.monthly_rent_cents ? mp.monthly_rent_cents / 100 : ""}
-                onChange={(e) =>
-                  update({ monthly_rent_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="4500"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Monthly utilities (USD)</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={50}
-                value={mp.utilities_monthly_cents ? mp.utilities_monthly_cents / 100 : ""}
-                onChange={(e) =>
-                  update({ utilities_monthly_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="600"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Other operating expenses (USD/mo)</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={50}
-                value={mp.other_opex_monthly_cents ? mp.other_opex_monthly_cents / 100 : ""}
-                onChange={(e) =>
-                  update({ other_opex_monthly_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="800"
-                disabled={!canEdit}
-              />
-              <p className="text-[10px] text-[#afafaf] mt-1">Marketing, supplies, insurance, etc.</p>
+              <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
             </div>
           </div>
         </div>
@@ -764,26 +1045,54 @@ function ForecastTab({
 // ── Projections tab ───────────────────────────────────────────────────────────
 
 function MetricRow({
-  label, y1, y3, y5, bold, negative, highlight,
+  label,
+  y1,
+  y3,
+  y5,
+  bold,
+  negative,
+  highlight,
+  indent,
+  separator,
 }: {
-  label: string; y1: number; y3: number; y5: number;
-  bold?: boolean; negative?: boolean; highlight?: boolean;
+  label: string;
+  y1: number;
+  y3: number;
+  y5: number;
+  bold?: boolean;
+  negative?: boolean;
+  highlight?: boolean;
+  indent?: boolean;
+  separator?: boolean;
 }) {
-  const cls = `py-2.5 px-3 text-right text-sm tabular-nums ${bold ? "font-semibold" : ""} ${
+  const cls = `py-2 px-3 text-right text-sm tabular-nums ${bold ? "font-semibold" : ""} ${
     highlight ? "text-[#155e63]" : negative ? "text-[#a13d3d]" : "text-[#1a1a1a]"
   }`;
   return (
-    <tr>
-      <td className={`py-2.5 pl-4 pr-2 text-sm ${bold ? "font-semibold text-[#1a1a1a]" : "text-[#6b6b6b]"}`}>
-        {label}
-      </td>
-      <td className={cls}>{formatCurrency(y1)}</td>
-      <td className={cls}>{formatCurrency(y3)}</td>
-      <td className={cls}>{formatCurrency(y5)}</td>
-      <td className="py-2.5 pr-4 pl-2 text-right">
-        <Sparkline values={[y1, y3, y5]} />
-      </td>
-    </tr>
+    <>
+      {separator && (
+        <tr>
+          <td colSpan={5} className="py-0">
+            <div className="border-t border-[#e0e0e0] mx-4" />
+          </td>
+        </tr>
+      )}
+      <tr>
+        <td
+          className={`py-2 pr-2 text-sm ${indent ? "pl-8" : "pl-4"} ${
+            bold ? "font-semibold text-[#1a1a1a]" : "text-[#6b6b6b]"
+          }`}
+        >
+          {label}
+        </td>
+        <td className={cls}>{formatCurrency(y1)}</td>
+        <td className={cls}>{formatCurrency(y3)}</td>
+        <td className={cls}>{formatCurrency(y5)}</td>
+        <td className="py-2 pr-4 pl-2 text-right">
+          <Sparkline values={[y1, y3, y5]} />
+        </td>
+      </tr>
+    </>
   );
 }
 
@@ -821,7 +1130,11 @@ function ProjectionsTab({
   }
 
   const bulletIcon = { strength: "✓", weakness: "!", suggestion: "→" } as const;
-  const bulletColor = { strength: "text-[#155e63]", weakness: "text-[#a13d3d]", suggestion: "text-[#6b6b6b]" } as const;
+  const bulletColor = {
+    strength: "text-[#155e63]",
+    weakness: "text-[#a13d3d]",
+    suggestion: "text-[#6b6b6b]",
+  } as const;
 
   return (
     <div className="space-y-6">
@@ -836,35 +1149,123 @@ function ProjectionsTab({
           <table className="w-full min-w-[480px]">
             <thead>
               <tr className="border-b border-[#efefef]">
-                <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Metric</th>
-                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Year 1</th>
-                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Year 3</th>
-                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Year 5</th>
-                <th className="py-2.5 pr-4 pl-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Trend</th>
+                <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                  Metric
+                </th>
+                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                  Year 1
+                </th>
+                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                  Year 3
+                </th>
+                <th className="py-2.5 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                  Year 5
+                </th>
+                <th className="py-2.5 pr-4 pl-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                  Trend
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f5f5f5]">
               <MetricRow label="Revenue" y1={y1.revenue} y3={y3.revenue} y5={y5.revenue} bold />
-              <MetricRow label="COGS" y1={y1.cogs} y3={y3.cogs} y5={y5.cogs} negative />
-              <MetricRow label="Gross Margin" y1={y1.gross_margin} y3={y3.gross_margin} y5={y5.gross_margin} bold highlight />
-              <MetricRow label="Labor" y1={y1.labor} y3={y3.labor} y5={y5.labor} negative />
-              <MetricRow label="Rent" y1={y1.rent} y3={y3.rent} y5={y5.rent} negative />
-              <MetricRow label="Utilities" y1={y1.utilities} y3={y3.utilities} y5={y5.utilities} negative />
-              <MetricRow label="Other OpEx" y1={y1.other_opex} y3={y3.other_opex} y5={y5.other_opex} negative />
-              <MetricRow label="Total OpEx" y1={y1.total_opex} y3={y3.total_opex} y5={y5.total_opex} bold negative />
-              <MetricRow label="EBITDA" y1={y1.ebitda} y3={y3.ebitda} y5={y5.ebitda} bold highlight />
+              <MetricRow label="COGS" y1={-y1.cogs} y3={-y3.cogs} y5={-y5.cogs} negative indent />
+              <MetricRow
+                label="Gross Profit"
+                y1={y1.gross_profit}
+                y3={y3.gross_profit}
+                y5={y5.gross_profit}
+                bold
+                highlight
+                separator
+              />
+
+              {/* Operating Expenses */}
+              <MetricRow label="Labor" y1={-y1.labor} y3={-y3.labor} y5={-y5.labor} negative indent separator />
+              <MetricRow label="Rent" y1={-y1.rent} y3={-y3.rent} y5={-y5.rent} negative indent />
+              <MetricRow label="Marketing" y1={-y1.marketing} y3={-y3.marketing} y5={-y5.marketing} negative indent />
+              <MetricRow label="Utilities" y1={-y1.utilities} y3={-y3.utilities} y5={-y5.utilities} negative indent />
+              <MetricRow label="Insurance" y1={-y1.insurance} y3={-y3.insurance} y5={-y5.insurance} negative indent />
+              <MetricRow label="Tech & Software" y1={-y1.tech} y3={-y3.tech} y5={-y5.tech} negative indent />
+              <MetricRow label="Maintenance" y1={-y1.maintenance} y3={-y3.maintenance} y5={-y5.maintenance} negative indent />
+              <MetricRow label="Supplies" y1={-y1.supplies} y3={-y3.supplies} y5={-y5.supplies} negative indent />
+              <MetricRow label="Other" y1={-y1.other_misc} y3={-y3.other_misc} y5={-y5.other_misc} negative indent />
+              <MetricRow
+                label="Total Operating Expenses"
+                y1={-y1.total_opex}
+                y3={-y3.total_opex}
+                y5={-y5.total_opex}
+                bold
+                negative
+              />
+              <MetricRow
+                label="Operating Income"
+                y1={y1.operating_income}
+                y3={y3.operating_income}
+                y5={y5.operating_income}
+                bold
+                highlight
+                separator
+              />
+
+              {/* Below the line */}
               {projections.financed_total > 0 && (
-                <MetricRow label="Depreciation" y1={y1.depreciation} y3={y3.depreciation} y5={y5.depreciation} negative />
+                <MetricRow
+                  label="Depreciation"
+                  y1={-y1.depreciation}
+                  y3={-y3.depreciation}
+                  y5={-y5.depreciation}
+                  negative
+                  indent
+                  separator
+                />
               )}
-              <MetricRow label="Net Income" y1={y1.net_income} y3={y3.net_income} y5={y5.net_income} bold highlight />
+              {(y1.interest > 0 || y3.interest > 0) && (
+                <MetricRow
+                  label="Interest"
+                  y1={-y1.interest}
+                  y3={-y3.interest}
+                  y5={-y5.interest}
+                  negative
+                  indent
+                  separator={projections.financed_total === 0}
+                />
+              )}
+              <MetricRow
+                label="Income Before Taxes"
+                y1={y1.income_before_taxes}
+                y3={y3.income_before_taxes}
+                y5={y5.income_before_taxes}
+                bold
+                separator
+              />
+              <MetricRow label="Taxes" y1={-y1.taxes} y3={-y3.taxes} y5={-y5.taxes} negative indent />
+              <MetricRow
+                label="Net Income"
+                y1={y1.net_income}
+                y3={y3.net_income}
+                y5={y5.net_income}
+                bold
+                highlight
+                separator
+              />
             </tbody>
           </table>
         </div>
         {projections.startup_equipment_total > 0 && (
           <div className="px-4 py-3 border-t border-[#efefef] flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6b6b6b]">
-            <span>Equipment total: <span className="font-semibold text-[#1a1a1a]">{formatCurrency(projections.startup_equipment_total)}</span></span>
+            <span>
+              Equipment total:{" "}
+              <span className="font-semibold text-[#1a1a1a]">
+                {formatCurrency(projections.startup_equipment_total)}
+              </span>
+            </span>
             {projections.financed_total > 0 && (
-              <span>Financed (7yr depreciation): <span className="font-semibold text-[#1a1a1a]">{formatCurrency(projections.financed_total)}</span></span>
+              <span>
+                Financed (7yr depreciation):{" "}
+                <span className="font-semibold text-[#1a1a1a]">
+                  {formatCurrency(projections.financed_total)}
+                </span>
+              </span>
             )}
           </div>
         )}
@@ -872,13 +1273,35 @@ function ProjectionsTab({
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Year 1 GM", value: `${y1.gross_margin_pct.toFixed(0)}%`, sub: "Gross margin", ok: y1.gross_margin_pct >= 60 },
-          { label: "Year 1 EBITDA", value: formatCurrency(y1.ebitda), sub: y1.revenue > 0 ? `${((y1.ebitda / y1.revenue) * 100).toFixed(0)}% margin` : "—", ok: y1.ebitda >= 0 },
-          { label: "Year 5 Net", value: formatCurrency(y5.net_income), sub: "Net income", ok: y5.net_income >= 0 },
+          {
+            label: "Year 1 GM",
+            value: `${y1.gross_margin_pct.toFixed(0)}%`,
+            sub: "Gross margin",
+            ok: y1.gross_margin_pct >= 60,
+          },
+          {
+            label: "Year 1 Op. Income",
+            value: formatCurrency(y1.operating_income),
+            sub: y1.revenue > 0 ? `${((y1.operating_income / y1.revenue) * 100).toFixed(0)}% margin` : "—",
+            ok: y1.operating_income >= 0,
+          },
+          {
+            label: "Year 5 Net",
+            value: formatCurrency(y5.net_income),
+            sub: "Net income",
+            ok: y5.net_income >= 0,
+          },
         ].map((kpi) => (
-          <div key={kpi.label} className={`rounded-xl border p-4 text-center ${kpi.ok ? "border-[#cfe0e1] bg-[#f4f9f8]" : "border-[#f0d4d4] bg-[#fdf5f5]"}`}>
+          <div
+            key={kpi.label}
+            className={`rounded-xl border p-4 text-center ${
+              kpi.ok ? "border-[#cfe0e1] bg-[#f4f9f8]" : "border-[#f0d4d4] bg-[#fdf5f5]"
+            }`}
+          >
             <p className="text-[10px] font-medium text-[#6b6b6b] mb-1">{kpi.label}</p>
-            <p className={`text-lg font-bold ${kpi.ok ? "text-[#155e63]" : "text-[#a13d3d]"}`}>{kpi.value}</p>
+            <p className={`text-lg font-bold ${kpi.ok ? "text-[#155e63]" : "text-[#a13d3d]"}`}>
+              {kpi.value}
+            </p>
             <p className="text-[10px] text-[#afafaf] mt-0.5">{kpi.sub}</p>
           </div>
         ))}
@@ -888,7 +1311,9 @@ function ProjectionsTab({
         <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[#1a1a1a]">AI Critique</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">Benchmarked against comparable independent coffee shops.</p>
+            <p className="text-xs text-[#6b6b6b] mt-0.5">
+              Benchmarked against comparable independent coffee shops.
+            </p>
           </div>
           {canEdit && (
             <button
@@ -897,7 +1322,11 @@ function ProjectionsTab({
               disabled={critiqueStatus === "loading"}
               className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60 shrink-0"
             >
-              {critiqueStatus === "loading" ? "Analyzing..." : localCritique ? "Refresh" : "Generate critique"}
+              {critiqueStatus === "loading"
+                ? "Analyzing..."
+                : localCritique
+                ? "Refresh"
+                : "Generate critique"}
             </button>
           )}
         </div>
@@ -915,17 +1344,18 @@ function ProjectionsTab({
               </li>
             ))}
           </ul>
-        ) : (
-          !canEdit ? null : (
-            <p className="px-5 py-4 text-sm text-[#afafaf]">
-              Run a critique to get benchmarked feedback on your projections.
-            </p>
-          )
+        ) : !canEdit ? null : (
+          <p className="px-5 py-4 text-sm text-[#afafaf]">
+            Run a critique to get benchmarked feedback on your projections.
+          </p>
         )}
         {localCritique?.generated_at && (
           <p className="px-5 py-3 border-t border-[#f5f5f5] text-[10px] text-[#afafaf]">
-            Generated {new Date(localCritique.generated_at).toLocaleDateString("en-US", {
-              month: "short", day: "numeric", year: "numeric",
+            Generated{" "}
+            {new Date(localCritique.generated_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
             })}
           </p>
         )}
@@ -965,14 +1395,12 @@ export function FinancialsWorkspace({
 
   const { setModuleProgress } = useWorkspaceProgress();
 
-  // Show review banner if needs_review_at is set and after the model was last saved
   const showReviewBanner =
     !reviewDismissed &&
     !!initialNeedsReviewAt &&
     !!initialModelUpdatedAtForReview &&
     new Date(initialNeedsReviewAt) > new Date(initialModelUpdatedAtForReview);
 
-  // Progress
   const progress = useMemo(() => {
     const hasEquipment = equipment.length > 0 ? 1 : 0;
     const hasFlow = Object.values(mp.daily_flow).some((v) => v > 0) ? 1 : 0;
@@ -984,7 +1412,6 @@ export function FinancialsWorkspace({
     setModuleProgress(2, progress.filled, progress.total);
   }, [progress.filled, progress.total, setModuleProgress]);
 
-  // Projections computed from equipment + forecast
   const equipmentSummary = useMemo(() => {
     const total_cost_cents = equipment.reduce((s, e) => s + e.unit_cost_cents * e.quantity, 0);
     const financed_cost_cents = equipment
@@ -1001,7 +1428,6 @@ export function FinancialsWorkspace({
   const lastSavedAt =
     saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null;
 
-  // Persist forecast + critique to financial_models
   const persist = useCallback(
     async (nextMp: MonthlyProjections, nextCritique: CritiqueResult | null) => {
       if (!canEdit) return;
@@ -1020,7 +1446,10 @@ export function FinancialsWorkspace({
           signal: controller.signal,
         });
         if (res.status === 402) {
-          setSaveState({ kind: "error", message: "Subscription paused — reactivate to keep editing." });
+          setSaveState({
+            kind: "error",
+            message: "Subscription paused — reactivate to keep editing.",
+          });
           setPaywallOpen(true);
           return;
         }
@@ -1029,7 +1458,10 @@ export function FinancialsWorkspace({
         setSaveState({ kind: "saved", at: data?.updated_at ?? new Date().toISOString() });
       } catch (err) {
         if (controller.signal.aborted) return;
-        setSaveState({ kind: "error", message: err instanceof Error ? err.message : "Could not save. Will retry." });
+        setSaveState({
+          kind: "error",
+          message: err instanceof Error ? err.message : "Could not save. Will retry.",
+        });
       }
     },
     [canEdit]
@@ -1060,10 +1492,13 @@ export function FinancialsWorkspace({
   }
 
   const saveLabel =
-    saveState.kind === "saving" ? "Saving..."
-    : saveState.kind === "dirty" ? "Unsaved changes"
-    : saveState.kind === "error" ? saveState.message
-    : formatTimestamp(lastSavedAt);
+    saveState.kind === "saving"
+      ? "Saving..."
+      : saveState.kind === "dirty"
+      ? "Unsaved changes"
+      : saveState.kind === "error"
+      ? saveState.message
+      : formatTimestamp(lastSavedAt);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "equipment", label: "Equipment" },
@@ -1077,21 +1512,25 @@ export function FinancialsWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <BarChart2 className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>Financials</h1>
+            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+              Financials
+            </h1>
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
             Plan your startup costs, forecast revenue, and project Year 1–5 performance.
           </p>
         </header>
 
-        {/* Reactive review banner */}
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
             <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800">Your concept or menu has changed</p>
+              <p className="text-sm font-medium text-amber-800">
+                Your concept or menu has changed
+              </p>
               <p className="text-xs text-amber-600 mt-0.5">
-                Review your equipment list and forecast inputs to make sure they still reflect your plan.
+                Review your equipment list and forecast inputs to make sure they still reflect your
+                plan.
               </p>
             </div>
             <button
@@ -1113,14 +1552,18 @@ export function FinancialsWorkspace({
                 type="button"
                 onClick={() => setActiveTab(t.id)}
                 className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors ${
-                  activeTab === t.id ? "bg-[#155e63] text-white" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                  activeTab === t.id
+                    ? "bg-[#155e63] text-white"
+                    : "text-[#6b6b6b] hover:text-[#1a1a1a]"
                 }`}
               >
                 {t.label}
               </button>
             ))}
           </nav>
-          <span className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
+          <span
+            className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
+          >
             {saveLabel}
           </span>
         </div>
