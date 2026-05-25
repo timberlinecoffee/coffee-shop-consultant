@@ -48,6 +48,14 @@ export interface MonthlyProjections {
   // Below-the-line items
   interest_monthly_cents: number;
   taxes_pct: number;
+
+  // Ramp / warm-up period (TIM-1035)
+  ramp_months: number;         // 0–12; months at reduced capacity before steady-state
+  ramp_multipliers: number[];  // per-ramp-month revenue %, length === ramp_months
+  // Month-to-month forecasted growth (TIM-1035)
+  growth_mode: "simple" | "custom";
+  growth_monthly_pct: number;        // simple mode: compounding % per month after ramp
+  growth_custom_monthly: number[];   // custom mode: per-month % rates (up to 60 entries)
 }
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -81,6 +89,11 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     other_monthly_cents: 20000,
     interest_monthly_cents: 0,
     taxes_pct: 25,
+    ramp_months: 3,
+    ramp_multipliers: [30, 55, 80],
+    growth_mode: "simple",
+    growth_monthly_pct: 2,
+    growth_custom_monthly: [],
   };
 }
 
@@ -206,6 +219,20 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       ? Math.round(legacyOther * 0.15)
       : defaults.other_monthly_cents;
 
+  // Ramp + growth fields — default to 0/empty for backward compat with existing stored data.
+  const ramp_months =
+    typeof r.ramp_months === "number" ? Math.min(12, Math.max(0, Math.round(r.ramp_months))) : 0;
+  const ramp_multipliers = Array.isArray(r.ramp_multipliers)
+    ? (r.ramp_multipliers as number[]).slice(0, 12)
+    : [];
+  const growth_mode: "simple" | "custom" =
+    r.growth_mode === "custom" ? "custom" : "simple";
+  const growth_monthly_pct =
+    typeof r.growth_monthly_pct === "number" ? r.growth_monthly_pct : 0;
+  const growth_custom_monthly = Array.isArray(r.growth_custom_monthly)
+    ? (r.growth_custom_monthly as number[]).slice(0, 60)
+    : [];
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -225,6 +252,11 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       typeof r.interest_monthly_cents === "number" ? r.interest_monthly_cents : defaults.interest_monthly_cents,
     taxes_pct:
       typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
+    ramp_months,
+    ramp_multipliers,
+    growth_mode,
+    growth_monthly_pct,
+    growth_custom_monthly,
   };
 }
 
@@ -316,12 +348,33 @@ export function computeWeeklyHours(schedule: WeekSchedule): number {
 
 // ── Projection math ───────────────────────────────────────────────────────────
 
-function yearGrowthFactor(year: number): number {
-  if (year === 1) return 1.0;
-  if (year === 2) return 1.15;
-  if (year === 3) return 1.3;
-  if (year === 4) return 1.425;
-  return 1.55; // year 5
+// Compute a revenue multiplier for a given 1-based month index (1–60).
+// During ramp: uses ramp_multipliers[i-1] / 100 (clamped to stored length).
+// After ramp: compounds growth_monthly_pct per month (simple) or uses
+// per-entry growth_custom_monthly rates (custom mode).
+function monthRevenueFactor(
+  monthIndex: number,
+  ramp_months: number,
+  ramp_multipliers: number[],
+  growth_mode: "simple" | "custom",
+  growth_monthly_pct: number,
+  growth_custom_monthly: number[]
+): number {
+  if (ramp_months > 0 && monthIndex <= ramp_months) {
+    return (ramp_multipliers[monthIndex - 1] ?? 100) / 100;
+  }
+  // Months after ramp end: k = how many months past ramp end (1 = first post-ramp month)
+  const k = monthIndex - ramp_months;
+  if (growth_mode === "custom" && growth_custom_monthly.length > 0) {
+    // Compound the custom monthly rates for months 1..k-1 (k-1 growth steps)
+    let factor = 1.0;
+    for (let i = 0; i < k - 1; i++) {
+      factor *= 1 + (growth_custom_monthly[i] ?? growth_monthly_pct) / 100;
+    }
+    return factor;
+  }
+  // Simple compounding: first post-ramp month = 1.0x, then grows
+  return Math.pow(1 + growth_monthly_pct / 100, k - 1);
 }
 
 export function computeMonthlyProjections(
@@ -337,13 +390,26 @@ export function computeMonthlyProjections(
     (equipment.financed_cost_cents / 100 / 7 / 12) * 100
   );
 
+  const ramp_months = mp.ramp_months ?? 0;
+  const ramp_multipliers = mp.ramp_multipliers ?? [];
+  const growth_mode = mp.growth_mode ?? "simple";
+  const growth_monthly_pct = mp.growth_monthly_pct ?? 0;
+  const growth_custom_monthly = mp.growth_custom_monthly ?? [];
+
   const rows: MonthlyProjectionRow[] = [];
 
   for (let year = 1; year <= 5; year++) {
-    const monthlyRevenueCents = Math.round(baseMonthlyRevenueCents * yearGrowthFactor(year));
-
     for (let month = 1; month <= 12; month++) {
-      const revenue_cents = monthlyRevenueCents;
+      const month_index_abs = (year - 1) * 12 + month;
+      const revFactor = monthRevenueFactor(
+        month_index_abs,
+        ramp_months,
+        ramp_multipliers,
+        growth_mode,
+        growth_monthly_pct,
+        growth_custom_monthly
+      );
+      const revenue_cents = Math.round(baseMonthlyRevenueCents * revFactor);
       const cogs_cents = Math.round(revenue_cents * (mp.cogs_pct / 100));
       const gross_profit_cents = revenue_cents - cogs_cents;
 

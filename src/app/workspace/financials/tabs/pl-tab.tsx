@@ -208,6 +208,8 @@ export function PLTab({ slices }: Props) {
             <StatRow label="Taxes" values={vals("taxes_cents")} indent />
             <StatRow label="Net Income" values={vals("net_income_cents")} bold highlight
               pctValues={pctOf("net_income_cents", "net_revenue_cents")} />
+            <DividerRow cols={colCount} />
+            <StatRow label="Cash Balance" values={vals("cash_cents")} bold highlight />
           </tbody>
         </table>
       </div>
