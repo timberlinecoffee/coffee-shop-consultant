@@ -241,29 +241,29 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
   const lines: string[] = [];
 
   if (grossMargin < 55) {
-    lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — that is below the 60–70% range most healthy shops run. Check your COGS percentages and your menu mix.`);
+    lines.push(`Gross margin is ${grossMargin.toFixed(1)}%. That is below the 60–70% range most healthy shops run. Check your COGS percentages and your menu mix.`);
   } else if (grossMargin >= 60 && grossMargin <= 70) {
-    lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — right in the healthy zone. Coffee shops that stay in this range have room to survive slow months.`);
+    lines.push(`Gross margin is ${grossMargin.toFixed(1)}%. Right in the healthy zone. Coffee shops that stay in this range have room to survive slow months.`);
   } else {
-    lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — strong. Make sure your COGS inputs reflect real supplier pricing.`);
+    lines.push(`Gross margin is ${grossMargin.toFixed(1)}%. Strong. Make sure your COGS inputs reflect real supplier pricing.`);
   }
 
   if (primeCost > 65) {
-    lines.push(`Prime cost (COGS + labor) is ${primeCost.toFixed(1)}% of revenue — above 65%. This is the number that kills most shops. Something needs to move: raise prices, tighten scheduling, or push higher-margin items.`);
+    lines.push(`Prime cost (COGS + labor) is ${primeCost.toFixed(1)}% of revenue. Above 65%. This is the number that kills most shops. Something needs to move: raise prices, tighten scheduling, or push higher-margin items.`);
   } else {
-    lines.push(`Prime cost is ${primeCost.toFixed(1)}% — within the 55–65% benchmark. That is the most important number to keep an eye on.`);
+    lines.push(`Prime cost is ${primeCost.toFixed(1)}%. Within the 55–65% benchmark. That is the most important number to keep an eye on.`);
   }
 
   if (occupancy > 15) {
-    lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue — above 15%. Aim for under 10% if you can. Worth revisiting either your lease terms or your traffic model.`);
+    lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue. Above 15%. Aim for under 10% if you can. Worth revisiting either your lease terms or your traffic model.`);
   } else if (occupancy <= 10) {
-    lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue — healthy. Under 10% gives you real cushion.`);
+    lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue. Healthy. Under 10% gives you real cushion.`);
   }
 
   if (ni < 0) {
     lines.push(`Net income is negative in Year ${year}. That is not unusual in Year 1, but you need a clear path to break-even. Check the Break-Even tab.`);
   } else if (netMargin < 5) {
-    lines.push(`Net margin is ${netMargin.toFixed(1)}% — thin but positive. Most indie shops run 5–15%. Keep an eye on your OpEx as revenue grows.`);
+    lines.push(`Net margin is ${netMargin.toFixed(1)}%. Thin but positive. Most indie shops run 5–15%. Keep an eye on your OpEx as revenue grows.`);
   }
 
   return (

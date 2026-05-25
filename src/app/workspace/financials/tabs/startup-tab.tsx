@@ -78,7 +78,7 @@ export function StartupTab({ inputs }: Props) {
             <tr className="border-t border-[#f0f0f0]">
               <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Loan Amount
                 <span className="ml-2 text-xs text-[#afafaf]">
-                  ({inputs.loan_term_months} mo @ {inputs.loan_annual_rate_pct}% — {fmt(monthlyPayment)}/mo)
+                  ({inputs.loan_term_months} mo @ {inputs.loan_annual_rate_pct}%, {fmt(monthlyPayment)}/mo)
                 </span>
               </td>
               <td className="py-3 pr-5 text-right font-medium">{fmt(inputs.loan_amount_cents)}</td>
@@ -100,7 +100,7 @@ export function StartupTab({ inputs }: Props) {
             </p>
             <p className={`text-xs mt-0.5 ${fundingGap <= 0 ? "text-green-700" : "text-red-700"}`}>
               {fundingGap <= 0
-                ? `You have ${fmt(Math.abs(fundingGap))} in surplus funding — that becomes your additional opening cash.`
+                ? `You have ${fmt(Math.abs(fundingGap))} in surplus funding. That becomes your additional opening cash.`
                 : `You need ${fmt(fundingGap)} more in funding to cover your startup costs.`}
             </p>
           </div>
@@ -114,10 +114,10 @@ export function StartupTab({ inputs }: Props) {
       <div className="rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
         <div className="space-y-2 text-sm text-[#2a4a4c] leading-relaxed">
-          <p>The working capital reserve and opening cash buffer are not spent — they sit in your bank account as a cushion. Banks and lenders like to see 3 months of fixed costs in reserve before you open.</p>
+          <p>The working capital reserve and opening cash buffer are not spent. They sit in your bank account as a cushion. Banks and lenders like to see 3 months of fixed costs in reserve before you open.</p>
           <p>Equipment is on a {inputs.depreciation_years}-year depreciation schedule, which reduces your taxable income over time. That is the main reason to separate it from build-out costs.</p>
           {inputs.loan_amount_cents > 0 && (
-            <p>Your loan payment of {fmt(monthlyPayment)}/month starts from day one — before you have any revenue. Make sure your opening cash buffer can cover at least 3 months of loan payments.</p>
+            <p>Your loan payment of {fmt(monthlyPayment)}/month starts from day one. Before you have any revenue. Make sure your opening cash buffer can cover at least 3 months of loan payments.</p>
           )}
         </div>
       </div>

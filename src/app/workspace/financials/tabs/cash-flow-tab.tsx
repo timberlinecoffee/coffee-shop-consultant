@@ -219,12 +219,12 @@ function CashFlowCritique({ slices, year }: { slices: MonthlySlice[]; year: numb
 
   if (lowestCash < 0) {
     const monthName = lowestMonth ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][lowestMonth.month - 1] : "";
-    lines.push(`Cash goes negative in ${monthName} of Year ${year}. That is a real problem — you would need more funding or tighter cost control before then.`);
+    lines.push(`Cash goes negative in ${monthName} of Year ${year}. That is a real problem. You would need more funding or tighter cost control before then.`);
   } else if (lowestCash < 500000) {
     const monthName = lowestMonth ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][lowestMonth.month - 1] : "";
     lines.push(`Your lowest cash balance in Year ${year} is under $5,000 (in ${monthName}). That is very thin. A single slow week could leave you unable to pay suppliers.`);
   } else {
-    lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash)} — that is your real cushion number, not the year-end balance.`);
+    lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash)}. That is your real cushion number, not the year-end balance.`);
   }
 
   // Check if ending cash matches balance sheet (it should — same compute source)

@@ -122,7 +122,7 @@ export function BalanceSheetTab({ slices }: Props) {
           </div>
         )}
         <div className={`text-xs px-2.5 py-1 rounded-full ${balances ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-          {balances ? "Balance Sheet Checks Out" : "Balance Sheet Out Of Balance — Check Inputs"}
+          {balances ? "Balance Sheet Checks Out" : "Balance Sheet Out Of Balance. Check your inputs."}
         </div>
       </div>
 
@@ -190,11 +190,11 @@ function BalanceSheetCritique({ slices, year }: { slices: MonthlySlice[]; year: 
   } else if (last.cash_cents < last.rent_cents * 3) {
     lines.push(`You are ending the year with less than 3 months of rent in cash. That is a thin cushion. Most advisors want to see at least 2–3 months of fixed costs in reserve.`);
   } else {
-    lines.push(`Cash position at year end looks manageable. Keep watching it month by month — the cash flow tab will show you the lowest points.`);
+    lines.push(`Cash position at year end looks manageable. Keep watching it month by month. The cash flow tab will show you the lowest points.`);
   }
 
   if (last.retained_earnings_cents < 0) {
-    lines.push(`Retained earnings are negative — cumulative losses so far. That is fine if it is early days, but you want to see this number trending toward positive by the end of Year 2 or 3.`);
+    lines.push(`Retained earnings are negative. Cumulative losses so far. That is fine if it is early days, but you want to see this number trending toward positive by the end of Year 2 or 3.`);
   }
 
   const debtToEquity = last.total_equity_cents > 0
