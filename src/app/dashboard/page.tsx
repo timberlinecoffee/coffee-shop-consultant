@@ -7,7 +7,15 @@ import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { computePlanReadiness } from "@/lib/workspace-manifest";
 import { capitalizeFirst } from "@/lib/format";
+import {
+  buildRecentActivity,
+  buildStaleNudges,
+  buildWorkspaceSnapshots,
+  pickNextStep,
+  pickWeakestWorkspace,
+} from "@/lib/dashboard-nudges";
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
+import { ProgressDashboard } from "./_components/progress-dashboard";
 
 export const dynamic = 'force-dynamic';
 
@@ -50,22 +58,38 @@ export default async function DashboardPage() {
   }
 
   // completedByModule: module number → count of filled sections.
-  // Concept (module 1) reads from workspace_documents; the old module_responses
-  // path is NOT used for workspace 1 — onboarding never wrote there.
+  // Concept (module 1) reads from workspace_documents; modules 2+ count rows
+  // in module_responses with status='completed'. The recent activity feed and
+  // stale nudges share the same workspace_documents fetch below.
   const completedByModule = new Map<number, number>();
+  const lastTouchedByKey = new Map<string, string>();
 
   if (plan?.id) {
-    const { data: conceptDoc } = await supabase
-      .from("workspace_documents")
-      .select("content")
-      .eq("plan_id", plan.id)
-      .eq("workspace_key", "concept")
-      .maybeSingle();
+    const [{ data: workspaceDocs }, { data: responses }] = await Promise.all([
+      supabase
+        .from("workspace_documents")
+        .select("workspace_key, content, updated_at")
+        .eq("plan_id", plan.id),
+      supabase
+        .from("module_responses")
+        .select("module_number")
+        .eq("plan_id", plan.id)
+        .eq("status", "completed"),
+    ]);
 
-    if (conceptDoc?.content) {
-      const conceptV2 = normalizeConceptV2(conceptDoc.content);
-      const progress = getConceptV2Progress(conceptV2);
-      completedByModule.set(1, progress.filled);
+    for (const doc of workspaceDocs ?? []) {
+      if (doc.updated_at && typeof doc.workspace_key === "string") {
+        lastTouchedByKey.set(doc.workspace_key, doc.updated_at);
+      }
+      if (doc.workspace_key === "concept" && doc.content) {
+        const progress = getConceptV2Progress(normalizeConceptV2(doc.content));
+        completedByModule.set(1, progress.filled);
+      }
+    }
+
+    for (const row of responses ?? []) {
+      const n = row.module_number;
+      completedByModule.set(n, (completedByModule.get(n) ?? 0) + 1);
     }
   }
 
@@ -90,6 +114,17 @@ export default async function DashboardPage() {
 
   // All downstream modules unlock simultaneously when concept is complete
   const allUnlocked = w1Completed;
+
+  // TIM-1063: Progress dashboard data — next-step nudge, completion strip,
+  // stale nudges, recent activity, weakest workspace for "Improve with AI".
+  // Skipping the per-owner "good enough for now" opt-out for now — surface it
+  // here once owners can mark workspaces complete from the UI.
+  const workspaceSnapshots = buildWorkspaceSnapshots(completedByModule, lastTouchedByKey);
+  const nextStep = pickNextStep(workspaceSnapshots);
+  const staleNudges = buildStaleNudges(workspaceSnapshots);
+  const recentActivity = buildRecentActivity(lastTouchedByKey);
+  const weakestWorkspace = pickWeakestWorkspace(workspaceSnapshots);
+  const nowIso = new Date().toISOString();
 
   const cookieStore = await cookies();
   const noteDismissed = cookieStore.get("concept_unlock_note_dismissed")?.value === "1";
@@ -220,6 +255,18 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* TIM-1063: Progress dashboard — next-step nudge, completion strip,
+           stale nudges, recent activity, quick actions. Sits above the
+           Coming Up list so the owner always sees a concrete next move. */}
+        <ProgressDashboard
+          nextStep={nextStep}
+          snapshots={workspaceSnapshots}
+          staleNudges={staleNudges}
+          recentActivity={recentActivity}
+          weakest={weakestWorkspace}
+          nowIso={nowIso}
+        />
 
         {/* COMING UP */}
         <div className="mb-10">
