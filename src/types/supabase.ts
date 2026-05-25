@@ -632,6 +632,68 @@ export interface Database {
           created_at?: string
         }
       }
+      launch_milestones: {
+        Row: {
+          id: string
+          plan_id: string
+          title: string
+          description: string | null
+          track: 'legal_compliance' | 'real_estate_buildout' | 'equipment' | 'brand_marketing' | 'menu_operations' | 'people_hiring' | 'finance_admin' | 'pre_launch_events' | 'post_launch'
+          target_date: string | null
+          actual_date: string | null
+          status: 'not_started' | 'in_progress' | 'blocked' | 'done'
+          estimated_duration_days: number | null
+          depends_on_milestone_ids: string[]
+          critical_path: boolean
+          owner: string
+          ai_notes: string | null
+          user_edited: boolean
+          source: 'ai_generated' | 'user_added'
+          order_index: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          title: string
+          description?: string | null
+          track: 'legal_compliance' | 'real_estate_buildout' | 'equipment' | 'brand_marketing' | 'menu_operations' | 'people_hiring' | 'finance_admin' | 'pre_launch_events' | 'post_launch'
+          target_date?: string | null
+          actual_date?: string | null
+          status?: 'not_started' | 'in_progress' | 'blocked' | 'done'
+          estimated_duration_days?: number | null
+          depends_on_milestone_ids?: string[]
+          critical_path?: boolean
+          owner?: string
+          ai_notes?: string | null
+          user_edited?: boolean
+          source?: 'ai_generated' | 'user_added'
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          title?: string
+          description?: string | null
+          track?: 'legal_compliance' | 'real_estate_buildout' | 'equipment' | 'brand_marketing' | 'menu_operations' | 'people_hiring' | 'finance_admin' | 'pre_launch_events' | 'post_launch'
+          target_date?: string | null
+          actual_date?: string | null
+          status?: 'not_started' | 'in_progress' | 'blocked' | 'done'
+          estimated_duration_days?: number | null
+          depends_on_milestone_ids?: string[]
+          critical_path?: boolean
+          owner?: string
+          ai_notes?: string | null
+          user_edited?: boolean
+          source?: 'ai_generated' | 'user_added'
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
