@@ -1,0 +1,144 @@
+// TIM-1037: Business Plan data assembly endpoint.
+// Loads all suite data and returns per-section assembled content + user overrides.
+
+export const dynamic = "force-dynamic";
+
+import { createClient } from "@/lib/supabase/server";
+import {
+  BUSINESS_PLAN_SECTIONS,
+  assembleCompanyConcept,
+  assembleMarketAnalysis,
+  assembleLocationSection,
+  assembleBuildoutEquipment,
+  assembleMenuPricing,
+  assembleMarketingPlan,
+  assembleOperationsLaunch,
+  assembleTeamHiring,
+  assembleFinancialPlan,
+  type BusinessPlanSectionData,
+  type BpLocationCandidate,
+  type BpEquipmentItem,
+  type BpMenuItem,
+  type BpLaunchItem,
+  type BpHiringRole,
+  type BpMarketingBrand,
+} from "@/lib/business-plan";
+
+export async function GET() {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: plan } = await supabase
+    .from("coffee_shop_plans")
+    .select("id, shop_name")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 });
+
+  const planId = plan.id;
+
+  const [
+    { data: conceptDoc },
+    { data: locationRows },
+    { data: equipmentRows },
+    { data: menuRows },
+    { data: launchRows },
+    { data: hiringRows },
+    { data: marketingBrandRow },
+    { data: financialModel },
+    { data: savedSections },
+  ] = await Promise.all([
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+    supabase
+      .from("location_candidates")
+      .select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes")
+      .eq("plan_id", planId)
+      .eq("archived", false)
+      .order("position"),
+    supabase
+      .from("buildout_equipment_items")
+      .select("id, name, cost_usd, category, notes")
+      .eq("plan_id", planId)
+      .eq("archived", false)
+      .order("position"),
+    supabase
+      .from("menu_items_with_cogs")
+      .select("id, name, category, base_price_cents")
+      .eq("plan_id", planId)
+      .order("position"),
+    supabase
+      .from("launch_timeline_items")
+      .select("id, milestone, target_date, status")
+      .eq("plan_id", planId)
+      .order("order_index"),
+    supabase
+      .from("hiring_plan_roles")
+      .select("id, role_title, headcount, start_date, monthly_cost_cents, status")
+      .eq("plan_id", planId)
+      .order("created_at"),
+    supabase
+      .from("marketing_brand")
+      .select("positioning_statement, brand_pillar_1, brand_pillar_2, brand_pillar_3")
+      .eq("plan_id", planId)
+      .maybeSingle(),
+    supabase
+      .from("financial_models")
+      .select("forecast_inputs, monthly_projections, startup_costs")
+      .eq("plan_id", planId)
+      .maybeSingle(),
+    supabase
+      .from("business_plan_sections")
+      .select("section_key, user_content, is_visible")
+      .eq("plan_id", planId),
+  ]);
+
+  const savedMap = new Map(
+    (savedSections ?? []).map((s) => [s.section_key, s])
+  );
+
+  const autoContent: Record<string, string> = {
+    executive_summary: savedMap.get("executive_summary")?.user_content ??
+      "Click Generate to create an AI-written executive summary from your completed suite data.",
+    company_concept: assembleCompanyConcept(conceptDoc?.content),
+    market_analysis: assembleMarketAnalysis(conceptDoc?.content),
+    location_real_estate: assembleLocationSection((locationRows ?? []) as BpLocationCandidate[]),
+    buildout_equipment: assembleBuildoutEquipment(
+      (equipmentRows ?? []) as BpEquipmentItem[],
+      financialModel
+    ),
+    menu_pricing: assembleMenuPricing((menuRows ?? []) as BpMenuItem[]),
+    marketing_plan: assembleMarketingPlan(marketingBrandRow as BpMarketingBrand | null),
+    operations_launch: assembleOperationsLaunch((launchRows ?? []) as BpLaunchItem[]),
+    team_hiring: assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+    financial_plan: assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    funding_request: "",
+  };
+
+  const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => {
+    const saved = savedMap.get(meta.key);
+    return {
+      key: meta.key,
+      title: meta.title,
+      sourceLabel: meta.sourceLabel,
+      autoContent: autoContent[meta.key] ?? "",
+      userContent: saved?.user_content ?? null,
+      isVisible: saved?.is_visible ?? meta.defaultVisible,
+    };
+  });
+
+  return Response.json({
+    planId,
+    shopName: plan.shop_name,
+    sections,
+  });
+}
