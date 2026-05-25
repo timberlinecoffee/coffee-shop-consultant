@@ -1,4 +1,4 @@
-// TIM-777 / TIM-620-C: Candidate list with inline editors, status pills, and CoPilot drawer.
+// TIM-777 / TIM-620-C / TIM-1030: Candidate list with inline editors, status pills, inline rubric, and CoPilot drawer.
 'use client'
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
@@ -12,8 +12,39 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
 import { CompareModal } from './CompareModal'
 import { ScorecardModal } from './ScorecardModal'
+
+// ── Rubric constants (mirrors RubricGridCard factor set) ──────────────────
+
+type RubricFactorKey =
+  | 'foot_traffic'
+  | 'parking_transit'
+  | 'visibility'
+  | 'neighborhood_fit'
+  | 'buildout_cost_estimate'
+  | 'lease_terms'
+
+const RUBRIC_FACTORS: { key: RubricFactorKey; label: string }[] = [
+  { key: 'foot_traffic', label: 'Foot Traffic' },
+  { key: 'parking_transit', label: 'Parking / Transit' },
+  { key: 'visibility', label: 'Visibility' },
+  { key: 'neighborhood_fit', label: 'Neighborhood Fit' },
+  { key: 'buildout_cost_estimate', label: 'Buildout Cost' },
+  { key: 'lease_terms', label: 'Lease Terms' },
+]
+
+type RubricScoreMap = Partial<Record<RubricFactorKey, number | null>>
+
+function computeRubricAvg(scores: RubricScoreMap): string {
+  let sum = 0; let count = 0
+  for (const f of RUBRIC_FACTORS) {
+    const s = scores[f.key]
+    if (s != null) { sum += s; count++ }
+  }
+  return count === 0 ? '—' : `${(sum / count).toFixed(1)} / 5`
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -226,6 +257,86 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">{children}</span>
 }
 
+// ── CandidateInlineRubric ─────────────────────────────────────────────────
+
+function CandidateInlineRubric({ candidateId }: { candidateId: string }) {
+  const [scores, setScores] = useState<RubricScoreMap>({})
+  const [loaded, setLoaded] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('location_rubric_scores')
+      .select('factor_key, score_1_5')
+      .eq('candidate_id', candidateId)
+      .then(({ data }) => {
+        if (data) {
+          const map: RubricScoreMap = {}
+          for (const row of data) {
+            map[row.factor_key as RubricFactorKey] = row.score_1_5
+          }
+          setScores(map)
+        }
+        setLoaded(true)
+      })
+  }, [candidateId])
+
+  function handleScore(factorKey: RubricFactorKey, clicked: number) {
+    setScores(prev => {
+      const next = { ...prev, [factorKey]: prev[factorKey] === clicked ? null : clicked }
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        const payload = RUBRIC_FACTORS.map(f => ({
+          factor_key: f.key,
+          score_1_5: next[f.key] ?? null,
+          notes: null,
+        }))
+        fetch(`/api/workspaces/location-lease/candidates/${candidateId}/scores`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scores: payload }),
+        })
+      }, 800)
+      return next
+    })
+  }
+
+  if (!loaded) return <p className="text-xs text-[#888]">Loading scorecard…</p>
+
+  return (
+    <div className="flex flex-col gap-2">
+      {RUBRIC_FACTORS.map(factor => (
+        <div key={factor.key} className="flex items-center gap-3">
+          <span className="w-32 shrink-0 text-xs text-[#888]">{factor.label}</span>
+          <div className="flex gap-1" role="group" aria-label={`${factor.label} score`}>
+            {([1, 2, 3, 4, 5] as const).map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => handleScore(factor.key, n)}
+                aria-pressed={scores[factor.key] === n}
+                aria-label={String(n)}
+                className={cn(
+                  'size-6 rounded text-[11px] font-semibold transition-colors border',
+                  scores[factor.key] === n
+                    ? 'bg-[#155e63] text-white border-[#155e63]'
+                    : 'bg-white text-[#888] border-[#efefef] hover:border-[#155e63]/60 hover:text-[#155e63]'
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <p className="text-[11px] text-[#888] pt-1">
+        Average: <span className="font-semibold text-[#155e63]">{computeRubricAvg(scores)}</span>
+      </p>
+    </div>
+  )
+}
+
 // ── CandidateRow ──────────────────────────────────────────────────────────
 
 function CandidateRow({
@@ -258,7 +369,7 @@ function CandidateRow({
   }
 
   return (
-    <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+    <div className="rounded-xl border border-[#efefef] bg-white">
       {/* ── Summary row (always visible) ── */}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Name — inline editable */}
@@ -410,6 +521,22 @@ function CandidateRow({
               multiline
               onCommit={v => commitText('notes', v)}
             />
+          </div>
+
+          {/* Scorecard — inline 6-factor rubric */}
+          <div className="sm:col-span-2 flex flex-col gap-2 pt-1 border-t border-[#efefef]">
+            <div className="flex items-center justify-between">
+              <FieldLabel>Scorecard</FieldLabel>
+              <button
+                type="button"
+                onClick={() => onScore(candidate.id)}
+                className="inline-flex items-center gap-1 text-[10px] text-[#155e63] hover:underline"
+              >
+                <ClipboardList className="size-3" />
+                Full scorecard
+              </button>
+            </div>
+            <CandidateInlineRubric candidateId={candidate.id} />
           </div>
         </div>
       )}
