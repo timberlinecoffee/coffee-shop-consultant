@@ -319,7 +319,7 @@ function MobileEquipmentList({
                 {item.name || <span className="text-[#afafaf] font-normal">Unnamed</span>}
               </span>
               <span className="text-xs font-semibold text-[#1a1a1a] shrink-0">
-                {total > 0 ? formatCurrency(total / 100) : "—"}
+                {total > 0 ? formatCurrency(total / 100) : "$0"}
               </span>
               {canEdit && (
                 <button
@@ -764,7 +764,7 @@ export function EquipmentGrid({
           const fund = isFundRow(item);
           const active = editingCell?.rowId === item.id && editingCell?.colKey === "vendor";
           const refKey = `${item.id}:vendor`;
-          if (fund) return <span className="text-[#d0d0d0] text-xs">—</span>;
+          if (fund) return null;
           return active ? (
             <TextCell
               value={item.vendor ?? ""}
@@ -793,7 +793,7 @@ export function EquipmentGrid({
           const fund = isFundRow(item);
           const active = editingCell?.rowId === item.id && editingCell?.colKey === "model";
           const refKey = `${item.id}:model`;
-          if (fund) return <span className="text-[#d0d0d0] text-xs">—</span>;
+          if (fund) return null;
           return active ? (
             <TextCell
               value={item.model ?? ""}
@@ -822,7 +822,7 @@ export function EquipmentGrid({
           const fund = isFundRow(item);
           const active = editingCell?.rowId === item.id && editingCell?.colKey === "supplier";
           const refKey = `${item.id}:supplier`;
-          if (fund) return <span className="text-[#d0d0d0] text-xs">—</span>;
+          if (fund) return null;
           return active ? (
             <TextCell
               value={item.supplier ?? ""}
