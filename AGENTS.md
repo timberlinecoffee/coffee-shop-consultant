@@ -75,3 +75,27 @@ How to apply:
 - Deploy gating: if you must invoke `deploy_to_vercel` / `vercel deploy`, use `target: null` (preview) on feature branches. Only `main` deploys to production.
 - Reviewer / QA: reject any PR whose CI/agent log shows a prod-target deploy from a non-main ref.
 <!-- END:vercel-deploy-hygiene -->
+
+<!-- BEGIN:merge-verification-sweeper -->
+# Ship-issue close discipline: branch MUST be merged to `main` before `done` (TIM-1018)
+
+The `merge-verification-sweeper` routine fires every 4h and auto-reopens any `done` ship-issue whose referenced branch still has commits not on `main` (squash-aware via `git cherry`). Don't bother closing pre-merge — it'll come right back, loudly.
+
+**Before you `PATCH status=done` on a ship issue:**
+
+```bash
+cd coffee-shop-consultant
+git fetch origin --prune
+git cherry origin/main origin/<your-branch> | grep '^+' && echo "UNMERGED — do not close" || echo "merged"
+```
+
+If the check prints `UNMERGED`, your branch has commits not in main (by patch-id, so squash merges count as merged). Open a PR and merge it before closing the issue.
+
+**Branch-only-reclose pattern ([TIM-879](/TIM/issues/TIM-879) / [TIM-893](/TIM/issues/TIM-893)):**
+Parent issue is closed at staging-QA on the branch, then a follow-up merge issue is spawned with `inheritExecutionWorkspaceFromIssueId`. The sweeper recognizes this pattern *only if* the child issue's title or description names the same branch and contains "merge", "deploy", or "ship". If you spawn a merge-child, name the branch in its title (e.g. "Merge `feat/tim-XXX` → main and verify production").
+
+**If the sweeper reopens your issue:**
+The reopen comment contains the exact `gh pr create` / `git merge` command. Run it, push, then re-close. Do NOT mark `done` again without merging — the marker comment `<!-- merge-verification-sweeper:reopened -->` makes the sweep idempotent, so re-closing without merging gets logged but not re-flagged, and the founder will see it on the digest at [[TIM-1022]].
+
+**Cross-chain limitation:** the sweeper runs as CTO. If your issue is assigned to an agent outside the CTO chain, the reopen PATCH returns 403 and the digest lists it under "BLOCKED — needs CEO reopen". CEO triages on next briefing.
+<!-- END:merge-verification-sweeper -->
