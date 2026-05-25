@@ -48,6 +48,7 @@ export interface EquipmentItem {
   id: string;
   plan_id: string;
   position: number;
+  section_id: string | null;
   name: string;
   category: EquipmentCategory;
   vendor: string | null;

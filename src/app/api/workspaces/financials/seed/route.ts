@@ -192,6 +192,67 @@ type RefItem = {
   must_have: boolean;
 };
 
+// TIM-1038: Workstation section definitions for equipment seed.
+const EQUIPMENT_SECTIONS = [
+  { name: "Espresso Bar",              position: 0 },
+  { name: "Pour Over / Manual Brew",   position: 1 },
+  { name: "Batch Brew",                position: 2 },
+  { name: "Cold Beverage",             position: 3 },
+  { name: "Point of Sale / Cashier",   position: 4 },
+  { name: "Front of House / Service",  position: 5 },
+  { name: "Kitchen / Food Prep",       position: 6 },
+  { name: "Back of House",             position: 7 },
+  { name: "Furniture & Seating",       position: 8 },
+  { name: "Decor & Ambiance",          position: 9 },
+  { name: "Smallwares",                position: 10 },
+  { name: "Cleaning & Sanitation",     position: 11 },
+];
+
+function deriveSectionName(category: string, itemName: string): string {
+  const name = itemName.toLowerCase();
+  const cat = category.toLowerCase();
+
+  // brew_platform — split pour-over vs batch by item name
+  if (cat === "brew_platform" || cat === "brew_platform") {
+    const isPourOver =
+      name.includes("pour over") ||
+      name.includes("pour-over") ||
+      name.includes("v60") ||
+      name.includes("chemex") ||
+      name.includes("kettle") ||
+      name.includes("gooseneck") ||
+      name.includes("carafe") ||
+      name.includes("scale") ||
+      name.includes("server");
+    return isPourOver ? "Pour Over / Manual Brew" : "Batch Brew";
+  }
+
+  const map: Record<string, string> = {
+    espresso_platform: "Espresso Bar",
+    milk_beverage_prep: "Espresso Bar",
+    refrigeration: "Cold Beverage",
+    pos_tech: "Point of Sale / Cashier",
+    furniture_fixtures: "Furniture & Seating",
+    signage_decor: "Decor & Ambiance",
+    smallwares: "Smallwares",
+    ceramics: "Smallwares",
+    glassware: "Smallwares",
+    to_go_ware: "Smallwares",
+    plumbing_water: "Back of House",
+    electrical: "Back of House",
+    miscellaneous: "Smallwares",
+    // legacy
+    espresso: "Espresso Bar",
+    grinder: "Espresso Bar",
+    plumbing: "Back of House",
+    furniture: "Furniture & Seating",
+    pos: "Point of Sale / Cashier",
+    signage: "Front of House / Service",
+    other: "Smallwares",
+  };
+  return map[cat] ?? "Smallwares";
+}
+
 async function upsertItems(
   supabase: Awaited<ReturnType<typeof createClient>>,
   planId: string,
@@ -205,17 +266,49 @@ async function upsertItems(
     .eq("plan_id", planId)
     .eq("source", "ai_suggested");
 
+  // TIM-1038: Recreate equipment sections
+  await supabase
+    .from("buildout_list_sections")
+    .delete()
+    .eq("plan_id", planId)
+    .eq("list_type", "equipment");
+
+  const { data: createdSections, error: secErr } = await supabase
+    .from("buildout_list_sections")
+    .insert(
+      EQUIPMENT_SECTIONS.map((s) => ({
+        plan_id: planId,
+        list_type: "equipment",
+        name: s.name,
+        position: s.position,
+        collapsed: false,
+      }))
+    )
+    .select("id, name");
+
+  if (secErr || !createdSections) {
+    console.error("buildout_list_sections insert error:", secErr);
+    // Fallback: insert without sections
+  }
+
+  const sectionByName = new Map<string, string>(
+    (createdSections ?? []).map((s) => [s.name as string, s.id as string])
+  );
+
   // TIM-1002: enforce Title Case at the API boundary.
   // Fund items use budget_mid as their unit_cost (lump-sum budget guidance).
   const rows = refItems.map((ref, idx) => {
     const isFund = ref.type === "fund";
-    // For fund items, store the mid-range budget as unit_cost_cents (in dollars × 100)
     const unitCostCents = isFund
       ? (ref.budget_mid ?? 0) * 100
       : (ref.price_mid ?? 0) * 100;
 
+    const sectionName = deriveSectionName(ref.category, ref.name_canonical);
+    const sectionId = sectionByName.get(sectionName) ?? null;
+
     return {
       plan_id: planId,
+      section_id: sectionId,
       name: toTitleCase(ref.name_canonical),
       category: ref.category,
       vendor: null,

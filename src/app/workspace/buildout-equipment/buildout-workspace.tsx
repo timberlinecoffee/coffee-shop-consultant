@@ -1,24 +1,27 @@
 "use client";
 
-// TIM-1029: Build Out & Equipment workspace — Equipment table promoted from Financials.
-// Full-width layout, manual Save button alongside per-cell autosave,
-// column-visibility settings (see EquipmentGrid).
+// TIM-1038: Build Out & Equipment workspace — Equipment + Supplies tabs,
+// workstation sections, drag-drop, resizable columns, per-section totals.
+// Replaces flat EquipmentGrid with SectionedListGrid.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wrench, X, Save } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
-import { EquipmentGrid } from "@/components/equipment/EquipmentGrid";
-import type {
-  EquipmentItem,
-} from "@/app/workspace/financials/financials-workspace";
+import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
+import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import type { ListSection, SuppliesItem } from "@/types/buildout";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
+
+type AnyItem = EquipmentItem | SuppliesItem;
 
 interface Props {
   planId: string;
   initialEquipment: EquipmentItem[];
+  initialSupplies: SuppliesItem[];
+  initialSections: ListSection[];
   initialModelUpdatedAt: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
@@ -43,85 +46,70 @@ function formatTimestamp(iso: string | null): string {
   }
 }
 
-function EquipmentSection({
-  planId,
+function SeedBanner({
   canEdit,
-  items,
-  onItemsChange,
+  listType,
+  hasAiItems,
+  onSeed,
 }: {
-  planId: string;
   canEdit: boolean;
-  items: EquipmentItem[];
-  onItemsChange: (items: EquipmentItem[]) => void;
+  listType: "equipment" | "supplies";
+  hasAiItems: boolean;
+  onSeed: () => Promise<void>;
 }) {
-  const [seedStatus, setSeedStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [seedDismissed, setSeedDismissed] = useState(
-    items.some((i) => i.source === "ai_suggested")
-  );
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [dismissed, setDismissed] = useState(hasAiItems);
 
-  const aiSeeded = items.some((i) => i.source === "ai_suggested");
+  if (dismissed || !canEdit) return null;
 
   async function handleSeed() {
-    setSeedStatus("loading");
+    setStatus("loading");
     try {
-      const res = await fetch("/api/workspaces/financials/seed", { method: "POST" });
-      if (!res.ok) throw new Error(`seed failed (${res.status})`);
-      const listRes = await fetch("/api/workspaces/financials/equipment");
-      if (!listRes.ok) throw new Error(`reload failed (${listRes.status})`);
-      const newItems = (await listRes.json()) as EquipmentItem[];
-      onItemsChange(newItems);
-      setSeedStatus("done");
-      setSeedDismissed(true);
+      await onSeed();
+      setStatus("done");
+      setDismissed(true);
     } catch {
-      setSeedStatus("error");
+      setStatus("error");
     }
   }
 
   return (
-    <div className="space-y-4">
-      {!seedDismissed && !aiSeeded && canEdit && (
-        <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#155e63] mb-1">
-                Generate a starter equipment list
-              </p>
-              <p className="text-xs text-[#6b6b6b] leading-relaxed">
-                Based on your concept and menu profile, we&apos;ll suggest typical equipment
-                for a coffee shop like yours. Edit or remove anything after.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSeedDismissed(true)}
-              className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
-              aria-label="Dismiss"
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSeed}
-              disabled={seedStatus === "loading"}
-              className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
-            >
-              {seedStatus === "loading" ? "Generating..." : "Generate list"}
-            </button>
-            {seedStatus === "error" && (
-              <span className="text-xs text-[#a13d3d]">Could not generate. Try again.</span>
-            )}
-          </div>
+    <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4 mb-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#155e63] mb-1">
+            {listType === "equipment"
+              ? "Generate a starter equipment list"
+              : "Generate a starter supplies list"}
+          </p>
+          <p className="text-xs text-[#6b6b6b] leading-relaxed">
+            {listType === "equipment"
+              ? "We will populate workstation sections with typical equipment for a specialty coffee shop. Edit or remove anything after."
+              : "We will create standard supply categories with typical consumables for a coffee shop. Adjust quantities and costs after."}
+          </p>
         </div>
-      )}
-
-      <EquipmentGrid
-        planId={planId}
-        canEdit={canEdit}
-        items={items}
-        onItemsChange={onItemsChange}
-      />
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
+          aria-label="Dismiss"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSeed}
+          disabled={status === "loading"}
+          className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
+        >
+          {status === "loading" ? "Generating..." : "Generate list"}
+        </button>
+        {status === "error" && (
+          <span className="text-xs text-[#a13d3d]">Could not generate. Try again.</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -129,13 +117,18 @@ function EquipmentSection({
 export function BuildoutEquipmentWorkspace({
   planId,
   initialEquipment,
+  initialSupplies,
+  initialSections,
   initialModelUpdatedAt,
   canEdit,
   initialTrialMessagesUsed,
   initialNeedsReviewAt,
   initialModelUpdatedAtForReview,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<"equipment" | "supplies">("equipment");
   const [equipment, setEquipment] = useState<EquipmentItem[]>(initialEquipment);
+  const [supplies, setSupplies] = useState<SuppliesItem[]>(initialSupplies);
+  const [sections, setSections] = useState<ListSection[]>(initialSections);
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
     lastSavedAt: initialModelUpdatedAt,
@@ -164,8 +157,7 @@ export function BuildoutEquipmentWorkspace({
     setModuleProgress(5, progress.filled, progress.total);
   }, [progress.filled, progress.total, setModuleProgress]);
 
-  // persist saves the startup_costs equipment total to the financial_models row
-  // so projections stay in sync without requiring Equipment to still live under Financials.
+  // persist saves the equipment total to financial_models for projections
   const persist = useCallback(
     async (eq: EquipmentItem[]) => {
       if (!canEdit) return;
@@ -187,10 +179,7 @@ export function BuildoutEquipmentWorkspace({
           signal: controller.signal,
         });
         if (res.status === 402) {
-          setSaveState({
-            kind: "error",
-            message: "Subscription paused — reactivate to keep editing.",
-          });
+          setSaveState({ kind: "error", message: "Subscription paused — reactivate to keep editing." });
           setPaywallOpen(true);
           return;
         }
@@ -221,12 +210,20 @@ export function BuildoutEquipmentWorkspace({
     [persist]
   );
 
-  function handleEquipmentChange(next: EquipmentItem[]) {
-    setEquipment(next);
-    scheduleSave(next);
+  function handleEquipmentChange(next: AnyItem[]) {
+    const eq = next as EquipmentItem[];
+    setEquipment(eq);
+    scheduleSave(eq);
   }
 
-  // Manual save: flush any pending debounce immediately
+  function handleSuppliesChange(next: AnyItem[]) {
+    setSupplies(next as SuppliesItem[]);
+  }
+
+  function handleSectionsChange(next: ListSection[]) {
+    setSections(next);
+  }
+
   function handleManualSave() {
     if (!canEdit) return;
     if (pendingSaveTimer.current) {
@@ -234,6 +231,41 @@ export function BuildoutEquipmentWorkspace({
       pendingSaveTimer.current = null;
     }
     void persist(latestEquipmentRef.current);
+  }
+
+  // Equipment seed
+  async function seedEquipment() {
+    const res = await fetch("/api/workspaces/financials/seed", { method: "POST" });
+    if (!res.ok) throw new Error(`seed failed (${res.status})`);
+    const [eqRes, secRes] = await Promise.all([
+      fetch("/api/workspaces/financials/equipment"),
+      fetch("/api/workspaces/buildout/sections?list_type=equipment"),
+    ]);
+    if (!eqRes.ok || !secRes.ok) throw new Error("reload failed");
+    const [newEq, newSec] = await Promise.all([eqRes.json(), secRes.json()]);
+    setEquipment(newEq as EquipmentItem[]);
+    setSections((prev) => [
+      ...(newSec as ListSection[]),
+      ...prev.filter((s) => s.list_type === "supplies"),
+    ]);
+    scheduleSave(newEq as EquipmentItem[]);
+  }
+
+  // Supplies seed
+  async function seedSupplies() {
+    const res = await fetch("/api/workspaces/buildout/supplies/seed", { method: "POST" });
+    if (!res.ok) throw new Error(`seed failed (${res.status})`);
+    const [supRes, secRes] = await Promise.all([
+      fetch("/api/workspaces/buildout/supplies"),
+      fetch("/api/workspaces/buildout/sections?list_type=supplies"),
+    ]);
+    if (!supRes.ok || !secRes.ok) throw new Error("reload failed");
+    const [newSup, newSec] = await Promise.all([supRes.json(), secRes.json()]);
+    setSupplies(newSup as SuppliesItem[]);
+    setSections((prev) => [
+      ...prev.filter((s) => s.list_type === "equipment"),
+      ...(newSec as ListSection[]),
+    ]);
   }
 
   const lastSavedAt =
@@ -248,9 +280,13 @@ export function BuildoutEquipmentWorkspace({
       ? saveState.message
       : formatTimestamp(lastSavedAt);
 
+  const equipmentSections = sections.filter((s) => s.list_type === "equipment");
+  const suppliesSections = sections.filter((s) => s.list_type === "supplies");
+  const hasAiEquipment = equipment.some((i) => i.source === "ai_suggested");
+  const hasAiSupplies = supplies.some((i) => i.source === "ai_suggested");
+
   return (
     <div className="bg-[#faf9f7] min-h-screen">
-      {/* Full-width content — no max-w constraint so Equipment table can breathe */}
       <div className="px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -260,16 +296,14 @@ export function BuildoutEquipmentWorkspace({
             </h1>
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
-            Track every piece of equipment, its cost, and how you plan to finance it.
+            Track every piece of equipment, its cost, and how you plan to finance it. Use the Supplies tab for recurring consumables.
           </p>
         </header>
 
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800">
-                Your concept or menu has changed
-              </p>
+              <p className="text-sm font-medium text-amber-800">Your concept or menu has changed</p>
               <p className="text-xs text-amber-600 mt-0.5">
                 Review your equipment list to make sure it still reflects your plan.
               </p>
@@ -285,32 +319,85 @@ export function BuildoutEquipmentWorkspace({
           </div>
         )}
 
-        {/* Save toolbar */}
-        <div className="mb-5 flex items-center justify-end gap-3">
-          <span
-            className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
-          >
-            {saveLabel}
-          </span>
-          {canEdit && (
+        {/* Tabs */}
+        <div className="flex items-center gap-0 mb-5 border-b border-[#e8e8e8]">
+          {(["equipment", "supplies"] as const).map((tab) => (
             <button
+              key={tab}
               type="button"
-              onClick={handleManualSave}
-              disabled={saveState.kind === "saving"}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                activeTab === tab
+                  ? "border-[#155e63] text-[#155e63]"
+                  : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"
+              }`}
             >
-              <Save size={12} aria-hidden="true" />
-              Save
+              {tab === "equipment" ? "Equipment" : "Supplies"}
             </button>
-          )}
+          ))}
+
+          {/* Save toolbar — right side */}
+          <div className="ml-auto flex items-center gap-3 pb-2">
+            {activeTab === "equipment" && (
+              <>
+                <span className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
+                  {saveLabel}
+                </span>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={handleManualSave}
+                    disabled={saveState.kind === "saving"}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+                  >
+                    <Save size={12} aria-hidden="true" />
+                    Save
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
-        <EquipmentSection
-          planId={planId}
-          canEdit={canEdit}
-          items={equipment}
-          onItemsChange={handleEquipmentChange}
-        />
+        {activeTab === "equipment" && (
+          <>
+            <SeedBanner
+              canEdit={canEdit}
+              listType="equipment"
+              hasAiItems={hasAiEquipment}
+              onSeed={seedEquipment}
+            />
+            <SectionedListGrid
+              listType="equipment"
+              planId={planId}
+              canEdit={canEdit}
+              sections={equipmentSections}
+              items={equipment as AnyItem[]}
+              onItemsChange={handleEquipmentChange}
+              onSectionsChange={handleSectionsChange}
+            />
+          </>
+        )}
+
+        {activeTab === "supplies" && (
+          <>
+            <SeedBanner
+              canEdit={canEdit}
+              listType="supplies"
+              hasAiItems={hasAiSupplies}
+              onSeed={seedSupplies}
+            />
+            <SectionedListGrid
+              listType="supplies"
+              planId={planId}
+              canEdit={canEdit}
+              sections={suppliesSections}
+              items={supplies as AnyItem[]}
+              onItemsChange={handleSuppliesChange}
+              onSectionsChange={handleSectionsChange}
+            />
+          </>
+        )}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
