@@ -149,7 +149,7 @@ function OrgTab({
       parent_role_id: null,
       jd_template_id: null,
     };
-    onRolesChange([...roles, optimistic]);
+    onRolesChange((prev) => [...prev, optimistic]);
     setEditingId(optimistic.id);
 
     const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
@@ -167,7 +167,7 @@ function OrgTab({
   }
 
   async function updateRole(id: string, patch: Partial<OrgRole>) {
-    onRolesChange(roles.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    onRolesChange((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -176,12 +176,12 @@ function OrgTab({
   }
 
   async function deleteRole(id: string) {
-    const prev = roles;
-    onRolesChange(roles.filter((r) => r.id !== id));
+    const snapshot = roles;
+    onRolesChange((prev) => prev.filter((r) => r.id !== id));
     const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}&id=${id}`, {
       method: "DELETE",
     });
-    if (!res.ok) onRolesChange(prev);
+    if (!res.ok) onRolesChange(snapshot);
   }
 
   async function openJd(role: OrgRole) {
