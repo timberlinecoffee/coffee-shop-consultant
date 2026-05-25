@@ -1,5 +1,5 @@
 // TIM-964: AI critique endpoint for the Financial Suite.
-// Reads projections data and generates a benchmarked critique.
+// TIM-1004: Updated to include itemized opex and out-of-range category flagging.
 // POST /api/workspaces/financials/critique
 
 export const runtime = "nodejs";
@@ -47,59 +47,75 @@ export async function POST(request: Request) {
   }
 
   const { year1, year3, year5 } = projections;
-  const gm1 = year1.revenue > 0 ? ((year1.gross_margin / year1.revenue) * 100).toFixed(1) : "0";
-  const ebitda1Pct = year1.revenue > 0 ? ((year1.ebitda / year1.revenue) * 100).toFixed(1) : "0";
-  const laborPct = year1.revenue > 0 ? ((year1.labor / year1.revenue) * 100).toFixed(1) : "0";
-  const rentPct = year1.revenue > 0 ? ((year1.rent / year1.revenue) * 100).toFixed(1) : "0";
+
+  function pct(numerator: number, denominator: number): string {
+    return denominator > 0 ? `${((numerator / denominator) * 100).toFixed(1)}%` : "0%";
+  }
+
+  const gm1 = pct(year1.gross_profit, year1.revenue);
+  const laborPct1 = pct(year1.labor, year1.revenue);
+  const rentPct1 = pct(year1.rent, year1.revenue);
+  const marketingPct1 = pct(year1.marketing, year1.revenue);
+  const utilitiesPct1 = pct(year1.utilities, year1.revenue);
+  const insurancePct1 = pct(year1.insurance, year1.revenue);
+  const techPct1 = pct(year1.tech, year1.revenue);
+  const opIncPct1 = pct(year1.operating_income, year1.revenue);
+  const netPct1 = pct(year1.net_income, year1.revenue);
+  const totalOpexPct1 = pct(year1.total_opex, year1.revenue);
 
   const prompt = `You are a senior coffee shop consultant who has reviewed hundreds of independent coffee shop business plans. You have deep knowledge of industry benchmarks for small-format espresso bars and cafes in North American markets.
 
 Review these Year 1 / Year 3 / Year 5 financial projections for a new coffee shop and provide a benchmarked critique.
 
-## Projections
-**Year 1**
+## Year 1 Projections (Detailed)
 - Revenue: ${formatCurrency(year1.revenue)}
-- COGS: ${formatCurrency(year1.cogs)} (${gm1}% gross margin)
-- Labor: ${formatCurrency(year1.labor)} (${laborPct}% of revenue)
-- Rent: ${formatCurrency(year1.rent)} (${rentPct}% of revenue)
-- EBITDA: ${formatCurrency(year1.ebitda)} (${ebitda1Pct}% margin)
-- Net Income: ${formatCurrency(year1.net_income)}
+- COGS: ${formatCurrency(year1.cogs)} → Gross Profit: ${formatCurrency(year1.gross_profit)} (${gm1} gross margin)
 
-**Year 3**
-- Revenue: ${formatCurrency(year3.revenue)}
-- EBITDA: ${formatCurrency(year3.ebitda)}
-- Net Income: ${formatCurrency(year3.net_income)}
+Operating Expenses:
+- Labor: ${formatCurrency(year1.labor)} (${laborPct1} of revenue)
+- Rent: ${formatCurrency(year1.rent)} (${rentPct1} of revenue)
+- Marketing: ${formatCurrency(year1.marketing)} (${marketingPct1} of revenue)
+- Utilities: ${formatCurrency(year1.utilities)} (${utilitiesPct1} of revenue)
+- Insurance: ${formatCurrency(year1.insurance)} (${insurancePct1} of revenue)
+- Tech & Software: ${formatCurrency(year1.tech)} (${techPct1} of revenue)
+- Maintenance + Supplies + Other: ${formatCurrency(year1.maintenance + year1.supplies + year1.other_misc)}
+- Total Operating Expenses: ${formatCurrency(year1.total_opex)} (${totalOpexPct1} of revenue)
 
-**Year 5**
-- Revenue: ${formatCurrency(year5.revenue)}
-- EBITDA: ${formatCurrency(year5.ebitda)}
-- Net Income: ${formatCurrency(year5.net_income)}
+- Operating Income: ${formatCurrency(year1.operating_income)} (${opIncPct1} of revenue)
+- Net Income: ${formatCurrency(year1.net_income)} (${netPct1} of revenue)
+
+## Year 3
+- Revenue: ${formatCurrency(year3.revenue)} | Operating Income: ${formatCurrency(year3.operating_income)} | Net Income: ${formatCurrency(year3.net_income)}
+
+## Year 5
+- Revenue: ${formatCurrency(year5.revenue)} | Operating Income: ${formatCurrency(year5.operating_income)} | Net Income: ${formatCurrency(year5.net_income)}
 
 **Startup Equipment Total:** ${formatCurrency(projections.startup_equipment_total)}
 
 ${concept_summary ? `## Concept Context\n${concept_summary}` : ""}
 
 ## Industry Benchmarks (independent coffee shops, North America)
-- Gross margin: 60–70% is healthy; below 55% is concerning
-- Labor: 30–38% of revenue is typical; above 40% is a red flag
-- Rent: under 10% of revenue is ideal; 10–15% is acceptable; above 15% is risky
-- EBITDA: 10–18% is a healthy mature shop; year 1 breakeven or slight loss is normal
-- Revenue growth year-over-year: 10–20% is realistic for an established shop
+- Gross margin: 60–70% healthy; below 55% concerning
+- Labor: 28–32% of revenue is typical for a well-run shop; 32–38% is acceptable; above 40% is a red flag
+- Rent: under 10% of revenue ideal; 10–15% acceptable; above 15% risky (rent trap)
+- Marketing: 1–3% typical; below 0.5% may indicate under-investment
+- Utilities: 2–4% typical for an espresso bar
+- Operating income: 10–18% is a healthy mature shop; year 1 breakeven or slight loss is normal for a startup
+- Net income year 1: small loss or breakeven is realistic; year 3+ should trend toward 8–12%
 
 ## Instructions
-Return a JSON object with a "bullets" array containing 4-5 items. Each bullet must have:
+Return a JSON object with a "bullets" array containing 4–6 items. Each bullet must have:
 - type: "strength", "weakness", or "suggestion"
-- text: a concise, specific observation (1-2 sentences max). Reference actual numbers. Do NOT be generic.
+- text: a concise, specific observation (1–2 sentences). Reference the actual numbers and % from the projections above. For any category outside the typical range, call it out explicitly with the actual % and the benchmark range (e.g. "Labor at 45% of revenue is above the typical 28–32% range for a full-service café — consider reviewing staffing levels."). Do NOT be generic.
 
-Mix of types: typically 1-2 strengths, 2-3 weaknesses or suggestions.
-Be direct and specific. Owners need honest feedback, not cheerleading.
+Mix: typically 1–2 strengths, 2–3 weaknesses or suggestions. Be direct. Owners need honest feedback, not cheerleading.
 
 Return ONLY the JSON object, no other text.`;
 
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1000,
+      max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     });
 
