@@ -36,7 +36,7 @@ export default function HomeNav() {
               scrolled ? "text-neutral-700 hover:text-neutral-950" : "text-white/80 hover:text-white"
             }`}
           >
-            Sign in
+            Sign In
           </Link>
           <Link
             href="/login?plan=builder"
@@ -46,7 +46,7 @@ export default function HomeNav() {
                 : "bg-white text-teal hover:bg-neutral-100"
             }`}
           >
-            Start your plan
+            Start Your Plan
           </Link>
         </div>
       </div>

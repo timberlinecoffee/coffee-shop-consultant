@@ -3,80 +3,166 @@ import Link from "next/link";
 import Image from "next/image";
 import HomeNav from "./_components/HomeNav";
 import HomepageHero from "./_components/HomepageHero";
+import FeatureAccordion, { type AccordionItem } from "./_components/FeatureAccordion";
 import {
   FadeUp,
   ScaleIn,
   StaggerContainer,
   StaggerItem,
-  AnimatedCounter,
 } from "./_components/AnimatedElements";
 
 export const metadata: Metadata = {
-  title: "Groundwork: Plan your coffee shop, start to open.",
+  title: "Groundwork: From Coffee Shop Idea to Open Sign.",
   description:
-    "An AI-powered planning companion for people serious about opening a coffee shop. Guided decisions, real benchmarks, and action at every step.",
+    "Run a successful coffee shop without a business background. Groundwork guides every decision, benchmarks your plan, and turns it into action.",
   openGraph: {
-    title: "Groundwork: Plan your coffee shop, start to open.",
+    title: "Groundwork: From Coffee Shop Idea to Open Sign.",
     description:
-      "An AI-powered planning companion for people serious about opening a coffee shop.",
+      "Run a successful coffee shop without a business background. Groundwork fills the gaps.",
     siteName: "Groundwork",
   },
 };
 
 // Pexels photos by Ketut Subiyanto (Pexels License — free for commercial use)
 const PEXELS = {
-  // Coffee shop team at laptop — shows planning & collaboration in a real café
+  // Coffee shop team reviewing their plan together
   teamPlanning:
     "https://images.pexels.com/photos/4350093/pexels-photo-4350093.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
+  // Barista pouring steamed milk at the espresso machine — operator at work
+  baristaMilk:
+    "https://images.pexels.com/photos/4350048/pexels-photo-4350048.jpeg?auto=compress&cs=tinysrgb&w=1100&h=700&dpr=1",
+  // Cafe owners in aprons collaborating — owner/operator scene
+  ownersCollab:
+    "https://images.pexels.com/photos/4350061/pexels-photo-4350061.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
 };
 
-const PILLARS = [
+const SUITE_ITEMS: AccordionItem[] = [
   {
+    accent: "teal",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
       </svg>
     ),
-    color: "teal" as const,
-    title: "AI-guided planning",
+    title: "AI-Guided Planning",
+    oneLiner:
+      "Walks you through every decision a coffee-shop owner has to make, in the right order.",
+    bullets: [
+      "Concept, location, menu, financials, staffing, build-out, launch: eight planning modules in sequence",
+      "Prompts you for the inputs that matter and skips the ones that don't",
+      "Saves your answers and shows what's left so you always know what to work on next",
+    ],
   },
   {
+    accent: "sage",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>
       </svg>
     ),
-    color: "sage" as const,
-    title: "Real benchmarking",
+    title: "Real Benchmarking",
+    oneLiner:
+      "Compares your numbers against what working coffee shops actually look like.",
+    bullets: [
+      "Startup cost, rent ratios, COGS, labor and margin all flagged when they drift out of range",
+      "Benchmarks are built from real operators, not generic small-business templates",
+      "Updates live as you change your plan, so you can stress-test before you sign anything",
+    ],
   },
   {
+    accent: "teal",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
       </svg>
     ),
-    color: "teal" as const,
-    title: "Action at every step",
+    title: "Action at Every Step",
+    oneLiner:
+      "Turns every planning module into a specific next thing to do this week.",
+    bullets: [
+      "Generates a launch-plan milestone list tied to your open date",
+      "Surfaces the single 'next action' at every step so you don't stall in research mode",
+      "Tracks what you've completed and what's still outstanding",
+    ],
   },
   {
+    accent: "sage",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
       </svg>
     ),
-    color: "sage" as const,
-    title: "Complete planning suite",
+    title: "Complete Planning Suite",
+    oneLiner:
+      "Everything you'd usually piece together from eight different tools, in one place.",
+    bullets: [
+      "Financial model, menu pricing, staffing, build-out and launch plan all share the same plan inputs",
+      "Change one assumption and every downstream module updates",
+      "Export-ready outputs for landlords, lenders and partners",
+    ],
   },
   {
+    accent: "teal",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
     ),
-    color: "teal" as const,
-    title: "Operational tools",
+    title: "Operational Tools",
+    oneLiner:
+      "Carries through to opening day, not just the pre-open paperwork.",
+    bullets: [
+      "Hiring, onboarding and shift planning ready for week one",
+      "Menu pricing and recipe costing you can update as suppliers change",
+      "Launch-day checklist tied to your milestones",
+    ],
   },
 ];
+
+const BENCHMARK_STEPS: AccordionItem[] = [
+  {
+    step: "01",
+    accent: "teal",
+    title: "Get Guided Through Every Decision",
+    oneLiner:
+      "Stop wondering what you're supposed to be working on this week.",
+    bullets: [
+      "Eight sequenced modules walk you through the full plan",
+      "Each module asks for the inputs that matter and shows what's still missing",
+      "The next-best action is always visible, so you don't sit staring at a blank page",
+    ],
+  },
+  {
+    step: "02",
+    accent: "sage",
+    title: "See How Your Plan Compares",
+    oneLiner:
+      "Know whether your numbers are realistic before a landlord or lender does.",
+    bullets: [
+      "Startup cost, rent ratio, COGS and labor benchmarked against real coffee shops",
+      "Drift-out-of-range flags tell you exactly which assumption is breaking the model",
+      "Re-run with new numbers as soon as you change a lease term or supplier price",
+    ],
+  },
+  {
+    step: "03",
+    accent: "teal",
+    title: "Take Action Toward Opening",
+    oneLiner:
+      "Turn the plan into a launch you can actually run.",
+    bullets: [
+      "Milestone-based launch plan tied to your open date",
+      "Hiring, onboarding and soft-open checklists wired to the same plan",
+      "Track what's done and what's next without a separate project tool",
+    ],
+  },
+];
+
+const FOUNDER_QUOTE = {
+  body: "Most people who open a coffee shop don't have a business background. Run a successful coffee shop without one. Groundwork fills the gaps and gives you the ability to intentionally and thoughtfully run your business.",
+  attribution: "Trent Rollings",
+  role: "Founder, Timberline Coffee School",
+};
 
 const TESTIMONIALS = [
   {
@@ -114,7 +200,7 @@ const PRICING = [
       "Preview planning modules",
       "See your full plan outline",
     ],
-    cta: "Start for free",
+    cta: "Start for Free",
     href: "/login",
     recommended: false,
     accent: false,
@@ -132,7 +218,7 @@ const PRICING = [
       "50 AI consultant sessions per month",
       "Email support",
     ],
-    cta: "Start your plan",
+    cta: "Start Your Plan",
     href: "/login?plan=builder",
     recommended: false,
     accent: false,
@@ -151,7 +237,7 @@ const PRICING = [
       "Strategy call at plan completion",
       "Priority support",
     ],
-    cta: "Get the full plan",
+    cta: "Get the Full Plan",
     href: "/login?plan=accelerator",
     recommended: true,
     accent: true,
@@ -162,10 +248,10 @@ const FOOTER_COLS = [
   {
     heading: "Product",
     links: [
-      { label: "How it works", href: "#how-it-works" },
+      { label: "How It Works", href: "#how-it-works" },
       { label: "Pricing", href: "#pricing" },
-      { label: "Sign in", href: "/login" },
-      { label: "Start your plan", href: "/login?plan=builder" },
+      { label: "Sign In", href: "/login" },
+      { label: "Start Your Plan", href: "/login?plan=builder" },
     ],
   },
   {
@@ -177,9 +263,9 @@ const FOOTER_COLS = [
   {
     heading: "Legal",
     links: [
-      { label: "Terms of use", href: "/terms" },
-      { label: "Privacy policy", href: "/privacy" },
-      { label: "Subscription terms", href: "/subscription-terms" },
+      { label: "Terms of Use", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Subscription Terms", href: "/subscription-terms" },
     ],
   },
   {
@@ -196,30 +282,49 @@ export default function LandingPage() {
       <HomeNav />
       <HomepageHero />
 
-      {/* ── Social proof / stats bar ──────────────────────────────────────────── */}
-      <section className="bg-white border-b border-neutral-200" style={{ padding: "48px 24px" }}>
-        <div className="max-w-4xl mx-auto">
+      {/* ── Value props strip ────────────────────────────────────────────────── */}
+      <section className="bg-white border-b border-neutral-200" style={{ padding: "56px 24px" }}>
+        <div className="max-w-5xl mx-auto">
           <FadeUp>
-            <p className="text-center text-neutral-500 text-sm mb-10 font-medium">
-              Guided decisions. Real benchmarks. Action toward opening.
+            <p
+              className="text-center font-semibold uppercase mb-10"
+              style={{ fontSize: "11px", letterSpacing: "0.14em", color: "var(--sage)" }}
+            >
+              Built for Owner-Operators
             </p>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { target: 1200, suffix: "+", label: "Coffee shops in planning", color: "var(--teal)" },
-              { target: 100, suffix: "%", label: "AI-guided decisions", color: "var(--sage)" },
-              { target: 15, suffix: "+", label: "Years in specialty coffee", color: "var(--teal)" },
-            ].map((s) => (
-              <StaggerItem key={s.label}>
+              {
+                title: "Guided Through Every Decision",
+                body: "Eight sequenced modules tell you what to plan next, so you never sit staring at a blank page.",
+                color: "teal" as const,
+              },
+              {
+                title: "Benchmarked Against Real Shops",
+                body: "Your numbers live next to what working coffee shops actually look like, not a generic business template.",
+                color: "sage" as const,
+              },
+              {
+                title: "An AI Co-Pilot in Your Corner",
+                body: "Ask coffee-specific questions about your lease, menu or equipment and get answers tied to your own plan.",
+                color: "teal" as const,
+              },
+            ].map((item) => (
+              <StaggerItem key={item.title}>
                 <div>
                   <p
-                    className="font-bold"
-                    style={{ fontSize: "40px", lineHeight: 1, color: s.color, letterSpacing: "-0.02em" }}
+                    className="font-semibold mb-2"
+                    style={{
+                      fontSize: "16px",
+                      color: item.color === "sage" ? "var(--sage)" : "var(--teal)",
+                      lineHeight: 1.3,
+                    }}
                   >
-                    <AnimatedCounter target={s.target} suffix={s.suffix} />
+                    {item.title}
                   </p>
-                  <p className="text-neutral-500 mt-1" style={{ fontSize: "14px" }}>
-                    {s.label}
+                  <p className="text-neutral-600" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                    {item.body}
                   </p>
                 </div>
               </StaggerItem>
@@ -228,17 +333,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Three pillars / what Groundwork actually is ───────────────────────────
-          Lead with the three value drivers. No module count.
-      ─────────────────────────────────────────────────────────────────────────── */}
+      {/* ── Groundwork Suite — accordion of platform capabilities ──────────────── */}
       <section id="how-it-works" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
-          <FadeUp className="text-center mb-14">
+          <FadeUp className="text-center mb-12">
             <p
               className="font-semibold uppercase mb-3"
               style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
             >
-              What Groundwork is
+              The Groundwork Suite
             </p>
             <h2
               className="font-bold"
@@ -249,38 +352,16 @@ export default function LandingPage() {
                 color: "var(--teal)",
               }}
             >
-              A guided suite for the whole journey.
+              A Guided Suite for the Whole Journey
             </h2>
+            <p
+              className="mx-auto mt-4 text-neutral-600"
+              style={{ fontSize: "15px", lineHeight: 1.6, maxWidth: "560px" }}
+            >
+              Tap any card to see what&apos;s inside.
+            </p>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PILLARS.map((p) => (
-              <StaggerItem key={p.title} className="h-full">
-                <div
-                  className="bg-white rounded-xl p-5 border border-neutral-200 hover:-translate-y-1 transition-all duration-200 cursor-default flex items-center gap-4 h-full"
-                  style={{
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                    borderLeft: `3px solid ${p.color === "sage" ? "var(--sage)" : "var(--teal)"}`,
-                  }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: p.color === "sage" ? "rgba(118,179,157,0.12)" : "rgba(21,94,99,0.08)",
-                      color: p.color === "sage" ? "var(--sage)" : "var(--teal)",
-                    }}
-                  >
-                    {p.icon}
-                  </div>
-                  <h3
-                    className="font-semibold"
-                    style={{ fontSize: "14px", color: p.color === "sage" ? "var(--sage)" : "var(--teal)" }}
-                  >
-                    {p.title}
-                  </h3>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
+          <FeatureAccordion items={SUITE_ITEMS} layout="icon" columns={3} />
         </div>
       </section>
 
@@ -299,7 +380,7 @@ export default function LandingPage() {
                   className="font-semibold uppercase mb-4"
                   style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
                 >
-                  AI consultant
+                  AI Consultant
                 </p>
                 <h2
                   className="font-bold mb-5"
@@ -310,16 +391,18 @@ export default function LandingPage() {
                     color: "var(--teal)",
                   }}
                 >
-                  Your personal coffee expert, always in your corner.
+                  Your Coffee-Specific Co-Pilot, Always in Your Corner
                 </h2>
                 <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
-                  Ask about your market, lease terms, or equipment choices. Get coffee-specific answers tied to your actual plan — not generic business advice.
+                  Ask about your market, lease terms, or equipment choices and get coffee-specific
+                  answers tied to your own plan, not generic small-business advice. Built for the
+                  owner-operator who didn&apos;t come from a business background.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {[
-                    { label: "Coffee-specific guidance", color: "sage" },
-                    { label: "Benchmarked against real data", color: "teal" },
-                    { label: "Available at every step", color: "sage" },
+                    { label: "Coffee-Specific Guidance", color: "sage" },
+                    { label: "Tied to Your Plan, Not Generic", color: "teal" },
+                    { label: "Available at Every Step", color: "sage" },
                   ].map((tag) => (
                     <span
                       key={tag.label}
@@ -344,21 +427,45 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Guidance → Benchmarking → Action (replaces "documents" value props) ──
-          Contained photo + 3-step value prop.
-      ─────────────────────────────────────────────────────────────────────────── */}
+      {/* ── Guided. Benchmarked. Moving. — accordion + photo ───────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
-            {/* Contained photo — 3 cols */}
-            <ScaleIn className="lg:col-span-3 relative">
-              <div className="rounded-2xl overflow-hidden aspect-[4/3] relative">
+          <FadeUp className="text-center mb-12">
+            <p
+              className="font-semibold uppercase mb-3"
+              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
+            >
+              How It Works
+            </p>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
+                lineHeight: 1.2,
+                fontWeight: 700,
+                color: "var(--teal)",
+              }}
+            >
+              Guided. Benchmarked. Moving.
+            </h2>
+            <p
+              className="mx-auto mt-4 text-neutral-600"
+              style={{ fontSize: "15px", lineHeight: 1.6, maxWidth: "560px" }}
+            >
+              Three habits the platform builds into your week.
+            </p>
+          </FadeUp>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
+            {/* Photo + floating card — 2 cols */}
+            <ScaleIn className="lg:col-span-2 relative">
+              <div className="rounded-2xl overflow-hidden aspect-[4/5] relative">
                 <Image
                   src={PEXELS.teamPlanning}
-                  alt="Coffee shop team reviewing their business plan together"
+                  alt="Coffee shop owners reviewing their plan together. Photo: Ketut Subiyanto / Pexels."
                   fill
                   className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  sizes="(max-width: 1024px) 100vw, 40vw"
                 />
                 <div
                   className="absolute inset-0"
@@ -368,7 +475,6 @@ export default function LandingPage() {
                   }}
                 />
               </div>
-              {/* Floating benchmark card — sage tinted */}
               <div
                 className="absolute bottom-4 left-4 rounded-xl px-4 py-3"
                 style={{
@@ -388,7 +494,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>
-                    Plan benchmark: healthy
+                    Plan Benchmark: Healthy
                   </p>
                 </div>
                 <p className="text-neutral-600" style={{ fontSize: "11px" }}>
@@ -397,64 +503,16 @@ export default function LandingPage() {
               </div>
             </ScaleIn>
 
-            {/* Right — 2 cols */}
-            <div className="lg:col-span-2 space-y-4">
-              <FadeUp>
-                <p
-                  className="font-semibold uppercase mb-2"
-                  style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
-                >
-                  How it works
-                </p>
-                <h2
-                  className="font-bold mb-6"
-                  style={{
-                    fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
-                    lineHeight: 1.25,
-                    fontWeight: 700,
-                    color: "var(--teal)",
-                  }}
-                >
-                  Guided. Benchmarked. Moving.
-                </h2>
-              </FadeUp>
-              <StaggerContainer>
-                {[
-                  { num: "01", title: "Get guided through every decision", color: "teal" },
-                  { num: "02", title: "See how your plan compares", color: "sage" },
-                  { num: "03", title: "Take action toward opening", color: "teal" },
-                ].map((item) => (
-                  <StaggerItem key={item.num}>
-                    <div
-                      className="flex items-center gap-4 p-4 rounded-xl border transition-colors"
-                      style={{
-                        borderColor: item.color === "sage" ? "rgba(118,179,157,0.25)" : "#E5E5E0",
-                        background: item.color === "sage" ? "rgba(118,179,157,0.04)" : "var(--neutral-50, #FAFAF8)",
-                      }}
-                    >
-                      <span
-                        className="font-bold flex-shrink-0"
-                        style={{ fontSize: "13px", color: item.color === "sage" ? "var(--sage)" : "var(--teal)", opacity: 0.5 }}
-                      >
-                        {item.num}
-                      </span>
-                      <p
-                        className="font-semibold"
-                        style={{ fontSize: "14px", color: item.color === "sage" ? "var(--sage)" : "var(--teal)" }}
-                      >
-                        {item.title}
-                      </p>
-                    </div>
-                  </StaggerItem>
-                ))}
-              </StaggerContainer>
-              <FadeUp delay={0.3}>
+            {/* Accordion + CTA — 3 cols */}
+            <div className="lg:col-span-3 space-y-4">
+              <FeatureAccordion items={BENCHMARK_STEPS} layout="step" columns={1} />
+              <FadeUp delay={0.2}>
                 <Link
                   href="/login?plan=builder"
                   className="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg font-semibold text-sm text-white transition-all mt-2"
                   style={{ background: "var(--teal)" }}
                 >
-                  Start your plan &rarr;
+                  Start Your Plan &rarr;
                 </Link>
               </FadeUp>
             </div>
@@ -462,9 +520,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Module snapshots strip ────────────────────────────────────────────────
-          3 mini product screenshots. Sage-tinted bg.
-      ─────────────────────────────────────────────────────────────────────────── */}
+      {/* ── Module snapshots strip ────────────────────────────────────────────── */}
       <section
         style={{
           background: "rgba(118,179,157,0.06)",
@@ -479,7 +535,7 @@ export default function LandingPage() {
               className="font-semibold uppercase mb-3"
               style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
             >
-              Inside the platform
+              Inside the Platform
             </p>
             <h2
               className="font-bold"
@@ -490,7 +546,7 @@ export default function LandingPage() {
                 color: "var(--teal)",
               }}
             >
-              Every tool purpose-built for the decision it covers.
+              Every Tool Built for a Specific Decision
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -519,23 +575,85 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ──────────────────────────────────────────────────────────
-          Alternating teal/sage accents. Teal heading.
-      ─────────────────────────────────────────────────────────────────────────── */}
+      {/* ── Founder pull-quote + barista photo ────────────────────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
+            {/* Barista photo — 2 cols */}
+            <ScaleIn className="lg:col-span-2 relative">
+              <div className="rounded-2xl overflow-hidden aspect-[4/5] relative">
+                <Image
+                  src={PEXELS.baristaMilk}
+                  alt="Barista steaming milk at the espresso machine on opening day. Photo: Ketut Subiyanto / Pexels."
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom right, transparent 55%, rgba(14,68,72,0.22) 100%)",
+                  }}
+                />
+              </div>
+            </ScaleIn>
+
+            {/* Founder pull-quote — 3 cols */}
+            <FadeUp className="lg:col-span-3">
+              <p
+                className="font-semibold uppercase mb-4"
+                style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
+              >
+                From the Founder
+              </p>
+              <blockquote
+                className="text-neutral-800 mb-6"
+                style={{
+                  fontSize: "clamp(1.25rem, 2.4vw, 1.625rem)",
+                  lineHeight: 1.4,
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                &ldquo;{FOUNDER_QUOTE.body}&rdquo;
+              </blockquote>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
+                  style={{ background: "var(--teal)", fontSize: "14px" }}
+                >
+                  T
+                </div>
+                <div>
+                  <p className="font-semibold" style={{ fontSize: "14px", color: "var(--teal)" }}>
+                    {FOUNDER_QUOTE.attribution}
+                  </p>
+                  <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
+                    {FOUNDER_QUOTE.role}
+                  </p>
+                </div>
+              </div>
+            </FadeUp>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ──────────────────────────────────────────────────────── */}
+      <section style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
             <p
               className="font-semibold uppercase mb-3"
               style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
             >
-              From people who used it
+              From People Who Used It
             </p>
             <h2
               className="font-bold"
               style={{ fontSize: "clamp(1.5rem, 3.5vw, 2rem)", lineHeight: 1.25, fontWeight: 700, color: "var(--teal)" }}
             >
-              Built for the part where you don&apos;t know what you don&apos;t know.
+              Built for the Part You Don&apos;t Know You Don&apos;t Know
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -550,12 +668,11 @@ export default function LandingPage() {
                     style={{ background: i % 2 === 0 ? "var(--teal)" : "var(--sage)" }}
                   />
                   <blockquote
-                    className="text-neutral-700 leading-relaxed mb-5 flex-1"
+                    className="text-neutral-700 mb-5 flex-1"
                     style={{
-                      fontFamily: "var(--font-lora, Georgia), serif",
-                      fontStyle: "italic",
-                      fontSize: "1rem",
-                      lineHeight: "1.75",
+                      fontSize: "0.95rem",
+                      lineHeight: 1.6,
+                      fontWeight: 400,
                     }}
                   >
                     &ldquo;{t.quote}&rdquo;
@@ -611,13 +728,13 @@ export default function LandingPage() {
                 fontSize: "clamp(1.4rem, 3vw, 1.875rem)",
                 lineHeight: 1.2,
                 fontWeight: 700,
-                maxWidth: "480px",
+                maxWidth: "520px",
               }}
             >
-              Most people who open coffee shops don&apos;t have a business background.
+              Open a Coffee Shop Without a Business Background
             </h2>
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "1rem", lineHeight: 1.65 }}>
-              Groundwork doesn&apos;t assume you do.
+            <p style={{ color: "rgba(255,255,255,0.78)", fontSize: "1rem", lineHeight: 1.65, maxWidth: "520px" }}>
+              Groundwork fills the gaps so you can run your shop intentionally and thoughtfully.
             </p>
           </FadeUp>
           <FadeUp delay={0.15}>
@@ -630,7 +747,7 @@ export default function LandingPage() {
                 boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
               }}
             >
-              Start your plan
+              Start Your Plan
             </Link>
           </FadeUp>
         </div>
@@ -655,7 +772,7 @@ export default function LandingPage() {
                 color: "var(--teal)",
               }}
             >
-              Start free. Go deeper when you&apos;re ready.
+              Start Free. Go Deeper When You&apos;re Ready.
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1054,7 +1171,7 @@ function PricingCard({ plan }: { plan: PlanData }) {
     >
       {plan.recommended && (
         <p className="font-semibold uppercase mb-4" style={{ fontSize: "10px", letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)" }}>
-          Most popular
+          Most Popular
         </p>
       )}
       <p className="font-semibold mb-3" style={{ fontSize: "18px", color: plan.accent ? "white" : "var(--teal)", fontWeight: 600 }}>

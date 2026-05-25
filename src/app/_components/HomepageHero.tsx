@@ -260,20 +260,6 @@ export default function HomepageHero() {
       <div className="relative z-10 max-w-6xl mx-auto w-full px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
         {/* Left — headline + CTAs */}
         <div>
-          <motion.p
-            className="font-semibold uppercase mb-5"
-            style={{
-              fontSize: "11px",
-              letterSpacing: "0.14em",
-              color: "rgba(118,179,157,0.9)",
-            }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.1, ease: EASE }}
-          >
-            Coffee shop planning
-          </motion.p>
-
           <motion.h1
             className="font-bold text-white mb-5"
             style={{
@@ -286,9 +272,9 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.52, delay: 0.18, ease: EASE }}
           >
-            From idea
+            From Coffee Shop Idea
             <br />
-            to open sign.
+            to Open Sign.
           </motion.h1>
 
           <motion.p
@@ -296,16 +282,17 @@ export default function HomepageHero() {
             style={{
               fontSize: "1.125rem",
               lineHeight: "1.65",
-              opacity: 0.75,
+              opacity: 0.78,
               fontWeight: 400,
-              maxWidth: "440px",
+              maxWidth: "460px",
             }}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.28, ease: EASE }}
           >
-            An AI planning companion for people serious about opening a coffee shop.
-            Guided decisions. Real benchmarks. Action, not just paperwork.
+            Run a successful coffee shop without a business background.
+            Groundwork guides every decision, benchmarks your plan, and turns
+            it into the next action you need to take.
           </motion.p>
 
           <motion.div
@@ -323,42 +310,61 @@ export default function HomepageHero() {
                 boxShadow: "0 2px 12px rgba(0,0,0,0.18)",
               }}
             >
-              Start your plan
+              Start Your Plan
             </Link>
             <Link
               href="#how-it-works"
               className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-medium text-sm text-white transition-all"
               style={{ border: "1px solid rgba(255,255,255,0.28)", backdropFilter: "blur(8px)" }}
             >
-              See how it works
+              See How It Works
             </Link>
           </motion.div>
 
-          {/* Trust micro-stats */}
-          <motion.div
-            className="flex items-center gap-6 mt-10"
+          {/* Platform feature blurbs (replaces false stats) */}
+          <motion.ul
+            className="mt-10 space-y-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.52, ease: "easeOut" }}
           >
             {[
-              { num: "1,200+", label: "coffee shops planned" },
-              { num: "AI", label: "consultant built in" },
-              { num: "15+", label: "years expertise" },
-            ].map((s) => (
-              <div key={s.label}>
-                <p
-                  className="font-bold text-white"
-                  style={{ fontSize: "20px", lineHeight: 1, letterSpacing: "-0.01em" }}
+              "Guided suite from concept to grand opening",
+              "Benchmarks built from real coffee-shop operators",
+              "AI co-pilot that fills the business-background gap",
+            ].map((feature) => (
+              <li key={feature} className="flex items-start gap-2.5">
+                <span
+                  className="flex-shrink-0 flex items-center justify-center rounded-full"
+                  style={{
+                    width: "18px",
+                    height: "18px",
+                    background: "rgba(118,179,157,0.22)",
+                    marginTop: "2px",
+                  }}
                 >
-                  {s.num}
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#76b39d"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
+                <p
+                  className="text-white"
+                  style={{ fontSize: "14px", lineHeight: 1.45, opacity: 0.82 }}
+                >
+                  {feature}
                 </p>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", marginTop: "2px" }}>
-                  {s.label}
-                </p>
-              </div>
+              </li>
             ))}
-          </motion.div>
+          </motion.ul>
         </div>
 
         {/* Right — browser mockup */}
@@ -384,10 +390,10 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.7, ease: EASE }}
           >
             <p className="font-semibold text-white" style={{ fontSize: "13px" }}>
-              AI coffee consultant
+              AI Coffee Co-Pilot
             </p>
             <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "11px", marginTop: "1px" }}>
-              Specialty-specific answers
+              Coffee-specific answers
             </p>
           </motion.div>
 
@@ -405,7 +411,7 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.8, ease: EASE }}
           >
             <p className="font-semibold text-white" style={{ fontSize: "13px" }}>
-              Benchmarked against real data
+              Benchmarked Against Real Shops
             </p>
             <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "11px", marginTop: "1px" }}>
               Know if your plan is sustainable
