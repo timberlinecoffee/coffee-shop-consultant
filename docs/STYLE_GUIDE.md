@@ -1,9 +1,43 @@
 # Groundwork Style Guide
 
-## Title Case Rule (Binding — TIM-905)
+## Title Case Rule (Binding — TIM-905, extended in TIM-1002)
 
 Headers and bullet-point labels that are **not full sentences** use Title Case.
 Full-sentence content uses Sentence case.
+
+**Scope extended in TIM-1002** to also cover AI-generated and seed-data content,
+not just static UI strings:
+
+- Static labels, headers, buttons, tab names, nav items, field labels.
+- **AI-generated content** that lands in label-shaped slots: equipment names,
+  ingredient names, role names, JD titles, drink names, milestone names,
+  scorecard criterion names, persona names, suggestion bullet headers.
+- **Seed-data content** in any `standard_*_reference` table, any JSON fixture,
+  any AI prompt that produces label-shaped output. Authored values are stored
+  in Title Case at rest — no "fix-on-read" reliance.
+
+Sentence-form copy stays in sentence case (descriptions, body paragraphs,
+microcopy that reads as a sentence).
+
+### How to enforce
+
+Every agent that writes seed data, designs an AI prompt, or builds a UI label
+is responsible for verifying Title Case before merge. The helper lives at
+[`src/lib/text.ts`](../src/lib/text.ts) — `toTitleCase()` and
+`titleCaseFields()`. Apply at the boundary that is hardest to bypass:
+
+1. **Seed-data authoring** — TypeScript constants and SQL inserts must be Title
+   Case at rest.
+2. **AI-prompt design** — add "Return values in Title Case (every word
+   capitalized except articles/short prepositions/conjunctions)" plus a
+   few-shot example to the prompt, AND pipe the parsed output through
+   `toTitleCase()` for label-shaped fields.
+3. **Display formatter** — last resort. Use only when neither (1) nor (2) is
+   possible (e.g. third-party data import).
+
+If you add a new AI endpoint that generates label-shaped content, you MUST
+either pipe its output through `toTitleCase()` at the boundary or pin a
+test that asserts Title Case on the response.
 
 ### Reference Table
 
