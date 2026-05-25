@@ -27,9 +27,9 @@ export const VENDOR_CATEGORY_LABELS: Record<VendorCategoryKey, string> = {
 };
 
 export const VENDOR_CATEGORY_SUBTITLES: Record<VendorCategoryKey, string> = {
-  coffee_roaster: "Your beans — espresso, filter, decaf.",
+  coffee_roaster: "Your beans: espresso, filter, decaf.",
   dairy_altmilk: "Whole milk, half-and-half, oat, almond, soy.",
-  bakery: "Pastry partner — daily delivery vs. weekly wholesale.",
+  bakery: "Pastry partner: daily delivery vs. weekly wholesale.",
   syrups_sauces: "Vanilla, caramel, hazelnut, lavender, simple syrup.",
   tea: "Loose leaf, matcha, chai, herbal.",
   packaging: "Cups, lids, sleeves, takeaway bags, straws.",

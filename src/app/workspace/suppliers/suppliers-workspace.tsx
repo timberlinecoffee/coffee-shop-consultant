@@ -422,7 +422,7 @@ export function SuppliersWorkspace({
       <CoPilotDrawer
         planId={planId}
         workspaceKey="suppliers"
-        currentFocus={{ label: `Suppliers — ${VENDOR_CATEGORY_LABELS[activeCategory]}` }}
+        currentFocus={{ label: `Suppliers: ${VENDOR_CATEGORY_LABELS[activeCategory]}` }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
