@@ -2,7 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { toTitleCase } from "@/lib/text";
 import type { NextRequest } from "next/server";
+
+// TIM-1002: equipment label-shaped fields; PATCH boundary enforces Title Case.
+const TITLE_CASE_EQUIPMENT_FIELDS = new Set(["name", "vendor", "model"]);
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -68,7 +72,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
-    if (key in body) patch[key] = body[key];
+    if (key in body) {
+      const val = body[key];
+      patch[key] =
+        TITLE_CASE_EQUIPMENT_FIELDS.has(key) && typeof val === "string"
+          ? toTitleCase(val)
+          : val;
+    }
   }
 
   if (Object.keys(patch).length === 0) {

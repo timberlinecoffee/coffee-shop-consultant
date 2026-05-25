@@ -3,6 +3,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { toTitleCase } from "@/lib/text";
 import type { NextRequest } from "next/server";
 
 export async function GET() {
@@ -86,14 +87,19 @@ export async function POST(request: NextRequest) {
     .eq("plan_id", plan.id)
     .eq("archived", false);
 
+  // TIM-1002: name/vendor/model are label-shaped — enforce Title Case at the
+  // boundary regardless of whether the caller is the seed endpoint, the UI,
+  // or a future AI suggester.
+  const vendorRaw = body.vendor as string | undefined;
+  const modelRaw = body.model as string | undefined;
   const { data, error } = await supabase
     .from("buildout_equipment_items")
     .insert({
       plan_id: plan.id,
-      name: body.name as string,
+      name: toTitleCase(body.name as string),
       category: (body.category as string | undefined) ?? "other",
-      vendor: (body.vendor as string | undefined) ?? null,
-      model: (body.model as string | undefined) ?? null,
+      vendor: vendorRaw ? toTitleCase(vendorRaw) : null,
+      model: modelRaw ? toTitleCase(modelRaw) : null,
       quantity: (body.quantity as number | undefined) ?? 1,
       unit_cost_cents: (body.unit_cost_cents as number | undefined) ?? 0,
       priority_tier: (body.priority_tier as string | undefined) ?? "must_have",

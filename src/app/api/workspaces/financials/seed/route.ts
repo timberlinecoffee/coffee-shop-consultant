@@ -6,6 +6,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeConceptV2 } from "@/lib/concept";
+import { toTitleCase } from "@/lib/text";
 
 type MenuProfile = "espresso_focused" | "espresso_plus_brew" | "full_drip" | "full_food";
 
@@ -148,9 +149,12 @@ async function upsertItems(
     .eq("plan_id", planId)
     .eq("source", "ai_suggested");
 
+  // TIM-1002: name_canonical is label-shaped; enforce Title Case at the
+  // boundary so legacy lowercase rows in standard_equipment_reference still
+  // land as Title Case in the UI.
   const rows = refItems.map((ref, idx) => ({
     plan_id: planId,
-    name: ref.name_canonical,
+    name: toTitleCase(ref.name_canonical),
     category: ref.category,
     vendor: null,
     model: null,

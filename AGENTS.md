@@ -1,3 +1,25 @@
+<!-- BEGIN:title-case-rule -->
+# Title Case for labels (TIM-1002 — applies to AI/seed content)
+
+Any text that is NOT a complete sentence is **Title Case** in the product UI.
+This covers static labels AND AI-generated / seed-data content: equipment
+names, ingredient names, role names, JD titles, drink names, milestone names,
+scorecard criterion names, persona names, suggestion bullet headers.
+
+- Title Case helper: `toTitleCase()` in `src/lib/text.ts`. Pinning tests in
+  `src/lib/text.test.mjs`. Use it at the API boundary (or apply Title Case at
+  the source, e.g. seed SQL / fixture authoring).
+- Seed-data values (TS constants, SQL inserts, JSON fixtures) must be Title
+  Case **at rest** — do not rely on a fix-on-read formatter.
+- AI prompts that generate label-shaped fields must:
+  1. Instruct "Return values in Title Case (every word capitalized except
+     articles/short prepositions/conjunctions; AP style)" with a few-shot
+     example, AND
+  2. Pipe the parsed response through `toTitleCase()` / `titleCaseFields()`
+     before persisting or returning to the client.
+- Full rule + boundaries: `docs/STYLE_GUIDE.md`.
+<!-- END:title-case-rule -->
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 

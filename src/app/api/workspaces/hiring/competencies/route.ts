@@ -1,5 +1,6 @@
 // TIM-965: CRUD for staff_competencies (plan-level competency template).
 import { createClient } from "@/lib/supabase/server"
+import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
 
 async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -46,11 +47,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Missing required field: skill" }, { status: 400 })
   }
 
+  // TIM-1002: scorecard skill name is label-shaped.
   const { data, error } = await supabase
     .from("staff_competencies")
     .insert({
       plan_id: planId,
-      skill: body.skill,
+      skill: toTitleCase(body.skill),
       rubric: (body.rubric as string | undefined) ?? "",
       required_for_role: (body.required_for_role as string | undefined) ?? null,
       weight: (body.weight as number | undefined) ?? 1,
@@ -75,6 +77,7 @@ export async function PATCH(request: NextRequest) {
   if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
 
   const { id: _id, ...rest } = body
+  if (typeof rest.skill === "string") rest.skill = toTitleCase(rest.skill)
   const { data, error } = await supabase
     .from("staff_competencies")
     .update(rest)

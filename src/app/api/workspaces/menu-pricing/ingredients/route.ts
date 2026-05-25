@@ -1,5 +1,6 @@
 // TIM-967: CRUD for menu_ingredients.
 import { createClient } from "@/lib/supabase/server"
+import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
@@ -54,11 +55,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Missing required field: package_unit" }, { status: 400 })
   }
 
+  // TIM-1002: ingredient name is label-shaped — enforce Title Case.
   const { data, error } = await supabase
     .from("menu_ingredients")
     .insert({
       plan_id: planId,
-      name: body.name,
+      name: toTitleCase(body.name),
       package_size: body.package_size as number,
       package_unit: body.package_unit as string,
       package_cost_cents: (body.package_cost_cents as number | undefined) ?? 0,
@@ -89,7 +91,10 @@ export async function PATCH(request: NextRequest) {
   const allowed: Record<string, unknown> = {}
   const fields = ["name", "package_size", "package_unit", "package_cost_cents", "vendor_id", "notes"]
   for (const f of fields) {
-    if (f in rest) allowed[f] = rest[f]
+    if (f in rest) {
+      const val = rest[f]
+      allowed[f] = f === "name" && typeof val === "string" ? toTitleCase(val) : val
+    }
   }
 
   const { data, error } = await supabase

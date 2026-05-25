@@ -1,5 +1,6 @@
 // TIM-965: CRUD for hiring_plan_roles (org structure).
 import { createClient } from "@/lib/supabase/server"
+import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
 
 async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -57,11 +58,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Missing required field: role_title" }, { status: 400 })
   }
 
+  // TIM-1002: role_title is label-shaped — enforce Title Case at the boundary.
   const { data, error } = await supabase
     .from("hiring_plan_roles")
     .insert({
       plan_id: planId,
-      role_title: body.role_title,
+      role_title: toTitleCase(body.role_title),
       headcount: (body.headcount as number | undefined) ?? 1,
       start_date: (body.start_date as string | undefined) ?? null,
       monthly_cost_cents: (body.monthly_cost_cents as number | undefined) ?? null,
@@ -101,11 +103,14 @@ export async function PATCH(request: NextRequest) {
       .eq("plan_id", planId)
       .single()
 
+    // TIM-1002: JD `title` is label-shaped (role name); summary/responsibilities/
+    // requirements/comp are sentence-form copy.
+    const jdTitle = jdFields.title ? toTitleCase(jdFields.title) : ""
     if (existingRole?.jd_template_id) {
       await supabase
         .from("job_description_templates")
         .update({
-          title: jdFields.title ?? "",
+          title: jdTitle,
           summary: jdFields.summary ?? "",
           responsibilities: jdFields.responsibilities ?? "",
           requirements: jdFields.requirements ?? "",
@@ -117,7 +122,7 @@ export async function PATCH(request: NextRequest) {
         .from("job_description_templates")
         .insert({
           plan_id: planId,
-          title: jdFields.title ?? "",
+          title: jdTitle,
           summary: jdFields.summary ?? "",
           responsibilities: jdFields.responsibilities ?? "",
           requirements: jdFields.requirements ?? "",
@@ -142,9 +147,15 @@ export async function PATCH(request: NextRequest) {
     return Response.json(updated)
   }
 
+  // TIM-1002: enforce Title Case on label fields if present in the patch.
+  const cleanedRest = { ...rest } as Record<string, unknown>
+  if (typeof cleanedRest.role_title === "string") {
+    cleanedRest.role_title = toTitleCase(cleanedRest.role_title)
+  }
+
   const { data, error } = await supabase
     .from("hiring_plan_roles")
-    .update(rest)
+    .update(cleanedRest)
     .eq("id", id as string)
     .eq("plan_id", planId)
     .select()

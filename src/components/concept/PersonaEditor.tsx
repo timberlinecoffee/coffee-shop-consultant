@@ -17,6 +17,7 @@ import {
   PERSONA_VALUE_OPTIONS,
   setPersonaPrimary,
 } from "@/lib/concept";
+import { toTitleCase } from "@/lib/text";
 
 interface PersonaEditorProps {
   persona: CustomerPersona;
@@ -99,7 +100,12 @@ export function PersonaEditor({
   function handleSave() {
     if (!validate()) return;
     const now = new Date().toISOString();
-    const updated: CustomerPersona = { ...draft, name: draft.name.trim(), updatedAt: now };
+    // TIM-1002: persona name is label-shaped — store in Title Case at the boundary.
+    const updated: CustomerPersona = {
+      ...draft,
+      name: toTitleCase(draft.name.trim()),
+      updatedAt: now,
+    };
     // Propagate isPrimary change across all personas
     let next = allPersonas.map((p) => (p.id === updated.id ? updated : p));
     if (updated.isPrimary) {
