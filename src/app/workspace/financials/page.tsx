@@ -1,12 +1,11 @@
-// TIM-972: Financial Suite workspace page — loads from DB tables.
-// Equipment from buildout_equipment_items; forecast from financial_models.
+// TIM-972: Financial Suite workspace page.
+// TIM-1029: Equipment moved to Build Out & Equipment; this page loads forecast only.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { normalizeMonthlyProjections, defaultMonthlyProjections } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 import { FinancialsWorkspace } from "./financials-workspace";
-import type { EquipmentItem } from "./financials-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +27,7 @@ export default async function FinancialsWorkspacePage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [equipmentResult, modelResult, profileResult] = await Promise.all([
-    supabase
-      .from("buildout_equipment_items")
-      .select("*")
-      .eq("plan_id", plan.id)
-      .eq("archived", false)
-      .order("position"),
+  const [modelResult, profileResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("*")
@@ -46,8 +39,6 @@ export default async function FinancialsWorkspacePage() {
       .eq("id", user.id)
       .maybeSingle(),
   ]);
-
-  const equipment = (equipmentResult.data ?? []) as EquipmentItem[];
 
   let modelRow = modelResult.data;
 
@@ -83,7 +74,6 @@ export default async function FinancialsWorkspacePage() {
   return (
     <FinancialsWorkspace
       planId={plan.id}
-      initialEquipment={equipment}
       initialProjections={initialProjections}
       initialModelUpdatedAt={initialModelUpdatedAt}
       initialCritique={initialCritique}

@@ -2,14 +2,13 @@
 
 // TIM-972: Financial Suite — DB-backed architecture.
 // TIM-1004: Per-day schedule + itemized operating expenses.
-// TIM-1005: Equipment spreadsheet UI.
+// TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle } from "lucide-react";
+import { BarChart2, X, AlertTriangle, Save } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
-import { EquipmentGrid } from "@/components/equipment/EquipmentGrid";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -20,7 +19,6 @@ import {
   computeDayHours,
   computeWeeklyHours,
   formatCurrency,
-  normalizeMonthlyProjections,
 } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 
@@ -70,11 +68,10 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "equipment" | "forecast" | "projections";
+type Tab = "forecast" | "projections";
 
 interface Props {
   planId: string;
-  initialEquipment: EquipmentItem[];
   initialProjections: MonthlyProjections;
   initialModelUpdatedAt: string | null;
   initialCritique: CritiqueResult | null;
@@ -121,91 +118,6 @@ function Sparkline({ values }: { values: number[] }) {
         points={pts.join(" ")}
       />
     </svg>
-  );
-}
-
-// ── Equipment tab ─────────────────────────────────────────────────────────────
-
-function EquipmentTab({
-  planId,
-  canEdit,
-  items,
-  onItemsChange,
-}: {
-  planId: string;
-  canEdit: boolean;
-  items: EquipmentItem[];
-  onItemsChange: (items: EquipmentItem[]) => void;
-}) {
-  const [seedStatus, setSeedStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [seedDismissed, setSeedDismissed] = useState(
-    items.some((i) => i.source === "ai_suggested")
-  );
-
-  const aiSeeded = items.some((i) => i.source === "ai_suggested");
-
-  async function handleSeed() {
-    setSeedStatus("loading");
-    try {
-      const res = await fetch("/api/workspaces/financials/seed", { method: "POST" });
-      if (!res.ok) throw new Error(`seed failed (${res.status})`);
-      const listRes = await fetch("/api/workspaces/financials/equipment");
-      if (!listRes.ok) throw new Error(`reload failed (${listRes.status})`);
-      const newItems = (await listRes.json()) as EquipmentItem[];
-      onItemsChange(newItems);
-      setSeedStatus("done");
-      setSeedDismissed(true);
-    } catch {
-      setSeedStatus("error");
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      {!seedDismissed && !aiSeeded && canEdit && (
-        <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#155e63] mb-1">
-                Generate a starter equipment list
-              </p>
-              <p className="text-xs text-[#6b6b6b] leading-relaxed">
-                Based on your concept and menu profile, we&apos;ll suggest typical equipment
-                for a coffee shop like yours. Edit or remove anything after.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSeedDismissed(true)}
-              className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
-              aria-label="Dismiss"
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSeed}
-              disabled={seedStatus === "loading"}
-              className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
-            >
-              {seedStatus === "loading" ? "Generating..." : "Generate list"}
-            </button>
-            {seedStatus === "error" && (
-              <span className="text-xs text-[#a13d3d]">Could not generate. Try again.</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      <EquipmentGrid
-        planId={planId}
-        canEdit={canEdit}
-        items={items}
-        onItemsChange={onItemsChange}
-      />
-    </div>
   );
 }
 
@@ -1035,7 +947,6 @@ function ProjectionsTab({
 
 export function FinancialsWorkspace({
   planId,
-  initialEquipment,
   initialProjections,
   initialModelUpdatedAt,
   initialCritique,
@@ -1044,10 +955,9 @@ export function FinancialsWorkspace({
   canEdit,
   initialTrialMessagesUsed,
 }: Props) {
-  const [equipment, setEquipment] = useState<EquipmentItem[]>(initialEquipment);
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
-  const [activeTab, setActiveTab] = useState<Tab>("equipment");
+  const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
     lastSavedAt: initialModelUpdatedAt,
@@ -1069,27 +979,18 @@ export function FinancialsWorkspace({
     new Date(initialNeedsReviewAt) > new Date(initialModelUpdatedAtForReview);
 
   const progress = useMemo(() => {
-    const hasEquipment = equipment.length > 0 ? 1 : 0;
     const hasFlow = Object.values(mp.daily_flow).some((v) => v > 0) ? 1 : 0;
     const hasCosts = mp.monthly_rent_cents > 0 && mp.avg_ticket_cents > 0 ? 1 : 0;
-    return { filled: hasEquipment + hasFlow + hasCosts, total: 3 };
-  }, [equipment, mp]);
+    return { filled: hasFlow + hasCosts, total: 2 };
+  }, [mp]);
 
   useEffect(() => {
     setModuleProgress(2, progress.filled, progress.total);
   }, [progress.filled, progress.total, setModuleProgress]);
 
-  const equipmentSummary = useMemo(() => {
-    const total_cost_cents = equipment.reduce((s, e) => s + e.unit_cost_cents * e.quantity, 0);
-    const financed_cost_cents = equipment
-      .filter((e) => e.financing_method === "loan" || e.financing_method === "lease")
-      .reduce((s, e) => s + e.unit_cost_cents * e.quantity, 0);
-    return { total_cost_cents, financed_cost_cents };
-  }, [equipment]);
-
   const projections = useMemo(
-    () => computeProjections(mp, equipmentSummary),
-    [mp, equipmentSummary]
+    () => computeProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 }),
+    [mp]
   );
 
   const lastSavedAt =
@@ -1158,6 +1059,15 @@ export function FinancialsWorkspace({
     void persist(latestMpRef.current, c);
   }
 
+  function handleManualSave() {
+    if (!canEdit) return;
+    if (pendingSaveTimer.current) {
+      clearTimeout(pendingSaveTimer.current);
+      pendingSaveTimer.current = null;
+    }
+    void persist(latestMpRef.current, latestCritiqueRef.current);
+  }
+
   const saveLabel =
     saveState.kind === "saving"
       ? "Saving..."
@@ -1168,7 +1078,6 @@ export function FinancialsWorkspace({
       : formatTimestamp(lastSavedAt);
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "equipment", label: "Equipment" },
     { id: "forecast", label: "Forecast Inputs" },
     { id: "projections", label: "Projections" },
   ];
@@ -1196,8 +1105,7 @@ export function FinancialsWorkspace({
                 Your concept or menu has changed
               </p>
               <p className="text-xs text-amber-600 mt-0.5">
-                Review your equipment list and forecast inputs to make sure they still reflect your
-                plan.
+                Review your forecast inputs to make sure they still reflect your plan.
               </p>
             </div>
             <button
@@ -1211,7 +1119,7 @@ export function FinancialsWorkspace({
           </div>
         )}
 
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between gap-3">
           <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1">
             {tabs.map((t) => (
               <button
@@ -1228,21 +1136,26 @@ export function FinancialsWorkspace({
               </button>
             ))}
           </nav>
-          <span
-            className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
-          >
-            {saveLabel}
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
+            >
+              {saveLabel}
+            </span>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleManualSave}
+                disabled={saveState.kind === "saving"}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+              >
+                <Save size={12} aria-hidden="true" />
+                Save
+              </button>
+            )}
+          </div>
         </div>
 
-        {activeTab === "equipment" && (
-          <EquipmentTab
-            planId={planId}
-            canEdit={canEdit}
-            items={equipment}
-            onItemsChange={setEquipment}
-          />
-        )}
         {activeTab === "forecast" && (
           <ForecastTab mp={mp} canEdit={canEdit} onUpdateMp={handleMpUpdate} />
         )}
