@@ -170,7 +170,7 @@ export function OperationsPlaybookWorkspace({
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
             The standard operating procedures your team runs every day. Edit
-            anything — these are templates, not rules from on high.
+            anything. These are templates, not rules from on high.
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-[#afafaf]">
             <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
