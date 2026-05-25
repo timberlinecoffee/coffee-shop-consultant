@@ -101,6 +101,13 @@ const NEW_FINANCING: FinancingMethod[] = [
 
 const AUTOSAVE_DEBOUNCE_MS = 400;
 
+// Returns sticky-positioning classes for the two frozen columns (select + name).
+function getStickyColCls(columnId: string, bgCls: string): string {
+  if (columnId === "select") return `sticky left-0 z-10 ${bgCls}`;
+  if (columnId === "name") return `sticky left-[36px] z-10 ${bgCls}`;
+  return "";
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isFundRow(item: EquipmentItem): boolean {
@@ -1075,7 +1082,7 @@ export function EquipmentGrid({
                   const canSort = col.getCanSort();
                   const sortDir = col.getIsSorted();
                   return (
-                    <th key={header.id} className={headerCellCls}>
+                    <th key={header.id} className={`${headerCellCls} ${getStickyColCls(header.id, "bg-[#faf9f7]")}`}>
                       <div
                         className={`flex items-center gap-1 ${canSort ? "cursor-pointer hover:text-[#1a1a1a]" : ""}`}
                         onClick={canSort ? col.getToggleSortingHandler() : undefined}
@@ -1102,10 +1109,10 @@ export function EquipmentGrid({
                 {table.getHeaderGroups()[0].headers.map((header) => {
                   const col = header.column;
                   if (!col.getCanFilter()) {
-                    return <td key={header.id} className="px-2 py-1 bg-[#faf9f7]" />;
+                    return <td key={header.id} className={`px-2 py-1 bg-[#faf9f7] ${getStickyColCls(header.id, "bg-[#faf9f7]")}`} />;
                   }
                   return (
-                    <td key={header.id} className="px-2 py-1 bg-[#faf9f7]">
+                    <td key={header.id} className={`px-2 py-1 bg-[#faf9f7] ${getStickyColCls(header.id, "bg-[#faf9f7]")}`}>
                       <input
                         type="text"
                         className="w-full text-[10px] bg-white border border-[#e8e8e8] rounded px-2 py-1 text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63]"
@@ -1146,7 +1153,13 @@ export function EquipmentGrid({
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className={cellCls}>
+                      <td
+                        key={cell.id}
+                        className={`${cellCls} ${getStickyColCls(
+                          cell.column.id,
+                          selected ? "bg-[#f0f7f7]" : fund ? "bg-[#f4f9f8]" : "bg-white"
+                        )}`}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
