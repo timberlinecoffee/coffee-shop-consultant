@@ -183,7 +183,12 @@ function DigitalPresenceTab({ canEdit, rows, onRowsChange }: {
         </div>
         {rows.map((row) => (
           <div key={row.id} className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[#f5f5f5] last:border-0">
-            <span className="text-sm text-[#1a1a1a] truncate">{row.channel_name}</span>
+            <div>
+              <span className="text-sm text-[#1a1a1a] truncate block">{row.channel_name}</span>
+              {row.last_updated_at && (
+                <span className="text-[10px] text-[#afafaf]">Updated {row.last_updated_at}</span>
+              )}
+            </div>
             <StatusPill status={row.status} config={PRESENCE_STATUS_CONFIG} onClick={() => cycleStatus(row)} />
             <input type="text" disabled={!canEdit}
               className="text-sm border border-[#e0e0e0] rounded-md px-2 py-1 focus:outline-none focus:border-[#155e63] disabled:bg-transparent disabled:border-transparent w-full"
@@ -692,7 +697,7 @@ export function MarketingWorkspace({
             <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>Marketing</h1>
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
-            Brand identity, channel coverage, content schedule, campaigns, and monthly spend — all in one place.
+            Track your brand, channels, content schedule, campaigns, and monthly spend from one place.
           </p>
         </header>
 
@@ -715,7 +720,7 @@ export function MarketingWorkspace({
       {showPaywall && <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} />}
 
       <CoPilotDrawer planId={planId} workspaceKey="marketing"
-        currentFocus={{ label: `Marketing — ${TABS.find((t) => t.id === activeTab)?.label ?? ""}` }}
+        currentFocus={{ label: `Marketing: ${TABS.find((t) => t.id === activeTab)?.label ?? ""}` }}
         initialTrialMessagesUsed={initialTrialMessagesUsed} />
     </div>
   );
