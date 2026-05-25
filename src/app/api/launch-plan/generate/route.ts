@@ -1,5 +1,6 @@
 // TIM-1040: AI-generate launch milestones personalized to concept / location / equipment / hiring / financials.
-// Streams JSON milestone objects via SSE. Preserves user_edited milestones on regenerate.
+// TIM-1057: Fix-forward — switched to streaming Anthropic call with TTFT (8s) and gap (25s) timers
+// to prevent Lambda timeout leaving client in infinite-spinner state.
 export const runtime = "nodejs"
 export const maxDuration = 60
 
@@ -11,6 +12,10 @@ import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
+
+const TTFT_MS = 8_000
+const GAP_MS = 25_000
+const HEARTBEAT_MS = 15_000
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -89,6 +94,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Compose workspace context before opening the stream so errors here surface as HTTP errors.
   const svcClient = createServiceClient()
   const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
 
@@ -100,38 +106,88 @@ export async function POST(request: NextRequest) {
 
   for (const s of snapshots) {
     if (s.text && s.text !== "_no content yet_") {
-      contextParts.push(`\n### ${s.key.replace(/_/g, ' ')}\n${s.text}`)
+      contextParts.push(`\n### ${s.key.replace(/_/g, " ")}\n${s.text}`)
     }
   }
 
   const userPrompt = contextParts.join("\n")
 
-  const encoder = new TextEncoder()
+  console.log(`[launch-plan/generate] start plan=${planId} user=${user.id} contextChars=${userPrompt.length}`)
 
-  const body = new ReadableStream({
+  const encoder = new TextEncoder()
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
+  const streamBody = new ReadableStream({
     async start(controller) {
       const send = (chunk: string) => controller.enqueue(encoder.encode(chunk))
-      let heartbeat: ReturnType<typeof setInterval> | null = null
-      heartbeat = setInterval(() => send(`: ping\n\n`), 15_000)
+      let done = false
+      let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+      let ttftTimer: ReturnType<typeof setTimeout> | null = null
+      let gapTimer: ReturnType<typeof setTimeout> | null = null
+
+      function cleanup() {
+        done = true
+        if (heartbeatTimer) clearInterval(heartbeatTimer)
+        if (ttftTimer) clearTimeout(ttftTimer)
+        if (gapTimer) clearTimeout(gapTimer)
+      }
+
+      heartbeatTimer = setInterval(() => {
+        if (!done) send(`: ping\n\n`)
+      }, HEARTBEAT_MS)
+
+      ttftTimer = setTimeout(() => {
+        if (!done) {
+          console.error("[launch-plan/generate] TTFT timeout")
+          cleanup()
+          send(sse("error", { code: "timeout", message: "Couldn't generate plan — try again or contact support." }))
+          send(sse("done", {}))
+          controller.close()
+        }
+      }, TTFT_MS)
 
       try {
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
-        const response = await anthropic.messages.create({
+        const aiStream = anthropic.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 8_000,
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: userPrompt }],
         })
 
-        if (heartbeat) clearInterval(heartbeat)
+        let fullText = ""
 
-        const rawText = response.content
-          .filter((b) => b.type === "text")
-          .map((b) => (b as { type: "text"; text: string }).text)
-          .join("")
+        for await (const event of aiStream) {
+          if (done) break
 
-        // Parse the JSON array
+          if (
+            event.type === "content_block_start" ||
+            (event.type === "content_block_delta" && event.delta.type === "text_delta")
+          ) {
+            if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null }
+            if (gapTimer) clearTimeout(gapTimer)
+            gapTimer = setTimeout(() => {
+              if (!done) {
+                console.error("[launch-plan/generate] gap timer fired")
+                cleanup()
+                send(sse("error", { code: "timeout", message: "Couldn't generate plan — try again or contact support." }))
+                send(sse("done", {}))
+                controller.close()
+              }
+            }, GAP_MS)
+          }
+
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            fullText += event.delta.text
+          }
+        }
+
+        if (gapTimer) { clearTimeout(gapTimer); gapTimer = null }
+        if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null }
+
+        if (done) return
+
+        console.log(`[launch-plan/generate] AI done textLen=${fullText.length}`)
+
         let parsed: Array<{
           title: string
           description: string
@@ -142,13 +198,16 @@ export async function POST(request: NextRequest) {
           owner: string
           ai_notes: string
         }>
+
         try {
-          const trimmed = rawText.trim()
+          const trimmed = fullText.trim()
           const start = trimmed.indexOf("[")
           const end = trimmed.lastIndexOf("]")
           parsed = JSON.parse(trimmed.slice(start, end + 1))
         } catch {
-          send(sse("error", { code: "parse_error", message: "AI returned invalid JSON" }))
+          console.error("[launch-plan/generate] JSON parse failed")
+          cleanup()
+          send(sse("error", { code: "parse_error", message: "Couldn't generate plan — try again or contact support." }))
           send(sse("done", {}))
           controller.close()
           return
@@ -156,7 +215,6 @@ export async function POST(request: NextRequest) {
 
         const launch = new Date(targetLaunchDate)
 
-        // Delete non-user-edited AI milestones, keep user_edited ones.
         const userEditedIds = existingMilestones
           .filter((m) => m.user_edited)
           .map((m) => m.id)
@@ -173,7 +231,6 @@ export async function POST(request: NextRequest) {
             .eq("plan_id", planId)
         }
 
-        // Insert new AI milestones.
         const inserts = parsed.map((m, idx) => {
           const targetDate = new Date(launch)
           targetDate.setDate(targetDate.getDate() - (m.days_before_launch ?? 0))
@@ -195,19 +252,22 @@ export async function POST(request: NextRequest) {
           }
         })
 
+        console.log(`[launch-plan/generate] inserting ${inserts.length} milestones`)
+
         const { data: inserted, error: insertErr } = await supabase
           .from("launch_milestones")
           .insert(inserts)
           .select("*")
 
         if (insertErr) {
-          send(sse("error", { code: "db_error", message: "Failed to save milestones" }))
+          console.error("[launch-plan/generate] insert error:", insertErr.message)
+          cleanup()
+          send(sse("error", { code: "db_error", message: "Couldn't save the plan — try again or contact support." }))
           send(sse("done", {}))
           controller.close()
           return
         }
 
-        // Update config: stamp lastGeneratedAt and sourcesSnapshotAt.
         const now = new Date().toISOString()
         const { data: existingDoc } = await supabase
           .from("workspace_documents")
@@ -227,6 +287,9 @@ export async function POST(request: NextRequest) {
             { onConflict: "plan_id,workspace_key" }
           )
 
+        console.log(`[launch-plan/generate] done inserted=${inserted?.length ?? 0} preserved=${userEditedIds.length}`)
+
+        cleanup()
         send(sse("done", {
           inserted: inserted?.length ?? 0,
           preserved: userEditedIds.length,
@@ -235,16 +298,19 @@ export async function POST(request: NextRequest) {
         }))
         controller.close()
       } catch (err) {
-        if (heartbeat) clearInterval(heartbeat)
-        const msg = err instanceof Error ? err.message : "Unknown error"
-        send(sse("error", { code: "upstream_error", message: msg }))
-        send(sse("done", {}))
-        controller.close()
+        if (!done) {
+          const msg = err instanceof Error ? err.message : "Unknown error"
+          console.error("[launch-plan/generate] unhandled error:", msg)
+          cleanup()
+          send(sse("error", { code: "upstream_error", message: "Couldn't generate plan — try again or contact support." }))
+          send(sse("done", {}))
+          controller.close()
+        }
       }
     },
   })
 
-  return new Response(body, {
+  return new Response(streamBody, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
