@@ -27,7 +27,7 @@ import {
   computeMonthlyProjections,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
-import { PrintButton } from "./print-button";
+import { PrintButton, SectionToggle } from "./print-button";
 
 export const dynamic = "force-dynamic";
 
@@ -252,7 +252,13 @@ export default async function BusinessPlanPrintPage({
         >
           <span aria-hidden="true">←</span> Back to editing
         </Link>
-        <PrintButton />
+        <div className="flex items-center gap-2.5">
+          <SectionToggle
+            sections={SECTION_KEYS.map((k) => ({ key: k, label: SECTION_LABELS[k] }))}
+            excluded={Array.from(excluded)}
+          />
+          <PrintButton />
+        </div>
       </div>
 
       <div className="max-w-[680px] mx-auto px-8 pt-14 pb-20">
@@ -700,7 +706,7 @@ function EquipmentSection({ items }: { items: EquipmentRow[] }) {
       <SectionCard label="Equipment Total" featured>
         <p className="text-sm text-[#1a1a1a] leading-[1.75]">
           {items.length} items, estimated total {usd(total)}
-          {hasSupplierData ? "." : " (suppliers not yet selected — populate the Suppliers workspace to bid out the list)."}
+          {hasSupplierData ? "." : ". Visit the Suppliers workspace to add supplier details."}
         </p>
       </SectionCard>
       {renderGroup("Major Equipment", major)}
@@ -781,7 +787,7 @@ function BuildoutSection({
               <li key={s.id} className="text-sm text-[#1a1a1a]">
                 <span className="font-medium">{s.name}</span>
                 {s.notes?.trim() && (
-                  <span className="text-[#6b6b6b]"> &mdash; {s.notes.trim()}</span>
+                  <span className="text-[#6b6b6b]">: {s.notes.trim()}</span>
                 )}
               </li>
             ))}
@@ -1190,7 +1196,7 @@ function AppendixSection({
         ) : (
           <ul className="space-y-1.5 text-sm text-[#1a1a1a]">
             {deferredOrEmpty.map((meta) => (
-              <li key={meta.id}>&bull; {meta.label} — still to be decided.</li>
+              <li key={meta.id}>&bull; {meta.label}: still to be decided.</li>
             ))}
           </ul>
         )}
