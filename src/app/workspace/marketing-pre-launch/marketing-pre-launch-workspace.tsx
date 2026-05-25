@@ -149,7 +149,7 @@ export function MarketingPreLaunchWorkspace({
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
             Build demand before opening day. Waitlist, Google Business Profile, social setup,
-            opening-day promo, and your press list — all in one place.
+            opening-day promo, and your press list. All in one place.
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-[#afafaf]">
             <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
@@ -287,7 +287,7 @@ function SectionTabs({
 
   return (
     <div className={cardCls}>
-      <div role="tablist" aria-label="Marketing & Pre-Launch sections" className="flex flex-wrap gap-1 p-1">
+      <div role="tablist" aria-label="Marketing & Pre-Launch sections" className="flex flex-wrap gap-1 p-1 overflow-x-auto">
         {SECTIONS.map((s) => {
           const isActive = active === s.key;
           const filled = filledMap[s.key];
@@ -298,7 +298,7 @@ function SectionTabs({
               aria-selected={isActive}
               type="button"
               onClick={() => onChange(s.key)}
-              className={`relative text-xs px-3 py-2 rounded-md font-medium transition-colors ${
+              className={`relative text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
                 isActive
                   ? "bg-[#155e63] text-white"
                   : "text-[#6b6b6b] hover:bg-[#faf9f7] hover:text-[#1a1a1a]"
@@ -750,7 +750,7 @@ function SocialSectionView({
             className={inputCls}
             rows={3}
             disabled={!canEdit}
-            placeholder="Line 1 — what you are. Line 2 — where you are. Line 3 — link to waitlist."
+            placeholder="Line 1: what you are. Line 2: where you are. Line 3: link to waitlist."
             value={s.bio_template}
             onChange={(e) => setField("bio_template", e.target.value)}
           />
@@ -1048,7 +1048,7 @@ function PressSectionView({
                 className={inputCls}
                 rows={2}
                 disabled={!canEdit}
-                placeholder="Pitch angle — what's the hook for this specific person? One sentence."
+                placeholder="Pitch angle. What is the hook for this specific person? One sentence."
                 value={c.angle}
                 onChange={(e) => updateContact(c.id, (x) => ({ ...x, angle: e.target.value }))}
               />
