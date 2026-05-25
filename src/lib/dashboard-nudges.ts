@@ -220,7 +220,7 @@ const NEXT_STEP_COPY: Record<number, NextStepCopy> = {
   1: {
     headline: "Write your concept first.",
     startBody:
-      "The concept anchors every other decision — menu, location, even hiring. Spend 15 minutes on it now.",
+      "The concept anchors every other decision: menu, location, even hiring. Spend 15 minutes on it now.",
     continueBody:
       "Finish the concept so the menu, location, and financials have something to work from.",
   },
@@ -229,56 +229,56 @@ const NEXT_STEP_COPY: Record<number, NextStepCopy> = {
     startBody:
       "Numbers turn the concept into something you can hand to a banker. Start with startup costs and the first 12 months.",
     continueBody:
-      "Pick up your numbers — finish the startup-cost line items so the runway view is real.",
+      "Pick up your numbers. Finish the startup-cost line items so the runway view is real.",
   },
   3: {
     headline: "Pick a target neighborhood.",
     startBody:
       "Without a neighborhood the rent assumptions are guesses. Set a target city and a couple of candidate streets.",
     continueBody:
-      "Tighten the location notes — score one or two real candidates so the build-out has a footprint.",
+      "Tighten the location notes. Score one or two real candidates so the build-out has a footprint.",
   },
   4: {
     headline: "Draft your opening menu.",
     startBody:
       "Seed three signature drinks and a small food list. The menu drives equipment and supplier choices.",
     continueBody:
-      "Round out the menu — add prices and a couple of signatures so the financials have COGS to chew on.",
+      "Round out the menu. Add prices and a couple of signatures so the financials have COGS to chew on.",
   },
   5: {
     headline: "List the equipment you actually need.",
     startBody:
       "Pull a starter equipment list so build-out and supplier conversations have a concrete spec.",
     continueBody:
-      "Fill in the build-out — confirm quantities and prices so the budget stops being a guess.",
+      "Fill in the build-out. Confirm quantities and prices so the budget stops being a guess.",
   },
   6: {
     headline: "Set your target open date.",
     startBody:
       "Once an opening date is on the calendar, every other workspace gets a deadline. Pick a realistic one.",
     continueBody:
-      "Walk the milestones — adjust dates so the launch plan actually fits build-out and hiring.",
+      "Walk the milestones. Adjust dates so the launch plan actually fits build-out and hiring.",
   },
   7: {
     headline: "Sketch the opening team.",
     startBody:
       "Decide the headcount and roles for opening day. Even a one-line job description helps the financials.",
     continueBody:
-      "Finish the role list — fill out the JD summaries so payroll lines up with the schedule.",
+      "Finish the role list. Fill out the JD summaries so payroll lines up with the schedule.",
   },
   8: {
     headline: "Assemble your business plan.",
     startBody:
       "The business plan stitches every workspace into one doc. Open it once the basics are in place.",
     continueBody:
-      "Review the assembled business plan — fix any thin sections before you export.",
+      "Review the assembled business plan. Fix any thin sections before you export.",
   },
   9: {
     headline: "Plan the pre-launch marketing.",
     startBody:
-      "Get the marketing workspace going — waitlist, social handles, a press list. Small moves now save money later.",
+      "Get the marketing workspace going: waitlist, social handles, a press list. Small moves now save money later.",
     continueBody:
-      "Finish the pre-launch marketing — confirm the waitlist plan and grand-opening promo.",
+      "Finish the pre-launch marketing. Confirm the waitlist plan and grand-opening promo.",
   },
 };
 
@@ -328,7 +328,7 @@ function staleMessageFor(snap: WorkspaceProgressSnapshot, daysStale: number): st
         snap.totalSections - snap.filledSections === 1 ? "" : "s"
       } left`
     : "still has gaps";
-  return `${snap.label} hasn't been touched in ${daysStale} days — ${gap}.`;
+  return `${snap.label} hasn't been touched in ${daysStale} days and ${gap}.`;
 }
 
 /**
