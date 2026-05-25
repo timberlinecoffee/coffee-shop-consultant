@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drink Recipe Cards — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: #e8e8e8; color: #1a1a1a; }
+
+    /* ── SCREEN HEADER ── */
+    .screen-header { background: var(--primary); padding: 32px 40px 28px; }
+    .screen-header-inner { max-width: 1000px; margin: 0 auto; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 14px; }
+    .screen-header h1 { font-size: 26px; font-weight: 800; color: var(--white); margin-bottom: 8px; }
+    .screen-header h1 span { color: var(--secondary); }
+    .screen-header p { font-size: 13px; color: rgba(255,255,255,0.72); line-height: 1.65; max-width: 560px; margin-bottom: 14px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.85); font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .usage-note { max-width: 1000px; margin: 20px auto 0; padding: 0 16px; }
+    .usage-note p { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 8px; padding: 12px 16px; font-size: 12.5px; color: var(--amber-text); line-height: 1.65; }
+    .usage-note strong { font-weight: 700; }
+
+    /* ── PAGE GRID ── */
+    .page { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+    .page-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 10px; }
+
+    .card-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+    /* ── RECIPE CARD ── */
+    .card {
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+      border: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Card header */
+    .card-header { background: var(--primary); padding: 16px 18px 12px; position: relative; }
+    .card-header.secondary { background: var(--secondary); }
+    .card-header.blank { background: var(--dark-grey); }
+    .card-category { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 4px; }
+    .card-name { font-size: 21px; font-weight: 800; color: var(--white); line-height: 1.15; margin-bottom: 6px; }
+    .card-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .card-badge { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 12px; }
+    .card-version { position: absolute; top: 12px; right: 14px; font-size: 9px; color: rgba(255,255,255,0.45); }
+
+    /* Card body */
+    .card-body { padding: 14px 16px 0; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+    /* Specs row */
+    .specs-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .spec-box { background: var(--light-grey); border-radius: 8px; padding: 7px 8px; text-align: center; }
+    .spec-label { font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 3px; }
+    .spec-value { font-size: 13px; font-weight: 700; color: var(--primary); line-height: 1.1; }
+    .spec-value.blank-val { font-size: 18px; color: #ccc; font-weight: 400; }
+
+    /* Build steps */
+    .build-section { }
+    .build-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 6px; }
+    .steps { display: flex; flex-direction: column; gap: 4px; }
+    .step { display: flex; gap: 8px; align-items: flex-start; }
+    .step-num { background: var(--primary); color: var(--white); font-size: 9px; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .step-num.secondary { background: var(--secondary); }
+    .step-text { font-size: 12.5px; line-height: 1.5; color: #333; }
+
+    /* Write lines (for blank cards and notes) */
+    .write-line { border-bottom: 1px solid #ddd; height: 20px; margin-bottom: 4px; width: 100%; }
+    .write-lines-label { font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 4px; margin-top: 2px; }
+
+    /* Quality check */
+    .quality-box { background: var(--light-grey); border-radius: 8px; padding: 8px 10px; }
+    .quality-label { font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 3px; }
+    .quality-text { font-size: 12px; color: #444; line-height: 1.5; }
+
+    /* Card footer */
+    .card-footer { padding: 10px 16px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: auto; border-top: 1px solid var(--light-grey); }
+    .footer-field { font-size: 10px; color: var(--dark-grey); display: flex; gap: 6px; align-items: center; }
+    .footer-line { border-bottom: 1px solid #ccc; width: 80px; height: 16px; }
+    .footer-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dark-grey); }
+
+    /* ── PRINT STYLES ── */
+    @media print {
+      body { background: white; }
+      .screen-header, .usage-note { display: none; }
+      .page { margin: 0; padding: 8mm; max-width: none; }
+      .page-label { display: none; }
+      .card-row { gap: 8mm; page-break-inside: avoid; }
+      .card-row + .card-row { page-break-before: always; }
+      .card { box-shadow: none; border: 1px solid #ccc; border-radius: 10px; }
+    }
+
+    @media (max-width: 700px) {
+      .card-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Screen header (hidden on print) -->
+<div class="screen-header">
+  <div class="screen-header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Drink <span>Recipe Cards</span></h1>
+    <p>One card per drink on your menu. Print, laminate, and keep them behind the bar. Every barista should be able to pick up any card and make that drink correctly without asking anyone.</p>
+    <div class="week-badge">Week 4 — Menu Design, Coffee Program & Sourcing</div>
+  </div>
+</div>
+
+<div class="usage-note">
+  <p><strong>How to use these:</strong> This file contains example cards for common café drinks, plus blank templates at the end. Fill in or edit the blank cards for every drink on your menu. Print at full size — two cards per page — then laminate and post them at the espresso bar, the filter station, and the cold drinks area. Update the version number and date any time the recipe changes so staff always know which version is current.</p>
+</div>
+
+<div class="page">
+
+  <!-- PAGE 1: ESPRESSO DRINKS -->
+  <div class="page-label">Page 1 of 4 — Espresso-Based Drinks</div>
+
+  <div class="card-row">
+
+    <!-- FLAT WHITE -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-version">v1.0</div>
+        <div class="card-category">Espresso — Milk</div>
+        <div class="card-name">Flat White</div>
+        <div class="card-meta">
+          <span class="card-badge">Medium cup · 160–180ml</span>
+          <span class="card-badge">Dairy default</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value">18g</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value">36g</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value">27–32s</div></div>
+          <div class="spec-box"><div class="spec-label">Milk Temp</div><div class="spec-value">60–65°C</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-text">Rinse and warm the cup with hot water. Discard.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Grind and dose 18g. Distribute and tamp level.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Extract double shot into warm cup (27–32 seconds).</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">Steam 120–140ml dairy milk to 60–65°C. Texture: silky microfoam — no big bubbles.</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">Pour milk slowly from low, bringing foam through last. Aim for a defined white dot on top.</div></div>
+          </div>
+        </div>
+        <div class="quality-box">
+          <div class="quality-label">Quality Check</div>
+          <div class="quality-text">Rich, glossy surface. Coffee-forward — milk enhances, not dominates. Velvety mouthfeel. No harsh bitterness or sour notes. Served at drinking temperature.</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Barista:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Checked:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+    <!-- LATTE -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-version">v1.0</div>
+        <div class="card-category">Espresso — Milk</div>
+        <div class="card-name">Latte</div>
+        <div class="card-meta">
+          <span class="card-badge">Medium cup · 240–260ml</span>
+          <span class="card-badge">Dairy default</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value">18g</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value">36g</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value">27–32s</div></div>
+          <div class="spec-box"><div class="spec-label">Milk Temp</div><div class="spec-value">60–65°C</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-text">Rinse and warm the cup with hot water. Discard.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Grind and dose 18g. Distribute and tamp level.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Extract double shot into warm cup (27–32 seconds).</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">Steam 200–220ml dairy milk to 60–65°C. Silky microfoam, slightly more volume than a flat white.</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">Pour milk into espresso, integrating smoothly. Finish with a small cap of foam.</div></div>
+          </div>
+        </div>
+        <div class="quality-box">
+          <div class="quality-label">Quality Check</div>
+          <div class="quality-text">Smooth, creamy, mild. More milk-forward than a flat white — espresso present but rounded. Even integration, no separation. Consistent 240ml total volume in cup.</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Barista:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Checked:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PAGE 2 -->
+  <div class="page-label" style="margin-top:24px;">Page 2 of 4 — Espresso & Filter</div>
+  <div class="card-row">
+
+    <!-- CAPPUCCINO -->
+    <div class="card">
+      <div class="card-header secondary">
+        <div class="card-version">v1.0</div>
+        <div class="card-category">Espresso — Milk</div>
+        <div class="card-name">Cappuccino</div>
+        <div class="card-meta">
+          <span class="card-badge">Medium cup · 150–160ml</span>
+          <span class="card-badge">Equal thirds</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value">18g</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value">36g</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value">27–32s</div></div>
+          <div class="spec-box"><div class="spec-label">Milk Temp</div><div class="spec-value">60–65°C</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="steps">
+            <div class="step"><div class="step-num secondary">1</div><div class="step-text">Rinse and warm the cup. Discard water.</div></div>
+            <div class="step"><div class="step-num secondary">2</div><div class="step-text">Grind and dose 18g. Distribute and tamp level.</div></div>
+            <div class="step"><div class="step-num secondary">3</div><div class="step-text">Extract double shot into warm cup (27–32 seconds).</div></div>
+            <div class="step"><div class="step-num secondary">4</div><div class="step-text">Steam 100–120ml milk to 60–65°C. More foam than a latte — thick and dense, not dry.</div></div>
+            <div class="step"><div class="step-num secondary">5</div><div class="step-text">Pour milk and foam together. The drink should be roughly ⅓ espresso, ⅓ milk, ⅓ foam.</div></div>
+          </div>
+        </div>
+        <div class="quality-box">
+          <div class="quality-label">Quality Check</div>
+          <div class="quality-text">Foam should hold its shape and not collapse into the cup. Bolder coffee flavour than a latte. Dense, creamy foam — not dry or airy. No visible separation at the bottom.</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Barista:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Checked:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+    <!-- BATCH BREW -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-version">v1.0</div>
+        <div class="card-category">Filter Coffee</div>
+        <div class="card-name">Batch Brew</div>
+        <div class="card-meta">
+          <span class="card-badge">Medium or large cup</span>
+          <span class="card-badge">Fresh within 60 min</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Ratio</div><div class="spec-value">1:16</div></div>
+          <div class="spec-box"><div class="spec-label">Grind</div><div class="spec-value">Coarse</div></div>
+          <div class="spec-box"><div class="spec-label">Water</div><div class="spec-value">92–96°C</div></div>
+          <div class="spec-box"><div class="spec-label">Max Age</div><div class="spec-value">60 min</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Brew Protocol</div>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-text">Weigh coffee to ratio (e.g. 60g coffee per 960ml water for a standard batch).</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Use fresh filter paper. Rinse with hot water before brewing, discard rinse water.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Brew and record time on the batch log. Label the server with brew time.</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">Discard and brew fresh if older than 60 minutes. Never top up an old batch.</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">Serve in warmed cup. Offer milk on the side.</div></div>
+          </div>
+        </div>
+        <div class="quality-box">
+          <div class="quality-label">Quality Check</div>
+          <div class="quality-text">Clean, bright, flavourful. No bitter or sour finish. Clear in the cup — not cloudy or muddy. Tastes like the coffee, not like hot water. Discard if it tastes flat or stale.</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Brewed by:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Brew time:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Discard by:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PAGE 3: COLD + SIGNATURE -->
+  <div class="page-label" style="margin-top:24px;">Page 3 of 4 — Cold Drinks & Signature</div>
+  <div class="card-row">
+
+    <!-- ICED LATTE -->
+    <div class="card">
+      <div class="card-header secondary">
+        <div class="card-version">v1.0</div>
+        <div class="card-category">Cold — Espresso</div>
+        <div class="card-name">Iced Latte</div>
+        <div class="card-meta">
+          <span class="card-badge">Large cup · over ice</span>
+          <span class="card-badge">Dairy default</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value">18g</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value">36g</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value">27–32s</div></div>
+          <div class="spec-box"><div class="spec-label">Milk</div><div class="spec-value">180ml cold</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="steps">
+            <div class="step"><div class="step-num secondary">1</div><div class="step-text">Fill large cup ¾ full with ice. Use fresh ice, never old or cloudy ice.</div></div>
+            <div class="step"><div class="step-num secondary">2</div><div class="step-text">Add 180ml cold milk directly over ice.</div></div>
+            <div class="step"><div class="step-num secondary">3</div><div class="step-text">Extract double shot. Pour espresso directly over milk and ice.</div></div>
+            <div class="step"><div class="step-num secondary">4</div><div class="step-text">Stir gently once — do not over-mix. Add lid and straw.</div></div>
+          </div>
+        </div>
+        <div class="quality-box">
+          <div class="quality-label">Quality Check</div>
+          <div class="quality-text">Clean separation visible initially — espresso on top of milk on ice. Fully integrated after one stir. Cold, refreshing, balanced. Cup should feel cold and condensation-free inside 30 seconds of service.</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Barista:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Checked:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+    <!-- SIGNATURE CARD TEMPLATE -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-version">v___</div>
+        <div class="card-category">Signature Drink</div>
+        <div class="card-name" style="font-size:17px; padding-bottom:6px;">
+          <div class="write-line" style="border-color: rgba(255,255,255,0.35); margin-bottom:0;"></div>
+        </div>
+        <div class="card-meta" style="margin-top:8px;">
+          <span class="card-badge">Cup: ____________</span>
+          <span class="card-badge">Serves: ____</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Milk / Temp</div><div class="spec-value blank-val">—</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Ingredients</div>
+          <div class="write-lines-label" style="margin-bottom:2px;"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+        </div>
+        <div class="quality-box" style="background: var(--light-grey);">
+          <div class="quality-label">Quality Check / Presentation</div>
+          <div class="write-line" style="background: transparent;"></div>
+          <div class="write-line" style="background: transparent;"></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Created by:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Version:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PAGE 4: BLANK TEMPLATES -->
+  <div class="page-label" style="margin-top:24px;">Page 4 of 4 — Blank Templates (print and fill in for every drink on your menu)</div>
+  <div class="card-row">
+
+    <!-- BLANK 1 -->
+    <div class="card">
+      <div class="card-header blank">
+        <div class="card-version">v___</div>
+        <div class="card-category">
+          <div class="write-line" style="border-color: rgba(255,255,255,0.3); width: 120px;"></div>
+        </div>
+        <div class="card-name" style="padding-bottom:8px;">
+          <div class="write-line" style="border-color: rgba(255,255,255,0.35); font-size:14px;"></div>
+        </div>
+        <div class="card-meta">
+          <span class="card-badge">Cup: ___________</span>
+          <span class="card-badge">Vol: __________</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Temp / Other</div><div class="spec-value blank-val">—</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Ingredients</div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+        </div>
+        <div class="quality-box" style="background: var(--light-grey);">
+          <div class="quality-label">Quality Check / How it should look and taste</div>
+          <div class="write-line" style="background:transparent;"></div>
+          <div class="write-line" style="background:transparent;"></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Barista:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Version:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+    <!-- BLANK 2 -->
+    <div class="card">
+      <div class="card-header blank">
+        <div class="card-version">v___</div>
+        <div class="card-category">
+          <div class="write-line" style="border-color: rgba(255,255,255,0.3); width: 120px;"></div>
+        </div>
+        <div class="card-name" style="padding-bottom:8px;">
+          <div class="write-line" style="border-color: rgba(255,255,255,0.35);"></div>
+        </div>
+        <div class="card-meta">
+          <span class="card-badge">Cup: ___________</span>
+          <span class="card-badge">Vol: __________</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="specs-row">
+          <div class="spec-box"><div class="spec-label">Dose</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Yield</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Time</div><div class="spec-value blank-val">—</div></div>
+          <div class="spec-box"><div class="spec-label">Temp / Other</div><div class="spec-value blank-val">—</div></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Ingredients</div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+        </div>
+        <div class="build-section">
+          <div class="build-label">Build Order</div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+          <div class="write-line"></div>
+        </div>
+        <div class="quality-box" style="background: var(--light-grey);">
+          <div class="quality-label">Quality Check / How it should look and taste</div>
+          <div class="write-line" style="background:transparent;"></div>
+          <div class="write-line" style="background:transparent;"></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-field"><span class="footer-label">Barista:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Date:</span><div class="footer-line"></div></div>
+        <div class="footer-field"><span class="footer-label">Version:</span><div class="footer-line"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

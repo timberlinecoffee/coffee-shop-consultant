@@ -14,8 +14,7 @@ export default async function BuildoutEquipmentWorkspacePage() {
       title="Build-out & Equipment"
       description="Plan bar layout, equipment spec, and construction timeline. The Co-pilot ties equipment choices back to your menu and your build-out budget."
       icon={Wrench}
-      shipsWith="W4 — Build-out & Equipment workspace (TIM-623)"
-      currentFocusLabel="Build-out & Equipment workspace overview"
+currentFocusLabel="Build-out & Equipment workspace overview"
       trialMessagesUsed={trialMessagesUsed}
     />
   );

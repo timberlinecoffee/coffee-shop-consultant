@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,21 +19,15 @@ export default async function AccountPage() {
     .eq("id", user.id)
     .single();
 
-  const TIER_DISPLAY_NAMES: Record<string, string> = {
-    free: "Free",
-    starter: "Builder",
-    growth: "Growth",
-    pro: "Accelerator",
-  };
-
-  const tierDisplayName = TIER_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
-  const isFree = (profile?.subscription_tier ?? "free") === "free";
-  const trialUsed = profile?.copilot_trial_messages_used ?? 0;
+  const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
+  const FREE_TRIAL_COPILOT_LIMIT = 5;
+  const isTrial = profile?.subscription_status === "free_trial";
+  const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
 
   return (
     <div className="bg-[#faf9f7]">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
-        <h1 className="text-2xl font-bold text-[#1a1a1a]">Account settings</h1>
+        <h1 className="text-2xl font-bold text-[#1a1a1a]">Account Settings</h1>
 
         <div className="bg-white rounded-xl border border-[#efefef] p-6">
           <h2 className="font-semibold text-[#1a1a1a] mb-4">Profile</h2>
@@ -56,13 +51,11 @@ export default async function AccountPage() {
               <span className="text-[#1a1a1a]">{tierDisplayName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">
-                {isFree ? "Coaching sessions" : "AI credits remaining"}
-              </span>
+              <span className="text-[#afafaf]">AI coaching</span>
               <span className="text-[#1a1a1a]">
-                {isFree
-                  ? `${trialUsed} of 5 free coaching sessions used`
-                  : profile?.ai_credits_remaining ?? 0}
+                {isTrial
+                  ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
+                  : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
               </span>
             </div>
           </div>
@@ -70,17 +63,17 @@ export default async function AccountPage() {
             href="/account/billing"
             className="mt-4 inline-block text-sm text-[#155e63] font-medium hover:underline"
           >
-            Manage billing →
+            Manage Billing →
           </Link>
         </div>
 
         <div className="bg-white rounded-xl border border-[#efefef] p-6">
-          <h2 className="font-semibold text-[#1a1a1a] mb-4">Delete account</h2>
+          <h2 className="font-semibold text-[#1a1a1a] mb-4">Delete Account</h2>
           <p className="text-sm text-[#afafaf] mb-4">
             Permanently delete your account and all plan data. This cannot be undone.
           </p>
           <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">
-            Delete my account
+            Delete My Account
           </button>
         </div>
 
@@ -89,7 +82,7 @@ export default async function AccountPage() {
             type="submit"
             className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
           >
-            Sign out
+            Sign Out
           </button>
         </form>
       </div>

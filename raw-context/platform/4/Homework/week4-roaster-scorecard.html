@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Roaster Comparison Scorecard — Coffee Shop Basecamp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    /* ── HEADER ── */
+    .header { background: var(--primary); padding: 44px 40px 40px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 280px; height: 280px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header-inner { max-width: 960px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 18px; }
+    .header h1 { font-size: 30px; font-weight: 800; color: var(--white); line-height: 1.24; margin-bottom: 10px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 14px; color: rgba(255,255,255,0.75); line-height: 1.7; max-width: 620px; margin-bottom: 18px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 12.5px; font-weight: 600; padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    /* ── BODY ── */
+    .body { max-width: 960px; margin: 0 auto; padding: 30px 40px 56px; }
+
+    /* ── ROASTER NAMES BAR ── */
+    .roaster-bar { background: var(--white); border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .roaster-bar-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .roaster-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 6px; }
+    .roaster-field .field-line { border-bottom: 1.5px solid #ddd; height: 28px; width: 100%; }
+
+    /* ── SCORING GUIDE ── */
+    .scoring-guide { background: var(--primary); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .scoring-guide h3 { font-size: 12px; font-weight: 700; color: var(--white); margin-bottom: 8px; width: 100%; }
+    .score-legend { display: flex; gap: 10px; flex-wrap: wrap; }
+    .score-pill { background: rgba(255,255,255,0.12); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: rgba(255,255,255,0.88); }
+    .score-pill strong { color: var(--secondary); font-weight: 700; }
+
+    /* ── HOW TO USE NOTE ── */
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px; }
+    .amber-note p { font-size: 12.5px; line-height: 1.68; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    /* ── SECTION HEADING ── */
+    .section-heading { font-size: 13px; font-weight: 700; color: var(--white); background: var(--primary); padding: 9px 16px; border-radius: 8px 8px 0 0; margin-bottom: 0; letter-spacing: 0.04em; text-transform: uppercase; }
+    .section-heading.secondary { background: var(--secondary); }
+
+    /* ── SCORE TABLE ── */
+    .score-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .score-table thead tr { background: var(--light-grey); }
+    .score-table thead th { padding: 9px 14px; font-size: 10px; font-weight: 700; color: var(--dark-grey); letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: left; }
+    .score-table thead th.center { text-align: center; width: 70px; }
+    .score-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .score-table tbody tr:last-child { border-bottom: none; }
+    .score-table tbody tr:nth-child(even) { background: #fafafa; }
+    .score-table td { padding: 11px 14px; font-size: 13px; vertical-align: top; }
+    .score-table td.center { text-align: center; vertical-align: middle; }
+
+    .criterion-name { font-size: 13px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    .criterion-guide { font-size: 11.5px; color: var(--dark-grey); line-height: 1.5; }
+
+    /* Score box: five circles */
+    .score-circles { display: flex; gap: 5px; justify-content: center; }
+    .score-circles span { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #ccc; display: inline-block; font-size: 10px; font-weight: 700; color: var(--dark-grey); text-align: center; line-height: 20px; }
+
+    /* Notes row */
+    .notes-row td { padding: 6px 14px 10px; }
+    .notes-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dark-grey); margin-bottom: 4px; }
+    .notes-line { border-bottom: 1px solid #ddd; height: 20px; margin-bottom: 4px; }
+
+    /* ── TOTALS ROW ── */
+    .totals-row { background: var(--white); border-radius: 12px; padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .total-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 6px; }
+    .total-field .tline { border-bottom: 2px solid var(--secondary); height: 28px; width: 100%; }
+    .total-field.primary-field label { color: var(--primary); }
+    .total-field.primary-field .tline { border-bottom-color: var(--primary); border-bottom-width: 2.5px; }
+
+    /* ── QUAL SECTION ── */
+    .qual-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .qual-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .qual-table tbody tr:last-child { border-bottom: none; }
+    .qual-table td { padding: 11px 14px; font-size: 13px; vertical-align: top; }
+    .qual-table td.label-col { width: 22%; font-size: 12px; font-weight: 600; color: var(--primary); background: var(--light-grey); vertical-align: top; padding-top: 13px; }
+    .qual-line { border-bottom: 1px solid #ddd; height: 20px; margin-bottom: 5px; }
+
+    /* ── DECISION SECTION ── */
+    .decision-box { background: var(--white); border-radius: 12px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .decision-box h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 14px; }
+    .decision-options { display: flex; gap: 10px; margin-bottom: 18px; }
+    .decision-option { flex: 1; border: 2px solid #e0e0e0; border-radius: 10px; padding: 14px 12px; text-align: center; }
+    .decision-option .icon { font-size: 22px; margin-bottom: 5px; }
+    .decision-option h4 { font-size: 12.5px; font-weight: 700; color: var(--primary); line-height: 1.4; }
+    .decision-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 5px; }
+    .decision-field .dline { border-bottom: 1px solid #ddd; height: 22px; margin-bottom: 5px; }
+    .decision-field { margin-bottom: 14px; }
+
+    /* ── FOOTER ── */
+    .footer { background: var(--primary); text-align: center; padding: 18px 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 700px) {
+      .header { padding: 32px 20px 28px; } .header h1 { font-size: 22px; }
+      .body { padding: 22px 18px 40px; }
+      .roaster-bar-grid { grid-template-columns: 1fr; }
+      .totals-row { grid-template-columns: 1fr 1fr; }
+      .decision-options { flex-direction: column; }
+    }
+
+    @media print {
+      body { background: white; }
+      .header { padding: 30px 30px 26px; }
+      .body { padding: 20px 30px 30px; }
+      .score-table, .qual-table { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Roaster<br><span>Comparison Scorecard</span></h1>
+    <p class="header-sub">Score up to three roasters side by side on the criteria that matter most. Use the notes fields to capture what the numbers can't. The scores help you think clearly — they don't make the decision for you.</p>
+    <div class="week-badge">☕ Week 4 — Menu Design, Coffee Program & Sourcing</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- ROASTER NAMES -->
+  <div class="roaster-bar">
+    <div class="roaster-bar-grid">
+      <div class="roaster-field"><label>Roaster 1 — Name</label><div class="field-line"></div></div>
+      <div class="roaster-field"><label>Roaster 2 — Name</label><div class="field-line"></div></div>
+      <div class="roaster-field"><label>Roaster 3 — Name (optional)</label><div class="field-line"></div></div>
+    </div>
+  </div>
+
+  <!-- SCORING GUIDE -->
+  <div class="scoring-guide">
+    <h3>SCORING GUIDE</h3>
+    <div class="score-legend">
+      <div class="score-pill"><strong>1</strong> — Poor / dealbreaker</div>
+      <div class="score-pill"><strong>2</strong> — Below expectations</div>
+      <div class="score-pill"><strong>3</strong> — Acceptable</div>
+      <div class="score-pill"><strong>4</strong> — Good</div>
+      <div class="score-pill"><strong>5</strong> — Excellent</div>
+    </div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>How to use this:</strong> Circle a score for each roaster on every criterion. Some criteria may not apply to all roasters — leave blank if you don't have the information yet, and use that as a prompt to follow up. Use the notes rows to capture anything that doesn't fit a number. The scores at the bottom give you a total to compare — but the notes section and your gut feel matter just as much.</p>
+  </div>
+
+  <!-- SECTION A: COFFEE QUALITY -->
+  <div class="section-heading">A — Coffee Quality & Product</div>
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th>Criterion</th>
+        <th class="center">Roaster 1</th>
+        <th class="center">Roaster 2</th>
+        <th class="center">Roaster 3</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td><div class="criterion-name">Espresso quality — taste, balance, consistency</div><div class="criterion-guide">Score after tasting their espresso at least twice, ideally across different visits or bags.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Filter / batch brew quality</div><div class="criterion-guide">If you'll serve batch brew or pour-over, how good is it? Often your highest-margin drink.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Consistency across bags and roast dates</div><div class="criterion-guide">Has the coffee tasted the same every time you've tried it? Ask current wholesale accounts.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Range of coffees available (blend, single origin, decaf)</div><div class="criterion-guide">Does their range cover everything your menu needs?</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr class="notes-row">
+        <td colspan="4">
+          <div class="notes-label">Notes on coffee quality (flavour, range, anything that stood out)</div>
+          <div class="notes-line"></div><div class="notes-line"></div>
+        </td>
+      </tr>
+
+      <tr style="background: var(--light-grey);">
+        <td style="font-size:12px; font-weight:700; color: var(--primary); padding: 8px 14px;">Section A total &nbsp;/20</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/20</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/20</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/20</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- SECTION B: COMMERCIAL TERMS -->
+  <div class="section-heading secondary">B — Commercial Terms</div>
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th>Criterion</th>
+        <th class="center">Roaster 1</th>
+        <th class="center">Roaster 2</th>
+        <th class="center">Roaster 3</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td><div class="criterion-name">Minimum order quantity fits your projected volume</div><div class="criterion-guide">Score 5 if their minimum is at or below your weekly projected use. Score 1 if it's 2× or more than you'll need.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Price per kg is fair for the quality</div><div class="criterion-guide">Not just cheapest — fair value for what you're getting. Compare against the quality score above.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Payment terms work for your cash flow</div><div class="criterion-guide">Net 30? Pay on delivery? Credit account available? Flexible terms matter in your first few months.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <!-- Actual price/MOQ fields -->
+      <tr class="notes-row">
+        <td colspan="4">
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+            <div><div class="notes-label">—</div></div>
+            <div><div class="notes-label">Roaster 1 — Price/kg & MOQ</div><div class="notes-line"></div></div>
+            <div><div class="notes-label">Roaster 2 — Price/kg & MOQ</div><div class="notes-line"></div></div>
+            <div><div class="notes-label">Roaster 3 — Price/kg & MOQ</div><div class="notes-line"></div></div>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="notes-row">
+        <td colspan="4">
+          <div class="notes-label">Notes on commercial terms (anything negotiated, payment terms, red flags)</div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+
+      <tr style="background: var(--light-grey);">
+        <td style="font-size:12px; font-weight:700; color: var(--primary); padding: 8px 14px;">Section B total &nbsp;/15</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/15</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/15</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/15</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- SECTION C: DELIVERY & SUPPORT -->
+  <div class="section-heading">C — Delivery & Support</div>
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th>Criterion</th>
+        <th class="center">Roaster 1</th>
+        <th class="center">Roaster 2</th>
+        <th class="center">Roaster 3</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td><div class="criterion-name">Delivery frequency and reliability</div><div class="criterion-guide">How often do they deliver to your area? Have they had supply delays? Ask their current accounts.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Training and on-boarding support</div><div class="criterion-guide">Do they help new wholesale accounts dial in the espresso? Offer barista education? This matters if your team is new.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Responsiveness and communication</div><div class="criterion-guide">How fast did they respond to your first enquiry? Were they easy to deal with? This is a preview of the relationship.</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr class="notes-row">
+        <td colspan="4">
+          <div class="notes-label">Notes on delivery and support</div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+
+      <tr style="background: var(--light-grey);">
+        <td style="font-size:12px; font-weight:700; color: var(--primary); padding: 8px 14px;">Section C total &nbsp;/15</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/15</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/15</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/15</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- SECTION D: BRAND FIT -->
+  <div class="section-heading secondary">D — Brand & Concept Fit</div>
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th>Criterion</th>
+        <th class="center">Roaster 1</th>
+        <th class="center">Roaster 2</th>
+        <th class="center">Roaster 3</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td><div class="criterion-name">Their story aligns with your concept</div><div class="criterion-guide">If a customer asks "who's your roaster?" — would the answer fit your brand? Does their positioning support yours?</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr>
+        <td><div class="criterion-name">Exclusivity in your area (or at least your street)</div><div class="criterion-guide">Are other nearby cafés already using them? Does that matter for your positioning?</div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+        <td class="center"><div class="score-circles"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></td>
+      </tr>
+
+      <tr class="notes-row">
+        <td colspan="4">
+          <div class="notes-label">Notes on brand fit (their story, their other wholesale accounts, anything notable)</div>
+          <div class="notes-line"></div>
+        </td>
+      </tr>
+
+      <tr style="background: var(--light-grey);">
+        <td style="font-size:12px; font-weight:700; color: var(--primary); padding: 8px 14px;">Section D total &nbsp;/10</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/10</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/10</td>
+        <td class="center" style="font-size:13px; font-weight:700; color: var(--primary);">___/10</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- TOTALS -->
+  <div class="totals-row">
+    <div class="total-field primary-field">
+      <label>Maximum possible score</label>
+      <div style="font-size:13px; font-weight:700; color: var(--dark-grey); padding-top: 6px;">60 points</div>
+    </div>
+    <div class="total-field primary-field">
+      <label>Roaster 1 — Total Score</label>
+      <div class="tline"></div>
+    </div>
+    <div class="total-field primary-field">
+      <label>Roaster 2 — Total Score</label>
+      <div class="tline"></div>
+    </div>
+    <div class="total-field primary-field">
+      <label>Roaster 3 — Total Score</label>
+      <div class="tline"></div>
+    </div>
+  </div>
+
+  <!-- QUALITATIVE NOTES -->
+  <div class="section-heading secondary">Quick Notes — What the Score Doesn't Capture</div>
+  <table class="qual-table">
+    <tbody>
+
+      <tr>
+        <td class="label-col">Coffees they offer at wholesale</td>
+        <td>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div><div class="notes-label">Roaster 1</div><div class="qual-line"></div><div class="qual-line"></div></div>
+            <div><div class="notes-label">Roaster 2</div><div class="qual-line"></div><div class="qual-line"></div></div>
+            <div><div class="notes-label">Roaster 3</div><div class="qual-line"></div><div class="qual-line"></div></div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <td class="label-col">What I liked most</td>
+        <td>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div><div class="notes-label">Roaster 1</div><div class="qual-line"></div><div class="qual-line"></div></div>
+            <div><div class="notes-label">Roaster 2</div><div class="qual-line"></div><div class="qual-line"></div></div>
+            <div><div class="notes-label">Roaster 3</div><div class="qual-line"></div><div class="qual-line"></div></div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <td class="label-col">My main concern</td>
+        <td>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div><div class="notes-label">Roaster 1</div><div class="qual-line"></div><div class="qual-line"></div></div>
+            <div><div class="notes-label">Roaster 2</div><div class="qual-line"></div><div class="qual-line"></div></div>
+            <div><div class="notes-label">Roaster 3</div><div class="qual-line"></div><div class="qual-line"></div></div>
+          </div>
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- DECISION -->
+  <div class="decision-box">
+    <h3>My Decision</h3>
+
+    <div class="decision-options">
+      <div class="decision-option"><div class="icon">✅</div><h4>I'm going with Roaster ___</h4></div>
+      <div class="decision-option"><div class="icon">⏸️</div><h4>Need more information first</h4></div>
+      <div class="decision-option"><div class="icon">🔍</div><h4>Still looking — none of these feel right</h4></div>
+    </div>
+
+    <div class="decision-field">
+      <label>My chosen roaster and why — what made the difference?</label>
+      <div class="dline"></div><div class="dline"></div><div class="dline"></div>
+    </div>
+
+    <div class="decision-field">
+      <label>What I still need to confirm before committing</label>
+      <div class="dline"></div><div class="dline"></div>
+    </div>
+
+    <div class="decision-field">
+      <label>My next step (who contacts who, and by when?)</label>
+      <div class="dline"></div><div class="dline"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 4 Roaster Comparison Scorecard</p>
+</div>
+
+</body>
+</html>

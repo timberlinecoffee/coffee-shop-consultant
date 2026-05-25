@@ -75,7 +75,7 @@ const STEPS: Step[] = [
     type: "text",
     question: "What are you calling your shop?",
     hint: "Working title is fine — you can change it any time inside the Concept workspace.",
-    placeholder: "e.g. Tide & Timber Coffee",
+    placeholder: "e.g. Ironside Coffee",
   },
   {
     id: "motivation",
@@ -491,7 +491,8 @@ export function OnboardingFlow({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
+    <div className="min-h-screen bg-[#faf9f7] sm:bg-[#e0ded9] sm:flex sm:items-start sm:justify-center sm:py-12 sm:px-4">
+      <div className="flex flex-col w-full sm:max-w-[680px] bg-[#faf9f7] min-h-screen sm:min-h-0 sm:rounded-2xl sm:shadow-lg sm:overflow-hidden">
       <header className="px-6 pt-6 pb-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -759,7 +760,7 @@ export function OnboardingFlow({
         )}
       </main>
 
-      <div className="sticky bottom-0 bg-[#faf9f7] border-t border-[#efefef] px-6 py-4 flex gap-3">
+      <div className="sticky bottom-0 sm:static bg-[#faf9f7] border-t border-[#efefef] px-6 py-4 flex gap-3">
         {step > 0 && (
           <button
             type="button"
@@ -781,6 +782,7 @@ export function OnboardingFlow({
             ? "Open my Concept workspace"
             : "Next"}
         </button>
+      </div>
       </div>
     </div>
   );
@@ -972,7 +974,7 @@ function ReviewSummary({
   const rows: Array<{ label: string; value: string; deferred?: boolean }> = [
     { label: "Shop name", value: concept.name },
     { label: "What kind of shop", value: concept.mission },
-    { label: "Core customer", value: concept.target_market },
+    { label: "Target Customer Personas", value: concept.target_market },
     {
       label: "Differentiation",
       value: diffState.deferred ? "" : concept.differentiation,

@@ -23,11 +23,12 @@ interface UseCopilotStreamResult {
   error: CopilotErrorState | null;
   lastThreadId: string | null;
   lastModelUsed: string | null;
+  trialRemaining: number | null;
   send: (args: SendArgs) => Promise<{
     threadId: string;
     modelUsed: string | null;
     assistant: string;
-    trialMessagesUsed?: number;
+    trialRemaining: number | null;
   } | null>;
   abort: () => void;
   reset: () => void;
@@ -40,6 +41,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
   const [error, setError] = useState<CopilotErrorState | null>(null);
   const [lastThreadId, setLastThreadId] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
+  const [trialRemaining, setTrialRemaining] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
@@ -120,7 +122,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
       let lastThinkingAt = 0;
       let resolvedThreadId = threadId;
       let resolvedModelUsed: string | null = null;
-      let resolvedTrialMessagesUsed: number | undefined = undefined;
+      let resolvedTrialRemaining: number | null = null;
       let finalError: CopilotErrorState | null = null;
 
       try {
@@ -170,13 +172,11 @@ export function useCopilotStream(): UseCopilotStreamResult {
                 const parsed = JSON.parse(evt.data) as {
                   threadId?: string;
                   modelUsed?: string;
-                  trial_messages_used?: number;
+                  trialRemaining?: number | null;
                 };
                 if (parsed.threadId) resolvedThreadId = parsed.threadId;
                 if (parsed.modelUsed) resolvedModelUsed = parsed.modelUsed;
-                if (typeof parsed.trial_messages_used === "number") {
-                  resolvedTrialMessagesUsed = parsed.trial_messages_used;
-                }
+                if (typeof parsed.trialRemaining === "number") resolvedTrialRemaining = parsed.trialRemaining;
               } catch {
                 /* done frame without payload is fine */
               }
@@ -204,12 +204,13 @@ export function useCopilotStream(): UseCopilotStreamResult {
 
       setLastThreadId(resolvedThreadId);
       setLastModelUsed(resolvedModelUsed);
+      if (resolvedTrialRemaining !== null) setTrialRemaining(resolvedTrialRemaining);
 
       return {
         threadId: resolvedThreadId,
         modelUsed: resolvedModelUsed,
         assistant,
-        trialMessagesUsed: resolvedTrialMessagesUsed,
+        trialRemaining: resolvedTrialRemaining,
       };
     },
     [],
@@ -222,6 +223,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
     error,
     lastThreadId,
     lastModelUsed,
+    trialRemaining,
     send,
     abort,
     reset,

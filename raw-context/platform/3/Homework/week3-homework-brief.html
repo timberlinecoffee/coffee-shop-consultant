@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 3 Homework Brief — Site Selection & Lease Strategy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--light-grey);
+      color: #2a2a2a;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--primary);
+      padding: 50px 40px 46px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -70px; right: -70px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(118,179,157,0.16);
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 32%;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cohort-label {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.22;
+      margin-bottom: 14px;
+    }
+    .header h1 span { color: var(--secondary); }
+    .header-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.72;
+      max-width: 600px;
+      margin-bottom: 24px;
+    }
+    .week-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.11);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── BODY WRAPPER ── */
+    .body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px 40px 56px;
+    }
+
+    /* ── INTRO BOX ── */
+    .intro-box {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 26px 28px;
+      border-left: 4px solid var(--secondary);
+      margin-bottom: 32px;
+    }
+    .intro-box p {
+      font-size: 14.5px;
+      line-height: 1.78;
+      color: #3a3a3a;
+    }
+    .intro-box p + p { margin-top: 12px; }
+    .intro-box strong { color: var(--primary); }
+
+    /* ── SPLIT TRACK BOX ── */
+    .split-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .split-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px 22px;
+      border-top: 4px solid var(--secondary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .split-card.primary-track { border-top-color: var(--primary); }
+    .split-card .track-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--dark-grey);
+      margin-bottom: 6px;
+    }
+    .split-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .split-card p {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.68;
+    }
+
+    /* ── SECTION HEADING ── */
+    .section-heading {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .section-sub {
+      font-size: 13.5px;
+      color: var(--dark-grey);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* ── TASKS ── */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .task {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 22px 24px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .task-num {
+      background: var(--primary);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 800;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .task-body h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 7px;
+    }
+    .task-body p {
+      font-size: 13.5px;
+      color: #444;
+      line-height: 1.72;
+    }
+    .task-tag {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .task-hint {
+      margin-top: 10px;
+      background: var(--light-grey);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.65;
+    }
+    .task-hint strong { color: var(--primary); }
+
+    /* ── WHAT TO BRING BOX ── */
+    .bring-box {
+      background: var(--primary);
+      border-radius: 14px;
+      padding: 30px 32px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .bring-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bring-box h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .bring-box p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: rgba(255,255,255,0.78);
+    }
+
+    /* ── RESOURCES BOX ── */
+    .resources-box {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 26px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 32px;
+    }
+    .resources-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+    .resource-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .resource-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .resource-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .resource-item h4 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #2a2a2a;
+      margin-bottom: 3px;
+    }
+    .resource-item p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    /* ── AMBER NOTE ── */
+    .amber-note {
+      background: var(--amber-bg);
+      border-left: 4px solid var(--amber);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 32px;
+    }
+    .amber-note p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: var(--amber-text);
+    }
+    .amber-note strong { font-weight: 700; }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--primary);
+      text-align: center;
+      padding: 22px 20px;
+    }
+    .footer p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 27px; }
+      .body { padding: 28px 22px 44px; }
+      .task { flex-direction: column; gap: 10px; }
+      .split-box { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Is Your Location<br><span>Actually Going to Work?</span></h1>
+    <p class="header-sub">You know what you're building and you've run the numbers. This week is about where it lives. Finding the right space is one thing. Signing the right lease is something else entirely — and it's the part most people don't look closely enough at.</p>
+    <div class="week-badge">📍 Week 3 — Site Selection & Lease Strategy &nbsp;·&nbsp; Homework Brief</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- INTRO -->
+  <div class="intro-box">
+    <p>People talk about location like it's magic. "You just need to be in the right spot." But location isn't a feeling — it's a set of physical and financial conditions that either work for your concept or don't. A beautiful space in the wrong spot, or a great spot on a terrible lease, will both sink you.</p>
+    <p>This week's homework is about learning to evaluate a space and a lease with clear eyes. <strong>Not every location needs to be perfect. But every location needs to be understood.</strong> The things you miss now will come back to find you later.</p>
+  </div>
+
+  <!-- TRACK SPLIT -->
+  <div class="section-heading">Which track are you on?</div>
+  <div class="section-sub">This week's homework has two paths depending on where you are in your journey. Pick the one that fits you — both lead to the same live call discussion.</div>
+
+  <div class="split-box">
+    <div class="split-card primary-track">
+      <div class="track-label">Track A</div>
+      <h4>🏠 You already have a space in mind</h4>
+      <p>Complete the Site Evaluation Scorecard and identify the top three lease terms you need to push on before you sign anything.</p>
+    </div>
+    <div class="split-card">
+      <div class="track-label">Track B</div>
+      <h4>🔍 You're still looking</h4>
+      <p>Define your site criteria using the framework from the video, then evaluate two potential markets or neighbourhoods using the same lens.</p>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="section-heading">Your Tasks This Week</div>
+  <div class="section-sub">Work through all three before the live call. Even rough answers will make the conversation more useful.</div>
+
+  <div class="task-list">
+
+    <div class="task">
+      <div class="task-num">1</div>
+      <div class="task-body">
+        <div class="task-tag">Main Task</div>
+        <h3>Evaluate your space — or your market</h3>
+        <p><strong>If you have a space (Track A):</strong> Use the Site Evaluation Scorecard from your Week 3 materials to work through the eight physical criteria: plumbing access, electrical capacity, natural light, foot traffic, parking, employment density nearby, visibility from the street, and whether the space is raw or shell. Score each one honestly — not based on what you hope it will be.</p>
+        <p style="margin-top:10px;"><strong>If you're still looking (Track B):</strong> Pick two neighbourhoods or markets you're considering. Walk them if you can. Look up foot traffic data. Count how many coffee shops are already there. Think about who lives and works in that area, and whether those people match your concept from Week 1.</p>
+        <div class="task-hint">
+          <strong>Be honest in your scoring.</strong> A low score on a space you love is useful information — not a reason to stop. It tells you what you'll need to negotiate, fix, or accept. Ignoring it doesn't make it go away.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">2</div>
+      <div class="task-body">
+        <div class="task-tag">Lease Task</div>
+        <h3>Identify the three lease terms that matter most for you</h3>
+        <p>Whether you have a space or not, get familiar with the key lease terms from this week's video: tenant improvement allowance (TI), rent-free periods (abatement), exclusivity clauses, percentage rent, personal guarantees, and assignment rights. Then identify the three that would matter most in your specific situation — based on your concept, your finances, and how long you plan to stay.</p>
+        <div class="task-hint">
+          <strong>You don't need a lawyer yet.</strong> You need to know what you'd ask for if you were at the negotiating table tomorrow. That clarity is what this exercise builds — and it's worth a lot more than you might think.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">3</div>
+      <div class="task-body">
+        <div class="task-tag">Writing Task</div>
+        <h3>Write your "case for this location"</h3>
+        <p>In one paragraph — no more — write the case for your space or your target market. Why does it work for your concept? What's the evidence? What are you betting on? This doesn't need to be polished. It needs to be honest and specific. Vague answers like "it's a great area" don't count. What makes it right <em>for you</em>?</p>
+        <div class="task-hint">
+          <strong>Why this matters:</strong> This is the conversation you'll have with investors, business partners, your landlord, and yourself at 2am when you're wondering if you made the right call. Practise saying it clearly now.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- AMBER NOTE -->
+  <div class="amber-note">
+    <p><strong>A note if you're feeling the pressure to decide:</strong> This week is not about committing to a location. It's about building the ability to evaluate one. If you find yourself falling in love with a space before you've scored it properly — slow down. Emotional attachment to a location is one of the most expensive mistakes in this business. The scorecard exists for exactly this reason.</p>
+  </div>
+
+  <!-- WHAT TO BRING -->
+  <div class="bring-box">
+    <div class="bring-icon">📋</div>
+    <div>
+      <h3>What to bring to the live call</h3>
+      <p>Bring your scorecard or market comparison — even if it's incomplete. Bring your one-paragraph location case. Bring your questions about lease terms. This call tends to be highly individual because everyone's situation is different, but hearing other people's locations and markets discussed out loud is one of the most valuable things you'll do in this programme. Come ready to share yours.</p>
+    </div>
+  </div>
+
+  <!-- WHAT'S INCLUDED -->
+  <div class="resources-box">
+    <h3>What's included in your Week 3 materials</h3>
+    <div class="resource-list">
+
+      <div class="resource-item">
+        <div class="resource-icon">📄</div>
+        <div>
+          <h4>This brief (you're reading it)</h4>
+          <p>Your assignment and what to focus on this week.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">📍</div>
+        <div>
+          <h4>Site Evaluation Scorecard</h4>
+          <p>A structured checklist to evaluate any physical space across eight criteria. Score each one, add your notes, and see where your space is strong and where it needs work — or negotiation.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">📋</div>
+        <div>
+          <h4>Site Selection & Lease Terms Reference Sheet</h4>
+          <p>A plain-language guide to the lease terms you'll encounter, what they mean, what to ask for, and the red flags to watch out for. Keep it open when you're reviewing any lease or letter of intent.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADDITIONAL RESOURCES -->
+  <div class="section-heading">Outside resources worth looking at</div>
+  <div class="section-sub">You don't need to read everything — but these are worth having in your back pocket this week.</div>
+
+  <div class="resources-box" style="margin-top: 0;">
+    <div class="resource-list">
+
+      <div class="resource-item">
+        <div class="resource-icon">🚶</div>
+        <div>
+          <h4>Walk your target area at different times of day</h4>
+          <p>Foot traffic data from an app or website is useful. Actually standing in front of the space at 7:30am on a Tuesday is more useful. Do both if you can. The vibe of a street at commute time is something no dataset captures.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">🗺️</div>
+        <div>
+          <h4>Google Maps + Street View for competitive density</h4>
+          <p>Search "coffee" in any area to get a quick map of existing competitors. Street View can show you what the space looks like from the street — visibility, signage potential, foot traffic flow. It's not a substitute for being there, but it's a useful starting point.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">⚖️</div>
+        <div>
+          <h4>A commercial real estate lawyer (even for one consultation)</h4>
+          <p>You don't need to hire one yet — but if you're close to a letter of intent, a single one-hour consultation with a commercial lease lawyer is money very well spent. They will find things in the lease that you won't.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">💬</div>
+        <div>
+          <h4>Other business owners in the area you're considering</h4>
+          <p>Not coffee competitors — other small business owners. Ask them about the landlord, foot traffic patterns, what changes in the area they've seen, and whether they'd sign their lease again. You'll learn things that no amount of research will tell you.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 3 Homework Brief</p>
+</div>
+
+</body>
+</html>

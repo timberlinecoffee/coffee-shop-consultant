@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 2 Homework Brief — Financial Modeling</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--light-grey);
+      color: #2a2a2a;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--primary);
+      padding: 50px 40px 46px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -70px; right: -70px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(118,179,157,0.16);
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 32%;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cohort-label {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.22;
+      margin-bottom: 14px;
+    }
+    .header h1 span { color: var(--secondary); }
+    .header-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.72;
+      max-width: 600px;
+      margin-bottom: 24px;
+    }
+    .week-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.11);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── BODY WRAPPER ── */
+    .body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px 40px 56px;
+    }
+
+    /* ── INTRO BOX ── */
+    .intro-box {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 26px 28px;
+      border-left: 4px solid var(--secondary);
+      margin-bottom: 32px;
+    }
+    .intro-box p {
+      font-size: 14.5px;
+      line-height: 1.78;
+      color: #3a3a3a;
+    }
+    .intro-box p + p { margin-top: 12px; }
+    .intro-box strong { color: var(--primary); }
+
+    /* ── SECTION HEADING ── */
+    .section-heading {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .section-sub {
+      font-size: 13.5px;
+      color: var(--dark-grey);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* ── TASKS ── */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .task {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 22px 24px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .task-num {
+      background: var(--primary);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 800;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .task-body h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 7px;
+    }
+    .task-body p {
+      font-size: 13.5px;
+      color: #444;
+      line-height: 1.72;
+    }
+    .task-tag {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .task-hint {
+      margin-top: 10px;
+      background: var(--light-grey);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.65;
+    }
+    .task-hint strong { color: var(--primary); }
+
+    /* ── WHAT TO BRING BOX ── */
+    .bring-box {
+      background: var(--primary);
+      border-radius: 14px;
+      padding: 30px 32px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .bring-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bring-box h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .bring-box p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: rgba(255,255,255,0.78);
+    }
+
+    /* ── RESOURCES BOX ── */
+    .resources-box {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 26px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 32px;
+    }
+    .resources-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+    .resource-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .resource-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .resource-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .resource-item h4 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #2a2a2a;
+      margin-bottom: 3px;
+    }
+    .resource-item p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    /* ── AMBER NOTE ── */
+    .amber-note {
+      background: var(--amber-bg);
+      border-left: 4px solid var(--amber);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 32px;
+    }
+    .amber-note p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: var(--amber-text);
+    }
+    .amber-note strong { font-weight: 700; }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--primary);
+      text-align: center;
+      padding: 22px 20px;
+    }
+    .footer p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 27px; }
+      .body { padding: 28px 22px 44px; }
+      .task { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Do Your Numbers<br><span>Actually Work?</span></h1>
+    <p class="header-sub">Last week you figured out what you're building and who it's for. This week, you find out if the numbers hold up. Most projections are built on hope. Yours is going to be built on something more solid than that.</p>
+    <div class="week-badge">📊 Week 2 — Financial Modeling &nbsp;·&nbsp; Homework Brief</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- INTRO -->
+  <div class="intro-box">
+    <p>Numbers are not the enemy of creativity. They're the thing that keeps your creative idea alive long enough to actually matter. A coffee shop with a beautiful concept and a broken financial model doesn't open — or doesn't stay open for long.</p>
+    <p>This week is about building your first honest look at the money. You don't need a finance background to do this. You just need to be willing to put real numbers on paper and see what they tell you. The model doesn't need to be perfect. It needs to be <strong>honest</strong>.</p>
+  </div>
+
+  <!-- TASKS -->
+  <div class="section-heading">Your Three Tasks This Week</div>
+  <div class="section-sub">Work through all three before the live call. Rough numbers are fine — just do your best with what you know right now.</div>
+
+  <div class="task-list">
+
+    <div class="task">
+      <div class="task-num">1</div>
+      <div class="task-body">
+        <div class="task-tag">Main Task</div>
+        <h3>Build your first financial model</h3>
+        <p>Using the financial model template provided with this week's materials, fill in what you know about your shop: how big a space you're thinking, what you expect rent to cost, your planned opening hours, how many people you think you'll serve in a day, and roughly what they'll spend. The template will work out your estimated break-even point — the amount you need to bring in each month just to cover your costs.</p>
+        <div class="task-hint">
+          <strong>Don't have all the numbers yet?</strong> That's normal at this stage. Make your best estimate and note where you're unsure. Those gaps are exactly what we'll work through together on the live call.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">2</div>
+      <div class="task-body">
+        <div class="task-tag">Supporting Task</div>
+        <h3>Work out your average spend per customer</h3>
+        <p>Think about what a typical customer at your shop will order. Just a coffee? A coffee and something to eat? Write out two or three common order combinations and work out the average amount each customer is likely to spend per visit. If your customer in the morning is different from your customer at lunchtime, do this separately for each part of the day.</p>
+        <div class="task-hint">
+          <strong>Why this matters:</strong> Your average customer spend is one of the two numbers that drives almost everything else in your model. The other is how many customers you serve per day. These two numbers together tell you most of what you need to know.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">3</div>
+      <div class="task-body">
+        <div class="task-tag">Research Task</div>
+        <h3>Get a rough number on your main equipment costs</h3>
+        <p>Look up approximate costs for the key pieces of equipment your shop will need: an espresso machine, a grinder, a water filter system, and a fridge or display unit. You don't need exact quotes at this stage — a ballpark is fine. We'll go much deeper on equipment in Week 5. But getting these numbers into your model now makes your projections far more realistic.</p>
+        <div class="task-hint">
+          <strong>Where to look:</strong> Equipment supplier websites, used equipment dealers, and coffee industry forums are all good starting points. The Startup Costs Checklist in your Week 2 resources has a full list of what to look into.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- AMBER NOTE -->
+  <div class="amber-note">
+    <p><strong>A heads up before you start:</strong> Your first model will almost certainly be too optimistic. That's not a problem — it's the whole point of doing this now rather than later. The goal isn't a perfect model. It's a model you're willing to defend and that you understand well enough to improve. That's what the live call is for.</p>
+  </div>
+
+  <!-- WHAT TO BRING -->
+  <div class="bring-box">
+    <div class="bring-icon">📋</div>
+    <div>
+      <h3>What to bring to the live call</h3>
+      <p>Bring your model, even if it's incomplete or the numbers don't look great. The most useful calls happen when people show up honest — where they got stuck, what didn't add up, what surprised them. Two or three models will be walked through together so the whole group learns from each one. You don't need to have it perfect. You need to have something.</p>
+    </div>
+  </div>
+
+  <!-- RESOURCES -->
+  <div class="resources-box">
+    <h3>What's included in your Week 2 materials</h3>
+    <div class="resource-list">
+
+      <div class="resource-item">
+        <div class="resource-icon">📄</div>
+        <div>
+          <h4>This brief (you're reading it)</h4>
+          <p>Your assignment and what to focus on this week.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">📊</div>
+        <div>
+          <h4>Financial Model Template</h4>
+          <p>A Google Sheet with the key sections pre-built. Fill in the yellow cells and the model does the maths for you. Includes a 12-month projection, break-even calculator, and a first-year cost summary.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">📋</div>
+        <div>
+          <h4>Key Financial Numbers Reference Sheet</h4>
+          <p>The benchmarks healthy coffee shops are built around — rent percentages, labour ceilings, cost of goods targets, and profit margins — plus a plain-language glossary of every term you'll see in your model.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">✅</div>
+        <div>
+          <h4>Startup Costs Checklist</h4>
+          <p>A comprehensive list of the one-time costs involved in opening a coffee shop — organised by category — so you don't miss anything when you're building your startup budget.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADDITIONAL RESOURCES NOTE -->
+  <div class="section-heading">Outside resources worth looking at</div>
+  <div class="section-sub">You don't need to read everything — but these are worth having in your back pocket this week.</div>
+
+  <div class="resources-box" style="margin-top: 0;">
+    <div class="resource-list">
+
+      <div class="resource-item">
+        <div class="resource-icon">🔍</div>
+        <div>
+          <h4>Your local commercial real estate listings</h4>
+          <p>Start getting a feel for what spaces in your target area actually cost. Even rough numbers will make your model more grounded than pulling a figure out of thin air.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">🛠️</div>
+        <div>
+          <h4>Equipment supplier websites</h4>
+          <p>Synesso, La Marzocco, Mahlkönig, and Victoria Arduino all publish pricing or can give you a quote. Notman, Coutume, or your local specialty importer may be worth a call too. Don't commit to anything — just get your ballpark numbers.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">💬</div>
+        <div>
+          <h4>Talk to a café owner you respect</h4>
+          <p>If you can get 20 minutes with someone who's been running a shop for 3+ years, ask them what their biggest financial surprise was in year one. You'll learn more from that conversation than from any spreadsheet.</p>
+        </div>
+      </div>
+
+      <div class="resource-item">
+        <div class="resource-icon">🧾</div>
+        <div>
+          <h4>Your city's business licensing office</h4>
+          <p>Permit and licensing costs vary a lot depending on where you're opening. A quick call or website check can tell you what to expect — and these costs belong in your startup budget.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 2 Homework Brief</p>
+</div>
+
+</body>
+</html>

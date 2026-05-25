@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 8 Homework Brief — Operations & What Comes Next</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --primary:#155e63; --secondary:#76b39d; --light-grey:#efefef; --dark-grey:#afafaf; --white:#ffffff; --amber:#e8a44a; --amber-bg:#fff8ee; --amber-text:#7a5120; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Poppins',sans-serif;background:var(--light-grey);color:#2a2a2a;}
+    .header{background:var(--primary);padding:50px 40px 46px;position:relative;overflow:hidden;}
+    .header::before{content:'';position:absolute;top:-70px;right:-70px;width:300px;height:300px;border-radius:50%;background:rgba(118,179,157,0.16);}
+    .header::after{content:'';position:absolute;bottom:-40px;left:32%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.05);}
+    .header-inner{max-width:860px;margin:0 auto;position:relative;z-index:1;}
+    .cohort-label{display:inline-block;background:var(--secondary);color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:20px;}
+    .header h1{font-size:36px;font-weight:800;color:#fff;line-height:1.22;margin-bottom:14px;}
+    .header h1 span{color:var(--secondary);}
+    .header-sub{font-size:15px;color:rgba(255,255,255,.78);line-height:1.72;max-width:600px;margin-bottom:24px;}
+    .week-badge{display:inline-block;background:rgba(255,255,255,.11);color:rgba(255,255,255,.88);font-size:13px;font-weight:600;padding:7px 18px;border-radius:8px;border:1px solid rgba(255,255,255,.2);}
+    .body{max-width:860px;margin:0 auto;padding:36px 40px 56px;}
+    .intro-box{background:#fff;border-radius:12px;padding:26px 28px;border-left:4px solid var(--secondary);margin-bottom:28px;}
+    .intro-box p{font-size:14.5px;line-height:1.78;color:#3a3a3a;}
+    .intro-box p+p{margin-top:12px;}
+    .intro-box strong{color:var(--primary);}
+    .amber-note{background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:10px;padding:18px 22px;margin-bottom:28px;}
+    .amber-note p{font-size:13.5px;line-height:1.72;color:var(--amber-text);}
+    .amber-note strong{font-weight:700;}
+    .section-heading{font-size:20px;font-weight:700;color:var(--primary);margin-bottom:8px;}
+    .section-sub{font-size:13.5px;color:var(--dark-grey);line-height:1.6;margin-bottom:20px;}
+    .task-list{display:flex;flex-direction:column;gap:14px;margin-bottom:32px;}
+    .task{background:#fff;border-radius:14px;padding:22px 24px;display:flex;gap:18px;align-items:flex-start;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+    .task-num{background:var(--primary);color:#fff;font-size:13px;font-weight:800;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+    .task-body{flex:1;}
+    .task-tag{display:inline-block;background:var(--secondary);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+    .task-body h3{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:10px;}
+    .task-body>p{font-size:13.5px;color:#444;line-height:1.72;margin-bottom:10px;}
+    .sub-tasks{margin-top:14px;display:flex;flex-direction:column;gap:10px;}
+    .sub-task{background:var(--light-grey);border-radius:10px;padding:12px 16px;}
+    .sub-task-label{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);margin-bottom:5px;}
+    .sub-task p{font-size:13px;color:#444;line-height:1.68;}
+    .task-hint{margin-top:12px;background:var(--light-grey);border-left:3px solid var(--secondary);border-radius:0 8px 8px 0;padding:10px 14px;font-size:13px;color:#555;line-height:1.65;}
+    .bring-box{background:var(--primary);border-radius:14px;padding:30px 32px;display:flex;gap:20px;align-items:flex-start;margin-bottom:32px;}
+    .bring-icon{font-size:28px;flex-shrink:0;margin-top:2px;}
+    .bring-box h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:8px;}
+    .bring-box p{font-size:13.5px;line-height:1.72;color:rgba(255,255,255,.78);}
+    .resources-box{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:32px;}
+    .resources-title{padding:18px 24px 14px;border-bottom:1px solid var(--light-grey);}
+    .resources-title h3{font-size:16px;font-weight:700;color:var(--primary);}
+    .resource-item{display:flex;gap:14px;align-items:flex-start;padding:14px 24px;border-bottom:1px solid #f0f0f0;}
+    .resource-item:last-child{border-bottom:none;}
+    .resource-item:nth-child(even){background:#fafafa;}
+    .resource-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+    .resource-item h4{font-size:13.5px;font-weight:700;color:#2a2a2a;margin-bottom:3px;}
+    .resource-item p{font-size:13px;color:#666;line-height:1.6;}
+    .footer{background:var(--primary);text-align:center;padding:22px 20px;margin-top:40px;}
+    .footer p{font-size:12px;color:rgba(255,255,255,.5);}
+    .footer strong{color:var(--secondary);font-weight:600;}
+    @media(max-width:640px){.header{padding:36px 22px 32px;}.header h1{font-size:27px;}.body{padding:28px 22px 44px;}.task{flex-direction:column;gap:10px;}}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Operations &amp;<br/><span>What Comes Next</span></h1>
+    <p class="header-sub">Opening is the beginning of the real work. This week is about building systems that make your business sustainable past the honeymoon period, knowing your numbers in real time, and planning for what you want the business to become.</p>
+    <div class="week-badge">Week 8 of 8 — Homework Brief</div>
+  </div>
+</div>
+<div class="body">
+
+  <div class="intro-box">
+    <p>The video this week covered the operational rhythms that keep a café healthy — daily sales reviews, weekly COGS and labour checks, monthly P&L comparisons, and how to spot problems before they become crises. It also covered the 90-day post-opening adjustment period, growth decisions, and what the longer arc of a successful coffee business actually looks like.</p>
+    <p>This week's homework is different from every other week. <strong>There is only one task — but it is the most important thing you will produce in this entire programme.</strong> You are compiling your Business Readiness Document: the assembled, complete version of everything you have built across all eight weeks.</p>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>This is not a summary exercise.</strong> You are not writing new things — you are assembling what already exists, checking it is complete and consistent, and presenting it as a single coherent document. The ten components listed below are the ones you have been building since Week 1. Most of the work is already done.</p>
+  </div>
+
+  <div class="section-heading">Your One Task</div>
+  <p class="section-sub">This is your capstone. Complete it before the live call and bring it with you — you will share a piece of it with the group.</p>
+
+  <div class="task-list">
+    <div class="task">
+      <div class="task-num">1</div>
+      <div class="task-body">
+        <div class="task-tag">Capstone</div>
+        <h3>Compile your Business Readiness Document</h3>
+        <p>Your Business Readiness Document is the assembled version of everything you have built during the programme. It is not a final essay — it is a practical planning document you will actually use. Each component comes from a previous week's homework. Bring them together into one document, in order, and check that each section is complete, consistent with the others, and reflects what you now know.</p>
+        <div class="sub-tasks">
+          <div class="sub-task"><div class="sub-task-label">Component 1 — Concept Brief (Week 1)</div><p>Your shop type, target customer, positioning, and competitive advantage. Before assembling, check it still reflects what you have decided across the other seven weeks — things often shift.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 2 — Financial Model (Week 2)</div><p>Your 12-month financial model with revenue projections, startup costs, and monthly P&L. Make sure your assumptions still match your final concept, menu pricing, and staffing plan.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 3 — Site &amp; Market Analysis (Week 3)</div><p>The case for your location and the key lease terms you are targeting or have secured. If your site has changed since Week 3, update this section.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 4 — Coffee Program &amp; Roaster Research (Week 4)</div><p>Your roaster selection, sourcing approach, and the coffee program at the centre of your concept. This should connect directly to your Week 1 positioning.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 5 — Full Menu with Pricing &amp; Margins (Week 4)</div><p>Your complete menu with cost per item, sale price, and gross margin for each. Confirm that your menu pricing is consistent with your financial model from Week 2.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 6 — Bar Layout &amp; Equipment Plan (Week 5)</div><p>Your bar layout, three-zone structure, equipment list, and estimated equipment costs. Check that the layout supports the service speed your financial model assumes.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 7 — Staffing &amp; Training Plan (Week 6)</div><p>Your job descriptions, two-week training outline, and culture document. Confirm that your staffing costs match your Week 2 financial model.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 8 — Pre-Opening Marketing Plan (Week 7)</div><p>Your 30-day marketing calendar, opening story in all three formats, and your five community relationships. This should now reflect what you actually did or committed to, not just what you planned.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 9 — 90-Day Operations Checklist</div><p>Your week-by-week operational priorities for the first 90 days after opening. Produced this week using the 90-Day Operations Tracker template.</p></div>
+          <div class="sub-task"><div class="sub-task-label">Component 10 — Your Three-Year Vision</div><p>A single page on what success looks like in three years — not a growth plan, but an honest statement of what you want this business to give you and become. Written for yourself, not an investor.</p></div>
+        </div>
+        <div class="task-hint">The assembly check: Read the completed document from start to finish. Does the concept in Component 1 still match the menu in Component 5? Do the staffing costs in Component 7 match the financials in Component 2? Does the bar layout in Component 6 support the service model your concept requires? Inconsistencies are not failures — they are the most useful thing to bring to the live call.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bring-box">
+    <div class="bring-icon">📋</div>
+    <div>
+      <h3>What to Bring to the Live Call</h3>
+      <p>Bring your full Business Readiness Document — or as much of it as you have assembled. The live call is a capstone celebration and a share-out, not a final exam. Each person will share one thing they are most confident about in their document, and one thing they are still most uncertain about. Come prepared to do both honestly. This is also the call where we talk about next steps — what happens after the programme, the in-person offer at Timberline, and what ongoing support looks like. Come with your questions about what comes next.</p>
+    </div>
+  </div>
+
+  <div class="resources-box">
+    <div class="resources-title"><h3>Resources for This Week</h3></div>
+    <div class="resource-item"><div class="resource-icon">📄</div><div><h4>Week 8 Reference Sheet — Operations &amp; What Comes Next</h4><p>Covers the daily, weekly, and monthly operational rhythms that keep a café healthy. Includes the 90-day adjustment framework, how to read your numbers in real time, and how to evaluate growth decisions against your original vision.</p></div></div>
+    <div class="resource-item"><div class="resource-icon">✅</div><div><h4>Business Readiness Document Assembly Guide</h4><p>A component-by-component checklist for assembling your capstone document. Use it to check completeness, flag gaps, and make sure each section is consistent with the others before the live call.</p></div></div>
+    <div class="resource-item"><div class="resource-icon">📅</div><div><h4>90-Day Operations Tracker</h4><p>Week-by-week operational priorities for the first 90 days after opening — your Component 9. Structured around the daily, weekly, and monthly rhythms from this week's video.</p></div></div>
+    <div class="resource-item"><div class="resource-icon">✏️</div><div><h4>Week 8 Planning Worksheet</h4><p>Structured self-reflection for the capstone. Works through your three-year vision, your biggest uncertainties, and your next concrete steps after the programme ends.</p></div></div>
+    <div class="resource-item"><div class="resource-icon">📚</div><div><h4>All Previous Week Materials</h4><p>Every component of your Business Readiness Document came from a previous week's homework. If anything is missing or incomplete, go back to the relevant week's resources to fill the gap before assembling.</p></div></div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>On the in-person offer:</strong> The programme has built the business. The natural next step for those who want to go deeper on the craft is hands-on time at the espresso machine with an experienced instructor at Timberline. You do not need to be your best barista — but you need to know what good looks and tastes like. That is where this experience takes you.</p>
+  </div>
+
+</div>
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;|&nbsp; Coffee Shop Basecamp &nbsp;|&nbsp; Week 8 of 8 — Homework Brief</p>
+</div>
+</body>
+</html>

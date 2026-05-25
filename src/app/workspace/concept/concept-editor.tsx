@@ -3,22 +3,27 @@
 // TIM-834 / TIM-865 / TIM-881: Concept workspace v2 card layout + inline concept brief.
 // - Component cards with include/exclude toggle, "Improve with AI" opens AIAssistCallout modal.
 // - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
-// - Print button active only when all included components are filled.
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
+// - TIM-893: per-field "Ask Co-pilot" buttons dispatch copilot:open-with-prompt and
+//   the drawer is mounted here so the listener fires on this page.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
-import { PaywallModal } from "@/components/paywall-modal";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
+import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   CONCEPT_COMPONENTS_V2,
+  buildFieldPrompt,
   getConceptV2Progress,
   isConceptV2Complete,
   type ConceptComponentId,
   type ConceptDocumentV2,
+  type CustomerPersona,
 } from "@/lib/concept";
+import { PersonaSection } from "@/components/concept/PersonaSection";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
@@ -85,8 +90,15 @@ export function ConceptWorkspace({
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
+  const { setModuleProgress } = useWorkspaceProgress();
+
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
+
+  // Keep the sidebar counter in sync with the live in-page counter (TIM-884).
+  useEffect(() => {
+    setModuleProgress(1, progress.filled, progress.total);
+  }, [progress.filled, progress.total, setModuleProgress]);
   const shopName = doc.components.shop_identity.content.trim();
   const pct = progress.total > 0 ? Math.round((progress.filled / progress.total) * 100) : 0;
 
@@ -191,6 +203,14 @@ export function ConceptWorkspace({
     });
   }
 
+  function updatePersonas(personas: CustomerPersona[]) {
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = { ...prev, personas };
+      scheduleSave(next);
+      return next;
+    });
+  }
+
   function toggleIncluded(id: ConceptComponentId) {
     if (!canEdit) return;
     setDoc((prev) => {
@@ -213,6 +233,18 @@ export function ConceptWorkspace({
       return next;
     });
   }
+
+  // TIM-893: open the Co-pilot drawer with a seed prompt scoped to one field.
+  const askCopilot = useCallback((id: ConceptComponentId, label: string) => {
+    if (typeof window === "undefined") return;
+    const currentContent = latestDocRef.current.components[id].content;
+    const prompt = buildFieldPrompt(label, currentContent);
+    window.dispatchEvent(
+      new CustomEvent("copilot:open-with-prompt", {
+        detail: { prompt, focusLabel: label },
+      })
+    );
+  }, []);
 
   let saveStatusCopy = formatTimestamp(lastSavedAt);
   let saveStatusTone = "text-[#afafaf]";
@@ -364,7 +396,7 @@ export function ConceptWorkspace({
                       <p className="text-xs text-[#afafaf]">{meta.hint}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Improve with AI button — multiline fields only */}
+                      {/* TIM-881: Improve with AI opens AIAssistCallout modal — multiline fields only */}
                       {meta.multiline && (
                         <button
                           type="button"
@@ -381,6 +413,16 @@ export function ConceptWorkspace({
                           Improve with AI
                         </button>
                       )}
+                      {/* TIM-893: Ask Co-pilot opens the drawer with a field-scoped seed prompt. */}
+                      <button
+                        type="button"
+                        onClick={() => askCopilot(meta.id, meta.label)}
+                        disabled={!canEdit || isExcluded}
+                        aria-label={`Ask the co-pilot about ${meta.label}`}
+                        className="text-xs font-medium text-white bg-[#155e63] rounded-full px-3 py-1 hover:bg-[#0e4448] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        Ask Co-pilot
+                      </button>
                       {/* Include/exclude toggle — only on deferrable components */}
                       {meta.deferrable && (
                         <button
@@ -458,6 +500,12 @@ export function ConceptWorkspace({
                     <p className="mt-2 text-sm text-[#afafaf] italic">
                       Not included in your document. Toggle on when you&apos;re ready to add {meta.label}.
                     </p>
+                  ) : meta.id === "target_customer" ? (
+                    <PersonaSection
+                      personas={doc.personas ?? []}
+                      canEdit={canEdit}
+                      onUpdate={updatePersonas}
+                    />
                   ) : showField ? (
                     meta.multiline ? (
                       <textarea
@@ -505,28 +553,22 @@ export function ConceptWorkspace({
 
         {/* Document footer CTA */}
         <div className="mt-8 border-t border-[#efefef] pt-6 text-center">
-          {complete ? (
-            <Link
-              href="/workspace/concept/print"
-              className="inline-block bg-[#155e63] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
-            >
-              Print document
-            </Link>
-          ) : (
-            <>
-              <p className="text-sm text-[#6b6b6b] mb-3">
-                Fill in all included sections to print.
-              </p>
-              <button
-                type="button"
-                disabled
-                className="border border-[#d4d4d4] text-[#afafaf] text-sm font-semibold px-6 py-2.5 rounded-xl cursor-not-allowed"
-              >
-                Print document
-              </button>
-            </>
+          <Link
+            href="/workspace/concept/print"
+            className="inline-block bg-[#155e63] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+          >
+            Print document
+          </Link>
+          {!complete && progress.total - progress.filled > 0 && (
+            <p className="text-xs text-[#afafaf] mt-2">
+              {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
+            </p>
           )}
-          <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+          {complete && (saveState.kind === "saved" || saveState.kind === "idle") ? (
+            <ConceptUnlockBanner />
+          ) : (
+            <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+          )}
         </div>
       </div>
 
@@ -552,15 +594,52 @@ export function ConceptWorkspace({
         }}
       />
 
-      {/* TIM-880: mount CoPilotDrawer so the WorkspaceTopBar Co-pilot button opens a
-          chat drawer. The drawer listens for workspace-copilot-open dispatched by the
-          top bar alongside the per-field Improve with AI modals. */}
+      {/* TIM-880 / TIM-893: CoPilotDrawer handles both the WorkspaceTopBar button
+          and per-field "Ask Co-pilot" dispatch (copilot:open-with-prompt). */}
       <CoPilotDrawer
         planId={planId}
         workspaceKey="concept"
-        currentFocus={{ label: "Concept workspace" }}
+        currentFocus={{ label: "Concept" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
+    </div>
+  );
+}
+
+// ── Concept Unlock Banner ────────────────────────────────────────────────────
+
+function ConceptUnlockBanner() {
+  return (
+    <div
+      className="mt-4 bg-[#155e63]/[0.08] border border-[#155e63]/20 rounded-2xl px-5 py-4 transition-opacity duration-300"
+      role="status"
+    >
+      <div className="flex items-start gap-3">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#155e63"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 mt-0.5"
+          aria-hidden="true"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-[#155e63]">Your concept is set.</p>
+          <p className="text-xs text-[#155e63]/80 mt-0.5">Every other workspace is now open.</p>
+          <Link
+            href="/dashboard"
+            className="text-xs font-medium text-[#155e63] hover:underline mt-1.5 inline-block"
+          >
+            See all modules
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
@@ -581,7 +660,11 @@ function ConceptBriefInline({
   const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     if (meta.id === "shop_identity") return false;
     const comp = doc.components[meta.id];
-    return comp.included && comp.content.trim().length > 0;
+    if (!comp.included) return false;
+    if (meta.id === "target_customer") {
+      return (doc.personas && doc.personas.length > 0) || comp.content.trim().length > 0;
+    }
+    return comp.content.trim().length > 0;
   });
 
   if (briefSections.length === 0) return null;
@@ -637,6 +720,37 @@ function ConceptBriefInline({
             {briefSections.map((meta) => {
               const comp = doc.components[meta.id];
               const isFeatured = BRIEF_FEATURED_IDS.has(meta.id);
+
+              if (meta.id === "target_customer" && doc.personas && doc.personas.length > 0) {
+                return (
+                  <div key={meta.id} className="flex">
+                    <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                    <div className="px-6 py-5 flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                        {meta.label}
+                      </p>
+                      <div className="space-y-1.5">
+                        {doc.personas.map((p) => (
+                          <p key={p.id} className="text-sm text-[#1a1a1a]">
+                            <span className="font-medium">{p.name}</span>
+                            {p.isPrimary && (
+                              <span className="ml-1.5 text-[10px] text-[#155e63]">(primary)</span>
+                            )}
+                            {p.whyTheyVisit.trim() && (
+                              <span className="text-[#6b6b6b]">
+                                {": "}
+                                {p.whyTheyVisit.trim().length > 70
+                                  ? p.whyTheyVisit.trim().slice(0, 70) + "..."
+                                  : p.whyTheyVisit.trim()}
+                              </span>
+                            )}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               if (isFeatured) {
                 return (

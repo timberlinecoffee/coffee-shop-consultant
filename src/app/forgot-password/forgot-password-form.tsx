@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const COOLDOWN_SECONDS = 60;
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ errorMessage }: { errorMessage?: string | null } = {}) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -62,6 +62,14 @@ export function ForgotPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {errorMessage && (
+        <div
+          role="status"
+          className="bg-[#fff8eb] border border-[#f3e0b0] rounded-xl px-4 py-3 text-sm text-[#7a5a13]"
+        >
+          {errorMessage}
+        </div>
+      )}
       <div>
         <label htmlFor="email" className="block text-xs font-medium text-[#1a1a1a] mb-1">Email</label>
         <input
@@ -85,7 +93,7 @@ export function ForgotPasswordForm() {
         disabled={loading || cooldown > 0}
         className="w-full bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-50"
       >
-        {loading ? "Sending..." : cooldown > 0 ? `Try again in ${cooldown}s` : "Send reset link"}
+        {loading ? "Sending..." : cooldown > 0 ? `Try again in ${cooldown}s` : "Send Reset Link"}
       </button>
     </form>
   );

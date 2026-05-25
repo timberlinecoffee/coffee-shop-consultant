@@ -23,6 +23,13 @@ import type {
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
 
+const FREE_TRIAL_COPILOT_LIMIT = 5;
+
+type CreditsState =
+  | { mode: "trial"; trialUsed: number; trialLimit: number; trialRemaining: number }
+  | { mode: "credits"; remaining: number }
+  | null;
+
 export interface CoPilotDrawerProps {
   workspaceKey: WorkspaceKey;
   planId: string;
@@ -46,15 +53,15 @@ function deriveTitle(messages: CopilotMessage[]): string {
 
 function errorCopy(err: CopilotErrorState): { title: string; cta: string | null; href: string | null } {
   switch (err.code) {
-    case "quota":
+    case "trial_exhausted":
       return {
-        title: err.message,
+        title: "You've used your 5 trial messages — upgrade to keep planning with Copilot.",
         cta: "See plans",
         href: UPGRADE_PATH,
       };
-    case "trial_exhausted":
+    case "quota":
       return {
-        title: "You've used your 5 free coaching sessions.",
+        title: err.message,
         cta: "See plans",
         href: UPGRADE_PATH,
       };
@@ -129,23 +136,46 @@ export function CoPilotDrawer({
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
   const [browserRefreshKey, setBrowserRefreshKey] = useState(0);
   const [loadingThread, setLoadingThread] = useState(false);
+  const [credits, setCredits] = useState<CreditsState>(null);
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
+  const creditsLoadedRef = useRef(false);
 
   const {
     isStreaming,
     isThinking,
     assistantBuffer,
     error,
+    trialRemaining,
     send,
     abort,
     reset,
   } = useCopilotStream();
 
+  // Keep local trial count in sync with the server after each message.
+  useEffect(() => {
+    if (trialRemaining === null) return;
+    setCredits((prev) => {
+      if (prev?.mode !== "trial") return prev;
+      const used = FREE_TRIAL_COPILOT_LIMIT - trialRemaining;
+      return { ...prev, trialUsed: used, trialRemaining };
+    });
+  }, [trialRemaining]);
+
   const openDrawer = useCallback(() => {
     setOpen(true);
     setBrowserRefreshKey((n) => n + 1);
+    if (!creditsLoadedRef.current) {
+      creditsLoadedRef.current = true;
+      void fetch("/api/credits", { credentials: "same-origin" })
+        .then(async (res) => {
+          if (!res.ok) return;
+          const data = (await res.json()) as CreditsState & Record<string, unknown>;
+          setCredits(data as CreditsState);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const closeDrawer = useCallback(() => {
@@ -163,6 +193,26 @@ export function CoPilotDrawer({
     setInput("");
     setPendingRetry(null);
   }, [abort, reset, workspaceKey]);
+
+  const handleRenameThread = useCallback(
+    (threadId: string, newTitle: string) => {
+      if (threadId === activeThreadId) {
+        setActiveThreadTitle(newTitle);
+      }
+      setBrowserRefreshKey((n) => n + 1);
+    },
+    [activeThreadId],
+  );
+
+  const handleDeleteThread = useCallback(
+    (threadId: string) => {
+      if (threadId === activeThreadId) {
+        handleNewThread();
+      }
+      setBrowserRefreshKey((n) => n + 1);
+    },
+    [activeThreadId, handleNewThread],
+  );
 
   const handleSelectThread = useCallback(
     async (item: ThreadBrowserItem) => {
@@ -274,10 +324,10 @@ export function CoPilotDrawer({
       setBrowserRefreshKey((n) => n + 1);
       maybeRequestTitle(result.threadId ?? activeThreadId, finalMessages);
 
-      // TIM-819: Update trial counter from server-confirmed count and show modal at limit.
-      if (typeof result.trialMessagesUsed === "number") {
-        setTrialMessagesUsed(result.trialMessagesUsed);
-        if (result.trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
+      if (result.trialRemaining !== null) {
+        const newUsed = FREE_TRIAL_COPILOT_LIMIT - result.trialRemaining;
+        setTrialMessagesUsed(newUsed);
+        if (newUsed >= COPILOT_FREE_TRIAL_LIMIT) {
           setTrialModalOpen(true);
         }
       }
@@ -437,14 +487,27 @@ export function CoPilotDrawer({
           >
             <header className="px-4 pt-4 pb-3 border-b border-[#efefef] flex items-center gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] uppercase tracking-wide text-[#888] font-semibold">
-                  {WORKSPACE_LABELS[activeWorkspaceKey]}
-                  {externalFocusLabel && activeWorkspaceKey === workspaceKey
-                    ? ` · ${externalFocusLabel}`
-                    : currentFocus?.label && activeWorkspaceKey === workspaceKey
-                    ? ` · ${currentFocus.label}`
-                    : ""}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] uppercase tracking-wide text-[#888] font-semibold">
+                    {WORKSPACE_LABELS[activeWorkspaceKey]}
+                    {externalFocusLabel && activeWorkspaceKey === workspaceKey
+                      ? ` · ${externalFocusLabel}`
+                      : currentFocus?.label && activeWorkspaceKey === workspaceKey
+                      ? ` · ${currentFocus.label}`
+                      : ""}
+                  </p>
+                  {credits?.mode === "trial" && (
+                    <span
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                        credits.trialRemaining <= 1
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-[#155e63]/10 text-[#155e63]"
+                      }`}
+                    >
+                      {credits.trialRemaining} of {credits.trialLimit} trial messages left
+                    </span>
+                  )}
+                </div>
                 <h2 className="text-base font-semibold text-[#1a1a1a] truncate">
                   {activeThreadLabel}
                 </h2>
@@ -478,6 +541,8 @@ export function CoPilotDrawer({
               activeThreadId={activeThreadId}
               onSelectThread={(item) => void handleSelectThread(item)}
               onNewThread={handleNewThread}
+              onRenameThread={handleRenameThread}
+              onDeleteThread={handleDeleteThread}
               refreshKey={browserRefreshKey}
             />
 

@@ -1,8 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
+import { computePlanReadiness } from "@/lib/workspace-manifest";
+import { capitalizeFirst } from "@/lib/format";
+import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +25,7 @@ export default async function DashboardPage() {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("full_name, readiness_score, subscription_tier, onboarding_completed, ai_credits_remaining, onboarding_data")
+      .select("full_name, readiness_score, subscription_tier, subscription_status, onboarding_completed, ai_credits_remaining, copilot_trial_messages_used, onboarding_data")
       .eq("id", user.id)
       .single(),
     supabase
@@ -30,9 +35,13 @@ export default async function DashboardPage() {
       .single(),
   ]);
 
-  const firstName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
+  const rawName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0];
+  const firstName = rawName ? capitalizeFirst(rawName) : "there";
   const subscriptionTier = profile?.subscription_tier ?? "free";
+  const subscriptionStatus = profile?.subscription_status ?? "free_trial";
   const creditsRemaining = profile?.ai_credits_remaining ?? 0;
+  const trialMessagesUsed = profile?.copilot_trial_messages_used ?? 0;
+  const FREE_TRIAL_COPILOT_LIMIT = 5;
   const onboardingData = (profile?.onboarding_data as Record<string, string> | null) ?? {};
   const targetTimeline: string | null = onboardingData?.timeline ?? null;
 
@@ -40,11 +49,11 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  // Count filled concept fields from workspace_documents (the authoritative store
-  // written by onboarding and the /workspace/concept editor). The old module_responses
+  // completedByModule: module number → count of filled sections.
+  // Concept (module 1) reads from workspace_documents; the old module_responses
   // path is NOT used for workspace 1 — onboarding never wrote there.
-  let w1FilledCount = 0;
-  let w1TotalSections = 5; // default: 5 core included components
+  const completedByModule = new Map<number, number>();
+
   if (plan?.id) {
     const { data: conceptDoc } = await supabase
       .from("workspace_documents")
@@ -56,25 +65,38 @@ export default async function DashboardPage() {
     if (conceptDoc?.content) {
       const conceptV2 = normalizeConceptV2(conceptDoc.content);
       const progress = getConceptV2Progress(conceptV2);
-      w1FilledCount = progress.filled;
-      w1TotalSections = progress.total;
+      completedByModule.set(1, progress.filled);
     }
   }
 
+  // W1-specific counters for the "Start here" card (not the overall score).
+  const w1FilledCount = completedByModule.get(1) ?? 0;
+  const w1TotalSections = 5; // concept always has 5 core sections
   const w1Progress = w1FilledCount;
-  const w1Completed = w1TotalSections > 0 && w1Progress >= w1TotalSections;
+  const w1Completed = w1Progress >= w1TotalSections;
   const w1Started = w1Progress > 0;
-  const w1Pct = w1TotalSections > 0 ? Math.round((w1Progress / w1TotalSections) * 100) : 0;
+  const w1Pct = Math.round((w1Progress / w1TotalSections) * 100);
 
-  const readinessScore = w1TotalSections > 0 ? Math.round((w1Progress / w1TotalSections) * 100) : 0;
+  // Overall plan readiness: filled sections / total expected sections across ALL modules.
+  // computePlanReadiness weights locked modules at 5 sections each in the denominator,
+  // so completing only concept gives ~17% — not 100%. See workspace-manifest.ts.
+  const planReadiness = computePlanReadiness(completedByModule);
+  const readinessScore = planReadiness.total > 0
+    ? Math.round((planReadiness.filled / planReadiness.total) * 100)
+    : 0;
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
 
-  // Workspace 2 unlocks after Workspace 1 complete
-  const w2Unlocked = w1Completed;
+  // All downstream modules unlock simultaneously when concept is complete
+  const allUnlocked = w1Completed;
+
+  const cookieStore = await cookies();
+  const noteDismissed = cookieStore.get("concept_unlock_note_dismissed")?.value === "1";
+  const showUnlockNote = allUnlocked && !noteDismissed;
 
   const isPaid = subscriptionTier !== "free";
+  const isTrial = subscriptionStatus === "free_trial";
 
   return (
     <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
@@ -90,7 +112,7 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-4">
             <Link href="/account" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Account</Link>
             <form action="/auth/signout" method="POST">
-              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign out</button>
+              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign Out</button>
             </form>
           </div>
         </div>
@@ -125,7 +147,7 @@ export default async function DashboardPage() {
 
         {/* START HERE — Workspace 1 */}
         <div className="mb-2">
-          <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">Start here</p>
+          <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">Start Here</p>
           <div className="bg-white rounded-xl border border-[#155e63]/30 p-6 flex gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
               w1Completed ? "bg-[#155e63] text-white" :
@@ -154,7 +176,7 @@ export default async function DashboardPage() {
                 href="/workspace/concept"
                 className="inline-block text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-1.5 rounded-lg transition-colors"
               >
-                {w1Completed ? "Review \u2192" : w1Started ? "Continue \u2192" : "Start \u2192"}
+                {w1Completed ? "Review →" : w1Started ? "Continue →" : "Start →"}
               </Link>
             </div>
           </div>
@@ -162,47 +184,46 @@ export default async function DashboardPage() {
 
         {/* COMING UP */}
         <div className="mb-10">
-          <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming up</p>
+          <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming Up</p>
+          <ConceptUnlockNote show={showUnlockNote} />
           <div className="bg-white rounded-xl border border-[#efefef] divide-y divide-[#efefef]">
-            {/* Workspace 2 */}
-            <div className="p-5 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
-                {w2Unlocked ? (
-                  <span className="text-xs font-bold text-[#155e63]">2</span>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
+            {[
+              { num: 2, title: "Location & Lease", href: "/workspace/location-lease", lockedNote: <><span>Finish your Concept to open all modules.</span>{" "}<Link href="/workspace/concept" className="underline font-medium">Go to Concept</Link></> },
+              { num: 3, title: "Build-out & Equipment", href: "/workspace/buildout-equipment", lockedNote: <span>Opens with Concept</span> },
+              { num: 4, title: "Financials", href: "/workspace/financials", lockedNote: <span>Opens with Concept</span> },
+              { num: 5, title: "Menu & Pricing", href: "/workspace/menu-pricing", lockedNote: <span>Opens with Concept</span> },
+              { num: 6, title: "Launch Plan", href: "/workspace/launch-plan", lockedNote: <span>Opens with Concept</span> },
+            ].map(({ num, title, href, lockedNote }) => (
+              <div key={num} className="p-5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
+                  {allUnlocked ? (
+                    <span className="text-xs font-bold text-[#155e63]">{num}</span>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#1a1a1a]">Workspace {num}: {title}</p>
+                  <p className="text-xs text-[#afafaf]">
+                    {allUnlocked ? "Ready to start" : lockedNote}
+                  </p>
+                </div>
+                {allUnlocked && (
+                  <Link href={href} className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0 inline-flex items-center gap-1">Open <ArrowRight size={12} /></Link>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1a1a1a]">Workspace 2: Location &amp; Lease</p>
-                <p className="text-xs text-[#afafaf]">
-                  {w2Unlocked ? "Ready to start" : "Begin after Concept"}
-                </p>
-              </div>
-              {w2Unlocked && (
-                <Link href="/workspace/location-lease" className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0">Open \u2192</Link>
-              )}
-            </div>
-            {/* Workspaces 3-6 collapsed */}
-            <div className="px-5 py-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-              </div>
-              <p className="text-sm text-[#afafaf]">Workspaces 3{"\u20136"} unlock as you go</p>
-            </div>
+            ))}
           </div>
         </div>
 
         {/* Quick links */}
-        <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick links</h2>
+        <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick Links</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           {[
             {
-              label: "Equipment list",
+              label: "Equipment List",
               href: "/workspace/buildout-equipment",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -211,7 +232,7 @@ export default async function DashboardPage() {
               ),
             },
             {
-              label: "Your numbers",
+              label: "Your Numbers",
               href: "/workspace/financials",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -220,7 +241,7 @@ export default async function DashboardPage() {
               ),
             },
             {
-              label: "Startup costs",
+              label: "Startup Costs",
               href: "/workspace/financials",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -252,9 +273,17 @@ export default async function DashboardPage() {
         {/* AI coaching — low-visual-weight line in quick links area */}
         <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
           <span className="text-xs text-[#afafaf]">AI coaching</span>
-          {isPaid && creditsRemaining > 0 ? (
+          {isTrial ? (
+            trialMessagesUsed < FREE_TRIAL_COPILOT_LIMIT ? (
+              <span className={`text-xs font-medium ${FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed <= 1 ? "text-amber-500" : "text-[#155e63]"}`}>
+                {FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed} of {FREE_TRIAL_COPILOT_LIMIT} trial messages left
+              </span>
+            ) : (
+              <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Trial used — upgrade to continue</Link>
+            )
+          ) : isPaid && creditsRemaining > 0 ? (
             <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
-              {creditsRemaining} coaching messages left this month
+              {creditsRemaining} messages left this month
             </span>
           ) : (
             <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>

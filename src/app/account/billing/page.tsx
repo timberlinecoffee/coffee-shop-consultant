@@ -41,7 +41,7 @@ export default function BillingPage() {
         )}
 
         <div className="bg-white rounded-xl border border-[#efefef] p-6">
-          <h2 className="font-semibold text-[#1a1a1a] mb-4">Manage subscription</h2>
+          <h2 className="font-semibold text-[#1a1a1a] mb-4">Manage Subscription</h2>
           <p className="text-sm text-[#afafaf] mb-4">
             Update your payment method, change your plan, or cancel your subscription through the Stripe billing portal.
           </p>
@@ -55,7 +55,7 @@ export default function BillingPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-[#efefef] p-6">
-          <h2 className="font-semibold text-[#1a1a1a] mb-4">Need to upgrade?</h2>
+          <h2 className="font-semibold text-[#1a1a1a] mb-4">Need to Upgrade?</h2>
           <p className="text-sm text-[#afafaf] mb-4">
             View all plans and pricing options.
           </p>

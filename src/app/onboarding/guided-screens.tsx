@@ -230,7 +230,7 @@ export function ShopVisionScreen({
         <textarea
           value={synthesized}
           onChange={(e) => onSynthesizedChange(e.target.value)}
-          placeholder="We're a neighborhood cafe focused on..."
+          placeholder="Run a two-window drive-thru in Frisco that gets teachers and nurses their drinks in under three minutes, five days a week, before the 7:45 school bell."
           rows={3}
           className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
         />
@@ -377,7 +377,7 @@ export function TargetCustomerScreen({
         <textarea
           value={synthesized}
           onChange={(e) => onSynthesizedChange(e.target.value)}
-          placeholder="My core customer is..."
+          placeholder="Frisco parents on the school drop-off run, nurses clocking in at 7am at Baylor Scott, and the construction crew that's been on Eldorado Pkwy for six months. They know their order before they reach the window."
           rows={3}
           className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
         />
@@ -577,7 +577,7 @@ export function DifferentiationScreen({
         <textarea
           value={synthesized}
           onChange={(e) => update({ synthesized: e.target.value })}
-          placeholder="We're different because..."
+          placeholder="Only drive-thru in a five-mile radius pulling real espresso — not a pod machine. We cap the menu at 12 drinks so every barista can nail each one and the line stays under three minutes at 8am peak."
           rows={3}
           className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
         />

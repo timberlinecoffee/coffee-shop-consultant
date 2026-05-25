@@ -1,4 +1,4 @@
-// Auto-generated from schema + TIM-629 copilot_v1 migration.
+// Auto-generated from schema + TIM-629 copilot_v1 migration + TIM-731 launch_plan_workspace + TIM-866 copilot_trial_messages + TIM-925 beta_waiver.
 // Regenerate with: supabase gen types typescript --local > src/types/supabase.ts
 
 export type WorkspaceKey =
@@ -8,6 +8,7 @@ export type WorkspaceKey =
   | 'menu_pricing'
   | 'buildout_equipment'
   | 'launch_plan'
+  | 'hiring'
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
@@ -25,6 +26,7 @@ export interface Database {
           subscription_tier: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining: number
           copilot_trial_messages_used: number
+          beta_waiver_until: string | null
           target_opening_date: string | null
           readiness_score: number
           onboarding_completed: boolean
@@ -42,6 +44,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
+          beta_waiver_until?: string | null
           target_opening_date?: string | null
           readiness_score?: number
           onboarding_completed?: boolean
@@ -59,6 +62,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
+          beta_waiver_until?: string | null
           target_opening_date?: string | null
           readiness_score?: number
           onboarding_completed?: boolean
@@ -225,6 +229,129 @@ export interface Database {
           request_id?: string | null
           details?: Json | null
           created_at?: string
+        }
+      }
+      location_candidates: {
+        Row: {
+          id: string
+          plan_id: string
+          position: number
+          name: string
+          address: string | null
+          neighborhood: string | null
+          sq_ft: number | null
+          asking_rent_cents: number | null
+          cam_cents: number | null
+          listing_url: string | null
+          broker_contact: string | null
+          status: 'shortlisted' | 'viewing_scheduled' | 'lease_review' | 'passed' | 'signed'
+          notes: string | null
+          archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          position?: number
+          name: string
+          address?: string | null
+          neighborhood?: string | null
+          sq_ft?: number | null
+          asking_rent_cents?: number | null
+          cam_cents?: number | null
+          listing_url?: string | null
+          broker_contact?: string | null
+          status?: 'shortlisted' | 'viewing_scheduled' | 'lease_review' | 'passed' | 'signed'
+          notes?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          position?: number
+          name?: string
+          address?: string | null
+          neighborhood?: string | null
+          sq_ft?: number | null
+          asking_rent_cents?: number | null
+          cam_cents?: number | null
+          listing_url?: string | null
+          broker_contact?: string | null
+          status?: 'shortlisted' | 'viewing_scheduled' | 'lease_review' | 'passed' | 'signed'
+          notes?: string | null
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      location_rubric_scores: {
+        Row: {
+          id: string
+          candidate_id: string
+          factor_key: 'foot_traffic' | 'parking_transit' | 'visibility' | 'neighborhood_fit' | 'buildout_cost_estimate' | 'lease_terms'
+          score_1_5: number | null
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          factor_key: 'foot_traffic' | 'parking_transit' | 'visibility' | 'neighborhood_fit' | 'buildout_cost_estimate' | 'lease_terms'
+          score_1_5?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          factor_key?: 'foot_traffic' | 'parking_transit' | 'visibility' | 'neighborhood_fit' | 'buildout_cost_estimate' | 'lease_terms'
+          score_1_5?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+      }
+      location_lease_terms: {
+        Row: {
+          id: string
+          candidate_id: string
+          base_rent_cents: number | null
+          rent_escalation_pct: number | null
+          security_deposit_cents: number | null
+          ti_allowance_cents: number | null
+          term_months: number | null
+          options_text: string | null
+          personal_guarantee: string | null
+          exit_clauses: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          base_rent_cents?: number | null
+          rent_escalation_pct?: number | null
+          security_deposit_cents?: number | null
+          ti_allowance_cents?: number | null
+          term_months?: number | null
+          options_text?: string | null
+          personal_guarantee?: string | null
+          exit_clauses?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          base_rent_cents?: number | null
+          rent_escalation_pct?: number | null
+          security_deposit_cents?: number | null
+          ti_allowance_cents?: number | null
+          term_months?: number | null
+          options_text?: string | null
+          personal_guarantee?: string | null
+          exit_clauses?: string | null
+          updated_at?: string
         }
       }
       equipment_lists: {

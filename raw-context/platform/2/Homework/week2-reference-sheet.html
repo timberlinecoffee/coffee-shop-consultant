@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 2 Reference Sheet — Key Financial Numbers</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--light-grey);
+      color: #2a2a2a;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--primary);
+      padding: 50px 40px 46px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -70px; right: -70px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(118,179,157,0.16);
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 30%;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cohort-label {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 34px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.22;
+      margin-bottom: 12px;
+    }
+    .header h1 span { color: var(--secondary); }
+    .header-sub {
+      font-size: 14.5px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.72;
+      max-width: 620px;
+      margin-bottom: 22px;
+    }
+    .week-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.11);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── BODY ── */
+    .body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 36px 40px 56px;
+    }
+
+    .section-heading {
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .section-sub {
+      font-size: 13.5px;
+      color: var(--dark-grey);
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    /* ── BENCHMARK GRID ── */
+    .benchmark-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .bcard {
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .bcard-header {
+      background: var(--secondary);
+      padding: 18px 20px 14px;
+    }
+    .bcard-header .blabel {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.72);
+      margin-bottom: 4px;
+    }
+    .bcard-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+    .bcard-number {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1;
+    }
+    .bcard-number span {
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .bcard-body {
+      padding: 16px 20px 20px;
+    }
+    .bcard-body p {
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #444;
+    }
+    .bcard-warn {
+      margin-top: 12px;
+      background: var(--amber-bg);
+      border-radius: 6px;
+      padding: 10px 13px;
+      font-size: 12.5px;
+      color: var(--amber-text);
+      line-height: 1.65;
+    }
+    .bcard.primary .bcard-header {
+      background: var(--primary);
+    }
+
+    /* ── HOW A DAY BREAKS DOWN ── */
+    .daypart-section {
+      margin-bottom: 40px;
+    }
+    .daypart-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .daypart-table thead tr {
+      background: var(--primary);
+    }
+    .daypart-table thead th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .daypart-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .daypart-table tbody tr:last-child { border-bottom: none; }
+    .daypart-table tbody tr:nth-child(even) { background: #fafafa; }
+    .daypart-table td {
+      padding: 14px 20px;
+      font-size: 13.5px;
+      line-height: 1.65;
+      vertical-align: top;
+      color: #333;
+    }
+    .daypart-table td:first-child {
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+    .tip {
+      display: block;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--dark-grey);
+      margin-top: 3px;
+    }
+
+    /* ── GLOSSARY TABLE ── */
+    .glossary-section {
+      margin-bottom: 40px;
+    }
+    .glossary-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .glossary-table thead tr {
+      background: var(--secondary);
+    }
+    .glossary-table thead th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .glossary-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .glossary-table tbody tr:last-child { border-bottom: none; }
+    .glossary-table tbody tr:nth-child(even) { background: #fafafa; }
+    .glossary-table td {
+      padding: 14px 20px;
+      font-size: 13.5px;
+      line-height: 1.68;
+      vertical-align: top;
+      color: #333;
+    }
+    .term {
+      font-weight: 700;
+      color: var(--primary);
+      width: 30%;
+    }
+
+    /* ── MISTAKES ── */
+    .mistakes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+    .mcard {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-top: 3px solid var(--amber);
+    }
+    .mcard-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    .mcard h3 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 7px;
+    }
+    .mcard p {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.68;
+    }
+
+    /* ── CLOSING ── */
+    .closing-box {
+      background: var(--primary);
+      border-radius: 14px;
+      padding: 28px 32px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+    .closing-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+    .closing-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .closing-box p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: rgba(255,255,255,0.78);
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--primary);
+      text-align: center;
+      padding: 22px 20px;
+      margin-top: 1px;
+    }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 680px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 26px; }
+      .body { padding: 28px 22px 44px; }
+      .benchmark-grid { grid-template-columns: 1fr; }
+      .mistakes-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>The Numbers Behind<br><span>a Healthy Coffee Shop</span></h1>
+    <p class="header-sub">This sheet covers the benchmarks to aim for, the terms you'll need to know, and how money typically moves through a coffee shop day. Keep it open while you build your model.</p>
+    <div class="week-badge">📋 Week 2 — Key Financial Numbers Reference Sheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- BENCHMARKS -->
+  <div class="section-heading">The four benchmarks that matter most</div>
+  <div class="section-sub">Healthy coffee shops are built around these four numbers. Use them as a reality check when you're filling in your model. They're not rules — they're warning lines.</div>
+
+  <div class="benchmark-grid">
+
+    <div class="bcard">
+      <div class="bcard-header">
+        <div class="blabel">Rent Rule</div>
+        <h3>Rent as a share of revenue</h3>
+        <div class="bcard-number">≤ 10% <span>of revenue</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>If your rent is $4,000 a month, you need to bring in at least $40,000 a month to stay within this range. This is the single most important number to check before you fall in love with a space.</p>
+        <div class="bcard-warn">⚠️ If you're above 12–15%, rent will likely squeeze everything else — even when all your other numbers look fine.</div>
+      </div>
+    </div>
+
+    <div class="bcard">
+      <div class="bcard-header">
+        <div class="blabel">Labour Rule</div>
+        <h3>Staff costs as a share of revenue</h3>
+        <div class="bcard-number">30–35% <span>ceiling</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>This includes wages, payroll taxes, and any staff benefits. Specialty shops with highly trained baristas often run a little higher. Grab-and-go shops with simpler menus can often stay lower.</p>
+        <div class="bcard-warn">⚠️ Going above 38–40% on staff costs is very hard to recover from unless your average customer spend is unusually high.</div>
+      </div>
+    </div>
+
+    <div class="bcard primary">
+      <div class="bcard-header">
+        <div class="blabel">Cost of Goods</div>
+        <h3>What it costs to make what you sell</h3>
+        <div class="bcard-number">25–32% <span>of revenue</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>This covers beans, milk, syrups, cups, lids, and any other ingredients — including what gets wasted. Specialty shops tend to run higher here because of bean cost and more complex drink preparation.</p>
+        <div class="bcard-warn">⚠️ Milk waste is one of the most under-tracked costs in coffee shops. Even a small amount wasted per drink adds up significantly across hundreds of drinks a day.</div>
+      </div>
+    </div>
+
+    <div class="bcard primary">
+      <div class="bcard-header">
+        <div class="blabel">Healthy Target</div>
+        <h3>What you actually keep (net profit)</h3>
+        <div class="bcard-number">10–15% <span>is strong</span></div>
+      </div>
+      <div class="bcard-body">
+        <p>After every single cost — rent, staff, ingredients, insurance, everything — a well-run independent coffee shop should aim to keep 10 to 15 cents of every dollar it brings in. Many new shops don't reach this in year one, and that's okay — as long as you can see the path there.</p>
+        <div class="bcard-warn">⚠️ 5% net profit still means the business is working. Below that leaves almost no room for anything to go wrong — and something always does in year one.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DAYPART -->
+  <div class="section-heading">How money moves through your day</div>
+  <div class="section-sub">Most coffee shops don't earn evenly across the day. Understanding this will help you build a more realistic model — and make better decisions about staffing and opening hours.</div>
+
+  <div class="daypart-section">
+    <table class="daypart-table">
+      <thead>
+        <tr>
+          <th>Time Block</th>
+          <th>What's Usually Happening</th>
+          <th>What to Think About in Your Model</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Morning Rush<span class="tip">6:30 – 9:30am</span></td>
+          <td>Your busiest and most important window. Commuters, school runs, people getting to work. Average spend per customer is often lower (coffee only) but you're serving a lot of people quickly.</td>
+          <td>This window is often 50–70% of your daily revenue, compressed into two to three hours. It's worth spending time modelling this one carefully.</td>
+        </tr>
+        <tr>
+          <td>Mid-Morning<span class="tip">9:30 – 11:30am</span></td>
+          <td>Slower pace. Remote workers, parents with young kids, people not in a rush. Customers are more likely to stay a while and order more than just a coffee.</td>
+          <td>Lower volume but often higher spend per person. If you're selling food, this is a good window for it.</td>
+        </tr>
+        <tr>
+          <td>Lunch<span class="tip">11:30am – 1:30pm</span></td>
+          <td>Depends a lot on your setup. Shops with food can do well at lunch. Coffee-only shops often see a dip. Drive-throughs may pick up again around this time.</td>
+          <td>If you're not serving food, don't over-project this window. It's one of the most common mistakes in a first financial model.</td>
+        </tr>
+        <tr>
+          <td>Afternoon<span class="tip">1:30 – 4:30pm</span></td>
+          <td>Quieter than the morning, but the 2–3pm coffee crowd is real. Good for regulars. Co-working style shops often stay consistently busy through the afternoon.</td>
+          <td>Model this time slot conservatively unless you have a specific reason to expect good afternoon traffic — like being near schools, a university, or having a strong co-working crowd.</td>
+        </tr>
+        <tr>
+          <td>Late Afternoon / Close<span class="tip">4:30pm onwards</span></td>
+          <td>Usually the quietest time. Most independent shops close between 5 and 6pm. Unless you're near evening venues or deliberately running evening trade, this window is thin.</td>
+          <td>Be honest about whether staying open later actually pays. The cost of keeping staff on for an extra two hours is often not covered by the extra sales in that window.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="section-heading">Words you'll need to know</div>
+  <div class="section-sub">These terms come up in your model and in the live call. Plain-language definitions — no finance background needed.</div>
+
+  <div class="glossary-section">
+    <table class="glossary-table">
+      <thead>
+        <tr>
+          <th>Term</th>
+          <th>What it means in plain language</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="term">Average Ticket</td>
+          <td>The average amount a single customer spends per visit. Someone who orders a flat white and a muffin has a higher average ticket than someone who orders just a coffee. This number drives your revenue calculations more than almost anything else.</td>
+        </tr>
+        <tr>
+          <td class="term">Break-Even Point</td>
+          <td>The amount of money you need to bring in each month just to cover all your costs — before making any profit. If you bring in exactly your break-even, you haven't lost money, but you haven't made any either.</td>
+        </tr>
+        <tr>
+          <td class="term">COGS</td>
+          <td>Cost of Goods Sold — everything it costs to make what you sell. For a coffee shop, that's beans, milk, syrups, cups, lids, and any other ingredients. It does not include rent or wages.</td>
+        </tr>
+        <tr>
+          <td class="term">Gross Profit</td>
+          <td>What's left after you subtract your ingredient and product costs (COGS) from your revenue. If you bring in $10,000 and your ingredient costs are $3,000, your gross profit is $7,000. This is before rent, wages, or any other costs.</td>
+        </tr>
+        <tr>
+          <td class="term">Net Profit</td>
+          <td>What's left after you subtract every cost — ingredients, rent, staff, insurance, supplies, everything. This is the actual money the business made. It's the number that matters most in the long run.</td>
+        </tr>
+        <tr>
+          <td class="term">Startup Costs</td>
+          <td>The one-time costs to get your shop open — equipment, fit-out, signage, opening stock, deposits, permits, and fees. These are separate from your ongoing monthly costs. They're the upfront investment before you open the door on day one.</td>
+        </tr>
+        <tr>
+          <td class="term">Throughput</td>
+          <td>How many customers you can physically serve per hour. A grab-and-go shop in a busy location might serve 40 people in an hour. A specialty shop with complex, made-to-order drinks might serve 15. Your throughput sets a ceiling on how much revenue you can earn in any given hour.</td>
+        </tr>
+        <tr>
+          <td class="term">Seat Turns</td>
+          <td>How many different customers use the same seat in a day. A shop open for 8 hours where most people stay 30 minutes could see up to 16 seat turns. The more turns per seat, the more revenue a given space can generate.</td>
+        </tr>
+        <tr>
+          <td class="term">Daypart</td>
+          <td>A block of the day — morning, midday, afternoon. Most coffee shops make the majority of their money in the morning daypart. Understanding how your revenue splits across the day helps you plan your staffing and stock more accurately.</td>
+        </tr>
+        <tr>
+          <td class="term">Yield</td>
+          <td>How much usable product you actually get from what you buy. A bag of coffee beans doesn't all end up in cups — there's waste from grinding, bad shots, and spills. Building yield into your model makes your ingredient cost calculations more accurate.</td>
+        </tr>
+        <tr>
+          <td class="term">Owner's Draw / Owner's Wage</td>
+          <td>The money you pay yourself for working in the business. This has to be in your model as a cost — just like any other employee. A shop that only "breaks even" because the owner isn't paying themselves is not actually breaking even.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- COMMON MISTAKES -->
+  <div class="section-heading">The most common first-model mistakes</div>
+  <div class="section-sub">These come up in almost every first-pass financial model. Go through yours and check each one before the live call.</div>
+
+  <div class="mistakes-grid">
+
+    <div class="mcard">
+      <div class="mcard-icon">📈</div>
+      <h3>Assuming you'll be busy straight away</h3>
+      <p>Most first models assume you'll hit close to full capacity quickly. In reality, it takes 6–12 months to build a regular customer base. Try modelling a gradual build: around 40% of your target volume in month one, growing slowly month by month.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">🥛</div>
+      <h3>Forgetting milk and ingredient waste</h3>
+      <p>Milk is often the second biggest ingredient cost after coffee — and it's easy to leave out of a model. Add at least 10–15% extra to your ingredient estimates to account for waste. It's happening in every busy shift, every day.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">🔧</div>
+      <h3>Underestimating what it costs to open</h3>
+      <p>Equipment, fit-out, deposits, and opening stock almost always come in higher than planned. Add a 15–20% buffer on top of your best estimate. Surprises are not a matter of if — they're a matter of when.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">💸</div>
+      <h3>Leaving your own wage out of the model</h3>
+      <p>If you plan to work in the shop — and most owners do, especially early on — your labour is a real cost and it belongs in the model. A business that only breaks even because the owner isn't being paid isn't actually breaking even.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">🏖️</div>
+      <h3>Ignoring slower months</h3>
+      <p>Many shops have a quiet season. A 12-month model needs to show the quieter months honestly — not just repeat the average month twelve times. If you're not sure what your slow season is, look at the shops in your area or ask someone who's been running one nearby.</p>
+    </div>
+
+    <div class="mcard">
+      <div class="mcard-icon">🔌</div>
+      <h3>Missing small recurring costs</h3>
+      <p>Music licensing, software, card processing fees, cleaning supplies, and minor repairs all add up. These are easy to forget individually, but together they can total $500 to $1,000+ a month. The Startup Costs Checklist has a section for these.</p>
+    </div>
+
+  </div>
+
+  <!-- CLOSING -->
+  <div class="closing-box">
+    <div class="closing-icon">💡</div>
+    <div>
+      <h3>A note on what these numbers mean for your specific shop type</h3>
+      <p>These benchmarks apply broadly to independent coffee shops — but they shift depending on your model. Specialty shops typically run higher ingredient costs and sometimes higher labour because of the skill involved. Grab-and-go shops can run leaner on labour but are heavily dependent on volume. Hybrid café and food shops have more moving parts and often lower food margins than people expect. If you're unsure how your shop type affects these numbers, bring that question to the live call. It's a good one.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 2 Reference Sheet</p>
+</div>
+
+</body>
+</html>

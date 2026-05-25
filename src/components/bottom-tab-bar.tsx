@@ -17,8 +17,8 @@ const TABS = [
     ),
   },
   {
-    label: "Module",
-    href: "/plan/1",
+    label: "Workspace",
+    href: "/workspace/concept",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -27,8 +27,8 @@ const TABS = [
     ),
   },
   {
-    label: "BRD",
-    href: "/plan/8",
+    label: "Brief",
+    href: "/workspace/concept/print",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -55,7 +55,7 @@ export function BottomTabBar() {
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
-    if (href === "/plan/1") return pathname.startsWith("/plan/");
+    if (href === "/workspace/concept") return pathname === "/workspace/concept";
     return pathname.startsWith(href);
   }
 

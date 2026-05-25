@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 5 Homework Brief — Bar Layout & Equipment</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 50px 40px 46px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 300px; height: 300px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header::after { content: ''; position: absolute; bottom: -40px; left: 32%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .header-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .header h1 { font-size: 36px; font-weight: 800; color: var(--white); line-height: 1.22; margin-bottom: 14px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 15px; color: rgba(255,255,255,0.78); line-height: 1.72; max-width: 600px; margin-bottom: 24px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 860px; margin: 0 auto; padding: 36px 40px 56px; }
+
+    .intro-box { background: var(--white); border-radius: 12px; padding: 26px 28px; border-left: 4px solid var(--secondary); margin-bottom: 32px; }
+    .intro-box p { font-size: 14.5px; line-height: 1.78; color: #3a3a3a; }
+    .intro-box p + p { margin-top: 12px; }
+    .intro-box strong { color: var(--primary); }
+
+    .section-heading { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .section-sub { font-size: 13.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 20px; }
+
+    .task-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
+    .task { background: var(--white); border-radius: 14px; padding: 22px 24px; display: flex; gap: 18px; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .task-num { background: var(--primary); color: var(--white); font-size: 13px; font-weight: 800; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .task-body h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 7px; }
+    .task-body p { font-size: 13.5px; color: #444; line-height: 1.72; }
+    .task-body p + p { margin-top: 10px; }
+    .task-tag { display: inline-block; background: var(--secondary); color: var(--white); font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+    .task-hint { margin-top: 10px; background: var(--light-grey); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #555; line-height: 1.65; }
+    .task-hint strong { color: var(--primary); }
+
+    .bring-box { background: var(--primary); border-radius: 14px; padding: 30px 32px; display: flex; gap: 20px; align-items: flex-start; margin-bottom: 32px; }
+    .bring-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+    .bring-box h3 { font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .bring-box p { font-size: 13.5px; line-height: 1.72; color: rgba(255,255,255,0.78); }
+
+    .resources-box { background: var(--white); border-radius: 14px; padding: 26px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 32px; }
+    .resources-box h3 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 16px; }
+    .resource-list { display: flex; flex-direction: column; gap: 12px; }
+    .resource-item { display: flex; gap: 14px; align-items: flex-start; }
+    .resource-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .resource-item h4 { font-size: 13.5px; font-weight: 700; color: #2a2a2a; margin-bottom: 3px; }
+    .resource-item p { font-size: 13px; color: #666; line-height: 1.6; }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 18px 22px; margin-bottom: 32px; }
+    .amber-note p { font-size: 13.5px; line-height: 1.72; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 27px; }
+      .body { padding: 28px 22px 44px; }
+      .task { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Can Your Bar<br><span>Actually Keep Up?</span></h1>
+    <p class="header-sub">You've sorted your concept, your finances, your location, and your menu. This week you design the engine room — the physical bar where every drink gets made, every morning. Get this right and your team can move. Get it wrong and you'll be fighting your own space every single shift.</p>
+    <div class="week-badge">Week 5 — Bar Layout & Equipment &nbsp;·&nbsp; Homework Brief</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="intro-box">
+    <p>Most bar layout mistakes look fine on paper. The espresso machine is there, the grinder is next to it, the fridge is nearby. It all makes sense until a barista tries to make six drinks at once — and realises they have to turn around to reach the milk, step sideways to access the cups, and lean across someone else to get to the filter station.</p>
+    <p>Your bar layout is not a design decision. It's an operational decision. <strong>Every unnecessary step, every awkward reach, every time a person has to cross the path of another person — that's time, and time is what limits how many drinks you can serve in a morning rush.</strong> This week you map it all out before a single thing gets built.</p>
+  </div>
+
+  <div class="section-heading">Your Three Tasks This Week</div>
+  <div class="section-sub">Work through all three before the live call. Task 1 is the foundation — Tasks 2 and 3 build directly from it.</div>
+
+  <div class="task-list">
+
+    <div class="task">
+      <div class="task-num">1</div>
+      <div class="task-body">
+        <div class="task-tag">Layout Task</div>
+        <h3>Sketch your bar layout and identify your service zones</h3>
+        <p>Draw a top-down floor plan of your bar — it doesn't need to be to scale, but it does need to be honest about the actual dimensions of your space. Place your major equipment in the sketch: espresso machine, grinder(s), underbench fridge, brew bar or filter station, blender if applicable, till and payment point, cup storage, and customer handoff point.</p>
+        <p>Then identify your three service zones and label them clearly:</p>
+        <p><strong>Order zone</strong> — where the customer places their order and pays.<br>
+        <strong>Production zone</strong> — where the drink is made. This should be your largest and most carefully thought-out zone.<br>
+        <strong>Handoff zone</strong> — where the finished drink is collected by the customer. Ideally separate from the order point so the queue and the pickup don't collide.</p>
+        <div class="task-hint">
+          <strong>If you don't have a space yet:</strong> Design for your target shop type instead. Use the dimensions typical for your model — a grab-and-go bar might be 3m of counter, a neighbourhood café might have a full back-bar setup. Being specific about the type of space you're designing for will make the live call more useful for you.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">2</div>
+      <div class="task-body">
+        <div class="task-tag">Equipment Task</div>
+        <h3>Build your equipment list and get real numbers</h3>
+        <p>List every piece of equipment you'll need to open. For each item, note whether you're buying new, buying used, or leasing — and find a real price for each option. Getting actual quotes at this stage, even rough ones, is the point. Equipment is usually one of the biggest capital costs in a coffee shop opening, and most people underestimate it significantly when they're planning.</p>
+        <p>Your list should include at minimum: espresso machine, grinder (likely two — one for espresso blend, one for single origin or decaf), underbench fridge, commercial coffee grinder knock box and tamping setup, water filtration system, batch brew or filter setup if applicable, POS system, and any food equipment if you're offering food.</p>
+        <div class="task-hint">
+          <strong>On new vs. used:</strong> A used commercial espresso machine from a reputable dealer can save you thousands and still perform reliably — but factor in a service check before purchase. A used machine with unknown history is a risk. If you're leasing, make sure you understand the total cost over the term, not just the monthly payment.
+        </div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-num">3</div>
+      <div class="task-body">
+        <div class="task-tag">Workflow Task</div>
+        <h3>Trace a drink through your bar and find the bottlenecks</h3>
+        <p>Pick your highest-volume drink — almost certainly a dairy flat white or latte — and trace every physical step required to make it from the moment the order is placed to the moment it's handed to the customer. Use your bar sketch from Task 1 and draw the path with arrows.</p>
+        <p>Then ask three questions: Where does the barista have to move the most? Where do two people's paths cross during a rush? Where would the process slow down if there was a queue of eight people waiting?</p>
+        <p>Every bottleneck you find on paper is a bottleneck you can fix before you build. Every one you miss on paper will cost you real money — and real stress — once you open.</p>
+        <div class="task-hint">
+          <strong>The two-barista test:</strong> Imagine two people working your bar simultaneously during a busy period. Can they move without getting in each other's way? Can one pull shots while the other steams milk without bumping into each other? If the answer is no, your layout needs a rethink before anything else.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="amber-note">
+    <p><strong>The most common layout mistake:</strong> Designing the bar to look good in a photo rather than work well in a rush. Customers face the front. Staff face the back. The bar you design needs to be optimised for the person making drinks — not the person photographing the shop for Instagram. A beautiful bar that creates a slow service line will hurt your reviews, your revenue, and your staff far more than a plain bar that runs like clockwork.</p>
+  </div>
+
+  <div class="bring-box">
+    <div class="bring-icon">📋</div>
+    <div>
+      <h3>What to bring to the live call</h3>
+      <p>Bring your bar sketch and your equipment list with prices. They don't need to be finished — rough is fine. The live call will walk through a few layouts together, looking specifically at service flow and the placement of equipment relative to the workflow you traced in Task 3. We'll also compare equipment costs across the group, because the range of what people find can be significant and that information is valuable to everyone.</p>
+    </div>
+  </div>
+
+  <div class="resources-box">
+    <h3>What's included in your Week 5 materials</h3>
+    <div class="resource-list">
+      <div class="resource-item">
+        <div class="resource-icon">📄</div>
+        <div>
+          <h4>This brief (you're reading it)</h4>
+          <p>Your assignment and what to focus on this week.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">📐</div>
+        <div>
+          <h4>Bar Layout Reference Sheet</h4>
+          <p>The key principles of high-performing café bar design, a breakdown of the three service zones, equipment placement guidelines, and the most common layout mistakes to avoid before you commit to anything.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">🔧</div>
+        <div>
+          <h4>Equipment Checklist & Cost Estimator</h4>
+          <p>A structured list of every major equipment category a coffee shop needs, with typical cost ranges for new, used, and leased options to benchmark your own quotes against.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-heading">Outside resources worth looking at</div>
+  <div class="section-sub">You don't need to read everything — but these are worth having in your back pocket this week.</div>
+
+  <div class="resources-box" style="margin-top: 0;">
+    <div class="resource-list">
+      <div class="resource-item">
+        <div class="resource-icon">🏪</div>
+        <div>
+          <h4>Stand at a café counter and watch the bar during a rush</h4>
+          <p>Ask the owner or manager if you can observe for 20 minutes on a busy morning. Watch how many times a barista has to change direction, where they slow down, and how two people navigate sharing the space. You'll learn more from 20 minutes of observation than from any diagram.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">🔧</div>
+        <div>
+          <h4>Talk to a coffee equipment supplier or dealer</h4>
+          <p>Equipment suppliers talk to hundreds of café owners every year. They've seen what works and what doesn't. A good dealer will tell you honestly whether your proposed setup is well-suited to your volume — and they'll often have strong opinions about layout. That perspective is worth getting early.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">📐</div>
+        <div>
+          <h4>Look at café fit-out companies and their past projects</h4>
+          <p>Many café fit-out and joinery companies post case studies of completed projects — including floor plans and before-and-after photos. Browsing these gives you a sense of what well-designed bars look like in the real world and what questions to ask your builder or fit-out team.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">💬</div>
+        <div>
+          <h4>Ask a working barista what they wish was different about their bar</h4>
+          <p>This is probably the most valuable research you can do this week. A barista who has worked behind a badly laid-out bar will tell you exactly what the problems were. That knowledge is hard-won and freely shared — most people who've worked in bad setups are happy to talk about it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 5 Homework Brief</p>
+</div>
+
+</body>
+</html>

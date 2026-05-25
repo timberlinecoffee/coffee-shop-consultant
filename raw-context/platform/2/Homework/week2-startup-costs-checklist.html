@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 2 — Startup Costs Checklist</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--light-grey);
+      color: #2a2a2a;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--primary);
+      padding: 50px 40px 46px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -70px; right: -70px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(118,179,157,0.16);
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 35%;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cohort-label {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 34px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.22;
+      margin-bottom: 12px;
+    }
+    .header h1 span { color: var(--secondary); }
+    .header-sub {
+      font-size: 14.5px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.72;
+      max-width: 620px;
+      margin-bottom: 22px;
+    }
+    .week-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.11);
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── BODY ── */
+    .body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 36px 40px 56px;
+    }
+
+    /* ── INTRO BOX ── */
+    .intro-box {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 24px 28px;
+      border-left: 4px solid var(--secondary);
+      margin-bottom: 36px;
+    }
+    .intro-box p {
+      font-size: 14px;
+      line-height: 1.78;
+      color: #3a3a3a;
+    }
+    .intro-box p + p { margin-top: 12px; }
+    .intro-box strong { color: var(--primary); }
+
+    /* ── SECTION ── */
+    .section-heading {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-heading .icon {
+      width: 34px;
+      height: 34px;
+      background: var(--secondary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    /* ── COST CATEGORY CARD ── */
+    .cost-section {
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
+    .cost-section-header {
+      background: var(--primary);
+      padding: 14px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cost-section-header.secondary {
+      background: var(--secondary);
+    }
+    .cost-section-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .cost-section-header .header-note {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 400;
+    }
+    .cost-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .cost-table thead tr {
+      background: #f8f8f8;
+      border-bottom: 2px solid #ececec;
+    }
+    .cost-table thead th {
+      padding: 10px 20px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--dark-grey);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .cost-table thead th:last-child { text-align: right; }
+    .cost-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .cost-table tbody tr:last-child { border-bottom: none; }
+    .cost-table td {
+      padding: 12px 20px;
+      font-size: 13.5px;
+      vertical-align: top;
+      color: #333;
+      line-height: 1.55;
+    }
+    .cost-table td.item-name {
+      font-weight: 500;
+      color: #2a2a2a;
+    }
+    .cost-table td.estimate {
+      text-align: right;
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+    .cost-table td.estimate.wide { color: var(--dark-grey); }
+    .cost-table td.note {
+      font-size: 12.5px;
+      color: #777;
+    }
+    .cost-table td.check-col {
+      width: 36px;
+      text-align: center;
+    }
+    .checkbox {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .required-tag {
+      display: inline-block;
+      background: rgba(21,94,99,0.1);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .optional-tag {
+      display: inline-block;
+      background: #f0f0f0;
+      color: var(--dark-grey);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── TOTAL ESTIMATE BOX ── */
+    .total-box {
+      background: var(--primary);
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+    .total-item { }
+    .total-item .t-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 5px;
+    }
+    .total-item .t-range {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.1;
+    }
+    .total-item .t-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+    .total-divider {
+      width: 1px;
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* ── AMBER NOTE ── */
+    .amber-note {
+      background: var(--amber-bg);
+      border-left: 4px solid var(--amber);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 28px;
+    }
+    .amber-note p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: var(--amber-text);
+    }
+    .amber-note strong { font-weight: 700; }
+
+    /* ── WORKING CAPITAL NOTE ── */
+    .working-cap-box {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 26px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 28px;
+    }
+    .working-cap-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+    .working-cap-box p {
+      font-size: 13.5px;
+      line-height: 1.72;
+      color: #444;
+    }
+    .working-cap-box p + p { margin-top: 10px; }
+    .working-cap-box strong { color: var(--primary); }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--primary);
+      text-align: center;
+      padding: 22px 20px;
+    }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 680px) {
+      .header { padding: 36px 22px 32px; }
+      .header h1 { font-size: 26px; }
+      .body { padding: 28px 22px 44px; }
+      .total-box { grid-template-columns: 1fr; gap: 14px; }
+      .total-divider { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>What Does It Actually<br><span>Cost to Open?</span></h1>
+    <p class="header-sub">This checklist covers every major cost category involved in opening a coffee shop. Use it to make sure nothing gets left out of your startup budget — and to get a realistic feel for the range before you commit to anything.</p>
+    <div class="week-badge">✅ Week 2 — Startup Costs Checklist</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- INTRO -->
+  <div class="intro-box">
+    <p>Startup costs are the one-time costs to get your shop from idea to open. They're separate from your ongoing monthly costs — rent, wages, ingredients — which belong in your financial model. This checklist organises startup costs by category so you can work through them one at a time and build up an honest estimate.</p>
+    <p><strong>How to use this:</strong> Go through each category. Mark the items that apply to your shop type. Add your best estimate in the margin or in your own notes. At the end, total it up — then add your working capital reserve on top (explained at the bottom of this sheet).</p>
+  </div>
+
+  <!-- TOTAL SUMMARY -->
+  <div class="total-box">
+    <div class="total-item">
+      <div class="t-label">Lean build</div>
+      <div class="t-range">$50K – $90K</div>
+      <div class="t-sub">Small footprint, second-hand equipment, simple fit-out</div>
+    </div>
+    <div class="total-divider"></div>
+    <div class="total-item">
+      <div class="t-label">Mid-range build</div>
+      <div class="t-range">$90K – $200K</div>
+      <div class="t-sub">New equipment, custom fit-out, standard lease</div>
+    </div>
+    <div class="total-divider"></div>
+    <div class="total-item">
+      <div class="t-label">Full build</div>
+      <div class="t-range">$200K – $400K+</div>
+      <div class="t-sub">Drive-through, large space, or full-spec specialty build</div>
+    </div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>A word of caution:</strong> These ranges are starting points, not promises. Your actual number depends heavily on your city, your space, and your choices. The most important thing is to build your own estimate from the line items below — don't start with a total and work backwards.</p>
+  </div>
+
+  <!-- EQUIPMENT -->
+  <div class="cost-section">
+    <div class="cost-section-header">
+      <h3>☕ Espresso & Brewing Equipment</h3>
+      <div class="header-note">Often the biggest single cost category</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">Espresso machine <span class="required-tag">Core</span></td>
+          <td class="note">A quality commercial machine is one of the most important investments. New mid-range machines start around $8K. High-spec specialty machines run $20K+. Used equipment can reduce this significantly — but factor in service history.</td>
+          <td class="estimate">$8K – $25K+</td>
+        </tr>
+        <tr>
+          <td class="item-name">Grinder(s) <span class="required-tag">Core</span></td>
+          <td class="note">You need at least one dedicated espresso grinder. Busy shops use one per group head to avoid bottlenecks. Specialty shops often add a separate grinder for filter. Budget for multiple if your volume will be high.</td>
+          <td class="estimate">$1.5K – $4K each</td>
+        </tr>
+        <tr>
+          <td class="item-name">Water filtration system <span class="required-tag">Core</span></td>
+          <td class="note">Not optional. Hard water destroys equipment and ruins coffee quality. Your machine supplier should be able to advise on what's right for your local water. Installation is usually separate.</td>
+          <td class="estimate">$500 – $2K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Batch brew / filter coffee equipment <span class="optional-tag">If relevant</span></td>
+          <td class="note">If you plan to serve filter or drip coffee. Ranges from a simple commercial brewer to more elaborate pour-over setups. Consider how you'll serve it — pour-over adds labour, batch brew is faster.</td>
+          <td class="estimate">$500 – $3K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Coffee tamper, accessories, and tools</td>
+          <td class="note">Tampers, milk pitchers, shot glasses, cleaning brushes, distribution tools. Easy to underestimate — budget at least $500 for a full bar setup.</td>
+          <td class="estimate">$300 – $800</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- REFRIGERATION & KITCHEN -->
+  <div class="cost-section">
+    <div class="cost-section-header secondary">
+      <h3>🧊 Refrigeration & Food Equipment</h3>
+      <div class="header-note">Scales up significantly if you're adding food</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">Under-counter refrigeration <span class="required-tag">Core</span></td>
+          <td class="note">Essential for milk storage close to the bar. Most bars need at least one undercounter fridge within reach of the barista.</td>
+          <td class="estimate">$800 – $2.5K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Display fridge / pastry case <span class="optional-tag">If relevant</span></td>
+          <td class="note">If you're selling grab-and-go food, drinks, or displayed pastries. Front-facing display fridges are more expensive than back-of-house storage.</td>
+          <td class="estimate">$1.5K – $5K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Blender(s) <span class="optional-tag">If relevant</span></td>
+          <td class="note">Required if you're selling blended drinks, smoothies, or any iced blended menu items. Commercial blenders designed for high-volume use are a must — consumer-grade ones won't hold up.</td>
+          <td class="estimate">$600 – $1.5K each</td>
+        </tr>
+        <tr>
+          <td class="item-name">Food prep equipment <span class="optional-tag">If relevant</span></td>
+          <td class="note">For cafés with a food offering. Could include a sandwich press, toaster oven, hot hold unit, or a small kitchen setup depending on the scope of your food menu. This category can grow quickly.</td>
+          <td class="estimate">$1K – $15K+</td>
+        </tr>
+        <tr>
+          <td class="item-name">Ice machine <span class="optional-tag">If relevant</span></td>
+          <td class="note">Needed if you're serving iced drinks at any volume. Countertop models work for lower volume; under-counter or freestanding machines for higher demand. Factor in water line installation.</td>
+          <td class="estimate">$800 – $3K</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- POINT OF SALE & TECH -->
+  <div class="cost-section">
+    <div class="cost-section-header">
+      <h3>💳 Point of Sale & Technology</h3>
+      <div class="header-note">Often overlooked in first estimates</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">POS system (hardware + setup) <span class="required-tag">Core</span></td>
+          <td class="note">Includes the tablet or terminal, cash drawer, receipt printer, and card reader. Systems like Square, Toast, or Lightspeed have different pricing structures — some have lower upfront hardware costs but higher monthly fees. Compare the total cost over 12 months, not just the setup cost.</td>
+          <td class="estimate">$800 – $3K setup + monthly fees</td>
+        </tr>
+        <tr>
+          <td class="item-name">Internet & networking setup <span class="required-tag">Core</span></td>
+          <td class="note">Reliable internet is essential for your POS and payments. If you're offering Wi-Fi to customers, you may need a separate network for guests and a stronger router. Installation by a professional is worth it to avoid ongoing issues.</td>
+          <td class="estimate">$300 – $1.5K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Music licensing <span class="required-tag">Core</span></td>
+          <td class="note">Playing music in a commercial space requires a license. Services like SOCAN (Canada), APRA (Australia), or PRS (UK) issue these. Cost varies by space size. Budget this as a recurring annual cost rather than a one-time expense.</td>
+          <td class="estimate">$250 – $800/year</td>
+        </tr>
+        <tr>
+          <td class="item-name">Security system / cameras <span class="optional-tag">If relevant</span></td>
+          <td class="note">Basic security cameras and alarm systems are worth considering, especially if your space is in a high-traffic area or if there's overnight stock stored on site.</td>
+          <td class="estimate">$500 – $2K</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FIT-OUT & FURNITURE -->
+  <div class="cost-section">
+    <div class="cost-section-header secondary">
+      <h3>🏗️ Fit-Out, Furniture & Signage</h3>
+      <div class="header-note">Highly variable — depends on condition of the space and your design choices</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">Bar build and counter <span class="required-tag">Core</span></td>
+          <td class="note">Your bar is the heart of the shop and can be one of the most significant fit-out costs. A simple, clean bar can be built reasonably. A custom-designed specialty bar will cost more. Get at least three quotes from local contractors before deciding.</td>
+          <td class="estimate">$10K – $40K+</td>
+        </tr>
+        <tr>
+          <td class="item-name">Flooring, walls, and painting</td>
+          <td class="note">Many spaces need at least some cosmetic work before opening. Factor in floor treatment, painting, and any wall features that are part of your concept. Your landlord may contribute to some of this — it's worth asking.</td>
+          <td class="estimate">$3K – $20K+</td>
+        </tr>
+        <tr>
+          <td class="item-name">Seating and tables <span class="optional-tag">Sit-down shops</span></td>
+          <td class="note">Budget per seat — a simple wood stool and small table is very different from upholstered seating and custom furniture. Second-hand commercial furniture is a smart option for early-stage shops.</td>
+          <td class="estimate">$200 – $600 per seat</td>
+        </tr>
+        <tr>
+          <td class="item-name">Lighting</td>
+          <td class="note">Lighting has a massive impact on atmosphere and costs less than most people think to upgrade. Budget for both functional lighting over the bar and the ambient lighting that shapes how the space feels.</td>
+          <td class="estimate">$2K – $10K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Exterior and interior signage <span class="required-tag">Core</span></td>
+          <td class="note">Includes your front sign, window graphics or lettering, and any internal signage (menu boards, directional signs). Depends heavily on your lease — some buildings have signage restrictions.</td>
+          <td class="estimate">$1.5K – $8K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Menu boards</td>
+          <td class="note">Chalkboard, printed panels, or digital screens — each has different cost and flexibility. Digital screens make updating easy but cost more upfront. Budget for initial design regardless of format.</td>
+          <td class="estimate">$500 – $3K</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PERMITS & LEGAL -->
+  <div class="cost-section">
+    <div class="cost-section-header">
+      <h3>📋 Permits, Licensing & Legal</h3>
+      <div class="header-note">Varies significantly by location — check your city or region early</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">Business registration and setup <span class="required-tag">Core</span></td>
+          <td class="note">Registering your business structure (sole trader, partnership, corporation). Costs vary by region and structure. If you're setting up a corporation or LLC, you may want a lawyer or accountant to help with this.</td>
+          <td class="estimate">$200 – $2K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Food handler / food safety certification <span class="required-tag">Core</span></td>
+          <td class="note">Most jurisdictions require at least one person in the business to hold a food safety certificate. Usually a one-day course. Budget for yourself and potentially a key member of staff.</td>
+          <td class="estimate">$100 – $400 per person</td>
+        </tr>
+        <tr>
+          <td class="item-name">Health department inspection and permit <span class="required-tag">Core</span></td>
+          <td class="note">Required before you can open. The inspection checks your space against local food safety standards. Build extra time into your opening timeline to allow for any required changes before you pass inspection.</td>
+          <td class="estimate">$200 – $1K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Building permit (if doing construction) <span class="optional-tag">If relevant</span></td>
+          <td class="note">Any significant structural changes — plumbing, electrical, or construction — typically require a permit. Your contractor should be able to advise on this, but make sure it's not overlooked in the timeline.</td>
+          <td class="estimate">$500 – $3K+</td>
+        </tr>
+        <tr>
+          <td class="item-name">Legal review of lease <span class="required-tag">Core</span></td>
+          <td class="note">Do not sign a commercial lease without a lawyer reviewing it. This is one of the highest-impact investments you'll make. A lease is typically 3–5 years and binds you to significant ongoing costs. The cost of a review is small compared to the cost of a bad lease.</td>
+          <td class="estimate">$500 – $2K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Liquor licence <span class="optional-tag">If relevant</span></td>
+          <td class="note">Only applies if you're planning to sell alcohol (wine, beer, spirits). Liquor licences are complex, take time to process, and vary significantly in cost by region. If this is part of your plan, start the process early.</td>
+          <td class="estimate">$500 – $5K+</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- OPENING INVENTORY & SUPPLIES -->
+  <div class="cost-section">
+    <div class="cost-section-header secondary">
+      <h3>📦 Opening Inventory & Supplies</h3>
+      <div class="header-note">What you need to have on hand on day one</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">Opening coffee stock <span class="required-tag">Core</span></td>
+          <td class="note">Your initial order of beans, including your espresso blend and any single-origins or filter offerings. Talk to your roaster about the right opening quantity — you want enough to not run out but not so much that it goes stale.</td>
+          <td class="estimate">$500 – $1.5K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Cups, lids, and packaging <span class="required-tag">Core</span></td>
+          <td class="note">Takeaway cups in multiple sizes, lids, sleeves, stirrers, napkins, and bags. If you're using custom-printed cups, order lead times can be 4–6 weeks. Minimum order quantities are often higher than expected.</td>
+          <td class="estimate">$1K – $3K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Opening food stock <span class="optional-tag">If relevant</span></td>
+          <td class="note">For shops with a food offer — pastries, baked goods, grab-and-go items. If you're sourcing from a local bakery, your opening order is typically smaller. If you're making in-house, ingredient stock will be higher.</td>
+          <td class="estimate">$500 – $2K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Cleaning supplies and equipment <span class="required-tag">Core</span></td>
+          <td class="note">Commercial cleaning products, mop and bucket, cloths, sanitiser dispensers, grease trap supplies, and anything needed for daily cleaning of your equipment. Don't underestimate this category — commercial cleaning costs more than household.</td>
+          <td class="estimate">$400 – $1K</td>
+        </tr>
+        <tr>
+          <td class="item-name">Staff uniforms or branded apparel <span class="optional-tag">If relevant</span></td>
+          <td class="note">Aprons, branded t-shirts, or any uniform components. Not all shops use uniforms — but if it's part of your concept, budget for at least 2–3 sets per staff member at opening.</td>
+          <td class="estimate">$20 – $60 per item</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DEPOSITS & LEASE ── -->
+  <div class="cost-section">
+    <div class="cost-section-header">
+      <h3>🔑 Lease Deposits & Pre-Opening Fees</h3>
+      <div class="header-note">Money you need before you open the door</div>
+    </div>
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Notes</th>
+          <th>Rough Range</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item-name">Lease security deposit <span class="required-tag">Core</span></td>
+          <td class="note">Usually 2–4 months of rent paid upfront as a deposit. This is refundable at the end of the lease if you leave the space in good condition, but it's money tied up from day one. Negotiate this — landlords will sometimes reduce it.</td>
+          <td class="estimate">2–4 months rent</td>
+        </tr>
+        <tr>
+          <td class="item-name">First and last month's rent <span class="required-tag">Core</span></td>
+          <td class="note">Many commercial leases require first and last month paid at signing, on top of the security deposit. This is a significant upfront cash requirement — make sure it's built into your startup number.</td>
+          <td class="estimate">2 months rent</td>
+        </tr>
+        <tr>
+          <td class="item-name">Fit-out or leasehold improvement deposit</td>
+          <td class="note">Some landlords charge a separate deposit for the right to make changes to the space. Others contribute to fit-out costs (called a "tenant improvement allowance") if you negotiate it into the lease. Worth asking about.</td>
+          <td class="estimate">$0 – $10K+</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- WORKING CAPITAL -->
+  <div class="working-cap-box">
+    <h3>💰 Working Capital — the number most people forget</h3>
+    <p>Working capital is the cash reserve you need to keep the business running while it's building up to a steady income. In the first few months, you'll almost certainly be spending more than you're bringing in — that gap needs to be funded from somewhere.</p>
+    <p><strong>A safe rule of thumb:</strong> Budget for at least 3–4 months of your full operating costs (rent + wages + ingredients + everything else) as a working capital reserve, on top of your startup costs. For most independent coffee shops, this means having an additional $25,000 to $75,000 in reserve before you open.</p>
+    <p>This is not money you're spending — it's money you need to have available. Some of it you'll use. Some of it you won't. But if you don't have it and you hit a slow patch, your options narrow very quickly.</p>
+  </div>
+
+  <!-- AMBER NOTE -->
+  <div class="amber-note">
+    <p><strong>Don't forget the 15–20% buffer.</strong> Whatever total you arrive at from this checklist, add 15–20% on top. Construction always uncovers surprises. Equipment quotes don't always include installation. Lead times create unexpected costs. The buffer is not a luxury — it's a planning tool.</p>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 2 Startup Costs Checklist</p>
+</div>
+
+</body>
+</html>

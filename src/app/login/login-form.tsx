@@ -135,7 +135,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
                 href="/forgot-password"
                 className="text-xs text-[#155e63] hover:underline"
               >
-                Forgot password?
+                Forgot Password?
               </Link>
             )}
           </div>
@@ -184,7 +184,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
           disabled={loading || signupBlocked}
           className="w-full bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Just a moment..." : mode === "signin" ? "Sign in" : "Create account"}
+          {loading ? "Just a moment..." : mode === "signin" ? "Sign In" : "Create Account"}
         </button>
       </form>
 

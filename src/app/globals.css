@@ -8,6 +8,27 @@
   --dark-grey: #afafaf;
   --background: #faf9f7;
   --foreground: #1a1a1a;
+  /* Semantic tokens used by component library */
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --border: #efefef;
+  --muted: #f4f3f1;
+  --muted-foreground: #6b6b6b;
+  --ring: #155e63;
+  --destructive: #dc2626;
+
+  /* Neutral palette (warm-tinted, used by homepage redesign) */
+  --neutral-50:  #FAFAF8;
+  --neutral-100: #F7F7F5;
+  --neutral-200: #EBEBEA;
+  --neutral-300: #D4D4CC;
+  --neutral-400: #B8B8B0;
+  --neutral-500: #8F8F85;
+  --neutral-600: #6B6B60;
+  --neutral-700: #4A4A42;
+  --neutral-800: #2E2E28;
+  --neutral-900: #1C1C18;
+  --neutral-950: #0D0D0B;
 }
 
 @theme inline {
@@ -16,6 +37,13 @@
   --color-teal: var(--teal);
   --color-sage: var(--sage);
   --color-off-white: var(--off-white);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
 }
 
 body {

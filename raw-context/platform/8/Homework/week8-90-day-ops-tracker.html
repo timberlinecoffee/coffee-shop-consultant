@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>90-Day Operations Tracker — Week 8</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --primary:#155e63; --secondary:#76b39d; --light-grey:#efefef; --dark-grey:#afafaf; --white:#ffffff; --amber:#e8a44a; --amber-bg:#fff8ee; --amber-text:#7a5120; }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Poppins',sans-serif; background:var(--light-grey); color:#2a2a2a; }
+
+    .header { background:var(--primary); padding:50px 40px 46px; position:relative; overflow:hidden; }
+    .header::before { content:''; position:absolute; top:-70px; right:-70px; width:300px; height:300px; border-radius:50%; background:rgba(118,179,157,0.16); }
+    .header::after  { content:''; position:absolute; bottom:-40px; left:30%; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.05); }
+    .header-inner { max-width:900px; margin:0 auto; position:relative; z-index:1; }
+    .cohort-label { display:inline-block; background:var(--secondary); color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:5px 14px; border-radius:20px; margin-bottom:20px; }
+    .header h1 { font-size:32px; font-weight:800; color:#fff; line-height:1.22; margin-bottom:10px; }
+    .header h1 span { color:var(--secondary); }
+    .header-sub { font-size:14.5px; color:rgba(255,255,255,.78); line-height:1.72; max-width:620px; margin-bottom:22px; }
+    .week-badge { display:inline-block; background:rgba(255,255,255,.11); color:rgba(255,255,255,.88); font-size:13px; font-weight:600; padding:7px 18px; border-radius:8px; border:1px solid rgba(255,255,255,.2); }
+
+    .body { max-width:900px; margin:0 auto; padding:36px 40px 56px; }
+
+    .meta-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px; }
+    .meta-field { background:#fff; border-radius:10px; padding:14px 18px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .meta-field label { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--dark-grey); display:block; margin-bottom:8px; }
+    .meta-field .line { border-bottom:1.5px solid #d0d0d0; height:24px; }
+
+    .amber-note { background:var(--amber-bg); border-left:4px solid var(--amber); border-radius:10px; padding:18px 22px; margin-bottom:22px; }
+    .amber-note p { font-size:13.5px; line-height:1.72; color:var(--amber-text); }
+    .amber-note strong { font-weight:700; }
+
+    .info-block { background:#fff; border-radius:14px; padding:22px 24px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:22px; }
+    .info-block .tag { font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary); margin-bottom:6px; }
+    .info-block h3 { font-size:16px; font-weight:700; color:var(--primary); margin-bottom:12px; }
+    .cadence-pills { display:flex; flex-direction:column; gap:8px; }
+    .cadence-pill { display:flex; gap:12px; align-items:flex-start; }
+    .pill-tag { background:var(--primary); color:#fff; font-size:10px; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; flex-shrink:0; margin-top:2px; }
+    .pill-tag.weekly { background:var(--secondary); }
+    .pill-tag.monthly { background:#1a7474; }
+    .cadence-pill p { font-size:13px; color:#444; line-height:1.68; }
+
+    /* Phase header */
+    .phase-header { border-radius:12px; padding:16px 22px; margin-bottom:4px; }
+    .phase-header.m1 { background:var(--primary); }
+    .phase-header.m2 { background:#1a7474; }
+    .phase-header.m3 { background:var(--secondary); }
+    .phase-header .eyebrow { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.7); margin-bottom:4px; }
+    .phase-header h2 { font-size:17px; font-weight:700; color:#fff; }
+
+    /* Week rows */
+    .week-list { border-radius:12px; overflow:hidden; margin-bottom:22px; border:1px solid #e0e0e0; }
+    .week-row { display:flex; border-bottom:1px solid #e8e8e8; }
+    .week-row:last-child { border-bottom:none; }
+    .week-tag { min-width:72px; width:72px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px 6px; text-align:center; }
+    .week-tag.m1 { background:var(--primary); }
+    .week-tag.m2 { background:#1a7474; }
+    .week-tag.m3 { background:var(--secondary); }
+    .week-tag .wlabel { font-size:11px; font-weight:700; color:#fff; line-height:1.3; }
+    .week-tag .wrange { font-size:10px; color:rgba(255,255,255,.65); margin-top:3px; line-height:1.3; }
+    .week-body { flex:1; background:#fff; padding:14px 18px; }
+    .week-row:nth-child(even) .week-body { background:#f7fbfb; }
+    .week-focus { font-size:14px; font-weight:700; color:var(--primary); margin-bottom:5px; }
+    .week-body p { font-size:13px; color:#555; line-height:1.68; margin-bottom:10px; }
+    .notes-label { font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--dark-grey); margin-bottom:6px; }
+    .line { border-bottom:1.5px solid #d8d8d8; height:20px; margin-bottom:6px; }
+
+    /* Metrics table */
+    .metrics-header { background:var(--primary); border-radius:12px 12px 0 0; padding:14px 20px; }
+    .metrics-header h3 { font-size:15px; font-weight:700; color:#fff; }
+    .metrics-table { background:#fff; border-radius:0 0 12px 12px; overflow:hidden; border:1px solid #e0e0e0; border-top:none; margin-bottom:22px; }
+    .metrics-table-header { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; background:#e0f0f1; }
+    .metrics-table-header .col { padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--primary); }
+    .metrics-row { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; border-top:1px solid #eee; }
+    .metrics-row:nth-child(even) { background:#fafafa; }
+    .metrics-row .col { padding:10px 14px; font-size:13px; color:#444; }
+    .metrics-row .col:first-child { font-weight:600; color:var(--primary); }
+    .metrics-row .col:not(:first-child) .line { border-color:#c8c8c8; }
+
+    .footer { background:var(--primary); text-align:center; padding:22px 20px; margin-top:40px; }
+    .footer p { font-size:12px; color:rgba(255,255,255,.5); }
+    .footer strong { color:var(--secondary); font-weight:600; }
+
+    @media(max-width:640px) {
+      .header { padding:36px 22px 32px; } .header h1 { font-size:26px; } .body { padding:24px 18px 44px; }
+      .meta-row { grid-template-columns:1fr; }
+      .metrics-table-header, .metrics-row { grid-template-columns:1.5fr 1fr 1fr; }
+      .metrics-table-header .col:last-child, .metrics-row .col:last-child { display:none; }
+    }
+    @media print { body { background:#fff; } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — Capstone Resource</div>
+    <h1>90-Day <span>Operations Tracker</span></h1>
+    <p class="header-sub">Week-by-week operational priorities for your first 90 days after opening. This is Component 9 of your Business Readiness Document.</p>
+    <div class="week-badge">Week 8 of 8 — Operational Template</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="meta-row">
+    <div class="meta-field"><label>Shop Name</label><div class="line"></div></div>
+    <div class="meta-field"><label>Opening Date</label><div class="line"></div></div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>How to use this tracker:</strong> At the start of each week, read the focus area and note your planned actions. At the end of the week, come back and record what actually happened. The gaps between plan and reality are more valuable than either alone — bring this to any coaching or peer calls you have after opening.</p>
+  </div>
+
+  <div class="info-block">
+    <div class="tag">Your Weekly Checklist — Repeat Every Week</div>
+    <h3>The non-negotiable review cadence</h3>
+    <div class="cadence-pills">
+      <div class="cadence-pill"><span class="pill-tag">Daily</span><p>Compare sales to the same day last week. Note anything unusual. Five minutes, every day.</p></div>
+      <div class="cadence-pill"><span class="pill-tag weekly">Weekly</span><p>Review COGS and labour percentages. Check week-on-week revenue trend. Hold a team debrief.</p></div>
+      <div class="cadence-pill"><span class="pill-tag monthly">Monthly</span><p>Full P&L vs. Week 2 projections. Menu review. Identify one specific thing to improve next month.</p></div>
+    </div>
+  </div>
+
+  <!-- MONTH 1 -->
+  <div class="phase-header m1">
+    <div class="eyebrow">Month 1 — Days 1–30</div>
+    <h2>Survive, Observe, and Make Your First Adjustments</h2>
+  </div>
+  <div class="week-list">
+    <div class="week-row">
+      <div class="week-tag m1"><span class="wlabel">Week 1</span><span class="wrange">Days 1–7</span></div>
+      <div class="week-body">
+        <div class="week-focus">Survive and observe</div>
+        <p>Do not change anything yet. Watch what is actually happening — peak times, popular items, service friction points. Note everything. Change nothing.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m1"><span class="wlabel">Week 2</span><span class="wrange">Days 8–14</span></div>
+      <div class="week-body">
+        <div class="week-focus">First service adjustments</div>
+        <p>Make one staffing adjustment based on observed peak patterns. Review your first week's sales against projections. Hold a team debrief.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m1"><span class="wlabel">Week 3</span><span class="wrange">Days 15–21</span></div>
+      <div class="week-body">
+        <div class="week-focus">Menu review — first data</div>
+        <p>Identify your top three and bottom three selling items. Do not remove anything yet — you need more data. Note what is surprising.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m1"><span class="wlabel">Week 4</span><span class="wrange">Days 22–30</span></div>
+      <div class="week-body">
+        <div class="week-focus">End of month 1 review</div>
+        <p>Compare month 1 actual revenue to your Week 2 projection. Calculate your actual COGS and labour percentages. Write one paragraph on what is working and one on what is not.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTH 2 -->
+  <div class="phase-header m2">
+    <div class="eyebrow">Month 2 — Days 31–60</div>
+    <h2>Tune the Model Based on Real Trading Data</h2>
+  </div>
+  <div class="week-list">
+    <div class="week-row">
+      <div class="week-tag m2"><span class="wlabel">Week 5</span><span class="wrange">Days 31–37</span></div>
+      <div class="week-body">
+        <div class="week-focus">Regulars are emerging</div>
+        <p>Start noticing who is coming back and what they order. These people are your most important marketing asset — know their names and their orders.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m2"><span class="wlabel">Week 6</span><span class="wrange">Days 38–44</span></div>
+      <div class="week-body">
+        <div class="week-focus">First menu adjustment</div>
+        <p>Remove or replace the item with the lowest margin and the lowest sales. Make one addition if customer feedback suggests a clear gap.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m2"><span class="wlabel">Week 7</span><span class="wrange">Days 45–51</span></div>
+      <div class="week-body">
+        <div class="week-focus">Staffing model check</div>
+        <p>Is your staffing model matching your trading patterns? Over-staffed mornings and under-staffed afternoons is the most common pattern to fix at this stage.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m2"><span class="wlabel">Week 8</span><span class="wrange">Days 52–60</span></div>
+      <div class="week-body">
+        <div class="week-focus">End of month 2 review</div>
+        <p>Two-month P&L review. What has improved? What has not? Identify the single most important operational change for month 3.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTH 3 -->
+  <div class="phase-header m3">
+    <div class="eyebrow">Month 3 — Days 61–90</div>
+    <h2>Systemise and Look Forward</h2>
+  </div>
+  <div class="week-list">
+    <div class="week-row">
+      <div class="week-tag m3"><span class="wlabel">Wks 9–10</span><span class="wrange">Days 61–74</span></div>
+      <div class="week-body">
+        <div class="week-focus">Systems consolidation</div>
+        <p>Document any process that currently only exists in your head: opening and closing procedures, espresso calibration, ordering schedule. If you were sick for a week, could someone else run this from these documents?</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m3"><span class="wlabel">Wks 11–12</span><span class="wrange">Days 75–83</span></div>
+      <div class="week-body">
+        <div class="week-focus">Community deepening</div>
+        <p>Follow up on your five community relationships from Week 7. Which ones have produced something real? Which ones need a second contact? Start thinking about the next wave.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+    <div class="week-row">
+      <div class="week-tag m3"><span class="wlabel">Week 13</span><span class="wrange">Days 84–90</span></div>
+      <div class="week-body">
+        <div class="week-focus">90-day debrief</div>
+        <p>Sit with your full Business Readiness Document and mark what has proven correct and what has proven wrong. This is your most valuable planning document for the next quarter.</p>
+        <div class="notes-label">Your actions / notes this week</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTHLY METRICS TABLE -->
+  <div class="metrics-header">
+    <h3>Monthly Snapshot — Track Your Core Metrics</h3>
+  </div>
+  <div class="metrics-table">
+    <div class="metrics-table-header">
+      <div class="col">Metric</div>
+      <div class="col">Month 1</div>
+      <div class="col">Month 2</div>
+      <div class="col">Month 3</div>
+    </div>
+    <div class="metrics-row"><div class="col">Monthly Revenue</div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div></div>
+    <div class="metrics-row"><div class="col">Avg. Daily Revenue</div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div></div>
+    <div class="metrics-row"><div class="col">COGS %</div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div></div>
+    <div class="metrics-row"><div class="col">Labour %</div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div></div>
+    <div class="metrics-row"><div class="col">Avg. Transaction Value</div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div></div>
+    <div class="metrics-row"><div class="col">Projected Revenue (Week 2)</div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div><div class="col"><div class="line"></div></div></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;|&nbsp; Coffee Shop Basecamp &nbsp;|&nbsp; Week 8 of 8 — 90-Day Operations Tracker</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 7 Reference Sheet — Pre-Opening & Marketing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 36px 40px 32px; }
+    .header-inner { max-width: 820px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-left h1 { font-size: 22px; font-weight: 800; color: var(--white); }
+    .header-left p  { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .week-badge { background: var(--secondary); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; white-space: nowrap; margin-top: 4px; }
+
+    .body { max-width: 820px; margin: 0 auto; padding: 28px 40px 48px; }
+
+    .section-heading { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 6px; margin-top: 8px; }
+    .section-sub { font-size: 13px; color: var(--dark-grey); line-height: 1.65; margin-bottom: 20px; font-style: italic; }
+
+    /* Channel cards */
+    .channel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+    .channel-card { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .channel-header { padding: 12px 18px 10px; }
+    .ch-primary  { background: var(--primary); }
+    .ch-secondary { background: var(--secondary); }
+    .ch-teal     { background: #2a8080; }
+    .ch-dark     { background: #2e4057; }
+    .channel-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 3px; }
+    .channel-name { font-size: 17px; font-weight: 800; color: var(--white); }
+    .channel-body { padding: 14px 18px 16px; }
+    .channel-body p { font-size: 12.5px; color: #444; line-height: 1.68; margin-bottom: 10px; }
+    .channel-attr { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
+    .channel-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--secondary); flex-shrink: 0; margin-top: 6px; }
+    .channel-attr p { font-size: 12.5px; color: #444; line-height: 1.6; margin: 0; }
+    .channel-attr strong { color: var(--primary); font-weight: 700; }
+
+    /* Timeline */
+    .timeline { margin-bottom: 28px; }
+    .timeline-row { display: flex; border-bottom: 1px solid var(--light-grey); }
+    .timeline-row:last-child { border-bottom: none; }
+    .timeline-week { width: 120px; min-width: 120px; padding: 14px 16px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; font-weight: 800; color: var(--white); }
+    .tw-1 { background: var(--primary); }
+    .tw-2 { background: #1a7474; }
+    .tw-3 { background: var(--secondary); }
+    .tw-4 { background: #5a9f8a; }
+    .timeline-body { flex: 1; padding: 14px 16px; background: var(--white); }
+    .timeline-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--primary); margin-bottom: 4px; }
+    .timeline-body p { font-size: 12.5px; color: #444; line-height: 1.65; }
+
+    /* Story formats */
+    .story-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+    .story-card { background: var(--white); border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .story-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--secondary); margin-bottom: 6px; }
+    .story-name { font-size: 14px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+    .story-card p { font-size: 12px; color: #555; line-height: 1.65; }
+
+    /* Two col */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    .col-block { background: var(--white); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .col-block-label { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; }
+    .label-primary  { background: var(--primary);   color: var(--white); }
+    .label-secondary{ background: var(--secondary); color: var(--white); }
+    .col-block h3 { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .col-block p  { font-size: 12.5px; color: #555; line-height: 1.68; margin-bottom: 8px; }
+
+    /* Do / Don't */
+    .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+    .do-card   { background: #e8f5f1; border-radius: 12px; padding: 16px 18px; }
+    .dont-card { background: #fef3f3; border-radius: 12px; padding: 16px 18px; }
+    .do-label   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #1a7a45; margin-bottom: 8px; }
+    .dont-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #c0392b; margin-bottom: 8px; }
+    .do-card p, .dont-card p { font-size: 12.5px; color: #444; line-height: 1.68; margin-bottom: 5px; }
+    .do-card p:last-child, .dont-card p:last-child { margin-bottom: 0; }
+
+    /* Info blocks */
+    .info-block { background: var(--white); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; }
+    .info-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--secondary); margin-bottom: 4px; }
+    .info-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .info-block p { font-size: 12.5px; color: #555; line-height: 1.7; margin-bottom: 8px; }
+    .info-block p:last-child { margin-bottom: 0; }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; }
+    .amber-note p { font-size: 13px; line-height: 1.72; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; margin-top: 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .channel-grid, .story-grid, .two-col, .do-dont { grid-template-columns: 1fr; }
+      .body { padding: 22px 18px 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <h1>Week 7 Reference Sheet</h1>
+      <p>Coffee Shop Basecamp &nbsp;·&nbsp; Pre-Opening &amp; Marketing</p>
+    </div>
+    <div class="week-badge">Week 7</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- SECTION 1: THE BIG IDEA -->
+  <div class="section-heading">The Big Idea: Marketing Starts Before You Open</div>
+  <p class="section-sub">The cafes that open to a queue outside did not get lucky with their location or their Instagram. They spent the 30 days before opening building relationships, telling their story, and creating a reason for people to care. Opening day is when marketing pays off — not when it starts.</p>
+
+  <div class="info-block">
+    <div class="info-tag">Core Principle</div>
+    <div class="info-title">Local Marketing is Relational, Not Digital</div>
+    <p>Social media matters. But it amplifies what already exists — it does not create it. The most durable marketing a local coffee shop can do is through genuine relationships: with neighbouring businesses, with local journalists, with the people who walk past your window every day. If people know you, trust you, and feel connected to what you are building before you open, no amount of Instagram posts can replicate that.</p>
+    <p>The mistake most new owners make is waiting until they are open before thinking about marketing — then wondering why the first month is quiet. Your pre-opening period is the most valuable marketing time you will ever have, because you have the most newsworthy story you will ever have: you are about to open.</p>
+  </div>
+
+  <!-- SECTION 2: THE CHANNELS -->
+  <div class="section-heading">The Channels — What Actually Works for a Local Café</div>
+  <p class="section-sub">Not every marketing channel is equally useful for a neighbourhood coffee shop. Here is an honest look at what works, what is table stakes, and what is not worth your time before opening.</p>
+
+  <div class="channel-grid">
+    <div class="channel-card">
+      <div class="channel-header ch-primary">
+        <div class="channel-eyebrow">Essential</div>
+        <div class="channel-name">Instagram</div>
+      </div>
+      <div class="channel-body">
+        <p>Table stakes — you need to be there and post consistently. But it works best when it is genuine rather than polished. Behind-the-scenes content, your story, your team, your product — not stock-photo aesthetics.</p>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Best for:</strong> Building anticipation before opening, staying in people's minds, showing your personality</p></div>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Reality check:</strong> Reach is limited without paid ads. Your local regulars will not find you via hashtags. They will find you because they walked past, heard about you, or were told by a friend.</p></div>
+      </div>
+    </div>
+    <div class="channel-card">
+      <div class="channel-header ch-primary">
+        <div class="channel-eyebrow">Essential</div>
+        <div class="channel-name">Google Business</div>
+      </div>
+      <div class="channel-body">
+        <p>Claim and complete your Google Business Profile before you open. This is how people who search "coffee near me" find you. It costs nothing and takes 30 minutes.</p>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Must-have fields:</strong> Address, hours, phone, website, category, photos, description</p></div>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>After opening:</strong> Ask every happy customer to leave a review. Your first 20 reviews matter more than any post.</p></div>
+      </div>
+    </div>
+    <div class="channel-card">
+      <div class="channel-header ch-secondary">
+        <div class="channel-eyebrow">High Value</div>
+        <div class="channel-name">Email List</div>
+      </div>
+      <div class="channel-body">
+        <p>The most underused channel in local coffee marketing. You own your email list — no algorithm changes, no platform risk. Start collecting emails before you open with a simple sign-up at your window, website, or in your social bio.</p>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>What to send:</strong> Opening announcement, opening week offer, monthly highlights, new menu items</p></div>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Reality:</strong> 50 people on your email list who actually want to hear from you is worth more than 500 Instagram followers who scroll past.</p></div>
+      </div>
+    </div>
+    <div class="channel-card">
+      <div class="channel-header ch-secondary">
+        <div class="channel-eyebrow">High Value</div>
+        <div class="channel-name">Local Press</div>
+      </div>
+      <div class="channel-body">
+        <p>A local food or lifestyle story about your opening reaches people who would never have found you online. It also gives your social media something credible to share. Send your pitch 3–4 weeks before opening — journalists need lead time.</p>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>What makes a good pitch:</strong> A specific angle (not "new café opens"), a human story, a quote from you, your opening date, and one good photo</p></div>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Who to target:</strong> Local food journalists, neighbourhood blogs, community newsletters, local Facebook groups</p></div>
+      </div>
+    </div>
+    <div class="channel-card">
+      <div class="channel-header ch-teal">
+        <div class="channel-eyebrow">Situational</div>
+        <div class="channel-name">Loyalty Programs</div>
+      </div>
+      <div class="channel-body">
+        <p>Whether to launch a loyalty program from day one is a genuine question. The case for yes: it gives regulars a reason to come back and rewards early adopters. The case for no: it adds operational complexity when you are already stretched, and a stamp card launched too early can feel transactional.</p>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>If you launch from day one:</strong> Keep it simple — a paper stamp card is fine. Digital loyalty apps have better data but more setup.</p></div>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>If you wait:</strong> Launch at 30 or 60 days once service is smooth and you know your regulars.</p></div>
+      </div>
+    </div>
+    <div class="channel-card">
+      <div class="channel-header ch-dark">
+        <div class="channel-eyebrow">Lower Priority</div>
+        <div class="channel-name">Paid Advertising</div>
+      </div>
+      <div class="channel-body">
+        <p>Meta and Google ads can work, but they are expensive for a local business with a small geographic catchment. Most pre-opening marketing budget is better spent on community outreach, a soft opening, and any physical presence (a sign, window graphics) that makes your space visible.</p>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Exception:</strong> A small targeted Instagram ad for your opening announcement (£/$ 50–100) to a tight geographic audience can be worth it for visibility.</p></div>
+        <div class="channel-attr"><div class="channel-dot"></div><p><strong>Not worth it before opening:</strong> Broad awareness campaigns, Google Search ads (your listing handles this), influencer outreach</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: YOUR OPENING STORY -->
+  <div class="section-heading">Your Opening Story — Why It Matters</div>
+  <p class="section-sub">Your opening story is not your mission statement. It is the honest, human answer to three questions: why are you opening a coffee shop, why here, and why now. The reason it matters is that people do not connect with cafes — they connect with people. Your story is what makes you a person, not just another coffee shop.</p>
+
+  <div class="story-grid">
+    <div class="story-card">
+      <div class="story-tag">Format A</div>
+      <div class="story-name">The Press Pitch</div>
+      <p>150–200 words. Written for a journalist who does not know you. Leads with what is interesting or different about your shop — not just that you are opening. Includes a specific angle, your opening date, and a quote from you.</p>
+      <p style="margin-top:8px;font-size:11.5px;color:#888;"><em>Think of it as the first three paragraphs of the article you want written — give the journalist a head start.</em></p>
+    </div>
+    <div class="story-card">
+      <div class="story-tag">Format B</div>
+      <div class="story-name">The Instagram Caption</div>
+      <p>50–80 words. Human, specific, and warm. Written for someone who follows you or discovers you — not a press release in a different font. Ends with something they can do: follow, share, mark their calendar.</p>
+      <p style="margin-top:8px;font-size:11.5px;color:#888;"><em>Read it out loud. If it sounds like a brand, rewrite it until it sounds like you.</em></p>
+    </div>
+    <div class="story-card">
+      <div class="story-tag">Format C</div>
+      <div class="story-name">The Neighbour Conversation</div>
+      <p>2–3 sentences. What you say when someone asks what you are opening. No jargon, no brand language. Should sound exactly like how you actually talk when you are excited about something.</p>
+      <p style="margin-top:8px;font-size:11.5px;color:#888;"><em>If you would not say it out loud to a stranger at a bus stop, rewrite it.</em></p>
+    </div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>The three-format test:</strong> If your opening story reads the same across all three formats, it is probably too formal. The press pitch should be structured. The Instagram caption should feel spontaneous. The neighbour conversation should sound like you talking. Same story, three different voices.</p>
+  </div>
+
+  <!-- SECTION 4: COMMUNITY RELATIONSHIPS -->
+  <div class="section-heading">Community Relationships — The Most Durable Marketing You Can Do</div>
+  <p class="section-sub">A referral from a trusted local business is worth more than any ad you can run. People go where their community goes. Building five genuine relationships before you open plants seeds that keep growing long after your opening week is forgotten.</p>
+
+  <div class="two-col">
+    <div class="col-block">
+      <div class="col-block-label label-primary">Good Partnership Types</div>
+      <p><strong>Offices and co-working spaces</strong> — a corporate coffee order relationship can be worth thousands annually. Introduce yourself before you open.</p>
+      <p><strong>Fitness businesses</strong> — gyms, yoga studios, and running clubs share a customer who values quality and is already health-conscious. Natural alignment.</p>
+      <p><strong>Creative businesses</strong> — bookshops, galleries, studios, and independent retailers attract a similar customer and are often open to cross-promotion.</p>
+      <p><strong>Schools and universities</strong> — if you are near one, student staff and customer relationships are built early. Reach out to student unions or societies.</p>
+      <p><strong>Community organisations</strong> — residents associations, local Facebook groups, and neighbourhood committees have trust with your target audience that you have not earned yet.</p>
+    </div>
+    <div class="col-block">
+      <div class="col-block-label label-secondary">What a First Contact Looks Like</div>
+      <p>Walk in. Introduce yourself. Bring coffee or pastries if you can. Tell them what you are opening and when. Ask if there is anything you can do together before or at opening — a flyer on their counter, a mention to their customers, a soft opening invite.</p>
+      <p>You are not pitching a partnership. You are introducing yourself as a neighbour. That is all the first contact needs to be. The relationship grows from there.</p>
+      <p><strong>What not to do:</strong> Send a generic email blast to local businesses. It reads as marketing, not relationship-building, and most people ignore it. Showing up in person is almost always better.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 5: OPENING DAY -->
+  <div class="section-heading">Opening Day — What Actually Happens</div>
+  <p class="section-sub">Opening day will be busier than you expect and slower than you want at the same time. Here is what experienced operators have learned.</p>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <div class="do-label">Do These Things</div>
+      <p><strong>Over-staff opening day.</strong> Have more people than you think you need. You will use every one of them.</p>
+      <p><strong>Under-promise on speed.</strong> Tell customers it might take a little longer than usual today. They almost always respond with patience and goodwill.</p>
+      <p><strong>Collect contact details.</strong> Every person who comes through the door on opening day is a potential regular. Have a way to capture emails or at least Instagram followers.</p>
+      <p><strong>Ask for feedback directly.</strong> Not just via a sign — actually ask people what they thought. The feedback you get on day one is the most honest you will ever receive.</p>
+      <p><strong>Brief your team on the culture, not just the tasks.</strong> Opening day is when your culture is visible for the first time. Every interaction matters.</p>
+    </div>
+    <div class="dont-card">
+      <div class="dont-label">Avoid These Things</div>
+      <p><strong>Do not launch with your full menu.</strong> Run a tighter menu for the first week and do it consistently. Expand once the team is confident.</p>
+      <p><strong>Do not try to fix the bar during service.</strong> If something is not working, note it and fix it after. Keep moving.</p>
+      <p><strong>Do not take opening day personally.</strong> Things will go wrong. The measure of your team is not whether things go wrong — it is how they are handled.</p>
+      <p><strong>Do not disappear into the back.</strong> Be on the floor. Meet people. This is the only time you will have to personally welcome every person who walks in.</p>
+      <p><strong>Do not neglect the debrief.</strong> After your first day, sit with your team and talk through what worked and what did not. Do it while it is fresh.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 6: SOFT OPENING -->
+  <div class="section-heading">The Soft Opening — Why It Is Worth Doing</div>
+  <p class="section-sub">A soft opening is a limited-access service event before your official opening — usually by invite only, and usually 1–2 weeks before the doors open publicly.</p>
+
+  <div class="info-block">
+    <div class="info-tag">What a Soft Opening Does</div>
+    <div class="info-title">Practice Under Real Conditions — Without the Stakes</div>
+    <p>It tests your workflow with real orders. It lets your team build confidence before a full crowd. It generates word of mouth among your warmest audience — family, friends, neighbouring businesses, local press — before you are open to the general public. And it gives you a chance to identify and fix problems before they happen in front of strangers.</p>
+    <p><strong>Who to invite:</strong> Friends and family, neighbouring business owners, any local press you have been in contact with, and a handful of people from your community outreach. Keep it small enough to manage — 20 to 40 people over a two-hour window is usually right.</p>
+    <p><strong>What to tell them:</strong> This is practice. Service will be slower than usual. Feedback is welcome and useful. Give us your most honest reaction — that is the whole point.</p>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Week 7 Reference Sheet</p>
+</div>
+
+</body>
+</html>

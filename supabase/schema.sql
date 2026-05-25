@@ -14,6 +14,7 @@ create table public.users (
   subscription_status text not null default 'free_trial' check (subscription_status in ('free_trial', 'active', 'cancelled', 'expired')),
   subscription_tier text not null default 'free' check (subscription_tier in ('free', 'starter', 'growth', 'pro')),
   ai_credits_remaining integer not null default 0,
+  copilot_trial_messages_used integer not null default 0,
   target_opening_date date,
   readiness_score integer not null default 0 check (readiness_score between 0 and 100),
   onboarding_completed boolean not null default false,

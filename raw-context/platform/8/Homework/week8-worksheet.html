@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 8 Planning Worksheet — Operations & What Comes Next</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --primary:#155e63; --secondary:#76b39d; --light-grey:#efefef; --dark-grey:#afafaf; --white:#ffffff; --amber:#e8a44a; --amber-bg:#fff8ee; --amber-text:#7a5120; }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Poppins',sans-serif; background:var(--light-grey); color:#2a2a2a; }
+
+    .header { background:var(--primary); padding:44px 40px 40px; position:relative; overflow:hidden; }
+    .header::before { content:''; position:absolute; top:-70px; right:-70px; width:260px; height:260px; border-radius:50%; background:rgba(118,179,157,0.16); }
+    .header-inner { max-width:860px; margin:0 auto; position:relative; z-index:1; }
+    .cohort-label { display:inline-block; background:var(--secondary); color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:5px 14px; border-radius:20px; margin-bottom:18px; }
+    .header h1 { font-size:30px; font-weight:800; color:#fff; line-height:1.22; margin-bottom:10px; }
+    .header h1 span { color:var(--secondary); }
+    .header-sub { font-size:14px; color:rgba(255,255,255,.75); line-height:1.68; max-width:580px; margin-bottom:20px; }
+    .week-badge { display:inline-block; background:rgba(255,255,255,.11); color:rgba(255,255,255,.88); font-size:13px; font-weight:600; padding:6px 16px; border-radius:8px; border:1px solid rgba(255,255,255,.2); }
+
+    .body { max-width:860px; margin:0 auto; padding:32px 40px 52px; }
+
+    .section-block { background:#fff; border-radius:14px; padding:26px 28px; box-shadow:0 2px 8px rgba(0,0,0,.05); margin-bottom:22px; }
+    .section-label { display:inline-block; background:var(--primary); color:#fff; font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; padding:4px 12px; border-radius:20px; margin-bottom:12px; }
+    .section-label.secondary { background:var(--secondary); }
+    .section-block h2 { font-size:17px; font-weight:700; color:var(--primary); margin-bottom:6px; }
+    .section-block .intro { font-size:13px; color:#555; line-height:1.68; margin-bottom:18px; font-style:italic; }
+
+    .field-row { display:grid; gap:14px; margin-bottom:14px; }
+    .field-row.cols-2 { grid-template-columns:1fr 1fr; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field label { font-size:11.5px; font-weight:700; color:var(--primary); line-height:1.4; }
+    .field .hint { font-size:11px; color:var(--dark-grey); line-height:1.5; font-style:italic; }
+    .line { border-bottom:1.5px solid #d0d0d0; height:22px; }
+    .lines { display:flex; flex-direction:column; gap:6px; }
+
+    .sub-section { background:var(--light-grey); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+    .sub-section:last-child { margin-bottom:0; }
+    .sub-section-label { font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--primary); margin-bottom:10px; }
+
+    .amber-note { background:var(--amber-bg); border-left:4px solid var(--amber); border-radius:8px; padding:12px 16px; margin-bottom:14px; font-size:12.5px; color:var(--amber-text); line-height:1.65; }
+    .amber-note strong { font-weight:700; }
+
+    /* Vision section — teal bg */
+    .vision-block { background:#e0f0f1; border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+    .vision-block .sub-section-label { color:var(--primary); }
+
+    /* Final call-out box */
+    .callout-box { background:var(--primary); border-radius:14px; padding:26px 28px; margin-bottom:22px; }
+    .callout-box h3 { font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; }
+    .callout-box .field label { color:rgba(255,255,255,.85); }
+    .callout-box .line { border-color:rgba(255,255,255,.3); }
+
+    .footer { background:var(--primary); text-align:center; padding:20px; margin-top:10px; }
+    .footer p { font-size:12px; color:rgba(255,255,255,.5); }
+    .footer strong { color:var(--secondary); font-weight:600; }
+
+    @media(max-width:640px) {
+      .body { padding:22px 18px 40px; }
+      .field-row.cols-2 { grid-template-columns:1fr; }
+    }
+    @media print { body { background:#fff; } .section-block, .callout-box { box-shadow:none; border:1px solid #e0e0e0; } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Operations &amp; What Comes Next<br/><span>Planning Worksheet</span></h1>
+    <p class="header-sub">Work through this before assembling your Business Readiness Document. Use it to surface gaps, sharpen your thinking, and arrive at the live call with something real to say.</p>
+    <div class="week-badge">Week 8 of 8 — Planning Worksheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- SECTION 1 -->
+  <div class="section-block">
+    <span class="section-label">Section 1</span>
+    <h2>Your Operational Readiness</h2>
+    <p class="intro">Answer honestly. These questions reveal gaps more reliably than any checklist.</p>
+    <div class="field-row cols-2" style="margin-bottom:14px;">
+      <div class="field"><label>Will you be on the bar on day one?</label><div class="lines"><div class="line"></div></div></div>
+      <div class="field"><label>How many staff on opening day?</label><div class="lines"><div class="line"></div></div></div>
+    </div>
+    <div class="field-row cols-2" style="margin-bottom:14px;">
+      <div class="field"><label>Target daily revenue — week 1</label><div class="lines"><div class="line"></div></div></div>
+      <div class="field"><label>Break-even daily revenue</label><div class="lines"><div class="line"></div></div></div>
+    </div>
+    <div class="field" style="margin-bottom:14px;"><label>What is the one operational thing you are most anxious about going into opening?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>What will you do in the first week if revenue comes in significantly below your projection?</label>
+      <div class="hint">Have a plan before you need it — not while you are in the middle of it.</div>
+      <div class="lines"><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="field"><label>What process currently only exists in your head that needs to be written down before you open?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="section-block">
+    <span class="section-label secondary">Section 2</span>
+    <h2>Your BRD Consistency Check</h2>
+    <p class="intro">Before you assemble, check that the main components speak to each other.</p>
+    <div class="amber-note"><strong>Read your Week 1 Concept Brief and your Week 4 Menu side by side.</strong> Does the menu feel like a direct expression of the concept? If not, which one needs updating?</div>
+    <div class="field" style="margin-bottom:14px;"><label>Where is the biggest gap between your Week 1 concept and what you are now actually planning to open?</label><div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div></div>
+    <div class="field" style="margin-bottom:14px;"><label>Does your staffing cost in your Week 6 plan match the labour assumptions in your Week 2 financial model? If not, which number is wrong?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    <div class="field"><label>What is the one thing you wish you had known in Week 1 that you now know after going through the full programme?</label><div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div></div>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="section-block">
+    <span class="section-label">Section 3</span>
+    <h2>Your Three-Year Vision</h2>
+    <p class="intro">This is Component 10 of your Business Readiness Document. Write it here first. Not a growth plan — a personal direction statement. Write it for yourself, not for an investor.</p>
+    <div class="vision-block">
+      <div class="sub-section-label">In three years, what does a typical week look like for you as the owner?</div>
+      <div class="hint" style="font-size:11px;color:#555;margin-bottom:10px;font-style:italic;">Are you on the bar every day? Managing from a distance? Running two locations? Be specific.</div>
+      <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="vision-block">
+      <div class="sub-section-label">What does the business look like in three years — size, team, revenue, reputation?</div>
+      <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="vision-block">
+      <div class="sub-section-label">What does this business give you that you could not get another way?</div>
+      <div class="hint" style="font-size:11px;color:#555;margin-bottom:10px;font-style:italic;">Not the business case — the personal answer.</div>
+      <div class="lines"><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="vision-block" style="margin-bottom:0;">
+      <div class="sub-section-label">What would you need to decide or do in the first 90 days to make that three-year version more likely?</div>
+      <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 4 -->
+  <div class="section-block">
+    <span class="section-label secondary">Section 4</span>
+    <h2>Your Biggest Uncertainties</h2>
+    <p class="intro">These are the most valuable things to bring to the live call — not the things you have figured out.</p>
+    <div class="field" style="margin-bottom:14px;"><label>What is the single biggest assumption in your financial model that you are least confident about?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    <div class="field" style="margin-bottom:14px;"><label>What is the one decision you have been putting off that you need to make before you open?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    <div class="field" style="margin-bottom:14px;"><label>What is the question you most want answered at the live call?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    <div class="field-row cols-2">
+      <div class="field"><label>Which component of your BRD are you most confident in?</label><div class="lines"><div class="line"></div></div></div>
+      <div class="field"><label>Which component needs the most work before it is complete?</label><div class="lines"><div class="line"></div></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 5 -->
+  <div class="section-block">
+    <span class="section-label">Section 5</span>
+    <h2>After the Programme — Your Next Steps</h2>
+    <p class="intro">Map out your next concrete steps before the live call so you are not starting from scratch the week after the programme ends.</p>
+    <div class="field" style="margin-bottom:14px;"><label>Your target opening date (or decision date if not yet set)</label><div class="lines"><div class="line"></div></div></div>
+    <div class="field" style="margin-bottom:14px;"><label>The three most important things to complete in the next 30 days after the programme ends</label><div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div></div>
+    <div class="field" style="margin-bottom:14px;"><label>What support, connection, or resource would be most helpful to you in the next 6 months?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    <div class="field"><label>Is in-person barista training at Timberline something you are considering? What questions do you have about it?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+  </div>
+
+  <!-- FINAL CALLOUT -->
+  <div class="callout-box">
+    <h3>For the Live Call</h3>
+    <p style="font-size:13.5px;color:rgba(255,255,255,.78);line-height:1.72;margin-bottom:20px;">Each person shares one thing they are most confident about in their Business Readiness Document, and one thing they are still most uncertain about. Prepare both answers honestly before you arrive. The uncertain thing is more valuable — that is where the best live call conversations start.</p>
+    <div class="field" style="margin-bottom:16px;"><label>I am most confident about:</label><div class="lines"><div class="line"></div></div></div>
+    <div class="field"><label>I am still most uncertain about:</label><div class="lines"><div class="line"></div></div></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Week 8 of 8 — Planning Worksheet</p>
+</div>
+</body>
+</html>

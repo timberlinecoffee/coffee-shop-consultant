@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 6 Reference Sheet — Hiring, Training & Culture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 50px 40px 46px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 300px; height: 300px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header::after  { content: ''; position: absolute; bottom: -40px; left: 30%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .header-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .header h1 { font-size: 34px; font-weight: 800; color: var(--white); line-height: 1.22; margin-bottom: 12px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 14.5px; color: rgba(255,255,255,0.78); line-height: 1.72; max-width: 620px; margin-bottom: 22px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 900px; margin: 0 auto; padding: 36px 40px 56px; }
+    .section-heading { font-size: 21px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .section-sub { font-size: 13.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 22px; }
+
+    /* Role cards */
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    .role-card { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .role-card-header { padding: 16px 20px 14px; }
+    .role-card-header.first { background: var(--primary); }
+    .role-card-header.lead  { background: var(--secondary); }
+    .role-card-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+    .role-card-title { font-size: 18px; font-weight: 800; color: var(--white); }
+    .role-card-body { padding: 16px 20px 18px; }
+    .role-attr { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+    .role-attr-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; margin-top: 6px; }
+    .role-attr p { font-size: 13px; color: #444; line-height: 1.65; margin: 0; }
+    .role-attr strong { color: var(--primary); }
+
+    /* Hiring funnel steps */
+    .funnel-steps { border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
+    .funnel-step { display: flex; border-bottom: 1px solid #eee; }
+    .funnel-step:last-child { border-bottom: none; }
+    .funnel-num { background: var(--primary); color: var(--white); font-size: 13px; font-weight: 800; width: 36px; min-width: 36px; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; }
+    .funnel-content { background: var(--white); flex: 1; padding: 14px 18px 16px; }
+    .funnel-step:nth-child(even) .funnel-content { background: #fafafa; }
+    .funnel-label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--primary); margin-bottom: 5px; }
+    .funnel-content p { font-size: 13.5px; line-height: 1.72; color: #444; }
+    .funnel-content p strong { color: var(--primary); }
+
+    /* Comp table */
+    .comp-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .comp-table th { background: var(--primary); color: var(--white); font-size: 13px; font-weight: 700; padding: 12px 16px; text-align: left; }
+    .comp-table td { font-size: 13px; padding: 10px 16px; border-bottom: 1px solid var(--light-grey); color: #444; vertical-align: top; line-height: 1.6; }
+    .comp-table tr:last-child td { border-bottom: none; }
+    .comp-table tr:nth-child(even) td { background: #fafafa; }
+    .comp-table td strong { color: var(--primary); font-weight: 700; }
+
+    /* Two-col */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    .col-block { background: var(--white); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .col-block-label { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 4px 10px; border-radius: 12px; display: inline-block; margin-bottom: 10px; }
+    .label-green { background: #e0f2f1; color: #0a6a5e; }
+    .label-blue  { background: #e8eaf6; color: #3949ab; }
+    .col-block p { font-size: 13px; line-height: 1.68; color: #444; margin-bottom: 8px; }
+    .col-block p:last-child { margin-bottom: 0; }
+    .col-block p strong { color: var(--primary); }
+
+    /* Training timeline */
+    .training-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    .training-week { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .training-week-header { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--white); }
+    .tw-1 { background: var(--primary); }
+    .tw-2 { background: var(--secondary); }
+    .training-week-body { padding: 14px 16px; }
+    .training-day { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--light-grey); }
+    .training-day:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .training-day-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dark-grey); min-width: 46px; padding-top: 2px; flex-shrink: 0; }
+    .training-day p { font-size: 12.5px; color: #444; line-height: 1.65; }
+
+    /* Info block */
+    .info-block { background: var(--white); border-radius: 14px; padding: 24px 26px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 18px; }
+    .info-block-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--secondary); margin-bottom: 6px; }
+    .info-block-title { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
+    .info-block p { font-size: 13.5px; line-height: 1.72; color: #444; margin-bottom: 10px; }
+    .info-block p:last-child { margin-bottom: 0; }
+    .info-block p strong { color: var(--primary); }
+
+    /* Culture examples */
+    .culture-examples { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+    .culture-ex { border-radius: 12px; padding: 16px 18px; }
+    .culture-ex-good { background: #e8f5f1; }
+    .culture-ex-bad  { background: #fef3f3; }
+    .culture-ex-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+    .culture-ex-good .culture-ex-label { color: #1a7a45; }
+    .culture-ex-bad  .culture-ex-label { color: #c0392b; }
+    .culture-ex p { font-size: 13px; line-height: 1.68; color: #444; margin-bottom: 6px; font-style: italic; }
+    .culture-ex p:last-child { margin-bottom: 0; }
+
+    /* Amber */
+    /* Team structure */
+    .team-structure { background: var(--white); border-radius: 14px; padding: 26px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 28px; display: flex; flex-direction: column; align-items: center; }
+    .team-tier { background: var(--light-grey); border-radius: 10px; padding: 12px 20px; width: 100%; max-width: 540px; text-align: center; }
+    .tier-2 { background: #d6eae8; }
+    .tier-3 { background: #e3f2f0; flex: 1; }
+    .tier-4 { background: #eef7f5; flex: 1; }
+    .tier-5 { background: #f5f5f5; flex: 1; }
+    .team-tier-label { font-size: 13px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+    .team-tier-desc { font-size: 12px; color: #555; line-height: 1.6; }
+    .team-connector { width: 2px; height: 20px; background: var(--secondary); margin: 0 auto; }
+    .team-row { display: flex; gap: 16px; width: 100%; max-width: 700px; }
+    .team-note { margin-top: 20px; background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 8px; padding: 12px 16px; font-size: 12.5px; color: var(--amber-text); line-height: 1.65; width: 100%; }
+    .team-note strong { font-weight: 700; }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; }
+    .amber-note p { font-size: 13.5px; line-height: 1.72; color: var(--amber-text); }
+    .amber-note p + p { margin-top: 8px; }
+    .amber-note strong { font-weight: 700; }
+
+    .footer { background: var(--primary); text-align: center; padding: 22px 20px; margin-top: 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 700px) {
+      .role-grid, .two-col, .training-grid, .culture-examples { grid-template-columns: 1fr; }
+      .body { padding: 28px 22px 44px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Hiring, Training<br/><span>&amp; Culture</span> Reference</h1>
+    <p class="header-sub">The hiring funnel, what to look for in a first hire versus a lead barista, compensation benchmarks, training plan frameworks, and how to write a culture document that actually does something.</p>
+    <div class="week-badge">Week 6 of 8 — Reference Sheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- THE FOUR ROLES -->
+  <div class="section-heading">The Four Core Roles in a Coffee Shop</div>
+  <p class="section-sub">Most cafes at opening will not fill all four of these immediately — and that is fine. Many owners start as barista, lead barista, and manager simultaneously. What matters is understanding what each role is, what it requires, and where it sits in the team so you can plan how your business grows beyond just you.</p>
+
+  <div class="role-grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px;">
+    <div class="role-card">
+      <div class="role-card-header" style="background:#4a4a4a;">
+        <div class="role-card-eyebrow">Support Role</div>
+        <div class="role-card-title">Bar Back</div>
+      </div>
+      <div class="role-card-body">
+        <p style="font-size:13px;line-height:1.68;color:#444;margin-bottom:12px;">The person who keeps the bar running from behind the scenes — restocking, cleaning, prep, and removing friction so baristas can focus entirely on making drinks and serving guests.</p>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Hire for:</strong> Work ethic, speed, attention to detail, ability to anticipate what is needed</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Responsibilities:</strong> Restocking milk, cups, syrups; clearing and cleaning; dishwashing; taking deliveries; light prep</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>When you need one:</strong> Once volume is high enough that baristas are losing time to non-service tasks. Usually from 150+ covers a day.</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Growth path:</strong> The best bar backs become baristas. This role is the best entry point for someone new to coffee with the right work ethic.</p></div>
+      </div>
+    </div>
+    <div class="role-card">
+      <div class="role-card-header first">
+        <div class="role-card-eyebrow">Customer-Facing</div>
+        <div class="role-card-title">Barista</div>
+      </div>
+      <div class="role-card-body">
+        <p style="font-size:13px;line-height:1.68;color:#444;margin-bottom:12px;">The person making drinks and interacting with guests. At opening, this is your most critical hire. They do not need to be the best barista in the city — they need to be reliable, trainable, and genuinely warm with people.</p>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Hire for:</strong> Reliability, warmth, coachability, alignment with your concept</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Train for:</strong> Your specific drinks, your bar setup, your service standard</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Watch for:</strong> How they treat guests, how they handle mistakes, whether they follow through</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Red flags:</strong> Inconsistency, blaming others, treating regulars differently than new faces</p></div>
+      </div>
+    </div>
+    <div class="role-card">
+      <div class="role-card-header lead">
+        <div class="role-card-eyebrow">Senior Bar Role</div>
+        <div class="role-card-title">Lead Barista</div>
+      </div>
+      <div class="role-card-body">
+        <p style="font-size:13px;line-height:1.68;color:#444;margin-bottom:12px;">The person who can run the bar in your absence. All the skill of a strong barista plus the judgment to make decisions, handle problems, and uphold your standard without supervision.</p>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Hire for:</strong> Judgment, initiative, ability to lead peers, ownership of quality</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Responsibilities:</strong> Opening and closing independently, handling complaints, coaching baristas</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Watch for:</strong> Whether their standard holds when you are not watching</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Red flags:</strong> Needs constant direction, standard drops in your absence, undermines others</p></div>
+      </div>
+    </div>
+    <div class="role-card">
+      <div class="role-card-header" style="background:#0d4a4e;">
+        <div class="role-card-eyebrow">Operations Role</div>
+        <div class="role-card-title">Café Manager</div>
+      </div>
+      <div class="role-card-body">
+        <p style="font-size:13px;line-height:1.68;color:#444;margin-bottom:12px;">The person responsible for the full operational picture — scheduling, ordering, staff performance, supplier relationships, and compliance. At opening, the owner usually fills this role. It becomes a hire when the owner needs to step back.</p>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Hire for:</strong> Operational thinking, accountability, leadership, commercial awareness</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Responsibilities:</strong> Rostering, stock ordering, staff reviews, escalated complaints, health &amp; safety compliance, reporting to owner</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>When you need one:</strong> When you have more than 4–5 staff and cannot manage the operation personally. Or sooner if you want to work on the business rather than in it.</p></div>
+        <div class="role-attr"><div class="role-attr-dot"></div><p><strong>Red flags:</strong> Cannot make decisions without approval, avoids accountability, struggles to give direct feedback to peers</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM STRUCTURE -->
+  <div class="section-heading" style="margin-top:16px;">How the Roles Fit Together</div>
+  <p class="section-sub">Most cafes grow through recognisable stages. Knowing the structure in advance means you are building toward it from day one, rather than scrambling to define roles when you are already busy.</p>
+
+  <div class="team-structure">
+    <div class="team-tier">
+      <div class="team-tier-label">Owner / Operator</div>
+      <div class="team-tier-desc">Sets concept, culture, and strategy. At opening, typically also fills the manager and lead barista role. The goal over time is to step back from daily operations.</div>
+    </div>
+    <div class="team-connector"></div>
+    <div class="team-tier tier-2">
+      <div class="team-tier-label">Café Manager</div>
+      <div class="team-tier-desc">Runs operations day-to-day. Handles scheduling, ordering, supplier relationships, staff performance. Often a promoted lead barista with strong operational ability.</div>
+    </div>
+    <div class="team-connector"></div>
+    <div class="team-row">
+      <div class="team-tier tier-3">
+        <div class="team-tier-label">Lead Barista</div>
+        <div class="team-tier-desc">Runs the bar. Coaches baristas, upholds quality and service standard. First point of escalation for bar-level issues.</div>
+      </div>
+    </div>
+    <div class="team-connector"></div>
+    <div class="team-row">
+      <div class="team-tier tier-4">
+        <div class="team-tier-label">Barista(s)</div>
+        <div class="team-tier-desc">Makes drinks, serves guests, follows the training and culture standard.</div>
+      </div>
+      <div class="team-tier tier-5">
+        <div class="team-tier-label">Bar Back(s)</div>
+        <div class="team-tier-desc">Supports the bar with restocking, cleaning, and prep. Reports to lead barista or barista on shift.</div>
+      </div>
+    </div>
+
+    <div class="team-note">
+      <strong>At opening:</strong> Most independent cafes launch with owner + 1–2 baristas. The owner covers manager duties. A lead barista is promoted or hired once there is enough volume to justify stepping back from the bar occasionally. A café manager typically comes later — often 12–24 months in. Bar backs are added when volume makes them necessary. <strong>You do not need all five roles filled to open. You do need to know where each role fits so you can build toward it.</strong>
+    </div>
+  </div>
+
+  <!-- COMPENSATION (UPDATED) -->
+  <div class="section-heading" style="margin-top:16px;">Compensation Benchmarks Across All Roles</div>
+  <p class="section-sub">Indicative ranges only — research your local market. What matters most is being transparent about compensation and tip arrangements from the first conversation.</p>
+
+  <table class="comp-table" style="margin-bottom:16px;">
+    <thead>
+      <tr><th>Role</th><th>Typical Hourly Range</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Bar Back</strong></td><td>Award / minimum wage</td><td>Often tips-eligible depending on your policy. The role is an investment in a future barista.</td></tr>
+      <tr><td><strong>Barista</strong></td><td>Award / minimum + tips</td><td>Increases quickly with reliability and demonstrated skill. Retention is primarily about culture and development, not just pay.</td></tr>
+      <tr><td><strong>Lead Barista</strong></td><td>$1–3 above barista rate + tips</td><td>The additional responsibility of running the bar without supervision should be reflected in pay. Non-negotiable.</td></tr>
+      <tr><td><strong>Café Manager</strong></td><td>$4–8+ above lead barista rate</td><td>Often moves toward a salary structure. Includes scheduling authority, ordering responsibility, and staff management. Benchmark against local hospitality manager rates.</td></tr>
+      <tr><td><strong>Tips (all roles)</strong></td><td>$2–8/hr in good locations</td><td>Decide policy before you hire. Pool split, role-weighted, or individual — all valid. Ambiguity destroys trust fast.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- HIRING FUNNEL -->
+  <div class="section-heading">The Hiring Funnel</div>
+  <p class="section-sub">The process below applies whether you are hiring a bar back or a café manager — but who you are looking for changes at each stage. The working interview in particular looks different depending on the role.</p>
+
+  <div class="funnel-steps">
+    <div class="funnel-step">
+      <div class="funnel-num">1</div>
+      <div class="funnel-content">
+        <div class="funnel-label">Where to Look</div>
+        <p>Start with your roaster — they know who is looking for work in the local coffee scene. Post in specialty coffee community groups, not general job sites. Reach out directly to baristas at cafes you respect. Local hospitality programs are worth checking too. <strong>Word of mouth from people you trust beats an open posting almost every time.</strong></p>
+      </div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-num">2</div>
+      <div class="funnel-content">
+        <div class="funnel-label">What Your Job Description Is Actually For</div>
+        <p>It does two things: attracts the right people and filters out the wrong ones. Be honest about what the role is really like — the pace, the early starts, the physical demands, the emotional labor. A candidate who reads an honest description and still applies is a much better fit than one who was not told the full picture. <strong>Vague job descriptions attract vague candidates.</strong></p>
+      </div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-num">3</div>
+      <div class="funnel-content">
+        <div class="funnel-label">The Initial Screen</div>
+        <p>A short phone or video call before an in-person meeting. Listen for how they talk about previous jobs and whether they sound like someone who takes ownership of things. <strong>Someone who only talks about other people's failures is a signal worth noting.</strong></p>
+      </div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-num">4</div>
+      <div class="funnel-content">
+        <div class="funnel-label">The Working Interview</div>
+        <p>Invite the candidate in for a paid 2–3 hour shift. You see how they move behind a bar, how they interact with guests, and how they respond to feedback in the moment. A CV tells you almost nothing. A working interview tells you nearly everything. <strong>Always pay for their time — this is non-negotiable.</strong></p>
+      </div>
+    </div>
+    <div class="funnel-step">
+      <div class="funnel-num">5</div>
+      <div class="funnel-content">
+        <div class="funnel-label">The Emotional Labor Reality</div>
+        <p>Cafe work involves performing warmth consistently across every interaction, regardless of how you feel that day. This is real, draining work. Look for people who seem genuinely energised by interactions with people — not just tolerant of them. <strong>Technical skill can be trained. The ability to make someone feel genuinely welcome is harder to teach.</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRAINING TWO LAYERS -->
+  <div class="section-heading">Training: Two Layers, Not One</div>
+  <p class="section-sub">Most owners think about training as a technical process. That is only half of it. Effective onboarding has two distinct layers that need to be treated separately.</p>
+
+  <div class="two-col">
+    <div class="col-block">
+      <div class="col-block-label label-green">Layer 1 — Skill Training</div>
+      <p><strong>What it is:</strong> Teaching the specific technical tasks. Your drinks, your equipment, your workflow, your POS.</p>
+      <p><strong>Timeline:</strong> Experienced baristas need about 1 week on a new bar. New-to-coffee hires need 2–3 weeks.</p>
+      <p><strong>How you know it worked:</strong> They can make every item on your menu to standard without asking. They know the POS, the opening checklist, and the closing routine.</p>
+    </div>
+    <div class="col-block">
+      <div class="col-block-label label-blue">Layer 2 — Culture Onboarding</div>
+      <p><strong>What it is:</strong> Teaching who you are as a business, what you care about, and what is expected beyond the technical tasks.</p>
+      <p><strong>Timeline:</strong> Ongoing — not a one-day orientation. The first two weeks are explicit. After that it is reinforced through daily interaction.</p>
+      <p><strong>How you know it worked:</strong> They make the right call in a situation you did not train for, because they understand your values well enough to extrapolate.</p>
+    </div>
+  </div>
+
+  <!-- TRAINING TIMELINE -->
+  <div class="training-grid">
+    <div class="training-week">
+      <div class="training-week-header tw-1">Week 1 — Foundation</div>
+      <div class="training-week-body">
+        <div class="training-day"><div class="training-day-label">Day 1–2</div><p>Concept walkthrough, culture document, bar orientation, equipment overview, safety and food handling basics. No live service.</p></div>
+        <div class="training-day"><div class="training-day-label">Day 3</div><p>Espresso calibration, grinder basics, milk technique to your standard. Practice every milk-based drink on the menu.</p></div>
+        <div class="training-day"><div class="training-day-label">Day 4</div><p>Filter drinks, cold drinks, food items if applicable. POS training. Opening checklist walkthrough.</p></div>
+        <div class="training-day"><div class="training-day-label">Day 5</div><p>Full menu competency check. Shadow a complete service shift. Closing checklist. Debrief on questions.</p></div>
+      </div>
+    </div>
+    <div class="training-week">
+      <div class="training-week-header tw-2">Week 2 — Confidence Under Pressure</div>
+      <div class="training-week-body">
+        <div class="training-day"><div class="training-day-label">Day 6–7</div><p>On bar during service with you present. They take orders and make drinks — you support, not take over unless necessary.</p></div>
+        <div class="training-day"><div class="training-day-label">Day 8</div><p>Rush handling. Drink modifications. How you want difficult customer interactions handled.</p></div>
+        <div class="training-day"><div class="training-day-label">Day 9</div><p>First supervised solo period — you are on site but not on bar. Debrief on what they found hard.</p></div>
+        <div class="training-day"><div class="training-day-label">Day 10</div><p>Sign-off conversation: are they ready for independent shifts? If yes, when. If not, what specifically needs more time.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCA -->
+  <div class="info-block">
+    <div class="info-block-tag">Certifications</div>
+    <div class="info-block-title">SCA and Other Coffee Certifications — Useful, Not Essential</div>
+    <p>The Specialty Coffee Association (SCA) offers a widely recognised skills program covering barista skills, brewing, sensory, and more. For a barista hire, SCA credentials are a useful signal of commitment to the craft — but not a substitute for a working interview or your own in-house training.</p>
+    <p><strong>When it matters most:</strong> If you are opening a specialty shop where coffee knowledge is part of the experience, SCA credentials carry real weight. For a neighbourhood cafe or grab-and-go operation, your in-house standard matters more than any external certificate.</p>
+    <p><strong>As a retention tool:</strong> Consider offering SCA training as a development pathway for good staff once they have been with you 6–12 months. It is a meaningful benefit and raises the quality of your team.</p>
+  </div>
+
+  <!-- CULTURE DOCUMENT -->
+  <div class="section-heading">Writing a Culture Document That Actually Works</div>
+  <p class="section-sub">A culture document is not a values statement. Values statements say what you believe. A culture document says what you do — and what you do not do. The difference is the difference between a poster and a tool.</p>
+
+  <div class="info-block">
+    <div class="info-block-tag">The Core Principle</div>
+    <div class="info-block-title">Observable behaviors, not abstract values</div>
+    <p>The test for every line in your culture document: could you point to it happening — or not happening — in a real shift? If the answer is no, it is not a culture statement, it is a wish. "We are passionate about coffee" cannot be measured. "We taste and adjust the espresso at the start of every shift, not just when something seems wrong" can.</p>
+    <p>Write it so a new hire on day one could read it and know exactly what is expected in concrete situations. And write it so you could reference it in a difficult conversation without it feeling like you invented the rule that day.</p>
+  </div>
+
+  <div class="culture-examples">
+    <div class="culture-ex culture-ex-good">
+      <div class="culture-ex-label">Behaviors worth recognising and rewarding</div>
+      <p>"Noticing when a regular seems off and checking in without being prompted."</p>
+      <p>"Flagging a quality issue before it becomes a customer complaint."</p>
+      <p>"Staying five minutes past the end of a shift to help the next person get settled."</p>
+      <p>"Telling a customer honestly when we are out of something instead of offering a substitute without mentioning it."</p>
+    </div>
+    <div class="culture-ex culture-ex-bad">
+      <div class="culture-ex-label">Behaviors that damage the team</div>
+      <p>"Correcting a customer's drink choice in a way that makes them feel judged."</p>
+      <p>"Leaving end-of-shift cleaning for the next person without saying anything."</p>
+      <p>"Being warm to customers when the owner is watching and clipped when they are not."</p>
+      <p>"Venting about a difficult customer to another staff member in earshot of guests."</p>
+    </div>
+  </div>
+
+  <div class="amber-note">
+    <p><strong>Link it to your concept:</strong> Your culture document and your Week 1 Concept Brief should feel like two parts of the same thing. The concept defines what the experience is meant to be. The culture document defines the human behaviors that deliver it. If you read both and they do not feel connected, one of them needs work.</p>
+  </div>
+
+  <!-- OWNER-OPERATOR TRAP -->
+  <div class="section-heading">The Owner-Operator Trap</div>
+  <p class="section-sub">Most cafe owners intend to step back eventually. Very few design their business from the start for the day they are not there. The documents you write this week are the beginning of that design.</p>
+
+  <div class="info-block">
+    <div class="info-block-tag">The Problem and the Solution</div>
+    <div class="info-block-title">If only you know how to run it, it is not a business — it is a job</div>
+    <p>An owner-operator cafe is one where the owner is the key operational component. Quality depends on them being present. Systems exist in their head. Staff can function for a shift, but not indefinitely without them. This is the default outcome for most first-time cafe owners who do not design against it deliberately.</p>
+    <p>Job descriptions create role clarity. A training outline means your standard can be taught by someone other than you. A culture document means expectations are written down, not just modeled by your behavior on a given day. Add operational checklists, documented recipes, supplier contacts, and escalation procedures — and you gradually build a business that can function without you at the center of every decision.</p>
+    <p><strong>None of that happens if you plan to figure it out after opening. Design for your absence now, even if it is two years away.</strong></p>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Timberline Coffee School &nbsp;&middot;&nbsp; <strong>Coffee Shop Basecamp</strong> &nbsp;&middot;&nbsp; Week 6 of 8 — Reference Sheet</p>
+</div>
+
+</body>
+</html>

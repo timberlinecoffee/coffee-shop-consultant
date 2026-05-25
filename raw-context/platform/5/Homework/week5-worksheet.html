@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Week 5 Worksheet — Bar Layout & Workflow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #155e63;
+      --secondary:  #76b39d;
+      --light-grey: #efefef;
+      --dark-grey:  #afafaf;
+      --white:      #ffffff;
+      --amber:      #e8a44a;
+      --amber-bg:   #fff8ee;
+      --amber-text: #7a5120;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: var(--light-grey); color: #2a2a2a; }
+
+    .header { background: var(--primary); padding: 44px 40px 40px; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; top: -70px; right: -70px; width: 280px; height: 280px; border-radius: 50%; background: rgba(118,179,157,0.16); }
+    .header-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+    .cohort-label { display: inline-block; background: var(--secondary); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 18px; }
+    .header h1 { font-size: 30px; font-weight: 800; color: var(--white); line-height: 1.24; margin-bottom: 10px; }
+    .header h1 span { color: var(--secondary); }
+    .header-sub { font-size: 13.5px; color: rgba(255,255,255,0.75); line-height: 1.7; max-width: 580px; margin-bottom: 18px; }
+    .week-badge { display: inline-block; background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.88); font-size: 12.5px; font-weight: 600; padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .body { max-width: 860px; margin: 0 auto; padding: 30px 40px 56px; }
+
+    .amber-note { background: var(--amber-bg); border-left: 4px solid var(--amber); border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; }
+    .amber-note p { font-size: 13px; line-height: 1.68; color: var(--amber-text); }
+    .amber-note strong { font-weight: 700; }
+
+    /* Section blocks */
+    .section-block { background: var(--white); border-radius: 14px; padding: 26px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 22px; }
+    .section-label { display: inline-block; background: var(--primary); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px; }
+    .section-label.secondary { background: var(--secondary); }
+    .section-block h2 { font-size: 17px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .section-block .intro { font-size: 13px; color: #555; line-height: 1.68; margin-bottom: 18px; }
+
+    /* ── CUSTOMER EXPERIENCE WALK ── */
+    .journey-walk { border: 1px solid #e8e8e8; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .journey-item { display: flex; gap: 0; border-bottom: 1px solid #eee; }
+    .journey-item:last-child { border-bottom: none; }
+    .journey-step-num { background: var(--primary); color: var(--white); font-size: 15px; font-weight: 800; width: 44px; min-width: 44px; display: flex; align-items: flex-start; justify-content: center; padding-top: 18px; }
+    .journey-step-content { flex: 1; padding: 16px 18px 18px; background: var(--white); }
+    .journey-item:nth-child(even) .journey-step-content { background: #fafafa; }
+    .journey-step-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); margin-bottom: 4px; }
+    .journey-step-desc { font-size: 12.5px; color: var(--dark-grey); line-height: 1.6; margin-bottom: 12px; font-style: italic; }
+    .retail-placement-box { background: #e8f4f1; border: 1.5px solid var(--secondary); border-radius: 10px; padding: 14px 16px; margin-top: 4px; }
+    .retail-placement-label { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #0a6a5e; margin-bottom: 8px; }
+    .retail-placement-box p { font-size: 12.5px; line-height: 1.68; color: #2a2a2a; margin-bottom: 12px; }
+    .retail-placement-box p strong { color: var(--primary); }
+    .flow-check-box { background: #eef4f4; border-left: 4px solid var(--primary); border-radius: 10px; padding: 16px 18px; margin-top: 4px; }
+    .flow-check-title { font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+
+    /* Field rows */
+    .field-row { display: grid; gap: 14px; margin-bottom: 14px; }
+    .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+    .field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .field-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .field { }
+    .field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dark-grey); margin-bottom: 6px; }
+    .field .line { border-bottom: 1.5px solid #ddd; height: 28px; width: 100%; }
+    .field .lines { }
+    .field .lines .line { margin-bottom: 5px; }
+
+    /* Grid-paper sketch area */
+    .sketch-area { border: 1.5px dashed #ccc; border-radius: 10px; background: #fafafa; padding: 0; margin-bottom: 18px; overflow: hidden; position: relative; }
+    .sketch-area-inner {
+      background-image:
+        linear-gradient(to right, #e8e8e8 1px, transparent 1px),
+        linear-gradient(to bottom, #e8e8e8 1px, transparent 1px);
+      background-size: 24px 24px;
+      width: 100%;
+      height: 380px;
+    }
+    .sketch-label { position: absolute; top: 12px; left: 16px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dark-grey); background: rgba(255,255,255,0.85); padding: 3px 8px; border-radius: 4px; }
+    .sketch-hint { position: absolute; bottom: 12px; right: 14px; font-size: 10.5px; color: var(--dark-grey); background: rgba(255,255,255,0.85); padding: 3px 8px; border-radius: 4px; font-style: italic; }
+
+    /* Zone blocks */
+    .zone-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .zone-block { border-radius: 10px; overflow: hidden; }
+    .zone-block-header { padding: 9px 14px; font-size: 12px; font-weight: 700; color: var(--white); }
+    .zone-block-header.order   { background: var(--secondary); }
+    .zone-block-header.prod    { background: var(--primary); }
+    .zone-block-header.handoff { background: #3a8a6e; }
+    .zone-block-body { background: var(--light-grey); padding: 12px 14px; }
+    .zone-block-body .field label { color: #888; }
+    .zone-block-body .line { border-color: #ccc; }
+
+    /* Checklist */
+    .checklist { display: flex; flex-direction: column; gap: 4px; }
+    .check-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; background: var(--light-grey); border-radius: 7px; }
+    .check-box { width: 16px; height: 16px; border: 1.5px solid #aaa; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+    .check-text h4 { font-size: 13px; font-weight: 600; color: #222; }
+    .check-text p  { font-size: 11.5px; color: #666; line-height: 1.5; margin-top: 2px; }
+
+    /* Workflow steps */
+    .workflow-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .workflow-step { display: flex; gap: 12px; align-items: flex-start; }
+    .step-num { background: var(--primary); color: var(--white); font-size: 11px; font-weight: 700; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 3px; }
+    .step-content { flex: 1; }
+    .step-content label { display: block; font-size: 11px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    .step-content .line { border-bottom: 1px solid #ddd; height: 22px; }
+
+    /* Bottleneck */
+    .bottleneck-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .bottleneck-card { background: var(--light-grey); border-radius: 9px; border-top: 3px solid var(--amber); padding: 12px 14px; }
+    .bottleneck-card label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--amber-text); margin-bottom: 8px; }
+    .bottleneck-card .line { border-bottom: 1px solid #ccc; height: 20px; margin-bottom: 4px; }
+
+    /* Two-barista test */
+    .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .test-card { background: var(--light-grey); border-radius: 9px; padding: 14px 16px; }
+    .test-card label { display: block; font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .radio-row { display: flex; gap: 20px; margin-bottom: 10px; }
+    .radio-opt { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: #444; }
+    .radio-circle { width: 14px; height: 14px; border: 1.5px solid #aaa; border-radius: 50%; flex-shrink: 0; }
+    .test-card .line { border-bottom: 1px solid #ccc; height: 20px; margin-bottom: 4px; }
+
+    /* Decision */
+    .decision-block { background: var(--primary); border-radius: 14px; padding: 26px 28px; margin-bottom: 22px; }
+    .decision-block h2 { font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+    .decision-block .intro { font-size: 13px; color: rgba(255,255,255,0.78); line-height: 1.68; margin-bottom: 18px; }
+    .decision-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 6px; }
+    .decision-field .dline { border-bottom: 1px solid rgba(255,255,255,0.3); height: 24px; margin-bottom: 6px; }
+    .decision-field { margin-bottom: 16px; }
+
+    .footer { background: var(--primary); text-align: center; padding: 18px 20px; }
+    .footer p { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .footer strong { color: var(--secondary); font-weight: 600; }
+
+    @media (max-width: 680px) {
+      .field-row.cols-2, .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr; }
+      .zone-row, .bottleneck-row, .test-grid { grid-template-columns: 1fr; }
+      .journey-step-num { width: 32px; min-width: 32px; }
+      .body { padding: 22px 18px 40px; }
+    }
+
+    @media print {
+      body { background: white; }
+      .header { padding: 28px 30px; }
+      .body { padding: 20px 30px 30px; }
+      .section-block { box-shadow: none; border: 1px solid #e0e0e0; }
+      .sketch-area-inner { height: 340px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="cohort-label">Coffee Shop Basecamp — 8-Week Cohort</div>
+    <h1>Bar Layout &<br><span>Workflow Worksheet</span></h1>
+    <p class="header-sub">Work through this before the live call. It covers your bar sketch, equipment placement, the three service zones, your drink workflow, and where your bottlenecks are. Bring this — even rough — to the session.</p>
+    <div class="week-badge">Week 5 — Bar Layout & Equipment &nbsp;·&nbsp; Worksheet</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="amber-note">
+    <p><strong>How to use this:</strong> Print this out and work through it with a pen, or fill it in on screen. The sketch area is grid-ruled so you can draw your bar to rough scale. You don't need precise measurements — you need an honest picture of what you're working with and where things will go.</p>
+  </div>
+
+  <!-- SECTION 1: YOUR BAR AT A GLANCE -->
+  <div class="section-block">
+    <span class="section-label">Section 1</span>
+    <h2>Your Bar at a Glance</h2>
+    <p class="intro">Start with what you know — or what you're planning toward. If you don't have a confirmed space yet, fill this in based on your target shop type and size.</p>
+
+    <div class="field-row cols-2">
+      <div class="field"><label>Shop name (or working name)</label><div class="line"></div></div>
+      <div class="field"><label>Shop type (neighbourhood café / grab-and-go / drive-through / other)</label><div class="line"></div></div>
+    </div>
+    <div class="field-row cols-3">
+      <div class="field"><label>Bar counter length (approximate)</label><div class="line"></div></div>
+      <div class="field"><label>Bar depth / width (front to back)</label><div class="line"></div></div>
+      <div class="field"><label>Total floor area (if known)</label><div class="line"></div></div>
+    </div>
+    <div class="field-row cols-4">
+      <div class="field"><label>Max staff on bar at one time</label><div class="line"></div></div>
+      <div class="field"><label>Projected peak-hour covers</label><div class="line"></div></div>
+      <div class="field"><label>Seating (how many, if any)</label><div class="line"></div></div>
+      <div class="field"><label>Drive-through window? (Y/N)</label><div class="line"></div></div>
+    </div>
+    <div class="field-row cols-2">
+      <div class="field"><label>Where is the existing plumbing / drain point?</label><div class="line"></div></div>
+      <div class="field"><label>Is 3-phase power available? (essential for commercial espresso machines)</label><div class="line"></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: BAR SKETCH -->
+  <div class="section-block">
+    <span class="section-label">Section 2</span>
+    <h2>Sketch Your Bar Layout — Top-Down View</h2>
+    <p class="intro">Draw your bar as if you're looking down from above. Mark the counter, the back wall, major equipment, and where the customer stands. Each grid square below represents approximately 30cm × 30cm at standard scale. Label each piece of equipment clearly.</p>
+
+    <div class="sketch-area">
+      <div class="sketch-area-inner"></div>
+      <div class="sketch-label">Bar layout sketch — top-down view</div>
+      <div class="sketch-hint">Each square ≈ 30cm × 30cm</div>
+    </div>
+
+    <p style="font-size:12px; color: var(--dark-grey); margin-bottom:16px; font-style:italic;">Mark on your sketch: espresso machine (E), grinder (G), underbench fridge (F), batch brewer (B), knock box (K), cups (C), till/POS (T), handoff point (H), customer queue direction (→)</p>
+
+    <div class="field-row cols-2">
+      <div class="field"><label>What's the first thing you changed from your initial idea after drawing it?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+      <div class="field"><label>Any constraints that forced your layout (plumbing, power, existing structure)?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: CUSTOMER EXPERIENCE WALK -->
+  <div class="section-block">
+    <span class="section-label">Section 3</span>
+    <h2>The Customer Experience Walk</h2>
+    <p class="intro">Before the live call, walk through your space — or your sketched space — as if you are a customer coming in for the first time. Go through all five steps below. If you don't have a physical space yet, work through this based on your target layout. Be honest about what you find.</p>
+
+    <div class="journey-walk">
+      <div class="journey-item">
+        <div class="journey-step-num">1</div>
+        <div class="journey-step-content">
+          <div class="journey-step-label">Enter</div>
+          <p class="journey-step-desc">You walk in. Where does your eye go first? Is it immediately obvious where to queue or order?</p>
+          <div class="field-row cols-2" style="margin-bottom:0;">
+            <div class="field"><label>What does a first-time customer see the moment they walk in?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+            <div class="field"><label>Is it immediately clear where to go? If not — why not?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-item">
+        <div class="journey-step-num">2</div>
+        <div class="journey-step-content">
+          <div class="journey-step-label">Browse &amp; Queue</div>
+          <p class="journey-step-desc">You join the queue. Can you read the menu from here? What do you pass on the way to the till?</p>
+          <div class="field-row cols-2" style="margin-bottom:12px;">
+            <div class="field"><label>Can the customer read the full menu before reaching the till?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+            <div class="field"><label>How far back in the queue is the menu board visible from?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+          </div>
+          <div class="retail-placement-box">
+            <div class="retail-placement-label">Retail &amp; Pastry Placement Check</div>
+            <p>Your pastry display and any retail products (coffee bags, merchandise, gift cards) should sit along the customer's path <strong>before they reach the POS</strong> — not beside it or after it. A customer who passes the display on the way to the till has already considered adding something. A customer who only sees it after they've paid has already mentally closed their wallet.</p>
+            <div class="field-row cols-2" style="margin-bottom:10px;">
+              <div class="field"><label>Where does your pastry / food display sit relative to the till?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+              <div class="field"><label>Does the customer pass it before they reach the POS? (Y / N / Partially)</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+            </div>
+            <div class="field"><label>If not — what would need to change to move it before the POS?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-item">
+        <div class="journey-step-num">3</div>
+        <div class="journey-step-content">
+          <div class="journey-step-label">Order &amp; Pay</div>
+          <p class="journey-step-desc">You reach the till. Does the staff member feel dedicated to taking your order — or are they also making drinks and juggling things behind them?</p>
+          <div class="field-row cols-2" style="margin-bottom:0;">
+            <div class="field"><label>Is the person taking orders able to focus on the customer, or are they also making drinks?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+            <div class="field"><label>Does anything happening behind the counter interrupt the ordering interaction?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-item">
+        <div class="journey-step-num">4</div>
+        <div class="journey-step-content">
+          <div class="journey-step-label">Wait</div>
+          <p class="journey-step-desc">You've paid. Where do you go? Is there somewhere natural to stand that's out of the queue?</p>
+          <div class="field-row cols-2" style="margin-bottom:0;">
+            <div class="field"><label>Where does a customer naturally go after paying? Is this space obvious?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+            <div class="field"><label>Does the waiting area block or overlap with the ordering queue?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-item" style="border-bottom: none;">
+        <div class="journey-step-num">5</div>
+        <div class="journey-step-content">
+          <div class="journey-step-label">Collect &amp; Leave (or Stay)</div>
+          <p class="journey-step-desc">Your drink is ready. Can you collect it without walking back through the queue? Does the handoff feel smooth?</p>
+          <div class="field-row cols-2" style="margin-bottom:0;">
+            <div class="field"><label>Does collecting the drink require walking back through the queue?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+            <div class="field"><label>Does the handoff feel like a natural end to the interaction — or awkward?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLOW DIRECTION CHECK -->
+    <div class="flow-check-box">
+      <div class="flow-check-title">Flow Direction Check — the Arrow Test</div>
+      <p style="font-size:13px; line-height:1.7; color:#444; margin-bottom:16px;">Go back to your bar sketch from Section 2. Draw two sets of arrows: one showing the path a customer takes from entry to handoff, and one showing the path a barista takes to make your most common drink. Then answer these questions.</p>
+      <div class="field-row cols-2" style="margin-bottom:12px;">
+        <div class="field"><label>Does the customer's path double back on itself at any point?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+        <div class="field"><label>Does the barista's path double back on itself at any point?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+      </div>
+      <div class="field-row cols-2" style="margin-bottom:12px;">
+        <div class="field"><label>Where do the customer and barista paths cross or overlap?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+        <div class="field"><label>Does any crossing point create a collision risk or slow either person down?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+      </div>
+      <div class="field"><label>What is the one change that would most improve the flow for both people simultaneously?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: THREE ZONES -->
+  <div class="section-block">
+    <span class="section-label secondary">Section 4</span>
+    <h2>Your Three Service Zones</h2>
+    <p class="intro">Based on your sketch, describe each zone and where it sits in your bar. Be specific — "near the window" is less useful than "the left side of the counter, 80cm from the entrance."</p>
+
+    <div class="zone-row">
+      <div class="zone-block">
+        <div class="zone-block-header order">Zone 1 — Order</div>
+        <div class="zone-block-body">
+          <div class="field" style="margin-bottom:10px;"><label>Where exactly is it?</label><div class="line"></div><div class="line" style="margin-top:5px;"></div></div>
+          <div class="field" style="margin-bottom:10px;"><label>How does the queue form?</label><div class="line"></div><div class="line" style="margin-top:5px;"></div></div>
+          <div class="field"><label>Where is the menu board relative to this?</label><div class="line"></div><div class="line" style="margin-top:5px;"></div></div>
+        </div>
+      </div>
+      <div class="zone-block">
+        <div class="zone-block-header prod">Zone 2 — Production</div>
+        <div class="zone-block-body">
+          <div class="field" style="margin-bottom:10px;"><label>Where is the espresso machine?</label><div class="line"></div><div class="line" style="margin-top:5px;"></div></div>
+          <div class="field" style="margin-bottom:10px;"><label>How far is the grinder from the machine?</label><div class="line"></div></div>
+          <div class="field"><label>How far is the milk fridge from the steam wand?</label><div class="line"></div></div>
+        </div>
+      </div>
+      <div class="zone-block">
+        <div class="zone-block-header handoff">Zone 3 — Handoff</div>
+        <div class="zone-block-body">
+          <div class="field" style="margin-bottom:10px;"><label>Where exactly is the handoff point?</label><div class="line"></div><div class="line" style="margin-top:5px;"></div></div>
+          <div class="field" style="margin-bottom:10px;"><label>Is it physically separate from the order zone?</label><div class="line"></div></div>
+          <div class="field"><label>How will you call out orders / notify customers?</label><div class="line"></div><div class="line" style="margin-top:5px;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-row cols-2">
+      <div class="field"><label>Do the three zones overlap at any point? Where?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+      <div class="field"><label>If zones overlap — what's your plan to address it?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: EQUIPMENT PLACEMENT CHECK -->
+  <div class="section-block">
+    <span class="section-label">Section 5</span>
+    <h2>Equipment Placement Check</h2>
+    <p class="intro">Tick each one as you confirm it on your sketch. If you can't tick it, make a note of what needs to change.</p>
+
+    <div class="checklist">
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Espresso machine is where barista faces the customer or handoff point</h4><p>Barista can make eye contact and call names without turning around.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Grinder is within one arm's reach of the group head</h4><p>No stepping or reaching across the body to access ground coffee.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Milk fridge is within one step (or directly below) the steam wand</h4><p>Barista does not need to turn around or cross the bar to access milk.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Cups are stored within the production zone, within reach of drink build start</h4><p>No walking to the end of the bar to retrieve cups at the start of each drink.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Knock box is at the barista's working position</h4><p>Not across the bar, not at the far end — directly where the barista stands.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Each barista has at least 900mm of clear working counter space</h4><p>Two people working simultaneously won't constantly reach into each other's space.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>The till / POS is accessible without crossing the production zone</h4><p>The person taking orders doesn't need to step through the barista's workflow to process a payment.</p></div></div>
+      <div class="check-item"><div class="check-box"></div><div class="check-text"><h4>Drain and power points confirmed before finalising bar position</h4><p>Moving a bar because the drain can't reach it is expensive. Confirm this before anything is built.</p></div></div>
+    </div>
+
+    <div class="field" style="margin-top:16px;"><label>Anything you couldn't tick — what needs to change?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+  </div>
+
+  <!-- SECTION 6: WORKFLOW TRACE -->
+  <div class="section-block">
+    <span class="section-label secondary">Section 6</span>
+    <h2>Trace a Drink Through Your Bar</h2>
+    <p class="intro">Pick your highest-volume drink (almost certainly a flat white or latte). Trace every physical step a barista takes from the moment the order is placed to when the drink is handed over. Use your sketch from Section 2 and draw the path with arrows, then describe it below.</p>
+
+    <div class="field-row cols-2" style="margin-bottom:18px;">
+      <div class="field"><label>Drink you are tracing</label><div class="line"></div></div>
+      <div class="field"><label>Estimated total time to make (seconds)</label><div class="line"></div></div>
+    </div>
+
+    <div class="workflow-steps">
+      <div class="workflow-step"><div class="step-num">1</div><div class="step-content"><label>Order placed — what happens first?</label><div class="line"></div></div></div>
+      <div class="workflow-step"><div class="step-num">2</div><div class="step-content"><label>Where does the barista go / reach first?</label><div class="line"></div></div></div>
+      <div class="workflow-step"><div class="step-num">3</div><div class="step-content"><label>Where next?</label><div class="line"></div></div></div>
+      <div class="workflow-step"><div class="step-num">4</div><div class="step-content"><label>What happens simultaneously (if anything)?</label><div class="line"></div></div></div>
+      <div class="workflow-step"><div class="step-num">5</div><div class="step-content"><label>Where next?</label><div class="line"></div></div></div>
+      <div class="workflow-step"><div class="step-num">6</div><div class="step-content"><label>Final steps to handoff</label><div class="line"></div></div></div>
+    </div>
+
+    <div class="field-row cols-2">
+      <div class="field"><label>How many distinct body movements does it take? (steps, turns, reaches)</label><div class="line"></div></div>
+      <div class="field"><label>What would be different at the 8th drink in a row vs the first?</label><div class="lines"><div class="line"></div><div class="line"></div></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 7: BOTTLENECKS -->
+  <div class="section-block">
+    <span class="section-label">Section 7</span>
+    <h2>Bottlenecks You Found</h2>
+    <p class="intro">Based on your workflow trace, where does the process slow down? Where do two people's paths cross? Where would a queue of eight people create pressure that the current layout can't absorb?</p>
+
+    <div class="bottleneck-row">
+      <div class="bottleneck-card">
+        <label>Bottleneck 1</label>
+        <div class="line"></div><div class="line"></div>
+        <div style="margin-top:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color: #888; margin-bottom:5px;">How you plan to fix it</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+      <div class="bottleneck-card">
+        <label>Bottleneck 2</label>
+        <div class="line"></div><div class="line"></div>
+        <div style="margin-top:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color: #888; margin-bottom:5px;">How you plan to fix it</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+      <div class="bottleneck-card">
+        <label>Bottleneck 3</label>
+        <div class="line"></div><div class="line"></div>
+        <div style="margin-top:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color: #888; margin-bottom:5px;">How you plan to fix it</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 8: TWO-BARISTA TEST -->
+  <div class="section-block">
+    <span class="section-label secondary">Section 8</span>
+    <h2>The Two-Barista Test</h2>
+    <p class="intro">Imagine two people working your bar at peak time simultaneously. Go through these questions based on your layout sketch.</p>
+
+    <div class="test-grid">
+      <div class="test-card">
+        <label>Can both baristas reach their equipment without crossing each other's path?</label>
+        <div class="radio-row">
+          <div class="radio-opt"><div class="radio-circle"></div> Yes</div>
+          <div class="radio-opt"><div class="radio-circle"></div> Mostly</div>
+          <div class="radio-opt"><div class="radio-circle"></div> No</div>
+        </div>
+        <div class="field"><label>Notes</label><div class="line"></div></div>
+      </div>
+      <div class="test-card">
+        <label>Can one pull shots while the other steams milk without bumping into each other?</label>
+        <div class="radio-row">
+          <div class="radio-opt"><div class="radio-circle"></div> Yes</div>
+          <div class="radio-opt"><div class="radio-circle"></div> Tight</div>
+          <div class="radio-opt"><div class="radio-circle"></div> No</div>
+        </div>
+        <div class="field"><label>Notes</label><div class="line"></div></div>
+      </div>
+      <div class="test-card">
+        <label>Is there a clear person responsible for the till / order zone, separate from drink production?</label>
+        <div class="radio-row">
+          <div class="radio-opt"><div class="radio-circle"></div> Yes</div>
+          <div class="radio-opt"><div class="radio-circle"></div> Unclear</div>
+          <div class="radio-opt"><div class="radio-circle"></div> No</div>
+        </div>
+        <div class="field"><label>Notes</label><div class="line"></div></div>
+      </div>
+      <div class="test-card">
+        <label>Does the handoff zone stay clear even when both baristas are moving?</label>
+        <div class="radio-row">
+          <div class="radio-opt"><div class="radio-circle"></div> Yes</div>
+          <div class="radio-opt"><div class="radio-circle"></div> Usually</div>
+          <div class="radio-opt"><div class="radio-circle"></div> No</div>
+        </div>
+        <div class="field"><label>Notes</label><div class="line"></div></div>
+      </div>
+    </div>
+
+    <div class="field"><label>Overall — does the layout pass the two-barista test? What would you change?</label><div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div></div></div>
+  </div>
+
+  <!-- DECISION SECTION -->
+  <div class="decision-block">
+    <h2>Your Revised Layout Plan</h2>
+    <p class="intro">Based on everything you've worked through above — what does your revised layout look like? What changed from your first sketch, and why?</p>
+
+    <div class="decision-field">
+      <label>The biggest change I made after working through the worksheet</label>
+      <div class="dline"></div><div class="dline"></div>
+    </div>
+    <div class="decision-field">
+      <label>The one thing I'm still uncertain about and want to discuss on the live call</label>
+      <div class="dline"></div><div class="dline"></div>
+    </div>
+    <div class="decision-field">
+      <label>My next concrete step after this week (e.g. talk to fit-out company, get site measurements, visit equipment dealer)</label>
+      <div class="dline"></div><div class="dline"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>Timberline Coffee School</strong> &nbsp;·&nbsp; Coffee Shop Basecamp &nbsp;·&nbsp; Week 5 Bar Layout & Workflow Worksheet</p>
+</div>
+
+</body>
+</html>
