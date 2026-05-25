@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CandidateListCard } from "@/components/location-lease/CandidateListCard";
 import type { Candidate } from "@/components/location-lease/CandidateListCard";
+import { RubricGridCard } from "@/components/location-lease/RubricGridCard";
+import { LeaseTermsCard } from "@/components/location-lease/LeaseTermsCard";
 import { MapPin } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +84,8 @@ export default async function LocationLeaseWorkspacePage() {
           aiCreditsRemaining={profile?.ai_credits_remaining ?? 0}
           subscriptionTier={profile?.subscription_tier ?? "free"}
         />
+        <RubricGridCard />
+        <LeaseTermsCard />
       </div>
     </div>
   );
