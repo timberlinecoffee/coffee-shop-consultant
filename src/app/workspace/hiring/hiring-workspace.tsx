@@ -125,7 +125,7 @@ function OrgTab({
   planId: string;
   canEdit: boolean;
   roles: OrgRole[];
-  onRolesChange: (r: OrgRole[]) => void;
+  onRolesChange: (r: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [jdPanel, setJdPanel] = useState<JDPanel | null>(null);
@@ -159,10 +159,10 @@ function OrgTab({
     });
     if (res.ok) {
       const created = (await res.json()) as OrgRole;
-      onRolesChange(roles.map((r) => (r.id === optimistic.id ? created : r)));
+      onRolesChange((prev) => prev.map((r) => (r.id === optimistic.id ? created : r)));
       setEditingId(created.id);
     } else {
-      onRolesChange(roles.filter((r) => r.id !== optimistic.id));
+      onRolesChange((prev) => prev.filter((r) => r.id !== optimistic.id));
     }
   }
 
@@ -233,7 +233,7 @@ function OrgTab({
     });
     if (res.ok) {
       const updated = (await res.json()) as OrgRole;
-      onRolesChange(roles.map((r) => (r.id === updated.id ? updated : r)));
+      onRolesChange((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
     }
     setJdPanel(null);
     setJdFields(null);
@@ -2159,7 +2159,10 @@ export function HiringWorkspace({
     { id: "competency", label: "Competency", Icon: Award },
   ];
 
-  const handleRolesChange = useCallback((v: OrgRole[]) => setRoles(v), []);
+  const handleRolesChange = useCallback(
+    (v: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => setRoles(v),
+    [],
+  );
   const handleCandidatesChange = useCallback((v: InterviewCandidate[]) => setCandidates(v), []);
   const handleQuestionsChange = useCallback((v: InterviewQuestion[]) => setQuestions(v), []);
   const handleScoresChange = useCallback((v: InterviewScore[]) => setScores(v), []);
