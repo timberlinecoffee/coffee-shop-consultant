@@ -1,249 +1,82 @@
-// TIM-972: Pure financial projection functions, extracted from financials.ts.
-// TIM-1004: Extended with per-day operating schedule + itemized operating expenses.
-// TIM-1004 follow-up: monthly granularity — computeMonthlyProjections is the primitive;
-// computeAnnualSummary and computeProjections derive from it for TIM-1006 compatibility.
+// Financial projection engine — TIM-1019
+// Computes 60-month P&L, cash flow, and balance sheet projections for a coffee shop.
+// All monetary values in cents. Growth factors match the annual model: Y1=1.0, Y3=1.3, Y5=1.55.
 
-export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export interface FinancialInputs {
+  // Operating schedule
+  days_per_week: number;
+  hours_per_day: number;
 
-export type DailyFlow = Record<DayKey, number>;
-
-export interface DaySchedule {
-  open: boolean;
-  open_time: string;   // "06:30"
-  close_time: string;  // "17:00"
-}
-
-export type WeekSchedule = Record<DayKey, DaySchedule>;
-
-export type OpexLineMode = "pct" | "flat";
-
-export interface OpexLine {
-  mode: OpexLineMode;
-  pct: number;        // % of revenue (used when mode === "pct")
-  flat_cents: number; // monthly, in cents (used when mode === "flat")
-}
-
-export interface MonthlyProjections {
-  // Customer flow
-  daily_flow: DailyFlow;
+  // Revenue
   avg_ticket_cents: number;
+  customers_per_day: number;
 
-  // Per-day operating schedule (replaces open_days_per_week + hours_per_day)
-  weekly_schedule: WeekSchedule;
+  // Revenue mix (% of net revenue; must sum to 100)
+  beverage_revenue_pct: number;
+  food_revenue_pct: number;
+  retail_revenue_pct: number;
 
-  // COGS
-  cogs_pct: number;
+  // COGS by category (% of that category's revenue)
+  beverage_cogs_pct: number;
+  food_cogs_pct: number;
+  retail_cogs_pct: number;
 
-  // Operating Expenses (itemized)
-  labor: OpexLine;                  // wages + payroll taxes + benefits
-  monthly_rent_cents: number;       // flat monthly rent
-  marketing: OpexLine;              // ads, promotions
-  utilities_monthly_cents: number;  // gas, electric, water, internet
-  insurance_monthly_cents: number;  // general liability, workers comp, property
-  tech_monthly_cents: number;       // POS, payment processing, SaaS
-  maintenance_monthly_cents: number; // repairs, maintenance
-  supplies_monthly_cents: number;   // cleaning, paper, smallwares
-  other_monthly_cents: number;      // miscellaneous
+  // OpEx — flat monthly (cents)
+  rent_cents: number;
+  utilities_cents: number;
+  insurance_cents: number;
+  tech_cents: number;
+  maintenance_cents: number;
+  supplies_cents: number;
+  other_opex_cents: number;
 
-  // Below-the-line items
-  interest_monthly_cents: number;
-  taxes_pct: number;
+  // OpEx — % of revenue / COGS
+  labor_pct: number;
+  marketing_pct: number;
+  payment_processing_pct: number;
+  spoilage_pct: number;       // % of total COGS
+  loyalty_discount_pct: number; // % of gross revenue
+
+  // Balance sheet assumptions
+  days_inventory: number;
+  days_payable: number;
+  days_receivable: number;
+
+  // Startup costs (cents)
+  buildout_cost_cents: number;
+  rent_deposits_cents: number;
+  license_permits_cents: number;
+  pre_opening_marketing_cents: number;
+  initial_inventory_cents: number;
+  working_capital_reserve_cents: number;
+  opening_cash_buffer_cents: number;
+
+  // Financing
+  owner_capital_cents: number;
+  loan_amount_cents: number;
+  loan_term_months: number;
+  loan_annual_rate_pct: number;
+
+  // Equipment
+  equipment_cost_cents: number;
+  depreciation_years: number;
+
+  // Tax
+  tax_rate_pct: number;
 }
 
-const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+export interface MonthlySlice {
+  year: number;
+  month: number; // 1-12
 
-export function defaultWeekSchedule(): WeekSchedule {
-  return {
-    mon: { open: true, open_time: "06:30", close_time: "17:00" },
-    tue: { open: true, open_time: "06:30", close_time: "17:00" },
-    wed: { open: true, open_time: "06:30", close_time: "17:00" },
-    thu: { open: true, open_time: "06:30", close_time: "17:00" },
-    fri: { open: true, open_time: "06:30", close_time: "17:00" },
-    sat: { open: true, open_time: "07:00", close_time: "15:00" },
-    sun: { open: false, open_time: "07:00", close_time: "15:00" },
-  };
-}
-
-export function defaultMonthlyProjections(): MonthlyProjections {
-  return {
-    daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
-    avg_ticket_cents: 750,
-    weekly_schedule: defaultWeekSchedule(),
-    cogs_pct: 30,
-    labor: { mode: "pct", pct: 30, flat_cents: 0 },
-    monthly_rent_cents: 450000,
-    marketing: { mode: "pct", pct: 2, flat_cents: 0 },
-    utilities_monthly_cents: 60000,
-    insurance_monthly_cents: 20000,
-    tech_monthly_cents: 25000,
-    maintenance_monthly_cents: 15000,
-    supplies_monthly_cents: 30000,
-    other_monthly_cents: 20000,
-    interest_monthly_cents: 0,
-    taxes_pct: 25,
-  };
-}
-
-function normalizeDaySchedule(raw: unknown, fallback: DaySchedule): DaySchedule {
-  if (!raw || typeof raw !== "object") return fallback;
-  const r = raw as Record<string, unknown>;
-  return {
-    open: typeof r.open === "boolean" ? r.open : fallback.open,
-    open_time: typeof r.open_time === "string" ? r.open_time : fallback.open_time,
-    close_time: typeof r.close_time === "string" ? r.close_time : fallback.close_time,
-  };
-}
-
-function normalizeWeekSchedule(raw: unknown): WeekSchedule {
-  const defaults = defaultWeekSchedule();
-  if (!raw || typeof raw !== "object") return defaults;
-  const r = raw as Record<string, unknown>;
-  return {
-    mon: normalizeDaySchedule(r.mon, defaults.mon),
-    tue: normalizeDaySchedule(r.tue, defaults.tue),
-    wed: normalizeDaySchedule(r.wed, defaults.wed),
-    thu: normalizeDaySchedule(r.thu, defaults.thu),
-    fri: normalizeDaySchedule(r.fri, defaults.fri),
-    sat: normalizeDaySchedule(r.sat, defaults.sat),
-    sun: normalizeDaySchedule(r.sun, defaults.sun),
-  };
-}
-
-function normalizeOpexLine(
-  raw: unknown,
-  defaultMode: OpexLineMode,
-  defaultPct: number,
-  defaultFlat: number
-): OpexLine {
-  if (!raw || typeof raw !== "object") {
-    return { mode: defaultMode, pct: defaultPct, flat_cents: defaultFlat };
-  }
-  const r = raw as Record<string, unknown>;
-  return {
-    mode: r.mode === "pct" || r.mode === "flat" ? r.mode : defaultMode,
-    pct: typeof r.pct === "number" ? r.pct : defaultPct,
-    flat_cents: typeof r.flat_cents === "number" ? r.flat_cents : defaultFlat,
-  };
-}
-
-export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
-  const defaults = defaultMonthlyProjections();
-  if (!raw || typeof raw !== "object") return defaults;
-  const r = raw as Record<string, unknown>;
-
-  const flow =
-    r.daily_flow && typeof r.daily_flow === "object"
-      ? { ...defaults.daily_flow, ...(r.daily_flow as Partial<DailyFlow>) }
-      : defaults.daily_flow;
-
-  // Migration: if weekly_schedule is absent, derive from legacy open_days_per_week
-  let weekly_schedule: WeekSchedule;
-  if (r.weekly_schedule) {
-    weekly_schedule = normalizeWeekSchedule(r.weekly_schedule);
-  } else {
-    weekly_schedule = defaultWeekSchedule();
-    const legacyDays = typeof r.open_days_per_week === "number" ? r.open_days_per_week : 7;
-    if (legacyDays <= 6) weekly_schedule.sun = { ...weekly_schedule.sun, open: false };
-    if (legacyDays <= 5) weekly_schedule.sat = { ...weekly_schedule.sat, open: false };
-  }
-
-  // Labor: migrate from legacy labor_pct
-  let labor: OpexLine;
-  if (r.labor && typeof r.labor === "object") {
-    labor = normalizeOpexLine(r.labor, "pct", 30, 0);
-  } else if (typeof r.labor_pct === "number") {
-    labor = { mode: "pct", pct: r.labor_pct, flat_cents: 0 };
-  } else {
-    labor = defaults.labor;
-  }
-
-  const marketing = r.marketing
-    ? normalizeOpexLine(r.marketing, "pct", 2, 0)
-    : defaults.marketing;
-
-  const monthly_rent_cents =
-    typeof r.monthly_rent_cents === "number" ? r.monthly_rent_cents : defaults.monthly_rent_cents;
-
-  const utilities_monthly_cents =
-    typeof r.utilities_monthly_cents === "number" ? r.utilities_monthly_cents : defaults.utilities_monthly_cents;
-
-  // Migrate legacy other_opex_monthly_cents into the new itemized buckets
-  const legacyOther =
-    typeof r.other_opex_monthly_cents === "number" ? r.other_opex_monthly_cents : null;
-
-  const insurance_monthly_cents =
-    typeof r.insurance_monthly_cents === "number"
-      ? r.insurance_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.25)
-      : defaults.insurance_monthly_cents;
-
-  const tech_monthly_cents =
-    typeof r.tech_monthly_cents === "number"
-      ? r.tech_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.3)
-      : defaults.tech_monthly_cents;
-
-  const maintenance_monthly_cents =
-    typeof r.maintenance_monthly_cents === "number"
-      ? r.maintenance_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.15)
-      : defaults.maintenance_monthly_cents;
-
-  const supplies_monthly_cents =
-    typeof r.supplies_monthly_cents === "number"
-      ? r.supplies_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.15)
-      : defaults.supplies_monthly_cents;
-
-  const other_monthly_cents =
-    typeof r.other_monthly_cents === "number"
-      ? r.other_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.15)
-      : defaults.other_monthly_cents;
-
-  return {
-    daily_flow: flow,
-    avg_ticket_cents:
-      typeof r.avg_ticket_cents === "number" ? r.avg_ticket_cents : defaults.avg_ticket_cents,
-    weekly_schedule,
-    cogs_pct: typeof r.cogs_pct === "number" ? r.cogs_pct : defaults.cogs_pct,
-    labor,
-    monthly_rent_cents,
-    marketing,
-    utilities_monthly_cents,
-    insurance_monthly_cents,
-    tech_monthly_cents,
-    maintenance_monthly_cents,
-    supplies_monthly_cents,
-    other_monthly_cents,
-    interest_monthly_cents:
-      typeof r.interest_monthly_cents === "number" ? r.interest_monthly_cents : defaults.interest_monthly_cents,
-    taxes_pct:
-      typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
-  };
-}
-
-// ── Equipment ─────────────────────────────────────────────────────────────────
-
-export interface EquipmentSummary {
-  total_cost_cents: number;
-  financed_cost_cents: number;
-}
-
-// ── Monthly projection row (60-row computed output, TIM-1004 / TIM-1006) ──────
-
-export interface MonthlyProjectionRow {
-  year: number;        // 1–5
-  month: number;       // 1–12
-  month_index: number; // 1–60 (absolute)
-  // All values in cents
-  revenue_cents: number;
-  cogs_cents: number;
+  // P&L (cents)
+  gross_revenue_cents: number;
+  loyalty_discounts_cents: number;
+  net_revenue_cents: number;
+  beverage_cogs_cents: number;
+  food_cogs_cents: number;
+  retail_cogs_cents: number;
+  total_cogs_cents: number;
   gross_profit_cents: number;
   labor_cents: number;
   rent_cents: number;
@@ -253,225 +86,444 @@ export interface MonthlyProjectionRow {
   tech_cents: number;
   maintenance_cents: number;
   supplies_cents: number;
-  other_misc_cents: number;
+  payment_processing_cents: number;
+  spoilage_cents: number;
+  other_opex_cents: number;
   total_opex_cents: number;
   operating_income_cents: number;
   depreciation_cents: number;
+  ebitda_cents: number;
   interest_cents: number;
   income_before_taxes_cents: number;
   taxes_cents: number;
   net_income_cents: number;
+
+  // Cash flow
+  capex_cents: number;
+  loan_proceeds_cents: number;
+  loan_repayment_cents: number;
+  principal_repayment_cents: number;
+  owner_contribution_cents: number;
+  net_cash_cents: number;
+
+  // Balance sheet end-of-month (cents)
+  cash_cents: number;
+  accounts_receivable_cents: number;
+  inventory_cents: number;
+  fixed_assets_gross_cents: number;
+  accumulated_depreciation_cents: number;
+  net_fixed_assets_cents: number;
+  other_assets_cents: number;
+  total_assets_cents: number;
+  accounts_payable_cents: number;
+  current_debt_cents: number;
+  long_term_debt_cents: number;
+  total_liabilities_cents: number;
+  owner_equity_cents: number;
+  retained_earnings_cents: number;
+  total_equity_cents: number;
+  total_liabilities_and_equity_cents: number;
 }
 
-// ── Projections output ────────────────────────────────────────────────────────
+// Growth factors by year: Y1=1.0, Y3=1.3, Y5=1.55 (linear interpolation for Y2/Y4)
+const GROWTH_FACTORS: Record<number, number> = {
+  1: 1.0,
+  2: 1.15,
+  3: 1.3,
+  4: 1.425,
+  5: 1.55,
+};
 
-export interface YearProjection {
-  revenue: number;
-  cogs: number;
-  gross_profit: number;
-  gross_margin_pct: number;
-  // Operating expenses (itemized)
-  labor: number;
-  rent: number;
-  marketing: number;
-  utilities: number;
-  insurance: number;
-  tech: number;
-  maintenance: number;
-  supplies: number;
-  other_misc: number;
-  total_opex: number;
-  operating_income: number;
-  // Below the line
-  depreciation: number;
-  interest: number;
-  income_before_taxes: number;
-  taxes: number;
-  net_income: number;
-  // Aliases for backward compatibility
-  gross_margin: number;  // === gross_profit
-  ebitda: number;        // === operating_income
+function r(n: number): number {
+  return Math.round(n);
 }
 
-export interface FinancialProjections {
-  year1: YearProjection;
-  year3: YearProjection;
-  year5: YearProjection;
-  startup_equipment_total: number;
-  financed_total: number;
+function monthlyLoanPayment(principal: number, annualRatePct: number, termMonths: number): number {
+  if (principal <= 0 || termMonths <= 0) return 0;
+  if (annualRatePct <= 0) return r(principal / termMonths);
+  const monthlyRate = annualRatePct / 100 / 12;
+  return r(principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths) / (Math.pow(1 + monthlyRate, termMonths) - 1));
 }
 
-// ── Schedule helpers ──────────────────────────────────────────────────────────
+export const FINANCIAL_INPUTS_DEFAULTS: FinancialInputs = {
+  days_per_week: 6,
+  hours_per_day: 10,
+  avg_ticket_cents: 900,
+  customers_per_day: 80,
+  beverage_revenue_pct: 80,
+  food_revenue_pct: 15,
+  retail_revenue_pct: 5,
+  beverage_cogs_pct: 30,
+  food_cogs_pct: 32,
+  retail_cogs_pct: 50,
+  rent_cents: 350000,
+  utilities_cents: 60000,
+  insurance_cents: 40000,
+  tech_cents: 30000,
+  maintenance_cents: 20000,
+  supplies_cents: 25000,
+  other_opex_cents: 20000,
+  labor_pct: 30,
+  marketing_pct: 2,
+  payment_processing_pct: 2.75,
+  spoilage_pct: 3,
+  loyalty_discount_pct: 0,
+  days_inventory: 7,
+  days_payable: 14,
+  days_receivable: 0,
+  buildout_cost_cents: 5000000,
+  rent_deposits_cents: 700000,
+  license_permits_cents: 200000,
+  pre_opening_marketing_cents: 300000,
+  initial_inventory_cents: 200000,
+  working_capital_reserve_cents: 1000000,
+  opening_cash_buffer_cents: 500000,
+  owner_capital_cents: 5000000,
+  loan_amount_cents: 5000000,
+  loan_term_months: 60,
+  loan_annual_rate_pct: 7,
+  equipment_cost_cents: 4000000,
+  depreciation_years: 7,
+  tax_rate_pct: 25,
+};
 
-export function computeDayHours(day: DaySchedule): number {
-  if (!day.open) return 0;
-  const [oh, om] = day.open_time.split(":").map(Number);
-  const [ch, cm] = day.close_time.split(":").map(Number);
-  return Math.max(0, ch + cm / 60 - (oh + om / 60));
-}
-
-export function computeWeeklyHours(schedule: WeekSchedule): number {
-  return DAY_KEYS.reduce((sum, d) => sum + computeDayHours(schedule[d]), 0);
-}
-
-// ── Projection math ───────────────────────────────────────────────────────────
-
-function yearGrowthFactor(year: number): number {
-  if (year === 1) return 1.0;
-  if (year === 2) return 1.15;
-  if (year === 3) return 1.3;
-  if (year === 4) return 1.425;
-  return 1.55; // year 5
-}
-
-export function computeMonthlyProjections(
-  mp: MonthlyProjections,
-  equipment: EquipmentSummary
-): MonthlyProjectionRow[] {
-  const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
-  const weeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
-  const baseMonthlyRevenueCents = Math.round(
-    (weeklyCustomers * 52 * (mp.avg_ticket_cents / 100) * 100) / 12
-  );
-  const monthlyDepreciationCents = Math.round(
-    (equipment.financed_cost_cents / 100 / 7 / 12) * 100
-  );
-
-  const rows: MonthlyProjectionRow[] = [];
-
-  for (let year = 1; year <= 5; year++) {
-    const monthlyRevenueCents = Math.round(baseMonthlyRevenueCents * yearGrowthFactor(year));
-
-    for (let month = 1; month <= 12; month++) {
-      const revenue_cents = monthlyRevenueCents;
-      const cogs_cents = Math.round(revenue_cents * (mp.cogs_pct / 100));
-      const gross_profit_cents = revenue_cents - cogs_cents;
-
-      const labor_cents = mp.labor.mode === "pct"
-        ? Math.round(revenue_cents * (mp.labor.pct / 100))
-        : mp.labor.flat_cents;
-      const rent_cents = mp.monthly_rent_cents;
-      const marketing_cents = mp.marketing.mode === "pct"
-        ? Math.round(revenue_cents * (mp.marketing.pct / 100))
-        : mp.marketing.flat_cents;
-      const utilities_cents = mp.utilities_monthly_cents;
-      const insurance_cents = mp.insurance_monthly_cents;
-      const tech_cents = mp.tech_monthly_cents;
-      const maintenance_cents = mp.maintenance_monthly_cents;
-      const supplies_cents = mp.supplies_monthly_cents;
-      const other_misc_cents = mp.other_monthly_cents;
-
-      const total_opex_cents =
-        labor_cents + rent_cents + marketing_cents + utilities_cents +
-        insurance_cents + tech_cents + maintenance_cents + supplies_cents + other_misc_cents;
-      const operating_income_cents = gross_profit_cents - total_opex_cents;
-
-      const depreciation_cents = monthlyDepreciationCents;
-      const interest_cents = mp.interest_monthly_cents;
-      const income_before_taxes_cents =
-        operating_income_cents - depreciation_cents - interest_cents;
-      const taxes_cents =
-        income_before_taxes_cents > 0
-          ? Math.round(income_before_taxes_cents * (mp.taxes_pct / 100))
-          : 0;
-      const net_income_cents = income_before_taxes_cents - taxes_cents;
-
-      rows.push({
-        year,
-        month,
-        month_index: (year - 1) * 12 + month,
-        revenue_cents,
-        cogs_cents,
-        gross_profit_cents,
-        labor_cents,
-        rent_cents,
-        marketing_cents,
-        utilities_cents,
-        insurance_cents,
-        tech_cents,
-        maintenance_cents,
-        supplies_cents,
-        other_misc_cents,
-        total_opex_cents,
-        operating_income_cents,
-        depreciation_cents,
-        interest_cents,
-        income_before_taxes_cents,
-        taxes_cents,
-        net_income_cents,
-      });
-    }
-  }
-
-  return rows;
-}
-
-export function computeAnnualSummary(
-  rows: MonthlyProjectionRow[],
-  year: 1 | 2 | 3 | 4 | 5
-): YearProjection {
-  const yearRows = rows.filter((r) => r.year === year);
-
-  function sumUsd(field: keyof MonthlyProjectionRow): number {
-    return yearRows.reduce((s, r) => s + (r[field] as number), 0) / 100;
-  }
-
-  const revenue = sumUsd("revenue_cents");
-  const cogs = sumUsd("cogs_cents");
-  const gross_profit = sumUsd("gross_profit_cents");
-  const gross_margin_pct = revenue > 0 ? (gross_profit / revenue) * 100 : 0;
-  const labor = sumUsd("labor_cents");
-  const rent = sumUsd("rent_cents");
-  const marketing = sumUsd("marketing_cents");
-  const utilities = sumUsd("utilities_cents");
-  const insurance = sumUsd("insurance_cents");
-  const tech = sumUsd("tech_cents");
-  const maintenance = sumUsd("maintenance_cents");
-  const supplies = sumUsd("supplies_cents");
-  const other_misc = sumUsd("other_misc_cents");
-  const total_opex = sumUsd("total_opex_cents");
-  const operating_income = sumUsd("operating_income_cents");
-  const depreciation = sumUsd("depreciation_cents");
-  const interest = sumUsd("interest_cents");
-  const income_before_taxes = sumUsd("income_before_taxes_cents");
-  const taxes = sumUsd("taxes_cents");
-  const net_income = sumUsd("net_income_cents");
-
+export function normalizeFinancialInputs(raw: unknown): FinancialInputs {
+  const defaults = FINANCIAL_INPUTS_DEFAULTS;
+  if (!raw || typeof raw !== "object") return { ...defaults };
+  const r = raw as Record<string, unknown>;
+  const n = (key: keyof FinancialInputs) => {
+    const v = r[key];
+    return typeof v === "number" && isFinite(v) ? v : defaults[key];
+  };
   return {
-    revenue, cogs, gross_profit, gross_margin_pct,
-    labor, rent, marketing, utilities, insurance, tech, maintenance, supplies, other_misc,
-    total_opex, operating_income,
-    depreciation, interest, income_before_taxes, taxes, net_income,
-    gross_margin: gross_profit,
-    ebitda: operating_income,
+    days_per_week: n("days_per_week"),
+    hours_per_day: n("hours_per_day"),
+    avg_ticket_cents: n("avg_ticket_cents"),
+    customers_per_day: n("customers_per_day"),
+    beverage_revenue_pct: n("beverage_revenue_pct"),
+    food_revenue_pct: n("food_revenue_pct"),
+    retail_revenue_pct: n("retail_revenue_pct"),
+    beverage_cogs_pct: n("beverage_cogs_pct"),
+    food_cogs_pct: n("food_cogs_pct"),
+    retail_cogs_pct: n("retail_cogs_pct"),
+    rent_cents: n("rent_cents"),
+    utilities_cents: n("utilities_cents"),
+    insurance_cents: n("insurance_cents"),
+    tech_cents: n("tech_cents"),
+    maintenance_cents: n("maintenance_cents"),
+    supplies_cents: n("supplies_cents"),
+    other_opex_cents: n("other_opex_cents"),
+    labor_pct: n("labor_pct"),
+    marketing_pct: n("marketing_pct"),
+    payment_processing_pct: n("payment_processing_pct"),
+    spoilage_pct: n("spoilage_pct"),
+    loyalty_discount_pct: n("loyalty_discount_pct"),
+    days_inventory: n("days_inventory"),
+    days_payable: n("days_payable"),
+    days_receivable: n("days_receivable"),
+    buildout_cost_cents: n("buildout_cost_cents"),
+    rent_deposits_cents: n("rent_deposits_cents"),
+    license_permits_cents: n("license_permits_cents"),
+    pre_opening_marketing_cents: n("pre_opening_marketing_cents"),
+    initial_inventory_cents: n("initial_inventory_cents"),
+    working_capital_reserve_cents: n("working_capital_reserve_cents"),
+    opening_cash_buffer_cents: n("opening_cash_buffer_cents"),
+    owner_capital_cents: n("owner_capital_cents"),
+    loan_amount_cents: n("loan_amount_cents"),
+    loan_term_months: n("loan_term_months"),
+    loan_annual_rate_pct: n("loan_annual_rate_pct"),
+    equipment_cost_cents: n("equipment_cost_cents"),
+    depreciation_years: n("depreciation_years"),
+    tax_rate_pct: n("tax_rate_pct"),
   };
 }
 
-export function computeProjections(
-  mp: MonthlyProjections,
-  equipment: EquipmentSummary
-): FinancialProjections {
-  const rows = computeMonthlyProjections(mp, equipment);
+export function computeMonthlyProjections(inputs: FinancialInputs): MonthlySlice[] {
+  const {
+    days_per_week, avg_ticket_cents, customers_per_day,
+    beverage_revenue_pct, food_revenue_pct, retail_revenue_pct,
+    beverage_cogs_pct, food_cogs_pct, retail_cogs_pct,
+    rent_cents: rent, utilities_cents: utilities, insurance_cents: insurance,
+    tech_cents: tech, maintenance_cents: maintenance, supplies_cents: supplies,
+    other_opex_cents: other_opex,
+    labor_pct, marketing_pct, payment_processing_pct, spoilage_pct,
+    loyalty_discount_pct,
+    days_inventory, days_payable, days_receivable,
+    buildout_cost_cents, rent_deposits_cents, license_permits_cents,
+    pre_opening_marketing_cents, initial_inventory_cents,
+    owner_capital_cents, loan_amount_cents, loan_term_months, loan_annual_rate_pct,
+    equipment_cost_cents, depreciation_years, tax_rate_pct,
+  } = inputs;
+
+  // Monthly base revenue (weeks per month ≈ 52/12)
+  const baseGrossRevenue = r(customers_per_day * (days_per_week * 52 / 12) * avg_ticket_cents);
+  const monthlyDepreciation = depreciation_years > 0
+    ? r(equipment_cost_cents / (depreciation_years * 12))
+    : 0;
+
+  // Loan amortization
+  const monthlyPayment = monthlyLoanPayment(loan_amount_cents, loan_annual_rate_pct, loan_term_months);
+  const monthlyRate = loan_annual_rate_pct / 100 / 12;
+
+  // Starting balance sheet
+  const nonReserveStartupCosts = buildout_cost_cents + rent_deposits_cents + license_permits_cents
+    + pre_opening_marketing_cents + initial_inventory_cents + equipment_cost_cents;
+  let cashBalance = owner_capital_cents + loan_amount_cents - nonReserveStartupCosts;
+  let loanBalance = loan_amount_cents;
+  let accumulatedDepreciation = 0;
+  let retainedEarnings = 0;
+  // Other assets = deposits (prepaid rent etc.)
+  const otherAssets = rent_deposits_cents;
+
+  const slices: MonthlySlice[] = [];
+
+  for (let totalMonth = 1; totalMonth <= 60; totalMonth++) {
+    const year = Math.ceil(totalMonth / 12);
+    const month = ((totalMonth - 1) % 12) + 1;
+    const growthFactor = GROWTH_FACTORS[year] ?? 1.0;
+
+    // P&L
+    const gross_revenue = r(baseGrossRevenue * growthFactor);
+    const loyalty_discounts = r(gross_revenue * loyalty_discount_pct / 100);
+    const net_revenue = gross_revenue - loyalty_discounts;
+
+    const bev_revenue = r(net_revenue * beverage_revenue_pct / 100);
+    const food_revenue = r(net_revenue * food_revenue_pct / 100);
+    const retail_revenue = net_revenue - bev_revenue - food_revenue;
+
+    const beverage_cogs = r(bev_revenue * beverage_cogs_pct / 100);
+    const food_cogs = r(food_revenue * food_cogs_pct / 100);
+    const retail_cogs = r(retail_revenue * retail_cogs_pct / 100);
+    const total_cogs = beverage_cogs + food_cogs + retail_cogs;
+    const gross_profit = net_revenue - total_cogs;
+
+    const labor = r(net_revenue * labor_pct / 100);
+    const marketing = r(net_revenue * marketing_pct / 100);
+    const payment_processing = r(net_revenue * payment_processing_pct / 100);
+    const spoilage = r(total_cogs * spoilage_pct / 100);
+
+    const total_opex = labor + rent + marketing + utilities + insurance + tech + maintenance + supplies + payment_processing + spoilage + other_opex;
+    const operating_income = gross_profit - total_opex;
+    const ebitda = operating_income + monthlyDepreciation;
+
+    // Loan interest
+    const interest = loanBalance > 0 ? r(loanBalance * monthlyRate) : 0;
+    const income_before_taxes = operating_income - monthlyDepreciation - interest;
+    const taxes = income_before_taxes > 0 ? r(income_before_taxes * tax_rate_pct / 100) : 0;
+    const net_income = income_before_taxes - taxes;
+
+    // Loan payment (principal + interest)
+    const loan_repayment = loanBalance > 0 ? Math.min(monthlyPayment, loanBalance + interest) : 0;
+    const principal_repayment = Math.max(0, loan_repayment - interest);
+
+    // Cash flow
+    const capex = 0; // CAPEX was pre-opening; month 1+ = 0 ongoing
+    const loan_proceeds = 0; // proceeds were pre-opening
+    const owner_contribution = 0;
+
+    // Working capital changes (month over month)
+    const prev_ar = slices.length > 0 ? slices[slices.length - 1].accounts_receivable_cents : 0;
+    const prev_inventory = slices.length > 0 ? slices[slices.length - 1].inventory_cents : initial_inventory_cents;
+    const prev_ap = slices.length > 0 ? slices[slices.length - 1].accounts_payable_cents : 0;
+
+    const ar_now = days_receivable > 0 ? r(net_revenue * days_receivable / 30) : 0;
+    const inventory_now = r(total_cogs * days_inventory / 30);
+    const ap_now = r(total_cogs * days_payable / 30);
+
+    const delta_ar = ar_now - prev_ar;
+    const delta_inventory = inventory_now - prev_inventory;
+    const delta_ap = ap_now - prev_ap;
+
+    const net_cash_operating = net_income + monthlyDepreciation - delta_ar - delta_inventory + delta_ap;
+    const net_cash_investing = -capex;
+    const net_cash_financing = loan_proceeds + owner_contribution - loan_repayment;
+    const net_cash = net_cash_operating + net_cash_investing + net_cash_financing;
+
+    // Balance sheet updates
+    loanBalance = Math.max(0, loanBalance - principal_repayment);
+    accumulatedDepreciation += monthlyDepreciation;
+    retainedEarnings += net_income;
+    cashBalance += net_cash;
+
+    const net_fixed_assets = Math.max(0, equipment_cost_cents - accumulatedDepreciation);
+    const total_assets = cashBalance + ar_now + inventory_now + net_fixed_assets + otherAssets;
+
+    // Current portion of LTD = next 12 months' estimated principal
+    const current_debt = loanBalance > 0
+      ? Math.min(loanBalance, r((monthlyPayment - loanBalance * monthlyRate) * 12))
+      : 0;
+    const long_term_debt = Math.max(0, loanBalance - current_debt);
+
+    const total_liabilities = ap_now + current_debt + long_term_debt;
+    const total_equity = owner_capital_cents + retainedEarnings;
+    const total_liabilities_and_equity = total_liabilities + total_equity;
+
+    slices.push({
+      year,
+      month,
+      gross_revenue_cents: gross_revenue,
+      loyalty_discounts_cents: loyalty_discounts,
+      net_revenue_cents: net_revenue,
+      beverage_cogs_cents: beverage_cogs,
+      food_cogs_cents: food_cogs,
+      retail_cogs_cents: retail_cogs,
+      total_cogs_cents: total_cogs,
+      gross_profit_cents: gross_profit,
+      labor_cents: labor,
+      rent_cents: rent,
+      marketing_cents: marketing,
+      utilities_cents: utilities,
+      insurance_cents: insurance,
+      tech_cents: tech,
+      maintenance_cents: maintenance,
+      supplies_cents: supplies,
+      payment_processing_cents: payment_processing,
+      spoilage_cents: spoilage,
+      other_opex_cents: other_opex,
+      total_opex_cents: total_opex,
+      operating_income_cents: operating_income,
+      depreciation_cents: monthlyDepreciation,
+      ebitda_cents: ebitda,
+      interest_cents: interest,
+      income_before_taxes_cents: income_before_taxes,
+      taxes_cents: taxes,
+      net_income_cents: net_income,
+      capex_cents: capex,
+      loan_proceeds_cents: loan_proceeds,
+      loan_repayment_cents: loan_repayment,
+      principal_repayment_cents: principal_repayment,
+      owner_contribution_cents: owner_contribution,
+      net_cash_cents: net_cash,
+      cash_cents: cashBalance,
+      accounts_receivable_cents: ar_now,
+      inventory_cents: inventory_now,
+      fixed_assets_gross_cents: equipment_cost_cents,
+      accumulated_depreciation_cents: accumulatedDepreciation,
+      net_fixed_assets_cents: net_fixed_assets,
+      other_assets_cents: otherAssets,
+      total_assets_cents: total_assets,
+      accounts_payable_cents: ap_now,
+      current_debt_cents: current_debt,
+      long_term_debt_cents: long_term_debt,
+      total_liabilities_cents: total_liabilities,
+      owner_equity_cents: owner_capital_cents,
+      retained_earnings_cents: retainedEarnings,
+      total_equity_cents: total_equity,
+      total_liabilities_and_equity_cents: total_liabilities_and_equity,
+    });
+  }
+
+  return slices;
+}
+
+export interface AnnualSummary {
+  year: number;
+  net_revenue_cents: number;
+  total_cogs_cents: number;
+  gross_profit_cents: number;
+  total_opex_cents: number;
+  operating_income_cents: number;
+  net_income_cents: number;
+  // End-of-year balance sheet snapshot (last month of year)
+  cash_cents: number;
+  total_assets_cents: number;
+  total_liabilities_cents: number;
+  total_equity_cents: number;
+}
+
+export function computeAnnualSummary(slices: MonthlySlice[], year: number): AnnualSummary {
+  const yearSlices = slices.filter((s) => s.year === year);
+  const last = yearSlices[yearSlices.length - 1];
+  const sum = (key: keyof MonthlySlice) =>
+    yearSlices.reduce((acc, s) => acc + (s[key] as number), 0);
+
   return {
-    year1: computeAnnualSummary(rows, 1),
-    year3: computeAnnualSummary(rows, 3),
-    year5: computeAnnualSummary(rows, 5),
-    startup_equipment_total: equipment.total_cost_cents / 100,
-    financed_total: equipment.financed_cost_cents / 100,
+    year,
+    net_revenue_cents: sum("net_revenue_cents"),
+    total_cogs_cents: sum("total_cogs_cents"),
+    gross_profit_cents: sum("gross_profit_cents"),
+    total_opex_cents: sum("total_opex_cents"),
+    operating_income_cents: sum("operating_income_cents"),
+    net_income_cents: sum("net_income_cents"),
+    cash_cents: last?.cash_cents ?? 0,
+    total_assets_cents: last?.total_assets_cents ?? 0,
+    total_liabilities_cents: last?.total_liabilities_cents ?? 0,
+    total_equity_cents: last?.total_equity_cents ?? 0,
   };
 }
 
-export function formatCurrency(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) {
-    return `${n < 0 ? "-" : ""}$${(abs / 1_000_000).toFixed(1)}M`;
+// Quarterly rollup: 1=Q1, 2=Q2, 3=Q3, 4=Q4
+export function getQuarterSlices(slices: MonthlySlice[], year: number, quarter: number): MonthlySlice[] {
+  const startMonth = (quarter - 1) * 3 + 1;
+  return slices.filter((s) => s.year === year && s.month >= startMonth && s.month < startMonth + 3);
+}
+
+export function sumSlices(slices: MonthlySlice[]): Partial<MonthlySlice> {
+  if (slices.length === 0) return {};
+  const last = slices[slices.length - 1];
+  const sum = (key: keyof MonthlySlice) =>
+    slices.reduce((acc, s) => acc + (s[key] as number), 0);
+  return {
+    gross_revenue_cents: sum("gross_revenue_cents"),
+    loyalty_discounts_cents: sum("loyalty_discounts_cents"),
+    net_revenue_cents: sum("net_revenue_cents"),
+    beverage_cogs_cents: sum("beverage_cogs_cents"),
+    food_cogs_cents: sum("food_cogs_cents"),
+    retail_cogs_cents: sum("retail_cogs_cents"),
+    total_cogs_cents: sum("total_cogs_cents"),
+    gross_profit_cents: sum("gross_profit_cents"),
+    labor_cents: sum("labor_cents"),
+    rent_cents: sum("rent_cents"),
+    marketing_cents: sum("marketing_cents"),
+    utilities_cents: sum("utilities_cents"),
+    insurance_cents: sum("insurance_cents"),
+    tech_cents: sum("tech_cents"),
+    maintenance_cents: sum("maintenance_cents"),
+    supplies_cents: sum("supplies_cents"),
+    payment_processing_cents: sum("payment_processing_cents"),
+    spoilage_cents: sum("spoilage_cents"),
+    other_opex_cents: sum("other_opex_cents"),
+    total_opex_cents: sum("total_opex_cents"),
+    operating_income_cents: sum("operating_income_cents"),
+    depreciation_cents: sum("depreciation_cents"),
+    ebitda_cents: sum("ebitda_cents"),
+    interest_cents: sum("interest_cents"),
+    income_before_taxes_cents: sum("income_before_taxes_cents"),
+    taxes_cents: sum("taxes_cents"),
+    net_income_cents: sum("net_income_cents"),
+    capex_cents: sum("capex_cents"),
+    loan_repayment_cents: sum("loan_repayment_cents"),
+    principal_repayment_cents: sum("principal_repayment_cents"),
+    net_cash_cents: sum("net_cash_cents"),
+    // Balance sheet: end-of-period snapshot
+    cash_cents: last.cash_cents,
+    accounts_receivable_cents: last.accounts_receivable_cents,
+    inventory_cents: last.inventory_cents,
+    fixed_assets_gross_cents: last.fixed_assets_gross_cents,
+    accumulated_depreciation_cents: last.accumulated_depreciation_cents,
+    net_fixed_assets_cents: last.net_fixed_assets_cents,
+    other_assets_cents: last.other_assets_cents,
+    total_assets_cents: last.total_assets_cents,
+    accounts_payable_cents: last.accounts_payable_cents,
+    current_debt_cents: last.current_debt_cents,
+    long_term_debt_cents: last.long_term_debt_cents,
+    total_liabilities_cents: last.total_liabilities_cents,
+    owner_equity_cents: last.owner_equity_cents,
+    retained_earnings_cents: last.retained_earnings_cents,
+    total_equity_cents: last.total_equity_cents,
+    total_liabilities_and_equity_cents: last.total_liabilities_and_equity_cents,
+  };
+}
+
+export function fmt(cents: number, compact = false): string {
+  const dollars = cents / 100;
+  if (compact && Math.abs(dollars) >= 1000) {
+    return "$" + (dollars / 1000).toFixed(1) + "K";
   }
-  if (abs >= 1_000) {
-    return `${n < 0 ? "-" : ""}$${Math.round(abs / 100) / 10}K`;
-  }
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return "$" + dollars.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+export function pct(numerator: number, denominator: number): string {
+  if (denominator === 0) return "—";
+  return (numerator / denominator * 100).toFixed(1) + "%";
 }
