@@ -13,6 +13,7 @@ import {
   type MonthlyProjections,
   type FinancialProjections,
   type MonthlySlice,
+  type FinancialInputs,
   type DayKey,
   type DaySchedule,
   type OpexLine,
@@ -23,6 +24,11 @@ import {
   formatCurrency,
 } from "@/lib/financial-projection";
 import { PLTab } from "./tabs/pl-tab";
+import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
+import { CashFlowTab } from "./tabs/cash-flow-tab";
+import { BreakEvenTab } from "./tabs/break-even-tab";
+import { RatiosTab } from "./tabs/ratios-tab";
+import { StartupTab } from "./tabs/startup-tab";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -72,7 +78,58 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "projections";
+type Tab = "forecast" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
+
+function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
+  const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
+  const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
+    (k) => mp.weekly_schedule[k].open
+  );
+  const totalDailyCustomers = openDayKeys.reduce((sum, k) => sum + (mp.daily_flow[k] ?? 0), 0);
+  const avgCustomersPerDay = openDays > 0 ? Math.round(totalDailyCustomers / openDays) : 0;
+
+  return {
+    days_per_week: openDays,
+    hours_per_day: 10,
+    avg_ticket_cents: mp.avg_ticket_cents,
+    customers_per_day: avgCustomersPerDay,
+    beverage_revenue_pct: 70,
+    food_revenue_pct: 20,
+    retail_revenue_pct: 10,
+    beverage_cogs_pct: 30,
+    food_cogs_pct: 35,
+    retail_cogs_pct: 45,
+    rent_cents: mp.monthly_rent_cents,
+    labor_pct: mp.labor.mode === "pct" ? mp.labor.pct : 30,
+    marketing_pct: mp.marketing.mode === "pct" ? mp.marketing.pct : 2,
+    utilities_cents: mp.utilities_monthly_cents,
+    insurance_cents: mp.insurance_monthly_cents,
+    tech_cents: mp.tech_monthly_cents,
+    maintenance_cents: mp.maintenance_monthly_cents,
+    supplies_cents: mp.supplies_monthly_cents,
+    payment_processing_pct: 2.5,
+    spoilage_pct: 2,
+    loyalty_discount_pct: 1,
+    other_opex_cents: mp.other_monthly_cents,
+    buildout_cost_cents: 15000000,
+    equipment_cost_cents: 5000000,
+    rent_deposits_cents: 900000,
+    license_permits_cents: 500000,
+    pre_opening_marketing_cents: 300000,
+    initial_inventory_cents: 200000,
+    working_capital_reserve_cents: 1500000,
+    opening_cash_buffer_cents: 1000000,
+    owner_capital_cents: 15000000,
+    loan_amount_cents: 10000000,
+    loan_term_months: 60,
+    loan_annual_rate_pct: 6.5,
+    depreciation_years: 10,
+    tax_rate_pct: mp.taxes_pct,
+    days_inventory: 7,
+    days_payable: 30,
+    days_receivable: 1,
+  };
+}
 
 interface Props {
   planId: string;
@@ -1039,6 +1096,9 @@ export function FinancialsWorkspace({
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
+  const [financialInputs, setFinancialInputs] = useState<FinancialInputs>(() =>
+    deriveFinancialInputs(initialProjections)
+  );
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
@@ -1139,6 +1199,20 @@ export function FinancialsWorkspace({
 
   function handleMpUpdate(next: MonthlyProjections) {
     setMp(next);
+    setFinancialInputs((prev) => ({
+      ...prev,
+      avg_ticket_cents: next.avg_ticket_cents,
+      rent_cents: next.monthly_rent_cents,
+      labor_pct: next.labor.mode === "pct" ? next.labor.pct : prev.labor_pct,
+      marketing_pct: next.marketing.mode === "pct" ? next.marketing.pct : prev.marketing_pct,
+      utilities_cents: next.utilities_monthly_cents,
+      insurance_cents: next.insurance_monthly_cents,
+      tech_cents: next.tech_monthly_cents,
+      maintenance_cents: next.maintenance_monthly_cents,
+      supplies_cents: next.supplies_monthly_cents,
+      other_opex_cents: next.other_monthly_cents,
+      tax_rate_pct: next.taxes_pct,
+    }));
     scheduleSave(next);
   }
 
@@ -1168,7 +1242,12 @@ export function FinancialsWorkspace({
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "forecast", label: "Forecast Inputs" },
-    { id: "projections", label: "Projections" },
+    { id: "projections", label: "P&L" },
+    { id: "balance-sheet", label: "Balance Sheet" },
+    { id: "cash-flow", label: "Cash Flow" },
+    { id: "break-even", label: "Break-Even" },
+    { id: "ratios", label: "Ratios" },
+    { id: "startup", label: "Startup Costs" },
   ];
 
   return (
@@ -1208,14 +1287,14 @@ export function FinancialsWorkspace({
           </div>
         )}
 
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1">
+        <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+          <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1 overflow-x-auto max-w-full">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => setActiveTab(t.id)}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors ${
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
                   activeTab === t.id
                     ? "bg-[#155e63] text-white"
                     : "text-[#6b6b6b] hover:text-[#1a1a1a]"
@@ -1257,6 +1336,11 @@ export function FinancialsWorkspace({
             onCritiqueUpdate={handleCritiqueUpdate}
           />
         )}
+        {activeTab === "balance-sheet" && <BalanceSheetTab slices={slices} />}
+        {activeTab === "cash-flow" && <CashFlowTab slices={slices} />}
+        {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} />}
+        {activeTab === "ratios" && <RatiosTab slices={slices} />}
+        {activeTab === "startup" && <StartupTab inputs={financialInputs} />}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
