@@ -1,0 +1,442 @@
+"use client";
+
+// TIM-1102: LivePlan-style flexible forecast-line editor. Renders per-category
+// (Revenue / COGS / Overhead / Capex) sections, each with editable lines that
+// support flat-$ vs %-of-sales modes, optional ramp periods, and optional
+// per-line growth rates.
+
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Sliders } from "lucide-react";
+import type {
+  ForecastLine,
+  ForecastCategory,
+  LineRamp,
+  LineGrowth,
+} from "@/lib/financial-projection";
+
+const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
+  revenue: {
+    label: "Revenue",
+    hint: "Additional revenue streams beyond foot-traffic ticket sales (e.g. wholesale, catering, retail).",
+    valueLabel: "of base revenue",
+  },
+  cogs: {
+    label: "Cost Of Goods (COGS)",
+    hint: "Costs that scale with revenue: ingredients, packaging, wholesale supply.",
+    valueLabel: "of revenue",
+  },
+  overhead: {
+    label: "Operating Expenses (Overhead)",
+    hint: "Fixed and variable expenses to run the business: labor, rent, utilities, marketing.",
+    valueLabel: "of revenue",
+  },
+  capex: {
+    label: "Asset Purchases (Capex)",
+    hint: "One-time investments (equipment, build-out). Charged in the start month and depreciated.",
+    valueLabel: "(one-time)",
+  },
+};
+
+function genId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `line:${crypto.randomUUID()}`;
+  }
+  return `line:${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+}
+
+function defaultRamp(): LineRamp {
+  return { enabled: true, start_month: 1, ramp_months: 3, start_pct: 30 };
+}
+
+function defaultGrowth(): LineGrowth {
+  return { enabled: true, monthly_pct: 1 };
+}
+
+interface LineRowProps {
+  line: ForecastLine;
+  canEdit: boolean;
+  onChange: (next: ForecastLine) => void;
+  onDelete: () => void;
+}
+
+function LineRow({ line, canEdit, onChange, onDelete }: LineRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const inputCls =
+    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+
+  const isCapex = line.category === "capex";
+
+  // Capex: only flat mode; one-time charge in start_month. No pct toggle, no growth.
+  return (
+    <div className="border border-[#efefef] rounded-xl bg-white">
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="text-[#afafaf] hover:text-[#1a1a1a] shrink-0"
+          aria-label={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        <input
+          type="text"
+          value={line.label}
+          onChange={(e) => onChange({ ...line, label: e.target.value })}
+          disabled={!canEdit}
+          className={`${inputCls} flex-1 min-w-0 font-medium`}
+          aria-label="Line item name"
+        />
+
+        {!isCapex && (
+          <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => onChange({ ...line, mode: "flat" })}
+              className={`text-xs px-2 py-1 font-medium transition-colors ${
+                line.mode === "flat" ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
+              }`}
+              aria-label="Static dollar amount"
+            >
+              $
+            </button>
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => onChange({ ...line, mode: "pct" })}
+              className={`text-xs px-2 py-1 font-medium transition-colors ${
+                line.mode === "pct" ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
+              }`}
+              aria-label="Percent of revenue"
+            >
+              %
+            </button>
+          </div>
+        )}
+
+        <div className="relative w-28 shrink-0">
+          {line.mode === "flat" ? (
+            <>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+                $
+              </span>
+              <input
+                className={`${inputCls} w-full pl-5`}
+                type="number"
+                min={0}
+                step={50}
+                value={line.value ? line.value / 100 : ""}
+                onChange={(e) =>
+                  onChange({
+                    ...line,
+                    value: Math.round((parseFloat(e.target.value) || 0) * 100),
+                  })
+                }
+                placeholder="0"
+                disabled={!canEdit}
+                aria-label="Amount"
+              />
+            </>
+          ) : (
+            <>
+              <input
+                className={`${inputCls} w-full pr-6`}
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={line.value || ""}
+                onChange={(e) => onChange({ ...line, value: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
+                disabled={!canEdit}
+                aria-label="Percent"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+                %
+              </span>
+            </>
+          )}
+        </div>
+
+        {!isCapex && (
+          <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
+            {line.mode === "pct" ? "% of rev" : "/ mo"}
+          </span>
+        )}
+        {isCapex && (
+          <span className="text-[10px] text-[#afafaf] shrink-0 w-16">one-time</span>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          disabled={!canEdit}
+          className={`text-xs px-2 py-1 rounded-md transition-colors shrink-0 ${
+            line.ramp?.enabled || line.growth?.enabled || isCapex
+              ? "bg-[#155e63]/10 text-[#155e63]"
+              : "text-[#afafaf] hover:text-[#1a1a1a]"
+          }`}
+          aria-label="Advanced settings"
+          title="Ramp & growth"
+        >
+          <Sliders size={12} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={!canEdit}
+          className="text-[#afafaf] hover:text-[#a13d3d] shrink-0 disabled:opacity-50"
+          aria-label="Remove line item"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-[#f5f5f5] pt-3 space-y-3 bg-[#fafafa]">
+          {/* Ramp */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={line.ramp?.enabled ?? false}
+                disabled={!canEdit}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    onChange({
+                      ...line,
+                      ramp: line.ramp ? { ...line.ramp, enabled: true } : defaultRamp(),
+                    });
+                  } else if (line.ramp) {
+                    onChange({ ...line, ramp: { ...line.ramp, enabled: false } });
+                  }
+                }}
+                className="w-3.5 h-3.5 accent-[#155e63]"
+              />
+              <span className="text-xs font-medium text-[#1a1a1a]">
+                Ramp period — line starts below full level and ramps up
+              </span>
+            </label>
+            {line.ramp?.enabled && (
+              <div className="ml-6 mt-2 grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">Start month</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={line.ramp.start_month}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      onChange({
+                        ...line,
+                        ramp: { ...line.ramp!, start_month: Math.max(1, parseInt(e.target.value, 10) || 1) },
+                      })
+                    }
+                    className={inputCls + " w-full"}
+                  />
+                </div>
+                {!isCapex && (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
+                        Ramp duration (mo)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={24}
+                        value={line.ramp.ramp_months}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          onChange({
+                            ...line,
+                            ramp: {
+                              ...line.ramp!,
+                              ramp_months: Math.max(0, Math.min(24, parseInt(e.target.value, 10) || 0)),
+                            },
+                          })
+                        }
+                        className={inputCls + " w-full"}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
+                        Start at % of full
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={line.ramp.start_pct}
+                        disabled={!canEdit}
+                        onChange={(e) =>
+                          onChange({
+                            ...line,
+                            ramp: {
+                              ...line.ramp!,
+                              start_pct: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)),
+                            },
+                          })
+                        }
+                        className={inputCls + " w-full"}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Growth (not for capex) */}
+          {!isCapex && (
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={line.growth?.enabled ?? false}
+                  disabled={!canEdit}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      onChange({
+                        ...line,
+                        growth: line.growth ? { ...line.growth, enabled: true } : defaultGrowth(),
+                      });
+                    } else if (line.growth) {
+                      onChange({ ...line, growth: { ...line.growth, enabled: false } });
+                    }
+                  }}
+                  className="w-3.5 h-3.5 accent-[#155e63]"
+                />
+                <span className="text-xs font-medium text-[#1a1a1a]">
+                  Monthly growth — compounds each month after ramp completes
+                </span>
+              </label>
+              {line.growth?.enabled && (
+                <div className="ml-6 mt-2 max-w-[200px]">
+                  <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">Growth % / mo</label>
+                  <input
+                    type="number"
+                    min={-100}
+                    max={100}
+                    step={0.1}
+                    value={line.growth.monthly_pct}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      onChange({
+                        ...line,
+                        growth: { ...line.growth!, monthly_pct: parseFloat(e.target.value) || 0 },
+                      })
+                    }
+                    className={inputCls + " w-full"}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface SectionProps {
+  category: ForecastCategory;
+  lines: ForecastLine[];
+  canEdit: boolean;
+  onLinesChange: (next: ForecastLine[]) => void;
+}
+
+function CategorySection({ category, lines, canEdit, onLinesChange }: SectionProps) {
+  const meta = CATEGORY_META[category];
+  const myLines = lines.filter((l) => l.category === category);
+
+  function addLine() {
+    const defaultMode = category === "capex" ? "flat" : (category === "cogs" ? "pct" : "flat");
+    const newLine: ForecastLine = {
+      id: genId(),
+      label: `New ${meta.label.split(" ")[0].toLowerCase()} line`,
+      category,
+      mode: defaultMode,
+      value: 0,
+    };
+    if (category === "capex") {
+      // Capex defaults to start at month 1
+      newLine.ramp = { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 };
+    }
+    onLinesChange([...lines, newLine]);
+  }
+
+  function updateLine(idx: number, next: ForecastLine) {
+    const allMyIdx = lines.map((l, i) => (l.category === category ? i : -1)).filter((i) => i >= 0);
+    const targetIdx = allMyIdx[idx];
+    if (targetIdx === undefined) return;
+    const copy = [...lines];
+    copy[targetIdx] = next;
+    onLinesChange(copy);
+  }
+
+  function deleteLine(idx: number) {
+    const allMyIdx = lines.map((l, i) => (l.category === category ? i : -1)).filter((i) => i >= 0);
+    const targetIdx = allMyIdx[idx];
+    if (targetIdx === undefined) return;
+    onLinesChange(lines.filter((_, i) => i !== targetIdx));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">{meta.label}</p>
+          <p className="text-[10px] text-[#afafaf] mt-0.5">{meta.hint}</p>
+        </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={addLine}
+            className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md"
+          >
+            <Plus size={12} /> Add line
+          </button>
+        )}
+      </div>
+      <div className="space-y-2">
+        {myLines.length === 0 ? (
+          <p className="text-xs text-[#afafaf] italic py-2 px-3 bg-[#faf9f7] rounded-lg">
+            No {meta.label.toLowerCase()} lines yet.
+          </p>
+        ) : (
+          myLines.map((line, idx) => (
+            <LineRow
+              key={line.id}
+              line={line}
+              canEdit={canEdit}
+              onChange={(next) => updateLine(idx, next)}
+              onDelete={() => deleteLine(idx)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface Props {
+  lines: ForecastLine[];
+  canEdit: boolean;
+  onChange: (next: ForecastLine[]) => void;
+}
+
+export function ForecastLinesEditor({ lines, canEdit, onChange }: Props) {
+  return (
+    <div className="space-y-6">
+      <CategorySection category="revenue" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
+      <CategorySection category="cogs" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
+      <CategorySection category="overhead" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
+      <CategorySection category="capex" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
+    </div>
+  );
+}

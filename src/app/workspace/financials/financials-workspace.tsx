@@ -16,7 +16,7 @@ import {
   type FinancialInputs,
   type DayKey,
   type DaySchedule,
-  type OpexLine,
+  type ForecastLine,
   computeProjections,
   computeMonthlySlices,
   computeDayHours,
@@ -29,6 +29,7 @@ import { CashFlowTab } from "./tabs/cash-flow-tab";
 import { BreakEvenTab } from "./tabs/break-even-tab";
 import { RatiosTab } from "./tabs/ratios-tab";
 import { StartupTab } from "./tabs/startup-tab";
+import { ForecastLinesEditor } from "./forecast-lines-editor";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -80,6 +81,10 @@ type SaveState =
 
 type Tab = "forecast" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
 
+function findLineByKey(lines: ForecastLine[], key: string) {
+  return lines.find((l) => l.legacy_key === key);
+}
+
 function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
   const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
   const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
@@ -87,6 +92,15 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
   );
   const totalDailyCustomers = openDayKeys.reduce((sum, k) => sum + (mp.daily_flow[k] ?? 0), 0);
   const avgCustomersPerDay = openDays > 0 ? Math.round(totalDailyCustomers / openDays) : 0;
+
+  const labor = findLineByKey(mp.forecast_lines, "labor");
+  const rent = findLineByKey(mp.forecast_lines, "rent");
+  const marketing = findLineByKey(mp.forecast_lines, "marketing");
+  const utilities = findLineByKey(mp.forecast_lines, "utilities");
+  const insurance = findLineByKey(mp.forecast_lines, "insurance");
+  const tech = findLineByKey(mp.forecast_lines, "tech");
+  const maintenance = findLineByKey(mp.forecast_lines, "maintenance");
+  const supplies = findLineByKey(mp.forecast_lines, "supplies");
 
   return {
     days_per_week: openDays,
@@ -99,18 +113,18 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     beverage_cogs_pct: 30,
     food_cogs_pct: 35,
     retail_cogs_pct: 45,
-    rent_cents: mp.monthly_rent_cents,
-    labor_pct: mp.labor.mode === "pct" ? mp.labor.pct : 30,
-    marketing_pct: mp.marketing.mode === "pct" ? mp.marketing.pct : 2,
-    utilities_cents: mp.utilities_monthly_cents,
-    insurance_cents: mp.insurance_monthly_cents,
-    tech_cents: mp.tech_monthly_cents,
-    maintenance_cents: mp.maintenance_monthly_cents,
-    supplies_cents: mp.supplies_monthly_cents,
+    rent_cents: rent?.mode === "flat" ? rent.value : 0,
+    labor_pct: labor?.mode === "pct" ? labor.value : 30,
+    marketing_pct: marketing?.mode === "pct" ? marketing.value : 2,
+    utilities_cents: utilities?.mode === "flat" ? utilities.value : 0,
+    insurance_cents: insurance?.mode === "flat" ? insurance.value : 0,
+    tech_cents: tech?.mode === "flat" ? tech.value : 0,
+    maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : 0,
+    supplies_cents: supplies?.mode === "flat" ? supplies.value : 0,
     payment_processing_pct: 2.5,
     spoilage_pct: 2,
     loyalty_discount_pct: 1,
-    other_opex_cents: mp.other_monthly_cents,
+    other_opex_cents: 0,
     buildout_cost_cents: 15000000,
     equipment_cost_cents: 5000000,
     rent_deposits_cents: 900000,
@@ -195,155 +209,6 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
   fri: "Friday", sat: "Saturday", sun: "Sunday",
 };
 
-// OpexLine input: % of revenue or flat $/month toggle
-function OpexLineInput({
-  label,
-  hint,
-  value,
-  canEdit,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: OpexLine;
-  canEdit: boolean;
-  onChange: (v: OpexLine) => void;
-}) {
-  const inputCls =
-    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-[#f5f5f5] last:border-0">
-      <div className="w-32 shrink-0">
-        <p className="text-sm text-[#1a1a1a]">{label}</p>
-        <p className="text-[10px] text-[#afafaf] mt-0.5 leading-snug">{hint}</p>
-      </div>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        {canEdit ? (
-          <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
-            <button
-              type="button"
-              onClick={() => onChange({ ...value, mode: "pct" })}
-              className={`text-xs px-2.5 py-1.5 font-medium transition-colors ${
-                value.mode === "pct"
-                  ? "bg-[#155e63] text-white"
-                  : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
-              }`}
-            >
-              %
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange({ ...value, mode: "flat" })}
-              className={`text-xs px-2.5 py-1.5 font-medium transition-colors ${
-                value.mode === "flat"
-                  ? "bg-[#155e63] text-white"
-                  : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
-              }`}
-            >
-              $
-            </button>
-          </div>
-        ) : (
-          <span className="text-[10px] font-medium text-[#6b6b6b] shrink-0 bg-[#f0f0f0] px-2 py-1 rounded">
-            {value.mode === "pct" ? "%" : "$"}
-          </span>
-        )}
-        {value.mode === "pct" ? (
-          <div className="relative flex-1 min-w-0 max-w-[120px]">
-            <input
-              className={`${inputCls} w-full pr-8`}
-              type="number"
-              min={0}
-              max={100}
-              step={0.5}
-              value={value.pct || ""}
-              onChange={(e) => onChange({ ...value, pct: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              disabled={!canEdit}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-              %
-            </span>
-          </div>
-        ) : (
-          <div className="relative flex-1 min-w-0 max-w-[120px]">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-              $
-            </span>
-            <input
-              className={`${inputCls} w-full pl-6`}
-              type="number"
-              min={0}
-              step={50}
-              value={value.flat_cents ? value.flat_cents / 100 : ""}
-              onChange={(e) =>
-                onChange({ ...value, flat_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-              }
-              placeholder="0"
-              disabled={!canEdit}
-            />
-          </div>
-        )}
-        <span className="text-[10px] text-[#afafaf] shrink-0">
-          {value.mode === "pct" ? "% of revenue" : "/ mo"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function FlatLineInput({
-  label,
-  hint,
-  valueCents,
-  canEdit,
-  step,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  valueCents: number;
-  canEdit: boolean;
-  step?: number;
-  onChange: (cents: number) => void;
-}) {
-  const inputCls =
-    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-[#f5f5f5] last:border-0">
-      <div className="w-32 shrink-0">
-        <p className="text-sm text-[#1a1a1a]">{label}</p>
-        <p className="text-[10px] text-[#afafaf] mt-0.5 leading-snug">{hint}</p>
-      </div>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className="text-[10px] font-medium text-[#6b6b6b] shrink-0 bg-[#f0f0f0] px-2.5 py-1.5 rounded-lg border border-[#e0e0e0]">
-          $
-        </span>
-        <div className="relative flex-1 min-w-0 max-w-[120px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-            $
-          </span>
-          <input
-            className={`${inputCls} w-full pl-6`}
-            type="number"
-            min={0}
-            step={step ?? 50}
-            value={valueCents ? valueCents / 100 : ""}
-            onChange={(e) =>
-              onChange(Math.round((parseFloat(e.target.value) || 0) * 100))
-            }
-            placeholder="0"
-            disabled={!canEdit}
-          />
-        </div>
-        <span className="text-[10px] text-[#afafaf] shrink-0">/ mo</span>
-      </div>
-    </div>
-  );
-}
-
 function ForecastTab({
   mp,
   canEdit,
@@ -370,8 +235,8 @@ function ForecastTab({
     });
   }
 
-  function updateOpexLine(field: "labor" | "marketing", val: OpexLine) {
-    update({ [field]: val });
+  function updateForecastLines(next: ForecastLine[]) {
+    update({ forecast_lines: next });
   }
 
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
@@ -556,125 +421,41 @@ function ForecastTab({
         </div>
       </div>
 
-      {/* Operating Expenses */}
+      {/* Forecast Lines — categorized (Revenue / COGS / Overhead / Capex) */}
       <div>
-        <p className={sectionLabelCls}>Operating Expenses</p>
-        <div className="rounded-xl border border-[#efefef] bg-white px-4 py-2">
-          <p className="text-xs text-[#6b6b6b] pt-2 pb-3">
-            For each line item, choose % of revenue or a flat monthly amount.
+        <p className={sectionLabelCls}>Forecast Line Items</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Add, rename, or remove any line. Toggle <span className="font-semibold">$</span> (static
+            monthly amount) or <span className="font-semibold">%</span> (percent of revenue). Click the
+            sliders icon to configure a ramp-up period or month-over-month growth on any line.
           </p>
-
-          <OpexLineInput
-            label="Labor"
-            hint="Wages, payroll taxes, benefits. Typical: 28–32%"
-            value={mp.labor}
+          <ForecastLinesEditor
+            lines={mp.forecast_lines}
             canEdit={canEdit}
-            onChange={(v) => updateOpexLine("labor", v)}
-          />
-
-          <FlatLineInput
-            label="Rent"
-            hint="Monthly base rent"
-            valueCents={mp.monthly_rent_cents}
-            canEdit={canEdit}
-            step={100}
-            onChange={(c) => update({ monthly_rent_cents: c })}
-          />
-
-          <OpexLineInput
-            label="Marketing"
-            hint="Ads, promotions, social. Typical: 1–3%"
-            value={mp.marketing}
-            canEdit={canEdit}
-            onChange={(v) => updateOpexLine("marketing", v)}
-          />
-
-          <FlatLineInput
-            label="Utilities"
-            hint="Gas, electric, water, internet"
-            valueCents={mp.utilities_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ utilities_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Insurance"
-            hint="General liability, workers comp, property"
-            valueCents={mp.insurance_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ insurance_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Tech & Software"
-            hint="POS, payment processing, scheduling, SaaS"
-            valueCents={mp.tech_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ tech_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Maintenance"
-            hint="Equipment repairs, upkeep"
-            valueCents={mp.maintenance_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ maintenance_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Supplies"
-            hint="Cleaning, paper, smallwares replenishment"
-            valueCents={mp.supplies_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ supplies_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Other"
-            hint="Miscellaneous operating expenses"
-            valueCents={mp.other_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ other_monthly_cents: c })}
+            onChange={updateForecastLines}
           />
         </div>
       </div>
 
-      {/* Below the line */}
+      {/* Tax rate */}
       <div>
-        <p className={sectionLabelCls}>Below the Line</p>
+        <p className={sectionLabelCls}>Taxes</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Monthly interest (USD)</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={50}
-                value={mp.interest_monthly_cents ? mp.interest_monthly_cents / 100 : ""}
-                onChange={(e) =>
-                  update({ interest_monthly_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="0"
-                disabled={!canEdit}
-              />
-              <p className="text-[10px] text-[#afafaf] mt-1">Loan interest payments</p>
-            </div>
-            <div>
-              <label className={labelCls}>Tax rate %</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                value={mp.taxes_pct || ""}
-                onChange={(e) => update({ taxes_pct: parseFloat(e.target.value) || 0 })}
-                placeholder="25"
-                disabled={!canEdit}
-              />
-              <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
-            </div>
+          <div className="max-w-[200px]">
+            <label className={labelCls}>Tax rate %</label>
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={mp.taxes_pct || ""}
+              onChange={(e) => update({ taxes_pct: parseFloat(e.target.value) || 0 })}
+              placeholder="25"
+              disabled={!canEdit}
+            />
+            <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
           </div>
         </div>
       </div>
@@ -1122,7 +903,11 @@ export function FinancialsWorkspace({
 
   const progress = useMemo(() => {
     const hasFlow = Object.values(mp.daily_flow).some((v) => v > 0) ? 1 : 0;
-    const hasCosts = mp.monthly_rent_cents > 0 && mp.avg_ticket_cents > 0 ? 1 : 0;
+    const hasCosts =
+      mp.forecast_lines.some((l) => l.category === "overhead" && l.value > 0) &&
+      mp.avg_ticket_cents > 0
+        ? 1
+        : 0;
     return { filled: hasFlow + hasCosts, total: 2 };
   }, [mp]);
 
@@ -1199,18 +984,26 @@ export function FinancialsWorkspace({
 
   function handleMpUpdate(next: MonthlyProjections) {
     setMp(next);
+    const labor = findLineByKey(next.forecast_lines, "labor");
+    const rent = findLineByKey(next.forecast_lines, "rent");
+    const marketing = findLineByKey(next.forecast_lines, "marketing");
+    const utilities = findLineByKey(next.forecast_lines, "utilities");
+    const insurance = findLineByKey(next.forecast_lines, "insurance");
+    const tech = findLineByKey(next.forecast_lines, "tech");
+    const maintenance = findLineByKey(next.forecast_lines, "maintenance");
+    const supplies = findLineByKey(next.forecast_lines, "supplies");
     setFinancialInputs((prev) => ({
       ...prev,
       avg_ticket_cents: next.avg_ticket_cents,
-      rent_cents: next.monthly_rent_cents,
-      labor_pct: next.labor.mode === "pct" ? next.labor.pct : prev.labor_pct,
-      marketing_pct: next.marketing.mode === "pct" ? next.marketing.pct : prev.marketing_pct,
-      utilities_cents: next.utilities_monthly_cents,
-      insurance_cents: next.insurance_monthly_cents,
-      tech_cents: next.tech_monthly_cents,
-      maintenance_cents: next.maintenance_monthly_cents,
-      supplies_cents: next.supplies_monthly_cents,
-      other_opex_cents: next.other_monthly_cents,
+      rent_cents: rent?.mode === "flat" ? rent.value : prev.rent_cents,
+      labor_pct: labor?.mode === "pct" ? labor.value : prev.labor_pct,
+      marketing_pct: marketing?.mode === "pct" ? marketing.value : prev.marketing_pct,
+      utilities_cents: utilities?.mode === "flat" ? utilities.value : prev.utilities_cents,
+      insurance_cents: insurance?.mode === "flat" ? insurance.value : prev.insurance_cents,
+      tech_cents: tech?.mode === "flat" ? tech.value : prev.tech_cents,
+      maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : prev.maintenance_cents,
+      supplies_cents: supplies?.mode === "flat" ? supplies.value : prev.supplies_cents,
+      other_opex_cents: prev.other_opex_cents,
       tax_rate_pct: next.taxes_pct,
     }));
     scheduleSave(next);
