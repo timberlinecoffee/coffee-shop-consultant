@@ -69,9 +69,9 @@ function deriveCF(data: Partial<MonthlySlice>, prevCash: number) {
   const dep = data.depreciation_cents ?? 0;
   // Working capital changes: not trivially summable from monthly; approximate from balance sheet deltas
   // For display we show net_cash broken into sections using available fields
-  const loan_rep = data.loan_repayment_cents ?? 0;
+  const principal_rep = data.principal_repayment_cents ?? 0;
   const capex = data.capex_cents ?? 0;
-  const net_cash_financing = -(loan_rep);
+  const net_cash_financing = -(principal_rep);
   const net_cash_investing = -(capex);
   const net_cash_operating = (data.net_cash_cents ?? 0) - net_cash_financing - net_cash_investing;
   const ending_cash = data.cash_cents ?? 0;
@@ -82,7 +82,7 @@ function deriveCF(data: Partial<MonthlySlice>, prevCash: number) {
     net_cash_operating,
     capex: capex,
     net_cash_investing,
-    loan_repayment: loan_rep,
+    principal_repayment: principal_rep,
     net_cash_financing,
     net_change: data.net_cash_cents ?? 0,
     beginning_cash,
@@ -190,7 +190,7 @@ export function CashFlowTab({ slices }: Props) {
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Financing Activities" colCount={colCount} />
-            <CFRow label="Loan Repayments" values={valsArr("loan_repayment")} indent negative />
+            <CFRow label="Loan Principal Repayments" values={valsArr("principal_repayment")} indent negative />
             <CFRow label="Net Cash From Financing Activities" values={valsArr("net_cash_financing")} bold />
 
             <DividerRow cols={colCount} />

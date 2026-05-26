@@ -257,9 +257,14 @@ export function computeMonthlyProjections(inputs: FinancialInputs): MonthlySlice
 
   // Monthly base revenue (weeks per month ≈ 52/12)
   const baseGrossRevenue = r(customers_per_day * (days_per_week * 52 / 12) * avg_ticket_cents);
-  const monthlyDepreciation = depreciation_years > 0
+  const monthlyEquipmentDepreciation = depreciation_years > 0
     ? r(equipment_cost_cents / (depreciation_years * 12))
     : 0;
+  // Buildout is a leasehold improvement depreciated straight-line over 15 years
+  const monthlyBuildoutDepreciation = buildout_cost_cents > 0
+    ? r(buildout_cost_cents / (15 * 12))
+    : 0;
+  const monthlyDepreciation = monthlyEquipmentDepreciation + monthlyBuildoutDepreciation;
 
   // Loan amortization
   const monthlyPayment = monthlyLoanPayment(loan_amount_cents, loan_annual_rate_pct, loan_term_months);
@@ -271,7 +276,8 @@ export function computeMonthlyProjections(inputs: FinancialInputs): MonthlySlice
   let cashBalance = owner_capital_cents + loan_amount_cents - nonReserveStartupCosts;
   let loanBalance = loan_amount_cents;
   let accumulatedDepreciation = 0;
-  let retainedEarnings = 0;
+  // Pre-opening expenses (licenses, marketing) hit retained earnings on day 0
+  let retainedEarnings = -(license_permits_cents + pre_opening_marketing_cents);
   // Other assets = deposits (prepaid rent etc.)
   const otherAssets = rent_deposits_cents;
 
@@ -336,7 +342,8 @@ export function computeMonthlyProjections(inputs: FinancialInputs): MonthlySlice
 
     const net_cash_operating = net_income + monthlyDepreciation - delta_ar - delta_inventory + delta_ap;
     const net_cash_investing = -capex;
-    const net_cash_financing = loan_proceeds + owner_contribution - loan_repayment;
+    // Interest is already deducted in net_income (operating); financing only tracks principal
+    const net_cash_financing = loan_proceeds + owner_contribution - principal_repayment;
     const net_cash = net_cash_operating + net_cash_investing + net_cash_financing;
 
     // Balance sheet updates
@@ -345,7 +352,8 @@ export function computeMonthlyProjections(inputs: FinancialInputs): MonthlySlice
     retainedEarnings += net_income;
     cashBalance += net_cash;
 
-    const net_fixed_assets = Math.max(0, equipment_cost_cents - accumulatedDepreciation);
+    const fixed_assets_gross = equipment_cost_cents + buildout_cost_cents;
+    const net_fixed_assets = Math.max(0, fixed_assets_gross - accumulatedDepreciation);
     const total_assets = cashBalance + ar_now + inventory_now + net_fixed_assets + otherAssets;
 
     // Current portion of LTD = next 12 months' estimated principal
@@ -397,7 +405,7 @@ export function computeMonthlyProjections(inputs: FinancialInputs): MonthlySlice
       cash_cents: cashBalance,
       accounts_receivable_cents: ar_now,
       inventory_cents: inventory_now,
-      fixed_assets_gross_cents: equipment_cost_cents,
+      fixed_assets_gross_cents: fixed_assets_gross,
       accumulated_depreciation_cents: accumulatedDepreciation,
       net_fixed_assets_cents: net_fixed_assets,
       other_assets_cents: otherAssets,
