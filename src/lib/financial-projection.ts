@@ -7,6 +7,10 @@
 //   migrated into forecast_lines on read. Each line has a category (revenue|cogs|
 //   overhead|capex), a flat-$ vs. %-of-sales mode, optional per-line ramp, and
 //   optional per-line monthly growth.
+// TIM-1101: multi-currency support — currency_code persists on MonthlyProjections;
+//   formatCurrency / fmt accept an optional code and delegate to src/lib/currency.
+
+import { formatCurrencyAmount, normalizeCurrencyCode } from "./currency.ts";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -99,6 +103,11 @@ export interface MonthlyProjections {
   // Default 1. Drives column ordering on monthly P&L / Balance Sheet / Cash Flow
   // tabs; does NOT change the underlying month-1..N simulation math.
   fiscal_year_start_month: number;
+
+  // TIM-1101: ISO 4217 currency code (e.g., "USD", "EUR", "JPY"). Drives
+  // symbol + locale formatting across the planner, AI assessment, and exports.
+  // Single currency per plan — no FX conversion in v1.
+  currency_code: string;
 
   // ── Legacy fields kept on the type for migration / backward-compat reads ────
   // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
@@ -237,6 +246,7 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     growth_monthly_pct: 2,
     growth_custom_monthly: [],
     fiscal_year_start_month: 1,
+    currency_code: "USD",
   };
 }
 
@@ -485,6 +495,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       ? Math.min(12, Math.max(1, Math.round(r.fiscal_year_start_month)))
       : defaults.fiscal_year_start_month;
 
+  const currency_code = normalizeCurrencyCode(r.currency_code);
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -500,6 +512,7 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     growth_monthly_pct,
     growth_custom_monthly,
     fiscal_year_start_month,
+    currency_code,
   };
 }
 
@@ -935,19 +948,11 @@ export function computeProjections(
   };
 }
 
-export function formatCurrency(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) {
-    return `${n < 0 ? "-" : ""}$${(abs / 1_000_000).toFixed(1)}M`;
-  }
-  if (abs >= 1_000) {
-    return `${n < 0 ? "-" : ""}$${Math.round(abs / 100) / 10}K`;
-  }
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+// TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the
+// planner, AI assessment, and exports can render in the user's selected
+// currency. Defaults to USD to keep legacy single-arg callers compatible.
+export function formatCurrency(n: number, currencyCode: string = "USD"): string {
+  return formatCurrencyAmount(n, currencyCode);
 }
 
 // ── Phase 2 additions (TIM-1019) ─────────────────────────────────────────────
@@ -1044,9 +1049,11 @@ export interface FinancialInputs {
   days_receivable: number;
 }
 
-// fmt: format a cents value as a compact dollar string.
-export function fmt(cents: number): string {
-  return formatCurrency(cents / 100);
+// fmt: format a cents value (or minor-unit value for non-2dp currencies) as a
+// compact currency string. TIM-1101: accepts optional ISO 4217 code; defaults
+// to USD for legacy single-arg callers.
+export function fmt(cents: number, currencyCode: string = "USD"): string {
+  return formatCurrency(cents / 100, currencyCode);
 }
 
 // pct: express numerator / denominator as a percentage string with one decimal.

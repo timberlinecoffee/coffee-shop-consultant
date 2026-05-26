@@ -24,6 +24,7 @@ import {
   fiscalYearMonthLabels,
   formatCurrency,
 } from "@/lib/financial-projection";
+import { CURRENCIES } from "@/lib/currency";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
 import { CashFlowTab } from "./tabs/cash-flow-tab";
@@ -389,7 +390,7 @@ function ForecastTab({
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Average ticket (USD)</label>
+              <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
               <input
                 className={inputCls}
                 type="number"
@@ -435,6 +436,7 @@ function ForecastTab({
             lines={mp.forecast_lines}
             canEdit={canEdit}
             onChange={updateForecastLines}
+            currencyCode={mp.currency_code ?? "USD"}
           />
         </div>
       </div>
@@ -461,28 +463,48 @@ function ForecastTab({
         </div>
       </div>
 
-      {/* Fiscal Year Start — TIM-1100 */}
+      {/* Fiscal Year Start — TIM-1100 / Currency — TIM-1101 */}
       <div>
-        <p className={sectionLabelCls}>Fiscal Year</p>
+        <p className={sectionLabelCls}>Fiscal Year & Currency</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <div className="max-w-[260px]">
-            <label className={labelCls}>Starting month</label>
-            <select
-              className={inputCls}
-              value={mp.fiscal_year_start_month ?? 1}
-              onChange={(e) => update({ fiscal_year_start_month: parseInt(e.target.value, 10) || 1 })}
-              disabled={!canEdit}
-            >
-              {[
-                "January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December",
-              ].map((name, i) => (
-                <option key={i + 1} value={i + 1}>{name}</option>
-              ))}
-            </select>
-            <p className="text-[10px] text-[#afafaf] mt-1">
-              Month-to-month columns, projections, and exports re-index from this month. Default January.
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Starting month</label>
+              <select
+                className={inputCls}
+                value={mp.fiscal_year_start_month ?? 1}
+                onChange={(e) => update({ fiscal_year_start_month: parseInt(e.target.value, 10) || 1 })}
+                disabled={!canEdit}
+              >
+                {[
+                  "January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December",
+                ].map((name, i) => (
+                  <option key={i + 1} value={i + 1}>{name}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Month-to-month columns, projections, and exports re-index from this month.
+              </p>
+            </div>
+            <div>
+              <label className={labelCls}>Currency</label>
+              <select
+                className={inputCls}
+                value={mp.currency_code ?? "USD"}
+                onChange={(e) => update({ currency_code: e.target.value })}
+                disabled={!canEdit}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} — {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Drives symbol + formatting across the planner, AI assessment, and exports.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -650,6 +672,7 @@ function MetricRow({
   highlight,
   indent,
   separator,
+  currencyCode = "USD",
 }: {
   label: string;
   y1: number;
@@ -660,6 +683,7 @@ function MetricRow({
   highlight?: boolean;
   indent?: boolean;
   separator?: boolean;
+  currencyCode?: string;
 }) {
   const cls = `py-2 px-3 text-right text-sm tabular-nums ${bold ? "font-semibold" : ""} ${
     highlight ? "text-[#155e63]" : negative ? "text-[#a13d3d]" : "text-[#1a1a1a]"
@@ -681,9 +705,9 @@ function MetricRow({
         >
           {label}
         </td>
-        <td className={cls}>{formatCurrency(y1)}</td>
-        <td className={cls}>{formatCurrency(y3)}</td>
-        <td className={cls}>{formatCurrency(y5)}</td>
+        <td className={cls}>{formatCurrency(y1, currencyCode)}</td>
+        <td className={cls}>{formatCurrency(y3, currencyCode)}</td>
+        <td className={cls}>{formatCurrency(y5, currencyCode)}</td>
         <td className="py-2 pr-4 pl-2 text-right">
           <Sparkline values={[y1, y3, y5]} />
         </td>
@@ -697,9 +721,11 @@ function MetricRow({
 function RevenueChart({
   slices,
   fiscalYearStartMonth,
+  currencyCode,
 }: {
   slices: MonthlySlice[];
   fiscalYearStartMonth: number;
+  currencyCode: string;
 }) {
   const y1 = slices.filter((s) => s.year === 1);
   if (y1.length === 0) return null;
@@ -745,7 +771,7 @@ function RevenueChart({
       </svg>
       <div className="flex justify-between text-[10px] text-[#afafaf] mt-1">
         <span>{labels[0]}</span>
-        <span>{formatCurrency(minV)} – {formatCurrency(maxV)}</span>
+        <span>{formatCurrency(minV, currencyCode)} – {formatCurrency(maxV, currencyCode)}</span>
         <span>{labels[11]}</span>
       </div>
     </div>
@@ -759,6 +785,7 @@ function ProjectionsTab({
   critique,
   onCritiqueUpdate,
   fiscalYearStartMonth,
+  currencyCode,
 }: {
   projections: FinancialProjections;
   slices: MonthlySlice[];
@@ -766,6 +793,7 @@ function ProjectionsTab({
   critique: CritiqueResult | null;
   onCritiqueUpdate: (c: CritiqueResult | null) => void;
   fiscalYearStartMonth: number;
+  currencyCode: string;
 }) {
   const { year1: y1, year3: y3, year5: y5 } = projections;
   const [assessmentStatus, setAssessmentStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -777,7 +805,7 @@ function ProjectionsTab({
       const res = await fetch("/api/workspaces/financials/critique", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projections }),
+        body: JSON.stringify({ projections, currencyCode }),
       });
       if (!res.ok) throw new Error(`assessment failed (${res.status})`);
       const data = (await res.json()) as CritiqueResult;
@@ -799,10 +827,10 @@ function ProjectionsTab({
   return (
     <div className="space-y-6">
       {/* Inline revenue trajectory chart */}
-      <RevenueChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
+      <RevenueChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
 
       {/* Monthly / Quarterly / Annual P&L table — defaults to monthly Y1 */}
-      <PLTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
+      <PLTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
 
       {/* KPI summary tiles */}
       <div className="grid grid-cols-3 gap-3">
@@ -815,13 +843,13 @@ function ProjectionsTab({
           },
           {
             label: "Year 1 Op. Income",
-            value: formatCurrency(y1.operating_income),
+            value: formatCurrency(y1.operating_income, currencyCode),
             sub: y1.revenue > 0 ? `${((y1.operating_income / y1.revenue) * 100).toFixed(0)}% margin` : "—",
             ok: y1.operating_income >= 0,
           },
           {
             label: "Year 5 Net",
-            value: formatCurrency(y5.net_income),
+            value: formatCurrency(y5.net_income, currencyCode),
             sub: "Net income",
             ok: y5.net_income >= 0,
           },
@@ -1080,6 +1108,7 @@ export function FinancialsWorkspace({
   ];
 
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
+  const currencyCode = mp.currency_code ?? "USD";
 
   return (
     <div className="bg-[#faf9f7] min-h-screen">
@@ -1166,17 +1195,18 @@ export function FinancialsWorkspace({
             critique={critique}
             onCritiqueUpdate={handleCritiqueUpdate}
             fiscalYearStartMonth={fiscalYearStartMonth}
+            currencyCode={currencyCode}
           />
         )}
         {activeTab === "balance-sheet" && (
-          <BalanceSheetTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
+          <BalanceSheetTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
         )}
         {activeTab === "cash-flow" && (
-          <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
+          <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
         )}
-        {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} />}
+        {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} currencyCode={currencyCode} />}
         {activeTab === "ratios" && <RatiosTab slices={slices} />}
-        {activeTab === "startup" && <StartupTab inputs={financialInputs} />}
+        {activeTab === "startup" && <StartupTab inputs={financialInputs} currencyCode={currencyCode} />}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />

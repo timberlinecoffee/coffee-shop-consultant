@@ -1,10 +1,12 @@
 "use client";
 
 import { type MonthlySlice, type FinancialInputs, fmt } from "@/lib/financial-projection";
+import { currencySymbol } from "@/lib/currency";
 
 interface Props {
   slices: MonthlySlice[];
   inputs: FinancialInputs;
+  currencyCode?: string;
 }
 
 function computeBreakEven(inputs: FinancialInputs, slices: MonthlySlice[]) {
@@ -83,7 +85,7 @@ function SensitivityRow({
   );
 }
 
-export function BreakEvenTab({ slices, inputs }: Props) {
+export function BreakEvenTab({ slices, inputs, currencyCode = "USD" }: Props) {
   const result = computeBreakEven(inputs, slices);
 
   if (!result) {
@@ -137,7 +139,7 @@ export function BreakEvenTab({ slices, inputs }: Props) {
         </div>
         <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-4">
           <p className="text-xs text-[#6b6b6b] uppercase tracking-wide mb-1">Break-Even Revenue / Month</p>
-          <p className="text-3xl font-bold text-[#1a1a1a]">{isFinite(breakEvenRevenue) ? fmt(breakEvenRevenue) : "N/A"}</p>
+          <p className="text-3xl font-bold text-[#1a1a1a]">{isFinite(breakEvenRevenue) ? fmt(breakEvenRevenue, currencyCode) : "N/A"}</p>
           <p className="text-xs text-[#afafaf] mt-1">Contribution margin {(contributionMarginPct * 100).toFixed(1)}%</p>
         </div>
         <div className={`rounded-2xl border px-5 py-4 col-span-2 sm:col-span-1 ${transactionSurplus >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
@@ -183,7 +185,7 @@ export function BreakEvenTab({ slices, inputs }: Props) {
           </div>
         </div>
         <p className="text-xs text-[#afafaf] mt-3">
-          Based on {inputs.customers_per_day} customers/day, {inputs.days_per_week} days/week, ${avgTicket.toFixed(2)} avg ticket.
+          Based on {inputs.customers_per_day} customers/day, {inputs.days_per_week} days/week, {currencySymbol(currencyCode)}{avgTicket.toFixed(2)} avg ticket.
         </p>
       </div>
 

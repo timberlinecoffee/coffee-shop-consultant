@@ -4,6 +4,7 @@ import { type FinancialInputs, fmt } from "@/lib/financial-projection";
 
 interface Props {
   inputs: FinancialInputs;
+  currencyCode?: string;
 }
 
 interface LineItem {
@@ -12,7 +13,8 @@ interface LineItem {
   note?: string;
 }
 
-export function StartupTab({ inputs }: Props) {
+export function StartupTab({ inputs, currencyCode = "USD" }: Props) {
+  const f = (v: number) => fmt(v, currencyCode);
   const items: LineItem[] = [
     { label: "Equipment", value: inputs.equipment_cost_cents, note: "From your equipment plan" },
     { label: "Build-Out And Renovation", value: inputs.buildout_cost_cents },
@@ -53,12 +55,12 @@ export function StartupTab({ inputs }: Props) {
                   <span className="text-[#1a1a1a]">{item.label}</span>
                   {item.note && <span className="ml-2 text-xs text-[#afafaf]">({item.note})</span>}
                 </td>
-                <td className="py-3 pr-5 text-right font-medium">{fmt(item.value)}</td>
+                <td className="py-3 pr-5 text-right font-medium">{f(item.value)}</td>
               </tr>
             ))}
             <tr className="border-t-2 border-[#155e63] bg-[#f7fafa]">
               <td className="py-3 pl-5 pr-4 font-semibold">Total Startup Cost</td>
-              <td className="py-3 pr-5 text-right font-bold text-lg">{fmt(totalStartup)}</td>
+              <td className="py-3 pr-5 text-right font-bold text-lg">{f(totalStartup)}</td>
             </tr>
           </tbody>
         </table>
@@ -73,19 +75,19 @@ export function StartupTab({ inputs }: Props) {
           <tbody>
             <tr className="border-t border-[#f0f0f0]">
               <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Owner Capital</td>
-              <td className="py-3 pr-5 text-right font-medium">{fmt(inputs.owner_capital_cents)}</td>
+              <td className="py-3 pr-5 text-right font-medium">{f(inputs.owner_capital_cents)}</td>
             </tr>
             <tr className="border-t border-[#f0f0f0]">
               <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Loan Amount
                 <span className="ml-2 text-xs text-[#afafaf]">
-                  ({inputs.loan_term_months} mo @ {inputs.loan_annual_rate_pct}% — {fmt(monthlyPayment)}/mo)
+                  ({inputs.loan_term_months} mo @ {inputs.loan_annual_rate_pct}% — {f(monthlyPayment)}/mo)
                 </span>
               </td>
-              <td className="py-3 pr-5 text-right font-medium">{fmt(inputs.loan_amount_cents)}</td>
+              <td className="py-3 pr-5 text-right font-medium">{f(inputs.loan_amount_cents)}</td>
             </tr>
             <tr className="border-t-2 border-[#155e63] bg-[#f7fafa]">
               <td className="py-3 pl-5 pr-4 font-semibold">Total Funding</td>
-              <td className="py-3 pr-5 text-right font-bold">{fmt(totalFunding)}</td>
+              <td className="py-3 pr-5 text-right font-bold">{f(totalFunding)}</td>
             </tr>
           </tbody>
         </table>
@@ -100,12 +102,12 @@ export function StartupTab({ inputs }: Props) {
             </p>
             <p className={`text-xs mt-0.5 ${fundingGap <= 0 ? "text-green-700" : "text-red-700"}`}>
               {fundingGap <= 0
-                ? `You have ${fmt(Math.abs(fundingGap))} in surplus funding — that becomes your additional opening cash.`
-                : `You need ${fmt(fundingGap)} more in funding to cover your startup costs.`}
+                ? `You have ${f(Math.abs(fundingGap))} in surplus funding — that becomes your additional opening cash.`
+                : `You need ${f(fundingGap)} more in funding to cover your startup costs.`}
             </p>
           </div>
           <p className={`text-2xl font-bold ${fundingGap <= 0 ? "text-green-800" : "text-red-700"}`}>
-            {fundingGap <= 0 ? fmt(Math.abs(fundingGap)) : fmt(fundingGap)}
+            {fundingGap <= 0 ? f(Math.abs(fundingGap)) : f(fundingGap)}
           </p>
         </div>
       </div>
@@ -117,7 +119,7 @@ export function StartupTab({ inputs }: Props) {
           <p>The working capital reserve and opening cash buffer are not spent — they sit in your bank account as a cushion. Banks and lenders like to see 3 months of fixed costs in reserve before you open.</p>
           <p>Equipment is on a {inputs.depreciation_years}-year depreciation schedule, which reduces your taxable income over time. That is the main reason to separate it from build-out costs.</p>
           {inputs.loan_amount_cents > 0 && (
-            <p>Your loan payment of {fmt(monthlyPayment)}/month starts from day one — before you have any revenue. Make sure your opening cash buffer can cover at least 3 months of loan payments.</p>
+            <p>Your loan payment of {f(monthlyPayment)}/month starts from day one — before you have any revenue. Make sure your opening cash buffer can cover at least 3 months of loan payments.</p>
           )}
         </div>
       </div>

@@ -116,3 +116,21 @@ test("capex line: full charge in start_month only", () => {
   assert.equal(rows[3].capex_cents, 1500000); // month 4
   assert.equal(rows[4].capex_cents, 0);
 });
+
+// ── TIM-1101: currency persistence ────────────────────────────────────────────
+
+test("default model has USD as default currency_code", () => {
+  const mp = defaultMonthlyProjections();
+  assert.equal(mp.currency_code, "USD");
+});
+
+test("normalize accepts a valid ISO 4217 code and uppercases it", () => {
+  const mp = normalizeMonthlyProjections({ currency_code: "eur" });
+  assert.equal(mp.currency_code, "EUR");
+});
+
+test("normalize falls back to USD for unknown / invalid currency code", () => {
+  assert.equal(normalizeMonthlyProjections({ currency_code: "ZZZ" }).currency_code, "USD");
+  assert.equal(normalizeMonthlyProjections({ currency_code: 42 }).currency_code, "USD");
+  assert.equal(normalizeMonthlyProjections({}).currency_code, "USD");
+});

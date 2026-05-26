@@ -18,7 +18,7 @@ interface RowProps {
   negative?: boolean;
 }
 
-function BSRow({ label, values, bold, indent, highlight, negative }: RowProps) {
+function BSRow({ label, values, bold, indent, highlight, negative, currencyCode }: RowProps & { currencyCode: string }) {
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
       <td
@@ -33,7 +33,7 @@ function BSRow({ label, values, bold, indent, highlight, negative }: RowProps) {
             key={i}
             className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
           >
-            {v !== undefined ? fmt(v) : "—"}
+            {v !== undefined ? fmt(v, currencyCode) : "—"}
           </td>
         );
       })}
@@ -62,9 +62,10 @@ function DividerRow({ cols }: { cols: number }) {
 interface Props {
   slices: MonthlySlice[];
   fiscalYearStartMonth?: number;
+  currencyCode?: string;
 }
 
-export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1 }: Props) {
+export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
 
@@ -142,30 +143,30 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1 }: Props) {
           </thead>
           <tbody>
             <SectionHeader label="Assets" colCount={colCount} />
-            <BSRow label="Cash And Cash Equivalents" values={vals("cash_cents")} />
-            <BSRow label="Accounts Receivable" values={vals("accounts_receivable_cents")} indent />
-            <BSRow label="Inventory" values={vals("inventory_cents")} indent />
-            <BSRow label="Fixed Assets (Gross)" values={vals("fixed_assets_gross_cents")} indent />
-            <BSRow label="Less: Accumulated Depreciation" values={vals("accumulated_depreciation_cents")} indent negative />
-            <BSRow label="Net Fixed Assets" values={vals("net_fixed_assets_cents")} indent />
-            <BSRow label="Other Assets" values={vals("other_assets_cents")} indent />
-            <BSRow label="Total Assets" values={vals("total_assets_cents")} bold highlight />
+            <BSRow currencyCode={currencyCode} label="Cash And Cash Equivalents" values={vals("cash_cents")} />
+            <BSRow currencyCode={currencyCode} label="Accounts Receivable" values={vals("accounts_receivable_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Inventory" values={vals("inventory_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Fixed Assets (Gross)" values={vals("fixed_assets_gross_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Less: Accumulated Depreciation" values={vals("accumulated_depreciation_cents")} indent negative />
+            <BSRow currencyCode={currencyCode} label="Net Fixed Assets" values={vals("net_fixed_assets_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Other Assets" values={vals("other_assets_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Total Assets" values={vals("total_assets_cents")} bold highlight />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Liabilities" colCount={colCount} />
-            <BSRow label="Accounts Payable" values={vals("accounts_payable_cents")} indent />
-            <BSRow label="Current Portion Of Long-Term Debt" values={vals("current_debt_cents")} indent />
-            <BSRow label="Long-Term Debt" values={vals("long_term_debt_cents")} indent />
-            <BSRow label="Total Liabilities" values={vals("total_liabilities_cents")} bold />
+            <BSRow currencyCode={currencyCode} label="Accounts Payable" values={vals("accounts_payable_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Current Portion Of Long-Term Debt" values={vals("current_debt_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Long-Term Debt" values={vals("long_term_debt_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Total Liabilities" values={vals("total_liabilities_cents")} bold />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Equity" colCount={colCount} />
-            <BSRow label="Owner Equity" values={vals("owner_equity_cents")} indent />
-            <BSRow label="Retained Earnings" values={vals("retained_earnings_cents")} indent />
-            <BSRow label="Total Equity" values={vals("total_equity_cents")} bold />
+            <BSRow currencyCode={currencyCode} label="Owner Equity" values={vals("owner_equity_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Retained Earnings" values={vals("retained_earnings_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Total Equity" values={vals("total_equity_cents")} bold />
 
             <DividerRow cols={colCount} />
-            <BSRow label="Total Liabilities And Equity" values={vals("total_liabilities_and_equity_cents")} bold highlight />
+            <BSRow currencyCode={currencyCode} label="Total Liabilities And Equity" values={vals("total_liabilities_and_equity_cents")} bold highlight />
           </tbody>
         </table>
       </div>
