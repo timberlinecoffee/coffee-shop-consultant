@@ -30,6 +30,7 @@ export const MUTABLE_WORKSPACE_KEYS = new Set([
   'hiring',
   'marketing',
   'suppliers',
+  'operations_playbook',
 ] as const);
 
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro";

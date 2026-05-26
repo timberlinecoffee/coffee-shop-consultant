@@ -20,6 +20,7 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   hiring: "Hiring & Onboarding",
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
+  operations_playbook: "Operations Playbook",
 }
 
 function renderContent(workspaceKey: WorkspaceKey, content: unknown): string {

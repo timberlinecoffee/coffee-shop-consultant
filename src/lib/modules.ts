@@ -1,10 +1,10 @@
 // Single source of truth for which plan modules have implemented content.
 // Updating AVAILABLE_MODULES here keeps dashboard navigation in sync.
 
-export const TOTAL_MODULES = 10;
+export const TOTAL_MODULES = 11;
 
-// Modules with shipped pages — Concept, Financials, Location, Menu, Buildout, Launch, Hiring, Business Plan, Marketing, Suppliers & Vendors.
-export const AVAILABLE_MODULES: ReadonlySet<number> = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+// Modules with shipped pages — Concept, Financials, Location, Menu, Buildout, Launch, Hiring, Business Plan, Marketing, Suppliers & Vendors, Operations Playbook.
+export const AVAILABLE_MODULES: ReadonlySet<number> = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
 export function isModuleAvailable(moduleNumber: number): boolean {
   return (

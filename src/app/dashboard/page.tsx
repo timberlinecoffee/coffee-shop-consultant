@@ -280,6 +280,7 @@ export default async function DashboardPage() {
               { num: 5, title: "Menu & Pricing", href: "/workspace/menu-pricing", lockedNote: <span>Opens with Concept</span> },
               { num: 6, title: "Launch Plan", href: "/workspace/launch-plan", lockedNote: <span>Opens with Concept</span> },
               { num: 7, title: "Suppliers & Vendors", href: "/workspace/suppliers", lockedNote: <span>Opens with Concept</span> },
+              { num: 8, title: "Operations Playbook", href: "/workspace/operations-playbook", lockedNote: <span>Opens with Concept</span> },
             ].map(({ num, title, href, lockedNote }) => (
               <div key={num} className="p-5 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
