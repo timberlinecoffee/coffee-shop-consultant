@@ -22,7 +22,7 @@ interface RowProps {
   negative?: boolean;
 }
 
-function CFRow({ label, values, bold, indent, highlight, negative }: RowProps) {
+function CFRow({ label, values, bold, indent, highlight, negative, currencyCode }: RowProps & { currencyCode: string }) {
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
       <td
@@ -37,7 +37,7 @@ function CFRow({ label, values, bold, indent, highlight, negative }: RowProps) {
             key={i}
             className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
           >
-            {v !== undefined ? fmt(v) : "—"}
+            {v !== undefined ? fmt(v, currencyCode) : "—"}
           </td>
         );
       })}
@@ -93,9 +93,10 @@ function deriveCF(data: Partial<MonthlySlice>, prevCash: number) {
 interface Props {
   slices: MonthlySlice[];
   fiscalYearStartMonth?: number;
+  currencyCode?: string;
 }
 
-export function CashFlowTab({ slices, fiscalYearStartMonth = 1 }: Props) {
+export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
 
@@ -181,31 +182,31 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1 }: Props) {
           </thead>
           <tbody>
             <SectionHeader label="Operating Activities" colCount={colCount} />
-            <CFRow label="Net Income" values={valsArr("net_income")} indent />
-            <CFRow label="Plus: Depreciation" values={valsArr("depreciation_addback")} indent />
-            <CFRow label="Net Cash From Operating Activities" values={valsArr("net_cash_operating")} bold highlight />
+            <CFRow currencyCode={currencyCode} label="Net Income" values={valsArr("net_income")} indent />
+            <CFRow currencyCode={currencyCode} label="Plus: Depreciation" values={valsArr("depreciation_addback")} indent />
+            <CFRow currencyCode={currencyCode} label="Net Cash From Operating Activities" values={valsArr("net_cash_operating")} bold highlight />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Investing Activities" colCount={colCount} />
-            <CFRow label="Capital Expenditures" values={valsArr("capex")} indent />
-            <CFRow label="Net Cash From Investing Activities" values={valsArr("net_cash_investing")} bold />
+            <CFRow currencyCode={currencyCode} label="Capital Expenditures" values={valsArr("capex")} indent />
+            <CFRow currencyCode={currencyCode} label="Net Cash From Investing Activities" values={valsArr("net_cash_investing")} bold />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Financing Activities" colCount={colCount} />
-            <CFRow label="Loan Repayments" values={valsArr("loan_repayment")} indent negative />
-            <CFRow label="Net Cash From Financing Activities" values={valsArr("net_cash_financing")} bold />
+            <CFRow currencyCode={currencyCode} label="Loan Repayments" values={valsArr("loan_repayment")} indent negative />
+            <CFRow currencyCode={currencyCode} label="Net Cash From Financing Activities" values={valsArr("net_cash_financing")} bold />
 
             <DividerRow cols={colCount} />
-            <CFRow label="Net Change In Cash" values={valsArr("net_change")} bold />
-            <CFRow label="Beginning Cash" values={valsArr("beginning_cash")} />
-            <CFRow label="Ending Cash" values={valsArr("ending_cash")} bold highlight />
+            <CFRow currencyCode={currencyCode} label="Net Change In Cash" values={valsArr("net_change")} bold />
+            <CFRow currencyCode={currencyCode} label="Beginning Cash" values={valsArr("beginning_cash")} />
+            <CFRow currencyCode={currencyCode} label="Ending Cash" values={valsArr("ending_cash")} bold highlight />
           </tbody>
         </table>
       </div>
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
-        <CashFlowCritique slices={slices} year={year} monthLabels={MONTHS} />
+        <CashFlowCritique slices={slices} year={year} monthLabels={MONTHS} currencyCode={currencyCode} />
       </div>
     </div>
   );
@@ -215,10 +216,12 @@ function CashFlowCritique({
   slices,
   year,
   monthLabels,
+  currencyCode,
 }: {
   slices: MonthlySlice[];
   year: number;
   monthLabels: string[];
+  currencyCode: string;
 }) {
   const yearSlices = slices.filter((s) => s.year === year);
   if (yearSlices.length === 0) return null;
@@ -233,14 +236,14 @@ function CashFlowCritique({
     lines.push(`Cash goes negative in ${monthName} of Year ${year}. That is a real problem — you would need more funding or tighter cost control before then.`);
   } else if (lowestCash < 500000) {
     const monthName = labelFor(lowestMonth?.month);
-    lines.push(`Your lowest cash balance in Year ${year} is under $5,000 (in ${monthName}). That is very thin. A single slow week could leave you unable to pay suppliers.`);
+    lines.push(`Your lowest cash balance in Year ${year} is under ${fmt(500000, currencyCode)} (in ${monthName}). That is very thin. A single slow week could leave you unable to pay suppliers.`);
   } else {
-    lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash)} — that is your real cushion number, not the year-end balance.`);
+    lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash, currencyCode)} — that is your real cushion number, not the year-end balance.`);
   }
 
   // Check if ending cash matches balance sheet (it should — same compute source)
   const lastSlice = yearSlices[yearSlices.length - 1];
-  lines.push(`Ending cash of ${fmt(lastSlice.cash_cents)} matches the Cash line on the Balance Sheet.`);
+  lines.push(`Ending cash of ${fmt(lastSlice.cash_cents, currencyCode)} matches the Cash line on the Balance Sheet.`);
 
   return (
     <div className="space-y-2">

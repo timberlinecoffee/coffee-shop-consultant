@@ -13,6 +13,7 @@ import type {
   LineRamp,
   LineGrowth,
 } from "@/lib/financial-projection";
+import { currencySymbol } from "@/lib/currency";
 
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
@@ -57,9 +58,11 @@ interface LineRowProps {
   canEdit: boolean;
   onChange: (next: ForecastLine) => void;
   onDelete: () => void;
+  currencyCode: string;
 }
 
-function LineRow({ line, canEdit, onChange, onDelete }: LineRowProps) {
+function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowProps) {
+  const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const inputCls =
     "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
@@ -97,9 +100,9 @@ function LineRow({ line, canEdit, onChange, onDelete }: LineRowProps) {
               className={`text-xs px-2 py-1 font-medium transition-colors ${
                 line.mode === "flat" ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
               }`}
-              aria-label="Static dollar amount"
+              aria-label="Static amount"
             >
-              $
+              {sym}
             </button>
             <button
               type="button"
@@ -119,7 +122,7 @@ function LineRow({ line, canEdit, onChange, onDelete }: LineRowProps) {
           {line.mode === "flat" ? (
             <>
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-                $
+                {sym}
               </span>
               <input
                 className={`${inputCls} w-full pl-5`}
@@ -348,9 +351,10 @@ interface SectionProps {
   lines: ForecastLine[];
   canEdit: boolean;
   onLinesChange: (next: ForecastLine[]) => void;
+  currencyCode: string;
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
 
@@ -416,6 +420,7 @@ function CategorySection({ category, lines, canEdit, onLinesChange }: SectionPro
               canEdit={canEdit}
               onChange={(next) => updateLine(idx, next)}
               onDelete={() => deleteLine(idx)}
+              currencyCode={currencyCode}
             />
           ))
         )}
@@ -428,15 +433,16 @@ interface Props {
   lines: ForecastLine[];
   canEdit: boolean;
   onChange: (next: ForecastLine[]) => void;
+  currencyCode?: string;
 }
 
-export function ForecastLinesEditor({ lines, canEdit, onChange }: Props) {
+export function ForecastLinesEditor({ lines, canEdit, onChange, currencyCode = "USD" }: Props) {
   return (
     <div className="space-y-6">
-      <CategorySection category="revenue" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
-      <CategorySection category="cogs" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
-      <CategorySection category="overhead" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
-      <CategorySection category="capex" lines={lines} canEdit={canEdit} onLinesChange={onChange} />
+      <CategorySection category="revenue" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
+      <CategorySection category="cogs" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
+      <CategorySection category="overhead" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
+      <CategorySection category="capex" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
     </div>
   );
 }

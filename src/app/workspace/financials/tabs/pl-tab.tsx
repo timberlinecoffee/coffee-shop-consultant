@@ -27,7 +27,7 @@ interface RowProps {
   pctValues?: (string | undefined)[];
 }
 
-function StatRow({ label, values, bold, negative, indent, highlight, pctValues }: RowProps) {
+function StatRow({ label, values, bold, negative, indent, highlight, pctValues, currencyCode }: RowProps & { currencyCode: string }) {
   const isNeg = (v?: number) => (v !== undefined && v < 0) || negative;
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
@@ -39,7 +39,7 @@ function StatRow({ label, values, bold, negative, indent, highlight, pctValues }
           key={i}
           className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
         >
-          {v !== undefined ? fmt(v) : "—"}
+          {v !== undefined ? fmt(v, currencyCode) : "—"}
           {pctValues?.[i] && <span className="text-xs text-[#afafaf] ml-1">({pctValues[i]})</span>}
         </td>
       ))}
@@ -60,9 +60,10 @@ function DividerRow({ cols }: { cols: number }) {
 interface Props {
   slices: MonthlySlice[];
   fiscalYearStartMonth?: number;
+  currencyCode?: string;
 }
 
-export function PLTab({ slices, fiscalYearStartMonth = 1 }: Props) {
+export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [showCogs, setShowCogs] = useState(true);
@@ -194,7 +195,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1 }: Props) {
             </tr>
             {showRevenue && (
               <>
-                <StatRow label="Foot-Traffic Revenue" values={vals("gross_revenue_cents").map((v, i) => {
+                <StatRow currencyCode={currencyCode} label="Foot-Traffic Revenue" values={vals("gross_revenue_cents").map((v, i) => {
                   // base revenue = gross_revenue - sum of additional revenue lines for the column
                   const addls = revenueLines.reduce(
                     (s, rl) => s + (columns[i].lineAmounts.find((ln) => ln.id === rl.id)?.amount_cents ?? 0),
@@ -203,12 +204,12 @@ export function PLTab({ slices, fiscalYearStartMonth = 1 }: Props) {
                   return v !== undefined ? v - addls : undefined;
                 })} indent />
                 {revenueLines.map((rl) => (
-                  <StatRow key={rl.id} label={rl.label} values={valsForLine(rl.id)} indent />
+                  <StatRow currencyCode={currencyCode} key={rl.id} label={rl.label} values={valsForLine(rl.id)} indent />
                 ))}
-                <StatRow label="Less: Loyalty Discounts" values={vals("loyalty_discounts_cents")} negative indent />
+                <StatRow currencyCode={currencyCode} label="Less: Loyalty Discounts" values={vals("loyalty_discounts_cents")} negative indent />
               </>
             )}
-            <StatRow label="Net Revenue" values={vals("net_revenue_cents")} bold highlight />
+            <StatRow currencyCode={currencyCode} label="Net Revenue" values={vals("net_revenue_cents")} bold highlight />
             <DividerRow cols={colCount} />
 
             <tr>
@@ -223,21 +224,22 @@ export function PLTab({ slices, fiscalYearStartMonth = 1 }: Props) {
             </tr>
             {showCogs && (
               <>
-                <StatRow label="Beverage COGS" values={vals("beverage_cogs_cents")} indent />
-                <StatRow label="Food COGS" values={vals("food_cogs_cents")} indent />
-                <StatRow label="Retail COGS" values={vals("retail_cogs_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Beverage COGS" values={vals("beverage_cogs_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Food COGS" values={vals("food_cogs_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Retail COGS" values={vals("retail_cogs_cents")} indent />
                 {cogsLines.map((cl) => (
-                  <StatRow key={cl.id} label={cl.label} values={valsForLine(cl.id)} indent />
+                  <StatRow currencyCode={currencyCode} key={cl.id} label={cl.label} values={valsForLine(cl.id)} indent />
                 ))}
               </>
             )}
             <StatRow
+              currencyCode={currencyCode}
               label="Total COGS"
               values={vals("total_cogs_cents")}
               bold
               pctValues={pctOf("total_cogs_cents", "net_revenue_cents")}
             />
-            <StatRow label="Gross Profit" values={vals("gross_profit_cents")} bold highlight
+            <StatRow currencyCode={currencyCode} label="Gross Profit" values={vals("gross_profit_cents")} bold highlight
               pctValues={pctOf("gross_profit_cents", "net_revenue_cents")} />
             <DividerRow cols={colCount} />
 
@@ -254,27 +256,27 @@ export function PLTab({ slices, fiscalYearStartMonth = 1 }: Props) {
             {showOpex && (
               <>
                 {overheadLines.map((ol) => (
-                  <StatRow key={ol.id} label={ol.label} values={valsForLine(ol.id)} indent />
+                  <StatRow currencyCode={currencyCode} key={ol.id} label={ol.label} values={valsForLine(ol.id)} indent />
                 ))}
-                <StatRow label="Payment Processing Fees" values={vals("payment_processing_cents")} indent pctValues={pctOf("payment_processing_cents", "net_revenue_cents")} />
-                <StatRow label="Spoilage And Waste" values={vals("spoilage_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Payment Processing Fees" values={vals("payment_processing_cents")} indent pctValues={pctOf("payment_processing_cents", "net_revenue_cents")} />
+                <StatRow currencyCode={currencyCode} label="Spoilage And Waste" values={vals("spoilage_cents")} indent />
               </>
             )}
-            <StatRow label="Total Operating Expenses" values={vals("total_opex_cents")} bold
+            <StatRow currencyCode={currencyCode} label="Total Operating Expenses" values={vals("total_opex_cents")} bold
               pctValues={pctOf("total_opex_cents", "net_revenue_cents")} />
             <DividerRow cols={colCount} />
 
-            <StatRow label="Operating Income (EBIT)" values={vals("operating_income_cents")} bold highlight
+            <StatRow currencyCode={currencyCode} label="Operating Income (EBIT)" values={vals("operating_income_cents")} bold highlight
               pctValues={pctOf("operating_income_cents", "net_revenue_cents")} />
-            <StatRow label="Depreciation" values={vals("depreciation_cents")} indent />
-            <StatRow label="EBITDA" values={vals("ebitda_cents")} bold />
-            <StatRow label="Interest Expense" values={vals("interest_cents")} negative indent />
-            <StatRow label="Income Before Taxes" values={vals("income_before_taxes_cents")} bold />
-            <StatRow label="Taxes" values={vals("taxes_cents")} indent />
-            <StatRow label="Net Income" values={vals("net_income_cents")} bold highlight
+            <StatRow currencyCode={currencyCode} label="Depreciation" values={vals("depreciation_cents")} indent />
+            <StatRow currencyCode={currencyCode} label="EBITDA" values={vals("ebitda_cents")} bold />
+            <StatRow currencyCode={currencyCode} label="Interest Expense" values={vals("interest_cents")} negative indent />
+            <StatRow currencyCode={currencyCode} label="Income Before Taxes" values={vals("income_before_taxes_cents")} bold />
+            <StatRow currencyCode={currencyCode} label="Taxes" values={vals("taxes_cents")} indent />
+            <StatRow currencyCode={currencyCode} label="Net Income" values={vals("net_income_cents")} bold highlight
               pctValues={pctOf("net_income_cents", "net_revenue_cents")} />
             <DividerRow cols={colCount} />
-            <StatRow label="Cash Balance" values={vals("cash_cents")} bold highlight />
+            <StatRow currencyCode={currencyCode} label="Cash Balance" values={vals("cash_cents")} bold highlight />
           </tbody>
         </table>
       </div>
