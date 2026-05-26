@@ -1,4 +1,6 @@
 // TIM-930: Stream AI feedback for a location scorecard.
+// TIM-1104: Every concern must be paired with a concrete recommendation, a
+//           specific next step the owner can take, and a one-sentence why.
 // POST body: { planId: string }
 // Streams SSE with delta/error/done events (same shape as copilot/stream).
 
@@ -61,12 +63,17 @@ Two to three sentences describing the overall risk level (low / medium / high) a
 List exactly three bullet points. Each one names the specific criterion and explains why it matters for a coffee shop in practical terms.
 
 ## Top 3 Concerns
-List exactly three bullet points. Each one names the specific criterion and explains the concrete risk or impact on the business.
+List exactly three concerns. For EACH concern, write a small block with these four lines in this exact order — no extra prose between them:
+
+- **Concern:** name the specific criterion and the concrete risk or impact on the business (1 sentence).
+- **Recommendation:** what to do to mitigate or fix it. Be concrete with numbers, vendors, or specific actions when possible. No vague verbs ("consider", "explore"). (1 sentence)
+- **Next Step:** the single, named thing the owner can do this week to act on it (1 sentence with a target, e.g. "Email the landlord and ask for a 6-month TI allowance breakdown.").
+- **Why It Should Work:** one sentence on the mechanism — why this fix lowers the risk.
 
 ## Due-Diligence Questions
 List exactly five specific, actionable questions the owner should answer before signing a lease on this site. Make them concrete — not generic real estate questions.
 
-Keep each section tight. No filler phrases, no "it's important to note that…" Lead with the insight.`
+Keep each section tight. No filler phrases, no "it's important to note that…" Lead with the insight. Never name a concern without telling the owner exactly what to do about it.`
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
@@ -116,10 +123,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       try {
         const response = await anthropic.messages.stream({
           model: "claude-sonnet-4-6",
-          max_tokens: 1024,
+          max_tokens: 1800,
           messages: [{ role: "user", content: prompt }],
           system:
-            "You are a knowledgeable coffee shop business advisor. Give direct, specific, actionable feedback. Never use filler phrases or hedge unnecessarily. Use plain English — no consultant jargon.",
+            "You are a knowledgeable coffee shop business advisor. Give direct, specific, actionable feedback. Never name a problem, risk, or weakness without pairing it with a concrete recommendation, a single named next step, and a one-sentence why. No filler phrases, no hedging. Plain English — no consultant jargon (never use: leverage, synergy, curated, unlock, elevate, embark, delve). No emojis. Title case for any headings; sentence case for body copy.",
         })
 
         for await (const chunk of response) {

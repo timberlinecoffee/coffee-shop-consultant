@@ -1,4 +1,5 @@
 // TIM-736: Cross-workspace launch readiness check.
+// TIM-1104: Every blocker must be matched by a paired recommended next action.
 // POST /api/copilot/launch-readiness
 // SSE events: thinking | result | error | done
 // Composes compact snapshots from all 6 workspaces, asks Claude to grade each
@@ -75,9 +76,11 @@ Output ONLY valid JSON — no markdown, no prose, no code fences — matching th
 Rules:
 - overall: red if ANY workspace is red; yellow if any is yellow but none are red; green only if ALL are green.
 - perWorkspace: include ALL 6 workspace keys in this exact order: concept, location_lease, financials, menu_pricing, buildout_equipment, launch_plan.
-- blockers: max 3 items per workspace. If workspace has "No data entered", use ["No data entered yet"].
-- topNextActions: 2-3 specific, concrete next steps the entrepreneur should take.
-- criticalPath: top 5 most time-sensitive or blocking actions across all workspaces, ordered by urgency.
+- blockers: max 3 items per workspace. If workspace has "No data entered", use ["No data entered yet"]. Name the specific gap — not a generic phrase.
+- topNextActions: 2-3 entries. EVERY blocker you listed must be matched by at least one specific next action here that fixes it. Each action is concrete: a single, named thing the owner can do this week, with a target ("Email landlord X about a 6-month TI allowance" — not "consider talking to the landlord"). No vague verbs ("consider", "explore", "look into").
+- criticalPath: top 5 most time-sensitive or blocking actions across all workspaces, ordered by urgency. Each action: who does it (owner) and a target due date if implied by the data.
+- Never list a blocker without a paired recommended action. Pure problem-listing is not acceptable.
+- Voice: founder-direct, plain English. NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve. No emojis. Title case for headings; sentence case for body.
 - Output ONLY the JSON object. Nothing before or after it.`
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
