@@ -18,6 +18,7 @@ export const WORKSPACE_ORDER: WorkspaceKey[] = [
   "marketing",
   "suppliers",
   "operations_playbook",
+  "marketing_pre_launch",
 ]
 
 export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
@@ -31,6 +32,7 @@ export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
   operations_playbook: "Operations Playbook",
+  marketing_pre_launch: "Marketing & Pre-Launch",
 }
 
 export interface ThreadBrowserItem {
@@ -145,6 +147,7 @@ export function ThreadBrowser({
       marketing: [],
       suppliers: [],
       operations_playbook: [],
+      marketing_pre_launch: [],
     }
     for (const item of items) {
       if (groups[item.workspace_key]) groups[item.workspace_key].push(item)

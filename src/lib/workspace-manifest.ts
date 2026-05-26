@@ -45,6 +45,7 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 9, label: "Marketing",               href: "/workspace/marketing",          icon: "megaphone",  totalSections: null },
   { moduleNumber: 10, label: "Suppliers & Vendors",     href: "/workspace/suppliers",          icon: "truck",      totalSections: null },
   { moduleNumber: 11, label: "Operations Playbook",    href: "/workspace/operations-playbook", icon: "clipboard-list", totalSections: 6 },
+  { moduleNumber: 12, label: "Marketing & Pre-Launch", href: "/workspace/marketing-pre-launch", icon: "megaphone", totalSections: 5 },
 ];
 
 export function buildNavItems(
