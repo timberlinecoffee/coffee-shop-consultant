@@ -95,6 +95,11 @@ export interface MonthlyProjections {
   growth_monthly_pct: number;
   growth_custom_monthly: number[];
 
+  // TIM-1100: First calendar month of the user's fiscal year (1=Jan … 12=Dec).
+  // Default 1. Drives column ordering on monthly P&L / Balance Sheet / Cash Flow
+  // tabs; does NOT change the underlying month-1..N simulation math.
+  fiscal_year_start_month: number;
+
   // ── Legacy fields kept on the type for migration / backward-compat reads ────
   // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
   // New code should not read them directly — read the rollups on MonthlySlice
@@ -231,6 +236,7 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     growth_mode: "simple",
     growth_monthly_pct: 2,
     growth_custom_monthly: [],
+    fiscal_year_start_month: 1,
   };
 }
 
@@ -474,6 +480,11 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     ? (r.growth_custom_monthly as number[]).slice(0, 60)
     : [];
 
+  const fiscal_year_start_month =
+    typeof r.fiscal_year_start_month === "number"
+      ? Math.min(12, Math.max(1, Math.round(r.fiscal_year_start_month)))
+      : defaults.fiscal_year_start_month;
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -488,6 +499,7 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     growth_mode,
     growth_monthly_pct,
     growth_custom_monthly,
+    fiscal_year_start_month,
   };
 }
 
@@ -575,6 +587,20 @@ export interface FinancialProjections {
   year5: YearProjection;
   startup_equipment_total: number;
   financed_total: number;
+}
+
+// ── Fiscal year helpers (TIM-1100) ────────────────────────────────────────────
+
+const CALENDAR_MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+// Returns the 12 month labels in fiscal-year order starting at startMonth.
+// startMonth is 1-indexed (1=Jan … 12=Dec). startMonth=4 → ["Apr","May",…,"Mar"].
+export function fiscalYearMonthLabels(startMonth: number): string[] {
+  const s = Math.min(12, Math.max(1, Math.round(startMonth || 1))) - 1;
+  return Array.from({ length: 12 }, (_, i) => CALENDAR_MONTH_LABELS[(s + i) % 12]);
 }
 
 // ── Schedule helpers ──────────────────────────────────────────────────────────

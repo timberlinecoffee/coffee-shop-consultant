@@ -8,11 +8,11 @@ import {
   sumSlices,
   getQuarterSlices,
   aggregateLineAmounts,
+  fiscalYearMonthLabels,
   fmt,
   pct,
 } from "@/lib/financial-projection";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
 
 type Period = "monthly" | "quarterly" | "annual";
@@ -59,15 +59,17 @@ function DividerRow({ cols }: { cols: number }) {
 
 interface Props {
   slices: MonthlySlice[];
+  fiscalYearStartMonth?: number;
 }
 
-export function PLTab({ slices }: Props) {
+export function PLTab({ slices, fiscalYearStartMonth = 1 }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [showCogs, setShowCogs] = useState(true);
   const [showOpex, setShowOpex] = useState(true);
   const [showRevenue, setShowRevenue] = useState(true);
 
+  const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
 
   // Each column carries:

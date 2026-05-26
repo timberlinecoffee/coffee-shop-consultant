@@ -1,5 +1,6 @@
-// TIM-964: AI critique endpoint for the Financial Suite.
+// TIM-964: AI assessment endpoint for the Financial Suite.
 // TIM-1004: Updated to include itemized opex and out-of-range category flagging.
+// TIM-1100: User-facing term is now "AI Assessment" (route path retained for compat).
 // POST /api/workspaces/financials/critique
 
 export const runtime = "nodejs";
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
 
   const prompt = `You are a senior coffee shop consultant who has reviewed hundreds of independent coffee shop business plans. You have deep knowledge of industry benchmarks for small-format espresso bars and cafes in North American markets.
 
-Review these Year 1 / Year 3 / Year 5 financial projections for a new coffee shop and provide a benchmarked critique.
+Review these Year 1 / Year 3 / Year 5 financial projections for a new coffee shop and provide a benchmarked assessment.
 
 ## Year 1 Projections (Detailed)
 - Revenue: ${formatCurrency(year1.revenue)}
@@ -143,7 +144,7 @@ Return ONLY the JSON object, no other text.`;
       generated_at: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("financials critique error:", err);
+    console.error("financials assessment error:", err);
     return Response.json({ error: "AI generation failed" }, { status: 500 });
   }
 }

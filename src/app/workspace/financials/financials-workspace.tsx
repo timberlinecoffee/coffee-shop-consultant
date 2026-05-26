@@ -21,6 +21,7 @@ import {
   computeMonthlySlices,
   computeDayHours,
   computeWeeklyHours,
+  fiscalYearMonthLabels,
   formatCurrency,
 } from "@/lib/financial-projection";
 import { PLTab } from "./tabs/pl-tab";
@@ -460,6 +461,32 @@ function ForecastTab({
         </div>
       </div>
 
+      {/* Fiscal Year Start — TIM-1100 */}
+      <div>
+        <p className={sectionLabelCls}>Fiscal Year</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <div className="max-w-[260px]">
+            <label className={labelCls}>Starting month</label>
+            <select
+              className={inputCls}
+              value={mp.fiscal_year_start_month ?? 1}
+              onChange={(e) => update({ fiscal_year_start_month: parseInt(e.target.value, 10) || 1 })}
+              disabled={!canEdit}
+            >
+              {[
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December",
+              ].map((name, i) => (
+                <option key={i + 1} value={i + 1}>{name}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-[#afafaf] mt-1">
+              Month-to-month columns, projections, and exports re-index from this month. Default January.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Ramp Period */}
       <div>
         <p className={sectionLabelCls}>Ramp Period</p>
@@ -667,7 +694,13 @@ function MetricRow({
 
 // ── Inline revenue chart ──────────────────────────────────────────────────────
 
-function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
+function RevenueChart({
+  slices,
+  fiscalYearStartMonth,
+}: {
+  slices: MonthlySlice[];
+  fiscalYearStartMonth: number;
+}) {
   const y1 = slices.filter((s) => s.year === 1);
   if (y1.length === 0) return null;
   const values = y1.map((s) => s.revenue_cents / 100);
@@ -682,6 +715,7 @@ function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
   });
   const minV = Math.min(...values);
   const maxV = Math.max(...values);
+  const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
   return (
     <div className="rounded-xl border border-[#efefef] bg-white p-4 mb-4">
       <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-3">
@@ -710,9 +744,9 @@ function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
         })}
       </svg>
       <div className="flex justify-between text-[10px] text-[#afafaf] mt-1">
-        <span>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][0]}</span>
+        <span>{labels[0]}</span>
         <span>{formatCurrency(minV)} – {formatCurrency(maxV)}</span>
-        <span>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][11]}</span>
+        <span>{labels[11]}</span>
       </div>
     </div>
   );
@@ -724,32 +758,34 @@ function ProjectionsTab({
   canEdit,
   critique,
   onCritiqueUpdate,
+  fiscalYearStartMonth,
 }: {
   projections: FinancialProjections;
   slices: MonthlySlice[];
   canEdit: boolean;
   critique: CritiqueResult | null;
   onCritiqueUpdate: (c: CritiqueResult | null) => void;
+  fiscalYearStartMonth: number;
 }) {
   const { year1: y1, year3: y3, year5: y5 } = projections;
-  const [critiqueStatus, setCritiqueStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [localCritique, setLocalCritique] = useState<CritiqueResult | null>(critique);
+  const [assessmentStatus, setAssessmentStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [localAssessment, setLocalAssessment] = useState<CritiqueResult | null>(critique);
 
-  async function generateCritique() {
-    setCritiqueStatus("loading");
+  async function generateAssessment() {
+    setAssessmentStatus("loading");
     try {
       const res = await fetch("/api/workspaces/financials/critique", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projections }),
       });
-      if (!res.ok) throw new Error(`critique failed (${res.status})`);
+      if (!res.ok) throw new Error(`assessment failed (${res.status})`);
       const data = (await res.json()) as CritiqueResult;
-      setLocalCritique(data);
-      setCritiqueStatus("done");
+      setLocalAssessment(data);
+      setAssessmentStatus("done");
       onCritiqueUpdate(data);
     } catch {
-      setCritiqueStatus("error");
+      setAssessmentStatus("error");
     }
   }
 
@@ -763,10 +799,10 @@ function ProjectionsTab({
   return (
     <div className="space-y-6">
       {/* Inline revenue trajectory chart */}
-      <RevenueChart slices={slices} />
+      <RevenueChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
 
       {/* Monthly / Quarterly / Annual P&L table — defaults to monthly Y1 */}
-      <PLTab slices={slices} />
+      <PLTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
 
       {/* KPI summary tiles */}
       <div className="grid grid-cols-3 gap-3">
@@ -805,11 +841,11 @@ function ProjectionsTab({
         ))}
       </div>
 
-      {/* AI Critique */}
+      {/* AI Assessment */}
       <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">AI Critique</p>
+            <p className="text-sm font-semibold text-[#1a1a1a]">AI Assessment</p>
             <p className="text-xs text-[#6b6b6b] mt-0.5">
               Benchmarked against comparable independent coffee shops.
             </p>
@@ -817,24 +853,24 @@ function ProjectionsTab({
           {canEdit && (
             <button
               type="button"
-              onClick={generateCritique}
-              disabled={critiqueStatus === "loading"}
+              onClick={generateAssessment}
+              disabled={assessmentStatus === "loading"}
               className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60 shrink-0"
             >
-              {critiqueStatus === "loading"
+              {assessmentStatus === "loading"
                 ? "Analyzing..."
-                : localCritique
+                : localAssessment
                 ? "Refresh"
-                : "Generate critique"}
+                : "Generate assessment"}
             </button>
           )}
         </div>
-        {critiqueStatus === "error" && (
+        {assessmentStatus === "error" && (
           <p className="px-5 py-4 text-sm text-[#a13d3d]">Could not generate. Try again.</p>
         )}
-        {localCritique ? (
+        {localAssessment ? (
           <ul className="divide-y divide-[#f5f5f5]">
-            {localCritique.bullets.map((b, i) => (
+            {localAssessment.bullets.map((b, i) => (
               <li key={i} className="px-5 py-3 flex items-start gap-3">
                 <span className={`text-sm font-bold shrink-0 mt-0.5 ${bulletColor[b.type]}`}>
                   {bulletIcon[b.type]}
@@ -845,13 +881,13 @@ function ProjectionsTab({
           </ul>
         ) : !canEdit ? null : (
           <p className="px-5 py-4 text-sm text-[#afafaf]">
-            Run a critique to get benchmarked feedback on your projections.
+            Run an assessment to get benchmarked feedback on your projections.
           </p>
         )}
-        {localCritique?.generated_at && (
+        {localAssessment?.generated_at && (
           <p className="px-5 py-3 border-t border-[#f5f5f5] text-[10px] text-[#afafaf]">
             Generated{" "}
-            {new Date(localCritique.generated_at).toLocaleDateString("en-US", {
+            {new Date(localAssessment.generated_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
@@ -1043,9 +1079,11 @@ export function FinancialsWorkspace({
     { id: "startup", label: "Startup Costs" },
   ];
 
+  const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
+
   return (
     <div className="bg-[#faf9f7] min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <BarChart2 className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
@@ -1127,10 +1165,15 @@ export function FinancialsWorkspace({
             canEdit={canEdit}
             critique={critique}
             onCritiqueUpdate={handleCritiqueUpdate}
+            fiscalYearStartMonth={fiscalYearStartMonth}
           />
         )}
-        {activeTab === "balance-sheet" && <BalanceSheetTab slices={slices} />}
-        {activeTab === "cash-flow" && <CashFlowTab slices={slices} />}
+        {activeTab === "balance-sheet" && (
+          <BalanceSheetTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
+        )}
+        {activeTab === "cash-flow" && (
+          <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} />
+        )}
         {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} />}
         {activeTab === "ratios" && <RatiosTab slices={slices} />}
         {activeTab === "startup" && <StartupTab inputs={financialInputs} />}

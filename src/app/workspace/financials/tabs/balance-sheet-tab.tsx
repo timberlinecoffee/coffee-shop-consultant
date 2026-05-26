@@ -3,11 +3,9 @@
 import { useState } from "react";
 import {
   type MonthlySlice,
-  sumSlices,
+  fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 type Period = "monthly" | "annual";
 
@@ -63,12 +61,14 @@ function DividerRow({ cols }: { cols: number }) {
 
 interface Props {
   slices: MonthlySlice[];
+  fiscalYearStartMonth?: number;
 }
 
-export function BalanceSheetTab({ slices }: Props) {
+export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1 }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
 
   let columns: { label: string; data: Partial<MonthlySlice> }[] = [];
