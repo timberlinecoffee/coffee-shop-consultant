@@ -3,8 +3,11 @@
 import { useState } from "react";
 import {
   type MonthlySlice,
+  type LineMonthlyAmount,
+  type ForecastCategory,
   sumSlices,
   getQuarterSlices,
+  aggregateLineAmounts,
   fmt,
   pct,
 } from "@/lib/financial-projection";
@@ -63,27 +66,66 @@ export function PLTab({ slices }: Props) {
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [showCogs, setShowCogs] = useState(true);
   const [showOpex, setShowOpex] = useState(true);
+  const [showRevenue, setShowRevenue] = useState(true);
 
   const yearSlices = slices.filter((s) => s.year === year);
 
-  let columns: { label: string; data: Partial<MonthlySlice> }[] = [];
+  // Each column carries:
+  //   data = aggregated numeric fields (Partial<MonthlySlice>)
+  //   lineAmounts = per-line totals for that period (forecast_line_amounts rolled up)
+  interface PLColumn {
+    label: string;
+    data: Partial<MonthlySlice>;
+    lineAmounts: LineMonthlyAmount[];
+  }
+  let columns: PLColumn[] = [];
 
   if (period === "monthly") {
     columns = yearSlices.map((s, i) => ({
       label: MONTHS[i],
       data: s,
+      lineAmounts: s.forecast_line_amounts ?? [],
     }));
   } else if (period === "quarterly") {
-    columns = [1, 2, 3, 4].map((q) => ({
-      label: QUARTERS[q - 1],
-      data: sumSlices(getQuarterSlices(slices, year, q)),
-    }));
+    columns = [1, 2, 3, 4].map((q) => {
+      const qs = getQuarterSlices(slices, year, q);
+      return {
+        label: QUARTERS[q - 1],
+        data: sumSlices(qs),
+        lineAmounts: aggregateLineAmounts(qs),
+      };
+    });
   } else {
-    columns = [1, 2, 3, 4, 5].map((y) => ({
-      label: `Year ${y}`,
-      data: sumSlices(slices.filter((s) => s.year === y)),
-    }));
+    columns = [1, 2, 3, 4, 5].map((y) => {
+      const ys = slices.filter((s) => s.year === y);
+      return {
+        label: `Year ${y}`,
+        data: sumSlices(ys),
+        lineAmounts: aggregateLineAmounts(ys),
+      };
+    });
   }
+
+  // Union of all line IDs across columns, grouped by category — so user-named
+  // lines show up under the right section regardless of whether they have a
+  // value in every period.
+  const linesByCategory = (cat: ForecastCategory) => {
+    const seen = new Map<string, { id: string; label: string }>();
+    for (const col of columns) {
+      for (const ln of col.lineAmounts) {
+        if (ln.category === cat && !seen.has(ln.id)) {
+          seen.set(ln.id, { id: ln.id, label: ln.label });
+        }
+      }
+    }
+    return Array.from(seen.values());
+  };
+  const overheadLines = linesByCategory("overhead");
+  const cogsLines = linesByCategory("cogs");
+  const revenueLines = linesByCategory("revenue");
+
+  const valsForLine = (id: string) =>
+    columns.map((c) => c.lineAmounts.find((ln) => ln.id === id)?.amount_cents);
 
   const vals = (key: keyof MonthlySlice) => columns.map((c) => c.data[key] as number | undefined);
   const pctOf = (numKey: keyof MonthlySlice, denKey: keyof MonthlySlice) =>
@@ -138,8 +180,32 @@ export function PLTab({ slices }: Props) {
             </tr>
           </thead>
           <tbody>
-            <StatRow label="Gross Revenue" values={vals("gross_revenue_cents")} />
-            <StatRow label="Less: Loyalty Discounts" values={vals("loyalty_discounts_cents")} negative indent />
+            <tr>
+              <td colSpan={colCount + 1} className="px-4 py-1.5">
+                <button
+                  onClick={() => setShowRevenue(!showRevenue)}
+                  className="text-xs font-semibold text-[#155e63] uppercase tracking-wide"
+                >
+                  {showRevenue ? "▼" : "▶"} Revenue
+                </button>
+              </td>
+            </tr>
+            {showRevenue && (
+              <>
+                <StatRow label="Foot-Traffic Revenue" values={vals("gross_revenue_cents").map((v, i) => {
+                  // base revenue = gross_revenue - sum of additional revenue lines for the column
+                  const addls = revenueLines.reduce(
+                    (s, rl) => s + (columns[i].lineAmounts.find((ln) => ln.id === rl.id)?.amount_cents ?? 0),
+                    0
+                  );
+                  return v !== undefined ? v - addls : undefined;
+                })} indent />
+                {revenueLines.map((rl) => (
+                  <StatRow key={rl.id} label={rl.label} values={valsForLine(rl.id)} indent />
+                ))}
+                <StatRow label="Less: Loyalty Discounts" values={vals("loyalty_discounts_cents")} negative indent />
+              </>
+            )}
             <StatRow label="Net Revenue" values={vals("net_revenue_cents")} bold highlight />
             <DividerRow cols={colCount} />
 
@@ -158,6 +224,9 @@ export function PLTab({ slices }: Props) {
                 <StatRow label="Beverage COGS" values={vals("beverage_cogs_cents")} indent />
                 <StatRow label="Food COGS" values={vals("food_cogs_cents")} indent />
                 <StatRow label="Retail COGS" values={vals("retail_cogs_cents")} indent />
+                {cogsLines.map((cl) => (
+                  <StatRow key={cl.id} label={cl.label} values={valsForLine(cl.id)} indent />
+                ))}
               </>
             )}
             <StatRow
@@ -182,17 +251,11 @@ export function PLTab({ slices }: Props) {
             </tr>
             {showOpex && (
               <>
-                <StatRow label="Labor" values={vals("labor_cents")} indent pctValues={pctOf("labor_cents", "net_revenue_cents")} />
-                <StatRow label="Rent" values={vals("rent_cents")} indent pctValues={pctOf("rent_cents", "net_revenue_cents")} />
-                <StatRow label="Marketing" values={vals("marketing_cents")} indent />
-                <StatRow label="Utilities" values={vals("utilities_cents")} indent />
-                <StatRow label="Insurance" values={vals("insurance_cents")} indent />
-                <StatRow label="Technology" values={vals("tech_cents")} indent />
-                <StatRow label="Maintenance" values={vals("maintenance_cents")} indent />
-                <StatRow label="Supplies" values={vals("supplies_cents")} indent />
+                {overheadLines.map((ol) => (
+                  <StatRow key={ol.id} label={ol.label} values={valsForLine(ol.id)} indent />
+                ))}
                 <StatRow label="Payment Processing Fees" values={vals("payment_processing_cents")} indent pctValues={pctOf("payment_processing_cents", "net_revenue_cents")} />
                 <StatRow label="Spoilage And Waste" values={vals("spoilage_cents")} indent />
-                <StatRow label="Other" values={vals("other_opex_cents")} indent />
               </>
             )}
             <StatRow label="Total Operating Expenses" values={vals("total_opex_cents")} bold
