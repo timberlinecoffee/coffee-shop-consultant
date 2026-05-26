@@ -216,7 +216,7 @@ function LineRow({ line, canEdit, onChange, onDelete }: LineRowProps) {
                 className="w-3.5 h-3.5 accent-[#155e63]"
               />
               <span className="text-xs font-medium text-[#1a1a1a]">
-                Ramp period — line starts below full level and ramps up
+                Ramp period: line starts below full level and ramps up
               </span>
             </label>
             {line.ramp?.enabled && (
@@ -312,7 +312,7 @@ function LineRow({ line, canEdit, onChange, onDelete }: LineRowProps) {
                   className="w-3.5 h-3.5 accent-[#155e63]"
                 />
                 <span className="text-xs font-medium text-[#1a1a1a]">
-                  Monthly growth — compounds each month after ramp completes
+                  Monthly growth: compounds each month after ramp completes
                 </span>
               </label>
               {line.growth?.enabled && (
