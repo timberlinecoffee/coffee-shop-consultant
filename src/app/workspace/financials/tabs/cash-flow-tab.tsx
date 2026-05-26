@@ -5,10 +5,10 @@ import {
   type MonthlySlice,
   sumSlices,
   getQuarterSlices,
+  fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
 
 type Period = "monthly" | "quarterly" | "annual";
@@ -92,12 +92,14 @@ function deriveCF(data: Partial<MonthlySlice>, prevCash: number) {
 
 interface Props {
   slices: MonthlySlice[];
+  fiscalYearStartMonth?: number;
 }
 
-export function CashFlowTab({ slices }: Props) {
+export function CashFlowTab({ slices, fiscalYearStartMonth = 1 }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
 
   let columns: { label: string; data: Partial<MonthlySlice>; prevCash: number }[] = [];
@@ -203,25 +205,34 @@ export function CashFlowTab({ slices }: Props) {
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
-        <CashFlowCritique slices={slices} year={year} />
+        <CashFlowCritique slices={slices} year={year} monthLabels={MONTHS} />
       </div>
     </div>
   );
 }
 
-function CashFlowCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) {
+function CashFlowCritique({
+  slices,
+  year,
+  monthLabels,
+}: {
+  slices: MonthlySlice[];
+  year: number;
+  monthLabels: string[];
+}) {
   const yearSlices = slices.filter((s) => s.year === year);
   if (yearSlices.length === 0) return null;
 
   const lines: string[] = [];
   const lowestCash = Math.min(...yearSlices.map((s) => s.cash_cents));
   const lowestMonth = yearSlices.find((s) => s.cash_cents === lowestCash);
+  const labelFor = (m?: number) => (m && m >= 1 && m <= 12 ? monthLabels[m - 1] : "");
 
   if (lowestCash < 0) {
-    const monthName = lowestMonth ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][lowestMonth.month - 1] : "";
+    const monthName = labelFor(lowestMonth?.month);
     lines.push(`Cash goes negative in ${monthName} of Year ${year}. That is a real problem — you would need more funding or tighter cost control before then.`);
   } else if (lowestCash < 500000) {
-    const monthName = lowestMonth ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][lowestMonth.month - 1] : "";
+    const monthName = labelFor(lowestMonth?.month);
     lines.push(`Your lowest cash balance in Year ${year} is under $5,000 (in ${monthName}). That is very thin. A single slow week could leave you unable to pay suppliers.`);
   } else {
     lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash)} — that is your real cushion number, not the year-end balance.`);
