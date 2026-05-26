@@ -5,7 +5,7 @@
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle, Save } from "lucide-react";
+import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
@@ -1170,6 +1170,28 @@ export function FinancialsWorkspace({
             >
               {saveLabel}
             </span>
+            <button
+              type="button"
+              onClick={() =>
+                window.location.assign("/api/workspaces/financials/export/pdf")
+              }
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              title="Download financials as PDF (landscape monthly views)"
+            >
+              <FileDown size={12} aria-hidden="true" />
+              Export PDF
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                window.location.assign("/api/workspaces/financials/export/xlsx")
+              }
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
+            >
+              <Sheet size={12} aria-hidden="true" />
+              Export Excel
+            </button>
             {canEdit && (
               <button
                 type="button"
