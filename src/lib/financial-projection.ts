@@ -81,6 +81,9 @@ export interface ForecastLine {
   legacy_key?: LegacyLineKey;
   revenue_stream_id?: string;
   menu_linked?: boolean;
+  // TIM-1169: capex lines depreciate straight-line over their own useful life.
+  // Default 7 years preserves prior behavior. Ignored on non-capex lines.
+  useful_life_years?: number;
 }
 
 export interface MonthlyProjections {
@@ -118,6 +121,15 @@ export interface MonthlyProjections {
   // symbol + locale formatting across the planner, AI assessment, and exports.
   // Single currency per plan — no FX conversion in v1.
   currency_code: string;
+
+  // TIM-1169: Owner activity that hits financing-section cash flow without
+  // touching net income.
+  //   owner_draws_monthly_cents: flat monthly outflow (e.g. an owner taking a
+  //     salary from the business). Reduces equity.
+  //   owner_contributions: one-time cash injections at specific month_index
+  //     values (1–60). Increase equity and cash.
+  owner_draws_monthly_cents?: number;
+  owner_contributions?: { month_index: number; amount_cents: number }[];
 
   // ── Legacy fields kept on the type for migration / backward-compat reads ────
   // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
@@ -257,6 +269,8 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     growth_custom_monthly: [],
     fiscal_year_start_month: 1,
     currency_code: "USD",
+    owner_draws_monthly_cents: 0,
+    owner_contributions: [],
   };
 }
 
@@ -357,6 +371,10 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
       ? r.revenue_stream_id
       : undefined;
   const menu_linked = r.menu_linked === true ? true : undefined;
+  const useful_life_years =
+    typeof r.useful_life_years === "number" && r.useful_life_years > 0
+      ? Math.min(50, Math.max(1, Math.round(r.useful_life_years)))
+      : undefined;
   return {
     id,
     label,
@@ -368,6 +386,7 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
     legacy_key: legacy,
     revenue_stream_id,
     menu_linked,
+    useful_life_years,
   };
 }
 
@@ -514,6 +533,27 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
 
   const currency_code = normalizeCurrencyCode(r.currency_code);
 
+  // TIM-1169: owner activity normalization. Negative or non-finite values
+  // clamp to zero; month_index outside 1..60 is dropped.
+  const owner_draws_monthly_cents =
+    typeof r.owner_draws_monthly_cents === "number" && r.owner_draws_monthly_cents > 0
+      ? Math.round(r.owner_draws_monthly_cents)
+      : 0;
+  const owner_contributions: { month_index: number; amount_cents: number }[] = Array.isArray(
+    r.owner_contributions
+  )
+    ? (r.owner_contributions as unknown[])
+        .map((c) => {
+          if (!c || typeof c !== "object") return null;
+          const o = c as Record<string, unknown>;
+          const mi = typeof o.month_index === "number" ? Math.round(o.month_index) : NaN;
+          const amt = typeof o.amount_cents === "number" ? Math.round(o.amount_cents) : 0;
+          if (!Number.isFinite(mi) || mi < 1 || mi > 60 || amt <= 0) return null;
+          return { month_index: mi, amount_cents: amt };
+        })
+        .filter((x): x is { month_index: number; amount_cents: number } => x !== null)
+    : [];
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -530,6 +570,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     growth_custom_monthly,
     fiscal_year_start_month,
     currency_code,
+    owner_draws_monthly_cents,
+    owner_contributions,
   };
 }
 
@@ -825,13 +867,10 @@ export function computeMonthlyProjections(
     (weeklyCustomers * 52 * (mp.avg_ticket_cents / 100) * 100) / 12
   );
 
-  // Depreciation: legacy financed equipment over 7y straight-line plus any capex
-  // lines accumulated up to this month. We pre-compute monthly capex so we can
-  // accumulate it forward when adding depreciation.
-  const legacyMonthlyDepreciationCents = Math.round(
-    (equipment.financed_cost_cents / 100 / 7 / 12) * 100
-  );
-
+  // TIM-1169: Depreciation is now per-capex-line. Each capex line depreciates
+  // straight-line from its start month over its own useful_life_years (default
+  // 7y). Legacy equipment financed-cost path is retired — `equipment` has been
+  // hard-coded to {0, 0} in the workspace since TIM-1029.
   const ramp_months = mp.ramp_months ?? 0;
   const ramp_multipliers = mp.ramp_multipliers ?? [];
   const growth_mode = mp.growth_mode ?? "simple";
@@ -844,15 +883,27 @@ export function computeMonthlyProjections(
   const overheadLines = lines.filter((l) => l.category === "overhead");
   const capexLines = lines.filter((l) => l.category === "capex");
 
-  // Pre-aggregate capex by month so it can drive monthly depreciation.
-  // (We use straight-line over 7y for each capex line just like legacy.)
-  const capexByMonth: number[] = new Array(60).fill(0);
-  for (let m = 1; m <= 60; m++) {
-    for (const l of capexLines) {
-      capexByMonth[m - 1] += computeCapexAmountCents(l, m);
+  // Pre-compute monthly depreciation per capex line.
+  //   - life = useful_life_years (default 7)
+  //   - start = ramp.start_month if enabled, else 1
+  //   - per-month dep = value / (life * 12) for months [start, start + life*12 - 1]
+  // Sum across lines for each month into a single per-month depreciation array.
+  // (We use simple round-per-month, accepting up to a few cents of cumulative
+  // rounding drift over a full lifetime — well under the 1c threshold the BS
+  // tolerance permits.)
+  const depreciationByMonth: number[] = new Array(60).fill(0);
+  for (const l of capexLines) {
+    const life = typeof l.useful_life_years === "number" && l.useful_life_years > 0
+      ? l.useful_life_years
+      : 7;
+    const start = l.ramp?.enabled ? Math.max(1, l.ramp.start_month) : 1;
+    const months = Math.max(1, Math.round(life * 12));
+    const perMonth = Math.round(l.value / months);
+    if (perMonth <= 0) continue;
+    for (let m = start; m < start + months && m <= 60; m++) {
+      depreciationByMonth[m - 1] += perMonth;
     }
   }
-  let cumulativeCapexDepreciationCents = 0;
 
   const rows: MonthlyProjectionRow[] = [];
 
@@ -952,15 +1003,8 @@ export function computeMonthlyProjections(
 
       const operating_income_cents = gross_profit_cents - total_opex_cents;
 
-      // Depreciation: legacy equipment-financed + accumulated capex spread over 7y
-      // Add the prior month's capex into the depreciable base, then divide by (7*12).
-      cumulativeCapexDepreciationCents += capex_cents > 0
-        ? Math.round(capex_cents / (7 * 12))
-        : 0;
-      // Note: this is a simplification — each capex line technically depreciates
-      // from its own start_month. For LivePlan-level UX this approximation
-      // (accumulated depreciation grows as capex accrues) is acceptable for now.
-      const depreciation_cents = legacyMonthlyDepreciationCents + cumulativeCapexDepreciationCents;
+      // TIM-1169: per-line straight-line depreciation, pre-aggregated above.
+      const depreciation_cents = depreciationByMonth[month_index_abs - 1] ?? 0;
 
       const income_before_taxes_cents =
         operating_income_cents - depreciation_cents - interest_cents;
@@ -1125,8 +1169,17 @@ export interface MonthlySlice extends MonthlyProjectionRow {
   // Cash-flow statement
   net_cash_cents: number;
   loan_repayment_cents: number;
+  loan_interest_cents: number; // TIM-1169: interest portion of loan payment
   capex_cents: number;
   cash_cents: number;
+  // TIM-1169: working-capital changes (this month minus last). Positive Δ in
+  // assets = cash consumed; positive Δ in liabilities = cash freed.
+  delta_ar_cents: number;
+  delta_inventory_cents: number;
+  delta_ap_cents: number;
+  // TIM-1169: owner financing activity
+  owner_draws_cents: number;
+  owner_contributions_cents: number;
   // Balance sheet — assets
   accounts_receivable_cents: number;
   inventory_cents: number;
@@ -1303,10 +1356,21 @@ export function computeMonthlySlices(
   const fixedAssetsGross = (inputs.equipment_cost_cents ?? 0) + (inputs.buildout_cost_cents ?? 0);
   const openingCash = (inputs.opening_cash_buffer_cents ?? 0) + (inputs.working_capital_reserve_cents ?? 0);
 
+  const ownerDrawsMonthly = mp.owner_draws_monthly_cents ?? 0;
+  const ownerContributionsByMonth = new Map<number, number>();
+  for (const c of mp.owner_contributions ?? []) {
+    ownerContributionsByMonth.set(c.month_index, (ownerContributionsByMonth.get(c.month_index) ?? 0) + c.amount_cents);
+  }
+
   let cumulativeNetIncome = 0;
   let cumulativeDepreciation = 0;
   let cashBalance = openingCash;
   let loanBalance = loanAmount;
+  let cumulativeOwnerDraws = 0;
+  let cumulativeOwnerContributions = 0;
+  let prevArCents = 0;
+  let prevInventoryCents = 0;
+  let prevApCents = 0;
 
   return rows.map((row) => {
     const rev = row.revenue_cents;
@@ -1329,6 +1393,7 @@ export function computeMonthlySlices(
 
     // Loan amortization
     let loanRepaymentCents = 0;
+    let loanInterestCents = 0;
     if (loanBalance > 0 && loanTerms > 0) {
       const interest = Math.round(loanBalance * loanRate);
       const monthlyPayment = loanRate > 0
@@ -1337,11 +1402,41 @@ export function computeMonthlySlices(
       const principal = Math.min(monthlyPayment - interest, loanBalance);
       loanBalance = Math.max(0, loanBalance - principal);
       loanRepaymentCents = principal;
+      loanInterestCents = interest;
     }
 
-    // Cash flow: net income + depreciation (add back) - loan repayment - capex
+    // TIM-1169: working-capital deltas. Compute end-of-period working-capital
+    // balances first, then take the delta from the prior period.
+    const arCents = Math.round(rev * (daysReceivable / 30));
+    const inventoryCents = Math.round(row.cogs_cents * (daysInventory / 30));
+    const apCents = Math.round(row.cogs_cents * (daysPayable / 30));
+    const deltaAr = arCents - prevArCents;
+    const deltaInventory = inventoryCents - prevInventoryCents;
+    const deltaAp = apCents - prevApCents;
+    prevArCents = arCents;
+    prevInventoryCents = inventoryCents;
+    prevApCents = apCents;
+
+    // TIM-1169: owner activity
+    const ownerContributionsCents = ownerContributionsByMonth.get(row.month_index) ?? 0;
+    const ownerDrawsCents = ownerDrawsMonthly;
+    cumulativeOwnerDraws += ownerDrawsCents;
+    cumulativeOwnerContributions += ownerContributionsCents;
+
+    // Cash flow with full CFO format:
+    //   CFO = NI + D&A − ΔAR − ΔInventory + ΔAP
+    //   CFI = − capex
+    //   CFF = − loan principal − draws + contributions
     const netCashCents =
-      row.net_income_cents + row.depreciation_cents - loanRepaymentCents - row.capex_cents;
+      row.net_income_cents
+      + row.depreciation_cents
+      - deltaAr
+      - deltaInventory
+      + deltaAp
+      - loanRepaymentCents
+      - row.capex_cents
+      - ownerDrawsCents
+      + ownerContributionsCents;
     cashBalance += netCashCents;
 
     // Balance sheet — capex lines add to fixed assets (gross)
@@ -1349,14 +1444,12 @@ export function computeMonthlySlices(
       fixedAssetsGross + rows
         .filter((r) => r.month_index <= row.month_index)
         .reduce((s, r) => s + r.capex_cents, 0);
-    const arCents = Math.round(rev * (daysReceivable / 30));
-    const inventoryCents = Math.round(row.cogs_cents * (daysInventory / 30));
     const netFixedAssets = Math.max(0, cumulativeFixedAssetsGross - cumulativeDepreciation);
     const totalAssets = cashBalance + arCents + inventoryCents + netFixedAssets;
-    const apCents = Math.round(row.cogs_cents * (daysPayable / 30));
     const totalLiabilities = apCents + loanBalance;
     const retainedEarnings = cumulativeNetIncome;
-    const totalEquity = ownerCapital + retainedEarnings;
+    const totalEquity =
+      ownerCapital + cumulativeOwnerContributions - cumulativeOwnerDraws + retainedEarnings;
 
     return {
       ...row,
@@ -1374,20 +1467,26 @@ export function computeMonthlySlices(
       avg_ticket_cents: mp.avg_ticket_cents,
       net_cash_cents: netCashCents,
       loan_repayment_cents: loanRepaymentCents,
+      loan_interest_cents: loanInterestCents,
       capex_cents: row.capex_cents,
-      cash_cents: Math.max(0, cashBalance),
+      cash_cents: cashBalance,
+      delta_ar_cents: deltaAr,
+      delta_inventory_cents: deltaInventory,
+      delta_ap_cents: deltaAp,
+      owner_draws_cents: ownerDrawsCents,
+      owner_contributions_cents: ownerContributionsCents,
       accounts_receivable_cents: arCents,
       inventory_cents: inventoryCents,
       fixed_assets_gross_cents: cumulativeFixedAssetsGross,
       accumulated_depreciation_cents: cumulativeDepreciation,
       net_fixed_assets_cents: netFixedAssets,
       other_assets_cents: 0,
-      total_assets_cents: Math.max(0, totalAssets),
+      total_assets_cents: totalAssets,
       accounts_payable_cents: apCents,
       current_debt_cents: 0,
       long_term_debt_cents: loanBalance,
       total_liabilities_cents: totalLiabilities,
-      owner_equity_cents: ownerCapital,
+      owner_equity_cents: ownerCapital + cumulativeOwnerContributions - cumulativeOwnerDraws,
       retained_earnings_cents: retainedEarnings,
       total_equity_cents: totalEquity,
       total_liabilities_and_equity_cents: totalLiabilities + totalEquity,

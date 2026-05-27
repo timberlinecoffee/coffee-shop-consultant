@@ -73,28 +73,39 @@ function DividerRow({ cols }: { cols: number }) {
   );
 }
 
-// Calculate derived cash flow columns from summed slices
-function deriveCF(data: Partial<MonthlySlice>, prevCash: number) {
+// Calculate derived cash flow columns from summed slices.
+// TIM-1169: surface working-capital deltas + owner activity as discrete rows.
+function deriveCF(data: Partial<MonthlySlice>) {
   const ni = data.net_income_cents ?? 0;
   const dep = data.depreciation_cents ?? 0;
-  // Working capital changes: not trivially summable from monthly; approximate from balance sheet deltas
-  // For display we show net_cash broken into sections using available fields
+  const dAr = data.delta_ar_cents ?? 0;
+  const dInv = data.delta_inventory_cents ?? 0;
+  const dAp = data.delta_ap_cents ?? 0;
   const loan_rep = data.loan_repayment_cents ?? 0;
   const capex = data.capex_cents ?? 0;
-  const net_cash_financing = -(loan_rep);
-  const net_cash_investing = -(capex);
-  const net_cash_operating = (data.net_cash_cents ?? 0) - net_cash_financing - net_cash_investing;
+  const draws = data.owner_draws_cents ?? 0;
+  const contributions = data.owner_contributions_cents ?? 0;
+
+  const net_cash_operating = ni + dep - dAr - dInv + dAp;
+  const net_cash_investing = -capex;
+  const net_cash_financing = -loan_rep - draws + contributions;
+  const net_change = net_cash_operating + net_cash_investing + net_cash_financing;
   const ending_cash = data.cash_cents ?? 0;
-  const beginning_cash = ending_cash - (data.net_cash_cents ?? 0);
+  const beginning_cash = ending_cash - net_change;
   return {
     net_income: ni,
     depreciation_addback: dep,
+    delta_ar: -dAr,
+    delta_inventory: -dInv,
+    delta_ap: dAp,
     net_cash_operating,
-    capex: capex,
+    capex,
     net_cash_investing,
     loan_repayment: loan_rep,
+    owner_draws: draws,
+    owner_contributions: contributions,
     net_cash_financing,
-    net_change: data.net_cash_cents ?? 0,
+    net_change,
     beginning_cash,
     ending_cash,
   };
@@ -114,32 +125,30 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
   const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
 
-  let columns: { label: string; data: Partial<MonthlySlice>; prevCash: number }[] = [];
+  let columns: { label: string; data: Partial<MonthlySlice> }[] = [];
 
+  // For period totals (quarter / year), cash_cents on `sumSlices` would be a sum
+  // — but cash is a balance, not a flow. Override with the ending balance of the
+  // last slice in the group.
   if (period === "monthly") {
-    columns = yearSlices.map((s, i) => {
-      const prev = i === 0
-        ? (slices.filter(sl => sl.year === year - 1).slice(-1)[0]?.cash_cents ?? 0)
-        : yearSlices[i - 1].cash_cents;
-      return { label: MONTHS[i], data: s, prevCash: prev };
-    });
+    columns = yearSlices.map((s, i) => ({ label: MONTHS[i], data: s }));
   } else if (period === "quarterly") {
     columns = [1, 2, 3, 4].map((q) => {
       const qs = getQuarterSlices(slices, year, q);
-      const prev = q === 1
-        ? (slices.filter(sl => sl.year === year - 1).slice(-1)[0]?.cash_cents ?? 0)
-        : (getQuarterSlices(slices, year, q - 1).slice(-1)[0]?.cash_cents ?? 0);
-      return { label: QUARTERS[q - 1], data: sumSlices(qs), prevCash: prev };
+      const summed = sumSlices(qs);
+      const endingCash = qs[qs.length - 1]?.cash_cents ?? 0;
+      return { label: QUARTERS[q - 1], data: { ...summed, cash_cents: endingCash } };
     });
   } else {
     columns = [1, 2, 3, 4, 5].map((y) => {
       const ys = slices.filter((s) => s.year === y);
-      const prev = y === 1 ? 0 : (slices.filter(sl => sl.year === y - 1).slice(-1)[0]?.cash_cents ?? 0);
-      return { label: `Year ${y}`, data: sumSlices(ys), prevCash: prev };
+      const summed = sumSlices(ys);
+      const endingCash = ys[ys.length - 1]?.cash_cents ?? 0;
+      return { label: `Year ${y}`, data: { ...summed, cash_cents: endingCash } };
     });
   }
 
-  const cfCols = columns.map((c) => deriveCF(c.data, c.prevCash));
+  const cfCols = columns.map((c) => deriveCF(c.data));
   const valsArr = <K extends keyof ReturnType<typeof deriveCF>>(key: K) =>
     cfCols.map((c) => c[key] as number);
 
@@ -245,17 +254,22 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
           <tbody>
             <SectionHeader label="Operating Activities" colCount={colCount} />
             <CFRow currencyCode={currencyCode} label="Net Income" values={valsArr("net_income")} indent />
-            <CFRow currencyCode={currencyCode} label="Plus: Depreciation" values={valsArr("depreciation_addback")} indent />
+            <CFRow currencyCode={currencyCode} label="Plus: Depreciation (Non-Cash)" values={valsArr("depreciation_addback")} indent />
+            <CFRow currencyCode={currencyCode} label="Change In Accounts Receivable" values={valsArr("delta_ar")} indent />
+            <CFRow currencyCode={currencyCode} label="Change In Inventory" values={valsArr("delta_inventory")} indent />
+            <CFRow currencyCode={currencyCode} label="Change In Accounts Payable" values={valsArr("delta_ap")} indent />
             <CFRow currencyCode={currencyCode} label="Net Cash From Operating Activities" values={valsArr("net_cash_operating")} bold highlight />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Investing Activities" colCount={colCount} />
-            <CFRow currencyCode={currencyCode} label="Capital Expenditures" values={valsArr("capex")} indent />
+            <CFRow currencyCode={currencyCode} label="Capital Expenditures (Asset Purchases)" values={valsArr("capex").map((v) => -v)} indent negative />
             <CFRow currencyCode={currencyCode} label="Net Cash From Investing Activities" values={valsArr("net_cash_investing")} bold />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Financing Activities" colCount={colCount} />
-            <CFRow currencyCode={currencyCode} label="Loan Repayments" values={valsArr("loan_repayment")} indent negative />
+            <CFRow currencyCode={currencyCode} label="Loan Repayments" values={valsArr("loan_repayment").map((v) => -v)} indent negative />
+            <CFRow currencyCode={currencyCode} label="Owner Draws" values={valsArr("owner_draws").map((v) => -v)} indent negative />
+            <CFRow currencyCode={currencyCode} label="Owner Contributions" values={valsArr("owner_contributions")} indent />
             <CFRow currencyCode={currencyCode} label="Net Cash From Financing Activities" values={valsArr("net_cash_financing")} bold />
 
             <DividerRow cols={colCount} />
@@ -270,6 +284,92 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <CashFlowCritique slices={slices} year={year} monthLabels={MONTHS} currencyCode={currencyCode} />
+      </div>
+
+      <LoanAmortizationSchedule
+        slices={slices}
+        year={year}
+        monthLabels={MONTHS}
+        currencyCode={currencyCode}
+      />
+    </div>
+  );
+}
+
+// TIM-1169: month-by-month loan amortization sub-card. Reads pre-computed
+// interest + principal from each MonthlySlice (no math here — single source of
+// truth). Hidden when there's no loan in the model.
+function LoanAmortizationSchedule({
+  slices,
+  year,
+  monthLabels,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  year: number;
+  monthLabels: string[];
+  currencyCode: string;
+}) {
+  const totalPrincipal = slices.reduce((s, x) => s + x.loan_repayment_cents, 0);
+  const totalInterest = slices.reduce((s, x) => s + x.loan_interest_cents, 0);
+  if (totalPrincipal === 0 && totalInterest === 0) return null;
+
+  const yearSlices = slices.filter((sl) => sl.year === year);
+  // Beginning balance for each month = ending balance of prior month
+  let runningBalance = 0;
+  const startOfYearIdx = (year - 1) * 12;
+  // Find the very first long_term_debt as the original loan amount: walk back
+  // from the first non-zero slice + add its first principal.
+  const firstNonZero = slices.find((s) => s.long_term_debt_cents > 0);
+  const originalLoan = firstNonZero
+    ? firstNonZero.long_term_debt_cents + firstNonZero.loan_repayment_cents
+    : 0;
+  runningBalance = year === 1
+    ? originalLoan
+    : (slices[startOfYearIdx - 1]?.long_term_debt_cents ?? originalLoan);
+
+  return (
+    <div className="mt-4 rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+      <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[#1a1a1a]">Loan Amortization Schedule</p>
+          <p className="text-xs text-[#6b6b6b] mt-0.5">
+            Month-by-month split of each loan payment into interest and principal. This is the schedule your banker will ask for.
+          </p>
+        </div>
+        <p className="text-xs text-[#afafaf]">Year {year}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-[#efefef] bg-[#faf9f7]">
+              <th className="py-2.5 pl-5 pr-3 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Month</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Beginning Balance</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Interest</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Principal</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Payment</th>
+              <th className="py-2.5 px-5 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Ending Balance</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f5f5f5]">
+            {yearSlices.map((s, i) => {
+              const begin = runningBalance;
+              const ending = s.long_term_debt_cents;
+              runningBalance = ending;
+              const payment = s.loan_repayment_cents + s.loan_interest_cents;
+              return (
+                <tr key={s.month_index}>
+                  <td className="py-2 pl-5 pr-3 text-sm text-[#1a1a1a]">{monthLabels[i]}</td>
+                  <td className="py-2 px-3 text-right text-sm tabular-nums">{fmt(begin, currencyCode)}</td>
+                  <td className="py-2 px-3 text-right text-sm tabular-nums text-[#a13d3d]">{fmt(s.loan_interest_cents, currencyCode)}</td>
+                  <td className="py-2 px-3 text-right text-sm tabular-nums">{fmt(s.loan_repayment_cents, currencyCode)}</td>
+                  <td className="py-2 px-3 text-right text-sm tabular-nums font-medium">{fmt(payment, currencyCode)}</td>
+                  <td className="py-2 px-5 text-right text-sm tabular-nums">{fmt(ending, currencyCode)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
