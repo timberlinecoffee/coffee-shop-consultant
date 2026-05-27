@@ -41,6 +41,31 @@ test("acronyms and units are preserved", () => {
   assert.equal(toTitleCase("32oz pitcher"), "32oz Pitcher");
 });
 
+// TIM-1175: coffee/equipment acronym set
+test("coffee and equipment acronyms render ALL CAPS (TIM-1175)", () => {
+  // Technique acronyms
+  assert.equal(toTitleCase("wdt needle tool"), "WDT Needle Tool");
+  assert.equal(toTitleCase("rdt water dropper"), "RDT Water Dropper");
+  assert.equal(toTitleCase("pid controller upgrade"), "PID Controller Upgrade");
+  // Filter basket brands
+  assert.equal(toTitleCase("vst precision basket"), "VST Precision Basket");
+  assert.equal(toTitleCase("ims basket 20g"), "IMS Basket 20g");
+  // Equipment model names
+  assert.equal(toTitleCase("ek43 grinder"), "EK43 Grinder");
+  assert.equal(toTitleCase("mahlkonig ek43"), "Mahlkonig EK43");
+  // Brand name with mixed case
+  assert.equal(toTitleCase("puqpress q2"), "PUQpress Q2");
+  assert.equal(toTitleCase("automatic puqpress"), "Automatic PUQpress");
+  // Regulatory / commercial
+  assert.equal(toTitleCase("nsf certified sink"), "NSF Certified Sink");
+  assert.equal(toTitleCase("osha compliant storage"), "OSHA Compliant Storage");
+  assert.equal(toTitleCase("sku tracking"), "SKU Tracking");
+  assert.equal(toTitleCase("upc label printer"), "UPC Label Printer");
+  assert.equal(toTitleCase("btu gas range"), "BTU Gas Range");
+  // Title-case rule still applies to non-acronym words
+  assert.equal(toTitleCase("wdt tool for espresso"), "WDT Tool for Espresso");
+});
+
 test("punctuation, parentheses, and trailing chars survive", () => {
   assert.equal(toTitleCase("milk steaming pitcher (32oz)"), "Milk Steaming Pitcher (32oz)");
   assert.equal(toTitleCase("espresso machine, dual boiler"), "Espresso Machine, Dual Boiler");
