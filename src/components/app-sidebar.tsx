@@ -9,6 +9,10 @@ import {
   WORKSPACE_CATEGORY_ORDER,
 } from "@/lib/workspace-manifest";
 import { WORKSPACE_ICONS } from "@/lib/workspace-icons";
+import {
+  WORKSPACE_STATUS_LABEL,
+  type WorkspaceStatus,
+} from "@/lib/workspace-status";
 
 export interface AppSidebarProps {
   items: WorkspaceNavItem[];
@@ -94,6 +98,39 @@ function ExportPlanIcon() {
 
 // ── Nav item ─────────────────────────────────────────────────────────────────
 
+// TIM-1152: color-coded status pill rendered in sidebar + workspace headers.
+function statusPillClasses(status: WorkspaceStatus): string {
+  switch (status) {
+    case "complete":
+      return "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20";
+    case "in_progress":
+      return "bg-amber-100 text-amber-800 border-amber-200";
+    case "not_started":
+      return "bg-[#f5f4f0] text-[#8a8a8a] border-[#e6e3dd]";
+  }
+}
+
+function SidebarStatusPill({ status }: { status: WorkspaceStatus }) {
+  return (
+    <span
+      className={`inline-flex items-center text-[10px] font-medium px-1.5 py-[1px] rounded-full border leading-none whitespace-nowrap ${statusPillClasses(status)}`}
+    >
+      {WORKSPACE_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function statusDotClass(status: WorkspaceStatus): string {
+  switch (status) {
+    case "complete":
+      return "bg-[#155e63]";
+    case "in_progress":
+      return "bg-amber-400";
+    case "not_started":
+      return "bg-[#d6d3cd]";
+  }
+}
+
 function NavItem({
   item,
   isActive,
@@ -105,9 +142,10 @@ function NavItem({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
-  // TIM-1147: status is manual (0/50/100). No more filled/total auto-bars.
-  const isComplete = item.status === "complete";
-  const isInProgress = item.status === "in_progress";
+  // TIM-1152: surface manual status as a color-coded pill on every workspace
+  // row (Not Started / In Progress / Complete). Replaces the prior check-icon
+  // + thin auto-bar treatment from TIM-1147.
+  const status: WorkspaceStatus = item.status;
 
   if (!item.isUnlocked) {
     if (collapsed) {
@@ -134,19 +172,25 @@ function NavItem({
   }
 
   if (collapsed) {
+    // Tiny color-coded dot at bottom-right of the icon so status is still
+    // visible when the sidebar is collapsed.
     return (
       <Link
         href={item.href}
         aria-current={isActive ? "page" : undefined}
-        title={item.label}
+        title={`${item.label} — ${WORKSPACE_STATUS_LABEL[status]}`}
         onClick={onNavigate}
-        className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors mx-auto ${
+        className={`relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors mx-auto ${
           isActive
             ? "bg-[#155e63]/10 text-[#155e63]"
             : "text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a]"
         }`}
       >
         <NavIconGlyph icon={item.icon} size={17} />
+        <span
+          aria-hidden="true"
+          className={`absolute bottom-1 right-1 w-2 h-2 rounded-full ring-1 ring-white ${statusDotClass(status)}`}
+        />
       </Link>
     );
   }
@@ -156,34 +200,24 @@ function NavItem({
       href={item.href}
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
-      className={`flex flex-col px-3 py-2 rounded-lg transition-colors ${
+      className={`flex flex-col gap-1 px-3 py-2 rounded-lg transition-colors ${
         isActive
           ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
           : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <NavIconGlyph icon={item.icon} size={14} />
-          <span className="text-sm truncate">{item.label}</span>
-        </div>
-        {isComplete && (
-          <span className="text-[#155e63] flex-shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <NavIconGlyph icon={item.icon} size={14} />
+        <span className="text-sm truncate flex-1 min-w-0">{item.label}</span>
+        {status === "complete" && (
+          <span className="text-[#155e63] flex-shrink-0" aria-hidden="true">
             <CheckIcon />
           </span>
         )}
       </div>
-      {isInProgress && (
-        <>
-          <div className="mt-1.5 h-1 bg-[#efefef] rounded-full overflow-hidden">
-            <div className="h-full bg-amber-400 rounded-full" style={{ width: "50%" }} />
-          </div>
-          <span className="mt-1 text-xs text-[#afafaf]">In Progress</span>
-        </>
-      )}
-      {isComplete && (
-        <div className="mt-1.5 h-1 bg-[#155e63] rounded-full" />
-      )}
+      <div className="pl-[22px]">
+        <SidebarStatusPill status={status} />
+      </div>
     </Link>
   );
 }
