@@ -6,6 +6,9 @@
 // per-line growth rates.
 // TIM-1117: COGS lines can target a parent revenue stream and optionally
 // derive their pct from menu item costing.
+// TIM-1118: Overhead rows replace the inline $/% toggle with a combined
+// "% of …" dropdown so each operating expense can be tied to a specific
+// revenue stream, overall revenue, or kept as a fixed monthly amount.
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Sliders } from "lucide-react";
@@ -30,7 +33,7 @@ const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; val
   },
   overhead: {
     label: "Operating Expenses (Overhead)",
-    hint: "Fixed and variable expenses to run the business: labor, rent, utilities, marketing.",
+    hint: "Fixed and variable expenses to run the business: labor, rent, utilities, marketing. Use the \"% of\" dropdown on each line to tie it to a specific revenue stream, overall revenue, or a fixed monthly amount.",
     valueLabel: "of revenue",
   },
   capex: {
@@ -80,13 +83,35 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
 
   const isCapex = line.category === "capex";
   const isCogs = line.category === "cogs";
+  const isOverhead = line.category === "overhead";
   const menuLinked = isCogs && line.menu_linked === true;
   const hasMenuData = typeof menuBlendedCogsPct === "number";
   const streamId = line.revenue_stream_id ?? DEFAULT_STREAM_ID;
   const displayPct = menuLinked && hasMenuData ? (menuBlendedCogsPct as number) : null;
 
+  // TIM-1118: encode the combined (mode, revenue_stream_id) state for the
+  // overhead "% of" dropdown as a single string. "flat" means fixed $; any
+  // other value is a stream id ("all" = overall, "base" = foot-traffic, or a
+  // specific revenue line id).
+  const overheadModeValue: string = line.mode === "flat" ? "flat" : streamId;
+
+  function applyOverheadModeChoice(next: string) {
+    if (next === "flat") {
+      onChange({ ...line, mode: "flat", revenue_stream_id: undefined });
+      return;
+    }
+    onChange({
+      ...line,
+      mode: "pct",
+      revenue_stream_id: next === DEFAULT_STREAM_ID ? undefined : next,
+    });
+  }
+
   // Capex: only flat mode; one-time charge in start_month. No pct toggle, no growth.
   // COGS (TIM-1117): can target a parent revenue stream and optionally derive % from the menu.
+  // Overhead (TIM-1118): a single "% of" dropdown replaces the $/% toggle and
+  // picks both the mode (fixed $ vs. pct) and the revenue stream the pct
+  // applies to.
   return (
     <div className="border border-[#efefef] rounded-xl bg-white">
       <div className="flex items-center gap-2 px-3 py-2.5">
@@ -108,7 +133,23 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           aria-label="Line item name"
         />
 
-        {!isCapex && (
+        {isOverhead ? (
+          <select
+            className={`${inputCls} shrink-0 w-44 py-1`}
+            value={overheadModeValue}
+            disabled={!canEdit}
+            onChange={(e) => applyOverheadModeChoice(e.target.value)}
+            aria-label="Expense basis"
+            title="How this expense scales: a fixed amount, % of overall revenue, or % of a specific revenue stream"
+          >
+            <option value="flat">Fixed {sym}</option>
+            {streamOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                % of {opt.label}
+              </option>
+            ))}
+          </select>
+        ) : !isCapex ? (
           <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
             <button
               type="button"
@@ -133,7 +174,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               %
             </button>
           </div>
-        )}
+        ) : null}
 
         <div className="relative w-28 shrink-0">
           {menuLinked ? (
@@ -194,13 +235,18 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           )}
         </div>
 
-        {!isCapex && (
+        {!isCapex && !isOverhead && (
           <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
             {menuLinked
               ? "from menu"
               : line.mode === "pct"
                 ? "% of rev"
                 : "/ mo"}
+          </span>
+        )}
+        {isOverhead && (
+          <span className="text-[10px] text-[#afafaf] shrink-0 w-12">
+            {line.mode === "pct" ? "" : "/ mo"}
           </span>
         )}
         {isCapex && (
