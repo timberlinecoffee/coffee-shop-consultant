@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Star, Sparkles, MessageCircle } from 'lucide-react'
+import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -73,6 +73,10 @@ export function CandidateListCard({
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [tradeoffOpen, setTradeoffOpen] = useState(false)
   const [view, setView] = useState<ViewMode>('all')
+  // TIM-1153: bulk-select mode for shortlist actions.
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkSaving, setBulkSaving] = useState(false)
 
   const shortlisted = useMemo(
     () => candidates.filter((c) => c.status === 'shortlisted'),
@@ -145,6 +149,80 @@ export function CandidateListCard({
     [candidates]
   )
 
+  // ── Bulk shortlist / un-shortlist (TIM-1153) ─────────────────────────────
+
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode((prev) => {
+      const next = !prev
+      if (!next) setSelectedIds(new Set())
+      return next
+    })
+  }, [])
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      for (const c of visible) next.add(c.id)
+      return next
+    })
+  }, [visible])
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+
+  const bulkUpdateStatus = useCallback(
+    async (newStatus: CandidateStatus) => {
+      const ids = Array.from(selectedIds)
+      if (ids.length === 0) return
+
+      const snapshot = candidates
+      setCandidates((prev) =>
+        prev.map((c) => (selectedIds.has(c.id) ? { ...c, status: newStatus } : c))
+      )
+      setBulkSaving(true)
+
+      try {
+        const res = await fetch('/api/workspaces/location-lease/candidates/bulk', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, status: newStatus }),
+        })
+        if (!res.ok) {
+          setCandidates(snapshot)
+        } else {
+          setSelectedIds(new Set())
+          setSelectMode(false)
+        }
+      } catch {
+        setCandidates(snapshot)
+      } finally {
+        setBulkSaving(false)
+      }
+    },
+    [candidates, selectedIds]
+  )
+
+  // How many of the selected are currently shortlisted vs not — drives whether
+  // the bulk toolbar surfaces "Add to shortlist" or "Remove from shortlist".
+  const selectionSummary = useMemo(() => {
+    let inShortlist = 0
+    let notInShortlist = 0
+    for (const c of candidates) {
+      if (!selectedIds.has(c.id)) continue
+      if (c.status === 'shortlisted') inShortlist++
+      else notInShortlist++
+    }
+    return { inShortlist, notInShortlist, total: selectedIds.size }
+  }, [candidates, selectedIds])
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   const tradeoffDisabled = shortlisted.length < 2
@@ -156,6 +234,18 @@ export function CandidateListCard({
           <CardTitle>Locations</CardTitle>
           <CardAction>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleSelectMode}
+                className={cn(selectMode && 'bg-[#155e63] text-white hover:bg-[#155e63]/90')}
+                aria-label={selectMode ? 'Exit select mode' : 'Select multiple'}
+                aria-pressed={selectMode}
+                disabled={candidates.length === 0}
+              >
+                {selectMode ? <X className="size-3.5" /> : <CheckSquare className="size-3.5" />}
+                <span className="hidden sm:inline ml-1">{selectMode ? 'Cancel' : 'Select'}</span>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -233,6 +323,71 @@ export function CandidateListCard({
             </div>
           </div>
 
+          {/* ── Bulk action toolbar (TIM-1153) ── */}
+          {selectMode && (
+            <div
+              role="toolbar"
+              aria-label="Bulk shortlist actions"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#155e63]/30 bg-[#155e63]/[0.04] px-3 py-2"
+            >
+              <div className="flex items-center gap-2 text-xs text-foreground">
+                <span className="font-semibold">{selectionSummary.total} selected</span>
+                {selectionSummary.total === 0 && (
+                  <span className="text-[#888]">Tap a card to select it.</span>
+                )}
+                {visible.length > 0 && selectionSummary.total < visible.length && (
+                  <button
+                    type="button"
+                    onClick={selectAllVisible}
+                    className="text-[#155e63] underline-offset-2 hover:underline"
+                  >
+                    Select all visible ({visible.length})
+                  </button>
+                )}
+                {selectionSummary.total > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="text-[#888] underline-offset-2 hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={selectionSummary.notInShortlist === 0 || bulkSaving}
+                  onClick={() => bulkUpdateStatus('shortlisted')}
+                  title="Mark the selected locations as shortlisted"
+                >
+                  <Star className="size-3.5 fill-amber-400 text-amber-500" />
+                  <span className="ml-1">
+                    Shortlist
+                    {selectionSummary.notInShortlist > 0 && ` (${selectionSummary.notInShortlist})`}
+                  </span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={selectionSummary.inShortlist === 0 || bulkSaving}
+                  onClick={() => bulkUpdateStatus('viewing_scheduled')}
+                  title="Remove the selected locations from your shortlist"
+                >
+                  <X className="size-3.5" />
+                  <span className="ml-1">
+                    Remove from shortlist
+                    {selectionSummary.inShortlist > 0 && ` (${selectionSummary.inShortlist})`}
+                  </span>
+                </Button>
+                {bulkSaving && (
+                  <span className="text-[10px] italic text-[#888]">Saving…</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── List ── */}
           {visible.length === 0 ? (
             view === 'shortlist' ? (
@@ -264,6 +419,9 @@ export function CandidateListCard({
                   aiCreditsRemaining={aiCreditsRemaining}
                   onPatch={handlePatch}
                   onArchive={handleArchive}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(candidate.id)}
+                  onToggleSelect={toggleSelected}
                 />
               ))}
             </div>
