@@ -8,6 +8,16 @@ import {
   fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
+import {
+  ChartCard,
+  FinancialComboChart,
+  FinancialLineChart,
+  ViewModeToggle,
+  CHART_COLORS,
+  type ChartDatum,
+  type ChartSeries,
+  type ViewMode,
+} from "./financial-charts";
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
 
@@ -99,6 +109,7 @@ interface Props {
 export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [view, setView] = useState<ViewMode>("table");
 
   const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
@@ -134,9 +145,32 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
 
   const colCount = columns.length;
 
+  // Build chart data: one row per column. Each row holds the per-section flows
+  // plus ending cash. Operating positive, investing and financing typically
+  // negative — combo chart stacks the components and overlays ending cash as a
+  // line so the user can see what's driving each month's cash change.
+  const chartData: ChartDatum[] = columns.map((c, i) => ({
+    label: c.label,
+    operating: cfCols[i].net_cash_operating,
+    investing: cfCols[i].net_cash_investing,
+    financing: cfCols[i].net_cash_financing,
+    ending_cash: cfCols[i].ending_cash,
+    net_change: cfCols[i].net_change,
+  }));
+
+  const flowSeries: ChartSeries[] = [
+    { key: "operating", label: "Operating", color: CHART_COLORS.primary },
+    { key: "investing", label: "Investing", color: CHART_COLORS.warning },
+    { key: "financing", label: "Financing", color: CHART_COLORS.accent },
+  ];
+  const cashLineSeries: ChartSeries[] = [
+    { key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.negative },
+  ];
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
           {(["monthly", "quarterly", "annual"] as Period[]).map((p) => (
             <button
@@ -166,6 +200,34 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
         )}
       </div>
 
+      {view === "chart" ? (
+        <div className="space-y-4">
+          <ChartCard
+            title="Cash Flow By Category"
+            description="Stacked bars show net cash from Operating, Investing, and Financing activities each period. The line is the ending cash balance."
+          >
+            <FinancialComboChart
+              data={chartData}
+              barSeries={flowSeries}
+              lineSeries={cashLineSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Ending Cash Trajectory"
+            description="Where your cash balance lands at the end of each period. Watch for dips toward zero."
+          >
+            <FinancialLineChart
+              data={chartData}
+              series={[
+                { key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary },
+              ]}
+              currencyCode={currencyCode}
+              showZero
+            />
+          </ChartCard>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -203,6 +265,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>

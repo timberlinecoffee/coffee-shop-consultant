@@ -6,6 +6,16 @@ import {
   fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
+import {
+  ChartCard,
+  FinancialBarChart,
+  FinancialLineChart,
+  ViewModeToggle,
+  CHART_COLORS,
+  type ChartDatum,
+  type ChartSeries,
+  type ViewMode,
+} from "./financial-charts";
 
 type Period = "monthly" | "annual";
 
@@ -68,6 +78,7 @@ interface Props {
 export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [view, setView] = useState<ViewMode>("table");
 
   const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
@@ -95,9 +106,38 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
     ? Math.abs(lastSlice.total_assets_cents - lastSlice.total_liabilities_and_equity_cents) < 2
     : true;
 
+  // Chart data: assets composition + liabilities/equity over the period
+  const chartData: ChartDatum[] = columns.map((c) => ({
+    label: c.label,
+    cash: (c.data.cash_cents as number | undefined) ?? 0,
+    inventory: (c.data.inventory_cents as number | undefined) ?? 0,
+    fixed_assets: (c.data.net_fixed_assets_cents as number | undefined) ?? 0,
+    other_assets:
+      ((c.data.accounts_receivable_cents as number | undefined) ?? 0) +
+      ((c.data.other_assets_cents as number | undefined) ?? 0),
+    total_liabilities: (c.data.total_liabilities_cents as number | undefined) ?? 0,
+    total_equity: (c.data.total_equity_cents as number | undefined) ?? 0,
+    total_assets: (c.data.total_assets_cents as number | undefined) ?? 0,
+  }));
+
+  const assetSeries: ChartSeries[] = [
+    { key: "cash", label: "Cash", color: CHART_COLORS.primary },
+    { key: "inventory", label: "Inventory", color: CHART_COLORS.accent },
+    { key: "fixed_assets", label: "Fixed Assets (Net)", color: CHART_COLORS.warning },
+    { key: "other_assets", label: "Other Assets", color: CHART_COLORS.accentSoft },
+  ];
+  const capitalSeries: ChartSeries[] = [
+    { key: "total_liabilities", label: "Liabilities", color: CHART_COLORS.negative },
+    { key: "total_equity", label: "Equity", color: CHART_COLORS.primary },
+  ];
+  const cashLine: ChartSeries[] = [
+    { key: "cash", label: "Cash", color: CHART_COLORS.primary },
+  ];
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
           {(["monthly", "annual"] as Period[]).map((p) => (
             <button
@@ -127,6 +167,41 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
         </div>
       </div>
 
+      {view === "chart" ? (
+        <div className="space-y-4">
+          <ChartCard
+            title="Assets Composition"
+            description="How total assets break down across cash, inventory, fixed assets, and receivables."
+          >
+            <FinancialBarChart
+              data={chartData}
+              series={assetSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Liabilities & Equity"
+            description="How the asset side is financed — debt vs. owner equity & retained earnings."
+          >
+            <FinancialBarChart
+              data={chartData}
+              series={capitalSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Cash On Hand"
+            description="Cash and cash equivalents at the end of each period."
+          >
+            <FinancialLineChart
+              data={chartData}
+              series={cashLine}
+              currencyCode={currencyCode}
+              showZero
+            />
+          </ChartCard>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -170,6 +245,7 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
