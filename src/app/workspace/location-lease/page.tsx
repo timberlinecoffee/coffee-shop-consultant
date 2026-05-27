@@ -51,6 +51,13 @@ export default async function LocationLeaseWorkspacePage() {
     status: (r.status ?? "shortlisted") as Candidate["status"],
     notes: r.notes ?? null,
     position: r.position ?? 0,
+    lat: r.lat != null ? Number(r.lat) : null,
+    lng: r.lng != null ? Number(r.lng) : null,
+    city: r.city ?? null,
+    postal_code: r.postal_code ?? null,
+    country: r.country ?? null,
+    area_analysis: r.area_analysis ?? null,
+    area_analysis_at: r.area_analysis_at ?? null,
   }));
 
   return (

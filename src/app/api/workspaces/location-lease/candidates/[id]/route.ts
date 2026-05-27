@@ -41,6 +41,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const allowed = [
     "name", "address", "neighborhood", "sq_ft", "asking_rent_cents",
     "cam_cents", "listing_url", "broker_contact", "status", "notes", "position",
+    // TIM-1145: address autocomplete + geo
+    "lat", "lng", "city", "postal_code", "country",
   ] as const
 
   const patch: Record<string, unknown> = {}
@@ -52,6 +54,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
   if (typeof patch.neighborhood === "string") {
     patch.neighborhood = patch.neighborhood.trim() ? toTitleCase(patch.neighborhood) : null
+  }
+  if (typeof patch.city === "string") {
+    patch.city = patch.city.trim() ? toTitleCase(patch.city) : null
+  }
+  // Picking a new address invalidates the cached area analysis.
+  if ("lat" in patch || "lng" in patch || "address" in patch) {
+    patch.area_analysis = null
+    patch.area_analysis_at = null
   }
 
   if (Object.keys(patch).length === 0) {

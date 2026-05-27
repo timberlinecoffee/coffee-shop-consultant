@@ -40,6 +40,14 @@ export type Candidate = {
   status: CandidateStatus
   notes: string | null
   position: number
+  // TIM-1145: structured geo + cached AI area analysis
+  lat: number | null
+  lng: number | null
+  city: string | null
+  postal_code: string | null
+  country: string | null
+  area_analysis: string | null
+  area_analysis_at: string | null
 }
 
 // ── CandidateListCard ──────────────────────────────────────────────────────
