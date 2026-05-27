@@ -261,7 +261,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               </select>
               <p className="text-[10px] text-[#afafaf] mt-1">
                 {line.mode === "flat"
-                  ? "Stream selection applies to % mode only — flat $ COGS doesn't scale with revenue."
+                  ? "Stream selection applies to % mode only. Flat $ COGS doesn't scale with revenue."
                   : "By default, COGS is % of the linked revenue stream."}
               </p>
               <label className="flex items-center gap-2 cursor-pointer mt-3">
@@ -544,7 +544,7 @@ interface Props {
 function streamOptionsFromLines(lines: ForecastLine[]): RevenueStreamOption[] {
   const opts: RevenueStreamOption[] = [
     { id: DEFAULT_STREAM_ID, label: "All revenue (total)" },
-    { id: "base", label: "Base — foot-traffic ticket sales" },
+    { id: "base", label: "Base (foot-traffic ticket sales)" },
   ];
   for (const l of lines) {
     if (l.category === "revenue") {
