@@ -36,10 +36,10 @@ const CATEGORY_META: Record<
 > = {
   revenue: {
     label: "Additional Revenue Streams",
-    hint: "Income that does NOT come through your counter — added on top of In-Store Ticket Sales above.",
+    hint: "Income that does NOT come through your counter. Added on top of In-Store Ticket Sales above.",
     includes: "Wholesale beans to other cafes, catering invoices, subscription boxes shipped to homes, classes, online orders shipped (not picked up in-store), event bookings.",
-    excludes: "Anything a customer pays for at your counter or POS — that's already counted in In-Store Ticket Sales. Don't double-count.",
-    example: "e.g. \"Wholesale Coffee Beans — $4,200 / mo\" or \"Catering — 8% growth / mo\".",
+    excludes: "Anything a customer pays for at your counter or POS. That's already counted in In-Store Ticket Sales. Don't double-count.",
+    example: "e.g. Wholesale Coffee Beans: $4,200/mo, or Catering: 8% growth/mo.",
     valueLabel: "of base revenue",
   },
   cogs: {
@@ -47,15 +47,15 @@ const CATEGORY_META: Record<
     hint: "What it costs you to make what you sell. Scales with the revenue stream you tie it to.",
     includes: "Coffee beans, milk, syrups, cups & lids, food ingredients, packaging, wholesale supply costs.",
     excludes: "Labor (that's an Operating Expense), rent, utilities, equipment purchases.",
-    example: "e.g. \"Beverage Ingredients — 28% of In-Store Sales\".",
+    example: "e.g. Beverage Ingredients: 28% of In-Store Sales.",
     valueLabel: "of revenue",
   },
   overhead: {
     label: "Operating Expenses (Overhead)",
-    hint: "What it costs to keep the doors open every month — fixed bills and variable expenses that don't come from product cost.",
+    hint: "What it costs to keep the doors open every month. Fixed bills and variable expenses that don't come from product cost.",
     includes: "Labor & payroll taxes, rent, utilities, insurance, marketing, software, repairs, supplies.",
     excludes: "Product ingredients (those go under COGS) and one-time equipment purchases (those go under Asset Purchases).",
-    example: "e.g. \"Rent — Fixed $4,500 / mo\" or \"Labor — 32% of total revenue\".",
+    example: "e.g. Rent: Fixed $4,500/mo, or Labor: 32% of total revenue.",
     valueLabel: "of revenue",
   },
   capex: {
@@ -63,7 +63,7 @@ const CATEGORY_META: Record<
     hint: "One-time investments. Charged in the month you buy them and depreciated over time.",
     includes: "Espresso machine, grinders, refrigeration, furniture, signage, build-out & renovations.",
     excludes: "Recurring monthly costs (those are Operating Expenses) and consumables like cups (those are COGS).",
-    example: "e.g. \"La Marzocco Linea PB — $18,500, Month 1\".",
+    example: "e.g. La Marzocco Linea PB: $18,500, Month 1.",
     valueLabel: "(one-time)",
   },
 };

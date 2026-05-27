@@ -296,7 +296,7 @@ function ForecastOnboardingCard() {
         </li>
         <li>
           <span className="font-semibold">Additional Revenue Streams:</span>{" "}
-          anything <em>extra</em> on top — wholesale, catering, subscriptions, etc.
+          anything <em>extra</em> on top: wholesale, catering, subscriptions, etc.
         </li>
         <li>
           <span className="font-semibold">COGS, Operating Expenses, Asset Purchases:</span>{" "}
@@ -304,7 +304,7 @@ function ForecastOnboardingCard() {
         </li>
       </ol>
       <p className="text-[11px] text-[#afafaf] mt-3 italic">
-        Don&rsquo;t stress about exact numbers on the first pass — you can refine
+        Don&rsquo;t stress about exact numbers on the first pass. You can refine
         any input later and the P&amp;L re-calculates instantly.
       </p>
     </div>
@@ -497,7 +497,7 @@ function ForecastTab({
         <p className={sectionLabelCls}>In-Store Ticket Sales (Your Base Revenue)</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-3 leading-relaxed">
-            Every customer who checks out at your counter — walk-ins, mobile
+            Every customer who checks out at your counter: walk-ins, mobile
             preorders picked up in store, drive-thru, anything that rings
             through your POS. This is almost always the biggest piece of a
             coffee shop&rsquo;s revenue.
@@ -608,7 +608,7 @@ function ForecastTab({
                   </div>
                   <div>
                     <span className="text-[#155e63] font-semibold">+ Additional Revenue Streams</span>
-                    <span className="text-[#6b6b6b]">  (wholesale, catering, etc. — set below)</span>
+                    <span className="text-[#6b6b6b]">  (wholesale, catering, etc.; set below)</span>
                   </div>
                   <div>
                     <span className="text-[#a13d3d] font-semibold">− Loyalty Discounts</span>
