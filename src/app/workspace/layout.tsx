@@ -1,11 +1,18 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { buildNavItems } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
+import { WorkspaceProgressBootstrap } from "@/components/workspace/WorkspaceProgressBootstrap";
 
 export const dynamic = "force-dynamic";
 
+// TIM-1093: Keep this layout's await-chain to auth-only. Progress data is
+// fetched inside <WorkspaceProgressBootstrap> behind a Suspense boundary so
+// a slow or failing progress query never blocks the sidebar shell from
+// rendering. The provider seeds with manifest-default counters (all 0) so
+// the sidebar is fully usable immediately; bootstrap then patches real
+// values into context once the queries return.
 export default async function WorkspaceLayout({
   children,
 }: {
@@ -18,49 +25,11 @@ export default async function WorkspaceLayout({
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const completedByModule = new Map<number, number>();
-
-  if (plan?.id) {
-    // Module 1 (Concept): progress lives in workspace_documents, not module_responses.
-    const { data: conceptDoc } = await supabase
-      .from("workspace_documents")
-      .select("content")
-      .eq("plan_id", plan.id)
-      .eq("workspace_key", "concept")
-      .maybeSingle();
-
-    if (conceptDoc?.content) {
-      const progress = getConceptV2Progress(normalizeConceptV2(conceptDoc.content));
-      completedByModule.set(1, progress.filled);
-    }
-
-    // Modules 2+ that have shipped sections: count completed module_responses rows.
-    const { data: responses } = await supabase
-      .from("module_responses")
-      .select("module_number")
-      .eq("plan_id", plan.id)
-      .eq("status", "completed");
-
-    if (responses) {
-      for (const row of responses) {
-        const n = row.module_number;
-        completedByModule.set(n, (completedByModule.get(n) ?? 0) + 1);
-      }
-    }
-  }
-
-  const navItems = buildNavItems(completedByModule);
-
   return (
-    <WorkspaceProgressProvider initialItems={navItems}>
+    <WorkspaceProgressProvider initialItems={buildNavItems(new Map())}>
+      <Suspense fallback={null}>
+        <WorkspaceProgressBootstrap userId={user.id} />
+      </Suspense>
       {children}
     </WorkspaceProgressProvider>
   );
