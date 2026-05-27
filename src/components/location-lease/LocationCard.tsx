@@ -16,6 +16,8 @@ import {
   AlertCircle,
   Star,
   Map,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -762,6 +764,12 @@ function FeedbackRenderer({ text, streaming }: { text: string; streaming: boolea
 
   return (
     <div className="flex flex-col gap-5">
+      {sections.recommendation && (
+        <RecommendationCallout
+          verdict={sections.recommendationVerdict}
+          body={sections.recommendation}
+        />
+      )}
       {sections.riskProfile && (
         <FeedbackSection title="Overall Risk Profile" variant="neutral">
           <p className="text-sm text-foreground leading-relaxed">{sections.riskProfile}</p>
@@ -832,11 +840,24 @@ function FeedbackSection({
   )
 }
 
+type RecommendationVerdict = 'move' | 'negotiate' | 'pass' | 'unknown'
+
 type ParsedFeedback = {
+  recommendation: string
+  recommendationVerdict: RecommendationVerdict
   riskProfile: string
   strengths: string[]
   concerns: string[]
   questions: string[]
+}
+
+function classifyVerdict(body: string): RecommendationVerdict {
+  // Look at the first ~120 chars (verdict line) for the keyword.
+  const head = body.slice(0, 160).toLowerCase()
+  if (/(^|\W)move\s*forward(\W|$)/.test(head)) return 'move'
+  if (/(^|\W)negotiate(\s+first)?(\W|$)/.test(head)) return 'negotiate'
+  if (/(^|\W)pass(\W|$)/.test(head)) return 'pass'
+  return 'unknown'
 }
 
 function parseAiFeedback(text: string): ParsedFeedback | null {
@@ -855,12 +876,84 @@ function parseAiFeedback(text: string): ParsedFeedback | null {
       .filter(Boolean)
   }
 
+  const recommendation = extractSection('Recommendation')
+
   return {
+    recommendation,
+    recommendationVerdict: recommendation ? classifyVerdict(recommendation) : 'unknown',
     riskProfile: extractSection('Overall Risk Profile'),
     strengths: parseBullets(extractSection('Top 3 Strengths')),
     concerns: parseBullets(extractSection('Top 3 Concerns')),
     questions: parseBullets(extractSection('Due-Diligence Questions')),
   }
+}
+
+function RecommendationCallout({
+  verdict,
+  body,
+}: {
+  verdict: RecommendationVerdict
+  body: string
+}) {
+  const cfg =
+    verdict === 'move'
+      ? {
+          label: 'Move Forward',
+          wrap: 'border-emerald-300 bg-emerald-50',
+          chip: 'bg-emerald-600 text-white',
+          title: 'text-emerald-800',
+        }
+      : verdict === 'negotiate'
+        ? {
+            label: 'Negotiate First',
+            wrap: 'border-amber-300 bg-amber-50',
+            chip: 'bg-amber-600 text-white',
+            title: 'text-amber-800',
+          }
+        : verdict === 'pass'
+          ? {
+              label: 'Pass',
+              wrap: 'border-rose-300 bg-rose-50',
+              chip: 'bg-rose-600 text-white',
+              title: 'text-rose-800',
+            }
+          : {
+              label: 'Recommendation',
+              wrap: 'border-[#efefef] bg-[#f7f6f3]/60',
+              chip: 'bg-[#155e63] text-white',
+              title: 'text-foreground',
+            }
+
+  // Strip the leading bolded verdict from the body if present so we don't
+  // double-render it next to the chip.
+  const cleanedBody = body
+    .replace(/^\s*\*\*[^*]+\*\*\s*\n?/, '')
+    .trim()
+
+  return (
+    <div className={cn('rounded-xl border px-4 py-3', cfg.wrap)}>
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+            cfg.chip
+          )}
+        >
+          {cfg.label}
+        </span>
+        <span
+          className={cn('text-xs font-semibold uppercase tracking-wide', cfg.title)}
+        >
+          AI Recommendation
+        </span>
+      </div>
+      {cleanedBody && (
+        <p className="mt-2 text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+          {cleanedBody}
+        </p>
+      )}
+    </div>
+  )
 }
 
 // ── LabelWithTip ─────────────────────────────────────────────────────────
@@ -1211,6 +1304,10 @@ export interface LocationCardProps {
   aiCreditsRemaining: number
   onPatch: (id: string, patch: Partial<Omit<Candidate, 'id' | 'position'>>) => void
   onArchive: (id: string) => void
+  // TIM-1153: bulk-select mode
+  selectMode?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
 export function LocationCard({
@@ -1220,6 +1317,9 @@ export function LocationCard({
   aiCreditsRemaining,
   onPatch,
   onArchive,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
 }: LocationCardProps) {
   const [open, setOpen] = useState(false)
 
@@ -1272,19 +1372,48 @@ export function LocationCard({
   }
 
   return (
-    <div className="rounded-xl border border-[#efefef] bg-white">
+    <div
+      className={cn(
+        'rounded-xl border bg-white transition-colors',
+        selectMode && selected
+          ? 'border-[#155e63] ring-2 ring-[#155e63]/30'
+          : 'border-[#efefef]'
+      )}
+    >
       {/* ── Summary row ── */}
       <div className="flex items-center gap-2 px-4 py-3">
+        {selectMode && (
+          <button
+            type="button"
+            onClick={() => onToggleSelect?.(candidate.id)}
+            aria-label={selected ? 'Deselect' : 'Select'}
+            aria-pressed={selected}
+            className={cn(
+              'shrink-0 rounded-lg p-1 transition-colors',
+              selected
+                ? 'text-[#155e63] hover:bg-[#155e63]/10'
+                : 'text-[#888] hover:bg-[#f7f6f3] hover:text-[#155e63]'
+            )}
+          >
+            {selected ? (
+              <CheckSquare className="size-4" />
+            ) : (
+              <Square className="size-4" />
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={toggleShortlist}
           aria-label={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
           title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
+          disabled={selectMode}
           className={cn(
             'shrink-0 rounded-lg p-1 transition-colors',
             isShortlisted
               ? 'text-amber-500 hover:bg-amber-50'
-              : 'text-[#888] hover:bg-[#f7f6f3] hover:text-amber-500'
+              : 'text-[#888] hover:bg-[#f7f6f3] hover:text-amber-500',
+            selectMode && 'opacity-60 cursor-not-allowed'
           )}
         >
           <Star className={cn('size-4', isShortlisted && 'fill-amber-400 text-amber-500')} />
