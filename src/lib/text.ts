@@ -23,7 +23,10 @@ const LOWERCASE_WORDS = new Set([
 
 // Words that should retain a known casing regardless of position (acronyms,
 // brand names). Lowercase key → preserved form.
+//
+// TIM-1175: coffee/equipment acronym set. Add one line per new acronym.
 const PRESERVED_CASING: Record<string, string> = {
+  // General / regulatory
   pos: "POS",
   hvac: "HVAC",
   led: "LED",
@@ -35,6 +38,21 @@ const PRESERVED_CASING: Record<string, string> = {
   api: "API",
   ui: "UI",
   ux: "UX",
+  nsf: "NSF",
+  osha: "OSHA",
+  sku: "SKU",
+  upc: "UPC",
+  btu: "BTU",
+  // Coffee / espresso technique acronyms
+  wdt: "WDT",       // Weiss Distribution Technique
+  rdt: "RDT",       // Ross Droplet Technique
+  pid: "PID",       // PID controller
+  vst: "VST",       // VST precision filter baskets
+  ims: "IMS",       // IMS precision filter baskets
+  // Equipment model / brand names
+  ek43: "EK43",         // Mahlkönig EK43 grinder
+  puqpress: "PUQpress", // Espresso puck press brand
+  // Units (lowercase preserved)
   oz: "oz",
   ml: "ml",
   kg: "kg",
