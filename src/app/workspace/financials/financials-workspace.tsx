@@ -4,8 +4,8 @@
 // TIM-1004: Per-day schedule + itemized operating expenses.
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet, Info, Lightbulb } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
@@ -215,6 +215,102 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
   fri: "Friday", sat: "Saturday", sun: "Sunday",
 };
 
+// TIM-1167: First-time-user onboarding card on the Forecast tab. Dismissible,
+// persists per browser via localStorage. The four bullets mirror the four
+// sections below so a brand-new user can scan once and know what each section
+// is for.
+const FORECAST_ONBOARDING_KEY = "tim:financials:forecast-onboarding-dismissed:v1";
+
+// Subscribe to localStorage via useSyncExternalStore so reading the dismissal
+// flag doesn't trip the react-hooks/set-state-in-effect lint rule.
+function subscribeToOnboardingKey(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (e.key === FORECAST_ONBOARDING_KEY) cb();
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
+function readOnboardingDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(FORECAST_ONBOARDING_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function ForecastOnboardingCard() {
+  const dismissed = useSyncExternalStore(
+    subscribeToOnboardingKey,
+    readOnboardingDismissed,
+    () => true, // SSR snapshot: hide so the card never flashes on first paint.
+  );
+  // Tracks dismissals issued by THIS card (the storage event doesn't fire on
+  // the tab that performed the write, so we need a local mirror).
+  const [locallyDismissed, setLocallyDismissed] = useState(false);
+
+  function dismiss() {
+    setLocallyDismissed(true);
+    try {
+      window.localStorage.setItem(FORECAST_ONBOARDING_KEY, "1");
+    } catch {
+      // ignore — UI state still updates.
+    }
+  }
+
+  if (dismissed || locallyDismissed) return null;
+
+  return (
+    <div className="rounded-2xl border border-[#155e63]/20 bg-[#155e63]/[0.04] p-5">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2">
+          <Lightbulb size={16} className="text-[#155e63] shrink-0" />
+          <p className="text-sm font-semibold text-[#1a1a1a]">
+            New here? How to fill out your forecast
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="text-[#afafaf] hover:text-[#1a1a1a] shrink-0"
+          aria-label="Dismiss onboarding card"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      <p className="text-xs text-[#6b6b6b] mb-3 leading-relaxed">
+        Your monthly revenue comes from two sources: people checking out at
+        your counter (the biggest one) plus any other income streams.
+        Everything else on this tab tells the model how that revenue gets
+        spent. Work top-to-bottom:
+      </p>
+      <ol className="text-xs text-[#1a1a1a] space-y-1.5 leading-relaxed list-decimal list-inside marker:text-[#155e63] marker:font-semibold">
+        <li>
+          <span className="font-semibold">Customer Flow + Operating Schedule:</span>{" "}
+          how many customers per day and which hours/days you&rsquo;re open.
+        </li>
+        <li>
+          <span className="font-semibold">In-Store Ticket Sales:</span>{" "}
+          average ticket × the customers above = your base monthly revenue.
+        </li>
+        <li>
+          <span className="font-semibold">Additional Revenue Streams:</span>{" "}
+          anything <em>extra</em> on top — wholesale, catering, subscriptions, etc.
+        </li>
+        <li>
+          <span className="font-semibold">COGS, Operating Expenses, Asset Purchases:</span>{" "}
+          what it costs you to run the business and serve those customers.
+        </li>
+      </ol>
+      <p className="text-[11px] text-[#afafaf] mt-3 italic">
+        Don&rsquo;t stress about exact numbers on the first pass — you can refine
+        any input later and the P&amp;L re-calculates instantly.
+      </p>
+    </div>
+  );
+}
+
 function ForecastTab({
   mp,
   canEdit,
@@ -258,6 +354,9 @@ function ForecastTab({
 
   return (
     <div className="space-y-6">
+      {/* TIM-1167: First-time-user pass — dismissible orientation card. */}
+      <ForecastOnboardingCard />
+
       {/* Customer Flow */}
       <div>
         <p className={sectionLabelCls}>Customer Flow by Day</p>
@@ -390,10 +489,40 @@ function ForecastTab({
         </div>
       </div>
 
-      {/* Revenue Drivers */}
+      {/* TIM-1167: In-Store Ticket Sales — the "base / foot-traffic" revenue
+          engine. Renamed and reframed so a brand-new user knows exactly what
+          this captures, what it excludes, and how it connects to the optional
+          extra revenue streams below. */}
       <div>
-        <p className={sectionLabelCls}>Revenue Drivers</p>
+        <p className={sectionLabelCls}>In-Store Ticket Sales (Your Base Revenue)</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-3 leading-relaxed">
+            Every customer who checks out at your counter — walk-ins, mobile
+            preorders picked up in store, drive-thru, anything that rings
+            through your POS. This is almost always the biggest piece of a
+            coffee shop&rsquo;s revenue.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="rounded-lg bg-[#f5fbfb] border border-[#155e63]/15 p-3">
+              <p className="text-[11px] font-semibold text-[#155e63] uppercase tracking-wide mb-1">
+                Includes
+              </p>
+              <p className="text-[11px] text-[#1a1a1a] leading-snug">
+                Espresso bar, drip, cold drinks, pastry case, retail bags off
+                the shelf, mobile-order pickups, gift cards redeemed at the counter.
+              </p>
+            </div>
+            <div className="rounded-lg bg-[#faf9f7] border border-[#efefef] p-3">
+              <p className="text-[11px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">
+                Excludes
+              </p>
+              <p className="text-[11px] text-[#1a1a1a] leading-snug">
+                Wholesale invoices, catering bookings, classes, subscriptions
+                shipped to homes, tips, sales tax. (Add those below under
+                <em> Additional Revenue Streams</em>.)
+              </p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
@@ -409,10 +538,12 @@ function ForecastTab({
                 placeholder="7.50"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">Typical espresso bar: $6–$10</p>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                What a typical customer spends per visit, excluding tips and tax. Espresso bars: $6–$10. Example: $7.50.
+              </p>
             </div>
             <div>
-              <label className={labelCls}>COGS % of revenue</label>
+              <label className={labelCls}>Default COGS % of revenue</label>
               <input
                 className={inputCls}
                 type="number"
@@ -423,24 +554,82 @@ function ForecastTab({
                 placeholder="30"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">Typical coffee shop: 28–35%</p>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Blended product cost as a % of every revenue dollar. Coffee shops: 28–35%. You can override per-product below.
+              </p>
             </div>
           </div>
+          {/* Live monthly estimate so the formula is concrete, not abstract. */}
+          {(() => {
+            const openDayKeys = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
+            const weeklyCust = openDayKeys.reduce(
+              (s, d) => s + (mp.daily_flow[d] || 0),
+              0
+            );
+            const monthlyInStoreCents = Math.round(
+              (weeklyCust * 52 * (mp.avg_ticket_cents / 100) * 100) / 12
+            );
+            const ccy = mp.currency_code ?? "USD";
+            return (
+              <div className="mt-4 pt-3 border-t border-[#f0f0f0]">
+                <p className="text-[11px] text-[#6b6b6b] leading-relaxed">
+                  <span className="font-semibold text-[#1a1a1a]">Quick math:</span>{" "}
+                  {weeklyCust.toLocaleString()} customers / week × 52 weeks ×{" "}
+                  {formatCurrency(mp.avg_ticket_cents / 100, ccy)} avg ticket ÷ 12 ={" "}
+                  <span className="font-semibold text-[#155e63]">
+                    {formatCurrency(monthlyInStoreCents / 100, ccy)} / month
+                  </span>{" "}
+                  in In-Store Ticket Sales (before ramp-up).
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
-      {/* Forecast Lines — categorized (Revenue / COGS / Overhead / Capex) */}
+      {/* TIM-1167: Reframe Forecast Line Items with an explicit roll-up diagram
+          so the additive relationship (in-store + additional = total) is
+          unmistakable. */}
       <div>
         <p className={sectionLabelCls}>Forecast Line Items</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
-            Add, rename, or remove any line. For revenue and COGS lines, toggle{" "}
-            <span className="font-semibold">$</span> (static monthly amount) or{" "}
-            <span className="font-semibold">%</span> (percent of revenue). For operating
+          {/* "How Revenue Adds Up" rollup */}
+          <div className="rounded-lg bg-[#faf9f7] border border-[#efefef] p-3 mb-4">
+            <div className="flex items-start gap-2">
+              <Info size={14} className="text-[#155e63] shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-[#1a1a1a] mb-1.5">
+                  How your total revenue adds up
+                </p>
+                <div className="text-[11px] text-[#1a1a1a] font-mono leading-relaxed space-y-0.5">
+                  <div>
+                    <span className="text-[#155e63] font-semibold">In-Store Ticket Sales</span>
+                    <span className="text-[#6b6b6b]">  (from above)</span>
+                  </div>
+                  <div>
+                    <span className="text-[#155e63] font-semibold">+ Additional Revenue Streams</span>
+                    <span className="text-[#6b6b6b]">  (wholesale, catering, etc. — set below)</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a13d3d] font-semibold">− Loyalty Discounts</span>
+                    <span className="text-[#6b6b6b]">  (if any)</span>
+                  </div>
+                  <div className="border-t border-[#e0e0e0] pt-0.5 mt-0.5">
+                    <span className="text-[#1a1a1a] font-bold">= Total Net Revenue</span>
+                    <span className="text-[#6b6b6b]">  (used everywhere downstream)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-[#6b6b6b] mb-4 leading-relaxed">
+            Add, rename, or remove any line below. For COGS lines, toggle{" "}
+            <span className="font-semibold">$</span> (fixed monthly amount) or{" "}
+            <span className="font-semibold">%</span> (percent of the linked revenue stream). For operating
             expenses, pick the basis from the <span className="font-semibold">% of</span>{" "}
-            dropdown: a fixed monthly amount, percent of overall revenue, or percent of a
-            specific revenue stream. Click the sliders icon to configure a ramp-up period
-            or month-over-month growth on any line.
+            dropdown: a fixed monthly amount, percent of total revenue, or percent of a
+            specific revenue stream. Click the sliders icon on any line to configure a ramp-up period
+            or month-over-month growth.
           </p>
           <ForecastLinesEditor
             lines={mp.forecast_lines}
