@@ -1221,7 +1221,12 @@ export function FinancialsWorkspace({
           />
         )}
         {activeTab === "balance-sheet" && (
-          <BalanceSheetTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
+          <BalanceSheetTab
+            slices={slices}
+            fiscalYearStartMonth={fiscalYearStartMonth}
+            currencyCode={currencyCode}
+            financialInputs={financialInputs}
+          />
         )}
         {activeTab === "cash-flow" && (
           <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
