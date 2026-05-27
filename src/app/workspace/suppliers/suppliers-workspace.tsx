@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Truck, Plus, Sparkles, X, Trash2 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
@@ -68,7 +68,7 @@ export function SuppliersWorkspace({
     reason: string;
   } | null>(null);
 
-  const { setModuleProgress } = useWorkspaceProgress();
+  const { promoteOnEdit } = useWorkspaceStatus();
 
   const candidatesByCategory = useMemo(() => {
     const map = new Map<VendorCategoryKey, VendorCandidate[]>();
@@ -92,8 +92,8 @@ export function SuppliersWorkspace({
   const totalCategories = VENDOR_CATEGORY_KEYS.length;
 
   useEffect(() => {
-    setModuleProgress(10, chosenCount, totalCategories);
-  }, [chosenCount, totalCategories, setModuleProgress]);
+    if (chosenCount > 0) promoteOnEdit("suppliers");
+  }, [chosenCount, promoteOnEdit]);
 
   const persistCandidate = useMemo(
     () =>

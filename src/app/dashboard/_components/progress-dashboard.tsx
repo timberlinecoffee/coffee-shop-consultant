@@ -108,11 +108,11 @@ function CompletionStrip({ snapshots }: { snapshots: WorkspaceProgressSnapshot[]
                     className={`h-1.5 rounded-full transition-all duration-500 ${
                       snap.isComplete
                         ? "bg-[#155e63]"
-                        : snap.isStarted
+                        : snap.status === "in_progress"
                           ? "bg-amber-400"
                           : "bg-[#efefef]"
                     }`}
-                    style={{ width: `${snap.pct ?? (snap.isStarted ? 25 : 0)}%` }}
+                    style={{ width: `${snap.pct}%` }}
                   />
                 </div>
               </Link>
@@ -125,11 +125,9 @@ function CompletionStrip({ snapshots }: { snapshots: WorkspaceProgressSnapshot[]
 }
 
 function progressLabel(snap: WorkspaceProgressSnapshot): string {
-  if (snap.isComplete) return "Done";
-  if (snap.totalSections != null) {
-    return `${snap.filledSections}/${snap.totalSections}`;
-  }
-  return snap.isStarted ? "Started" : "Not started";
+  if (snap.status === "complete") return "Complete";
+  if (snap.status === "in_progress") return "In Progress";
+  return "Not Started";
 }
 
 // ── Stale nudges ─────────────────────────────────────────────────────────────

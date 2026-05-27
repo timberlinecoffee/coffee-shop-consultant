@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { computePlanReadiness } from "@/lib/workspace-manifest";
 import { capitalizeFirst } from "@/lib/format";
 import {
@@ -14,6 +13,10 @@ import {
   pickNextStep,
   pickWeakestWorkspace,
 } from "@/lib/dashboard-nudges";
+import {
+  isWorkspaceStatus,
+  type WorkspaceStatus,
+} from "@/lib/workspace-status";
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { ProgressDashboard } from "./_components/progress-dashboard";
 
@@ -57,57 +60,44 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  // completedByModule: module number → count of filled sections.
-  // Concept (module 1) reads from workspace_documents; modules 2+ count rows
-  // in module_responses with status='completed'. The recent activity feed and
-  // stale nudges share the same workspace_documents fetch below.
-  const completedByModule = new Map<number, number>();
+  // TIM-1147: workspace progress is the manual 3-state status the founder
+  // controls. `lastTouchedByKey` continues to come from workspace_documents
+  // for the stale-nudge + recent activity feeds.
+  const statusByKey = new Map<string, WorkspaceStatus>();
   const lastTouchedByKey = new Map<string, string>();
 
   if (plan?.id) {
-    const [{ data: workspaceDocs }, { data: responses }] = await Promise.all([
+    const [{ data: workspaceDocs }, { data: statusRows }] = await Promise.all([
       supabase
         .from("workspace_documents")
-        .select("workspace_key, content, updated_at")
+        .select("workspace_key, updated_at")
         .eq("plan_id", plan.id),
       supabase
-        .from("module_responses")
-        .select("module_number")
-        .eq("plan_id", plan.id)
-        .eq("status", "completed"),
+        .from("workspace_status")
+        .select("component_key, status")
+        .eq("plan_id", plan.id),
     ]);
 
     for (const doc of workspaceDocs ?? []) {
       if (doc.updated_at && typeof doc.workspace_key === "string") {
         lastTouchedByKey.set(doc.workspace_key, doc.updated_at);
       }
-      if (doc.workspace_key === "concept" && doc.content) {
-        const progress = getConceptV2Progress(normalizeConceptV2(doc.content));
-        completedByModule.set(1, progress.filled);
-      }
     }
-
-    for (const row of responses ?? []) {
-      const n = row.module_number;
-      completedByModule.set(n, (completedByModule.get(n) ?? 0) + 1);
+    for (const row of statusRows ?? []) {
+      if (isWorkspaceStatus(row.status)) {
+        statusByKey.set(row.component_key, row.status);
+      }
     }
   }
 
-  // W1-specific counters for the "Start here" card (not the overall score).
-  const w1FilledCount = completedByModule.get(1) ?? 0;
-  const w1TotalSections = 5; // concept always has 5 core sections
-  const w1Progress = w1FilledCount;
-  const w1Completed = w1Progress >= w1TotalSections;
-  const w1Started = w1Progress > 0;
-  const w1Pct = Math.round((w1Progress / w1TotalSections) * 100);
+  // W1-specific labels for the "Start here" card.
+  const w1Status = statusByKey.get("concept") ?? "not_started";
+  const w1Completed = w1Status === "complete";
+  const w1Started = w1Status !== "not_started";
+  const w1Pct = w1Status === "complete" ? 100 : w1Status === "in_progress" ? 50 : 0;
 
-  // Overall plan readiness: filled sections / total expected sections across ALL modules.
-  // computePlanReadiness weights locked modules at 5 sections each in the denominator,
-  // so completing only concept gives ~17% — not 100%. See workspace-manifest.ts.
-  const planReadiness = computePlanReadiness(completedByModule);
-  const readinessScore = planReadiness.total > 0
-    ? Math.round((planReadiness.filled / planReadiness.total) * 100)
-    : 0;
+  // Overall plan readiness: average of per-workspace manual statuses (0/50/100).
+  const readinessScore = computePlanReadiness(statusByKey).pct;
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
@@ -119,7 +109,7 @@ export default async function DashboardPage() {
   // stale nudges, recent activity, weakest workspace for "Improve with AI".
   // Skipping the per-owner "good enough for now" opt-out for now — surface it
   // here once owners can mark workspaces complete from the UI.
-  const workspaceSnapshots = buildWorkspaceSnapshots(completedByModule, lastTouchedByKey);
+  const workspaceSnapshots = buildWorkspaceSnapshots(statusByKey, lastTouchedByKey);
   const nextStep = pickNextStep(workspaceSnapshots);
   const staleNudges = buildStaleNudges(workspaceSnapshots);
   const recentActivity = buildRecentActivity(lastTouchedByKey);
@@ -243,7 +233,7 @@ export default async function DashboardPage() {
                   />
                 </div>
                 <span className="text-xs text-[#afafaf] whitespace-nowrap flex-shrink-0">
-                  {w1Progress}/{w1TotalSections} sections
+                  {w1Completed ? "Complete" : w1Started ? "In Progress" : "Not Started"}
                 </span>
               </div>
               <Link

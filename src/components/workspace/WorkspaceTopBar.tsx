@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { WorkspaceNavItem } from "@/lib/workspace-manifest";
+import { WorkspaceStatusControl } from "@/components/workspace/WorkspaceStatusControl";
 
 export interface WorkspaceTopBarProps {
   items: WorkspaceNavItem[];
@@ -58,12 +59,19 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
         {currentName}
       </span>
       {isWorkspacePage && (
-        <button
-          onClick={openCopilot}
-          className="text-xs text-[#155e63] font-medium border border-[#155e63]/30 px-3 py-1 rounded-full hover:bg-[#155e63]/5 transition-colors flex-shrink-0"
-        >
-          Co-pilot
-        </button>
+        <>
+          {/* TIM-1147: Manual workspace status control. */}
+          <WorkspaceStatusControl
+            componentKey={activeItem!.workspaceKey}
+            label="Workspace"
+          />
+          <button
+            onClick={openCopilot}
+            className="text-xs text-[#155e63] font-medium border border-[#155e63]/30 px-3 py-1 rounded-full hover:bg-[#155e63]/5 transition-colors flex-shrink-0"
+          >
+            Co-pilot
+          </button>
+        </>
       )}
     </div>
   );

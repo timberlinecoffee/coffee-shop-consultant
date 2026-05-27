@@ -13,7 +13,7 @@ import { Lightbulb, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
-import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   CONCEPT_COMPONENTS_V2,
   buildFieldPrompt,
@@ -90,15 +90,15 @@ export function ConceptWorkspace({
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
-  const { setModuleProgress } = useWorkspaceProgress();
+  const { promoteOnEdit } = useWorkspaceStatus();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
 
-  // Keep the sidebar counter in sync with the live in-page counter (TIM-884).
+  // TIM-1147: auto-promote workspace status to In Progress on first edit.
   useEffect(() => {
-    setModuleProgress(1, progress.filled, progress.total);
-  }, [progress.filled, progress.total, setModuleProgress]);
+    if (progress.filled > 0) promoteOnEdit("concept");
+  }, [progress.filled, promoteOnEdit]);
   const shopName = doc.components.shop_identity.content.trim();
   const pct = progress.total > 0 ? Math.round((progress.filled / progress.total) * 100) : 0;
 

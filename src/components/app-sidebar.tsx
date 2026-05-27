@@ -105,13 +105,9 @@ function NavItem({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
-  const isComplete =
-    item.totalSections !== null &&
-    item.completedSections >= item.totalSections;
-  const isInProgress =
-    item.totalSections !== null &&
-    item.completedSections > 0 &&
-    item.completedSections < item.totalSections;
+  // TIM-1147: status is manual (0/50/100). No more filled/total auto-bars.
+  const isComplete = item.status === "complete";
+  const isInProgress = item.status === "in_progress";
 
   if (!item.isUnlocked) {
     if (collapsed) {
@@ -177,19 +173,12 @@ function NavItem({
           </span>
         )}
       </div>
-      {isInProgress && item.totalSections && (
+      {isInProgress && (
         <>
           <div className="mt-1.5 h-1 bg-[#efefef] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-amber-400 rounded-full"
-              style={{
-                width: `${(item.completedSections / item.totalSections) * 100}%`,
-              }}
-            />
+            <div className="h-full bg-amber-400 rounded-full" style={{ width: "50%" }} />
           </div>
-          <span className="mt-1 text-xs text-[#afafaf]">
-            {item.completedSections} of {item.totalSections} sections
-          </span>
+          <span className="mt-1 text-xs text-[#afafaf]">In Progress</span>
         </>
       )}
       {isComplete && (
