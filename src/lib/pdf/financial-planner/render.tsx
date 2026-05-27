@@ -999,7 +999,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
         </View>
         <View style={styles.metricRow}>
           <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Ending cash (Y1)</Text>
+            <Text style={styles.metricLabel}>Ending Cash (Year 1)</Text>
             <Text style={styles.metricValue}>
               {formatMinorUnits(endingCash, code)}
             </Text>
