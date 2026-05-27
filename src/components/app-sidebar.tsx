@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { WorkspaceNavItem, NavIcon } from "@/lib/workspace-manifest";
+import {
+  WORKSPACE_CATEGORY_LABEL,
+  WORKSPACE_CATEGORY_ORDER,
+} from "@/lib/workspace-manifest";
 import { WORKSPACE_ICONS } from "@/lib/workspace-icons";
 
 export interface AppSidebarProps {
@@ -260,30 +264,53 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Workspace nav */}
+      {/* Workspace nav — TIM-1142: grouped by phase category */}
       <nav
         aria-label="Workspace navigation"
         className={`flex-1 overflow-y-auto py-4 ${collapsed ? "px-1" : "px-2"}`}
       >
-        {!collapsed && (
-          <div className="mb-2 px-3">
-            <span className="text-xs font-medium text-[#afafaf] uppercase tracking-wide">
-              Workspaces
-            </span>
-          </div>
-        )}
-        <ul role="list" className="space-y-0.5">
-          {items.map((item) => (
-            <li key={item.moduleNumber}>
-              <NavItem
-                item={item}
-                isActive={pathname.startsWith(item.href)}
-                collapsed={collapsed}
-                onNavigate={onClose}
-              />
-            </li>
-          ))}
-        </ul>
+        {WORKSPACE_CATEGORY_ORDER.map((category, index) => {
+          const groupItems = items.filter((item) => item.category === category);
+          if (groupItems.length === 0) return null;
+
+          return (
+            <section
+              key={category}
+              aria-labelledby={`nav-cat-${category}`}
+              className={collapsed ? (index === 0 ? "" : "mt-3") : index === 0 ? "" : "mt-4"}
+            >
+              {collapsed ? (
+                <div
+                  id={`nav-cat-${category}`}
+                  role="separator"
+                  aria-label={WORKSPACE_CATEGORY_LABEL[category]}
+                  className="mx-2 my-2 h-px bg-[#efefef]"
+                />
+              ) : (
+                <div className="mb-1.5 px-3">
+                  <span
+                    id={`nav-cat-${category}`}
+                    className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wider"
+                  >
+                    {WORKSPACE_CATEGORY_LABEL[category]}
+                  </span>
+                </div>
+              )}
+              <ul role="list" className="space-y-0.5">
+                {groupItems.map((item) => (
+                  <li key={item.moduleNumber}>
+                    <NavItem
+                      item={item}
+                      isActive={pathname.startsWith(item.href)}
+                      collapsed={collapsed}
+                      onNavigate={onClose}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </nav>
 
       {/* TIM-1062: Export Business Plan — single entry point from any workspace */}
