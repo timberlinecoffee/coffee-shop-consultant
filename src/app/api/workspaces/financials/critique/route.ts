@@ -3,6 +3,8 @@
 // TIM-1100: User-facing term is now "AI Assessment" (route path retained for compat).
 // TIM-1101: Multi-currency — request body may include currencyCode (ISO 4217);
 //   prompt + formatted figures use the selected currency.
+// TIM-1121: Pre-flagged "Ratios outside healthy benchmark" block ensures the
+//   consultant always ties Ratios-tab red flags into the broader advice.
 // POST /api/workspaces/financials/critique
 
 export const runtime = "nodejs";
@@ -75,6 +77,39 @@ export async function POST(request: Request) {
   const netPct1 = pct(year1.net_income, year1.revenue);
   const totalOpexPct1 = pct(year1.total_opex, year1.revenue);
 
+  // TIM-1121: Pre-flagged ratio red flags. Keeps thresholds aligned with the
+  // Ratios tab so anything that shows red there is named here for the
+  // consultant to address.
+  type RatioFlag = { label: string; value: string; healthy: string; severity: "red" | "amber" };
+  const flagged: RatioFlag[] = [];
+  if (year1.revenue > 0) {
+    const gmVal = (year1.gross_profit / year1.revenue) * 100;
+    const laborVal = (year1.labor / year1.revenue) * 100;
+    const rentVal = (year1.rent / year1.revenue) * 100;
+    const primeCostVal = ((year1.cogs + year1.labor) / year1.revenue) * 100;
+    const netVal = (year1.net_income / year1.revenue) * 100;
+
+    if (primeCostVal > 70) flagged.push({ label: "Prime Cost", value: `${primeCostVal.toFixed(1)}%`, healthy: "55–65%", severity: "red" });
+    else if (primeCostVal > 65) flagged.push({ label: "Prime Cost", value: `${primeCostVal.toFixed(1)}%`, healthy: "55–65%", severity: "amber" });
+
+    if (gmVal < 55) flagged.push({ label: "Gross Margin", value: `${gmVal.toFixed(1)}%`, healthy: "60–70%", severity: "red" });
+    else if (gmVal < 60) flagged.push({ label: "Gross Margin", value: `${gmVal.toFixed(1)}%`, healthy: "60–70%", severity: "amber" });
+
+    if (laborVal > 40) flagged.push({ label: "Labor", value: `${laborVal.toFixed(1)}%`, healthy: "28–35%", severity: "red" });
+    else if (laborVal > 35) flagged.push({ label: "Labor", value: `${laborVal.toFixed(1)}%`, healthy: "28–35%", severity: "amber" });
+
+    if (rentVal > 15) flagged.push({ label: "Rent (Occupancy)", value: `${rentVal.toFixed(1)}%`, healthy: "≤10% ideal, 10–15% acceptable", severity: "red" });
+    else if (rentVal > 10) flagged.push({ label: "Rent (Occupancy)", value: `${rentVal.toFixed(1)}%`, healthy: "≤10% ideal, 10–15% acceptable", severity: "amber" });
+
+    if (netVal < 0) flagged.push({ label: "Net Margin", value: `${netVal.toFixed(1)}%`, healthy: "Year 1 ≥0%; mature 3–15%", severity: "red" });
+  }
+
+  const ratioFlagsBlock = flagged.length > 0
+    ? `## Ratios Outside Healthy Benchmark (Year 1) — must address in your bullets\n${flagged
+        .map((f) => `- ${f.severity === "red" ? "🔴" : "🟡"} ${f.label}: ${f.value} (healthy: ${f.healthy})`)
+        .join("\n")}\n`
+    : `## Ratios — all within healthy benchmarks for Year 1.\n`;
+
   const prompt = `You are a senior coffee shop consultant who has reviewed hundreds of independent coffee shop business plans. You have deep knowledge of industry benchmarks for small-format espresso bars and cafes.
 
 The operator's currency is **${currencyMeta.code} (${currencyMeta.name})**. Any monetary value you cite in your bullets must use this currency — never substitute "$" or "USD" unless the operator's currency code is USD. Quote figures the same way they appear below (e.g. "${fc(50000)}", "${fc(1200000)}").
@@ -106,6 +141,7 @@ Operating Expenses:
 
 **Startup Equipment Total:** ${fc(projections.startup_equipment_total)}
 
+${ratioFlagsBlock}
 ${concept_summary ? `## Concept Context\n${concept_summary}` : ""}
 
 ## Industry Benchmarks (independent coffee shops, North America)
@@ -123,6 +159,8 @@ Return a JSON object with a "bullets" array containing 4–6 items. Each bullet 
 - text: a concise, specific observation (1–2 sentences). Reference the actual numbers and % from the projections above. For any category outside the typical range, call it out explicitly with the actual % and the benchmark range (e.g. "Labor at 45% of revenue is above the typical 28–32% range for a full-service café — consider reviewing staffing levels."). Do NOT be generic.
 
 Mix: typically 1–2 strengths, 2–3 weaknesses or suggestions. Be direct. Owners need honest feedback, not cheerleading.
+
+If any ratios were flagged 🔴 or 🟡 in the "Ratios Outside Healthy Benchmark" block above, at least one bullet MUST address the most severe red flag by name, quote its current value and the healthy range, and recommend a concrete next step (pricing, staffing, supplier change, lease renegotiation, etc.).
 
 Return ONLY the JSON object, no other text.`;
 
