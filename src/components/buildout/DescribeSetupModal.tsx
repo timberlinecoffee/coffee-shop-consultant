@@ -183,7 +183,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
             <p className="text-xs text-[#6b6b6b] mt-0.5">
               {mergeMode
                 ? "Refine your description to add or adjust items."
-                : "Describe your equipment in plain English — AI builds the structured list."}
+                : "Describe your equipment in plain English. AI builds the structured list."}
             </p>
           </div>
           <button
@@ -203,7 +203,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
             <div className="space-y-4">
               {mergeMode && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-                  Items from this run will be added to your existing list — nothing will be removed.
+                  Items from this run will be added to your existing list. Nothing will be removed.
                 </div>
               )}
 
