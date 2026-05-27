@@ -7,6 +7,7 @@ import {
   defaultMonthlyProjections,
   normalizeMonthlyProjections,
   computeMonthlyProjections,
+  computeMonthlySlices,
   computeMenuBlendedCogsPct,
 } from "./financial-projection.ts";
 
@@ -303,6 +304,93 @@ test("computeMenuBlendedCogsPct: returns null when nothing is priced", () => {
     ]),
     null
   );
+});
+
+test("stream-linked COGS flows through to balance sheet: inventory + accounts payable", () => {
+  // Acceptance criteria for TIM-1117: "Calculation flows through to net profit,
+  // balance sheet, and cash flow." Inventory = cogs × days_inventory/30 (default 7),
+  // accounts payable = cogs × days_payable/30 (default 30 → equal to monthly COGS).
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    { id: "rev-w", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    {
+      id: "cogs-w",
+      label: "Wholesale COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 40,
+      revenue_stream_id: "rev-w",
+    },
+  ];
+  const slices = computeMonthlySlices(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    {} // defaults: days_inventory=7, days_payable=30
+  );
+  const m1 = slices[0];
+  // COGS = 40% × $10,000 = $4,000
+  assert.equal(m1.cogs_cents, 400000);
+  // Inventory = $4,000 × 7/30 = $933.33 → rounded to 93333 cents
+  assert.equal(m1.inventory_cents, Math.round(400000 * (7 / 30)));
+  // Accounts payable = $4,000 × 30/30 = $4,000 (full monthly COGS)
+  assert.equal(m1.accounts_payable_cents, 400000);
+});
+
+test("COGS change flows through to cash flow (net_cash_cents)", () => {
+  // Same revenue baseline; adding a stream-linked COGS line lowers net income,
+  // which lowers net_cash_cents one-for-one (depreciation, loan repay, capex unchanged).
+  const baseMp = () => {
+    const mp = defaultMonthlyProjections();
+    mp.cogs_pct = 0;
+    mp.ramp_months = 0;
+    mp.ramp_multipliers = [];
+    mp.growth_monthly_pct = 0;
+    mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+    return mp;
+  };
+
+  const mpNoCogs = baseMp();
+  mpNoCogs.forecast_lines = [
+    { id: "rev-w", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+  ];
+  const noCogs = computeMonthlySlices(
+    mpNoCogs,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    {}
+  );
+
+  const mpWithCogs = baseMp();
+  mpWithCogs.forecast_lines = [
+    { id: "rev-w", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    {
+      id: "cogs-w",
+      label: "Wholesale COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 40,
+      revenue_stream_id: "rev-w",
+    },
+  ];
+  const withCogs = computeMonthlySlices(
+    mpWithCogs,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    {}
+  );
+
+  // Same revenue, higher COGS → lower net income → lower net cash.
+  assert.equal(noCogs[0].revenue_cents, withCogs[0].revenue_cents);
+  assert.ok(withCogs[0].cogs_cents > noCogs[0].cogs_cents);
+  assert.ok(withCogs[0].net_income_cents < noCogs[0].net_income_cents);
+  assert.ok(withCogs[0].net_cash_cents < noCogs[0].net_cash_cents);
+  // The cash delta should track the net-income delta exactly (no other lever moved).
+  const dNetIncome = withCogs[0].net_income_cents - noCogs[0].net_income_cents;
+  const dNetCash = withCogs[0].net_cash_cents - noCogs[0].net_cash_cents;
+  assert.equal(dNetCash, dNetIncome);
 });
 
 test("net income reflects COGS change when a stream-linked line is added", () => {

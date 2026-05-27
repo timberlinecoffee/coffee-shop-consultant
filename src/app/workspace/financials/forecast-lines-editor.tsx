@@ -141,7 +141,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               <input
                 className={`${inputCls} w-full pr-6 bg-[#f5fbfb] text-[#155e63] font-medium`}
                 type="text"
-                value={displayPct !== null ? displayPct.toFixed(1) : "—"}
+                value={displayPct !== null ? displayPct.toFixed(1) : "n/a"}
                 readOnly
                 disabled
                 aria-label="Menu-derived percent"
