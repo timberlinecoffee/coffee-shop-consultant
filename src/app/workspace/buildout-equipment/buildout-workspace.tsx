@@ -9,7 +9,7 @@ import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare } from "luci
 import { formatCurrency } from "@/lib/financial-projection";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
@@ -143,7 +143,7 @@ export function BuildoutEquipmentWorkspace({
   const inFlightController = useRef<AbortController | null>(null);
   const latestEquipmentRef = useRef<EquipmentItem[]>(initialEquipment);
 
-  const { setModuleProgress } = useWorkspaceProgress();
+  const { promoteOnEdit } = useWorkspaceStatus();
 
   const showReviewBanner =
     !reviewDismissed &&
@@ -154,8 +154,8 @@ export function BuildoutEquipmentWorkspace({
   const progress = useMemo(() => ({ filled: equipment.length > 0 ? 1 : 0, total: 1 }), [equipment]);
 
   useEffect(() => {
-    setModuleProgress(5, progress.filled, progress.total);
-  }, [progress.filled, progress.total, setModuleProgress]);
+    if (progress.filled > 0) promoteOnEdit("buildout_equipment");
+  }, [progress.filled, promoteOnEdit]);
 
   // persist saves the equipment total to financial_models for projections
   const persist = useCallback(

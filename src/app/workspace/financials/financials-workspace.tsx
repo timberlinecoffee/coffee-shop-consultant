@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -1142,7 +1142,7 @@ export function FinancialsWorkspace({
   const latestMpRef = useRef<MonthlyProjections>(initialProjections);
   const latestCritiqueRef = useRef<CritiqueResult | null>(initialCritique);
 
-  const { setModuleProgress } = useWorkspaceProgress();
+  const { promoteOnEdit } = useWorkspaceStatus();
 
   const showReviewBanner =
     !reviewDismissed &&
@@ -1161,8 +1161,8 @@ export function FinancialsWorkspace({
   }, [mp]);
 
   useEffect(() => {
-    setModuleProgress(2, progress.filled, progress.total);
-  }, [progress.filled, progress.total, setModuleProgress]);
+    if (progress.filled > 0) promoteOnEdit("financials");
+  }, [progress.filled, promoteOnEdit]);
 
   const equipment = useMemo(() => ({ total_cost_cents: 0, financed_cost_cents: 0 }), []);
 

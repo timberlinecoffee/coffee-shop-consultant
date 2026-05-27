@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
-import { buildNavItems } from "@/lib/workspace-manifest";
+import { WORKSPACE_MANIFEST } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
+import {
+  isWorkspaceStatus,
+  type WorkspaceStatus,
+} from "@/lib/workspace-status";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +21,8 @@ export default async function WorkspaceLayout({
 
   if (!user) redirect("/login");
 
+  const initialStatuses: Record<string, WorkspaceStatus> = {};
+
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
     .select("id")
@@ -26,41 +31,24 @@ export default async function WorkspaceLayout({
     .limit(1)
     .maybeSingle();
 
-  const completedByModule = new Map<number, number>();
-
   if (plan?.id) {
-    // Module 1 (Concept): progress lives in workspace_documents, not module_responses.
-    const { data: conceptDoc } = await supabase
-      .from("workspace_documents")
-      .select("content")
-      .eq("plan_id", plan.id)
-      .eq("workspace_key", "concept")
-      .maybeSingle();
+    const { data: rows } = await supabase
+      .from("workspace_status")
+      .select("component_key, status")
+      .eq("plan_id", plan.id);
 
-    if (conceptDoc?.content) {
-      const progress = getConceptV2Progress(normalizeConceptV2(conceptDoc.content));
-      completedByModule.set(1, progress.filled);
-    }
-
-    // Modules 2+ that have shipped sections: count completed module_responses rows.
-    const { data: responses } = await supabase
-      .from("module_responses")
-      .select("module_number")
-      .eq("plan_id", plan.id)
-      .eq("status", "completed");
-
-    if (responses) {
-      for (const row of responses) {
-        const n = row.module_number;
-        completedByModule.set(n, (completedByModule.get(n) ?? 0) + 1);
+    for (const row of rows ?? []) {
+      if (isWorkspaceStatus(row.status)) {
+        initialStatuses[row.component_key] = row.status;
       }
     }
   }
 
-  const navItems = buildNavItems(completedByModule);
-
   return (
-    <WorkspaceProgressProvider initialItems={navItems}>
+    <WorkspaceProgressProvider
+      manifest={WORKSPACE_MANIFEST}
+      initialStatuses={initialStatuses}
+    >
       {children}
     </WorkspaceProgressProvider>
   );

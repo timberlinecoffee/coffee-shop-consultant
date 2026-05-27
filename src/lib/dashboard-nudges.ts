@@ -1,16 +1,33 @@
-// TIM-1063: Progress dashboard helpers.
+// TIM-1063 + TIM-1147: Progress dashboard helpers.
 //
 // Pure data-shaping for the "Next step" card, workspace completion strip,
 // stale nudges, and recent activity feed. Server-side fetching lives in the
 // dashboard page; this module is intentionally side-effect free so it can be
 // unit-tested without a Supabase client.
+//
+// TIM-1147: snapshots are derived from the manual 3-state workspace_status
+// table (not auto-derived section counts). pct collapses to 0/50/100 to match.
 
-// NOTE: this module deliberately does not import from `./workspace-manifest`
-// or `./modules` so the unit test (`dashboard-nudges.test.mjs`) can run under
-// Node's `--experimental-strip-types` without hitting cross-file ESM
-// resolution issues. The constants below MUST stay in sync with
-// `WORKSPACE_MANIFEST` / `AVAILABLE_MODULES`; the contract is pinned by
-// `dashboard-nudges.test.mjs` and `workspace-manifest.test.mjs`.
+// NOTE: this module deliberately does not import from `./workspace-manifest`,
+// `./modules`, or `./workspace-status` so the unit test
+// (`dashboard-nudges.test.mjs`) can run under Node's
+// `--experimental-strip-types` without hitting cross-file ESM resolution
+// issues. The constants below MUST stay in sync with `WORKSPACE_MANIFEST` /
+// `AVAILABLE_MODULES` / `WORKSPACE_STATUS_PCT`; the contracts are pinned by
+// `dashboard-nudges.test.mjs`, `workspace-manifest.test.mjs`, and
+// `workspace-status.test.mjs`.
+
+export type WorkspaceStatus = "not_started" | "in_progress" | "complete";
+
+const STATUS_PCT: Record<WorkspaceStatus, number> = {
+  not_started: 0,
+  in_progress: 50,
+  complete: 100,
+};
+
+function statusPct(status: WorkspaceStatus): number {
+  return STATUS_PCT[status];
+}
 
 export type NavIcon =
   | "lightbulb"
@@ -26,10 +43,10 @@ export type NavIcon =
 
 interface NudgeManifestEntry {
   moduleNumber: number;
+  workspaceKey: string;
   label: string;
   href: string;
   icon: NavIcon;
-  totalSections: number | null;
   /** True when the workspace page has actually shipped on every env. */
   isShipped: boolean;
 }
@@ -37,16 +54,16 @@ interface NudgeManifestEntry {
 // Mirror of WORKSPACE_MANIFEST + AVAILABLE_MODULES from ./workspace-manifest
 // and ./modules. Update both files together.
 const NUDGE_MANIFEST: ReadonlyArray<NudgeManifestEntry> = [
-  { moduleNumber: 1, label: "Concept",              href: "/workspace/concept",           icon: "lightbulb",  totalSections: 5,    isShipped: true },
-  { moduleNumber: 2, label: "Financials",           href: "/workspace/financials",         icon: "bar-chart",  totalSections: 2,    isShipped: true },
-  { moduleNumber: 3, label: "Location & Lease",     href: "/workspace/location-lease",     icon: "map-pin",    totalSections: 3,    isShipped: true },
-  { moduleNumber: 4, label: "Menu & Pricing",       href: "/workspace/menu-pricing",       icon: "utensils",   totalSections: null, isShipped: true },
-  { moduleNumber: 5, label: "Build Out & Equipment",href: "/workspace/buildout-equipment", icon: "wrench",     totalSections: null, isShipped: true },
-  { moduleNumber: 6, label: "Launch Plan",          href: "/workspace/launch-plan",        icon: "rocket",     totalSections: null, isShipped: true },
-  { moduleNumber: 7, label: "Hiring & Onboarding",  href: "/workspace/hiring",             icon: "users",      totalSections: 4,    isShipped: true },
-  { moduleNumber: 8, label: "Business Plan",        href: "/workspace/business-plan",      icon: "file-text",  totalSections: null, isShipped: true },
-  { moduleNumber: 9,  label: "Marketing",            href: "/workspace/marketing",  icon: "megaphone", totalSections: null, isShipped: true },
-  { moduleNumber: 13, label: "Inventory",            href: "/workspace/inventory",  icon: "package",   totalSections: null, isShipped: true },
+  { moduleNumber: 1, workspaceKey: "concept",            label: "Concept",               href: "/workspace/concept",            icon: "lightbulb",  isShipped: true },
+  { moduleNumber: 2, workspaceKey: "financials",         label: "Financials",            href: "/workspace/financials",         icon: "bar-chart",  isShipped: true },
+  { moduleNumber: 3, workspaceKey: "location_lease",     label: "Location & Lease",      href: "/workspace/location-lease",     icon: "map-pin",    isShipped: true },
+  { moduleNumber: 4, workspaceKey: "menu_pricing",       label: "Menu & Pricing",        href: "/workspace/menu-pricing",       icon: "utensils",   isShipped: true },
+  { moduleNumber: 5, workspaceKey: "buildout_equipment", label: "Build Out & Equipment", href: "/workspace/buildout-equipment", icon: "wrench",     isShipped: true },
+  { moduleNumber: 6, workspaceKey: "launch_plan",        label: "Launch Plan",           href: "/workspace/launch-plan",        icon: "rocket",     isShipped: true },
+  { moduleNumber: 7, workspaceKey: "hiring",             label: "Hiring & Onboarding",   href: "/workspace/hiring",             icon: "users",      isShipped: true },
+  { moduleNumber: 8, workspaceKey: "business_plan",      label: "Business Plan",         href: "/workspace/business-plan",      icon: "file-text",  isShipped: true },
+  { moduleNumber: 9, workspaceKey: "marketing",          label: "Marketing",             href: "/workspace/marketing",          icon: "megaphone",  isShipped: true },
+  { moduleNumber: 13,workspaceKey: "inventory",          label: "Inventory",             href: "/workspace/inventory",          icon: "package",    isShipped: true },
 ];
 
 // Recommendation priority — lower index = higher priority. The new owner
@@ -72,22 +89,21 @@ export const STALE_THRESHOLD_DAYS = 7;
 
 export interface WorkspaceProgressSnapshot {
   moduleNumber: number;
+  workspaceKey: string;
   label: string;
   href: string;
   icon: NavIcon;
   isUnlocked: boolean;
-  /** Filled sections, capped by totalSections. 0 when nothing is touched. */
-  filledSections: number;
-  /** Total expected sections. null = workspace has no section-based progress. */
-  totalSections: number | null;
-  /** Percent complete, clamped 0..100. null when totalSections is null. */
-  pct: number | null;
+  /** Manual 3-state status drives every display. */
+  status: WorkspaceStatus;
   /** Last edit timestamp (ISO), or null if never edited. */
   lastTouchedAt: string | null;
-  /** True if filledSections === totalSections (and totalSections > 0). */
+  /** True if status === 'complete'. */
   isComplete: boolean;
-  /** True if filledSections > 0. */
+  /** True if status !== 'not_started' OR a workspace_documents row exists. */
   isStarted: boolean;
+  /** Percent for the progress bar — always 0/50/100 to match status. */
+  pct: number;
 }
 
 export interface NextStepSuggestion {
@@ -120,51 +136,40 @@ export interface ActivityEntry {
   summary: string;
 }
 
-export interface RecentActivityInput {
-  /** Workspace key → last edit ISO timestamp. Missing keys = never edited. */
-  lastTouchedByKey: Map<string, string>;
-}
-
 /**
- * Build the per-workspace snapshot list using the live manifest and the
- * completedByModule counter already computed by the dashboard/workspace
- * layout. Workspaces whose pages have not shipped are filtered out so the
- * dashboard quietly omits Suppliers/Marketing/SOPs until they exist.
+ * Build the per-workspace snapshot list from the manual status table + the
+ * activity timestamps already gathered by the dashboard page. Workspaces
+ * whose pages have not shipped are filtered out so the dashboard quietly
+ * omits Suppliers / SOPs until they exist.
  */
 export function buildWorkspaceSnapshots(
-  completedByModule: Map<number, number>,
-  lastTouchedByKey: Map<string, string>
+  statusByKey: ReadonlyMap<string, WorkspaceStatus>,
+  lastTouchedByKey: ReadonlyMap<string, string>
 ): WorkspaceProgressSnapshot[] {
-  return NUDGE_MANIFEST.filter((item) => item.isShipped).map(
-    (item) => buildSnapshot(item, completedByModule, lastTouchedByKey)
+  return NUDGE_MANIFEST.filter((item) => item.isShipped).map((item) =>
+    buildSnapshot(item, statusByKey, lastTouchedByKey)
   );
 }
 
 function buildSnapshot(
   item: NudgeManifestEntry,
-  completedByModule: Map<number, number>,
-  lastTouchedByKey: Map<string, string>
+  statusByKey: ReadonlyMap<string, WorkspaceStatus>,
+  lastTouchedByKey: ReadonlyMap<string, string>
 ): WorkspaceProgressSnapshot {
-  const rawFilled = completedByModule.get(item.moduleNumber) ?? 0;
-  const filledSections = item.totalSections != null ? Math.min(rawFilled, item.totalSections) : rawFilled;
-  const pct =
-    item.totalSections != null && item.totalSections > 0
-      ? Math.min(100, Math.round((filledSections / item.totalSections) * 100))
-      : null;
-  const key = workspaceKeyForModule(item.moduleNumber);
-  const lastTouchedAt = key ? lastTouchedByKey.get(key) ?? null : null;
+  const status = statusByKey.get(item.workspaceKey) ?? "not_started";
+  const lastTouchedAt = lastTouchedByKey.get(item.workspaceKey) ?? null;
   return {
     moduleNumber: item.moduleNumber,
+    workspaceKey: item.workspaceKey,
     label: item.label,
     href: item.href,
     icon: item.icon,
     isUnlocked: item.isShipped,
-    filledSections,
-    totalSections: item.totalSections,
-    pct,
+    status,
     lastTouchedAt,
-    isComplete: item.totalSections != null && item.totalSections > 0 && filledSections >= item.totalSections,
-    isStarted: filledSections > 0 || lastTouchedAt !== null,
+    isComplete: status === "complete",
+    isStarted: status !== "not_started" || lastTouchedAt !== null,
+    pct: statusPct(status),
   };
 }
 
@@ -325,12 +330,9 @@ export function buildStaleNudges(
 }
 
 function staleMessageFor(snap: WorkspaceProgressSnapshot, daysStale: number): string {
-  const gap = snap.totalSections != null && snap.totalSections > 0
-    ? `${snap.totalSections - snap.filledSections} section${
-        snap.totalSections - snap.filledSections === 1 ? "" : "s"
-      } left`
-    : "still has gaps";
-  return `${snap.label} hasn't been touched in ${daysStale} days and ${gap}.`;
+  const status =
+    snap.status === "in_progress" ? "still in progress" : "not yet marked complete";
+  return `${snap.label} hasn't been touched in ${daysStale} days and is ${status}.`;
 }
 
 /**
@@ -339,17 +341,15 @@ function staleMessageFor(snap: WorkspaceProgressSnapshot, daysStale: number): st
  * that don't map to a shipped workspace module.
  */
 export function buildRecentActivity(
-  lastTouchedByKey: Map<string, string>,
+  lastTouchedByKey: ReadonlyMap<string, string>,
   limit = 5
 ): ActivityEntry[] {
   const entries: ActivityEntry[] = [];
   for (const [key, at] of lastTouchedByKey.entries()) {
-    const moduleNumber = moduleForWorkspaceKey(key);
-    if (moduleNumber == null) continue;
-    const item = NUDGE_MANIFEST.find((w) => w.moduleNumber === moduleNumber);
+    const item = NUDGE_MANIFEST.find((w) => w.workspaceKey === key);
     if (!item || !item.isShipped) continue;
     entries.push({
-      moduleNumber,
+      moduleNumber: item.moduleNumber,
       label: item.label,
       href: item.href,
       at,
@@ -363,8 +363,8 @@ export function buildRecentActivity(
 
 /**
  * Identify the weakest unlocked workspace for the "Improve with AI" quick
- * action. Picks the workspace with the lowest percent complete (treating
- * never-touched as 0%). Ties broken by RECOMMENDATION_ORDER.
+ * action. Picks the workspace with the lowest status (not_started < in_progress
+ * < complete). Ties broken by RECOMMENDATION_ORDER.
  */
 export function pickWeakestWorkspace(
   snapshots: WorkspaceProgressSnapshot[],
@@ -374,7 +374,7 @@ export function pickWeakestWorkspace(
     .filter((s) => s.isUnlocked && !optedOut.has(s.moduleNumber) && !s.isComplete)
     .map((s) => ({
       snap: s,
-      pctSafe: s.pct ?? (s.isStarted ? 50 : 0),
+      pctSafe: s.pct,
       orderIndex: indexInRecommendationOrder(s.moduleNumber),
     }));
   if (candidates.length === 0) return null;
@@ -385,34 +385,4 @@ export function pickWeakestWorkspace(
 function indexInRecommendationOrder(moduleNumber: number): number {
   const idx = RECOMMENDATION_ORDER.indexOf(moduleNumber);
   return idx === -1 ? RECOMMENDATION_ORDER.length : idx;
-}
-
-// ── workspace_key ↔ module number mapping ────────────────────────────────────
-//
-// `workspace_documents.workspace_key` and `WORKSPACE_MANIFEST.moduleNumber`
-// live in different namespaces; this map keeps the dashboard from caring.
-
-const KEY_TO_MODULE: Record<string, number> = {
-  concept: 1,
-  financials: 2,
-  location_lease: 3,
-  menu_pricing: 4,
-  buildout_equipment: 5,
-  launch_plan: 6,
-  hiring: 7,
-  business_plan: 8,
-  marketing: 9,
-  inventory: 13,
-};
-
-const MODULE_TO_KEY: Record<number, string> = Object.fromEntries(
-  Object.entries(KEY_TO_MODULE).map(([k, v]) => [v, k])
-);
-
-export function moduleForWorkspaceKey(key: string): number | null {
-  return KEY_TO_MODULE[key] ?? null;
-}
-
-export function workspaceKeyForModule(moduleNumber: number): string | null {
-  return MODULE_TO_KEY[moduleNumber] ?? null;
 }
