@@ -2,6 +2,15 @@
 // TIM-1004: Extended with per-day operating schedule + itemized operating expenses.
 // TIM-1004 follow-up: monthly granularity — computeMonthlyProjections is the primitive;
 // computeAnnualSummary and computeProjections derive from it for TIM-1006 compatibility.
+// TIM-1102: LivePlan-style flexible expense modeling. forecast_lines[] is the source of
+//   truth; legacy named fields (labor / monthly_rent_cents / marketing / ...) are
+//   migrated into forecast_lines on read. Each line has a category (revenue|cogs|
+//   overhead|capex), a flat-$ vs. %-of-sales mode, optional per-line ramp, and
+//   optional per-line monthly growth.
+// TIM-1101: multi-currency support — currency_code persists on MonthlyProjections;
+//   formatCurrency / fmt accept an optional code and delegate to src/lib/currency.
+
+import { formatCurrencyAmount, normalizeCurrencyCode } from "./currency.ts";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -23,39 +32,108 @@ export interface OpexLine {
   flat_cents: number; // monthly, in cents (used when mode === "flat")
 }
 
+// ── TIM-1102: Custom forecast lines ────────────────────────────────────────────
+
+export type ForecastCategory = "revenue" | "cogs" | "overhead" | "capex";
+
+// legacy_key tags lines that round-trip to existing named fields in MonthlySlice
+// so balance-sheet, break-even, and ratios tabs that read e.g. `labor_cents`
+// keep working without per-tab refactors.
+export type LegacyLineKey =
+  | "labor"
+  | "rent"
+  | "marketing"
+  | "utilities"
+  | "insurance"
+  | "tech"
+  | "maintenance"
+  | "supplies"
+  | "interest";
+
+export interface LineRamp {
+  enabled: boolean;
+  start_month: number;   // 1-indexed: first month the line applies (default 1)
+  ramp_months: number;   // 0–24: months over which the level ramps from start_pct → 100%
+  start_pct: number;     // 0–100: multiplier at start_month (e.g. 30 means start at 30% of full)
+}
+
+export interface LineGrowth {
+  enabled: boolean;
+  monthly_pct: number;   // compounding % per month, applied AFTER ramp completes
+}
+
+// TIM-1117: COGS lines can target a specific revenue stream and/or derive their
+// pct from the Menu module. revenue_stream_id values:
+//   undefined / "all" → applies against total revenue (legacy default)
+//   "base"            → applies against the foot-traffic base revenue
+//   <line.id>         → applies against that revenue line's amount this month
+// menu_linked: when true on a COGS line, the line's effective pct comes from the
+// blended menu COGS ratio (computed in the workspace from menu_items) and
+// line.value is ignored. Falls back to line.value if no menu data is supplied.
+export interface ForecastLine {
+  id: string;
+  label: string;
+  category: ForecastCategory;
+  mode: OpexLineMode;        // "flat" → cents/mo; "pct" → percent of net revenue
+  value: number;             // cents if mode === "flat"; percent (e.g. 30) if "pct"
+  ramp?: LineRamp;
+  growth?: LineGrowth;
+  legacy_key?: LegacyLineKey;
+  revenue_stream_id?: string;
+  menu_linked?: boolean;
+}
+
 export interface MonthlyProjections {
   // Customer flow
   daily_flow: DailyFlow;
   avg_ticket_cents: number;
 
-  // Per-day operating schedule (replaces open_days_per_week + hours_per_day)
+  // Per-day operating schedule
   weekly_schedule: WeekSchedule;
 
-  // COGS
+  // Default COGS rate for the foot-traffic base revenue (additional COGS lines
+  // can be added in forecast_lines).
   cogs_pct: number;
 
-  // Operating Expenses (itemized)
-  labor: OpexLine;                  // wages + payroll taxes + benefits
-  monthly_rent_cents: number;       // flat monthly rent
-  marketing: OpexLine;              // ads, promotions
-  utilities_monthly_cents: number;  // gas, electric, water, internet
-  insurance_monthly_cents: number;  // general liability, workers comp, property
-  tech_monthly_cents: number;       // POS, payment processing, SaaS
-  maintenance_monthly_cents: number; // repairs, maintenance
-  supplies_monthly_cents: number;   // cleaning, paper, smallwares
-  other_monthly_cents: number;      // miscellaneous
+  // TIM-1102: source-of-truth flexible line items.
+  forecast_lines: ForecastLine[];
 
   // Below-the-line items
-  interest_monthly_cents: number;
   taxes_pct: number;
 
-  // Ramp / warm-up period (TIM-1035)
-  ramp_months: number;         // 0–12; months at reduced capacity before steady-state
-  ramp_multipliers: number[];  // per-ramp-month revenue %, length === ramp_months
-  // Month-to-month forecasted growth (TIM-1035)
+  // Global ramp for the base (foot-traffic-driven) revenue. Per-line ramps
+  // are configured inside each ForecastLine.
+  ramp_months: number;
+  ramp_multipliers: number[];
   growth_mode: "simple" | "custom";
-  growth_monthly_pct: number;        // simple mode: compounding % per month after ramp
-  growth_custom_monthly: number[];   // custom mode: per-month % rates (up to 60 entries)
+  growth_monthly_pct: number;
+  growth_custom_monthly: number[];
+
+  // TIM-1100: First calendar month of the user's fiscal year (1=Jan … 12=Dec).
+  // Default 1. Drives column ordering on monthly P&L / Balance Sheet / Cash Flow
+  // tabs; does NOT change the underlying month-1..N simulation math.
+  fiscal_year_start_month: number;
+
+  // TIM-1101: ISO 4217 currency code (e.g., "USD", "EUR", "JPY"). Drives
+  // symbol + locale formatting across the planner, AI assessment, and exports.
+  // Single currency per plan — no FX conversion in v1.
+  currency_code: string;
+
+  // ── Legacy fields kept on the type for migration / backward-compat reads ────
+  // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
+  // New code should not read them directly — read the rollups on MonthlySlice
+  // (labor_cents, rent_cents, etc.) instead. They remain optional so older
+  // stored JSON deserializes cleanly.
+  labor?: OpexLine;
+  monthly_rent_cents?: number;
+  marketing?: OpexLine;
+  utilities_monthly_cents?: number;
+  insurance_monthly_cents?: number;
+  tech_monthly_cents?: number;
+  maintenance_monthly_cents?: number;
+  supplies_monthly_cents?: number;
+  other_monthly_cents?: number;
+  interest_monthly_cents?: number;
 }
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -72,28 +150,113 @@ export function defaultWeekSchedule(): WeekSchedule {
   };
 }
 
+// Stable IDs for the seeded "starter" lines so migration produces deterministic
+// IDs from a legacy MonthlyProjections payload (avoids creating duplicate lines
+// every time normalizeMonthlyProjections runs).
+const SEED_LINE_ID = {
+  labor: "line:labor",
+  rent: "line:rent",
+  marketing: "line:marketing",
+  utilities: "line:utilities",
+  insurance: "line:insurance",
+  tech: "line:tech",
+  maintenance: "line:maintenance",
+  supplies: "line:supplies",
+  other: "line:other",
+  interest: "line:interest",
+} as const;
+
+export function defaultForecastLines(): ForecastLine[] {
+  return [
+    {
+      id: SEED_LINE_ID.labor,
+      label: "Labor",
+      category: "overhead",
+      mode: "pct",
+      value: 30,
+      legacy_key: "labor",
+    },
+    {
+      id: SEED_LINE_ID.rent,
+      label: "Rent",
+      category: "overhead",
+      mode: "flat",
+      value: 450000,
+      legacy_key: "rent",
+    },
+    {
+      id: SEED_LINE_ID.marketing,
+      label: "Marketing",
+      category: "overhead",
+      mode: "pct",
+      value: 2,
+      legacy_key: "marketing",
+    },
+    {
+      id: SEED_LINE_ID.utilities,
+      label: "Utilities",
+      category: "overhead",
+      mode: "flat",
+      value: 60000,
+      legacy_key: "utilities",
+    },
+    {
+      id: SEED_LINE_ID.insurance,
+      label: "Insurance",
+      category: "overhead",
+      mode: "flat",
+      value: 20000,
+      legacy_key: "insurance",
+    },
+    {
+      id: SEED_LINE_ID.tech,
+      label: "Tech & Software",
+      category: "overhead",
+      mode: "flat",
+      value: 25000,
+      legacy_key: "tech",
+    },
+    {
+      id: SEED_LINE_ID.maintenance,
+      label: "Maintenance",
+      category: "overhead",
+      mode: "flat",
+      value: 15000,
+      legacy_key: "maintenance",
+    },
+    {
+      id: SEED_LINE_ID.supplies,
+      label: "Supplies",
+      category: "overhead",
+      mode: "flat",
+      value: 30000,
+      legacy_key: "supplies",
+    },
+    {
+      id: SEED_LINE_ID.other,
+      label: "Other",
+      category: "overhead",
+      mode: "flat",
+      value: 20000,
+    },
+  ];
+}
+
 export function defaultMonthlyProjections(): MonthlyProjections {
   return {
     daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
     avg_ticket_cents: 750,
     weekly_schedule: defaultWeekSchedule(),
     cogs_pct: 30,
-    labor: { mode: "pct", pct: 30, flat_cents: 0 },
-    monthly_rent_cents: 450000,
-    marketing: { mode: "pct", pct: 2, flat_cents: 0 },
-    utilities_monthly_cents: 60000,
-    insurance_monthly_cents: 20000,
-    tech_monthly_cents: 25000,
-    maintenance_monthly_cents: 15000,
-    supplies_monthly_cents: 30000,
-    other_monthly_cents: 20000,
-    interest_monthly_cents: 0,
+    forecast_lines: defaultForecastLines(),
     taxes_pct: 25,
     ramp_months: 3,
     ramp_multipliers: [30, 55, 80],
     growth_mode: "simple",
     growth_monthly_pct: 2,
     growth_custom_monthly: [],
+    fiscal_year_start_month: 1,
+    currency_code: "USD",
   };
 }
 
@@ -139,6 +302,168 @@ function normalizeOpexLine(
   };
 }
 
+function normalizeRamp(raw: unknown): LineRamp | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const enabled = r.enabled === true;
+  if (!enabled) return undefined;
+  return {
+    enabled: true,
+    start_month: typeof r.start_month === "number" ? Math.max(1, Math.round(r.start_month)) : 1,
+    ramp_months: typeof r.ramp_months === "number" ? Math.max(0, Math.min(24, Math.round(r.ramp_months))) : 0,
+    start_pct: typeof r.start_pct === "number" ? Math.max(0, Math.min(100, r.start_pct)) : 0,
+  };
+}
+
+function normalizeGrowth(raw: unknown): LineGrowth | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const enabled = r.enabled === true;
+  if (!enabled) return undefined;
+  return {
+    enabled: true,
+    monthly_pct: typeof r.monthly_pct === "number" ? r.monthly_pct : 0,
+  };
+}
+
+const ALL_LEGACY_KEYS: LegacyLineKey[] = [
+  "labor",
+  "rent",
+  "marketing",
+  "utilities",
+  "insurance",
+  "tech",
+  "maintenance",
+  "supplies",
+  "interest",
+];
+
+function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const category: ForecastCategory =
+    r.category === "revenue" || r.category === "cogs" || r.category === "overhead" || r.category === "capex"
+      ? r.category
+      : "overhead";
+  const mode: OpexLineMode = r.mode === "flat" ? "flat" : "pct";
+  const value = typeof r.value === "number" ? r.value : 0;
+  const id = typeof r.id === "string" && r.id.length > 0 ? r.id : fallbackId;
+  const label = typeof r.label === "string" && r.label.length > 0 ? r.label : "Line";
+  const legacy = typeof r.legacy_key === "string" && ALL_LEGACY_KEYS.includes(r.legacy_key as LegacyLineKey)
+    ? (r.legacy_key as LegacyLineKey)
+    : undefined;
+  const revenue_stream_id =
+    typeof r.revenue_stream_id === "string" && r.revenue_stream_id.length > 0
+      ? r.revenue_stream_id
+      : undefined;
+  const menu_linked = r.menu_linked === true ? true : undefined;
+  return {
+    id,
+    label,
+    category,
+    mode,
+    value,
+    ramp: normalizeRamp(r.ramp),
+    growth: normalizeGrowth(r.growth),
+    legacy_key: legacy,
+    revenue_stream_id,
+    menu_linked,
+  };
+}
+
+// Build forecast_lines from the legacy named fields. Called once per stored row
+// when no `forecast_lines` array is present.
+function migrateLegacyToForecastLines(r: Record<string, unknown>): ForecastLine[] {
+  const lines: ForecastLine[] = [];
+
+  // Labor (was OpexLine)
+  const labor = r.labor ? normalizeOpexLine(r.labor, "pct", 30, 0)
+    : typeof r.labor_pct === "number" ? { mode: "pct" as const, pct: r.labor_pct, flat_cents: 0 } : null;
+  if (labor) {
+    lines.push({
+      id: SEED_LINE_ID.labor,
+      label: "Labor",
+      category: "overhead",
+      mode: labor.mode,
+      value: labor.mode === "pct" ? labor.pct : labor.flat_cents,
+      legacy_key: "labor",
+    });
+  }
+
+  // Rent
+  if (typeof r.monthly_rent_cents === "number") {
+    lines.push({
+      id: SEED_LINE_ID.rent,
+      label: "Rent",
+      category: "overhead",
+      mode: "flat",
+      value: r.monthly_rent_cents,
+      legacy_key: "rent",
+    });
+  }
+
+  // Marketing
+  if (r.marketing) {
+    const m = normalizeOpexLine(r.marketing, "pct", 2, 0);
+    lines.push({
+      id: SEED_LINE_ID.marketing,
+      label: "Marketing",
+      category: "overhead",
+      mode: m.mode,
+      value: m.mode === "pct" ? m.pct : m.flat_cents,
+      legacy_key: "marketing",
+    });
+  }
+
+  // Flat named OpEx lines
+  const flatLegacyFields: { field: string; id: string; label: string; key: LegacyLineKey }[] = [
+    { field: "utilities_monthly_cents", id: SEED_LINE_ID.utilities, label: "Utilities", key: "utilities" },
+    { field: "insurance_monthly_cents", id: SEED_LINE_ID.insurance, label: "Insurance", key: "insurance" },
+    { field: "tech_monthly_cents", id: SEED_LINE_ID.tech, label: "Tech & Software", key: "tech" },
+    { field: "maintenance_monthly_cents", id: SEED_LINE_ID.maintenance, label: "Maintenance", key: "maintenance" },
+    { field: "supplies_monthly_cents", id: SEED_LINE_ID.supplies, label: "Supplies", key: "supplies" },
+  ];
+  for (const f of flatLegacyFields) {
+    if (typeof r[f.field] === "number") {
+      lines.push({
+        id: f.id,
+        label: f.label,
+        category: "overhead",
+        mode: "flat",
+        value: r[f.field] as number,
+        legacy_key: f.key,
+      });
+    }
+  }
+
+  // Other (no legacy_key — rolls into other_misc_cents)
+  if (typeof r.other_monthly_cents === "number") {
+    lines.push({
+      id: SEED_LINE_ID.other,
+      label: "Other",
+      category: "overhead",
+      mode: "flat",
+      value: r.other_monthly_cents,
+    });
+  }
+
+  // Interest (kept as a line so users can edit it like any other expense)
+  if (typeof r.interest_monthly_cents === "number" && r.interest_monthly_cents > 0) {
+    lines.push({
+      id: SEED_LINE_ID.interest,
+      label: "Interest",
+      category: "overhead",
+      mode: "flat",
+      value: r.interest_monthly_cents,
+      legacy_key: "interest",
+    });
+  }
+
+  // If migration produced nothing usable, fall back to a complete starter set so
+  // the user sees the same defaults as a fresh model.
+  return lines.length > 0 ? lines : defaultForecastLines();
+}
+
 export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
   const defaults = defaultMonthlyProjections();
   if (!raw || typeof raw !== "object") return defaults;
@@ -160,66 +485,15 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     if (legacyDays <= 5) weekly_schedule.sat = { ...weekly_schedule.sat, open: false };
   }
 
-  // Labor: migrate from legacy labor_pct
-  let labor: OpexLine;
-  if (r.labor && typeof r.labor === "object") {
-    labor = normalizeOpexLine(r.labor, "pct", 30, 0);
-  } else if (typeof r.labor_pct === "number") {
-    labor = { mode: "pct", pct: r.labor_pct, flat_cents: 0 };
-  } else {
-    labor = defaults.labor;
-  }
+  // TIM-1102: forecast_lines is the source of truth. If present in stored JSON,
+  // normalize each entry; otherwise migrate from the legacy named fields.
+  const forecast_lines: ForecastLine[] = Array.isArray(r.forecast_lines)
+    ? (r.forecast_lines as unknown[])
+        .map((entry, idx) => normalizeForecastLine(entry, `line:${idx}:${Date.now()}`))
+        .filter((x): x is ForecastLine => x !== null)
+    : migrateLegacyToForecastLines(r);
 
-  const marketing = r.marketing
-    ? normalizeOpexLine(r.marketing, "pct", 2, 0)
-    : defaults.marketing;
-
-  const monthly_rent_cents =
-    typeof r.monthly_rent_cents === "number" ? r.monthly_rent_cents : defaults.monthly_rent_cents;
-
-  const utilities_monthly_cents =
-    typeof r.utilities_monthly_cents === "number" ? r.utilities_monthly_cents : defaults.utilities_monthly_cents;
-
-  // Migrate legacy other_opex_monthly_cents into the new itemized buckets
-  const legacyOther =
-    typeof r.other_opex_monthly_cents === "number" ? r.other_opex_monthly_cents : null;
-
-  const insurance_monthly_cents =
-    typeof r.insurance_monthly_cents === "number"
-      ? r.insurance_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.25)
-      : defaults.insurance_monthly_cents;
-
-  const tech_monthly_cents =
-    typeof r.tech_monthly_cents === "number"
-      ? r.tech_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.3)
-      : defaults.tech_monthly_cents;
-
-  const maintenance_monthly_cents =
-    typeof r.maintenance_monthly_cents === "number"
-      ? r.maintenance_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.15)
-      : defaults.maintenance_monthly_cents;
-
-  const supplies_monthly_cents =
-    typeof r.supplies_monthly_cents === "number"
-      ? r.supplies_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.15)
-      : defaults.supplies_monthly_cents;
-
-  const other_monthly_cents =
-    typeof r.other_monthly_cents === "number"
-      ? r.other_monthly_cents
-      : legacyOther != null
-      ? Math.round(legacyOther * 0.15)
-      : defaults.other_monthly_cents;
-
-  // Ramp + growth fields — default to 0/empty for backward compat with existing stored data.
+  // Global ramp + growth (still applies to base foot-traffic revenue)
   const ramp_months =
     typeof r.ramp_months === "number" ? Math.min(12, Math.max(0, Math.round(r.ramp_months))) : 0;
   const ramp_multipliers = Array.isArray(r.ramp_multipliers)
@@ -233,23 +507,20 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     ? (r.growth_custom_monthly as number[]).slice(0, 60)
     : [];
 
+  const fiscal_year_start_month =
+    typeof r.fiscal_year_start_month === "number"
+      ? Math.min(12, Math.max(1, Math.round(r.fiscal_year_start_month)))
+      : defaults.fiscal_year_start_month;
+
+  const currency_code = normalizeCurrencyCode(r.currency_code);
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
       typeof r.avg_ticket_cents === "number" ? r.avg_ticket_cents : defaults.avg_ticket_cents,
     weekly_schedule,
     cogs_pct: typeof r.cogs_pct === "number" ? r.cogs_pct : defaults.cogs_pct,
-    labor,
-    monthly_rent_cents,
-    marketing,
-    utilities_monthly_cents,
-    insurance_monthly_cents,
-    tech_monthly_cents,
-    maintenance_monthly_cents,
-    supplies_monthly_cents,
-    other_monthly_cents,
-    interest_monthly_cents:
-      typeof r.interest_monthly_cents === "number" ? r.interest_monthly_cents : defaults.interest_monthly_cents,
+    forecast_lines,
     taxes_pct:
       typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
     ramp_months,
@@ -257,6 +528,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     growth_mode,
     growth_monthly_pct,
     growth_custom_monthly,
+    fiscal_year_start_month,
+    currency_code,
   };
 }
 
@@ -268,6 +541,15 @@ export interface EquipmentSummary {
 }
 
 // ── Monthly projection row (60-row computed output, TIM-1004 / TIM-1006) ──────
+
+// Per-line per-month result, surfaced so the P&L tab can render whatever the
+// user has built rather than only the hardcoded categories.
+export interface LineMonthlyAmount {
+  id: string;
+  label: string;
+  category: ForecastCategory;
+  amount_cents: number;
+}
 
 export interface MonthlyProjectionRow {
   year: number;        // 1–5
@@ -293,6 +575,10 @@ export interface MonthlyProjectionRow {
   income_before_taxes_cents: number;
   taxes_cents: number;
   net_income_cents: number;
+  // TIM-1102: per-line breakdown so downstream tabs can render category groups
+  forecast_line_amounts: LineMonthlyAmount[];
+  capex_line_amounts: LineMonthlyAmount[];
+  capex_cents: number;
 }
 
 // ── Projections output ────────────────────────────────────────────────────────
@@ -331,6 +617,20 @@ export interface FinancialProjections {
   year5: YearProjection;
   startup_equipment_total: number;
   financed_total: number;
+}
+
+// ── Fiscal year helpers (TIM-1100) ────────────────────────────────────────────
+
+const CALENDAR_MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+// Returns the 12 month labels in fiscal-year order starting at startMonth.
+// startMonth is 1-indexed (1=Jan … 12=Dec). startMonth=4 → ["Apr","May",…,"Mar"].
+export function fiscalYearMonthLabels(startMonth: number): string[] {
+  const s = Math.min(12, Math.max(1, Math.round(startMonth || 1))) - 1;
+  return Array.from({ length: 12 }, (_, i) => CALENDAR_MONTH_LABELS[(s + i) % 12]);
 }
 
 // ── Schedule helpers ──────────────────────────────────────────────────────────
@@ -377,16 +677,158 @@ function monthRevenueFactor(
   return Math.pow(1 + growth_monthly_pct / 100, k - 1);
 }
 
+// TIM-1102: compute per-line, per-month line factor (ramp × growth) applied
+// to the line's base value. Returns 0 before start_month.
+function lineMonthFactor(
+  monthIndex: number,
+  ramp: LineRamp | undefined,
+  growth: LineGrowth | undefined
+): number {
+  const startMonth = ramp?.enabled ? Math.max(1, ramp.start_month) : 1;
+  if (monthIndex < startMonth) return 0;
+  const effective = monthIndex - startMonth + 1; // 1-indexed months since this line started
+
+  // Ramp portion: linear from start_pct → 100% across ramp_months months.
+  let rampFactor = 1.0;
+  if (ramp?.enabled && ramp.ramp_months > 0) {
+    if (effective <= ramp.ramp_months) {
+      // effective=1 → start_pct/100; effective=ramp_months → 100/100
+      const start = (ramp.start_pct ?? 0) / 100;
+      const span = ramp.ramp_months;
+      // linear interpolation across the ramp_months months
+      const t = span === 1 ? 1 : (effective - 1) / (span - 1);
+      rampFactor = start + (1 - start) * t;
+    }
+  }
+
+  // Growth portion: compounding monthly, applied AFTER ramp completes.
+  let growthFactor = 1.0;
+  if (growth?.enabled) {
+    const monthsPastRamp = Math.max(0, effective - (ramp?.enabled ? ramp.ramp_months : 0));
+    if (monthsPastRamp > 0) {
+      growthFactor = Math.pow(1 + (growth.monthly_pct ?? 0) / 100, monthsPastRamp - 1);
+    }
+  }
+
+  return rampFactor * growthFactor;
+}
+
+// Compute one line's contribution in a given month, in cents. For pct lines,
+// `monthRevenueCents` is the revenue base they apply to.
+function computeLineAmountCents(
+  line: ForecastLine,
+  monthIndex: number,
+  monthRevenueCents: number
+): number {
+  const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
+  if (factor === 0) return 0;
+  if (line.mode === "pct") {
+    return Math.round(monthRevenueCents * (line.value / 100) * factor);
+  }
+  // flat: value is base cents/mo
+  return Math.round(line.value * factor);
+}
+
+// TIM-1117: COGS lines may target a specific revenue stream and/or derive their
+// pct from the menu. This picks the right base + pct given the runtime context.
+export interface ProjectionContext {
+  // Blended menu COGS percent (0–100), or null if no menu data is available.
+  // Computed as Σ(item.cogs_cents × mix) / Σ(item.price_cents × mix) × 100 by
+  // the caller; we just consume the number here so the projection stays pure.
+  menu_blended_cogs_pct?: number | null;
+}
+
+// TIM-1118: pct-mode COGS and Overhead lines may target a revenue stream rather
+// than total revenue. Resolves the right denominator given the user's selection.
+// streamId values: undefined / "all" → total; "base" → foot-traffic base;
+// <line.id> → that specific revenue line (falls back to total if deleted).
+function resolveStreamRevenueCents(
+  streamId: string | undefined,
+  baseRevenueCents: number,
+  totalRevenueCents: number,
+  revenueByLineId: Map<string, number>
+): number {
+  if (!streamId || streamId === "all") return totalRevenueCents;
+  if (streamId === "base") return baseRevenueCents;
+  return revenueByLineId.get(streamId) ?? totalRevenueCents;
+}
+
+function computeCogsLineAmountCents(
+  line: ForecastLine,
+  monthIndex: number,
+  baseRevenueCents: number,
+  totalRevenueCents: number,
+  revenueByLineId: Map<string, number>,
+  ctx: ProjectionContext
+): number {
+  const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
+  if (factor === 0) return 0;
+
+  const baseForPct = resolveStreamRevenueCents(
+    line.revenue_stream_id,
+    baseRevenueCents,
+    totalRevenueCents,
+    revenueByLineId
+  );
+
+  // Resolve the effective rate / amount.
+  if (line.menu_linked && typeof ctx.menu_blended_cogs_pct === "number") {
+    return Math.round(baseForPct * (ctx.menu_blended_cogs_pct / 100) * factor);
+  }
+  if (line.mode === "pct") {
+    return Math.round(baseForPct * (line.value / 100) * factor);
+  }
+  // flat: value is base cents/mo (revenue_stream_id is meaningless for flat lines)
+  return Math.round(line.value * factor);
+}
+
+// TIM-1118: pct-mode overhead lines resolve their denominator the same way as
+// COGS — undefined/"all" means total revenue (legacy default), "base" means
+// foot-traffic, or a revenue line id targets that stream.
+function computeOverheadLineAmountCents(
+  line: ForecastLine,
+  monthIndex: number,
+  baseRevenueCents: number,
+  totalRevenueCents: number,
+  revenueByLineId: Map<string, number>
+): number {
+  const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
+  if (factor === 0) return 0;
+  if (line.mode === "pct") {
+    const baseForPct = resolveStreamRevenueCents(
+      line.revenue_stream_id,
+      baseRevenueCents,
+      totalRevenueCents,
+      revenueByLineId
+    );
+    return Math.round(baseForPct * (line.value / 100) * factor);
+  }
+  return Math.round(line.value * factor);
+}
+
+// One-time capex: charged in full on its start_month (or month 1 if no ramp).
+function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number {
+  const startMonth = line.ramp?.enabled ? Math.max(1, line.ramp.start_month) : 1;
+  if (monthIndex !== startMonth) return 0;
+  // capex doesn't ramp or compound; it's a single charge
+  return Math.round(line.value);
+}
+
 export function computeMonthlyProjections(
   mp: MonthlyProjections,
-  equipment: EquipmentSummary
+  equipment: EquipmentSummary,
+  ctx: ProjectionContext = {}
 ): MonthlyProjectionRow[] {
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
   const weeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
   const baseMonthlyRevenueCents = Math.round(
     (weeklyCustomers * 52 * (mp.avg_ticket_cents / 100) * 100) / 12
   );
-  const monthlyDepreciationCents = Math.round(
+
+  // Depreciation: legacy financed equipment over 7y straight-line plus any capex
+  // lines accumulated up to this month. We pre-compute monthly capex so we can
+  // accumulate it forward when adding depreciation.
+  const legacyMonthlyDepreciationCents = Math.round(
     (equipment.financed_cost_cents / 100 / 7 / 12) * 100
   );
 
@@ -395,6 +837,22 @@ export function computeMonthlyProjections(
   const growth_mode = mp.growth_mode ?? "simple";
   const growth_monthly_pct = mp.growth_monthly_pct ?? 0;
   const growth_custom_monthly = mp.growth_custom_monthly ?? [];
+
+  const lines = mp.forecast_lines ?? [];
+  const revenueLines = lines.filter((l) => l.category === "revenue");
+  const cogsLines = lines.filter((l) => l.category === "cogs");
+  const overheadLines = lines.filter((l) => l.category === "overhead");
+  const capexLines = lines.filter((l) => l.category === "capex");
+
+  // Pre-aggregate capex by month so it can drive monthly depreciation.
+  // (We use straight-line over 7y for each capex line just like legacy.)
+  const capexByMonth: number[] = new Array(60).fill(0);
+  for (let m = 1; m <= 60; m++) {
+    for (const l of capexLines) {
+      capexByMonth[m - 1] += computeCapexAmountCents(l, m);
+    }
+  }
+  let cumulativeCapexDepreciationCents = 0;
 
   const rows: MonthlyProjectionRow[] = [];
 
@@ -409,31 +867,101 @@ export function computeMonthlyProjections(
         growth_monthly_pct,
         growth_custom_monthly
       );
-      const revenue_cents = Math.round(baseMonthlyRevenueCents * revFactor);
-      const cogs_cents = Math.round(revenue_cents * (mp.cogs_pct / 100));
+      // Base foot-traffic revenue (after global ramp/growth)
+      const baseRevenue = Math.round(baseMonthlyRevenueCents * revFactor);
+      // Revenue lines stack ON TOP of base. For now we compute each revenue
+      // line against itself (its `value` is treated as a standalone cents/mo
+      // amount with line ramp/growth); pct-mode revenue lines are interpreted
+      // as a percent of base (e.g. retail = 10% of beverage revenue).
+      let revenueAdds = 0;
+      const revenueLineResults: LineMonthlyAmount[] = [];
+      const revenueByLineId = new Map<string, number>();
+      for (const l of revenueLines) {
+        const amt = computeLineAmountCents(l, month_index_abs, baseRevenue);
+        revenueAdds += amt;
+        revenueLineResults.push({ id: l.id, label: l.label, category: "revenue", amount_cents: amt });
+        revenueByLineId.set(l.id, amt);
+      }
+      const revenue_cents = baseRevenue + revenueAdds;
+
+      // Default COGS (legacy cogs_pct) applies to total revenue
+      const baseCogs = Math.round(revenue_cents * (mp.cogs_pct / 100));
+      let extraCogs = 0;
+      const cogsLineResults: LineMonthlyAmount[] = [];
+      for (const l of cogsLines) {
+        const amt = computeCogsLineAmountCents(
+          l,
+          month_index_abs,
+          baseRevenue,
+          revenue_cents,
+          revenueByLineId,
+          ctx
+        );
+        extraCogs += amt;
+        cogsLineResults.push({ id: l.id, label: l.label, category: "cogs", amount_cents: amt });
+      }
+      const cogs_cents = baseCogs + extraCogs;
       const gross_profit_cents = revenue_cents - cogs_cents;
 
-      const labor_cents = mp.labor.mode === "pct"
-        ? Math.round(revenue_cents * (mp.labor.pct / 100))
-        : mp.labor.flat_cents;
-      const rent_cents = mp.monthly_rent_cents;
-      const marketing_cents = mp.marketing.mode === "pct"
-        ? Math.round(revenue_cents * (mp.marketing.pct / 100))
-        : mp.marketing.flat_cents;
-      const utilities_cents = mp.utilities_monthly_cents;
-      const insurance_cents = mp.insurance_monthly_cents;
-      const tech_cents = mp.tech_monthly_cents;
-      const maintenance_cents = mp.maintenance_monthly_cents;
-      const supplies_cents = mp.supplies_monthly_cents;
-      const other_misc_cents = mp.other_monthly_cents;
+      // Overhead lines — sum per-line and roll up to legacy named buckets via legacy_key
+      const overheadResults: LineMonthlyAmount[] = [];
+      let total_opex_cents = 0;
+      let labor_cents = 0;
+      let rent_cents = 0;
+      let marketing_cents = 0;
+      let utilities_cents = 0;
+      let insurance_cents = 0;
+      let tech_cents = 0;
+      let maintenance_cents = 0;
+      let supplies_cents = 0;
+      let other_misc_cents = 0;
+      let interest_cents = 0;
+      for (const l of overheadLines) {
+        const amt = computeOverheadLineAmountCents(
+          l,
+          month_index_abs,
+          baseRevenue,
+          revenue_cents,
+          revenueByLineId
+        );
+        overheadResults.push({ id: l.id, label: l.label, category: "overhead", amount_cents: amt });
+        switch (l.legacy_key) {
+          case "labor": labor_cents += amt; break;
+          case "rent": rent_cents += amt; break;
+          case "marketing": marketing_cents += amt; break;
+          case "utilities": utilities_cents += amt; break;
+          case "insurance": insurance_cents += amt; break;
+          case "tech": tech_cents += amt; break;
+          case "maintenance": maintenance_cents += amt; break;
+          case "supplies": supplies_cents += amt; break;
+          case "interest": interest_cents += amt; break;
+          default: other_misc_cents += amt; break;
+        }
+        // Interest is moved below the line, not into total_opex.
+        if (l.legacy_key !== "interest") total_opex_cents += amt;
+      }
 
-      const total_opex_cents =
-        labor_cents + rent_cents + marketing_cents + utilities_cents +
-        insurance_cents + tech_cents + maintenance_cents + supplies_cents + other_misc_cents;
+      // Capex lines — one-time charge in their start_month
+      const capexResults: LineMonthlyAmount[] = [];
+      let capex_cents = 0;
+      for (const l of capexLines) {
+        const amt = computeCapexAmountCents(l, month_index_abs);
+        capexResults.push({ id: l.id, label: l.label, category: "capex", amount_cents: amt });
+        capex_cents += amt;
+      }
+
       const operating_income_cents = gross_profit_cents - total_opex_cents;
 
-      const depreciation_cents = monthlyDepreciationCents;
-      const interest_cents = mp.interest_monthly_cents;
+      // Depreciation: legacy equipment-financed + accumulated capex spread over 7y
+      // Add the prior month's capex into the depreciable base, then divide by (7*12).
+      cumulativeCapexDepreciationCents += capex_cents > 0
+        ? Math.round(capex_cents / (7 * 12))
+        : 0;
+      // Note: this is a simplification — each capex line technically depreciates
+      // from its own start_month. For LivePlan-level UX this approximation
+      // (accumulated depreciation grows as capex accrues) is acceptable for now.
+      const depreciation_cents = legacyMonthlyDepreciationCents + cumulativeCapexDepreciationCents;
+
       const income_before_taxes_cents =
         operating_income_cents - depreciation_cents - interest_cents;
       const taxes_cents =
@@ -445,7 +973,7 @@ export function computeMonthlyProjections(
       rows.push({
         year,
         month,
-        month_index: (year - 1) * 12 + month,
+        month_index: month_index_abs,
         revenue_cents,
         cogs_cents,
         gross_profit_cents,
@@ -465,6 +993,9 @@ export function computeMonthlyProjections(
         income_before_taxes_cents,
         taxes_cents,
         net_income_cents,
+        forecast_line_amounts: [...revenueLineResults, ...cogsLineResults, ...overheadResults],
+        capex_line_amounts: capexResults,
+        capex_cents,
       });
     }
   }
@@ -515,9 +1046,10 @@ export function computeAnnualSummary(
 
 export function computeProjections(
   mp: MonthlyProjections,
-  equipment: EquipmentSummary
+  equipment: EquipmentSummary,
+  ctx: ProjectionContext = {}
 ): FinancialProjections {
-  const rows = computeMonthlyProjections(mp, equipment);
+  const rows = computeMonthlyProjections(mp, equipment, ctx);
   return {
     year1: computeAnnualSummary(rows, 1),
     year3: computeAnnualSummary(rows, 3),
@@ -527,19 +1059,49 @@ export function computeProjections(
   };
 }
 
-export function formatCurrency(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) {
-    return `${n < 0 ? "-" : ""}$${(abs / 1_000_000).toFixed(1)}M`;
+// TIM-1117: compute the blended menu COGS percent from menu items.
+// Each item contributes (cogs × mix) to total cost and (price × mix) to total
+// revenue; the ratio × 100 is the blended COGS %. Returns null when the menu
+// has no valid items (no positive priced item with a non-zero mix), so the
+// caller can render "Menu not available" rather than apply a zero rate.
+export interface MenuItemForCogs {
+  price_cents: number;
+  computed_cogs_cents?: number | null;
+  cogs_cents?: number | null;
+  expected_mix_pct?: number | null;
+  archived?: boolean | null;
+}
+
+export function computeMenuBlendedCogsPct(
+  items: ReadonlyArray<MenuItemForCogs> | null | undefined
+): number | null {
+  if (!items || items.length === 0) return null;
+  let totalCost = 0;
+  let totalPrice = 0;
+  for (const it of items) {
+    if (it.archived) continue;
+    const price = typeof it.price_cents === "number" && it.price_cents > 0 ? it.price_cents : 0;
+    const mix = typeof it.expected_mix_pct === "number" && it.expected_mix_pct > 0
+      ? it.expected_mix_pct
+      : 0;
+    if (price === 0 || mix === 0) continue;
+    const cogs = typeof it.computed_cogs_cents === "number"
+      ? it.computed_cogs_cents
+      : typeof it.cogs_cents === "number"
+        ? it.cogs_cents
+        : 0;
+    totalCost += cogs * mix;
+    totalPrice += price * mix;
   }
-  if (abs >= 1_000) {
-    return `${n < 0 ? "-" : ""}$${Math.round(abs / 100) / 10}K`;
-  }
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+  if (totalPrice <= 0) return null;
+  return (totalCost / totalPrice) * 100;
+}
+
+// TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the
+// planner, AI assessment, and exports can render in the user's selected
+// currency. Defaults to USD to keep legacy single-arg callers compatible.
+export function formatCurrency(n: number, currencyCode: string = "USD"): string {
+  return formatCurrencyAmount(n, currencyCode);
 }
 
 // ── Phase 2 additions (TIM-1019) ─────────────────────────────────────────────
@@ -636,9 +1198,11 @@ export interface FinancialInputs {
   days_receivable: number;
 }
 
-// fmt: format a cents value as a compact dollar string.
-export function fmt(cents: number): string {
-  return formatCurrency(cents / 100);
+// fmt: format a cents value (or minor-unit value for non-2dp currencies) as a
+// compact currency string. TIM-1101: accepts optional ISO 4217 code; defaults
+// to USD for legacy single-arg callers.
+export function fmt(cents: number, currencyCode: string = "USD"): string {
+  return formatCurrency(cents / 100, currencyCode);
 }
 
 // pct: express numerator / denominator as a percentage string with one decimal.
@@ -666,6 +1230,40 @@ export function sumSlices(slices: MonthlySlice[]): Partial<MonthlySlice> {
   return result;
 }
 
+// TIM-1102: aggregate per-line amounts across a set of slices, keyed by line id.
+// Returns an array of {id, label, category, amount_cents} where amount_cents is the
+// sum across all slices. Useful for quarterly/annual roll-ups in the P&L tab.
+export function aggregateLineAmounts(slices: MonthlySlice[]): LineMonthlyAmount[] {
+  const byId = new Map<string, LineMonthlyAmount>();
+  for (const slice of slices) {
+    for (const entry of slice.forecast_line_amounts ?? []) {
+      const existing = byId.get(entry.id);
+      if (existing) {
+        existing.amount_cents += entry.amount_cents;
+      } else {
+        byId.set(entry.id, { ...entry });
+      }
+    }
+  }
+  return Array.from(byId.values());
+}
+
+// Same shape for capex.
+export function aggregateCapexAmounts(slices: MonthlySlice[]): LineMonthlyAmount[] {
+  const byId = new Map<string, LineMonthlyAmount>();
+  for (const slice of slices) {
+    for (const entry of slice.capex_line_amounts ?? []) {
+      const existing = byId.get(entry.id);
+      if (existing) {
+        existing.amount_cents += entry.amount_cents;
+      } else {
+        byId.set(entry.id, { ...entry });
+      }
+    }
+  }
+  return Array.from(byId.values());
+}
+
 // getQuarterSlices: return slices that fall in the given year + quarter (1–4).
 export function getQuarterSlices(
   slices: MonthlySlice[],
@@ -684,9 +1282,10 @@ export function getQuarterSlices(
 export function computeMonthlySlices(
   mp: MonthlyProjections,
   equipment: EquipmentSummary,
-  inputs: Partial<FinancialInputs> = {}
+  inputs: Partial<FinancialInputs> = {},
+  ctx: ProjectionContext = {}
 ): MonthlySlice[] {
-  const rows = computeMonthlyProjections(mp, equipment);
+  const rows = computeMonthlyProjections(mp, equipment, ctx);
 
   const paymentProcessingPct = (inputs.payment_processing_pct ?? 0) / 100;
   const spoilagePct = (inputs.spoilage_pct ?? 0) / 100;
@@ -740,14 +1339,19 @@ export function computeMonthlySlices(
       loanRepaymentCents = principal;
     }
 
-    // Cash flow: net income + depreciation (add back) - loan repayment
-    const netCashCents = row.net_income_cents + row.depreciation_cents - loanRepaymentCents;
+    // Cash flow: net income + depreciation (add back) - loan repayment - capex
+    const netCashCents =
+      row.net_income_cents + row.depreciation_cents - loanRepaymentCents - row.capex_cents;
     cashBalance += netCashCents;
 
-    // Balance sheet
+    // Balance sheet — capex lines add to fixed assets (gross)
+    const cumulativeFixedAssetsGross =
+      fixedAssetsGross + rows
+        .filter((r) => r.month_index <= row.month_index)
+        .reduce((s, r) => s + r.capex_cents, 0);
     const arCents = Math.round(rev * (daysReceivable / 30));
     const inventoryCents = Math.round(row.cogs_cents * (daysInventory / 30));
-    const netFixedAssets = Math.max(0, fixedAssetsGross - cumulativeDepreciation);
+    const netFixedAssets = Math.max(0, cumulativeFixedAssetsGross - cumulativeDepreciation);
     const totalAssets = cashBalance + arCents + inventoryCents + netFixedAssets;
     const apCents = Math.round(row.cogs_cents * (daysPayable / 30));
     const totalLiabilities = apCents + loanBalance;
@@ -770,11 +1374,11 @@ export function computeMonthlySlices(
       avg_ticket_cents: mp.avg_ticket_cents,
       net_cash_cents: netCashCents,
       loan_repayment_cents: loanRepaymentCents,
-      capex_cents: 0,
+      capex_cents: row.capex_cents,
       cash_cents: Math.max(0, cashBalance),
       accounts_receivable_cents: arCents,
       inventory_cents: inventoryCents,
-      fixed_assets_gross_cents: fixedAssetsGross,
+      fixed_assets_gross_cents: cumulativeFixedAssetsGross,
       accumulated_depreciation_cents: cumulativeDepreciation,
       net_fixed_assets_cents: netFixedAssets,
       other_assets_cents: 0,

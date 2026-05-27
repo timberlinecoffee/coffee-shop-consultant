@@ -1,11 +1,32 @@
-export type MenuCategory = 'espresso' | 'brewed' | 'food' | 'retail' | 'seasonal'
+// TIM-1140: Categories are per-plan rows in menu_categories (not a hard-coded enum).
+// 'piece' joins the existing unit set for items measured by count.
+
+export type IngredientUnit = 'g' | 'ml' | 'oz' | 'each' | 'piece'
+
+export const UNIT_OPTIONS: { value: IngredientUnit; label: string }[] = [
+  { value: 'g', label: 'g' },
+  { value: 'ml', label: 'ml' },
+  { value: 'oz', label: 'oz' },
+  { value: 'each', label: 'each' },
+  { value: 'piece', label: 'piece' },
+]
+
+export type MenuCategory = {
+  id: string
+  plan_id: string
+  name: string
+  position: number
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
 
 export type MenuItem = {
   id: string
   plan_id: string
   position: number
   name: string
-  category: MenuCategory
+  category_id: string
   price_cents: number
   cogs_cents: number | null
   expected_mix_pct: number
@@ -26,7 +47,7 @@ export type MenuIngredient = {
   plan_id: string
   name: string
   package_size: number
-  package_unit: 'g' | 'ml' | 'oz' | 'each'
+  package_unit: IngredientUnit
   package_cost_cents: number
   vendor_id: string | null
   notes: string | null
@@ -39,19 +60,19 @@ export type MenuItemIngredient = {
   menu_item_id: string
   ingredient_id: string
   amount: number
-  unit: 'g' | 'ml' | 'oz' | 'each'
+  unit: IngredientUnit
   created_at: string
 }
 
-export const CATEGORY_LABELS: Record<MenuCategory, string> = {
-  espresso: 'Espresso',
-  brewed: 'Brewed Coffee',
-  food: 'Food',
-  retail: 'Retail',
-  seasonal: 'Seasonal',
+export type CategoryDefaultIngredient = {
+  id: string
+  category_id: string
+  ingredient_id: string
+  amount: number
+  unit: IngredientUnit
+  position: number
+  created_at: string
 }
-
-export const CATEGORY_ORDER: MenuCategory[] = ['espresso', 'brewed', 'food', 'retail', 'seasonal']
 
 export function formatCents(cents: number | null): string {
   if (cents === null || cents === 0) return '—'
@@ -64,4 +85,35 @@ export function costPerUnit(ingredient: MenuIngredient): number {
 
 export function computeItemCogs(item: MenuItemWithCogs): number {
   return item.computed_cogs_cents
+}
+
+// TIM-1140: Workspace + per-category aggregate metrics.
+// Weighted-by-revenue would need a sales-mix input we don't capture yet, so
+// we report the unweighted simple mean of COGS % and gross-profit %, computed
+// only over items that have BOTH a price and a non-zero COGS (so half-built
+// items don't drag the average to zero).
+export function aggregateMargins(items: MenuItemWithCogs[]): {
+  count: number
+  avgCogsPct: number | null
+  avgGpPct: number | null
+} {
+  const usable = items.filter(
+    (i) => !i.archived && i.price_cents > 0 && effectiveCogsCents(i) > 0
+  )
+  if (usable.length === 0) return { count: 0, avgCogsPct: null, avgGpPct: null }
+  const sumCogs = usable.reduce(
+    (s, i) => s + effectiveCogsCents(i) / i.price_cents,
+    0
+  )
+  const avgCogs = sumCogs / usable.length
+  return {
+    count: usable.length,
+    avgCogsPct: avgCogs * 100,
+    avgGpPct: (1 - avgCogs) * 100,
+  }
+}
+
+export function effectiveCogsCents(item: MenuItemWithCogs): number {
+  if (item.computed_cogs_cents > 0) return item.computed_cogs_cents
+  return item.cogs_cents ?? 0
 }

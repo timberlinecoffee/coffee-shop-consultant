@@ -1,6 +1,8 @@
 // TIM-776 / TIM-620-B: List + create location candidates for the user's plan.
+// TIM-1115: Title-case candidate name + neighborhood at the API boundary.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
+import { toTitleCase } from "@/lib/text"
 
 export async function GET() {
   const supabase = await createClient()
@@ -54,13 +56,14 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Missing required field: name" }, { status: 400 })
   }
 
+  const rawNeighborhood = body.neighborhood as string | undefined
   const { data, error } = await supabase
     .from("location_candidates")
     .insert({
       plan_id: plan.id,
-      name: body.name,
+      name: toTitleCase(body.name),
       address: (body.address as string | undefined) ?? null,
-      neighborhood: (body.neighborhood as string | undefined) ?? null,
+      neighborhood: rawNeighborhood ? toTitleCase(rawNeighborhood) : null,
       sq_ft: (body.sq_ft as number | undefined) ?? null,
       asking_rent_cents: (body.asking_rent_cents as number | undefined) ?? null,
       cam_cents: (body.cam_cents as number | undefined) ?? null,

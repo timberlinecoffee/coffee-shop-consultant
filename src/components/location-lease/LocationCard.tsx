@@ -1,0 +1,1263 @@
+// TIM-1115: Unified per-location card.
+// All info for one candidate lives in this card: intake fields, scorecard
+// (13 factors + AI feedback), and lease terms. No separate top-level sections.
+'use client'
+
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { cn } from '@/lib/utils'
+import {
+  Archive,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  ClipboardList,
+  Receipt,
+  Sparkles,
+  AlertCircle,
+  Star,
+} from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import type { Candidate, CandidateStatus } from './CandidateListCard'
+
+// ── Status config (kept in sync with CandidateListCard) ──────────────────
+
+const STATUS_CONFIG: Record<CandidateStatus, { label: string; className: string }> = {
+  shortlisted: {
+    label: 'Shortlisted',
+    className: 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400',
+  },
+  viewing_scheduled: {
+    label: 'Viewing',
+    className: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  lease_review: {
+    label: 'Lease Review',
+    className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400',
+  },
+  passed: {
+    label: 'Passed',
+    className: 'bg-rose-100 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400',
+  },
+  signed: {
+    label: 'Signed',
+    className: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400',
+  },
+}
+
+const STATUS_ORDER: CandidateStatus[] = [
+  'shortlisted',
+  'viewing_scheduled',
+  'lease_review',
+  'passed',
+  'signed',
+]
+
+// ── Scorecard factor definitions ─────────────────────────────────────────
+
+type ScorecardFactorKey =
+  | 'foot_traffic_weekday'
+  | 'foot_traffic_weekend'
+  | 'street_visibility'
+  | 'parking'
+  | 'public_transit'
+  | 'surrounding_businesses'
+  | 'demographics_fit'
+  | 'lease_cost_vs_market'
+  | 'space_layout'
+  | 'buildout_condition'
+  | 'permits_zoning'
+  | 'safety_perception'
+  | 'gut_feel'
+
+type ScorecardFactor = {
+  key: ScorecardFactorKey
+  label: string
+  description: string
+  hasScore: boolean
+}
+
+const SCORECARD_FACTORS: ScorecardFactor[] = [
+  { key: 'foot_traffic_weekday', label: 'Weekday Foot Traffic', description: 'Estimated pedestrian count on a typical weekday. 5 = very high, 1 = very low.', hasScore: true },
+  { key: 'foot_traffic_weekend', label: 'Weekend Foot Traffic', description: 'Estimated pedestrian count on a typical weekend day.', hasScore: true },
+  { key: 'street_visibility', label: 'Street Visibility', description: 'How easily the storefront is seen from the street or passing traffic.', hasScore: true },
+  { key: 'parking', label: 'Parking Availability', description: 'On-site or nearby parking for customers and staff.', hasScore: true },
+  { key: 'public_transit', label: 'Public Transit Proximity', description: 'Walkability from bus stops, train stations, or transit corridors.', hasScore: true },
+  { key: 'surrounding_businesses', label: 'Surrounding Businesses', description: 'Quality and synergy of neighboring tenants. 5 = strongly complementary, 1 = direct competition.', hasScore: true },
+  { key: 'demographics_fit', label: 'Demographics Fit', description: 'How well the local customer base matches your target personas.', hasScore: true },
+  { key: 'lease_cost_vs_market', label: 'Lease Cost vs. Market', description: 'Value of the asking rent relative to comparable spaces in the area. 5 = well below market, 1 = above market.', hasScore: true },
+  { key: 'space_layout', label: 'Space Layout Suitability', description: 'Square footage, kitchen feasibility, and seating capacity for your concept.', hasScore: true },
+  { key: 'buildout_condition', label: 'Build-out Condition', description: 'Existing condition and estimated build-out cost. 5 = turnkey, 1 = gut renovation.', hasScore: true },
+  { key: 'permits_zoning', label: 'Permits / Zoning', description: 'How straightforward it is to get the permits and approvals you need. 5 = easy, 1 = high friction.', hasScore: true },
+  { key: 'safety_perception', label: 'Safety / Area Perception', description: 'Customer and staff comfort with the area at all operating hours.', hasScore: true },
+  { key: 'gut_feel', label: "Owner's Gut Feel", description: 'Your overall instinct about this location. No score — just write it out.', hasScore: false },
+]
+
+const SCORED_FACTORS = SCORECARD_FACTORS.filter((f) => f.hasScore)
+
+type ScoreCell = { score: number | null; notes: string }
+type ScoreMap = Partial<Record<ScorecardFactorKey, ScoreCell>>
+
+function computeOverallScore(scores: ScoreMap): string {
+  let sum = 0
+  let count = 0
+  for (const f of SCORED_FACTORS) {
+    const s = scores[f.key]?.score
+    if (s != null) {
+      sum += s
+      count++
+    }
+  }
+  if (count === 0) return '—'
+  return `${(sum / count).toFixed(1)} / 5`
+}
+
+// ── Lease terms types ────────────────────────────────────────────────────
+
+type TermsDisplay = {
+  base_rent: string
+  rent_escalation_pct: string
+  security_deposit: string
+  ti_allowance: string
+  term_months: string
+  options_text: string
+  personal_guarantee: string
+  exit_clauses: string
+}
+
+const EMPTY_TERMS: TermsDisplay = {
+  base_rent: '',
+  rent_escalation_pct: '',
+  security_deposit: '',
+  ti_allowance: '',
+  term_months: '',
+  options_text: '',
+  personal_guarantee: '',
+  exit_clauses: '',
+}
+
+type TermsRow = {
+  candidate_id: string
+  base_rent_cents: number | null
+  rent_escalation_pct: number | null
+  security_deposit_cents: number | null
+  ti_allowance_cents: number | null
+  term_months: number | null
+  options_text: string | null
+  personal_guarantee: string | null
+  exit_clauses: string | null
+}
+
+function rowToTerms(row: TermsRow | null): TermsDisplay {
+  return {
+    base_rent: centsToDisplay(row?.base_rent_cents ?? null),
+    rent_escalation_pct: pctToDisplay(row?.rent_escalation_pct ?? null),
+    security_deposit: centsToDisplay(row?.security_deposit_cents ?? null),
+    ti_allowance: centsToDisplay(row?.ti_allowance_cents ?? null),
+    term_months: row?.term_months != null ? String(row.term_months) : '',
+    options_text: row?.options_text ?? '',
+    personal_guarantee: row?.personal_guarantee ?? '',
+    exit_clauses: row?.exit_clauses ?? '',
+  }
+}
+
+function termsToPayload(d: TermsDisplay) {
+  return {
+    base_rent_cents: displayToCents(d.base_rent),
+    rent_escalation_pct: displayToPct(d.rent_escalation_pct),
+    security_deposit_cents: displayToCents(d.security_deposit),
+    ti_allowance_cents: displayToCents(d.ti_allowance),
+    term_months: d.term_months ? parseInt(d.term_months, 10) || null : null,
+    options_text: d.options_text.trim() || null,
+    personal_guarantee: d.personal_guarantee.trim() || null,
+    exit_clauses: d.exit_clauses.trim() || null,
+  }
+}
+
+// ── Money/pct helpers ────────────────────────────────────────────────────
+
+function centsToDisplay(cents: number | null): string {
+  if (cents == null) return ''
+  return (cents / 100).toFixed(2)
+}
+
+function displayToCents(s: string): number | null {
+  const cleaned = s.replace(/[^0-9.]/g, '')
+  if (!cleaned) return null
+  const n = parseFloat(cleaned)
+  return isNaN(n) ? null : Math.round(n * 100)
+}
+
+function pctToDisplay(pct: number | null): string {
+  if (pct == null) return ''
+  return pct.toFixed(2)
+}
+
+function displayToPct(s: string): number | null {
+  if (!s.trim()) return null
+  const n = parseFloat(s)
+  return isNaN(n) ? null : n
+}
+
+// ── InlineInput (mirrors CandidateListCard) ──────────────────────────────
+
+function InlineInput({
+  value,
+  placeholder,
+  type = 'text',
+  prefix,
+  suffix,
+  multiline,
+  onCommit,
+}: {
+  value: string
+  placeholder?: string
+  type?: string
+  prefix?: string
+  suffix?: string
+  multiline?: boolean
+  onCommit: (v: string) => void
+}) {
+  const [local, setLocal] = useState(value)
+  const prevRef = useRef(value)
+
+  useEffect(() => {
+    setLocal(value)
+    prevRef.current = value
+  }, [value])
+
+  function handleBlur() {
+    if (local !== prevRef.current) {
+      onCommit(local)
+      prevRef.current = local
+    }
+  }
+
+  const cls =
+    'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[#888]/50 focus-visible:ring-0'
+
+  const wrapCls =
+    'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[#efefef] focus-within:border-[#155e63] focus-within:ring-2 focus-within:ring-[#155e63]/30'
+
+  if (multiline) {
+    return (
+      <div className={wrapCls}>
+        <textarea
+          value={local}
+          onChange={(e) => setLocal(e.target.value)}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          rows={2}
+          className={cn(cls, 'resize-y')}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className={wrapCls}>
+      {prefix && <span className="shrink-0 text-sm text-[#888]">{prefix}</span>}
+      <input
+        type={type}
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className={cls}
+      />
+      {suffix && <span className="shrink-0 text-sm text-[#888]">{suffix}</span>}
+    </div>
+  )
+}
+
+// ── StatusPillSelector ────────────────────────────────────────────────────
+
+function StatusPillSelector({
+  status,
+  onChange,
+}: {
+  status: CandidateStatus
+  onChange: (s: CandidateStatus) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  const cfg = STATUS_CONFIG[status]
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-opacity hover:opacity-80',
+          cfg.className
+        )}
+      >
+        {cfg.label}
+        <ChevronDown className="size-3 opacity-60" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 rounded-xl border bg-white shadow-lg py-1 min-w-[150px]">
+          {STATUS_ORDER.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => {
+                onChange(s)
+                setOpen(false)
+              }}
+              className={cn(
+                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#f7f6f3] transition-colors',
+                s === status && 'font-semibold'
+              )}
+            >
+              <span className={cn('rounded-full border px-2 py-0.5', STATUS_CONFIG[s].className)}>
+                {STATUS_CONFIG[s].label}
+              </span>
+              {s === status && <span className="ml-auto text-[10px] text-[#888]">current</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Section wrapper ──────────────────────────────────────────────────────
+
+function Section({
+  icon: Icon,
+  title,
+  badge,
+  defaultOpen = false,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  badge?: React.ReactNode
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="rounded-lg border border-[#efefef] bg-[#faf9f7]/40">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[#f7f6f3]/60"
+      >
+        <Icon className="size-3.5 text-[#155e63]" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-foreground">{title}</span>
+        {badge}
+        <ChevronDown
+          className={cn(
+            'ml-auto size-4 text-[#888] transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
+      {open && <div className="border-t border-[#efefef] px-3 py-3">{children}</div>}
+    </div>
+  )
+}
+
+// ── FieldLabel ───────────────────────────────────────────────────────────
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">{children}</span>
+}
+
+// ── ScoreBadge ───────────────────────────────────────────────────────────
+
+function ScoreBadge({ score }: { score: number }) {
+  const color =
+    score >= 4
+      ? 'bg-emerald-100 text-emerald-700'
+      : score <= 2
+      ? 'bg-rose-100 text-rose-600'
+      : 'bg-amber-100 text-amber-700'
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-bold min-w-[24px]',
+        color
+      )}
+    >
+      {score}
+    </span>
+  )
+}
+
+// ── RatingPicker ─────────────────────────────────────────────────────────
+
+function RatingPicker({
+  value,
+  onChange,
+}: {
+  value: number | null
+  onChange: (v: number | null) => void
+}) {
+  return (
+    <div className="flex gap-1" role="group">
+      {([1, 2, 3, 4, 5] as const).map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(value === n ? null : n)}
+          aria-label={`Rate ${n}`}
+          aria-pressed={value === n}
+          className={cn(
+            'size-7 rounded text-xs font-semibold transition-colors border',
+            value === n
+              ? 'bg-[#155e63] text-white border-[#155e63]'
+              : 'bg-background text-[#888] border-[#efefef] hover:border-[#155e63]/60 hover:text-[#155e63]'
+          )}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── ScorecardSection ─────────────────────────────────────────────────────
+
+function ScorecardSection({
+  candidateId,
+  candidateName,
+  canUseAI,
+  subscriptionTier,
+  aiCreditsRemaining,
+}: {
+  candidateId: string
+  candidateName: string
+  canUseAI: boolean
+  subscriptionTier: string
+  aiCreditsRemaining: number
+}) {
+  const [scores, setScores] = useState<ScoreMap>({})
+  const [loaded, setLoaded] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('location_rubric_scores')
+      .select('factor_key, score_1_5, notes')
+      .eq('candidate_id', candidateId)
+      .in('factor_key', SCORECARD_FACTORS.map((f) => f.key))
+      .then(({ data }) => {
+        if (data) {
+          const map: ScoreMap = {}
+          for (const row of data) {
+            map[row.factor_key as ScorecardFactorKey] = {
+              score: row.score_1_5,
+              notes: row.notes ?? '',
+            }
+          }
+          setScores(map)
+        }
+        setLoaded(true)
+      })
+  }, [candidateId])
+
+  const persist = useCallback(
+    (next: ScoreMap) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(async () => {
+        const payload = SCORECARD_FACTORS.map((f) => ({
+          factor_key: f.key,
+          score_1_5: next[f.key]?.score ?? null,
+          notes: next[f.key]?.notes ?? null,
+        }))
+        await fetch(`/api/workspaces/location-lease/candidates/${candidateId}/scores`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scores: payload }),
+        })
+      }, 600)
+    },
+    [candidateId]
+  )
+
+  function handleScore(key: ScorecardFactorKey, value: number | null) {
+    setScores((prev) => {
+      const next = {
+        ...prev,
+        [key]: { score: value, notes: prev[key]?.notes ?? '' },
+      }
+      persist(next)
+      return next
+    })
+  }
+
+  function handleNotes(key: ScorecardFactorKey, notes: string) {
+    setScores((prev) => {
+      const next = {
+        ...prev,
+        [key]: { score: prev[key]?.score ?? null, notes },
+      }
+      persist(next)
+      return next
+    })
+  }
+
+  if (!loaded) {
+    return <p className="text-xs text-[#888]">Loading scorecard…</p>
+  }
+
+  const overallScore = computeOverallScore(scores)
+  const filledCount = SCORED_FACTORS.filter((f) => scores[f.key]?.score != null).length
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-[#888]">
+          {filledCount}/{SCORED_FACTORS.length} rated
+          {filledCount > 0 && (
+            <>
+              {' · '}
+              <span className="font-semibold text-[#155e63]">{overallScore} avg</span>
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {SCORECARD_FACTORS.map((factor) => (
+          <div key={factor.key} className="flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">{factor.label}</span>
+                  {factor.hasScore && scores[factor.key]?.score != null && (
+                    <ScoreBadge score={scores[factor.key]!.score!} />
+                  )}
+                </div>
+                <p className="text-xs text-[#888] mt-0.5 leading-relaxed">{factor.description}</p>
+              </div>
+              {factor.hasScore && (
+                <div className="shrink-0 pt-0.5">
+                  <RatingPicker
+                    value={scores[factor.key]?.score ?? null}
+                    onChange={(v) => handleScore(factor.key, v)}
+                  />
+                </div>
+              )}
+            </div>
+            <textarea
+              value={scores[factor.key]?.notes ?? ''}
+              onChange={(e) => handleNotes(factor.key, e.target.value)}
+              placeholder={
+                factor.key === 'gut_feel'
+                  ? 'Write your overall instinct about this location…'
+                  : 'Observation or notes (optional)…'
+              }
+              rows={factor.key === 'gut_feel' ? 3 : 2}
+              className="w-full resize-none rounded-xl border border-[#efefef] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/40 outline-none focus-visible:border-[#155e63] focus-visible:ring-2 focus-visible:ring-[#155e63]/30"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-[#efefef] pt-4">
+        <AiFeedbackPanel
+          candidateId={candidateId}
+          candidateName={candidateName}
+          canUse={canUseAI}
+          subscriptionTier={subscriptionTier}
+          aiCreditsRemaining={aiCreditsRemaining}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── AiFeedbackPanel ──────────────────────────────────────────────────────
+
+function AiFeedbackPanel({
+  candidateId,
+  canUse,
+  subscriptionTier,
+  aiCreditsRemaining,
+}: {
+  candidateId: string
+  candidateName: string
+  canUse: boolean
+  subscriptionTier: string
+  aiCreditsRemaining: number
+}) {
+  const [loading, setLoading] = useState(false)
+  const [streamText, setStreamText] = useState('')
+  const [finalText, setFinalText] = useState('')
+  const [error, setError] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
+
+  async function requestFeedback() {
+    if (loading || !canUse) return
+    setFinalText('')
+    setStreamText('')
+    setError('')
+    setLoading(true)
+
+    abortRef.current = new AbortController()
+
+    try {
+      const res = await fetch(
+        `/api/workspaces/location-lease/candidates/${candidateId}/scorecard-feedback`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+          signal: abortRef.current.signal,
+        }
+      )
+
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => '')
+        try {
+          const parsed = JSON.parse(text)
+          setError(parsed.error ?? 'Something went wrong. Please try again.')
+        } catch {
+          setError('Connection error. Please try again.')
+        }
+        setLoading(false)
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) continue
+          if (!line.startsWith('data: ')) continue
+          const raw = line.slice(6).trim()
+          if (!raw) continue
+          try {
+            const payload = JSON.parse(raw) as Record<string, unknown>
+            if ('delta' in payload && typeof payload.delta === 'string') {
+              accumulated += payload.delta
+              setStreamText(accumulated)
+            } else if (payload.code === 'error') {
+              setError((payload.message as string) ?? 'AI feedback error.')
+            } else if ('threadId' in payload) {
+              setFinalText(accumulated)
+              setStreamText('')
+            }
+          } catch {
+            // ignore malformed SSE
+          }
+        }
+      }
+
+      if (accumulated && !finalText) {
+        setFinalText(accumulated)
+        setStreamText('')
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setError('Connection error. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+      abortRef.current = null
+    }
+  }
+
+  const displayText = finalText || streamText
+
+  if (!canUse) {
+    return (
+      <div className="rounded-xl border border-[#efefef] p-3 text-center">
+        <p className="text-xs text-[#888]">
+          {subscriptionTier === 'free' ? (
+            <>
+              AI feedback requires a paid plan.{' '}
+              <a href="/account" className="text-[#155e63] underline">
+                Upgrade →
+              </a>
+            </>
+          ) : aiCreditsRemaining === 0 ? (
+            <>
+              You&apos;re out of credits.{' '}
+              <a href="/account" className="text-[#155e63] underline">
+                Upgrade for more →
+              </a>
+            </>
+          ) : (
+            'AI feedback unavailable.'
+          )}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">AI Feedback</h4>
+          <p className="text-[11px] text-[#888] mt-0.5 leading-relaxed">
+            Fill in scores above, then run AI feedback for risk profile, strengths, concerns, and due-diligence questions.
+          </p>
+        </div>
+        <Button size="sm" onClick={requestFeedback} disabled={loading} className="shrink-0">
+          <Sparkles className="size-3.5 mr-1.5" />
+          {loading ? 'Analyzing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
+        </Button>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+          <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" />
+          <p className="text-xs text-red-700">{error}</p>
+        </div>
+      )}
+
+      {displayText && (
+        <div className="rounded-xl border border-[#efefef] bg-[#f7f6f3]/40 px-4 py-4">
+          <FeedbackRenderer text={displayText} streaming={!!streamText && !finalText} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FeedbackRenderer({ text, streaming }: { text: string; streaming: boolean }) {
+  const sections = parseAiFeedback(text)
+
+  if (!sections) {
+    return (
+      <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+        {text}
+        {streaming && <span className="animate-pulse">▋</span>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {sections.riskProfile && (
+        <FeedbackSection title="Overall Risk Profile" variant="neutral">
+          <p className="text-sm text-foreground leading-relaxed">{sections.riskProfile}</p>
+        </FeedbackSection>
+      )}
+      {sections.strengths.length > 0 && (
+        <FeedbackSection title="Top 3 Strengths" variant="positive">
+          <ul className="flex flex-col gap-1.5">
+            {sections.strengths.map((s, i) => (
+              <li key={i} className="text-sm text-foreground leading-relaxed flex gap-2">
+                <span className="shrink-0 text-emerald-600 font-semibold">{i + 1}.</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </FeedbackSection>
+      )}
+      {sections.concerns.length > 0 && (
+        <FeedbackSection title="Top 3 Concerns" variant="negative">
+          <ul className="flex flex-col gap-1.5">
+            {sections.concerns.map((s, i) => (
+              <li key={i} className="text-sm text-foreground leading-relaxed flex gap-2">
+                <span className="shrink-0 text-rose-500 font-semibold">{i + 1}.</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </FeedbackSection>
+      )}
+      {sections.questions.length > 0 && (
+        <FeedbackSection title="Due-Diligence Questions" variant="neutral">
+          <ul className="flex flex-col gap-2">
+            {sections.questions.map((q, i) => (
+              <li key={i} className="text-sm text-foreground leading-relaxed flex gap-2">
+                <span className="shrink-0 text-[#888] font-medium">{i + 1}.</span>
+                <span>{q}</span>
+              </li>
+            ))}
+          </ul>
+        </FeedbackSection>
+      )}
+      {streaming && <p className="text-[11px] text-[#888] italic">Generating…</p>}
+    </div>
+  )
+}
+
+function FeedbackSection({
+  title,
+  variant,
+  children,
+}: {
+  title: string
+  variant: 'positive' | 'negative' | 'neutral'
+  children: React.ReactNode
+}) {
+  const headerClass =
+    variant === 'positive'
+      ? 'text-emerald-700'
+      : variant === 'negative'
+      ? 'text-rose-600'
+      : 'text-foreground'
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h5 className={cn('text-xs font-semibold uppercase tracking-wide', headerClass)}>{title}</h5>
+      {children}
+    </div>
+  )
+}
+
+type ParsedFeedback = {
+  riskProfile: string
+  strengths: string[]
+  concerns: string[]
+  questions: string[]
+}
+
+function parseAiFeedback(text: string): ParsedFeedback | null {
+  if (!text.includes('##')) return null
+
+  function extractSection(header: string): string {
+    const re = new RegExp(`##\\s*${header}[^\\n]*\\n([\\s\\S]*?)(?=##|$)`, 'i')
+    const m = text.match(re)
+    return m ? m[1].trim() : ''
+  }
+
+  function parseBullets(raw: string): string[] {
+    return raw
+      .split('\n')
+      .map((l) => l.replace(/^[-*\d.]+\s*\*?\*?/, '').replace(/\*\*$/, '').trim())
+      .filter(Boolean)
+  }
+
+  return {
+    riskProfile: extractSection('Overall Risk Profile'),
+    strengths: parseBullets(extractSection('Top 3 Strengths')),
+    concerns: parseBullets(extractSection('Top 3 Concerns')),
+    questions: parseBullets(extractSection('Due-Diligence Questions')),
+  }
+}
+
+// ── LeaseTermsSection ────────────────────────────────────────────────────
+
+function LeaseTermsSection({ candidateId }: { candidateId: string }) {
+  const [terms, setTerms] = useState<TermsDisplay>(EMPTY_TERMS)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('location_lease_terms')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .maybeSingle()
+      .then(({ data }) => {
+        setTerms(rowToTerms((data ?? null) as TermsRow | null))
+        setLoaded(true)
+      })
+  }, [candidateId])
+
+  const persist = useCallback(
+    (next: TermsDisplay) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(async () => {
+        setSaving(true)
+        try {
+          await fetch(`/api/workspaces/location-lease/candidates/${candidateId}/lease-terms`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(termsToPayload(next)),
+          })
+        } finally {
+          setSaving(false)
+        }
+      }, 600)
+    },
+    [candidateId]
+  )
+
+  function update(field: keyof TermsDisplay, value: string) {
+    setTerms((prev) => {
+      const next = { ...prev, [field]: value }
+      persist(next)
+      return next
+    })
+  }
+
+  if (!loaded) return <p className="text-xs text-[#888]">Loading lease terms…</p>
+
+  return (
+    <div className="flex flex-col gap-4">
+      {saving && (
+        <p className="text-[10px] italic text-[#888] -mt-1">Saving…</p>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FieldGroup label="Base Rent / Month">
+          <CurrencyInput value={terms.base_rent} onChange={(v) => update('base_rent', v)} />
+        </FieldGroup>
+
+        <FieldGroup label="Annual Escalation">
+          <PctInput
+            value={terms.rent_escalation_pct}
+            onChange={(v) => update('rent_escalation_pct', v)}
+            placeholder="3.50"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Security Deposit">
+          <CurrencyInput value={terms.security_deposit} onChange={(v) => update('security_deposit', v)} />
+        </FieldGroup>
+
+        <FieldGroup label="TI Allowance">
+          <CurrencyInput value={terms.ti_allowance} onChange={(v) => update('ti_allowance', v)} />
+        </FieldGroup>
+
+        <FieldGroup label="Term (months)">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={terms.term_months}
+            onChange={(e) => update('term_months', e.target.value)}
+            placeholder="24"
+            className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
+          />
+        </FieldGroup>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <FieldGroup label="Options">
+          <textarea
+            value={terms.options_text}
+            onChange={(e) => update('options_text', e.target.value)}
+            placeholder="e.g. Two 5-year renewal options at market rate…"
+            rows={2}
+            className="w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Personal Guarantee">
+          <textarea
+            value={terms.personal_guarantee}
+            onChange={(e) => update('personal_guarantee', e.target.value)}
+            placeholder="e.g. 12-month personal guarantee…"
+            rows={2}
+            className="w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Exit Clauses">
+          <textarea
+            value={terms.exit_clauses}
+            onChange={(e) => update('exit_clauses', e.target.value)}
+            placeholder="e.g. 90-day notice, co-tenancy clause…"
+            rows={2}
+            className="w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y"
+          />
+        </FieldGroup>
+      </div>
+    </div>
+  )
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-[#888]">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function CurrencyInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="relative flex items-center">
+      <span className="pointer-events-none absolute left-3 text-sm text-[#888]">$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? '0.00'}
+        className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
+      />
+    </div>
+  )
+}
+
+function PctInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="relative flex items-center">
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? '0.00'}
+        className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
+      />
+      <span className="pointer-events-none absolute right-3 text-sm text-[#888]">%</span>
+    </div>
+  )
+}
+
+// ── LocationCard (main export) ───────────────────────────────────────────
+
+export interface LocationCardProps {
+  candidate: Candidate
+  saving: boolean
+  subscriptionTier: string
+  aiCreditsRemaining: number
+  onPatch: (id: string, patch: Partial<Omit<Candidate, 'id' | 'position'>>) => void
+  onArchive: (id: string) => void
+}
+
+export function LocationCard({
+  candidate,
+  saving,
+  subscriptionTier,
+  aiCreditsRemaining,
+  onPatch,
+  onArchive,
+}: LocationCardProps) {
+  const [open, setOpen] = useState(false)
+
+  const canUseAI = subscriptionTier !== 'free' && aiCreditsRemaining > 0
+  const isShortlisted = candidate.status === 'shortlisted'
+
+  function toggleShortlist() {
+    if (isShortlisted) {
+      onPatch(candidate.id, { status: 'viewing_scheduled' })
+    } else {
+      onPatch(candidate.id, { status: 'shortlisted' })
+    }
+  }
+
+  function commitText(field: keyof Candidate, raw: string) {
+    const v = raw.trim() || null
+    onPatch(candidate.id, { [field]: v } as Partial<Candidate>)
+  }
+
+  function commitCents(field: 'asking_rent_cents' | 'cam_cents', raw: string) {
+    onPatch(candidate.id, { [field]: displayToCents(raw) })
+  }
+
+  function commitSqFt(raw: string) {
+    const n = parseInt(raw, 10)
+    onPatch(candidate.id, { sq_ft: isNaN(n) ? null : n })
+  }
+
+  return (
+    <div className="rounded-xl border border-[#efefef] bg-white">
+      {/* ── Summary row ── */}
+      <div className="flex items-center gap-2 px-4 py-3">
+        <button
+          type="button"
+          onClick={toggleShortlist}
+          aria-label={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
+          title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
+          className={cn(
+            'shrink-0 rounded-lg p-1 transition-colors',
+            isShortlisted
+              ? 'text-amber-500 hover:bg-amber-50'
+              : 'text-[#888] hover:bg-[#f7f6f3] hover:text-amber-500'
+          )}
+        >
+          <Star className={cn('size-4', isShortlisted && 'fill-amber-400 text-amber-500')} />
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <InlineInput
+            value={candidate.name}
+            placeholder="Location name"
+            onCommit={(v) => onPatch(candidate.id, { name: v || 'Untitled' })}
+          />
+        </div>
+
+        <StatusPillSelector
+          status={candidate.status}
+          onChange={(s) => onPatch(candidate.id, { status: s })}
+        />
+
+        {saving && <span className="shrink-0 text-[10px] italic text-[#888]">saving…</span>}
+
+        <button
+          type="button"
+          onClick={() => setOpen((p) => !p)}
+          aria-label={open ? 'Collapse details' : 'Expand details'}
+          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[#f7f6f3] hover:text-[#1a1a1a]"
+        >
+          {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onArchive(candidate.id)}
+          aria-label="Archive candidate"
+          title="Archive this location"
+          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-red-600/10 hover:text-red-600"
+        >
+          <Archive className="size-4" />
+        </button>
+      </div>
+
+      {/* ── Expanded — all info for this location lives here ── */}
+      {open && (
+        <div className="border-t border-[#efefef] px-4 py-4 flex flex-col gap-4">
+          {/* Intake fields */}
+          <Section icon={ClipboardList} title="Identity & Intake" defaultOpen>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2 flex flex-col gap-1">
+                <FieldLabel>Address</FieldLabel>
+                <InlineInput
+                  value={candidate.address ?? ''}
+                  placeholder="Street address"
+                  onCommit={(v) => commitText('address', v)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <FieldLabel>Neighborhood</FieldLabel>
+                <InlineInput
+                  value={candidate.neighborhood ?? ''}
+                  placeholder="e.g. Downtown, Mission District"
+                  onCommit={(v) => commitText('neighborhood', v)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <FieldLabel>Sq Ft</FieldLabel>
+                <InlineInput
+                  value={candidate.sq_ft != null ? String(candidate.sq_ft) : ''}
+                  placeholder="1200"
+                  type="number"
+                  suffix="sq ft"
+                  onCommit={commitSqFt}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <FieldLabel>Asking Rent / Mo</FieldLabel>
+                <InlineInput
+                  value={centsToDisplay(candidate.asking_rent_cents)}
+                  placeholder="0.00"
+                  prefix="$"
+                  onCommit={(v) => commitCents('asking_rent_cents', v)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <FieldLabel>CAM / Mo</FieldLabel>
+                <InlineInput
+                  value={centsToDisplay(candidate.cam_cents)}
+                  placeholder="0.00"
+                  prefix="$"
+                  onCommit={(v) => commitCents('cam_cents', v)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <FieldLabel>Listing URL</FieldLabel>
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 min-w-0">
+                    <InlineInput
+                      value={candidate.listing_url ?? ''}
+                      placeholder="https://…"
+                      onCommit={(v) => commitText('listing_url', v)}
+                    />
+                  </div>
+                  {candidate.listing_url && (
+                    <a
+                      href={candidate.listing_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 p-1 text-[#888] hover:text-[#1a1a1a] transition-colors"
+                      aria-label="Open listing"
+                    >
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <FieldLabel>Broker Contact</FieldLabel>
+                <InlineInput
+                  value={candidate.broker_contact ?? ''}
+                  placeholder="Name, phone or email"
+                  onCommit={(v) => commitText('broker_contact', v)}
+                />
+              </div>
+
+              <div className="sm:col-span-2 flex flex-col gap-1">
+                <FieldLabel>Notes</FieldLabel>
+                <InlineInput
+                  value={candidate.notes ?? ''}
+                  placeholder="Pro/cons, impressions, follow-up items…"
+                  multiline
+                  onCommit={(v) => commitText('notes', v)}
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* Scorecard + AI feedback */}
+          <Section icon={ClipboardList} title="Scorecard & AI Feedback">
+            <ScorecardSection
+              candidateId={candidate.id}
+              candidateName={candidate.name}
+              canUseAI={canUseAI}
+              subscriptionTier={subscriptionTier}
+              aiCreditsRemaining={aiCreditsRemaining}
+            />
+          </Section>
+
+          {/* Lease terms */}
+          <Section icon={Receipt} title="Lease Terms">
+            <LeaseTermsSection candidateId={candidate.id} />
+          </Section>
+        </div>
+      )}
+    </div>
+  )
+}

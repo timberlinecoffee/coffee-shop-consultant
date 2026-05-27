@@ -5,10 +5,20 @@ import {
   type MonthlySlice,
   sumSlices,
   getQuarterSlices,
+  fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
+import {
+  ChartCard,
+  FinancialComboChart,
+  FinancialLineChart,
+  ViewModeToggle,
+  CHART_COLORS,
+  type ChartDatum,
+  type ChartSeries,
+  type ViewMode,
+} from "./financial-charts";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
 
 type Period = "monthly" | "quarterly" | "annual";
@@ -22,7 +32,7 @@ interface RowProps {
   negative?: boolean;
 }
 
-function CFRow({ label, values, bold, indent, highlight, negative }: RowProps) {
+function CFRow({ label, values, bold, indent, highlight, negative, currencyCode }: RowProps & { currencyCode: string }) {
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
       <td
@@ -37,7 +47,7 @@ function CFRow({ label, values, bold, indent, highlight, negative }: RowProps) {
             key={i}
             className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
           >
-            {v !== undefined ? fmt(v) : "—"}
+            {v !== undefined ? fmt(v, currencyCode) : "—"}
           </td>
         );
       })}
@@ -92,12 +102,16 @@ function deriveCF(data: Partial<MonthlySlice>, prevCash: number) {
 
 interface Props {
   slices: MonthlySlice[];
+  fiscalYearStartMonth?: number;
+  currencyCode?: string;
 }
 
-export function CashFlowTab({ slices }: Props) {
+export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [view, setView] = useState<ViewMode>("table");
 
+  const MONTHS = fiscalYearMonthLabels(fiscalYearStartMonth);
   const yearSlices = slices.filter((s) => s.year === year);
 
   let columns: { label: string; data: Partial<MonthlySlice>; prevCash: number }[] = [];
@@ -131,9 +145,32 @@ export function CashFlowTab({ slices }: Props) {
 
   const colCount = columns.length;
 
+  // Build chart data: one row per column. Each row holds the per-section flows
+  // plus ending cash. Operating positive, investing and financing typically
+  // negative — combo chart stacks the components and overlays ending cash as a
+  // line so the user can see what's driving each month's cash change.
+  const chartData: ChartDatum[] = columns.map((c, i) => ({
+    label: c.label,
+    operating: cfCols[i].net_cash_operating,
+    investing: cfCols[i].net_cash_investing,
+    financing: cfCols[i].net_cash_financing,
+    ending_cash: cfCols[i].ending_cash,
+    net_change: cfCols[i].net_change,
+  }));
+
+  const flowSeries: ChartSeries[] = [
+    { key: "operating", label: "Operating", color: CHART_COLORS.primary },
+    { key: "investing", label: "Investing", color: CHART_COLORS.warning },
+    { key: "financing", label: "Financing", color: CHART_COLORS.accent },
+  ];
+  const cashLineSeries: ChartSeries[] = [
+    { key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.negative },
+  ];
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
           {(["monthly", "quarterly", "annual"] as Period[]).map((p) => (
             <button
@@ -163,6 +200,34 @@ export function CashFlowTab({ slices }: Props) {
         )}
       </div>
 
+      {view === "chart" ? (
+        <div className="space-y-4">
+          <ChartCard
+            title="Cash Flow By Category"
+            description="Stacked bars show net cash from Operating, Investing, and Financing activities each period. The line is the ending cash balance."
+          >
+            <FinancialComboChart
+              data={chartData}
+              barSeries={flowSeries}
+              lineSeries={cashLineSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Ending Cash Trajectory"
+            description="Where your cash balance lands at the end of each period. Watch for dips toward zero."
+          >
+            <FinancialLineChart
+              data={chartData}
+              series={[
+                { key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary },
+              ]}
+              currencyCode={currencyCode}
+              showZero
+            />
+          </ChartCard>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -179,57 +244,69 @@ export function CashFlowTab({ slices }: Props) {
           </thead>
           <tbody>
             <SectionHeader label="Operating Activities" colCount={colCount} />
-            <CFRow label="Net Income" values={valsArr("net_income")} indent />
-            <CFRow label="Plus: Depreciation" values={valsArr("depreciation_addback")} indent />
-            <CFRow label="Net Cash From Operating Activities" values={valsArr("net_cash_operating")} bold highlight />
+            <CFRow currencyCode={currencyCode} label="Net Income" values={valsArr("net_income")} indent />
+            <CFRow currencyCode={currencyCode} label="Plus: Depreciation" values={valsArr("depreciation_addback")} indent />
+            <CFRow currencyCode={currencyCode} label="Net Cash From Operating Activities" values={valsArr("net_cash_operating")} bold highlight />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Investing Activities" colCount={colCount} />
-            <CFRow label="Capital Expenditures" values={valsArr("capex")} indent />
-            <CFRow label="Net Cash From Investing Activities" values={valsArr("net_cash_investing")} bold />
+            <CFRow currencyCode={currencyCode} label="Capital Expenditures" values={valsArr("capex")} indent />
+            <CFRow currencyCode={currencyCode} label="Net Cash From Investing Activities" values={valsArr("net_cash_investing")} bold />
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Financing Activities" colCount={colCount} />
-            <CFRow label="Loan Repayments" values={valsArr("loan_repayment")} indent negative />
-            <CFRow label="Net Cash From Financing Activities" values={valsArr("net_cash_financing")} bold />
+            <CFRow currencyCode={currencyCode} label="Loan Repayments" values={valsArr("loan_repayment")} indent negative />
+            <CFRow currencyCode={currencyCode} label="Net Cash From Financing Activities" values={valsArr("net_cash_financing")} bold />
 
             <DividerRow cols={colCount} />
-            <CFRow label="Net Change In Cash" values={valsArr("net_change")} bold />
-            <CFRow label="Beginning Cash" values={valsArr("beginning_cash")} />
-            <CFRow label="Ending Cash" values={valsArr("ending_cash")} bold highlight />
+            <CFRow currencyCode={currencyCode} label="Net Change In Cash" values={valsArr("net_change")} bold />
+            <CFRow currencyCode={currencyCode} label="Beginning Cash" values={valsArr("beginning_cash")} />
+            <CFRow currencyCode={currencyCode} label="Ending Cash" values={valsArr("ending_cash")} bold highlight />
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
-        <CashFlowCritique slices={slices} year={year} />
+        <CashFlowCritique slices={slices} year={year} monthLabels={MONTHS} currencyCode={currencyCode} />
       </div>
     </div>
   );
 }
 
-function CashFlowCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) {
+function CashFlowCritique({
+  slices,
+  year,
+  monthLabels,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  year: number;
+  monthLabels: string[];
+  currencyCode: string;
+}) {
   const yearSlices = slices.filter((s) => s.year === year);
   if (yearSlices.length === 0) return null;
 
   const lines: string[] = [];
   const lowestCash = Math.min(...yearSlices.map((s) => s.cash_cents));
   const lowestMonth = yearSlices.find((s) => s.cash_cents === lowestCash);
+  const labelFor = (m?: number) => (m && m >= 1 && m <= 12 ? monthLabels[m - 1] : "");
 
   if (lowestCash < 0) {
-    const monthName = lowestMonth ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][lowestMonth.month - 1] : "";
+    const monthName = labelFor(lowestMonth?.month);
     lines.push(`Cash goes negative in ${monthName} of Year ${year}. That is a real problem — you would need more funding or tighter cost control before then.`);
   } else if (lowestCash < 500000) {
-    const monthName = lowestMonth ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][lowestMonth.month - 1] : "";
-    lines.push(`Your lowest cash balance in Year ${year} is under $5,000 (in ${monthName}). That is very thin. A single slow week could leave you unable to pay suppliers.`);
+    const monthName = labelFor(lowestMonth?.month);
+    lines.push(`Your lowest cash balance in Year ${year} is under ${fmt(500000, currencyCode)} (in ${monthName}). That is very thin. A single slow week could leave you unable to pay suppliers.`);
   } else {
-    lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash)} — that is your real cushion number, not the year-end balance.`);
+    lines.push(`Cash stays positive throughout Year ${year}. Your lowest point is ${fmt(lowestCash, currencyCode)} — that is your real cushion number, not the year-end balance.`);
   }
 
   // Check if ending cash matches balance sheet (it should — same compute source)
   const lastSlice = yearSlices[yearSlices.length - 1];
-  lines.push(`Ending cash of ${fmt(lastSlice.cash_cents)} matches the Cash line on the Balance Sheet.`);
+  lines.push(`Ending cash of ${fmt(lastSlice.cash_cents, currencyCode)} matches the Cash line on the Balance Sheet.`);
 
   return (
     <div className="space-y-2">

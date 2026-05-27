@@ -8,7 +8,11 @@ export type NavIcon =
   | "utensils"
   | "wrench"
   | "rocket"
-  | "users";
+  | "users"
+  | "megaphone"
+  | "file-text"
+  | "truck"
+  | "clipboard-list";
 
 export interface WorkspaceManifestItem {
   moduleNumber: number;
@@ -37,6 +41,11 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 5, label: "Build Out & Equipment",  href: "/workspace/buildout-equipment", icon: "wrench",     totalSections: null },
   { moduleNumber: 6, label: "Launch Plan",            href: "/workspace/launch-plan",        icon: "rocket",     totalSections: null },
   { moduleNumber: 7, label: "Hiring & Onboarding",    href: "/workspace/hiring",             icon: "users",      totalSections: 4 },
+  { moduleNumber: 8, label: "Business Plan",           href: "/workspace/business-plan",      icon: "file-text",  totalSections: null },
+  { moduleNumber: 9, label: "Marketing",               href: "/workspace/marketing",          icon: "megaphone",  totalSections: null },
+  { moduleNumber: 10, label: "Suppliers & Vendors",     href: "/workspace/suppliers",          icon: "truck",      totalSections: null },
+  { moduleNumber: 11, label: "Operations Playbook",    href: "/workspace/operations-playbook", icon: "clipboard-list", totalSections: 6 },
+  { moduleNumber: 12, label: "Marketing & Pre-Launch", href: "/workspace/marketing-pre-launch", icon: "megaphone", totalSections: 5 },
 ];
 
 export function buildNavItems(

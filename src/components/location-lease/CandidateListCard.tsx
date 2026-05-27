@@ -1,9 +1,11 @@
-// TIM-777 / TIM-620-C / TIM-1030: Candidate list with inline editors, status pills, inline rubric, and CoPilot drawer.
+// TIM-1115: Suite landing — list of unified per-location cards with "All / Shortlist"
+// tab filter and a dedicated AI trade-off entry point when 2+ shortlisted.
+// Per-location info (intake, scorecard, lease terms, AI feedback) lives inside LocationCard.
 'use client'
 
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Archive, ExternalLink, ChevronDown, ChevronUp, Columns2, ClipboardList } from 'lucide-react'
+import { Plus, Star, Sparkles, MessageCircle } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -12,39 +14,9 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
-import { CompareModal } from './CompareModal'
-import { ScorecardModal } from './ScorecardModal'
-
-// ── Rubric constants (mirrors RubricGridCard factor set) ──────────────────
-
-type RubricFactorKey =
-  | 'foot_traffic'
-  | 'parking_transit'
-  | 'visibility'
-  | 'neighborhood_fit'
-  | 'buildout_cost_estimate'
-  | 'lease_terms'
-
-const RUBRIC_FACTORS: { key: RubricFactorKey; label: string }[] = [
-  { key: 'foot_traffic', label: 'Foot Traffic' },
-  { key: 'parking_transit', label: 'Parking / Transit' },
-  { key: 'visibility', label: 'Visibility' },
-  { key: 'neighborhood_fit', label: 'Neighborhood Fit' },
-  { key: 'buildout_cost_estimate', label: 'Buildout Cost' },
-  { key: 'lease_terms', label: 'Lease Terms' },
-]
-
-type RubricScoreMap = Partial<Record<RubricFactorKey, number | null>>
-
-function computeRubricAvg(scores: RubricScoreMap): string {
-  let sum = 0; let count = 0
-  for (const f of RUBRIC_FACTORS) {
-    const s = scores[f.key]
-    if (s != null) { sum += s; count++ }
-  }
-  return count === 0 ? '—' : `${(sum / count).toFixed(1)} / 5`
-}
+import { LocationCard } from './LocationCard'
+import { TradeoffPanel } from './TradeoffPanel'
+import { CoPilotDrawer } from './CoPilotDrawer'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -70,740 +42,7 @@ export type Candidate = {
   position: number
 }
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string }
-
-// ── Status config ──────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<CandidateStatus, { label: string; className: string }> = {
-  shortlisted: {
-    label: 'Shortlisted',
-    className: 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400',
-  },
-  viewing_scheduled: {
-    label: 'Viewing',
-    className: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400',
-  },
-  lease_review: {
-    label: 'Lease Review',
-    className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400',
-  },
-  passed: {
-    label: 'Passed',
-    className: 'bg-rose-100 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400',
-  },
-  signed: {
-    label: 'Signed',
-    className: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400',
-  },
-}
-
-const STATUS_ORDER: CandidateStatus[] = [
-  'shortlisted',
-  'viewing_scheduled',
-  'lease_review',
-  'passed',
-  'signed',
-]
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function centsToDisplay(cents: number | null): string {
-  if (cents == null) return ''
-  return (cents / 100).toFixed(2)
-}
-
-function displayToCents(s: string): number | null {
-  const cleaned = s.replace(/[^0-9.]/g, '')
-  if (!cleaned) return null
-  const n = parseFloat(cleaned)
-  return isNaN(n) ? null : Math.round(n * 100)
-}
-
-// ── InlineInput ────────────────────────────────────────────────────────────
-
-function InlineInput({
-  value,
-  placeholder,
-  type = 'text',
-  prefix,
-  suffix,
-  multiline,
-  onCommit,
-}: {
-  value: string
-  placeholder?: string
-  type?: string
-  prefix?: string
-  suffix?: string
-  multiline?: boolean
-  onCommit: (v: string) => void
-}) {
-  const [local, setLocal] = useState(value)
-  const prevRef = useRef(value)
-
-  useEffect(() => {
-    setLocal(value)
-    prevRef.current = value
-  }, [value])
-
-  function handleBlur() {
-    if (local !== prevRef.current) {
-      onCommit(local)
-      prevRef.current = local
-    }
-  }
-
-  const cls =
-    'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[#888]/50 focus-visible:ring-0'
-
-  const wrapCls =
-    'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[#efefef] focus-within:border-[#155e63] focus-within:ring-2 focus-within:ring-[#155e63]/30'
-
-  if (multiline) {
-    return (
-      <div className={wrapCls}>
-        <textarea
-          value={local}
-          onChange={e => setLocal(e.target.value)}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          rows={2}
-          className={cn(cls, 'resize-y')}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className={wrapCls}>
-      {prefix && <span className="shrink-0 text-sm text-[#888]">{prefix}</span>}
-      <input
-        type={type}
-        value={local}
-        onChange={e => setLocal(e.target.value)}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        className={cls}
-      />
-      {suffix && <span className="shrink-0 text-sm text-[#888]">{suffix}</span>}
-    </div>
-  )
-}
-
-// ── StatusPillSelector ─────────────────────────────────────────────────────
-
-function StatusPillSelector({
-  status,
-  onChange,
-}: {
-  status: CandidateStatus
-  onChange: (s: CandidateStatus) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
-
-  const cfg = STATUS_CONFIG[status]
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(p => !p)}
-        className={cn(
-          'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-opacity hover:opacity-80',
-          cfg.className
-        )}
-      >
-        {cfg.label}
-        <ChevronDown className="size-3 opacity-60" />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 rounded-xl border bg-white shadow-lg py-1 min-w-[150px]">
-          {STATUS_ORDER.map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => { onChange(s); setOpen(false) }}
-              className={cn(
-                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#f7f6f3] transition-colors',
-                s === status && 'font-semibold'
-              )}
-            >
-              <span className={cn('rounded-full border px-2 py-0.5', STATUS_CONFIG[s].className)}>
-                {STATUS_CONFIG[s].label}
-              </span>
-              {s === status && <span className="ml-auto text-[10px] text-[#888]">current</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── FieldLabel ─────────────────────────────────────────────────────────────
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">{children}</span>
-}
-
-// ── CandidateInlineRubric ─────────────────────────────────────────────────
-
-function CandidateInlineRubric({ candidateId }: { candidateId: string }) {
-  const [scores, setScores] = useState<RubricScoreMap>({})
-  const [loaded, setLoaded] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('location_rubric_scores')
-      .select('factor_key, score_1_5')
-      .eq('candidate_id', candidateId)
-      .then(({ data }) => {
-        if (data) {
-          const map: RubricScoreMap = {}
-          for (const row of data) {
-            map[row.factor_key as RubricFactorKey] = row.score_1_5
-          }
-          setScores(map)
-        }
-        setLoaded(true)
-      })
-  }, [candidateId])
-
-  function handleScore(factorKey: RubricFactorKey, clicked: number) {
-    setScores(prev => {
-      const next = { ...prev, [factorKey]: prev[factorKey] === clicked ? null : clicked }
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => {
-        const payload = RUBRIC_FACTORS.map(f => ({
-          factor_key: f.key,
-          score_1_5: next[f.key] ?? null,
-          notes: null,
-        }))
-        fetch(`/api/workspaces/location-lease/candidates/${candidateId}/scores`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scores: payload }),
-        })
-      }, 800)
-      return next
-    })
-  }
-
-  if (!loaded) return <p className="text-xs text-[#888]">Loading scorecard…</p>
-
-  return (
-    <div className="flex flex-col gap-2">
-      {RUBRIC_FACTORS.map(factor => (
-        <div key={factor.key} className="flex items-center gap-3">
-          <span className="w-32 shrink-0 text-xs text-[#888]">{factor.label}</span>
-          <div className="flex gap-1" role="group" aria-label={`${factor.label} score`}>
-            {([1, 2, 3, 4, 5] as const).map(n => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => handleScore(factor.key, n)}
-                aria-pressed={scores[factor.key] === n}
-                aria-label={String(n)}
-                className={cn(
-                  'size-6 rounded text-[11px] font-semibold transition-colors border',
-                  scores[factor.key] === n
-                    ? 'bg-[#155e63] text-white border-[#155e63]'
-                    : 'bg-white text-[#888] border-[#efefef] hover:border-[#155e63]/60 hover:text-[#155e63]'
-                )}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-      <p className="text-[11px] text-[#888] pt-1">
-        Average: <span className="font-semibold text-[#155e63]">{computeRubricAvg(scores)}</span>
-      </p>
-    </div>
-  )
-}
-
-// ── CandidateRow ──────────────────────────────────────────────────────────
-
-function CandidateRow({
-  candidate,
-  saving,
-  onPatch,
-  onArchive,
-  onScore,
-}: {
-  candidate: Candidate
-  saving: boolean
-  onPatch: (id: string, patch: Partial<Omit<Candidate, 'id' | 'position'>>) => void
-  onArchive: (id: string) => void
-  onScore: (id: string) => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-
-  function commitText(field: keyof Candidate, raw: string) {
-    const v = raw.trim() || null
-    onPatch(candidate.id, { [field]: v } as Partial<Candidate>)
-  }
-
-  function commitCents(field: 'asking_rent_cents' | 'cam_cents', raw: string) {
-    onPatch(candidate.id, { [field]: displayToCents(raw) })
-  }
-
-  function commitSqFt(raw: string) {
-    const n = parseInt(raw, 10)
-    onPatch(candidate.id, { sq_ft: isNaN(n) ? null : n })
-  }
-
-  return (
-    <div className="rounded-xl border border-[#efefef] bg-white">
-      {/* ── Summary row (always visible) ── */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Name — inline editable */}
-        <div className="flex-1 min-w-0">
-          <InlineInput
-            value={candidate.name}
-            placeholder="Location name"
-            onCommit={v => onPatch(candidate.id, { name: v || 'Untitled' })}
-          />
-        </div>
-
-        <StatusPillSelector
-          status={candidate.status}
-          onChange={s => onPatch(candidate.id, { status: s })}
-        />
-
-        {saving && (
-          <span className="shrink-0 text-[10px] italic text-[#888]">saving…</span>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setExpanded(p => !p)}
-          aria-label={expanded ? 'Collapse details' : 'Expand details'}
-          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[#f7f6f3] hover:text-[#1a1a1a]"
-        >
-          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onScore(candidate.id)}
-          aria-label="Score this location"
-          title="Score this location"
-          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[#155e63]/10 hover:text-[#155e63]"
-        >
-          <ClipboardList className="size-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onArchive(candidate.id)}
-          aria-label="Archive candidate"
-          title="Archive this location"
-          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-red-600/10 hover:text-red-600"
-        >
-          <Archive className="size-4" />
-        </button>
-      </div>
-
-      {/* ── Expanded details ── */}
-      {expanded && (
-        <div className="border-t border-[#efefef] px-4 py-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Address */}
-          <div className="sm:col-span-2 flex flex-col gap-1">
-            <FieldLabel>Address</FieldLabel>
-            <InlineInput
-              value={candidate.address ?? ''}
-              placeholder="Street address"
-              onCommit={v => commitText('address', v)}
-            />
-          </div>
-
-          {/* Neighborhood */}
-          <div className="flex flex-col gap-1">
-            <FieldLabel>Neighborhood</FieldLabel>
-            <InlineInput
-              value={candidate.neighborhood ?? ''}
-              placeholder="e.g. Downtown, Mission District"
-              onCommit={v => commitText('neighborhood', v)}
-            />
-          </div>
-
-          {/* Sq Ft */}
-          <div className="flex flex-col gap-1">
-            <FieldLabel>Sq Ft</FieldLabel>
-            <InlineInput
-              value={candidate.sq_ft != null ? String(candidate.sq_ft) : ''}
-              placeholder="1200"
-              type="number"
-              suffix="sq ft"
-              onCommit={commitSqFt}
-            />
-          </div>
-
-          {/* Asking Rent */}
-          <div className="flex flex-col gap-1">
-            <FieldLabel>Asking Rent / Mo</FieldLabel>
-            <InlineInput
-              value={centsToDisplay(candidate.asking_rent_cents)}
-              placeholder="0.00"
-              prefix="$"
-              onCommit={v => commitCents('asking_rent_cents', v)}
-            />
-          </div>
-
-          {/* CAM */}
-          <div className="flex flex-col gap-1">
-            <FieldLabel>CAM / Mo</FieldLabel>
-            <InlineInput
-              value={centsToDisplay(candidate.cam_cents)}
-              placeholder="0.00"
-              prefix="$"
-              onCommit={v => commitCents('cam_cents', v)}
-            />
-          </div>
-
-          {/* Listing URL */}
-          <div className="flex flex-col gap-1">
-            <FieldLabel>Listing URL</FieldLabel>
-            <div className="flex items-center gap-1">
-              <div className="flex-1 min-w-0">
-                <InlineInput
-                  value={candidate.listing_url ?? ''}
-                  placeholder="https://…"
-                  onCommit={v => commitText('listing_url', v)}
-                />
-              </div>
-              {candidate.listing_url && (
-                <a
-                  href={candidate.listing_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 p-1 text-[#888] hover:text-[#1a1a1a] transition-colors"
-                  aria-label="Open listing"
-                >
-                  <ExternalLink className="size-3.5" />
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* Broker contact */}
-          <div className="flex flex-col gap-1">
-            <FieldLabel>Broker Contact</FieldLabel>
-            <InlineInput
-              value={candidate.broker_contact ?? ''}
-              placeholder="Name, phone or email"
-              onCommit={v => commitText('broker_contact', v)}
-            />
-          </div>
-
-          {/* Notes — full width */}
-          <div className="sm:col-span-2 flex flex-col gap-1">
-            <FieldLabel>Notes</FieldLabel>
-            <InlineInput
-              value={candidate.notes ?? ''}
-              placeholder="Pro/cons, impressions, follow-up items…"
-              multiline
-              onCommit={v => commitText('notes', v)}
-            />
-          </div>
-
-          {/* Scorecard — inline 6-factor rubric */}
-          <div className="sm:col-span-2 flex flex-col gap-2 pt-1 border-t border-[#efefef]">
-            <div className="flex items-center justify-between">
-              <FieldLabel>Scorecard</FieldLabel>
-              <button
-                type="button"
-                onClick={() => onScore(candidate.id)}
-                className="inline-flex items-center gap-1 text-[10px] text-[#155e63] hover:underline"
-              >
-                <ClipboardList className="size-3" />
-                Full scorecard
-              </button>
-            </div>
-            <CandidateInlineRubric candidateId={candidate.id} />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── CoPilotDrawer ──────────────────────────────────────────────────────────
-
-function CoPilotDrawer({
-  open,
-  onClose,
-  planId,
-  aiCreditsRemaining,
-  subscriptionTier,
-}: {
-  open: boolean
-  onClose: () => void
-  planId: string
-  aiCreditsRemaining: number
-  subscriptionTier: string
-}) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [streamText, setStreamText] = useState('')
-  const [error, setError] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const abortRef = useRef<AbortController | null>(null)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamText, open])
-
-  const canUse = subscriptionTier !== 'free' && aiCreditsRemaining > 0
-
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || loading || !canUse) return
-
-    const userMsg: ChatMessage = { role: 'user', content: input.trim() }
-    const nextMessages = [...messages, userMsg]
-    setMessages(nextMessages)
-    setInput('')
-    setLoading(true)
-    setError('')
-    setStreamText('')
-
-    abortRef.current = new AbortController()
-
-    try {
-      const res = await fetch('/api/copilot/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId,
-          workspaceKey: 'location_lease',
-          messages: nextMessages,
-        }),
-        signal: abortRef.current.signal,
-      })
-
-      if (!res.ok || !res.body) {
-        const text = await res.text().catch(() => '')
-        try {
-          const parsed = JSON.parse(text)
-          setError(parsed.message ?? 'Something went wrong. Please try again.')
-        } catch {
-          setError('Connection error. Please try again.')
-        }
-        setLoading(false)
-        return
-      }
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let accumulated = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) continue
-          if (!line.startsWith('data: ')) continue
-          const raw = line.slice(6).trim()
-          if (!raw) continue
-          try {
-            const payload = JSON.parse(raw) as Record<string, unknown>
-            if ('delta' in payload && typeof payload.delta === 'string') {
-              accumulated += payload.delta
-              setStreamText(accumulated)
-            } else if (payload.code === 'error' || payload.code === 'quota' || payload.code === 'paywall') {
-              setError((payload.message as string) ?? 'Co-pilot error. Please try again.')
-            } else if ('threadId' in payload) {
-              // done event — finalise
-              setMessages(prev => [...prev, { role: 'assistant', content: accumulated }])
-              setStreamText('')
-            }
-          } catch {
-            // ignore malformed SSE data
-          }
-        }
-      }
-
-      if (accumulated && !messages.some(m => m.content === accumulated)) {
-        setMessages(prev => {
-          const last = prev[prev.length - 1]
-          if (last?.role === 'assistant' && last.content === accumulated) return prev
-          return [...prev, { role: 'assistant', content: accumulated }]
-        })
-        setStreamText('')
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name !== 'AbortError') {
-        setError('Connection error. Please try again.')
-      }
-    } finally {
-      setLoading(false)
-      abortRef.current = null
-    }
-  }, [input, loading, canUse, messages, planId])
-
-  if (!open) return null
-
-  return (
-    <>
-      {/* Mobile backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40 lg:hidden"
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 bg-white shadow-2xl flex flex-col border-l border-[#efefef]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Co-Pilot</p>
-            <p className="text-xs text-[#888]">Location &amp; Lease workspace</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {subscriptionTier === 'pro' ? (
-              <span className="text-xs text-emerald-600 font-medium">500 credits/mo</span>
-            ) : (
-              <span className={cn('text-xs font-medium', aiCreditsRemaining <= 10 && aiCreditsRemaining > 0 ? 'text-amber-500' : 'text-[#888]')}>
-                {aiCreditsRemaining} credits
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-lg bg-[#f7f6f3] hover:bg-[#f7f6f3]/80 transition-colors"
-              aria-label="Close co-pilot"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {messages.length === 0 && !loading && (
-            <div className="text-center py-8">
-              <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#155e63]/10">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 8h1a4 4 0 1 1 0 8h-1" /><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
-                  <line x1="6" x2="6" y1="2" y2="4" /><line x1="10" x2="10" y1="2" y2="4" /><line x1="14" x2="14" y1="2" y2="4" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-foreground mb-1">Your co-pilot is ready</p>
-              <p className="text-xs text-[#888] leading-relaxed">Ask about any of your shortlisted locations, lease terms, or site selection strategy.</p>
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <div key={i} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-              <div className={cn(
-                'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                msg.role === 'user'
-                  ? 'bg-[#155e63] text-white rounded-br-sm'
-                  : 'bg-[#f7f6f3] text-foreground rounded-bl-sm'
-              )}>
-                {msg.content}
-              </div>
-            </div>
-          ))}
-
-          {/* Streaming partial */}
-          {loading && streamText && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3 text-sm leading-relaxed text-foreground">
-                {streamText}
-              </div>
-            </div>
-          )}
-
-          {loading && !streamText && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3">
-                <div className="flex gap-1">
-                  {[0, 150, 300].map(delay => (
-                    <div key={delay} className="size-2 rounded-full bg-[#888]/60 animate-bounce" style={{ animationDelay: `${delay}ms` }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <p className="text-center text-xs text-red-600 px-2">{error}</p>
-          )}
-
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input */}
-        <div className="border-t border-[#efefef] px-4 py-4">
-          {subscriptionTier === 'free' ? (
-            <p className="text-center text-xs text-[#888]">
-              AI co-pilot requires a paid plan.{' '}
-              <a href="/account" className="text-[#155e63] underline">Upgrade →</a>
-            </p>
-          ) : aiCreditsRemaining === 0 ? (
-            <p className="text-center text-xs text-[#888]">
-              You&apos;re out of credits for this month.{' '}
-              <a href="/account" className="text-[#155e63] underline">Upgrade for more messages →</a>
-            </p>
-          ) : (
-            <div className="flex gap-2">
-              <textarea
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                rows={2}
-                placeholder="Ask about your shortlisted locations…"
-                className="flex-1 resize-none rounded-xl border border-[#efefef] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/50 outline-none focus-visible:border-[#155e63] focus-visible:ring-2 focus-visible:ring-[#155e63]/30"
-              />
-              <button
-                type="button"
-                onClick={sendMessage}
-                disabled={!input.trim() || loading}
-                className="shrink-0 rounded-xl bg-[#155e63] px-3 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-                aria-label="Send message"
-              >
-                ↑
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  )
-}
-
-// ── CandidateListCard (main export) ───────────────────────────────────────
+// ── CandidateListCard ──────────────────────────────────────────────────────
 
 export interface CandidateListCardProps {
   initialCandidates: Candidate[]
@@ -811,6 +50,8 @@ export interface CandidateListCardProps {
   aiCreditsRemaining: number
   subscriptionTier: string
 }
+
+type ViewMode = 'all' | 'shortlist'
 
 export function CandidateListCard({
   initialCandidates,
@@ -822,8 +63,18 @@ export function CandidateListCard({
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [adding, setAdding] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [compareOpen, setCompareOpen] = useState(false)
-  const [scorecardCandidateId, setScorecardCandidateId] = useState<string | null>(null)
+  const [tradeoffOpen, setTradeoffOpen] = useState(false)
+  const [view, setView] = useState<ViewMode>('all')
+
+  const shortlisted = useMemo(
+    () => candidates.filter((c) => c.status === 'shortlisted'),
+    [candidates]
+  )
+
+  const visible = useMemo(() => {
+    const filtered = view === 'shortlist' ? shortlisted : candidates
+    return filtered.slice().sort((a, b) => a.position - b.position)
+  }, [view, candidates, shortlisted])
 
   // ── Add candidate ────────────────────────────────────────────────────────
 
@@ -836,11 +87,12 @@ export function CandidateListCard({
         body: JSON.stringify({
           name: 'New Location',
           position: candidates.length,
+          status: view === 'shortlist' ? 'shortlisted' : 'shortlisted',
         }),
       })
       if (!res.ok) return
       const newCandidate: Candidate = await res.json()
-      setCandidates(prev => [...prev, newCandidate])
+      setCandidates((prev) => [...prev, newCandidate])
     } finally {
       setAdding(false)
     }
@@ -849,86 +101,64 @@ export function CandidateListCard({
   // ── Archive candidate ────────────────────────────────────────────────────
 
   async function handleArchive(id: string) {
-    // Optimistic remove
     const prev = candidates
-    setCandidates(c => c.filter(x => x.id !== id))
+    setCandidates((c) => c.filter((x) => x.id !== id))
 
     const res = await fetch(`/api/workspaces/location-lease/candidates/${id}`, {
       method: 'DELETE',
     })
     if (!res.ok) {
-      // Revert
       setCandidates(prev)
     }
   }
 
   // ── Patch candidate ──────────────────────────────────────────────────────
 
-  const handlePatch = useCallback(async (
-    id: string,
-    patch: Partial<Omit<Candidate, 'id' | 'position'>>
-  ) => {
-    const snapshot = candidates
-    // Optimistic update
-    setCandidates(prev =>
-      prev.map(c => c.id === id ? { ...c, ...patch } : c)
-    )
+  const handlePatch = useCallback(
+    async (id: string, patch: Partial<Omit<Candidate, 'id' | 'position'>>) => {
+      const snapshot = candidates
+      setCandidates((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
 
-    setSaving(s => ({ ...s, [id]: true }))
+      setSaving((s) => ({ ...s, [id]: true }))
 
-    try {
-      const res = await fetch(`/api/workspaces/location-lease/candidates/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (!res.ok) {
-        setCandidates(snapshot)
+      try {
+        const res = await fetch(`/api/workspaces/location-lease/candidates/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        })
+        if (!res.ok) {
+          setCandidates(snapshot)
+        }
+      } finally {
+        setSaving((s) => ({ ...s, [id]: false }))
       }
-    } finally {
-      setSaving(s => ({ ...s, [id]: false }))
-    }
-  }, [candidates])
+    },
+    [candidates]
+  )
 
   // ── Render ───────────────────────────────────────────────────────────────
+
+  const tradeoffDisabled = shortlisted.length < 2
 
   return (
     <>
       <Card>
         <CardHeader className="border-b">
-          <CardTitle>Location Shortlist</CardTitle>
+          <CardTitle>Locations</CardTitle>
           <CardAction>
             <div className="flex items-center gap-2">
-              {candidates.length >= 2 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCompareOpen(true)}
-                  aria-label="Compare shortlist"
-                >
-                  <Columns2 className="size-3.5" />
-                  <span className="hidden sm:inline ml-1">Compare shortlist</span>
-                </Button>
-              )}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDrawerOpen(p => !p)}
+                onClick={() => setDrawerOpen((p) => !p)}
                 className={cn(drawerOpen && 'bg-[#155e63] text-white hover:bg-[#155e63]/90')}
                 aria-label="Toggle Co-Pilot"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M17 8h1a4 4 0 1 1 0 8h-1" /><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
-                  <line x1="6" x2="6" y1="2" y2="4" /><line x1="10" x2="10" y1="2" y2="4" /><line x1="14" x2="14" y1="2" y2="4" />
-                </svg>
+                <MessageCircle className="size-3.5" />
                 <span className="hidden sm:inline ml-1">Co-Pilot</span>
               </Button>
-              <Button
-                size="sm"
-                onClick={handleAdd}
-                disabled={adding}
-                aria-label="Add candidate"
-              >
+              <Button size="sm" onClick={handleAdd} disabled={adding} aria-label="Add candidate">
                 <Plus className="size-3.5" />
                 <span className="hidden sm:inline ml-1">Add location</span>
               </Button>
@@ -936,46 +166,113 @@ export function CandidateListCard({
           </CardAction>
         </CardHeader>
 
-        <CardContent className="pt-4">
-          {candidates.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-[#888] mb-3">No locations yet.</p>
-              <Button size="sm" onClick={handleAdd} disabled={adding}>
-                <Plus className="size-3.5 mr-1" />
-                Add your first location
+        <CardContent className="pt-4 flex flex-col gap-4">
+          {/* ── Tab / segmented control + tradeoff CTA ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div
+              role="tablist"
+              aria-label="Location filter"
+              className="inline-flex items-center rounded-lg border border-[#efefef] p-0.5 bg-[#f7f6f3]/50"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === 'all'}
+                onClick={() => setView('all')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                  view === 'all'
+                    ? 'bg-white shadow-sm text-foreground'
+                    : 'text-[#888] hover:text-foreground'
+                )}
+              >
+                All
+                <span className="text-[10px] text-[#888]">{candidates.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === 'shortlist'}
+                onClick={() => setView('shortlist')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                  view === 'shortlist'
+                    ? 'bg-white shadow-sm text-foreground'
+                    : 'text-[#888] hover:text-foreground'
+                )}
+              >
+                <Star className={cn('size-3', view === 'shortlist' && 'fill-amber-400 text-amber-500')} />
+                Shortlist
+                <span className="text-[10px] text-[#888]">{shortlisted.length}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTradeoffOpen(true)}
+                disabled={tradeoffDisabled}
+                title={
+                  tradeoffDisabled
+                    ? 'Shortlist 2 or more locations to compare'
+                    : 'Generate AI trade-off across shortlisted locations'
+                }
+              >
+                <Sparkles className="size-3.5" />
+                <span className="hidden sm:inline ml-1">Compare shortlist</span>
               </Button>
             </div>
+          </div>
+
+          {/* ── List ── */}
+          {visible.length === 0 ? (
+            view === 'shortlist' ? (
+              <div className="py-10 text-center">
+                <p className="text-sm text-[#888] mb-3">
+                  No shortlisted locations yet. Tap the star on a location to add it to your shortlist.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setView('all')}>
+                  See all locations
+                </Button>
+              </div>
+            ) : (
+              <div className="py-10 text-center">
+                <p className="text-sm text-[#888] mb-3">No locations yet.</p>
+                <Button size="sm" onClick={handleAdd} disabled={adding}>
+                  <Plus className="size-3.5 mr-1" />
+                  Add your first location
+                </Button>
+              </div>
+            )
           ) : (
             <div className="flex flex-col gap-3">
-              {candidates
-                .slice()
-                .sort((a, b) => a.position - b.position)
-                .map(candidate => (
-                  <CandidateRow
-                    key={candidate.id}
-                    candidate={candidate}
-                    saving={!!saving[candidate.id]}
-                    onPatch={handlePatch}
-                    onArchive={handleArchive}
-                    onScore={id => setScorecardCandidateId(id)}
-                  />
-                ))}
+              {visible.map((candidate) => (
+                <LocationCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  saving={!!saving[candidate.id]}
+                  subscriptionTier={subscriptionTier}
+                  aiCreditsRemaining={aiCreditsRemaining}
+                  onPatch={handlePatch}
+                  onArchive={handleArchive}
+                />
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Compare modal */}
-      <CompareModal
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-        candidates={candidates.filter(c => c.status !== 'passed')}
-        planId={planId}
-        aiCreditsRemaining={aiCreditsRemaining}
+      {/* AI Trade-Off panel */}
+      <TradeoffPanel
+        open={tradeoffOpen}
+        onClose={() => setTradeoffOpen(false)}
+        candidates={shortlisted}
         subscriptionTier={subscriptionTier}
+        aiCreditsRemaining={aiCreditsRemaining}
       />
 
-      {/* CoPilot drawer — mounted at card root, not inside candidate rows */}
+      {/* CoPilot drawer */}
       <CoPilotDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -983,19 +280,6 @@ export function CandidateListCard({
         aiCreditsRemaining={aiCreditsRemaining}
         subscriptionTier={subscriptionTier}
       />
-
-      {/* Scorecard modal */}
-      {scorecardCandidateId && (
-        <ScorecardModal
-          open={!!scorecardCandidateId}
-          onClose={() => setScorecardCandidateId(null)}
-          candidateId={scorecardCandidateId}
-          candidateName={candidates.find(c => c.id === scorecardCandidateId)?.name ?? 'Location'}
-          planId={planId}
-          aiCreditsRemaining={aiCreditsRemaining}
-          subscriptionTier={subscriptionTier}
-        />
-      )}
     </>
   )
 }

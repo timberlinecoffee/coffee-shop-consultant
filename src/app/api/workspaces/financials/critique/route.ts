@@ -1,5 +1,10 @@
-// TIM-964: AI critique endpoint for the Financial Suite.
+// TIM-964: AI assessment endpoint for the Financial Suite.
 // TIM-1004: Updated to include itemized opex and out-of-range category flagging.
+// TIM-1100: User-facing term is now "AI Assessment" (route path retained for compat).
+// TIM-1101: Multi-currency — request body may include currencyCode (ISO 4217);
+//   prompt + formatted figures use the selected currency.
+// TIM-1121: Pre-flagged "Ratios outside healthy benchmark" block ensures the
+//   consultant always ties Ratios-tab red flags into the broader advice.
 // POST /api/workspaces/financials/critique
 
 export const runtime = "nodejs";
@@ -10,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { FinancialProjections } from "@/lib/financial-projection";
 import { formatCurrency } from "@/lib/financial-projection";
+import { getCurrencyMeta, normalizeCurrencyCode } from "@/lib/currency";
 
 const anthropic = new Anthropic();
 
@@ -34,7 +40,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
   }
 
-  let body: { projections: FinancialProjections; concept_summary?: string };
+  let body: {
+    projections: FinancialProjections;
+    concept_summary?: string;
+    currencyCode?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -45,6 +55,10 @@ export async function POST(request: Request) {
   if (!projections) {
     return Response.json({ error: "Missing projections" }, { status: 400 });
   }
+
+  const currencyCode = normalizeCurrencyCode(body.currencyCode);
+  const currencyMeta = getCurrencyMeta(currencyCode);
+  const fc = (n: number) => formatCurrency(n, currencyCode);
 
   const { year1, year3, year5 } = projections;
 
@@ -63,35 +77,71 @@ export async function POST(request: Request) {
   const netPct1 = pct(year1.net_income, year1.revenue);
   const totalOpexPct1 = pct(year1.total_opex, year1.revenue);
 
-  const prompt = `You are a senior coffee shop consultant who has reviewed hundreds of independent coffee shop business plans. You have deep knowledge of industry benchmarks for small-format espresso bars and cafes in North American markets.
+  // TIM-1121: Pre-flagged ratio red flags. Keeps thresholds aligned with the
+  // Ratios tab so anything that shows red there is named here for the
+  // consultant to address.
+  type RatioFlag = { label: string; value: string; healthy: string; severity: "red" | "amber" };
+  const flagged: RatioFlag[] = [];
+  if (year1.revenue > 0) {
+    const gmVal = (year1.gross_profit / year1.revenue) * 100;
+    const laborVal = (year1.labor / year1.revenue) * 100;
+    const rentVal = (year1.rent / year1.revenue) * 100;
+    const primeCostVal = ((year1.cogs + year1.labor) / year1.revenue) * 100;
+    const netVal = (year1.net_income / year1.revenue) * 100;
 
-Review these Year 1 / Year 3 / Year 5 financial projections for a new coffee shop and provide a benchmarked critique.
+    if (primeCostVal > 70) flagged.push({ label: "Prime Cost", value: `${primeCostVal.toFixed(1)}%`, healthy: "55–65%", severity: "red" });
+    else if (primeCostVal > 65) flagged.push({ label: "Prime Cost", value: `${primeCostVal.toFixed(1)}%`, healthy: "55–65%", severity: "amber" });
+
+    if (gmVal < 55) flagged.push({ label: "Gross Margin", value: `${gmVal.toFixed(1)}%`, healthy: "60–70%", severity: "red" });
+    else if (gmVal < 60) flagged.push({ label: "Gross Margin", value: `${gmVal.toFixed(1)}%`, healthy: "60–70%", severity: "amber" });
+
+    if (laborVal > 40) flagged.push({ label: "Labor", value: `${laborVal.toFixed(1)}%`, healthy: "28–35%", severity: "red" });
+    else if (laborVal > 35) flagged.push({ label: "Labor", value: `${laborVal.toFixed(1)}%`, healthy: "28–35%", severity: "amber" });
+
+    if (rentVal > 15) flagged.push({ label: "Rent (Occupancy)", value: `${rentVal.toFixed(1)}%`, healthy: "≤10% ideal, 10–15% acceptable", severity: "red" });
+    else if (rentVal > 10) flagged.push({ label: "Rent (Occupancy)", value: `${rentVal.toFixed(1)}%`, healthy: "≤10% ideal, 10–15% acceptable", severity: "amber" });
+
+    if (netVal < 0) flagged.push({ label: "Net Margin", value: `${netVal.toFixed(1)}%`, healthy: "Year 1 ≥0%; mature 3–15%", severity: "red" });
+  }
+
+  const ratioFlagsBlock = flagged.length > 0
+    ? `## Ratios Outside Healthy Benchmark (Year 1) — must address in your bullets\n${flagged
+        .map((f) => `- ${f.severity === "red" ? "🔴" : "🟡"} ${f.label}: ${f.value} (healthy: ${f.healthy})`)
+        .join("\n")}\n`
+    : `## Ratios — all within healthy benchmarks for Year 1.\n`;
+
+  const prompt = `You are a senior coffee shop consultant who has reviewed hundreds of independent coffee shop business plans. You have deep knowledge of industry benchmarks for small-format espresso bars and cafes.
+
+The operator's currency is **${currencyMeta.code} (${currencyMeta.name})**. Any monetary value you cite in your bullets must use this currency — never substitute "$" or "USD" unless the operator's currency code is USD. Quote figures the same way they appear below (e.g. "${fc(50000)}", "${fc(1200000)}").
+
+Review these Year 1 / Year 3 / Year 5 financial projections for a new coffee shop and provide a benchmarked assessment.
 
 ## Year 1 Projections (Detailed)
-- Revenue: ${formatCurrency(year1.revenue)}
-- COGS: ${formatCurrency(year1.cogs)} → Gross Profit: ${formatCurrency(year1.gross_profit)} (${gm1} gross margin)
+- Revenue: ${fc(year1.revenue)}
+- COGS: ${fc(year1.cogs)} → Gross Profit: ${fc(year1.gross_profit)} (${gm1} gross margin)
 
 Operating Expenses:
-- Labor: ${formatCurrency(year1.labor)} (${laborPct1} of revenue)
-- Rent: ${formatCurrency(year1.rent)} (${rentPct1} of revenue)
-- Marketing: ${formatCurrency(year1.marketing)} (${marketingPct1} of revenue)
-- Utilities: ${formatCurrency(year1.utilities)} (${utilitiesPct1} of revenue)
-- Insurance: ${formatCurrency(year1.insurance)} (${insurancePct1} of revenue)
-- Tech & Software: ${formatCurrency(year1.tech)} (${techPct1} of revenue)
-- Maintenance + Supplies + Other: ${formatCurrency(year1.maintenance + year1.supplies + year1.other_misc)}
-- Total Operating Expenses: ${formatCurrency(year1.total_opex)} (${totalOpexPct1} of revenue)
+- Labor: ${fc(year1.labor)} (${laborPct1} of revenue)
+- Rent: ${fc(year1.rent)} (${rentPct1} of revenue)
+- Marketing: ${fc(year1.marketing)} (${marketingPct1} of revenue)
+- Utilities: ${fc(year1.utilities)} (${utilitiesPct1} of revenue)
+- Insurance: ${fc(year1.insurance)} (${insurancePct1} of revenue)
+- Tech & Software: ${fc(year1.tech)} (${techPct1} of revenue)
+- Maintenance + Supplies + Other: ${fc(year1.maintenance + year1.supplies + year1.other_misc)}
+- Total Operating Expenses: ${fc(year1.total_opex)} (${totalOpexPct1} of revenue)
 
-- Operating Income: ${formatCurrency(year1.operating_income)} (${opIncPct1} of revenue)
-- Net Income: ${formatCurrency(year1.net_income)} (${netPct1} of revenue)
+- Operating Income: ${fc(year1.operating_income)} (${opIncPct1} of revenue)
+- Net Income: ${fc(year1.net_income)} (${netPct1} of revenue)
 
 ## Year 3
-- Revenue: ${formatCurrency(year3.revenue)} | Operating Income: ${formatCurrency(year3.operating_income)} | Net Income: ${formatCurrency(year3.net_income)}
+- Revenue: ${fc(year3.revenue)} | Operating Income: ${fc(year3.operating_income)} | Net Income: ${fc(year3.net_income)}
 
 ## Year 5
-- Revenue: ${formatCurrency(year5.revenue)} | Operating Income: ${formatCurrency(year5.operating_income)} | Net Income: ${formatCurrency(year5.net_income)}
+- Revenue: ${fc(year5.revenue)} | Operating Income: ${fc(year5.operating_income)} | Net Income: ${fc(year5.net_income)}
 
-**Startup Equipment Total:** ${formatCurrency(projections.startup_equipment_total)}
+**Startup Equipment Total:** ${fc(projections.startup_equipment_total)}
 
+${ratioFlagsBlock}
 ${concept_summary ? `## Concept Context\n${concept_summary}` : ""}
 
 ## Industry Benchmarks (independent coffee shops, North America)
@@ -109,6 +159,8 @@ Return a JSON object with a "bullets" array containing 4–6 items. Each bullet 
 - text: a concise, specific observation (1–2 sentences). Reference the actual numbers and % from the projections above. For any category outside the typical range, call it out explicitly with the actual % and the benchmark range (e.g. "Labor at 45% of revenue is above the typical 28–32% range for a full-service café — consider reviewing staffing levels."). Do NOT be generic.
 
 Mix: typically 1–2 strengths, 2–3 weaknesses or suggestions. Be direct. Owners need honest feedback, not cheerleading.
+
+If any ratios were flagged 🔴 or 🟡 in the "Ratios Outside Healthy Benchmark" block above, at least one bullet MUST address the most severe red flag by name, quote its current value and the healthy range, and recommend a concrete next step (pricing, staffing, supplier change, lease renegotiation, etc.).
 
 Return ONLY the JSON object, no other text.`;
 
@@ -143,7 +195,7 @@ Return ONLY the JSON object, no other text.`;
       generated_at: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("financials critique error:", err);
+    console.error("financials assessment error:", err);
     return Response.json({ error: "AI generation failed" }, { status: 500 });
   }
 }

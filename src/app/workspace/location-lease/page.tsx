@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CandidateListCard } from "@/components/location-lease/CandidateListCard";
 import type { Candidate } from "@/components/location-lease/CandidateListCard";
-import { LeaseTermsCard } from "@/components/location-lease/LeaseTermsCard";
 import { MapPin } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +56,6 @@ export default async function LocationLeaseWorkspacePage() {
   return (
     <div className="bg-[#faf9f7]">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-12">
-        {/* Page header — matches Concept page design language */}
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <MapPin
@@ -72,8 +70,9 @@ export default async function LocationLeaseWorkspacePage() {
             </h1>
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
-            Score sites, model rent against your concept, and lock in lease
-            terms that match your financial plan.
+            Each card holds everything for one location — intake, scorecard,
+            lease terms, and AI feedback. Shortlist the top contenders and
+            run a trade-off when you&apos;re ready to compare.
           </p>
         </header>
 
@@ -83,9 +82,6 @@ export default async function LocationLeaseWorkspacePage() {
           aiCreditsRemaining={profile?.ai_credits_remaining ?? 0}
           subscriptionTier={profile?.subscription_tier ?? "free"}
         />
-        <div className="mt-4">
-          <LeaseTermsCard />
-        </div>
       </div>
     </div>
   );

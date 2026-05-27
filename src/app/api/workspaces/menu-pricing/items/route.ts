@@ -1,4 +1,7 @@
 // TIM-967: CRUD for menu_items.
+// TIM-1140: items now reference menu_categories.id; on create, the category's
+// default ingredients (cups/lids/etc.) are auto-copied as item ingredients so
+// disposables can be amortized across beverages.
 import { createClient } from "@/lib/supabase/server"
 import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
@@ -16,7 +19,7 @@ async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, use
   return data?.id ?? null
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -49,17 +52,26 @@ export async function POST(request: NextRequest) {
   if (typeof body.name !== "string") {
     return Response.json({ error: "Missing required field: name" }, { status: 400 })
   }
-  if (!body.category || typeof body.category !== "string") {
-    return Response.json({ error: "Missing required field: category" }, { status: 400 })
+  if (!body.category_id || typeof body.category_id !== "string") {
+    return Response.json({ error: "Missing required field: category_id" }, { status: 400 })
   }
 
+  // Guard: the category must belong to this plan.
+  const { data: catRow } = await supabase
+    .from("menu_categories")
+    .select("id")
+    .eq("id", body.category_id)
+    .eq("plan_id", planId)
+    .maybeSingle()
+  if (!catRow) return Response.json({ error: "category_id not found for plan" }, { status: 404 })
+
   // TIM-1002: drink/item name is label-shaped — enforce Title Case.
-  const { data, error } = await supabase
+  const { data: created, error } = await supabase
     .from("menu_items")
     .insert({
       plan_id: planId,
       name: toTitleCase(body.name),
-      category: body.category,
+      category_id: body.category_id,
       position: (body.position as number | undefined) ?? 0,
       price_cents: (body.price_cents as number | undefined) ?? 0,
       cogs_cents: (body.cogs_cents as number | undefined) ?? null,
@@ -72,8 +84,37 @@ export async function POST(request: NextRequest) {
     .select()
     .single()
 
-  if (error) return Response.json({ error: "Failed to create menu item" }, { status: 500 })
-  return Response.json(data, { status: 201 })
+  if (error || !created) return Response.json({ error: "Failed to create menu item" }, { status: 500 })
+
+  // TIM-1140: auto-populate category default ingredients onto the new item.
+  // Skip if the client explicitly opts out (e.g. duplicating an item).
+  const skipDefaults = body.skip_category_defaults === true
+  if (!skipDefaults) {
+    const { data: defaults } = await supabase
+      .from("category_default_ingredients")
+      .select("ingredient_id, amount, unit")
+      .eq("category_id", body.category_id)
+    if (defaults && defaults.length > 0) {
+      const rows = defaults.map((d) => ({
+        menu_item_id: created.id,
+        ingredient_id: d.ingredient_id,
+        amount: d.amount,
+        unit: d.unit,
+      }))
+      // Best-effort: a single failure (e.g. unique-violation if duplicate) is
+      // not a reason to fail item creation.
+      await supabase.from("menu_item_ingredients").insert(rows)
+    }
+  }
+
+  // Return the freshly computed COGS row.
+  const { data: withCogs } = await supabase
+    .from("menu_items_with_cogs")
+    .select("*")
+    .eq("id", created.id)
+    .maybeSingle()
+
+  return Response.json(withCogs ?? created, { status: 201 })
 }
 
 export async function PATCH(request: NextRequest) {
@@ -87,11 +128,37 @@ export async function PATCH(request: NextRequest) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
 
+  // Bulk reorder: { reorder: [{ id, position, category_id? }, ...] }
+  if (Array.isArray(body.reorder)) {
+    const rows = body.reorder as Array<{ id?: unknown; position?: unknown; category_id?: unknown }>
+    const updates = rows
+      .filter((r) => typeof r.id === "string" && typeof r.position === "number")
+      .map((r) => {
+        const patch: Record<string, unknown> = { position: r.position as number }
+        if (typeof r.category_id === "string") patch.category_id = r.category_id
+        return supabase
+          .from("menu_items")
+          .update(patch)
+          .eq("id", r.id as string)
+          .eq("plan_id", planId)
+      })
+    const results = await Promise.all(updates)
+    const firstError = results.find((r) => r.error)
+    if (firstError?.error) {
+      return Response.json({ error: "Failed to reorder items" }, { status: 500 })
+    }
+    return Response.json({ ok: true })
+  }
+
   const { id, ...rest } = body
   if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
 
   const allowed: Record<string, unknown> = {}
-  const fields = ["name", "category", "price_cents", "cogs_cents", "expected_mix_pct", "prep_time_seconds", "notes", "recipe", "archived", "position"]
+  const fields = [
+    "name", "category_id", "price_cents", "cogs_cents",
+    "expected_mix_pct", "prep_time_seconds", "notes", "recipe",
+    "archived", "position",
+  ]
   for (const f of fields) {
     if (f in rest) {
       const val = rest[f]

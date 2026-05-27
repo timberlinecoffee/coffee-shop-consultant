@@ -267,13 +267,17 @@ export function ConceptWorkspace({
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* Page header */}
         <header className="mb-8">
-          <h1 className="font-bold text-[#1a1a1a] mb-1" style={{ fontSize: "28px" }}>
-            {shopName ? (
-              shopName
-            ) : (
-              <span className="italic text-[#afafaf]">Your shop name</span>
-            )}
-          </h1>
+          {/* TIM-1099: icon matches the sidebar entry for this workspace. */}
+          <div className="flex items-center gap-2 mb-1">
+            <Lightbulb className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+              {shopName ? (
+                shopName
+              ) : (
+                <span className="italic text-[#afafaf]">Your shop name</span>
+              )}
+            </h1>
+          </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
             Shape the identity of your shop. Every other workspace builds on this.
           </p>

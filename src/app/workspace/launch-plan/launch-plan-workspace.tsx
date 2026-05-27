@@ -2,6 +2,8 @@
 
 // TIM-1040: Launch Plan workspace — backward scheduling, AI generation,
 // list + calendar views, regenerate-when-stale banner.
+// TIM-1057: UX cohesion fix (platform hex tokens, rounded-2xl cards, in-page header)
+//           + generate fix (AbortController timeout, consumeSseFrames, Toast on error).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -10,6 +12,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { consumeSseFrames } from "@/components/copilot/sse";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -43,10 +46,42 @@ function isStale(lastGeneratedAt: string | null, sourcesUpdatedAt: string | null
   return new Date(sourcesUpdatedAt) > new Date(lastGeneratedAt);
 }
 
+// ── Toast ────────────────────────────────────────────────────────────────────
+
+function Toast({
+  type,
+  message,
+  onDismiss,
+}: {
+  type: "success" | "error";
+  message: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium ${
+        type === "success" ? "bg-[#155e63] text-white" : "bg-red-600 text-white"
+      }`}
+    >
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="ml-1 opacity-70 hover:opacity-100 transition-opacity"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 // ── Status badge ─────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<MilestoneStatus, string> = {
-  not_started: "bg-slate-100 text-slate-600",
+  not_started: "bg-[#f5f5f5] text-[#6b6b6b]",
   in_progress: "bg-blue-100 text-blue-700",
   blocked: "bg-red-100 text-red-700",
   done: "bg-green-100 text-green-700",
@@ -91,31 +126,28 @@ function MilestoneRow({ milestone, canEdit, onStatusChange, onEdit, onDelete }: 
   const trackColor = TRACK_COLORS[milestone.track];
 
   return (
-    <div className={`border-b border-slate-100 last:border-0 transition-colors ${isDone ? "opacity-60" : ""}`}>
+    <div className={`border-b border-[#f5f5f5] last:border-0 transition-colors ${isDone ? "opacity-60" : ""}`}>
       <div className="flex items-center gap-2 px-4 py-3">
-        {/* Checkbox */}
         <button
           disabled={!canEdit}
           onClick={() => onStatusChange(milestone.id, isDone ? "not_started" : "done")}
           className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
             isDone
               ? "bg-green-500 border-green-500"
-              : "border-slate-300 hover:border-green-400"
+              : "border-[#d0d0d0] hover:border-green-400"
           } ${!canEdit ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
           title={isDone ? "Mark not started" : "Mark done"}
         >
           {isDone && <Check size={12} className="text-white" strokeWidth={3} />}
         </button>
 
-        {/* Track dot */}
         <span className={`flex-shrink-0 w-2 h-2 rounded-full ${trackColor.dot}`} />
 
-        {/* Title + description toggle */}
         <button
           className="flex-1 min-w-0 text-left"
           onClick={() => setExpanded((e) => !e)}
         >
-          <span className={`text-sm font-medium ${isDone ? "line-through text-slate-400" : "text-slate-800"}`}>
+          <span className={`text-sm font-medium ${isDone ? "line-through text-[#afafaf]" : "text-[#1a1a1a]"}`}>
             {milestone.title}
           </span>
           {milestone.critical_path && (
@@ -123,17 +155,16 @@ function MilestoneRow({ milestone, canEdit, onStatusChange, onEdit, onDelete }: 
           )}
         </button>
 
-        {/* Meta */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <DaysToGoPill targetDate={milestone.target_date} status={milestone.status} />
-          <span className="hidden sm:inline text-xs text-slate-500">{formatDate(milestone.target_date)}</span>
+          <span className="hidden sm:inline text-xs text-[#afafaf]">{formatDate(milestone.target_date)}</span>
           <span className={`hidden sm:inline text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[milestone.status]}`}>
             {STATUS_LABELS[milestone.status]}
           </span>
           {milestone.ai_notes && (
             <button
               onClick={() => setShowNotes((s) => !s)}
-              className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-0.5 text-[#afafaf] hover:text-[#6b6b6b] transition-colors"
               title="AI rationale"
             >
               <Info size={14} />
@@ -143,14 +174,14 @@ function MilestoneRow({ milestone, canEdit, onStatusChange, onEdit, onDelete }: 
             <>
               <button
                 onClick={() => onEdit(milestone)}
-                className="p-0.5 text-slate-400 hover:text-blue-500 transition-colors"
+                className="p-0.5 text-[#afafaf] hover:text-blue-500 transition-colors"
                 title="Edit"
               >
                 <Pencil size={13} />
               </button>
               <button
                 onClick={() => onDelete(milestone.id)}
-                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                className="p-0.5 text-[#afafaf] hover:text-red-500 transition-colors"
                 title="Delete"
               >
                 <Trash2 size={13} />
@@ -160,12 +191,10 @@ function MilestoneRow({ milestone, canEdit, onStatusChange, onEdit, onDelete }: 
         </div>
       </div>
 
-      {/* Expanded description */}
       {expanded && milestone.description && (
-        <div className="px-11 pb-3 text-sm text-slate-500">{milestone.description}</div>
+        <div className="px-11 pb-3 text-sm text-[#6b6b6b]">{milestone.description}</div>
       )}
 
-      {/* AI notes tooltip */}
       {showNotes && milestone.ai_notes && (
         <div className="mx-4 mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
           <strong className="font-medium">Why this date:</strong> {milestone.ai_notes}
@@ -208,7 +237,7 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
 
   if (milestones.length === 0) {
     return (
-      <div className="text-center py-16 text-slate-400">
+      <div className="text-center py-16 text-[#afafaf]">
         <Rocket size={40} className="mx-auto mb-3 opacity-30" />
         <p className="text-sm">Set your target launch date and we&apos;ll build a personalized milestone path.</p>
       </div>
@@ -218,16 +247,16 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
   return (
     <div className="space-y-4">
       {/* Progress */}
-      <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 flex items-center gap-4">
+      <div className="bg-white rounded-2xl border border-[#efefef] px-4 py-3 flex items-center gap-4">
         <div className="flex-1">
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#f5f5f5] rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500 rounded-full transition-all"
               style={{ width: `${milestones.length ? (doneCount / milestones.length) * 100 : 0}%` }}
             />
           </div>
         </div>
-        <span className="text-sm text-slate-500 whitespace-nowrap">
+        <span className="text-sm text-[#6b6b6b] whitespace-nowrap">
           {doneCount} of {milestones.length} complete
         </span>
       </div>
@@ -243,7 +272,7 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
         const doneInTrack = items.filter((m) => m.status === "done").length;
 
         return (
-          <div key={track} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div key={track} className="bg-white rounded-2xl border border-[#efefef] overflow-hidden">
             <button
               className={`w-full flex items-center gap-3 px-4 py-3 ${trackColor.bg} border-b ${trackColor.border} text-left`}
               onClick={() => toggleTrack(track)}
@@ -256,7 +285,7 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
               <span className={`text-sm font-semibold ${trackColor.text}`}>
                 {TRACK_LABELS[track]}
               </span>
-              <span className="text-xs text-slate-400 ml-auto">
+              <span className="text-xs text-[#afafaf] ml-auto">
                 {doneInTrack}/{items.length}
               </span>
             </button>
@@ -274,12 +303,12 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
                   />
                 ))}
                 {items.length === 0 && (
-                  <div className="px-4 py-3 text-sm text-slate-400">No milestones yet in this track.</div>
+                  <div className="px-4 py-3 text-sm text-[#afafaf]">No milestones yet in this track.</div>
                 )}
                 {canEdit && (
                   <button
                     onClick={() => onAddMilestone(track)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-slate-400 hover:text-slate-600 transition-colors w-full"
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-[#afafaf] hover:text-[#6b6b6b] transition-colors w-full"
                   >
                     <Plus size={14} />
                     Add milestone
@@ -314,33 +343,30 @@ function CalendarView({ milestones, targetLaunchDate, onMilestoneClick }: Calend
   return (
     <div className="space-y-8">
       {months.map((month) => (
-        <div key={`${month.year}-${month.month}`} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          {/* Month header */}
-          <div className="px-4 py-3 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-700">
+        <div key={`${month.year}-${month.month}`} className="bg-white rounded-2xl border border-[#efefef] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#f5f5f5]">
+            <h3 className="text-sm font-semibold text-[#1a1a1a]">
               {MONTH_NAMES[month.month]} {month.year}
             </h3>
           </div>
 
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-slate-100">
+          <div className="grid grid-cols-7 border-b border-[#f5f5f5]">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-              <div key={d} className="py-2 text-center text-xs font-medium text-slate-400">{d}</div>
+              <div key={d} className="py-2 text-center text-xs font-medium text-[#afafaf]">{d}</div>
             ))}
           </div>
 
-          {/* Weeks */}
           {month.weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 border-b border-slate-50 last:border-0">
+            <div key={wi} className="grid grid-cols-7 border-b border-[#f5f5f5] last:border-0">
               {week.map((day, di) => {
                 if (!day) {
-                  return <div key={di} className="min-h-[80px] bg-slate-50/50" />;
+                  return <div key={di} className="min-h-[80px] bg-[#faf9f7]" />;
                 }
                 return (
                   <div
                     key={day.date}
                     ref={day.isToday ? todayRef : undefined}
-                    className={`min-h-[80px] p-1.5 border-l border-slate-50 first:border-l-0 ${
+                    className={`min-h-[80px] p-1.5 border-l border-[#f5f5f5] first:border-l-0 ${
                       day.isLaunchDay ? "bg-green-50 ring-2 ring-inset ring-green-400" :
                       day.isToday ? "bg-blue-50" : ""
                     }`}
@@ -348,7 +374,7 @@ function CalendarView({ milestones, targetLaunchDate, onMilestoneClick }: Calend
                     <div className={`text-xs font-medium mb-1 w-5 h-5 rounded-full flex items-center justify-center ${
                       day.isToday ? "bg-blue-500 text-white" :
                       day.isLaunchDay ? "bg-green-500 text-white" :
-                      "text-slate-400"
+                      "text-[#afafaf]"
                     }`}>
                       {day.dayNum}
                     </div>
@@ -392,6 +418,9 @@ interface EditModalProps {
   isNew: boolean;
 }
 
+const inputCls = "w-full rounded-lg border border-[#e0e0e0] px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] transition-colors";
+const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
+
 function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
   const [title, setTitle] = useState(milestone.title ?? "");
   const [description, setDescription] = useState(milestone.description ?? "");
@@ -411,24 +440,24 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="text-base font-semibold text-slate-800">{isNew ? "Add Milestone" : "Edit Milestone"}</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
+          <h3 className="text-base font-semibold text-[#1a1a1a]">{isNew ? "Add Milestone" : "Edit Milestone"}</h3>
+          <button onClick={onClose} className="p-1 text-[#afafaf] hover:text-[#6b6b6b]"><X size={16} /></button>
         </div>
         <div className="px-5 py-4 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Title</label>
+            <label className={labelCls}>Title</label>
             <input
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className={inputCls}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Sign Lease for Primary Location"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+            <label className={labelCls}>Description</label>
             <textarea
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
+              className={`${inputCls} resize-none`}
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -437,9 +466,9 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Track</label>
+              <label className={labelCls}>Track</label>
               <select
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className={inputCls}
                 value={track}
                 onChange={(e) => setTrack(e.target.value as TrackKey)}
               >
@@ -449,9 +478,9 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
+              <label className={labelCls}>Status</label>
               <select
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className={inputCls}
                 value={status}
                 onChange={(e) => setStatus(e.target.value as MilestoneStatus)}
               >
@@ -464,18 +493,18 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Target Date</label>
+              <label className={labelCls}>Target Date</label>
               <input
                 type="date"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className={inputCls}
                 value={targetDate}
                 onChange={(e) => setTargetDate(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Owner</label>
+              <label className={labelCls}>Owner</label>
               <input
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className={inputCls}
                 value={owner}
                 onChange={(e) => setOwner(e.target.value)}
                 placeholder="founder"
@@ -484,15 +513,15 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-5 pb-4">
-          <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5">
+          <button onClick={onClose} className="text-sm text-[#6b6b6b] hover:text-[#1a1a1a] px-3 py-1.5">
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={!title.trim() || saving}
-            className="text-sm font-medium bg-teal-600 text-white rounded-lg px-4 py-1.5 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            className="text-sm font-medium bg-[#155e63] text-white rounded-lg px-4 py-1.5 hover:bg-[#0e4448] disabled:opacity-50 transition-colors"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
@@ -510,11 +539,18 @@ export function LaunchPlanWorkspace({
   const [sourcesUpdatedAt] = useState<string | null>(initialSourcesUpdatedAt);
   const [view, setView] = useState<"list" | "calendar">(initialConfig.viewPreference);
   const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
   const [launchDateInput, setLaunchDateInput] = useState(initialConfig.targetLaunchDate ?? "");
   const [editModal, setEditModal] = useState<{ milestone: Partial<Milestone> & { track: TrackKey }; isNew: boolean } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [stalesBannerDismissed, setStalesBannerDismissed] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(type: "success" | "error", msg: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ type, msg });
+    toastTimerRef.current = setTimeout(() => setToast(null), 5_000);
+  }
 
   const showStaleBanner =
     !stalesBannerDismissed &&
@@ -550,7 +586,10 @@ export function LaunchPlanWorkspace({
     if (!canEdit) { setPaywallOpen(true); return; }
     if (!launchDateInput) return;
     setGenerating(true);
-    setGenerateError(null);
+    setToast(null);
+
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 90_000);
 
     try {
       const res = await fetch("/api/launch-plan/generate", {
@@ -561,6 +600,7 @@ export function LaunchPlanWorkspace({
           targetLaunchDate: launchDateInput,
           existingMilestones: milestones.map((m) => ({ id: m.id, user_edited: m.user_edited })),
         }),
+        signal: abortController.signal,
       });
 
       if (!res.body) throw new Error("No response body");
@@ -572,30 +612,43 @@ export function LaunchPlanWorkspace({
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
+        const { events, rest } = consumeSseFrames(buf);
+        buf = rest;
 
-        for (const line of lines) {
-          if (line.startsWith("event: ")) continue;
-          if (line.startsWith("data: ")) {
-            try {
-              const payload = JSON.parse(line.slice(6));
-              if (payload.code === "paywall") { setPaywallOpen(true); setGenerating(false); return; }
-              if (payload.code === "error" || payload.code === "db_error" || payload.code === "parse_error") {
-                setGenerateError(payload.message ?? "Generation failed. Try again.");
-              }
-              if (payload.milestones) {
-                setMilestones(payload.milestones as Milestone[]);
-                setConfig((c) => ({ ...c, lastGeneratedAt: payload.lastGeneratedAt ?? c.lastGeneratedAt }));
-                setStalesBannerDismissed(false);
-              }
-            } catch { /* non-JSON lines */ }
-          }
+        for (const { data } of events) {
+          try {
+            const payload = JSON.parse(data);
+            if (payload.code === "paywall") {
+              setPaywallOpen(true);
+              return;
+            }
+            if (
+              payload.code === "error" ||
+              payload.code === "db_error" ||
+              payload.code === "parse_error" ||
+              payload.code === "timeout" ||
+              payload.code === "upstream_error"
+            ) {
+              showToast("error", payload.message ?? "Couldn't generate plan — try again or contact support.");
+            }
+            if (payload.milestones) {
+              setMilestones(payload.milestones as Milestone[]);
+              setConfig((c) => ({ ...c, lastGeneratedAt: payload.lastGeneratedAt ?? c.lastGeneratedAt }));
+              setStalesBannerDismissed(false);
+            }
+          } catch { /* non-JSON lines */ }
         }
       }
     } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : "Generation failed. Try again.");
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      showToast(
+        "error",
+        isAbort
+          ? "Generation timed out — try again or contact support."
+          : "Couldn't generate plan — try again or contact support."
+      );
     } finally {
+      clearTimeout(timeoutId);
       setGenerating(false);
     }
   }
@@ -662,165 +715,163 @@ export function LaunchPlanWorkspace({
     : [];
 
   return (
-    <div className="min-h-screen bg-[#f7f8f6]">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-              <Rocket size={16} className="text-teal-700" />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold text-slate-800">Launch Plan</h1>
-              <p className="text-xs text-slate-400">Backward-planned milestones from your target opening day</p>
-            </div>
-          </div>
+    <div className="bg-[#faf9f7] min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
-          {/* View toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-              <button
-                onClick={() => handleViewToggle("list")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  view === "list" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <List size={14} />
-                List
-              </button>
-              <button
-                onClick={() => handleViewToggle("calendar")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  view === "calendar" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Calendar size={14} />
-                Calendar
-              </button>
-            </div>
+        {/* Header */}
+        <header className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Rocket className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>Launch Plan</h1>
           </div>
-        </div>
-      </div>
+          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+            Backward-planned milestones from your target opening day.
+          </p>
+        </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {/* First-visit copy (no milestones, no launch date) */}
-        {milestones.length === 0 && !config.lastGeneratedAt && (
-          <div className="rounded-xl bg-white border border-slate-200 px-5 py-4 text-sm text-slate-500">
-            Complete your Concept, Location, and Equipment sections first. Your launch plan will be much more accurate.
-          </div>
-        )}
-
-        {/* Stale banner */}
-        {showStaleBanner && (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
-            <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-amber-800">
-                Your concept, location, or equipment has changed since this plan was generated. Regenerate to update milestones.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={handleGenerate}
-                disabled={generating || !launchDateInput}
-                className="text-xs font-medium text-amber-700 hover:text-amber-900 underline disabled:opacity-50"
-              >
-                Regenerate
-              </button>
-              <button onClick={() => setStalesBannerDismissed(true)} className="text-amber-500 hover:text-amber-700">
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Lead-time conflict warnings */}
-        {conflicts.length > 0 && (
-          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 space-y-1">
-            <p className="text-sm font-semibold text-red-700">Lead-time conflicts detected:</p>
-            {conflicts.map((c) => (
-              <p key={c.milestoneId} className="text-xs text-red-600">
-                <strong>{c.title}</strong> needs {c.requiredDays} days but only {c.availableDays} days available. Adjust the timeline or your launch date.
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Target date + generate */}
-        <div className="bg-white rounded-xl border border-slate-200 px-4 sm:px-5 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Target Launch Date
-              </label>
-              <input
-                type="date"
-                value={launchDateInput}
-                onChange={(e) => handleLaunchDateChange(e.target.value)}
-                disabled={!canEdit}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 disabled:opacity-50"
-              />
-              {launchDateInput && (
-                <p className="mt-1 text-xs text-slate-400">
-                  {daysToGo(launchDateInput) > 0
-                    ? `${daysToGo(launchDateInput)} days until launch`
-                    : daysToGo(launchDateInput) === 0
-                    ? "Today is launch day"
-                    : `${Math.abs(daysToGo(launchDateInput))} days past launch`}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <button
-                onClick={handleGenerate}
-                disabled={generating || !launchDateInput || !canEdit}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
-              >
-                <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-                {generating
-                  ? "Generating…"
-                  : milestones.length > 0
-                  ? "Regenerate Plan"
-                  : "Generate Plan"}
-              </button>
-              {!canEdit && (
-                <p className="text-xs text-slate-400 text-center">Upgrade to generate</p>
-              )}
-              {milestones.length > 0 && config.lastGeneratedAt && (
-                <p className="text-xs text-slate-400 text-center">
-                  Generated {formatDate(config.lastGeneratedAt)}
-                </p>
-              )}
-            </div>
-          </div>
-          {generateError && (
-            <p className="mt-2 text-xs text-red-600">{generateError}</p>
-          )}
-          {milestones.length > 0 && !generating && config.lastGeneratedAt && (
-            <p className="mt-2 text-xs text-slate-400">
-              After completing other sections, regenerate for a more accurate plan.
-            </p>
-          )}
+        {/* View toggle */}
+        <div className="flex items-center gap-0 mb-6 border-b border-[#efefef]">
+          <button
+            onClick={() => handleViewToggle("list")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              view === "list"
+                ? "border-[#155e63] text-[#155e63]"
+                : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"
+            }`}
+          >
+            <List size={14} />
+            List
+          </button>
+          <button
+            onClick={() => handleViewToggle("calendar")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              view === "calendar"
+                ? "border-[#155e63] text-[#155e63]"
+                : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"
+            }`}
+          >
+            <Calendar size={14} />
+            Calendar
+          </button>
         </div>
 
-        {/* Main view */}
-        {view === "list" ? (
-          <ListView
-            milestones={milestones}
-            canEdit={canEdit}
-            onStatusChange={handleStatusChange}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddMilestone={openNewMilestone}
-          />
-        ) : (
-          <CalendarView
-            milestones={milestones}
-            targetLaunchDate={launchDateInput || null}
-            onMilestoneClick={handleEdit}
-            onDateDrop={() => {}}
-          />
-        )}
+        <div className="space-y-4">
+          {/* First-visit copy */}
+          {milestones.length === 0 && !config.lastGeneratedAt && (
+            <div className="rounded-2xl bg-white border border-[#efefef] px-5 py-4 text-sm text-[#6b6b6b]">
+              Complete your Concept, Location, and Equipment sections first. Your launch plan will be much more accurate.
+            </div>
+          )}
+
+          {/* Stale banner */}
+          {showStaleBanner && (
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
+              <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-amber-800">
+                  Your concept, location, or equipment has changed since this plan was generated. Regenerate to update milestones.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating || !launchDateInput}
+                  className="text-xs font-medium text-amber-700 hover:text-amber-900 underline disabled:opacity-50"
+                >
+                  Regenerate
+                </button>
+                <button onClick={() => setStalesBannerDismissed(true)} className="text-amber-500 hover:text-amber-700">
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lead-time conflict warnings */}
+          {conflicts.length > 0 && (
+            <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 space-y-1">
+              <p className="text-sm font-semibold text-red-700">Lead-time conflicts detected:</p>
+              {conflicts.map((c) => (
+                <p key={c.milestoneId} className="text-xs text-red-600">
+                  <strong>{c.title}</strong> needs {c.requiredDays} days but only {c.availableDays} days available. Adjust the timeline or your launch date.
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Target date + generate */}
+          <div className="bg-white rounded-2xl border border-[#efefef] px-4 sm:px-5 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-[#6b6b6b] mb-1">
+                  Target Launch Date
+                </label>
+                <input
+                  type="date"
+                  value={launchDateInput}
+                  onChange={(e) => handleLaunchDateChange(e.target.value)}
+                  disabled={!canEdit}
+                  className="rounded-lg border border-[#e0e0e0] px-3 py-2 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:opacity-50 transition-colors"
+                />
+                {launchDateInput && (
+                  <p className="mt-1 text-xs text-[#afafaf]">
+                    {daysToGo(launchDateInput) > 0
+                      ? `${daysToGo(launchDateInput)} days until launch`
+                      : daysToGo(launchDateInput) === 0
+                      ? "Today is launch day"
+                      : `${Math.abs(daysToGo(launchDateInput))} days past launch`}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating || !launchDateInput || !canEdit}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#155e63] text-white text-sm font-medium hover:bg-[#0e4448] disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
+                  {generating
+                    ? "Generating..."
+                    : milestones.length > 0
+                    ? "Regenerate Plan"
+                    : "Generate Plan"}
+                </button>
+                {!canEdit && (
+                  <p className="text-xs text-[#afafaf] text-center">Upgrade to generate</p>
+                )}
+                {milestones.length > 0 && config.lastGeneratedAt && (
+                  <p className="text-xs text-[#afafaf] text-center">
+                    Generated {formatDate(config.lastGeneratedAt)}
+                  </p>
+                )}
+              </div>
+            </div>
+            {milestones.length > 0 && !generating && config.lastGeneratedAt && (
+              <p className="mt-2 text-xs text-[#afafaf]">
+                After completing other sections, regenerate for a more accurate plan.
+              </p>
+            )}
+          </div>
+
+          {/* Main view */}
+          {view === "list" ? (
+            <ListView
+              milestones={milestones}
+              canEdit={canEdit}
+              onStatusChange={handleStatusChange}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onAddMilestone={openNewMilestone}
+            />
+          ) : (
+            <CalendarView
+              milestones={milestones}
+              targetLaunchDate={launchDateInput || null}
+              onMilestoneClick={handleEdit}
+              onDateDrop={() => {}}
+            />
+          )}
+        </div>
       </div>
 
       {/* CoPilot */}
@@ -843,6 +894,15 @@ export function LaunchPlanWorkspace({
 
       {/* Paywall */}
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} />
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.msg}
+          onDismiss={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

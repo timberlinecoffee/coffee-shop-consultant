@@ -7,7 +7,15 @@ import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { normalizeConceptV2, getConceptV2Progress } from "@/lib/concept";
 import { computePlanReadiness } from "@/lib/workspace-manifest";
 import { capitalizeFirst } from "@/lib/format";
+import {
+  buildRecentActivity,
+  buildStaleNudges,
+  buildWorkspaceSnapshots,
+  pickNextStep,
+  pickWeakestWorkspace,
+} from "@/lib/dashboard-nudges";
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
+import { ProgressDashboard } from "./_components/progress-dashboard";
 
 export const dynamic = 'force-dynamic';
 
@@ -50,22 +58,38 @@ export default async function DashboardPage() {
   }
 
   // completedByModule: module number → count of filled sections.
-  // Concept (module 1) reads from workspace_documents; the old module_responses
-  // path is NOT used for workspace 1 — onboarding never wrote there.
+  // Concept (module 1) reads from workspace_documents; modules 2+ count rows
+  // in module_responses with status='completed'. The recent activity feed and
+  // stale nudges share the same workspace_documents fetch below.
   const completedByModule = new Map<number, number>();
+  const lastTouchedByKey = new Map<string, string>();
 
   if (plan?.id) {
-    const { data: conceptDoc } = await supabase
-      .from("workspace_documents")
-      .select("content")
-      .eq("plan_id", plan.id)
-      .eq("workspace_key", "concept")
-      .maybeSingle();
+    const [{ data: workspaceDocs }, { data: responses }] = await Promise.all([
+      supabase
+        .from("workspace_documents")
+        .select("workspace_key, content, updated_at")
+        .eq("plan_id", plan.id),
+      supabase
+        .from("module_responses")
+        .select("module_number")
+        .eq("plan_id", plan.id)
+        .eq("status", "completed"),
+    ]);
 
-    if (conceptDoc?.content) {
-      const conceptV2 = normalizeConceptV2(conceptDoc.content);
-      const progress = getConceptV2Progress(conceptV2);
-      completedByModule.set(1, progress.filled);
+    for (const doc of workspaceDocs ?? []) {
+      if (doc.updated_at && typeof doc.workspace_key === "string") {
+        lastTouchedByKey.set(doc.workspace_key, doc.updated_at);
+      }
+      if (doc.workspace_key === "concept" && doc.content) {
+        const progress = getConceptV2Progress(normalizeConceptV2(doc.content));
+        completedByModule.set(1, progress.filled);
+      }
+    }
+
+    for (const row of responses ?? []) {
+      const n = row.module_number;
+      completedByModule.set(n, (completedByModule.get(n) ?? 0) + 1);
     }
   }
 
@@ -90,6 +114,17 @@ export default async function DashboardPage() {
 
   // All downstream modules unlock simultaneously when concept is complete
   const allUnlocked = w1Completed;
+
+  // TIM-1063: Progress dashboard data — next-step nudge, completion strip,
+  // stale nudges, recent activity, weakest workspace for "Improve with AI".
+  // Skipping the per-owner "good enough for now" opt-out for now — surface it
+  // here once owners can mark workspaces complete from the UI.
+  const workspaceSnapshots = buildWorkspaceSnapshots(completedByModule, lastTouchedByKey);
+  const nextStep = pickNextStep(workspaceSnapshots);
+  const staleNudges = buildStaleNudges(workspaceSnapshots);
+  const recentActivity = buildRecentActivity(lastTouchedByKey);
+  const weakestWorkspace = pickWeakestWorkspace(workspaceSnapshots);
+  const nowIso = new Date().toISOString();
 
   const cookieStore = await cookies();
   const noteDismissed = cookieStore.get("concept_unlock_note_dismissed")?.value === "1";
@@ -221,6 +256,18 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* TIM-1063: Progress dashboard — next-step nudge, completion strip,
+           stale nudges, recent activity, quick actions. Sits above the
+           Coming Up list so the owner always sees a concrete next move. */}
+        <ProgressDashboard
+          nextStep={nextStep}
+          snapshots={workspaceSnapshots}
+          staleNudges={staleNudges}
+          recentActivity={recentActivity}
+          weakest={weakestWorkspace}
+          nowIso={nowIso}
+        />
+
         {/* COMING UP */}
         <div className="mb-10">
           <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming Up</p>
@@ -232,6 +279,8 @@ export default async function DashboardPage() {
               { num: 4, title: "Financials", href: "/workspace/financials", lockedNote: <span>Opens with Concept</span> },
               { num: 5, title: "Menu & Pricing", href: "/workspace/menu-pricing", lockedNote: <span>Opens with Concept</span> },
               { num: 6, title: "Launch Plan", href: "/workspace/launch-plan", lockedNote: <span>Opens with Concept</span> },
+              { num: 7, title: "Suppliers & Vendors", href: "/workspace/suppliers", lockedNote: <span>Opens with Concept</span> },
+              { num: 8, title: "Operations Playbook", href: "/workspace/operations-playbook", lockedNote: <span>Opens with Concept</span> },
             ].map(({ num, title, href, lockedNote }) => (
               <div key={num} className="p-5 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
@@ -308,6 +357,31 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        {/* TIM-1062: Export Business Plan — bundle every workspace into one printable doc */}
+        <Link
+          href="/workspace/business-plan/print"
+          target="_blank"
+          className="block bg-white rounded-xl border border-[#155e63]/30 p-4 mb-4 hover:border-[#155e63] transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#155e63]/10 text-[#155e63] flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <polyline points="9 15 12 12 15 15" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[#1a1a1a]">Export Business Plan</p>
+              <p className="text-xs text-[#afafaf]">
+                One printable document: concept, team, menu, equipment, financials, and more.
+              </p>
+            </div>
+            <ArrowRight size={16} className="text-[#155e63] flex-shrink-0" />
+          </div>
+        </Link>
 
         {/* AI coaching — low-visual-weight line in quick links area */}
         <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">

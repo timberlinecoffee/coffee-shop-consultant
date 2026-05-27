@@ -5,7 +5,7 @@
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle, Save } from "lucide-react";
+import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
@@ -13,16 +13,25 @@ import {
   type MonthlyProjections,
   type FinancialProjections,
   type MonthlySlice,
+  type FinancialInputs,
   type DayKey,
   type DaySchedule,
-  type OpexLine,
+  type ForecastLine,
   computeProjections,
   computeMonthlySlices,
   computeDayHours,
   computeWeeklyHours,
+  fiscalYearMonthLabels,
   formatCurrency,
 } from "@/lib/financial-projection";
+import { CURRENCIES } from "@/lib/currency";
 import { PLTab } from "./tabs/pl-tab";
+import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
+import { CashFlowTab } from "./tabs/cash-flow-tab";
+import { BreakEvenTab } from "./tabs/break-even-tab";
+import { RatiosTab } from "./tabs/ratios-tab";
+import { StartupTab } from "./tabs/startup-tab";
+import { ForecastLinesEditor } from "./forecast-lines-editor";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -72,7 +81,71 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "projections";
+type Tab = "forecast" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
+
+function findLineByKey(lines: ForecastLine[], key: string) {
+  return lines.find((l) => l.legacy_key === key);
+}
+
+function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
+  const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
+  const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
+    (k) => mp.weekly_schedule[k].open
+  );
+  const totalDailyCustomers = openDayKeys.reduce((sum, k) => sum + (mp.daily_flow[k] ?? 0), 0);
+  const avgCustomersPerDay = openDays > 0 ? Math.round(totalDailyCustomers / openDays) : 0;
+
+  const labor = findLineByKey(mp.forecast_lines, "labor");
+  const rent = findLineByKey(mp.forecast_lines, "rent");
+  const marketing = findLineByKey(mp.forecast_lines, "marketing");
+  const utilities = findLineByKey(mp.forecast_lines, "utilities");
+  const insurance = findLineByKey(mp.forecast_lines, "insurance");
+  const tech = findLineByKey(mp.forecast_lines, "tech");
+  const maintenance = findLineByKey(mp.forecast_lines, "maintenance");
+  const supplies = findLineByKey(mp.forecast_lines, "supplies");
+
+  return {
+    days_per_week: openDays,
+    hours_per_day: 10,
+    avg_ticket_cents: mp.avg_ticket_cents,
+    customers_per_day: avgCustomersPerDay,
+    beverage_revenue_pct: 70,
+    food_revenue_pct: 20,
+    retail_revenue_pct: 10,
+    beverage_cogs_pct: 30,
+    food_cogs_pct: 35,
+    retail_cogs_pct: 45,
+    rent_cents: rent?.mode === "flat" ? rent.value : 0,
+    labor_pct: labor?.mode === "pct" ? labor.value : 30,
+    marketing_pct: marketing?.mode === "pct" ? marketing.value : 2,
+    utilities_cents: utilities?.mode === "flat" ? utilities.value : 0,
+    insurance_cents: insurance?.mode === "flat" ? insurance.value : 0,
+    tech_cents: tech?.mode === "flat" ? tech.value : 0,
+    maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : 0,
+    supplies_cents: supplies?.mode === "flat" ? supplies.value : 0,
+    payment_processing_pct: 2.5,
+    spoilage_pct: 2,
+    loyalty_discount_pct: 1,
+    other_opex_cents: 0,
+    buildout_cost_cents: 15000000,
+    equipment_cost_cents: 5000000,
+    rent_deposits_cents: 900000,
+    license_permits_cents: 500000,
+    pre_opening_marketing_cents: 300000,
+    initial_inventory_cents: 200000,
+    working_capital_reserve_cents: 1500000,
+    opening_cash_buffer_cents: 1000000,
+    owner_capital_cents: 15000000,
+    loan_amount_cents: 10000000,
+    loan_term_months: 60,
+    loan_annual_rate_pct: 6.5,
+    depreciation_years: 10,
+    tax_rate_pct: mp.taxes_pct,
+    days_inventory: 7,
+    days_payable: 30,
+    days_receivable: 1,
+  };
+}
 
 interface Props {
   planId: string;
@@ -83,6 +156,10 @@ interface Props {
   initialModelUpdatedAtForReview: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  // TIM-1117: blended COGS pct from the Menu module (or null when no priced
+  // items exist). When a COGS forecast line opts to "link to menu", this rate
+  // is applied instead of the user-entered % value.
+  menuBlendedCogsPct?: number | null;
 }
 
 
@@ -138,163 +215,16 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
   fri: "Friday", sat: "Saturday", sun: "Sunday",
 };
 
-// OpexLine input: % of revenue or flat $/month toggle
-function OpexLineInput({
-  label,
-  hint,
-  value,
-  canEdit,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: OpexLine;
-  canEdit: boolean;
-  onChange: (v: OpexLine) => void;
-}) {
-  const inputCls =
-    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-[#f5f5f5] last:border-0">
-      <div className="w-32 shrink-0">
-        <p className="text-sm text-[#1a1a1a]">{label}</p>
-        <p className="text-[10px] text-[#afafaf] mt-0.5 leading-snug">{hint}</p>
-      </div>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        {canEdit ? (
-          <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
-            <button
-              type="button"
-              onClick={() => onChange({ ...value, mode: "pct" })}
-              className={`text-xs px-2.5 py-1.5 font-medium transition-colors ${
-                value.mode === "pct"
-                  ? "bg-[#155e63] text-white"
-                  : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
-              }`}
-            >
-              %
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange({ ...value, mode: "flat" })}
-              className={`text-xs px-2.5 py-1.5 font-medium transition-colors ${
-                value.mode === "flat"
-                  ? "bg-[#155e63] text-white"
-                  : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
-              }`}
-            >
-              $
-            </button>
-          </div>
-        ) : (
-          <span className="text-[10px] font-medium text-[#6b6b6b] shrink-0 bg-[#f0f0f0] px-2 py-1 rounded">
-            {value.mode === "pct" ? "%" : "$"}
-          </span>
-        )}
-        {value.mode === "pct" ? (
-          <div className="relative flex-1 min-w-0 max-w-[120px]">
-            <input
-              className={`${inputCls} w-full pr-8`}
-              type="number"
-              min={0}
-              max={100}
-              step={0.5}
-              value={value.pct || ""}
-              onChange={(e) => onChange({ ...value, pct: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              disabled={!canEdit}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-              %
-            </span>
-          </div>
-        ) : (
-          <div className="relative flex-1 min-w-0 max-w-[120px]">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-              $
-            </span>
-            <input
-              className={`${inputCls} w-full pl-6`}
-              type="number"
-              min={0}
-              step={50}
-              value={value.flat_cents ? value.flat_cents / 100 : ""}
-              onChange={(e) =>
-                onChange({ ...value, flat_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-              }
-              placeholder="0"
-              disabled={!canEdit}
-            />
-          </div>
-        )}
-        <span className="text-[10px] text-[#afafaf] shrink-0">
-          {value.mode === "pct" ? "% of revenue" : "/ mo"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function FlatLineInput({
-  label,
-  hint,
-  valueCents,
-  canEdit,
-  step,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  valueCents: number;
-  canEdit: boolean;
-  step?: number;
-  onChange: (cents: number) => void;
-}) {
-  const inputCls =
-    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-[#f5f5f5] last:border-0">
-      <div className="w-32 shrink-0">
-        <p className="text-sm text-[#1a1a1a]">{label}</p>
-        <p className="text-[10px] text-[#afafaf] mt-0.5 leading-snug">{hint}</p>
-      </div>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className="text-[10px] font-medium text-[#6b6b6b] shrink-0 bg-[#f0f0f0] px-2.5 py-1.5 rounded-lg border border-[#e0e0e0]">
-          $
-        </span>
-        <div className="relative flex-1 min-w-0 max-w-[120px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
-            $
-          </span>
-          <input
-            className={`${inputCls} w-full pl-6`}
-            type="number"
-            min={0}
-            step={step ?? 50}
-            value={valueCents ? valueCents / 100 : ""}
-            onChange={(e) =>
-              onChange(Math.round((parseFloat(e.target.value) || 0) * 100))
-            }
-            placeholder="0"
-            disabled={!canEdit}
-          />
-        </div>
-        <span className="text-[10px] text-[#afafaf] shrink-0">/ mo</span>
-      </div>
-    </div>
-  );
-}
-
 function ForecastTab({
   mp,
   canEdit,
   onUpdateMp,
+  menuBlendedCogsPct,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
   onUpdateMp: (next: MonthlyProjections) => void;
+  menuBlendedCogsPct: number | null;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -313,8 +243,8 @@ function ForecastTab({
     });
   }
 
-  function updateOpexLine(field: "labor" | "marketing", val: OpexLine) {
-    update({ [field]: val });
+  function updateForecastLines(next: ForecastLine[]) {
+    update({ forecast_lines: next });
   }
 
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
@@ -466,7 +396,7 @@ function ForecastTab({
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Average ticket (USD)</label>
+              <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
               <input
                 className={inputCls}
                 type="number"
@@ -499,124 +429,92 @@ function ForecastTab({
         </div>
       </div>
 
-      {/* Operating Expenses */}
+      {/* Forecast Lines — categorized (Revenue / COGS / Overhead / Capex) */}
       <div>
-        <p className={sectionLabelCls}>Operating Expenses</p>
-        <div className="rounded-xl border border-[#efefef] bg-white px-4 py-2">
-          <p className="text-xs text-[#6b6b6b] pt-2 pb-3">
-            For each line item, choose % of revenue or a flat monthly amount.
+        <p className={sectionLabelCls}>Forecast Line Items</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Add, rename, or remove any line. For revenue and COGS lines, toggle{" "}
+            <span className="font-semibold">$</span> (static monthly amount) or{" "}
+            <span className="font-semibold">%</span> (percent of revenue). For operating
+            expenses, pick the basis from the <span className="font-semibold">% of</span>{" "}
+            dropdown: a fixed monthly amount, percent of overall revenue, or percent of a
+            specific revenue stream. Click the sliders icon to configure a ramp-up period
+            or month-over-month growth on any line.
           </p>
-
-          <OpexLineInput
-            label="Labor"
-            hint="Wages, payroll taxes, benefits. Typical: 28–32%"
-            value={mp.labor}
+          <ForecastLinesEditor
+            lines={mp.forecast_lines}
             canEdit={canEdit}
-            onChange={(v) => updateOpexLine("labor", v)}
-          />
-
-          <FlatLineInput
-            label="Rent"
-            hint="Monthly base rent"
-            valueCents={mp.monthly_rent_cents}
-            canEdit={canEdit}
-            step={100}
-            onChange={(c) => update({ monthly_rent_cents: c })}
-          />
-
-          <OpexLineInput
-            label="Marketing"
-            hint="Ads, promotions, social. Typical: 1–3%"
-            value={mp.marketing}
-            canEdit={canEdit}
-            onChange={(v) => updateOpexLine("marketing", v)}
-          />
-
-          <FlatLineInput
-            label="Utilities"
-            hint="Gas, electric, water, internet"
-            valueCents={mp.utilities_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ utilities_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Insurance"
-            hint="General liability, workers comp, property"
-            valueCents={mp.insurance_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ insurance_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Tech & Software"
-            hint="POS, payment processing, scheduling, SaaS"
-            valueCents={mp.tech_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ tech_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Maintenance"
-            hint="Equipment repairs, upkeep"
-            valueCents={mp.maintenance_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ maintenance_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Supplies"
-            hint="Cleaning, paper, smallwares replenishment"
-            valueCents={mp.supplies_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ supplies_monthly_cents: c })}
-          />
-
-          <FlatLineInput
-            label="Other"
-            hint="Miscellaneous operating expenses"
-            valueCents={mp.other_monthly_cents}
-            canEdit={canEdit}
-            onChange={(c) => update({ other_monthly_cents: c })}
+            onChange={updateForecastLines}
+            currencyCode={mp.currency_code ?? "USD"}
+            menuBlendedCogsPct={menuBlendedCogsPct}
           />
         </div>
       </div>
 
-      {/* Below the line */}
+      {/* Tax rate */}
       <div>
-        <p className={sectionLabelCls}>Below the Line</p>
+        <p className={sectionLabelCls}>Taxes</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <div className="max-w-[200px]">
+            <label className={labelCls}>Tax rate %</label>
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={mp.taxes_pct || ""}
+              onChange={(e) => update({ taxes_pct: parseFloat(e.target.value) || 0 })}
+              placeholder="25"
+              disabled={!canEdit}
+            />
+            <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Fiscal Year Start — TIM-1100 / Currency — TIM-1101 */}
+      <div>
+        <p className={sectionLabelCls}>Fiscal Year & Currency</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Monthly interest (USD)</label>
-              <input
+              <label className={labelCls}>Starting month</label>
+              <select
                 className={inputCls}
-                type="number"
-                min={0}
-                step={50}
-                value={mp.interest_monthly_cents ? mp.interest_monthly_cents / 100 : ""}
-                onChange={(e) =>
-                  update({ interest_monthly_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="0"
+                value={mp.fiscal_year_start_month ?? 1}
+                onChange={(e) => update({ fiscal_year_start_month: parseInt(e.target.value, 10) || 1 })}
                 disabled={!canEdit}
-              />
-              <p className="text-[10px] text-[#afafaf] mt-1">Loan interest payments</p>
+              >
+                {[
+                  "January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December",
+                ].map((name, i) => (
+                  <option key={i + 1} value={i + 1}>{name}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Month-to-month columns, projections, and exports re-index from this month.
+              </p>
             </div>
             <div>
-              <label className={labelCls}>Tax rate %</label>
-              <input
+              <label className={labelCls}>Currency</label>
+              <select
                 className={inputCls}
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                value={mp.taxes_pct || ""}
-                onChange={(e) => update({ taxes_pct: parseFloat(e.target.value) || 0 })}
-                placeholder="25"
+                value={mp.currency_code ?? "USD"}
+                onChange={(e) => update({ currency_code: e.target.value })}
                 disabled={!canEdit}
-              />
-              <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} — {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Drives symbol + formatting across the planner, AI assessment, and exports.
+              </p>
             </div>
           </div>
         </div>
@@ -785,6 +683,7 @@ function MetricRow({
   highlight,
   indent,
   separator,
+  currencyCode = "USD",
 }: {
   label: string;
   y1: number;
@@ -795,6 +694,7 @@ function MetricRow({
   highlight?: boolean;
   indent?: boolean;
   separator?: boolean;
+  currencyCode?: string;
 }) {
   const cls = `py-2 px-3 text-right text-sm tabular-nums ${bold ? "font-semibold" : ""} ${
     highlight ? "text-[#155e63]" : negative ? "text-[#a13d3d]" : "text-[#1a1a1a]"
@@ -816,9 +716,9 @@ function MetricRow({
         >
           {label}
         </td>
-        <td className={cls}>{formatCurrency(y1)}</td>
-        <td className={cls}>{formatCurrency(y3)}</td>
-        <td className={cls}>{formatCurrency(y5)}</td>
+        <td className={cls}>{formatCurrency(y1, currencyCode)}</td>
+        <td className={cls}>{formatCurrency(y3, currencyCode)}</td>
+        <td className={cls}>{formatCurrency(y5, currencyCode)}</td>
         <td className="py-2 pr-4 pl-2 text-right">
           <Sparkline values={[y1, y3, y5]} />
         </td>
@@ -829,7 +729,15 @@ function MetricRow({
 
 // ── Inline revenue chart ──────────────────────────────────────────────────────
 
-function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
+function RevenueChart({
+  slices,
+  fiscalYearStartMonth,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  fiscalYearStartMonth: number;
+  currencyCode: string;
+}) {
   const y1 = slices.filter((s) => s.year === 1);
   if (y1.length === 0) return null;
   const values = y1.map((s) => s.revenue_cents / 100);
@@ -844,6 +752,7 @@ function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
   });
   const minV = Math.min(...values);
   const maxV = Math.max(...values);
+  const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
   return (
     <div className="rounded-xl border border-[#efefef] bg-white p-4 mb-4">
       <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-3">
@@ -872,9 +781,9 @@ function RevenueChart({ slices }: { slices: MonthlySlice[] }) {
         })}
       </svg>
       <div className="flex justify-between text-[10px] text-[#afafaf] mt-1">
-        <span>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][0]}</span>
-        <span>{formatCurrency(minV)} – {formatCurrency(maxV)}</span>
-        <span>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][11]}</span>
+        <span>{labels[0]}</span>
+        <span>{formatCurrency(minV, currencyCode)} – {formatCurrency(maxV, currencyCode)}</span>
+        <span>{labels[11]}</span>
       </div>
     </div>
   );
@@ -886,32 +795,36 @@ function ProjectionsTab({
   canEdit,
   critique,
   onCritiqueUpdate,
+  fiscalYearStartMonth,
+  currencyCode,
 }: {
   projections: FinancialProjections;
   slices: MonthlySlice[];
   canEdit: boolean;
   critique: CritiqueResult | null;
   onCritiqueUpdate: (c: CritiqueResult | null) => void;
+  fiscalYearStartMonth: number;
+  currencyCode: string;
 }) {
   const { year1: y1, year3: y3, year5: y5 } = projections;
-  const [critiqueStatus, setCritiqueStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [localCritique, setLocalCritique] = useState<CritiqueResult | null>(critique);
+  const [assessmentStatus, setAssessmentStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [localAssessment, setLocalAssessment] = useState<CritiqueResult | null>(critique);
 
-  async function generateCritique() {
-    setCritiqueStatus("loading");
+  async function generateAssessment() {
+    setAssessmentStatus("loading");
     try {
       const res = await fetch("/api/workspaces/financials/critique", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projections }),
+        body: JSON.stringify({ projections, currencyCode }),
       });
-      if (!res.ok) throw new Error(`critique failed (${res.status})`);
+      if (!res.ok) throw new Error(`assessment failed (${res.status})`);
       const data = (await res.json()) as CritiqueResult;
-      setLocalCritique(data);
-      setCritiqueStatus("done");
+      setLocalAssessment(data);
+      setAssessmentStatus("done");
       onCritiqueUpdate(data);
     } catch {
-      setCritiqueStatus("error");
+      setAssessmentStatus("error");
     }
   }
 
@@ -925,10 +838,10 @@ function ProjectionsTab({
   return (
     <div className="space-y-6">
       {/* Inline revenue trajectory chart */}
-      <RevenueChart slices={slices} />
+      <RevenueChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
 
       {/* Monthly / Quarterly / Annual P&L table — defaults to monthly Y1 */}
-      <PLTab slices={slices} />
+      <PLTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
 
       {/* KPI summary tiles */}
       <div className="grid grid-cols-3 gap-3">
@@ -941,13 +854,13 @@ function ProjectionsTab({
           },
           {
             label: "Year 1 Op. Income",
-            value: formatCurrency(y1.operating_income),
+            value: formatCurrency(y1.operating_income, currencyCode),
             sub: y1.revenue > 0 ? `${((y1.operating_income / y1.revenue) * 100).toFixed(0)}% margin` : "—",
             ok: y1.operating_income >= 0,
           },
           {
             label: "Year 5 Net",
-            value: formatCurrency(y5.net_income),
+            value: formatCurrency(y5.net_income, currencyCode),
             sub: "Net income",
             ok: y5.net_income >= 0,
           },
@@ -967,11 +880,11 @@ function ProjectionsTab({
         ))}
       </div>
 
-      {/* AI Critique */}
+      {/* AI Assessment */}
       <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">AI Critique</p>
+            <p className="text-sm font-semibold text-[#1a1a1a]">AI Assessment</p>
             <p className="text-xs text-[#6b6b6b] mt-0.5">
               Benchmarked against comparable independent coffee shops.
             </p>
@@ -979,24 +892,24 @@ function ProjectionsTab({
           {canEdit && (
             <button
               type="button"
-              onClick={generateCritique}
-              disabled={critiqueStatus === "loading"}
+              onClick={generateAssessment}
+              disabled={assessmentStatus === "loading"}
               className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60 shrink-0"
             >
-              {critiqueStatus === "loading"
+              {assessmentStatus === "loading"
                 ? "Analyzing..."
-                : localCritique
+                : localAssessment
                 ? "Refresh"
-                : "Generate critique"}
+                : "Generate assessment"}
             </button>
           )}
         </div>
-        {critiqueStatus === "error" && (
+        {assessmentStatus === "error" && (
           <p className="px-5 py-4 text-sm text-[#a13d3d]">Could not generate. Try again.</p>
         )}
-        {localCritique ? (
+        {localAssessment ? (
           <ul className="divide-y divide-[#f5f5f5]">
-            {localCritique.bullets.map((b, i) => (
+            {localAssessment.bullets.map((b, i) => (
               <li key={i} className="px-5 py-3 flex items-start gap-3">
                 <span className={`text-sm font-bold shrink-0 mt-0.5 ${bulletColor[b.type]}`}>
                   {bulletIcon[b.type]}
@@ -1007,13 +920,13 @@ function ProjectionsTab({
           </ul>
         ) : !canEdit ? null : (
           <p className="px-5 py-4 text-sm text-[#afafaf]">
-            Run a critique to get benchmarked feedback on your projections.
+            Run an assessment to get benchmarked feedback on your projections.
           </p>
         )}
-        {localCritique?.generated_at && (
+        {localAssessment?.generated_at && (
           <p className="px-5 py-3 border-t border-[#f5f5f5] text-[10px] text-[#afafaf]">
             Generated{" "}
-            {new Date(localCritique.generated_at).toLocaleDateString("en-US", {
+            {new Date(localAssessment.generated_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
@@ -1036,9 +949,13 @@ export function FinancialsWorkspace({
   initialModelUpdatedAtForReview,
   canEdit,
   initialTrialMessagesUsed,
+  menuBlendedCogsPct = null,
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
+  const [financialInputs, setFinancialInputs] = useState<FinancialInputs>(() =>
+    deriveFinancialInputs(initialProjections)
+  );
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
@@ -1062,7 +979,11 @@ export function FinancialsWorkspace({
 
   const progress = useMemo(() => {
     const hasFlow = Object.values(mp.daily_flow).some((v) => v > 0) ? 1 : 0;
-    const hasCosts = mp.monthly_rent_cents > 0 && mp.avg_ticket_cents > 0 ? 1 : 0;
+    const hasCosts =
+      mp.forecast_lines.some((l) => l.category === "overhead" && l.value > 0) &&
+      mp.avg_ticket_cents > 0
+        ? 1
+        : 0;
     return { filled: hasFlow + hasCosts, total: 2 };
   }, [mp]);
 
@@ -1072,14 +993,21 @@ export function FinancialsWorkspace({
 
   const equipment = useMemo(() => ({ total_cost_cents: 0, financed_cost_cents: 0 }), []);
 
+  // TIM-1117: feed the blended menu COGS pct into the projection so menu-linked
+  // COGS lines compute against menu costing rather than the user-entered %.
+  const projectionCtx = useMemo(
+    () => ({ menu_blended_cogs_pct: menuBlendedCogsPct }),
+    [menuBlendedCogsPct]
+  );
+
   const projections = useMemo(
-    () => computeProjections(mp, equipment),
-    [mp, equipment]
+    () => computeProjections(mp, equipment, projectionCtx),
+    [mp, equipment, projectionCtx]
   );
 
   const slices = useMemo(
-    () => computeMonthlySlices(mp, equipment, {}),
-    [mp, equipment]
+    () => computeMonthlySlices(mp, equipment, {}, projectionCtx),
+    [mp, equipment, projectionCtx]
   );
 
   const lastSavedAt =
@@ -1139,6 +1067,28 @@ export function FinancialsWorkspace({
 
   function handleMpUpdate(next: MonthlyProjections) {
     setMp(next);
+    const labor = findLineByKey(next.forecast_lines, "labor");
+    const rent = findLineByKey(next.forecast_lines, "rent");
+    const marketing = findLineByKey(next.forecast_lines, "marketing");
+    const utilities = findLineByKey(next.forecast_lines, "utilities");
+    const insurance = findLineByKey(next.forecast_lines, "insurance");
+    const tech = findLineByKey(next.forecast_lines, "tech");
+    const maintenance = findLineByKey(next.forecast_lines, "maintenance");
+    const supplies = findLineByKey(next.forecast_lines, "supplies");
+    setFinancialInputs((prev) => ({
+      ...prev,
+      avg_ticket_cents: next.avg_ticket_cents,
+      rent_cents: rent?.mode === "flat" ? rent.value : prev.rent_cents,
+      labor_pct: labor?.mode === "pct" ? labor.value : prev.labor_pct,
+      marketing_pct: marketing?.mode === "pct" ? marketing.value : prev.marketing_pct,
+      utilities_cents: utilities?.mode === "flat" ? utilities.value : prev.utilities_cents,
+      insurance_cents: insurance?.mode === "flat" ? insurance.value : prev.insurance_cents,
+      tech_cents: tech?.mode === "flat" ? tech.value : prev.tech_cents,
+      maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : prev.maintenance_cents,
+      supplies_cents: supplies?.mode === "flat" ? supplies.value : prev.supplies_cents,
+      other_opex_cents: prev.other_opex_cents,
+      tax_rate_pct: next.taxes_pct,
+    }));
     scheduleSave(next);
   }
 
@@ -1168,12 +1118,20 @@ export function FinancialsWorkspace({
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "forecast", label: "Forecast Inputs" },
-    { id: "projections", label: "Projections" },
+    { id: "projections", label: "P&L" },
+    { id: "balance-sheet", label: "Balance Sheet" },
+    { id: "cash-flow", label: "Cash Flow" },
+    { id: "break-even", label: "Break-Even" },
+    { id: "ratios", label: "Ratios" },
+    { id: "startup", label: "Startup Costs" },
   ];
+
+  const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
+  const currencyCode = mp.currency_code ?? "USD";
 
   return (
     <div className="bg-[#faf9f7] min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <BarChart2 className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
@@ -1208,14 +1166,14 @@ export function FinancialsWorkspace({
           </div>
         )}
 
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1">
+        <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+          <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1 overflow-x-auto max-w-full">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => setActiveTab(t.id)}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors ${
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
                   activeTab === t.id
                     ? "bg-[#155e63] text-white"
                     : "text-[#6b6b6b] hover:text-[#1a1a1a]"
@@ -1231,6 +1189,28 @@ export function FinancialsWorkspace({
             >
               {saveLabel}
             </span>
+            <button
+              type="button"
+              onClick={() =>
+                window.location.assign("/api/workspaces/financials/export/pdf")
+              }
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              title="Download financials as PDF (landscape monthly views)"
+            >
+              <FileDown size={12} aria-hidden="true" />
+              Export PDF
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                window.location.assign("/api/workspaces/financials/export/xlsx")
+              }
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
+            >
+              <Sheet size={12} aria-hidden="true" />
+              Export Excel
+            </button>
             {canEdit && (
               <button
                 type="button"
@@ -1246,7 +1226,12 @@ export function FinancialsWorkspace({
         </div>
 
         {activeTab === "forecast" && (
-          <ForecastTab mp={mp} canEdit={canEdit} onUpdateMp={handleMpUpdate} />
+          <ForecastTab
+            mp={mp}
+            canEdit={canEdit}
+            onUpdateMp={handleMpUpdate}
+            menuBlendedCogsPct={menuBlendedCogsPct}
+          />
         )}
         {activeTab === "projections" && (
           <ProjectionsTab
@@ -1255,8 +1240,19 @@ export function FinancialsWorkspace({
             canEdit={canEdit}
             critique={critique}
             onCritiqueUpdate={handleCritiqueUpdate}
+            fiscalYearStartMonth={fiscalYearStartMonth}
+            currencyCode={currencyCode}
           />
         )}
+        {activeTab === "balance-sheet" && (
+          <BalanceSheetTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
+        )}
+        {activeTab === "cash-flow" && (
+          <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
+        )}
+        {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} currencyCode={currencyCode} />}
+        {activeTab === "ratios" && <RatiosTab slices={slices} />}
+        {activeTab === "startup" && <StartupTab inputs={financialInputs} currencyCode={currencyCode} />}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />

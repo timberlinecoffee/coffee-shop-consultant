@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { WorkspaceNavItem, NavIcon } from "@/lib/workspace-manifest";
+import { WORKSPACE_ICONS } from "@/lib/workspace-icons";
 
 export interface AppSidebarProps {
   items: WorkspaceNavItem[];
@@ -13,78 +14,12 @@ export interface AppSidebarProps {
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
+// TIM-1099: render the same lucide-react icon the page header uses, sourced
+// from the shared WORKSPACE_ICONS map so the two can't drift.
 function NavIconGlyph({ icon, size = 15 }: { icon: NavIcon; size?: number }) {
-  const props = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.75,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true,
-  };
-  switch (icon) {
-    case "lightbulb":
-      return (
-        <svg {...props}>
-          <path d="M9 21h6M12 3a6 6 0 0 1 6 6c0 2.4-1.4 4.5-3.5 5.6L14 17H10l-.5-2.4A6 6 0 0 1 6 9a6 6 0 0 1 6-6z" />
-        </svg>
-      );
-    case "bar-chart":
-      return (
-        <svg {...props}>
-          <line x1="12" y1="20" x2="12" y2="10" />
-          <line x1="18" y1="20" x2="18" y2="4" />
-          <line x1="6" y1="20" x2="6" y2="16" />
-        </svg>
-      );
-    case "map-pin":
-      return (
-        <svg {...props}>
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-      );
-    case "utensils":
-      return (
-        <svg {...props}>
-          <line x1="3" y1="2" x2="3" y2="22" />
-          <path d="M7 2v4a3 3 0 0 1-3 3h0" />
-          <line x1="7" y1="9" x2="7" y2="22" />
-          <line x1="21" y1="2" x2="21" y2="7" />
-          <path d="M17 2v16.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V2" />
-          <line x1="17" y1="7" x2="21" y2="7" />
-        </svg>
-      );
-    case "wrench":
-      return (
-        <svg {...props}>
-          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-        </svg>
-      );
-    case "rocket":
-      return (
-        <svg {...props}>
-          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-        </svg>
-      );
-    case "users":
-      return (
-        <svg {...props}>
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      );
-    default:
-      return null;
-  }
+  const Icon = WORKSPACE_ICONS[icon];
+  if (!Icon) return null;
+  return <Icon width={size} height={size} strokeWidth={1.75} aria-hidden="true" />;
 }
 
 function LockIcon() {
@@ -137,6 +72,18 @@ function AccountIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+// TIM-1062
+function ExportPlanIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="12" y1="18" x2="12" y2="12" />
+      <polyline points="9 15 12 12 15 15" />
     </svg>
   );
 }
@@ -338,6 +285,31 @@ function SidebarContent({
           ))}
         </ul>
       </nav>
+
+      {/* TIM-1062: Export Business Plan — single entry point from any workspace */}
+      <div className={`border-t border-[#efefef] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+        {collapsed ? (
+          <Link
+            href="/workspace/business-plan/print"
+            target="_blank"
+            title="Export Business Plan"
+            onClick={onClose}
+            className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-[#155e63] hover:bg-[#155e63]/5 transition-colors"
+          >
+            <ExportPlanIcon />
+          </Link>
+        ) : (
+          <Link
+            href="/workspace/business-plan/print"
+            target="_blank"
+            onClick={onClose}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#155e63] hover:bg-[#155e63]/5 transition-colors"
+          >
+            <ExportPlanIcon />
+            Export Business Plan
+          </Link>
+        )}
+      </div>
 
       {/* Account link */}
       <div className={`border-t border-[#efefef] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
