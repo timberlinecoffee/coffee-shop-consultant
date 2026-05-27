@@ -393,6 +393,101 @@ test("COGS change flows through to cash flow (net_cash_cents)", () => {
   assert.equal(dNetCash, dNetIncome);
 });
 
+// ── TIM-1118: overhead pct lines resolve to the chosen revenue stream ─────────
+
+test("overhead pct line: undefined stream id applies against total revenue (legacy)", () => {
+  const mp = defaultMonthlyProjections();
+  mp.forecast_lines = [
+    { id: "rl", label: "Wholesale", category: "revenue", mode: "flat", value: 100000 },
+    { id: "oh", label: "Royalty", category: "overhead", mode: "pct", value: 5 },
+  ];
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].other_misc_cents, Math.round(rows[0].revenue_cents * 0.05));
+});
+
+test('overhead pct line: revenue_stream_id="base" scopes to foot-traffic only', () => {
+  const mp = defaultMonthlyProjections();
+  mp.forecast_lines = [
+    { id: "rl", label: "Wholesale", category: "revenue", mode: "flat", value: 100000 },
+    {
+      id: "oh",
+      label: "Floor Labor",
+      category: "overhead",
+      mode: "pct",
+      value: 30,
+      revenue_stream_id: "base",
+    },
+  ];
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  const base = rows[0].revenue_cents - 100000;
+  assert.equal(rows[0].other_misc_cents, Math.round(base * 0.3));
+});
+
+test("overhead pct line: stream id pointing to a revenue line scopes to that line", () => {
+  const mp = defaultMonthlyProjections();
+  mp.forecast_lines = [
+    { id: "wh", label: "Wholesale", category: "revenue", mode: "flat", value: 100000 },
+    {
+      id: "comm",
+      label: "Wholesale commission",
+      category: "overhead",
+      mode: "pct",
+      value: 10,
+      revenue_stream_id: "wh",
+    },
+  ];
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // 10% of $1,000 wholesale = $100 (10000 cents)
+  assert.equal(rows[0].other_misc_cents, 10000);
+});
+
+test("overhead flat line ignores revenue_stream_id", () => {
+  const mp = defaultMonthlyProjections();
+  mp.forecast_lines = [
+    {
+      id: "x",
+      label: "Rent",
+      category: "overhead",
+      mode: "flat",
+      value: 250000,
+      revenue_stream_id: "base",
+    },
+  ];
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].other_misc_cents, 250000);
+});
+
+test("overhead pct: unknown stream id falls back to total revenue", () => {
+  const mp = defaultMonthlyProjections();
+  mp.forecast_lines = [
+    {
+      id: "oh",
+      label: "Orphan",
+      category: "overhead",
+      mode: "pct",
+      value: 4,
+      revenue_stream_id: "deleted-line-id",
+    },
+  ];
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].other_misc_cents, Math.round(rows[0].revenue_cents * 0.04));
+});
+
 test("net income reflects COGS change when a stream-linked line is added", () => {
   const mp = defaultMonthlyProjections();
   mp.cogs_pct = 0;

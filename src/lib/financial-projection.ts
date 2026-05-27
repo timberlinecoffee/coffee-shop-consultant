@@ -738,6 +738,21 @@ export interface ProjectionContext {
   menu_blended_cogs_pct?: number | null;
 }
 
+// TIM-1118: pct-mode COGS and Overhead lines may target a revenue stream rather
+// than total revenue. Resolves the right denominator given the user's selection.
+// streamId values: undefined / "all" → total; "base" → foot-traffic base;
+// <line.id> → that specific revenue line (falls back to total if deleted).
+function resolveStreamRevenueCents(
+  streamId: string | undefined,
+  baseRevenueCents: number,
+  totalRevenueCents: number,
+  revenueByLineId: Map<string, number>
+): number {
+  if (!streamId || streamId === "all") return totalRevenueCents;
+  if (streamId === "base") return baseRevenueCents;
+  return revenueByLineId.get(streamId) ?? totalRevenueCents;
+}
+
 function computeCogsLineAmountCents(
   line: ForecastLine,
   monthIndex: number,
@@ -749,17 +764,12 @@ function computeCogsLineAmountCents(
   const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
   if (factor === 0) return 0;
 
-  // Resolve the revenue base this COGS line applies to.
-  const target = line.revenue_stream_id;
-  let baseForPct: number;
-  if (!target || target === "all") {
-    baseForPct = totalRevenueCents;
-  } else if (target === "base") {
-    baseForPct = baseRevenueCents;
-  } else {
-    // A specific revenue line id; if it's been deleted, fall back to total.
-    baseForPct = revenueByLineId.get(target) ?? totalRevenueCents;
-  }
+  const baseForPct = resolveStreamRevenueCents(
+    line.revenue_stream_id,
+    baseRevenueCents,
+    totalRevenueCents,
+    revenueByLineId
+  );
 
   // Resolve the effective rate / amount.
   if (line.menu_linked && typeof ctx.menu_blended_cogs_pct === "number") {
@@ -769,6 +779,30 @@ function computeCogsLineAmountCents(
     return Math.round(baseForPct * (line.value / 100) * factor);
   }
   // flat: value is base cents/mo (revenue_stream_id is meaningless for flat lines)
+  return Math.round(line.value * factor);
+}
+
+// TIM-1118: pct-mode overhead lines resolve their denominator the same way as
+// COGS — undefined/"all" means total revenue (legacy default), "base" means
+// foot-traffic, or a revenue line id targets that stream.
+function computeOverheadLineAmountCents(
+  line: ForecastLine,
+  monthIndex: number,
+  baseRevenueCents: number,
+  totalRevenueCents: number,
+  revenueByLineId: Map<string, number>
+): number {
+  const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
+  if (factor === 0) return 0;
+  if (line.mode === "pct") {
+    const baseForPct = resolveStreamRevenueCents(
+      line.revenue_stream_id,
+      baseRevenueCents,
+      totalRevenueCents,
+      revenueByLineId
+    );
+    return Math.round(baseForPct * (line.value / 100) * factor);
+  }
   return Math.round(line.value * factor);
 }
 
@@ -883,7 +917,13 @@ export function computeMonthlyProjections(
       let other_misc_cents = 0;
       let interest_cents = 0;
       for (const l of overheadLines) {
-        const amt = computeLineAmountCents(l, month_index_abs, revenue_cents);
+        const amt = computeOverheadLineAmountCents(
+          l,
+          month_index_abs,
+          baseRevenue,
+          revenue_cents,
+          revenueByLineId
+        );
         overheadResults.push({ id: l.id, label: l.label, category: "overhead", amount_cents: amt });
         switch (l.legacy_key) {
           case "labor": labor_cents += amt; break;
