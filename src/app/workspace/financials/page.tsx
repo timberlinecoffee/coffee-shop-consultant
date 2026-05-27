@@ -43,9 +43,10 @@ export default async function FinancialsWorkspacePage() {
       .eq("id", user.id)
       .maybeSingle(),
     // TIM-1117: pull menu items so COGS lines can link to menu costing.
+    // TIM-1168: also select name for the "How is this calculated?" reveal.
     supabase
       .from("menu_items_with_cogs")
-      .select("price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
+      .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
       .eq("plan_id", plan.id)
       .eq("archived", false),
   ]);
@@ -81,7 +82,34 @@ export default async function FinancialsWorkspacePage() {
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
 
-  const menuBlendedCogsPct = computeMenuBlendedCogsPct(menuItemsResult.data ?? []);
+  const rawMenuItems = menuItemsResult.data ?? [];
+  const menuBlendedCogsPct = computeMenuBlendedCogsPct(rawMenuItems);
+
+  // TIM-1168: per-item breakdown for "How is this calculated?" reveal.
+  const menuCogsItems = rawMenuItems
+    .filter(
+      (it) =>
+        !it.archived &&
+        typeof it.price_cents === "number" &&
+        it.price_cents > 0 &&
+        typeof it.expected_mix_pct === "number" &&
+        it.expected_mix_pct > 0
+    )
+    .map((it) => {
+      const effectiveCogs =
+        typeof it.computed_cogs_cents === "number"
+          ? it.computed_cogs_cents
+          : typeof it.cogs_cents === "number"
+          ? it.cogs_cents
+          : 0;
+      return {
+        name: it.name as string,
+        price_cents: it.price_cents as number,
+        cogs_cents: effectiveCogs,
+        expected_mix_pct: it.expected_mix_pct as number,
+        cogs_pct: it.price_cents ? (effectiveCogs / (it.price_cents as number)) * 100 : 0,
+      };
+    });
 
   return (
     <FinancialsWorkspace
@@ -94,6 +122,7 @@ export default async function FinancialsWorkspacePage() {
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       menuBlendedCogsPct={menuBlendedCogsPct}
+      menuCogsItems={menuCogsItems}
     />
   );
 }

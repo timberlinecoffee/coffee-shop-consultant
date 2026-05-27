@@ -181,6 +181,8 @@ interface Props {
   // items exist). When a COGS forecast line opts to "link to menu", this rate
   // is applied instead of the user-entered % value.
   menuBlendedCogsPct?: number | null;
+  // TIM-1168: per-item breakdown for the "How is this calculated?" reveal.
+  menuCogsItems?: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
 }
 
 
@@ -338,11 +340,13 @@ function ForecastTab({
   canEdit,
   onUpdateMp,
   menuBlendedCogsPct,
+  menuCogsItems,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
   onUpdateMp: (next: MonthlyProjections) => void;
   menuBlendedCogsPct: number | null;
+  menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -566,6 +570,7 @@ function ForecastTab({
             onChange={updateForecastLines}
             currencyCode={mp.currency_code ?? "USD"}
             menuBlendedCogsPct={menuBlendedCogsPct}
+            menuCogsItems={menuCogsItems}
           />
         </div>
       </div>
@@ -1143,6 +1148,7 @@ export function FinancialsWorkspace({
   canEdit,
   initialTrialMessagesUsed,
   menuBlendedCogsPct = null,
+  menuCogsItems = [],
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
@@ -1429,6 +1435,7 @@ export function FinancialsWorkspace({
             canEdit={canEdit}
             onUpdateMp={handleMpUpdate}
             menuBlendedCogsPct={menuBlendedCogsPct}
+            menuCogsItems={menuCogsItems}
           />
         )}
         {activeTab === "funding" && (
