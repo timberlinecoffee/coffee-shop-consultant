@@ -4,6 +4,8 @@
 // (Revenue / COGS / Overhead / Capex) sections, each with editable lines that
 // support flat-$ vs %-of-sales modes, optional ramp periods, and optional
 // per-line growth rates.
+// TIM-1117: COGS lines can target a parent revenue stream and optionally
+// derive their pct from menu item costing.
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Sliders } from "lucide-react";
@@ -23,7 +25,7 @@ const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; val
   },
   cogs: {
     label: "Cost Of Goods (COGS)",
-    hint: "Costs that scale with revenue: ingredients, packaging, wholesale supply.",
+    hint: "Costs that scale with a revenue stream: ingredients, packaging, wholesale supply. Default: % of the linked revenue stream.",
     valueLabel: "of revenue",
   },
   overhead: {
@@ -37,6 +39,13 @@ const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; val
     valueLabel: "(one-time)",
   },
 };
+
+export interface RevenueStreamOption {
+  id: string;          // matches ForecastLine.revenue_stream_id
+  label: string;
+}
+
+const DEFAULT_STREAM_ID = "all";
 
 function genId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -59,17 +68,25 @@ interface LineRowProps {
   onChange: (next: ForecastLine) => void;
   onDelete: () => void;
   currencyCode: string;
+  streamOptions: RevenueStreamOption[];
+  menuBlendedCogsPct: number | null;
 }
 
-function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowProps) {
+function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const inputCls =
     "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
 
   const isCapex = line.category === "capex";
+  const isCogs = line.category === "cogs";
+  const menuLinked = isCogs && line.menu_linked === true;
+  const hasMenuData = typeof menuBlendedCogsPct === "number";
+  const streamId = line.revenue_stream_id ?? DEFAULT_STREAM_ID;
+  const displayPct = menuLinked && hasMenuData ? (menuBlendedCogsPct as number) : null;
 
   // Capex: only flat mode; one-time charge in start_month. No pct toggle, no growth.
+  // COGS (TIM-1117): can target a parent revenue stream and optionally derive % from the menu.
   return (
     <div className="border border-[#efefef] rounded-xl bg-white">
       <div className="flex items-center gap-2 px-3 py-2.5">
@@ -119,7 +136,22 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
         )}
 
         <div className="relative w-28 shrink-0">
-          {line.mode === "flat" ? (
+          {menuLinked ? (
+            <>
+              <input
+                className={`${inputCls} w-full pr-6 bg-[#f5fbfb] text-[#155e63] font-medium`}
+                type="text"
+                value={displayPct !== null ? displayPct.toFixed(1) : "—"}
+                readOnly
+                disabled
+                aria-label="Menu-derived percent"
+                title="Computed from menu item costing"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#155e63] pointer-events-none">
+                %
+              </span>
+            </>
+          ) : line.mode === "flat" ? (
             <>
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
                 {sym}
@@ -164,7 +196,11 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
 
         {!isCapex && (
           <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
-            {line.mode === "pct" ? "% of rev" : "/ mo"}
+            {menuLinked
+              ? "from menu"
+              : line.mode === "pct"
+                ? "% of rev"
+                : "/ mo"}
           </span>
         )}
         {isCapex && (
@@ -199,6 +235,62 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
 
       {expanded && (
         <div className="px-3 pb-3 border-t border-[#f5f5f5] pt-3 space-y-3 bg-[#fafafa]">
+          {isCogs && (
+            <div>
+              <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
+                Applies to revenue stream
+              </label>
+              <select
+                className={inputCls + " w-full max-w-xs"}
+                value={streamId}
+                disabled={!canEdit || line.mode === "flat"}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  onChange({
+                    ...line,
+                    revenue_stream_id: next === DEFAULT_STREAM_ID ? undefined : next,
+                  });
+                }}
+                aria-label="Revenue stream this COGS line applies to"
+              >
+                {streamOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                {line.mode === "flat"
+                  ? "Stream selection applies to % mode only — flat $ COGS doesn't scale with revenue."
+                  : "By default, COGS is % of the linked revenue stream."}
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer mt-3">
+                <input
+                  type="checkbox"
+                  checked={menuLinked}
+                  disabled={!canEdit || !hasMenuData}
+                  onChange={(e) => {
+                    onChange({
+                      ...line,
+                      menu_linked: e.target.checked ? true : undefined,
+                      // When turning on, force pct mode so the menu rate has a base.
+                      mode: e.target.checked ? "pct" : line.mode,
+                    });
+                  }}
+                  className="w-3.5 h-3.5 accent-[#155e63] disabled:opacity-50"
+                />
+                <span className="text-xs font-medium text-[#1a1a1a]">
+                  Link to menu: derive COGS from menu item costs × volume
+                </span>
+              </label>
+              <p className="text-[10px] text-[#afafaf] mt-1 ml-6">
+                {hasMenuData
+                  ? `Blended menu COGS: ${(menuBlendedCogsPct as number).toFixed(1)}% of priced items.`
+                  : "Add menu items with prices and expected mix to enable this."}
+              </p>
+            </div>
+          )}
+
           {/* Ramp */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -352,9 +444,11 @@ interface SectionProps {
   canEdit: boolean;
   onLinesChange: (next: ForecastLine[]) => void;
   currencyCode: string;
+  streamOptions: RevenueStreamOption[];
+  menuBlendedCogsPct: number | null;
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
 
@@ -370,6 +464,11 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
     if (category === "capex") {
       // Capex defaults to start at month 1
       newLine.ramp = { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 };
+    }
+    if (category === "cogs") {
+      // TIM-1117: default new COGS lines to "all revenue" (legacy behavior).
+      // Users pick a specific revenue stream in the line's expanded panel.
+      newLine.revenue_stream_id = undefined;
     }
     onLinesChange([...lines, newLine]);
   }
@@ -421,6 +520,8 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
               onChange={(next) => updateLine(idx, next)}
               onDelete={() => deleteLine(idx)}
               currencyCode={currencyCode}
+              streamOptions={streamOptions}
+              menuBlendedCogsPct={menuBlendedCogsPct}
             />
           ))
         )}
@@ -434,15 +535,47 @@ interface Props {
   canEdit: boolean;
   onChange: (next: ForecastLine[]) => void;
   currencyCode?: string;
+  menuBlendedCogsPct?: number | null;
 }
 
-export function ForecastLinesEditor({ lines, canEdit, onChange, currencyCode = "USD" }: Props) {
+// Build the revenue stream picker options from the current forecast lines.
+// "All revenue" is the legacy / safe default; "Base (foot-traffic)" is the
+// non-line ticket sales; each revenue line shows up by its user-entered label.
+function streamOptionsFromLines(lines: ForecastLine[]): RevenueStreamOption[] {
+  const opts: RevenueStreamOption[] = [
+    { id: DEFAULT_STREAM_ID, label: "All revenue (total)" },
+    { id: "base", label: "Base — foot-traffic ticket sales" },
+  ];
+  for (const l of lines) {
+    if (l.category === "revenue") {
+      opts.push({ id: l.id, label: l.label || "Revenue line" });
+    }
+  }
+  return opts;
+}
+
+export function ForecastLinesEditor({
+  lines,
+  canEdit,
+  onChange,
+  currencyCode = "USD",
+  menuBlendedCogsPct = null,
+}: Props) {
+  const streamOptions = streamOptionsFromLines(lines);
+  const shared = {
+    lines,
+    canEdit,
+    onLinesChange: onChange,
+    currencyCode,
+    streamOptions,
+    menuBlendedCogsPct,
+  };
   return (
     <div className="space-y-6">
-      <CategorySection category="revenue" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
-      <CategorySection category="cogs" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
-      <CategorySection category="overhead" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
-      <CategorySection category="capex" lines={lines} canEdit={canEdit} onLinesChange={onChange} currencyCode={currencyCode} />
+      <CategorySection category="revenue" {...shared} />
+      <CategorySection category="cogs" {...shared} />
+      <CategorySection category="overhead" {...shared} />
+      <CategorySection category="capex" {...shared} />
     </div>
   );
 }

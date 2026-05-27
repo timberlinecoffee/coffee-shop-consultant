@@ -3,7 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
-import { normalizeMonthlyProjections, defaultMonthlyProjections } from "@/lib/financial-projection";
+import {
+  normalizeMonthlyProjections,
+  defaultMonthlyProjections,
+  computeMenuBlendedCogsPct,
+} from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 import { FinancialsWorkspace } from "./financials-workspace";
 
@@ -27,7 +31,7 @@ export default async function FinancialsWorkspacePage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [modelResult, profileResult] = await Promise.all([
+  const [modelResult, profileResult, menuItemsResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("*")
@@ -38,6 +42,12 @@ export default async function FinancialsWorkspacePage() {
       .select("subscription_status, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
+    // TIM-1117: pull menu items so COGS lines can link to menu costing.
+    supabase
+      .from("menu_items_with_cogs")
+      .select("price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
+      .eq("plan_id", plan.id)
+      .eq("archived", false),
   ]);
 
   let modelRow = modelResult.data;
@@ -71,6 +81,8 @@ export default async function FinancialsWorkspacePage() {
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
 
+  const menuBlendedCogsPct = computeMenuBlendedCogsPct(menuItemsResult.data ?? []);
+
   return (
     <FinancialsWorkspace
       planId={plan.id}
@@ -81,6 +93,7 @@ export default async function FinancialsWorkspacePage() {
       initialModelUpdatedAtForReview={initialModelUpdatedAt}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      menuBlendedCogsPct={menuBlendedCogsPct}
     />
   );
 }

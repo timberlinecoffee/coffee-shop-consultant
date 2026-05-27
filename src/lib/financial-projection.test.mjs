@@ -1,10 +1,13 @@
 // TIM-1102: pin computeMonthlyProjections against the new forecast_lines schema.
+// TIM-1117: COGS lines can target a parent revenue stream and/or derive their
+// pct from menu item costing — pinned below.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultMonthlyProjections,
   normalizeMonthlyProjections,
   computeMonthlyProjections,
+  computeMenuBlendedCogsPct,
 } from "./financial-projection.ts";
 
 test("default model has forecast_lines seeded with legacy overhead keys", () => {
@@ -133,4 +136,201 @@ test("normalize falls back to USD for unknown / invalid currency code", () => {
   assert.equal(normalizeMonthlyProjections({ currency_code: "ZZZ" }).currency_code, "USD");
   assert.equal(normalizeMonthlyProjections({ currency_code: 42 }).currency_code, "USD");
   assert.equal(normalizeMonthlyProjections({}).currency_code, "USD");
+});
+
+// ── TIM-1117: COGS revenue stream linking + menu derivation ─────────────────
+
+test("normalize preserves revenue_stream_id and menu_linked on COGS lines", () => {
+  const mp = normalizeMonthlyProjections({
+    forecast_lines: [
+      { id: "rev-x", label: "Wholesale", category: "revenue", mode: "flat", value: 500000 },
+      {
+        id: "cogs-x",
+        label: "Wholesale COGS",
+        category: "cogs",
+        mode: "pct",
+        value: 40,
+        revenue_stream_id: "rev-x",
+        menu_linked: true,
+      },
+    ],
+  });
+  const cogs = mp.forecast_lines.find((l) => l.id === "cogs-x");
+  assert.equal(cogs?.revenue_stream_id, "rev-x");
+  assert.equal(cogs?.menu_linked, true);
+});
+
+test("COGS line linked to a specific revenue stream applies % only to that stream", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;                  // disable the default base COGS rate
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  // Zero out foot-traffic so total revenue = revenue line amount only
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    { id: "rev-wholesale", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    { id: "rev-retail",    label: "Retail",    category: "revenue", mode: "flat", value: 500000 },
+    {
+      id: "cogs-wholesale",
+      label: "Wholesale COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 40,
+      revenue_stream_id: "rev-wholesale",
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // COGS = 40% × $10,000 wholesale only = $4,000 (not 40% of $15,000 total)
+  assert.equal(rows[0].cogs_cents, 400000);
+});
+
+test('COGS line with revenue_stream_id="base" applies only to foot-traffic base', () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  // Daily flow chosen to produce a clean number: 100 cust/day × 7 days × 52 / 12 × $7.50 ticket
+  // = 100*7*52/12 * 7.5 = 22750 cents-equiv? Easier to just check ratio.
+  mp.forecast_lines = [
+    { id: "rev-extra", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    {
+      id: "cogs-base",
+      label: "Base COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 30,
+      revenue_stream_id: "base",
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  const baseRev = rows[0].revenue_cents - 1000000;
+  // COGS = 30% of base (excludes the $10k wholesale line)
+  assert.equal(rows[0].cogs_cents, Math.round(baseRev * 0.3));
+});
+
+test("COGS line with no revenue_stream_id keeps legacy behavior (% of total)", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  mp.forecast_lines = [
+    { id: "rev-x", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    { id: "cogs-total", label: "Total COGS", category: "cogs", mode: "pct", value: 30 },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].cogs_cents, Math.round(rows[0].revenue_cents * 0.3));
+});
+
+test("COGS menu_linked: uses the menu blended pct against the linked stream", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    { id: "rev-x", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    {
+      id: "cogs-menu",
+      label: "Menu COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 99,             // ignored when menu_linked is true
+      revenue_stream_id: "rev-x",
+      menu_linked: true,
+    },
+  ];
+  const rows = computeMonthlyProjections(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    { menu_blended_cogs_pct: 28 }
+  );
+  // 28% × $10,000 wholesale = $2,800
+  assert.equal(rows[0].cogs_cents, 280000);
+});
+
+test("COGS menu_linked falls back to value when menu pct is null", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    { id: "rev-x", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    {
+      id: "cogs-menu",
+      label: "Menu COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 35,
+      revenue_stream_id: "rev-x",
+      menu_linked: true,
+    },
+  ];
+  const rows = computeMonthlyProjections(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    { menu_blended_cogs_pct: null }
+  );
+  // No menu data → uses line.value (35% × $10k = $3,500)
+  assert.equal(rows[0].cogs_cents, 350000);
+});
+
+test("computeMenuBlendedCogsPct: weighted by mix, prefers computed_cogs_cents", () => {
+  // Two items:
+  //   Latte:  price $5.00, cogs $1.00, mix 70 → cost weight 70, price weight 350
+  //   Bagel:  price $3.00, cogs $1.20, mix 30 → cost weight 36, price weight 90
+  // Blended = (70+36) / (350+90) × 100 = 106 / 440 × 100 ≈ 24.0909%
+  const pct = computeMenuBlendedCogsPct([
+    { price_cents: 500, computed_cogs_cents: 100, expected_mix_pct: 70 },
+    { price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 30 },
+  ]);
+  assert.ok(pct !== null);
+  assert.ok(Math.abs(pct - (106 / 440) * 100) < 1e-9);
+});
+
+test("computeMenuBlendedCogsPct: returns null when nothing is priced", () => {
+  assert.equal(computeMenuBlendedCogsPct([]), null);
+  assert.equal(computeMenuBlendedCogsPct(null), null);
+  assert.equal(
+    computeMenuBlendedCogsPct([
+      { price_cents: 0, computed_cogs_cents: 100, expected_mix_pct: 50 },
+      { price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 0 },
+    ]),
+    null
+  );
+});
+
+test("net income reflects COGS change when a stream-linked line is added", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  mp.forecast_lines = [
+    { id: "rev-x", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+  ];
+  const rowsNoCogs = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+
+  mp.forecast_lines = [
+    { id: "rev-x", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
+    {
+      id: "cogs-x",
+      label: "Wholesale COGS",
+      category: "cogs",
+      mode: "pct",
+      value: 40,
+      revenue_stream_id: "rev-x",
+    },
+  ];
+  const rowsWithCogs = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+
+  // Same revenue, higher COGS → lower gross profit → lower net income.
+  assert.equal(rowsNoCogs[0].revenue_cents, rowsWithCogs[0].revenue_cents);
+  assert.ok(rowsWithCogs[0].cogs_cents > rowsNoCogs[0].cogs_cents);
+  assert.ok(rowsWithCogs[0].net_income_cents < rowsNoCogs[0].net_income_cents);
 });
