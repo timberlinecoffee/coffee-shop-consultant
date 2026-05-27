@@ -1,0 +1,40 @@
+name: Migration drift check
+
+# Runs on PRs that touch supabase/migrations/ and on every push to main.
+# Hard-fails if schema_migrations (remote DB) has applied-but-uncommitted rows
+# or if a repo filename's name segment doesn't match schema_migrations.name.
+# Forward-only migrations (committed but not yet applied) are a soft warning.
+#
+# Required repo secret:
+#   SUPABASE_DB_URL — full Postgres connection string for the live project:
+#     postgresql://postgres.<project-ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.com:5432/postgres
+#     NOTE: <DB_PASSWORD> is the project database password (not the service-role JWT).
+#     Find it at: Supabase dashboard → Project Settings → Database → Connection string.
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  drift-check:
+    name: Check schema_migrations drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pg driver
+        run: npm install --no-save pg
+
+      - name: Run migration drift check
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/check-migration-drift.mjs
