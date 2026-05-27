@@ -73,7 +73,7 @@ export async function GET() {
       .order("position"),
     supabase
       .from("menu_items_with_cogs")
-      .select("id, name, category, base_price_cents")
+      .select("id, name, category_name, price_cents")
       .eq("plan_id", planId)
       .order("position"),
     supabase

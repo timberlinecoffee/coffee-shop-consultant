@@ -15,20 +15,15 @@ import type { PdfTemplate } from "../registry"
 
 // ── types ────────────────────────────────────────────────────────────────────
 
-type MenuItemCategory =
-  | "espresso"
-  | "drip"
-  | "specialty"
-  | "food"
-  | "retail"
-  | "other"
-
+// TIM-1140: category is now a per-plan editable row. The view exposes the
+// joined name on the menu_items_with_cogs view as `category_name`.
 export type MenuItemRow = {
   id: string
   plan_id: string
   position: number
   name: string
-  category: MenuItemCategory
+  category_id: string
+  category_name: string | null
   price_cents: number
   cogs_cents: number
   expected_mix_pct: number
@@ -43,23 +38,9 @@ export type MenuCardContent = {
 
 // ── constants ────────────────────────────────────────────────────────────────
 
-const CATEGORY_LABEL: Record<MenuItemCategory, string> = {
-  espresso: "Espresso",
-  drip: "Drip Coffee",
-  specialty: "Specialty",
-  food: "Food",
-  retail: "Retail",
-  other: "Other",
-}
-
-const CATEGORY_ORDER: MenuItemCategory[] = [
-  "espresso",
-  "drip",
-  "specialty",
-  "food",
-  "retail",
-  "other",
-]
+// TIM-1140: categories are per-plan now; the PDF groups by the joined name
+// returned on `category_name` and falls back to "Other" for unset rows.
+const UNCATEGORIZED_LABEL = "Other"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -154,13 +135,13 @@ function itemContribPer100(item: MenuItemRow, totalMix: number): number | null {
   return (item.expected_mix_pct * (item.price_cents - item.cogs_cents)) / totalMix
 }
 
-function groupByCategory(items: MenuItemRow[]): Map<MenuItemCategory, MenuItemRow[]> {
-  const map = new Map<MenuItemCategory, MenuItemRow[]>()
-  for (const cat of CATEGORY_ORDER) map.set(cat, [])
+function groupByCategory(items: MenuItemRow[]): Map<string, MenuItemRow[]> {
+  const map = new Map<string, MenuItemRow[]>()
   for (const item of items) {
-    const bucket = map.get(item.category) ?? []
+    const cat = item.category_name ?? UNCATEGORIZED_LABEL
+    const bucket = map.get(cat) ?? []
     bucket.push(item)
-    map.set(item.category, bucket)
+    map.set(cat, bucket)
   }
   return map
 }
@@ -278,12 +259,11 @@ function PublicMenuPage({
         </PdfSection>
       ) : (
         <>
-          {CATEGORY_ORDER.map((cat) => {
-            const catItems = grouped.get(cat) ?? []
+          {Array.from(grouped.entries()).map(([cat, catItems]) => {
             if (catItems.length === 0) return null
             return (
               <View key={cat}>
-                <Text style={styles.categoryLabel}>{CATEGORY_LABEL[cat]}</Text>
+                <Text style={styles.categoryLabel}>{cat}</Text>
                 {catItems.map((item) => (
                   <View key={item.id} style={styles.publicRow}>
                     <Text style={styles.publicName}>{item.name}</Text>
@@ -333,7 +313,7 @@ function OperatorPage({
     const margin = computeMarginPct(item.price_cents, item.cogs_cents)
     const contrib = itemContribPer100(item, totalMix)
     return {
-      category: CATEGORY_LABEL[item.category],
+      category: item.category_name ?? UNCATEGORIZED_LABEL,
       name: item.name,
       price: item.price_cents,
       cogs: item.cogs_cents,
@@ -437,8 +417,9 @@ export const menuCardTemplate: PdfTemplate<MenuCardContent> = {
   workspace_key: "menu_pricing",
 
   dataLoader: async (planId, _userId, supabase) => {
+    // TIM-1140: select from the view so we get the joined category_name.
     const { data: items, error } = await supabase
-      .from("menu_items")
+      .from("menu_items_with_cogs")
       .select("*")
       .eq("plan_id", planId)
       .eq("archived", false)
