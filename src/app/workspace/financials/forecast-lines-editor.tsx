@@ -68,8 +68,10 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
     "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
 
   const isCapex = line.category === "capex";
+  const isRevenue = line.category === "revenue";
 
   // Capex: only flat mode; one-time charge in start_month. No pct toggle, no growth.
+  // Revenue: only flat mode; "% of revenue" is a self-reference for revenue streams.
   return (
     <div className="border border-[#efefef] rounded-xl bg-white">
       <div className="flex items-center gap-2 px-3 py-2.5">
@@ -91,7 +93,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
           aria-label="Line item name"
         />
 
-        {!isCapex && (
+        {!isCapex && !isRevenue && (
           <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
             <button
               type="button"
@@ -119,7 +121,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
         )}
 
         <div className="relative w-28 shrink-0">
-          {line.mode === "flat" ? (
+          {line.mode === "flat" || isRevenue ? (
             <>
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
                 {sym}
@@ -129,10 +131,11 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
                 type="number"
                 min={0}
                 step={50}
-                value={line.value ? line.value / 100 : ""}
+                value={isRevenue && line.mode !== "flat" ? "" : line.value ? line.value / 100 : ""}
                 onChange={(e) =>
                   onChange({
                     ...line,
+                    mode: "flat",
                     value: Math.round((parseFloat(e.target.value) || 0) * 100),
                   })
                 }
@@ -164,7 +167,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode }: LineRowPro
 
         {!isCapex && (
           <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
-            {line.mode === "pct" ? "% of rev" : "/ mo"}
+            {isRevenue ? "/ mo" : line.mode === "pct" ? "% of rev" : "/ mo"}
           </span>
         )}
         {isCapex && (

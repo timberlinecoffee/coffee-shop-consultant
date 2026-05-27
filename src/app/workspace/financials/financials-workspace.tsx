@@ -307,13 +307,13 @@ function ForecastTab({
         <p className={sectionLabelCls}>Operating Schedule</p>
         <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px]">
+            <table className="w-full min-w-[480px]">
               <thead>
                 <tr className="border-b border-[#efefef] bg-[#faf9f7]">
                   <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Day</th>
                   <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Open</th>
-                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Opens</th>
-                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">Closes</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-36">Opens</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-36">Closes</th>
                   <th className="py-2.5 pl-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Hrs</th>
                 </tr>
               </thead>
@@ -343,7 +343,7 @@ function ForecastTab({
                             value={sched.open_time}
                             onChange={(e) => updateScheduleDay(day, { open_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-28"
+                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-32 sm:w-36"
                           />
                         ) : (
                           <span className="text-sm text-[#c0c0c0]">—</span>
@@ -356,7 +356,7 @@ function ForecastTab({
                             value={sched.close_time}
                             onChange={(e) => updateScheduleDay(day, { close_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-28"
+                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-32 sm:w-36"
                           />
                         ) : (
                           <span className="text-sm text-[#c0c0c0]">—</span>
