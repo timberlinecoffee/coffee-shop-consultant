@@ -111,7 +111,7 @@ const WORKSPACE_LABELS: Record<string, string> = {
   location_lease: "Location & Lease",
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
-  buildout_equipment: "Build-out & Equipment",
+  buildout_equipment: "Build Out & Equipment",
   launch_plan: "Launch Plan",
 }
 

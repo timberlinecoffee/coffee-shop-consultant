@@ -9,6 +9,7 @@ import {
   Lightbulb,
   MapPin,
   Megaphone,
+  Package,
   Rocket,
   Truck,
   Users,
@@ -30,4 +31,5 @@ export const WORKSPACE_ICONS: Record<NavIcon, LucideIcon> = {
   "file-text": FileText,
   "truck": Truck,
   "clipboard-list": ClipboardList,
+  "package": Package,
 };

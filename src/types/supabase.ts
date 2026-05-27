@@ -7,6 +7,7 @@ export type WorkspaceKey =
   | 'financials'
   | 'menu_pricing'
   | 'buildout_equipment'
+  | 'inventory'
   | 'launch_plan'
   | 'hiring'
   | 'marketing'

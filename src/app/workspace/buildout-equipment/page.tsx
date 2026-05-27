@@ -1,9 +1,10 @@
-// TIM-1038: Build Out & Equipment workspace — Equipment + Supplies tabs with sections.
+// TIM-1038: Build Out & Equipment workspace — Equipment sections.
+// TIM-1171: Supplies removed — now lives in /workspace/inventory.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
-import type { ListSection, SuppliesItem } from "@/types/buildout";
+import type { ListSection } from "@/types/buildout";
 import { BuildoutEquipmentWorkspace } from "./buildout-workspace";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export default async function BuildoutEquipmentPage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [equipmentResult, suppliesResult, sectionsResult, modelResult, profileResult] =
+  const [equipmentResult, sectionsResult, modelResult, profileResult] =
     await Promise.all([
       supabase
         .from("buildout_equipment_items")
@@ -35,15 +36,10 @@ export default async function BuildoutEquipmentPage() {
         .eq("archived", false)
         .order("position"),
       supabase
-        .from("buildout_supplies_items")
-        .select("*")
-        .eq("plan_id", plan.id)
-        .eq("archived", false)
-        .order("position"),
-      supabase
         .from("buildout_list_sections")
         .select("*")
         .eq("plan_id", plan.id)
+        .eq("list_type", "equipment")
         .order("position"),
       supabase
         .from("financial_models")
@@ -58,7 +54,6 @@ export default async function BuildoutEquipmentPage() {
     ]);
 
   const equipment = (equipmentResult.data ?? []) as EquipmentItem[];
-  const supplies = (suppliesResult.data ?? []) as SuppliesItem[];
   const sections = (sectionsResult.data ?? []) as ListSection[];
   const modelRow = modelResult.data;
   const profile = profileResult.data;
@@ -72,7 +67,6 @@ export default async function BuildoutEquipmentPage() {
     <BuildoutEquipmentWorkspace
       planId={plan.id}
       initialEquipment={equipment}
-      initialSupplies={supplies}
       initialSections={sections}
       initialModelUpdatedAt={modelRow?.updated_at ?? null}
       initialNeedsReviewAt={modelRow?.needs_review_at ?? null}
