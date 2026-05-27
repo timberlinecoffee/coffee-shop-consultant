@@ -434,9 +434,13 @@ function ForecastTab({
         <p className={sectionLabelCls}>Forecast Line Items</p>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
-            Add, rename, or remove any line. Toggle <span className="font-semibold">$</span> (static
-            monthly amount) or <span className="font-semibold">%</span> (percent of revenue). Click the
-            sliders icon to configure a ramp-up period or month-over-month growth on any line.
+            Add, rename, or remove any line. For revenue and COGS lines, toggle{" "}
+            <span className="font-semibold">$</span> (static monthly amount) or{" "}
+            <span className="font-semibold">%</span> (percent of revenue). For operating
+            expenses, pick the basis from the <span className="font-semibold">% of</span>{" "}
+            dropdown: a fixed monthly amount, percent of overall revenue, or percent of a
+            specific revenue stream. Click the sliders icon to configure a ramp-up period
+            or month-over-month growth on any line.
           </p>
           <ForecastLinesEditor
             lines={mp.forecast_lines}
