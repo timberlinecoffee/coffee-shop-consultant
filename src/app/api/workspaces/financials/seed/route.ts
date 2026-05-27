@@ -228,6 +228,7 @@ function deriveSectionName(category: string, itemName: string): string {
   }
 
   const map: Record<string, string> = {
+    espresso_station: "Espresso Bar",
     espresso_platform: "Espresso Bar",
     milk_beverage_prep: "Espresso Bar",
     refrigeration: "Cold Beverage",

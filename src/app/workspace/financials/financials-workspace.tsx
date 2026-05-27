@@ -40,11 +40,11 @@ const AUTOSAVE_DEBOUNCE_MS = 800;
 
 export type EquipmentCategory =
   // 14 current categories
-  | "espresso_platform" | "brew_platform" | "milk_beverage_prep" | "refrigeration"
+  | "espresso_station" | "brew_platform" | "milk_beverage_prep" | "refrigeration"
   | "plumbing_water" | "electrical" | "pos_tech" | "furniture_fixtures"
   | "signage_decor" | "smallwares" | "ceramics" | "glassware" | "to_go_ware" | "miscellaneous"
   // legacy values kept for backward compat
-  | "espresso" | "grinder" | "plumbing" | "furniture" | "pos" | "signage" | "other";
+  | "espresso_platform" | "espresso" | "grinder" | "plumbing" | "furniture" | "pos" | "signage" | "other";
 
 export type FinancingMethod =
   | "cash" | "in_house_financing" | "loan" | "lease" | "credit_card" | "other"

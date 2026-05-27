@@ -67,7 +67,8 @@ const FUND_CATEGORIES: EquipmentCategory[] = [
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  espresso_platform: "Espresso Platform",
+  espresso_station: "Espresso Station",
+  espresso_platform: "Espresso Station",
   brew_platform: "Brew Platform",
   milk_beverage_prep: "Milk & Beverage Prep",
   refrigeration: "Refrigeration",
@@ -92,7 +93,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const NEW_CATEGORIES: EquipmentCategory[] = [
-  "espresso_platform",
+  "espresso_station",
   "brew_platform",
   "milk_beverage_prep",
   "refrigeration",

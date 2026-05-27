@@ -1,8 +1,8 @@
 "use client";
 
-// TIM-1038: Build Out & Equipment workspace — Equipment + Supplies tabs,
+// TIM-1038: Build Out & Equipment workspace — Equipment sections,
 // workstation sections, drag-drop, resizable columns, per-section totals.
-// Replaces flat EquipmentGrid with SectionedListGrid.
+// TIM-1171: Supplies tab removed — now lives in the Inventory workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wrench, X, Save } from "lucide-react";
@@ -13,14 +13,13 @@ import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 
-const AUTOSAVE_DEBOUNCE_MS = 800;
-
 type AnyItem = EquipmentItem | SuppliesItem;
+
+const AUTOSAVE_DEBOUNCE_MS = 800;
 
 interface Props {
   planId: string;
   initialEquipment: EquipmentItem[];
-  initialSupplies: SuppliesItem[];
   initialSections: ListSection[];
   initialModelUpdatedAt: string | null;
   canEdit: boolean;
@@ -117,7 +116,6 @@ function SeedBanner({
 export function BuildoutEquipmentWorkspace({
   planId,
   initialEquipment,
-  initialSupplies,
   initialSections,
   initialModelUpdatedAt,
   canEdit,
@@ -125,9 +123,7 @@ export function BuildoutEquipmentWorkspace({
   initialNeedsReviewAt,
   initialModelUpdatedAtForReview,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"equipment" | "supplies">("equipment");
   const [equipment, setEquipment] = useState<EquipmentItem[]>(initialEquipment);
-  const [supplies, setSupplies] = useState<SuppliesItem[]>(initialSupplies);
   const [sections, setSections] = useState<ListSection[]>(initialSections);
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
@@ -148,10 +144,7 @@ export function BuildoutEquipmentWorkspace({
     !!initialModelUpdatedAtForReview &&
     new Date(initialNeedsReviewAt) > new Date(initialModelUpdatedAtForReview);
 
-  const progress = useMemo(() => {
-    const hasEquipment = equipment.length > 0 ? 1 : 0;
-    return { filled: hasEquipment, total: 1 };
-  }, [equipment]);
+  const progress = useMemo(() => ({ filled: equipment.length > 0 ? 1 : 0, total: 1 }), [equipment]);
 
   useEffect(() => {
     setModuleProgress(5, progress.filled, progress.total);
@@ -216,10 +209,6 @@ export function BuildoutEquipmentWorkspace({
     scheduleSave(eq);
   }
 
-  function handleSuppliesChange(next: AnyItem[]) {
-    setSupplies(next as SuppliesItem[]);
-  }
-
   function handleSectionsChange(next: ListSection[]) {
     setSections(next);
   }
@@ -244,28 +233,8 @@ export function BuildoutEquipmentWorkspace({
     if (!eqRes.ok || !secRes.ok) throw new Error("reload failed");
     const [newEq, newSec] = await Promise.all([eqRes.json(), secRes.json()]);
     setEquipment(newEq as EquipmentItem[]);
-    setSections((prev) => [
-      ...(newSec as ListSection[]),
-      ...prev.filter((s) => s.list_type === "supplies"),
-    ]);
+    setSections(newSec as ListSection[]);
     scheduleSave(newEq as EquipmentItem[]);
-  }
-
-  // Supplies seed
-  async function seedSupplies() {
-    const res = await fetch("/api/workspaces/buildout/supplies/seed", { method: "POST" });
-    if (!res.ok) throw new Error(`seed failed (${res.status})`);
-    const [supRes, secRes] = await Promise.all([
-      fetch("/api/workspaces/buildout/supplies"),
-      fetch("/api/workspaces/buildout/sections?list_type=supplies"),
-    ]);
-    if (!supRes.ok || !secRes.ok) throw new Error("reload failed");
-    const [newSup, newSec] = await Promise.all([supRes.json(), secRes.json()]);
-    setSupplies(newSup as SuppliesItem[]);
-    setSections((prev) => [
-      ...prev.filter((s) => s.list_type === "equipment"),
-      ...(newSec as ListSection[]),
-    ]);
   }
 
   const lastSavedAt =
@@ -281,9 +250,7 @@ export function BuildoutEquipmentWorkspace({
       : formatTimestamp(lastSavedAt);
 
   const equipmentSections = sections.filter((s) => s.list_type === "equipment");
-  const suppliesSections = sections.filter((s) => s.list_type === "supplies");
   const hasAiEquipment = equipment.some((i) => i.source === "ai_suggested");
-  const hasAiSupplies = supplies.some((i) => i.source === "ai_suggested");
 
   return (
     <div className="bg-[#faf9f7] min-h-screen">
@@ -296,7 +263,7 @@ export function BuildoutEquipmentWorkspace({
             </h1>
           </div>
           <p className="text-sm text-[#6b6b6b] leading-relaxed">
-            Track every piece of equipment, its cost, and how you plan to finance it. Use the Supplies tab for recurring consumables.
+            Track hard assets — espresso machines, grinders, fridges, furniture, and fixtures. Consumables and supplies live in the Inventory workspace.
           </p>
         </header>
 
@@ -319,85 +286,39 @@ export function BuildoutEquipmentWorkspace({
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex items-center gap-0 mb-5 border-b border-[#e8e8e8]">
-          {(["equipment", "supplies"] as const).map((tab) => (
+        {/* Save toolbar */}
+        <div className="flex items-center gap-3 mb-5">
+          <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
+            {saveLabel}
+          </span>
+          {canEdit && (
             <button
-              key={tab}
               type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-                activeTab === tab
-                  ? "border-[#155e63] text-[#155e63]"
-                  : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"
-              }`}
+              onClick={handleManualSave}
+              disabled={saveState.kind === "saving"}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
             >
-              {tab === "equipment" ? "Equipment" : "Supplies"}
+              <Save size={12} aria-hidden="true" />
+              Save
             </button>
-          ))}
-
-          {/* Save toolbar — right side */}
-          <div className="ml-auto flex items-center gap-3 pb-2">
-            {activeTab === "equipment" && (
-              <>
-                <span className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
-                  {saveLabel}
-                </span>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={handleManualSave}
-                    disabled={saveState.kind === "saving"}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
-                  >
-                    <Save size={12} aria-hidden="true" />
-                    Save
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+          )}
         </div>
 
-        {activeTab === "equipment" && (
-          <>
-            <SeedBanner
-              canEdit={canEdit}
-              listType="equipment"
-              hasAiItems={hasAiEquipment}
-              onSeed={seedEquipment}
-            />
-            <SectionedListGrid
-              listType="equipment"
-              planId={planId}
-              canEdit={canEdit}
-              sections={equipmentSections}
-              items={equipment as AnyItem[]}
-              onItemsChange={handleEquipmentChange}
-              onSectionsChange={handleSectionsChange}
-            />
-          </>
-        )}
-
-        {activeTab === "supplies" && (
-          <>
-            <SeedBanner
-              canEdit={canEdit}
-              listType="supplies"
-              hasAiItems={hasAiSupplies}
-              onSeed={seedSupplies}
-            />
-            <SectionedListGrid
-              listType="supplies"
-              planId={planId}
-              canEdit={canEdit}
-              sections={suppliesSections}
-              items={supplies as AnyItem[]}
-              onItemsChange={handleSuppliesChange}
-              onSectionsChange={handleSectionsChange}
-            />
-          </>
-        )}
+        <SeedBanner
+          canEdit={canEdit}
+          listType="equipment"
+          hasAiItems={hasAiEquipment}
+          onSeed={seedEquipment}
+        />
+        <SectionedListGrid
+          listType="equipment"
+          planId={planId}
+          canEdit={canEdit}
+          sections={equipmentSections}
+          items={equipment as AnyItem[]}
+          onItemsChange={handleEquipmentChange}
+          onSectionsChange={handleSectionsChange}
+        />
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />

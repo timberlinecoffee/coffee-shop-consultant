@@ -21,7 +21,8 @@ export type NavIcon =
   | "rocket"
   | "users"
   | "megaphone"
-  | "file-text";
+  | "file-text"
+  | "package";
 
 interface NudgeManifestEntry {
   moduleNumber: number;
@@ -44,7 +45,8 @@ const NUDGE_MANIFEST: ReadonlyArray<NudgeManifestEntry> = [
   { moduleNumber: 6, label: "Launch Plan",          href: "/workspace/launch-plan",        icon: "rocket",     totalSections: null, isShipped: true },
   { moduleNumber: 7, label: "Hiring & Onboarding",  href: "/workspace/hiring",             icon: "users",      totalSections: 4,    isShipped: true },
   { moduleNumber: 8, label: "Business Plan",        href: "/workspace/business-plan",      icon: "file-text",  totalSections: null, isShipped: true },
-  { moduleNumber: 9, label: "Marketing",            href: "/workspace/marketing",          icon: "megaphone",  totalSections: null, isShipped: true },
+  { moduleNumber: 9,  label: "Marketing",            href: "/workspace/marketing",  icon: "megaphone", totalSections: null, isShipped: true },
+  { moduleNumber: 13, label: "Inventory",            href: "/workspace/inventory",  icon: "package",   totalSections: null, isShipped: true },
 ];
 
 // Recommendation priority — lower index = higher priority. The new owner
@@ -400,6 +402,7 @@ const KEY_TO_MODULE: Record<string, number> = {
   hiring: 7,
   business_plan: 8,
   marketing: 9,
+  inventory: 13,
 };
 
 const MODULE_TO_KEY: Record<number, string> = Object.fromEntries(

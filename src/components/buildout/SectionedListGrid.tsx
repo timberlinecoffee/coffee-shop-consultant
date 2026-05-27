@@ -78,7 +78,7 @@ const SUPPLIES_COLS: ColDef[] = [
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  espresso_platform: "Espresso Platform", brew_platform: "Brew Platform",
+  espresso_station: "Espresso Station", espresso_platform: "Espresso Station", brew_platform: "Brew Platform",
   milk_beverage_prep: "Milk & Beverage Prep", refrigeration: "Refrigeration",
   plumbing_water: "Plumbing & Water", electrical: "Electrical",
   pos_tech: "POS & Technology", furniture_fixtures: "Furniture & Fixtures",
@@ -95,7 +95,7 @@ const FINANCING_LABELS: Record<string, string> = {
 };
 
 const EQUIPMENT_CATEGORIES: EquipmentCategory[] = [
-  "espresso_platform", "brew_platform", "milk_beverage_prep", "refrigeration",
+  "espresso_station", "brew_platform", "milk_beverage_prep", "refrigeration",
   "plumbing_water", "electrical", "pos_tech", "furniture_fixtures",
   "signage_decor", "smallwares", "ceramics", "glassware", "to_go_ware", "miscellaneous",
 ];
