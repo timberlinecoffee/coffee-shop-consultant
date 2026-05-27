@@ -84,15 +84,12 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
   const isCapex = line.category === "capex";
   const isCogs = line.category === "cogs";
   const isOverhead = line.category === "overhead";
+  const isRevenue = line.category === "revenue";
   const menuLinked = isCogs && line.menu_linked === true;
   const hasMenuData = typeof menuBlendedCogsPct === "number";
   const streamId = line.revenue_stream_id ?? DEFAULT_STREAM_ID;
   const displayPct = menuLinked && hasMenuData ? (menuBlendedCogsPct as number) : null;
 
-  // TIM-1118: encode the combined (mode, revenue_stream_id) state for the
-  // overhead "% of" dropdown as a single string. "flat" means fixed $; any
-  // other value is a stream id ("all" = overall, "base" = foot-traffic, or a
-  // specific revenue line id).
   const overheadModeValue: string = line.mode === "flat" ? "flat" : streamId;
 
   function applyOverheadModeChoice(next: string) {
@@ -107,11 +104,6 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
     });
   }
 
-  // Capex: only flat mode; one-time charge in start_month. No pct toggle, no growth.
-  // COGS (TIM-1117): can target a parent revenue stream and optionally derive % from the menu.
-  // Overhead (TIM-1118): a single "% of" dropdown replaces the $/% toggle and
-  // picks both the mode (fixed $ vs. pct) and the revenue stream the pct
-  // applies to.
   return (
     <div className="border border-[#efefef] rounded-xl bg-white">
       <div className="flex items-center gap-2 px-3 py-2.5">
@@ -149,7 +141,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               </option>
             ))}
           </select>
-        ) : !isCapex ? (
+        ) : !isCapex && !isRevenue ? (
           <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden shrink-0">
             <button
               type="button"
@@ -192,7 +184,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                 %
               </span>
             </>
-          ) : line.mode === "flat" ? (
+          ) : line.mode === "flat" || isRevenue ? (
             <>
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
                 {sym}
@@ -202,10 +194,11 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                 type="number"
                 min={0}
                 step={50}
-                value={line.value ? line.value / 100 : ""}
+                value={isRevenue && line.mode !== "flat" ? "" : line.value ? line.value / 100 : ""}
                 onChange={(e) =>
                   onChange({
                     ...line,
+                    mode: "flat",
                     value: Math.round((parseFloat(e.target.value) || 0) * 100),
                   })
                 }
@@ -239,9 +232,11 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
             {menuLinked
               ? "from menu"
-              : line.mode === "pct"
-                ? "% of rev"
-                : "/ mo"}
+              : isRevenue
+                ? "/ mo"
+                : line.mode === "pct"
+                  ? "% of rev"
+                  : "/ mo"}
           </span>
         )}
         {isOverhead && (
