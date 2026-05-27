@@ -386,7 +386,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
             <StatRow currencyCode={currencyCode} label="Operating Income (EBIT)" values={vals("operating_income_cents")} bold highlight
               pctValues={pctOf("operating_income_cents", "net_revenue_cents")} />
             <StatRow currencyCode={currencyCode} label="Depreciation" values={vals("depreciation_cents")} indent />
-            <StatRow currencyCode={currencyCode} label="EBITDA" values={vals("ebitda_cents")} bold />
+            <StatRow currencyCode={currencyCode} label="EBITDA (Earnings Before Interest, Taxes, Depreciation & Amortization)" values={vals("ebitda_cents")} bold />
             <StatRow currencyCode={currencyCode} label="Interest Expense" values={vals("interest_cents")} negative indent />
             <StatRow currencyCode={currencyCode} label="Income Before Taxes" values={vals("income_before_taxes_cents")} bold />
             <StatRow currencyCode={currencyCode} label="Taxes" values={vals("taxes_cents")} indent />
@@ -450,7 +450,7 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
   if (ni < 0) {
     lines.push(`Net income is negative in Year ${year}. That is not unusual in Year 1, but you need a clear path to break-even. Check the Break-Even tab.`);
   } else if (netMargin < 5) {
-    lines.push(`Net margin is ${netMargin.toFixed(1)}% — thin but positive. Most indie shops run 5–15%. Keep an eye on your OpEx as revenue grows.`);
+    lines.push(`Net margin is ${netMargin.toFixed(1)}% — thin but positive. Most indie shops run 5–15%. Keep an eye on your operating expenses as revenue grows.`);
   }
 
   return (

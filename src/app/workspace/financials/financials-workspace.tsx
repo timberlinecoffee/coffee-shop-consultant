@@ -724,7 +724,10 @@ function ForecastTab({
           </div>
           {(mp.ramp_months ?? 0) > 0 && (
             <div>
-              <p className="text-xs font-medium text-[#6b6b6b] mb-2">Revenue multiplier per ramp month (%)</p>
+              <p className="text-xs font-medium text-[#6b6b6b] mb-1">Revenue multiplier per ramp month (%)</p>
+              <p className="text-[10px] text-[#afafaf] mb-2">
+                Each value is applied to your <strong>base monthly revenue</strong> (the revenue you&apos;d earn at full capacity). 50% means you earn half your projected revenue that month. Example: if your projected revenue is $10,000/month and Month 1 is set to 30%, Month 1 revenue projects to $3,000.
+              </p>
               <div
                 className="grid gap-2"
                 style={{ gridTemplateColumns: `repeat(${Math.min(mp.ramp_months ?? 0, 6)}, minmax(0,1fr))` }}
@@ -733,7 +736,7 @@ function ForecastTab({
                   const val = (mp.ramp_multipliers ?? [])[i] ?? 100;
                   return (
                     <div key={i} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-[#afafaf]">M{i + 1}</span>
+                      <span className="text-[10px] text-[#afafaf]">Month {i + 1}</span>
                       <input
                         type="number"
                         min={0}
@@ -809,7 +812,7 @@ function ForecastTab({
                   const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
                   return (
                     <div key={i} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-[#afafaf]">M{i + 1}</span>
+                      <span className="text-[10px] text-[#afafaf]">Month {i + 1}</span>
                       <input
                         type="number"
                         min={-100}
