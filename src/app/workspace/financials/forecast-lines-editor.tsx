@@ -11,7 +11,7 @@
 // revenue stream, overall revenue, or kept as a fixed monthly amount.
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Sliders } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Sliders, Info, AlertCircle } from "lucide-react";
 import type {
   ForecastLine,
   ForecastCategory,
@@ -48,6 +48,14 @@ export interface RevenueStreamOption {
   label: string;
 }
 
+export interface MenuCogsItem {
+  name: string;
+  price_cents: number;
+  cogs_cents: number;
+  expected_mix_pct: number;
+  cogs_pct: number;
+}
+
 const DEFAULT_STREAM_ID = "all";
 
 function genId(): string {
@@ -73,11 +81,13 @@ interface LineRowProps {
   currencyCode: string;
   streamOptions: RevenueStreamOption[];
   menuBlendedCogsPct: number | null;
+  menuCogsItems: MenuCogsItem[];
 }
 
-function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct }: LineRowProps) {
+function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const inputCls =
     "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
 
@@ -87,6 +97,8 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
   const isRevenue = line.category === "revenue";
   const menuLinked = isCogs && line.menu_linked === true;
   const hasMenuData = typeof menuBlendedCogsPct === "number";
+  // TIM-1168: visually flag manual override — when menu data exists but this line is not auto-linked.
+  const isManualOverride = isCogs && hasMenuData && !menuLinked;
   const streamId = line.revenue_stream_id ?? DEFAULT_STREAM_ID;
   const displayPct = menuLinked && hasMenuData ? (menuBlendedCogsPct as number) : null;
 
@@ -124,6 +136,16 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           className={`${inputCls} flex-1 min-w-0 font-medium`}
           aria-label="Line item name"
         />
+
+        {/* TIM-1168: manual override badge — visible when menu data exists but auto is off */}
+        {isManualOverride && (
+          <span
+            className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#f5eddc] text-[#9a6500] border border-[#e8d49a]"
+            title="You've entered this manually. Enable 'Link to menu' to auto-calculate from your menu."
+          >
+            manual
+          </span>
+        )}
 
         {isOverhead ? (
           <select
@@ -229,15 +251,21 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
         </div>
 
         {!isCapex && !isOverhead && (
-          <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
-            {menuLinked
-              ? "from menu"
-              : isRevenue
-                ? "/ mo"
-                : line.mode === "pct"
-                  ? "% of rev"
-                  : "/ mo"}
-          </span>
+          menuLinked ? (
+            <button
+              type="button"
+              onClick={() => setShowBreakdown(!showBreakdown)}
+              className="flex items-center gap-1 text-[10px] text-[#155e63] font-medium shrink-0 hover:underline"
+              title="How is this calculated?"
+            >
+              <Info size={10} />
+              auto
+            </button>
+          ) : (
+            <span className="text-[10px] text-[#afafaf] shrink-0 w-16">
+              {isRevenue ? "/ mo" : line.mode === "pct" ? "% of rev" : "/ mo"}
+            </span>
+          )
         )}
         {isOverhead && (
           <span className="text-[10px] text-[#afafaf] shrink-0 w-12">
@@ -273,6 +301,40 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           <Trash2 size={14} />
         </button>
       </div>
+
+      {/* TIM-1168: inline breakdown reveal triggered from the "auto" button */}
+      {menuLinked && showBreakdown && !expanded && menuCogsItems.length > 0 && (
+        <div className="px-3 pb-3 pt-2 border-t border-[#e8f4f4] bg-[#f5fbfb]">
+          <p className="text-[10px] text-[#6b6b6b] mb-2">
+            Weighted average COGS % from your menu items (by expected sales mix):
+          </p>
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="text-[#afafaf]">
+                <th className="text-left pb-1 font-medium">Item</th>
+                <th className="text-right pb-1 font-medium">Mix %</th>
+                <th className="text-right pb-1 font-medium">COGS %</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e0f0f0]">
+              {menuCogsItems.map((it, i) => (
+                <tr key={i}>
+                  <td className="py-1 pr-2 text-[#1a1a1a]">{it.name}</td>
+                  <td className="py-1 text-right text-[#6b6b6b]">{it.expected_mix_pct.toFixed(0)}%</td>
+                  <td className="py-1 text-right font-medium text-[#155e63]">{it.cogs_pct.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-[#c5dfe0]">
+                <td className="pt-1.5 font-semibold text-[#1a1a1a]">Blended</td>
+                <td />
+                <td className="pt-1.5 text-right font-bold text-[#155e63]">{(menuBlendedCogsPct as number).toFixed(1)}%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
 
       {expanded && (
         <div className="px-3 pb-3 border-t border-[#f5f5f5] pt-3 space-y-3 bg-[#fafafa]">
@@ -356,6 +418,54 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                   ? `Blended menu COGS: ${(menuBlendedCogsPct as number).toFixed(1)}% of priced items.`
                   : "Add menu items with prices and expected mix to enable this."}
               </p>
+
+              {/* TIM-1168: "How is this calculated?" breakdown */}
+              {menuLinked && menuCogsItems.length > 0 && (
+                <div className="mt-3 ml-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowBreakdown(!showBreakdown)}
+                    className="flex items-center gap-1 text-[10px] font-medium text-[#155e63] hover:underline"
+                  >
+                    <Info size={10} />
+                    {showBreakdown ? "Hide calculation" : "How is this calculated?"}
+                  </button>
+                  {showBreakdown && (
+                    <div className="mt-2 rounded-lg border border-[#e8f4f4] bg-[#f5fbfb] p-3">
+                      <p className="text-[10px] text-[#6b6b6b] mb-2">
+                        Blended COGS % = weighted average of (ingredient cost ÷ sell price) across all priced menu items, weighted by their expected sales mix.
+                      </p>
+                      <table className="w-full text-[10px]">
+                        <thead>
+                          <tr className="text-[#afafaf]">
+                            <th className="text-left pb-1 font-medium">Item</th>
+                            <th className="text-right pb-1 font-medium">Mix %</th>
+                            <th className="text-right pb-1 font-medium">COGS %</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#e8f4f4]">
+                          {menuCogsItems.map((it, i) => (
+                            <tr key={i}>
+                              <td className="py-1 pr-2 text-[#1a1a1a] truncate max-w-[120px]">{it.name}</td>
+                              <td className="py-1 text-right text-[#6b6b6b]">{it.expected_mix_pct.toFixed(0)}%</td>
+                              <td className="py-1 text-right font-medium text-[#155e63]">{it.cogs_pct.toFixed(1)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-[#c5dfe0]">
+                            <td className="pt-1.5 font-semibold text-[#1a1a1a]">Blended</td>
+                            <td />
+                            <td className="pt-1.5 text-right font-bold text-[#155e63]">
+                              {(menuBlendedCogsPct as number).toFixed(1)}%
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -514,11 +624,13 @@ interface SectionProps {
   currencyCode: string;
   streamOptions: RevenueStreamOption[];
   menuBlendedCogsPct: number | null;
+  menuCogsItems: MenuCogsItem[];
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
+  const hasMenuData = typeof menuBlendedCogsPct === "number";
 
   function addLine() {
     const defaultMode = category === "capex" ? "flat" : (category === "cogs" ? "pct" : "flat");
@@ -535,9 +647,12 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
       newLine.useful_life_years = 7;
     }
     if (category === "cogs") {
-      // TIM-1117: default new COGS lines to "all revenue" (legacy behavior).
-      // Users pick a specific revenue stream in the line's expanded panel.
+      // TIM-1168: auto-link to menu when menu data exists (best-ergonomics default).
+      // Falls back to manual pct when no menu is built yet.
       newLine.revenue_stream_id = undefined;
+      if (hasMenuData) {
+        newLine.menu_linked = true;
+      }
     }
     onLinesChange([...lines, newLine]);
   }
@@ -576,7 +691,25 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
         )}
       </div>
       <div className="space-y-2">
-        {myLines.length === 0 ? (
+        {/* TIM-1168: COGS empty-state guides user to menu builder when no menu data exists */}
+        {category === "cogs" && !hasMenuData && myLines.length === 0 && (
+          <div className="flex items-start gap-2.5 py-3 px-3 bg-[#fef9ec] border border-[#f5dfa0] rounded-lg">
+            <AlertCircle size={14} className="text-[#b08a00] shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-[#7a5f00]">
+                No menu built yet
+              </p>
+              <p className="text-[10px] text-[#9a7800] mt-0.5">
+                Build your menu with item prices and ingredient costs in the{" "}
+                <a href="/workspace/menu-pricing" className="underline font-medium hover:text-[#7a5f00]">
+                  Menu & Pricing workspace
+                </a>
+                . COGS will auto-calculate from there. You can also enter a manual % below.
+              </p>
+            </div>
+          </div>
+        )}
+        {myLines.length === 0 && category !== "cogs" ? (
           <p className="text-xs text-[#afafaf] italic py-2 px-3 bg-[#faf9f7] rounded-lg">
             No {meta.label.toLowerCase()} lines yet.
           </p>
@@ -591,6 +724,7 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
               currencyCode={currencyCode}
               streamOptions={streamOptions}
               menuBlendedCogsPct={menuBlendedCogsPct}
+              menuCogsItems={menuCogsItems}
             />
           ))
         )}
@@ -605,6 +739,7 @@ interface Props {
   onChange: (next: ForecastLine[]) => void;
   currencyCode?: string;
   menuBlendedCogsPct?: number | null;
+  menuCogsItems?: MenuCogsItem[];
 }
 
 // Build the revenue stream picker options from the current forecast lines.
@@ -629,6 +764,7 @@ export function ForecastLinesEditor({
   onChange,
   currencyCode = "USD",
   menuBlendedCogsPct = null,
+  menuCogsItems = [],
 }: Props) {
   const streamOptions = streamOptionsFromLines(lines);
   const shared = {
@@ -638,6 +774,7 @@ export function ForecastLinesEditor({
     currencyCode,
     streamOptions,
     menuBlendedCogsPct,
+    menuCogsItems,
   };
   return (
     <div className="space-y-6">
