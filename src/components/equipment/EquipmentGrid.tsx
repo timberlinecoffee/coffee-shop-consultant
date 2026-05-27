@@ -154,6 +154,7 @@ function newBlankItem(planId: string, position: number): EquipmentItem {
     vendor: null,
     model: null,
     supplier: null,
+    vendor_candidate_id: null,
     quantity: 1,
     unit_cost_cents: 0,
     priority_tier: "must_have",

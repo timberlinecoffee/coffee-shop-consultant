@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
       vendor: vendorRaw ? toTitleCase(vendorRaw) : null,
       model: modelRaw ? toTitleCase(modelRaw) : null,
       supplier: supplierRaw ? toTitleCase(supplierRaw) : null,
+      vendor_candidate_id: (body.vendor_candidate_id as string | null | undefined) ?? null,
       quantity: (body.quantity as number | undefined) ?? 1,
       unit_cost_cents: (body.unit_cost_cents as number | undefined) ?? 0,
       priority_tier: (body.priority_tier as string | undefined) ?? "must_have",

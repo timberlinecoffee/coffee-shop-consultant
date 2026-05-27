@@ -63,6 +63,7 @@ export interface EquipmentItem {
   vendor: string | null;
   model: string | null;
   supplier: string | null;
+  vendor_candidate_id: string | null;
   quantity: number;
   unit_cost_cents: number;
   priority_tier: PriorityTier;

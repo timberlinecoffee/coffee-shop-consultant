@@ -4,6 +4,7 @@
 // Supports: workstation sections, drag-drop within/between sections,
 // resizable columns (pointer events), per-section totals, grand total,
 // column visibility toggle (localStorage), collapsible sections.
+// TIM-1174: Vendor column links to Suppliers & Vendors workspace.
 
 import {
   useCallback,
@@ -12,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -42,6 +44,7 @@ import {
 import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import { formatCurrency } from "@/lib/financial-projection";
+import { type VendorCandidate, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 
@@ -59,7 +62,7 @@ const EQUIPMENT_COLS: ColDef[] = [
   { id: "name",             label: "Name",      defaultWidth: 200, resizable: true,  toggleable: false },
   { id: "vendor",           label: "Brand",     defaultWidth: 130, resizable: true,  toggleable: true  },
   { id: "model",            label: "Model",     defaultWidth: 130, resizable: true,  toggleable: true  },
-  { id: "supplier",         label: "Supplier",  defaultWidth: 130, resizable: true,  toggleable: true  },
+  { id: "supplier",         label: "Vendor",    defaultWidth: 150, resizable: true,  toggleable: true  },
   { id: "unit_cost_cents",  label: "Cost",      defaultWidth: 110, resizable: true,  toggleable: true,  costClass: true },
   { id: "financing_method", label: "Financing", defaultWidth: 130, resizable: true,  toggleable: true  },
   { id: "category",         label: "Category",  defaultWidth: 160, resizable: true,  toggleable: true  },
@@ -217,6 +220,172 @@ function SelectInput({
   );
 }
 
+// ── Vendor linked input (TIM-1174) ────────────────────────────────────────────
+
+function VendorLinkedInput({
+  name,
+  candidateId,
+  candidates,
+  disabled,
+  onCommit,
+}: {
+  name: string;
+  candidateId: string | null;
+  candidates: VendorCandidate[];
+  disabled: boolean;
+  onCommit: (name: string, candidateId: string | null) => void;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setDraft(name); }, [name]);
+
+  const filtered = useMemo(() => {
+    if (!draft.trim()) return candidates;
+    const q = draft.toLowerCase();
+    return candidates.filter((c) => c.name.toLowerCase().includes(q));
+  }, [candidates, draft]);
+
+  const exactMatch = candidates.find(
+    (c) => c.name.toLowerCase() === draft.toLowerCase().trim()
+  );
+
+  function handleSelect(candidate: VendorCandidate) {
+    setEditing(false);
+    setShowDropdown(false);
+    setDraft(candidate.name);
+    onCommit(candidate.name, candidate.id);
+  }
+
+  async function handleCreate() {
+    if (!draft.trim() || creating) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/workspaces/suppliers/candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: draft.trim(),
+          category: "other",
+          status: "researching",
+          source: "user_added",
+        }),
+      });
+      if (res.ok) {
+        const created = (await res.json()) as VendorCandidate;
+        onCommit(created.name, created.id);
+        setDraft(created.name);
+      } else {
+        onCommit(draft.trim(), null);
+      }
+    } catch {
+      onCommit(draft.trim(), null);
+    }
+    setCreating(false);
+    setEditing(false);
+    setShowDropdown(false);
+  }
+
+  function handleBlur() {
+    setTimeout(() => {
+      setEditing(false);
+      setShowDropdown(false);
+      if (draft.trim() !== name) {
+        onCommit(draft.trim() || "", exactMatch ? exactMatch.id : null);
+      }
+    }, 150);
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-1 w-full min-w-0">
+        {name ? (
+          candidateId ? (
+            <button
+              type="button"
+              className="text-xs text-[#155e63] underline decoration-dotted hover:no-underline truncate text-left"
+              onClick={() => router.push("/workspace/suppliers")}
+              title="Open in Suppliers & Vendors"
+            >
+              {name}
+            </button>
+          ) : (
+            <span
+              className="block truncate text-xs text-[#1a1a1a] cursor-text flex-1"
+              onClick={() => !disabled && setEditing(true)}
+            >
+              {name}
+            </span>
+          )
+        ) : (
+          <span
+            className="block truncate text-xs text-[#c0c0c0] cursor-text flex-1"
+            onClick={() => !disabled && setEditing(true)}
+          >
+            Vendor
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full">
+      <input
+        ref={inputRef}
+        type="text"
+        autoFocus
+        className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+        value={draft}
+        placeholder="Search or add vendor..."
+        onChange={(e) => { setDraft(e.target.value); setShowDropdown(true); }}
+        onFocus={() => setShowDropdown(true)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setEditing(false); setShowDropdown(false); setDraft(name); }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (filtered.length > 0 && exactMatch) handleSelect(exactMatch);
+            else if (filtered.length > 0) handleSelect(filtered[0]);
+            else if (draft.trim()) void handleCreate();
+          }
+        }}
+      />
+      {showDropdown && (filtered.length > 0 || (!exactMatch && draft.trim())) && (
+        <div className="absolute left-0 top-full mt-0.5 z-30 bg-white border border-[#e8e8e8] rounded-lg shadow-md min-w-[200px] max-h-[180px] overflow-y-auto">
+          {filtered.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className="w-full text-left px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#f4f9f8] flex items-center gap-2"
+              onMouseDown={() => handleSelect(c)}
+            >
+              <span className="truncate flex-1">{c.name}</span>
+              <span className="text-[10px] text-[#afafaf] shrink-0">
+                {VENDOR_CATEGORY_LABELS[c.category as keyof typeof VENDOR_CATEGORY_LABELS] ?? c.category}
+              </span>
+            </button>
+          ))}
+          {!exactMatch && draft.trim() && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-1.5 text-xs text-[#155e63] hover:bg-[#f4f9f8] font-medium border-t border-[#f0f0f0]"
+              onMouseDown={() => void handleCreate()}
+              disabled={creating}
+            >
+              {creating ? "Adding..." : `Add "${draft.trim()}" to Suppliers`}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sortable row ──────────────────────────────────────────────────────────────
 
 function SortableRow({
@@ -225,6 +394,7 @@ function SortableRow({
   canEdit,
   visibleCols,
   colWidths,
+  vendorCandidates,
   onUpdate,
   onDelete,
   isDragOverlay,
@@ -234,6 +404,7 @@ function SortableRow({
   canEdit: boolean;
   visibleCols: ColDef[];
   colWidths: Map<string, number>;
+  vendorCandidates: VendorCandidate[];
   onUpdate: (id: string, patch: Partial<AnyItem>) => void;
   onDelete: (id: string) => void;
   isDragOverlay?: boolean;
@@ -301,7 +472,7 @@ function SortableRow({
           <td key="vendor" className={cellCls} style={{ width: colWidths.get("vendor") }}>
             <TextInput
               value={(item as { vendor?: string | null }).vendor ?? ""}
-              placeholder="Vendor"
+              placeholder="Brand"
               disabled={!canEdit}
               onCommit={(v) => onUpdate(item.id, { vendor: v || null } as Partial<AnyItem>)}
             />
@@ -323,11 +494,14 @@ function SortableRow({
       case "supplier":
         return eq ? (
           <td key="supplier" className={cellCls} style={{ width: colWidths.get("supplier") }}>
-            <TextInput
-              value={eq.supplier ?? ""}
-              placeholder="Supplier"
+            <VendorLinkedInput
+              name={eq.supplier ?? ""}
+              candidateId={eq.vendor_candidate_id ?? null}
+              candidates={vendorCandidates}
               disabled={!canEdit}
-              onCommit={(v) => onUpdate(item.id, { supplier: v || null } as Partial<AnyItem>)}
+              onCommit={(name, candidateId) =>
+                onUpdate(item.id, { supplier: name || null, vendor_candidate_id: candidateId } as Partial<AnyItem>)
+              }
             />
           </td>
         ) : null;
@@ -556,6 +730,16 @@ export function SectionedListGrid({
 }: SectionedListGridProps) {
   const cols = listType === "equipment" ? EQUIPMENT_COLS : SUPPLIES_COLS;
 
+  // TIM-1174: Vendor candidates for autocomplete in equipment Vendor column
+  const [vendorCandidates, setVendorCandidates] = useState<VendorCandidate[]>([]);
+  useEffect(() => {
+    if (listType !== "equipment") return;
+    fetch("/api/workspaces/suppliers/candidates")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: VendorCandidate[]) => setVendorCandidates(data))
+      .catch(() => {});
+  }, [listType]);
+
   // Column widths
   const [colWidths, setColWidths] = useState<Map<string, number>>(() => new Map(cols.map((c) => [c.id, c.defaultWidth])));
   useEffect(() => {
@@ -641,6 +825,7 @@ export function SectionedListGrid({
         body.vendor = eq.vendor;
         body.model = eq.model;
         body.supplier = eq.supplier;
+        body.vendor_candidate_id = eq.vendor_candidate_id ?? null;
         body.priority_tier = eq.priority_tier;
         body.financing_method = eq.financing_method;
       } else {
@@ -779,6 +964,7 @@ export function SectionedListGrid({
         vendor: null,
         model: null,
         supplier: null,
+        vendor_candidate_id: null,
         priority_tier: "must_have",
         financing_method: "cash" as FinancingMethod,
       } as EquipmentItem;
@@ -1160,6 +1346,7 @@ export function SectionedListGrid({
                               canEdit={canEdit}
                               visibleCols={visibleCols}
                               colWidths={colWidths}
+                              vendorCandidates={vendorCandidates}
                               onUpdate={updateItem}
                               onDelete={deleteItem}
                             />
@@ -1209,6 +1396,7 @@ export function SectionedListGrid({
                       canEdit={canEdit}
                       visibleCols={visibleCols}
                       colWidths={colWidths}
+                      vendorCandidates={vendorCandidates}
                       onUpdate={updateItem}
                       onDelete={deleteItem}
                     />
@@ -1261,6 +1449,7 @@ export function SectionedListGrid({
                       canEdit={canEdit}
                       visibleCols={visibleCols}
                       colWidths={colWidths}
+                      vendorCandidates={vendorCandidates}
                       onUpdate={() => {}}
                       onDelete={() => {}}
                       isDragOverlay
