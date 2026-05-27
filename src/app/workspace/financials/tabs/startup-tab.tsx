@@ -1,9 +1,10 @@
 "use client";
 
-import { type FinancialInputs, fmt } from "@/lib/financial-projection";
+import { type FinancialInputs, type FundingSourceLine, fmt } from "@/lib/financial-projection";
 
 interface Props {
   inputs: FinancialInputs;
+  fundingSources?: FundingSourceLine[];
   currencyCode?: string;
 }
 
@@ -13,7 +14,7 @@ interface LineItem {
   note?: string;
 }
 
-export function StartupTab({ inputs, currencyCode = "USD" }: Props) {
+export function StartupTab({ inputs, fundingSources, currencyCode = "USD" }: Props) {
   const f = (v: number) => fmt(v, currencyCode);
   const items: LineItem[] = [
     { label: "Equipment", value: inputs.equipment_cost_cents, note: "From your equipment plan" },
@@ -27,17 +28,43 @@ export function StartupTab({ inputs, currencyCode = "USD" }: Props) {
   ];
 
   const totalStartup = items.reduce((sum, i) => sum + i.value, 0);
-  const totalFunding = inputs.owner_capital_cents + inputs.loan_amount_cents;
+
+  // TIM-1122: when funding_sources are configured, show the rich breakdown.
+  // Otherwise fall back to the legacy single-loan view from FinancialInputs.
+  const sources = fundingSources ?? [];
+  const hasFundingSources = sources.length > 0;
+
+  const sumKind = (kind: FundingSourceLine["kind"]) =>
+    sources.filter((s) => s.kind === kind).reduce((acc, s) => acc + s.amount_cents, 0);
+
+  const founderTotal = hasFundingSources ? sumKind("founder_equity") : inputs.owner_capital_cents;
+  const investorTotal = sumKind("investor_equity");
+  const grantTotal = sumKind("grant");
+  const loanTotal = hasFundingSources ? sumKind("loan") : inputs.loan_amount_cents;
+  const totalFunding = founderTotal + investorTotal + grantTotal + loanTotal;
   const fundingGap = totalStartup - totalFunding;
 
-  const monthlyPayment = (() => {
-    const p = inputs.loan_amount_cents;
-    const r = inputs.loan_annual_rate_pct / 100 / 12;
-    const n = inputs.loan_term_months;
+  const loanLines = sources.filter((s) => s.kind === "loan" && s.amount_cents > 0);
+
+  const monthlyPaymentFor = (line: FundingSourceLine) => {
+    const p = line.amount_cents;
+    const n = Math.max(0, line.term_months ?? 0);
+    const r = ((line.annual_rate_pct ?? 0) / 100) / 12;
     if (p <= 0 || n <= 0) return 0;
     if (r <= 0) return Math.round(p / n);
     return Math.round(p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
-  })();
+  };
+
+  const totalMonthlyLoanPayment = hasFundingSources
+    ? loanLines.reduce((acc, l) => acc + monthlyPaymentFor(l), 0)
+    : (() => {
+        const p = inputs.loan_amount_cents;
+        const r = inputs.loan_annual_rate_pct / 100 / 12;
+        const n = inputs.loan_term_months;
+        if (p <= 0 || n <= 0) return 0;
+        if (r <= 0) return Math.round(p / n);
+        return Math.round(p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+      })();
 
   return (
     <div className="space-y-4">
@@ -68,23 +95,62 @@ export function StartupTab({ inputs, currencyCode = "USD" }: Props) {
 
       {/* Funding sources */}
       <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 pt-5 pb-2">
+        <div className="px-5 pt-5 pb-2 flex items-baseline justify-between">
           <p className="text-sm font-semibold text-[#1a1a1a]">Funding Sources</p>
+          {hasFundingSources && (
+            <p className="text-xs text-[#afafaf]">Edit in the Funding tab</p>
+          )}
         </div>
         <table className="w-full border-collapse text-sm">
           <tbody>
-            <tr className="border-t border-[#f0f0f0]">
-              <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Owner Capital</td>
-              <td className="py-3 pr-5 text-right font-medium">{f(inputs.owner_capital_cents)}</td>
-            </tr>
-            <tr className="border-t border-[#f0f0f0]">
-              <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Loan Amount
-                <span className="ml-2 text-xs text-[#afafaf]">
-                  ({inputs.loan_term_months} mo @ {inputs.loan_annual_rate_pct}% — {f(monthlyPayment)}/mo)
-                </span>
-              </td>
-              <td className="py-3 pr-5 text-right font-medium">{f(inputs.loan_amount_cents)}</td>
-            </tr>
+            {hasFundingSources ? (
+              <>
+                {founderTotal > 0 && (
+                  <tr className="border-t border-[#f0f0f0]">
+                    <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Founder Equity</td>
+                    <td className="py-3 pr-5 text-right font-medium">{f(founderTotal)}</td>
+                  </tr>
+                )}
+                {investorTotal > 0 && (
+                  <tr className="border-t border-[#f0f0f0]">
+                    <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Investor Equity</td>
+                    <td className="py-3 pr-5 text-right font-medium">{f(investorTotal)}</td>
+                  </tr>
+                )}
+                {grantTotal > 0 && (
+                  <tr className="border-t border-[#f0f0f0]">
+                    <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Grants / Other</td>
+                    <td className="py-3 pr-5 text-right font-medium">{f(grantTotal)}</td>
+                  </tr>
+                )}
+                {loanLines.map((l) => (
+                  <tr key={l.id} className="border-t border-[#f0f0f0]">
+                    <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">
+                      {l.label}
+                      <span className="ml-2 text-xs text-[#afafaf]">
+                        ({l.term_months ?? 0} mo @ {l.annual_rate_pct ?? 0}% : {f(monthlyPaymentFor(l))}/mo)
+                      </span>
+                    </td>
+                    <td className="py-3 pr-5 text-right font-medium">{f(l.amount_cents)}</td>
+                  </tr>
+                ))}
+              </>
+            ) : (
+              <>
+                <tr className="border-t border-[#f0f0f0]">
+                  <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Owner Capital</td>
+                  <td className="py-3 pr-5 text-right font-medium">{f(inputs.owner_capital_cents)}</td>
+                </tr>
+                <tr className="border-t border-[#f0f0f0]">
+                  <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Loan Amount
+                    <span className="ml-2 text-xs text-[#afafaf]">
+                      ({inputs.loan_term_months} mo @ {inputs.loan_annual_rate_pct}% : {f(totalMonthlyLoanPayment)}/mo)
+                    </span>
+                  </td>
+                  <td className="py-3 pr-5 text-right font-medium">{f(inputs.loan_amount_cents)}</td>
+                </tr>
+              </>
+            )}
             <tr className="border-t-2 border-[#155e63] bg-[#f7fafa]">
               <td className="py-3 pl-5 pr-4 font-semibold">Total Funding</td>
               <td className="py-3 pr-5 text-right font-bold">{f(totalFunding)}</td>
@@ -118,8 +184,8 @@ export function StartupTab({ inputs, currencyCode = "USD" }: Props) {
         <div className="space-y-2 text-sm text-[#2a4a4c] leading-relaxed">
           <p>The working capital reserve and opening cash buffer are not spent — they sit in your bank account as a cushion. Banks and lenders like to see 3 months of fixed costs in reserve before you open.</p>
           <p>Equipment is on a {inputs.depreciation_years}-year depreciation schedule, which reduces your taxable income over time. That is the main reason to separate it from build-out costs.</p>
-          {inputs.loan_amount_cents > 0 && (
-            <p>Your loan payment of {f(monthlyPayment)}/month starts from day one — before you have any revenue. Make sure your opening cash buffer can cover at least 3 months of loan payments.</p>
+          {loanTotal > 0 && (
+            <p>Your loan payment of {f(totalMonthlyLoanPayment)}/month starts from day one : before you have any revenue. Make sure your opening cash buffer can cover at least 3 months of loan payments.</p>
           )}
         </div>
       </div>

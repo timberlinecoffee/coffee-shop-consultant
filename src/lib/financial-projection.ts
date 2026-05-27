@@ -73,6 +73,26 @@ export interface ForecastLine {
   legacy_key?: LegacyLineKey;
 }
 
+// TIM-1122: Funding Sources. Multiple line items per category; each kind has
+// its own relevant fields (loans → term/rate, investors → % ownership). All
+// equity kinds flow into balance-sheet Equity; loans flow into Long-Term Debt
+// and produce monthly loan repayments in cash flow.
+export type FundingKind = "founder_equity" | "loan" | "investor_equity" | "grant";
+
+export interface FundingSourceLine {
+  id: string;
+  kind: FundingKind;
+  label: string;
+  amount_cents: number;
+  // Loans only — required when kind === "loan".
+  term_months?: number;
+  annual_rate_pct?: number;
+  // Investor equity only.
+  pct_ownership?: number;
+  // Grants / Other.
+  notes?: string;
+}
+
 export interface MonthlyProjections {
   // Customer flow
   daily_flow: DailyFlow;
@@ -87,6 +107,11 @@ export interface MonthlyProjections {
 
   // TIM-1102: source-of-truth flexible line items.
   forecast_lines: ForecastLine[];
+
+  // TIM-1122: source-of-truth funding sources. When non-empty, these drive
+  // owner_capital_cents / loan_amount_cents in computeMonthlySlices; the
+  // legacy single-loan FinancialInputs fields are fall-backs for pre-1122 data.
+  funding_sources: FundingSourceLine[];
 
   // Below-the-line items
   taxes_pct: number;
@@ -232,6 +257,25 @@ export function defaultForecastLines(): ForecastLine[] {
   ];
 }
 
+export function defaultFundingSources(): FundingSourceLine[] {
+  return [
+    {
+      id: "funding:founder",
+      kind: "founder_equity",
+      label: "Founder Equity",
+      amount_cents: 1500000000,
+    },
+    {
+      id: "funding:loan",
+      kind: "loan",
+      label: "Bank Loan",
+      amount_cents: 1000000000,
+      term_months: 60,
+      annual_rate_pct: 6.5,
+    },
+  ];
+}
+
 export function defaultMonthlyProjections(): MonthlyProjections {
   return {
     daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
@@ -239,6 +283,7 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     weekly_schedule: defaultWeekSchedule(),
     cogs_pct: 30,
     forecast_lines: defaultForecastLines(),
+    funding_sources: defaultFundingSources(),
     taxes_pct: 25,
     ramp_months: 3,
     ramp_multipliers: [30, 55, 80],
@@ -327,6 +372,61 @@ const ALL_LEGACY_KEYS: LegacyLineKey[] = [
   "supplies",
   "interest",
 ];
+
+const FUNDING_KINDS: FundingKind[] = ["founder_equity", "loan", "investor_equity", "grant"];
+
+function normalizeFundingSource(raw: unknown, fallbackId: string): FundingSourceLine | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const kind = FUNDING_KINDS.includes(r.kind as FundingKind) ? (r.kind as FundingKind) : "founder_equity";
+  const amount_cents = typeof r.amount_cents === "number" && r.amount_cents >= 0 ? Math.round(r.amount_cents) : 0;
+  const id = typeof r.id === "string" && r.id.length > 0 ? r.id : fallbackId;
+  const label = typeof r.label === "string" && r.label.length > 0 ? r.label : defaultFundingLabel(kind);
+  const line: FundingSourceLine = { id, kind, label, amount_cents };
+  if (kind === "loan") {
+    line.term_months = typeof r.term_months === "number" && r.term_months > 0 ? Math.round(r.term_months) : 60;
+    line.annual_rate_pct = typeof r.annual_rate_pct === "number" && r.annual_rate_pct >= 0 ? r.annual_rate_pct : 0;
+  } else if (kind === "investor_equity") {
+    line.pct_ownership = typeof r.pct_ownership === "number" ? Math.max(0, Math.min(100, r.pct_ownership)) : 0;
+  }
+  if (typeof r.notes === "string" && r.notes.length > 0) line.notes = r.notes;
+  return line;
+}
+
+function defaultFundingLabel(kind: FundingKind): string {
+  switch (kind) {
+    case "founder_equity": return "Founder Equity";
+    case "loan": return "Loan";
+    case "investor_equity": return "Investor Equity";
+    case "grant": return "Grant";
+  }
+}
+
+// When a stored row predates TIM-1122 (no `funding_sources`) try to seed from
+// any legacy single-loan inputs the founder may have configured via the old
+// Inputs tab. If nothing useful is found, return the default funding set.
+function migrateLegacyFundingSources(r: Record<string, unknown>): FundingSourceLine[] {
+  const owner = typeof r.owner_capital_cents === "number" ? r.owner_capital_cents : null;
+  const loanAmt = typeof r.loan_amount_cents === "number" ? r.loan_amount_cents : null;
+  const loanTerm = typeof r.loan_term_months === "number" ? r.loan_term_months : 60;
+  const loanRate = typeof r.loan_annual_rate_pct === "number" ? r.loan_annual_rate_pct : 0;
+  if (owner === null && loanAmt === null) return defaultFundingSources();
+  const lines: FundingSourceLine[] = [];
+  if (owner && owner > 0) {
+    lines.push({ id: "funding:founder", kind: "founder_equity", label: "Founder Equity", amount_cents: owner });
+  }
+  if (loanAmt && loanAmt > 0) {
+    lines.push({
+      id: "funding:loan",
+      kind: "loan",
+      label: "Loan",
+      amount_cents: loanAmt,
+      term_months: loanTerm,
+      annual_rate_pct: loanRate,
+    });
+  }
+  return lines.length > 0 ? lines : defaultFundingSources();
+}
 
 function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine | null {
   if (!raw || typeof raw !== "object") return null;
@@ -476,6 +576,13 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
         .filter((x): x is ForecastLine => x !== null)
     : migrateLegacyToForecastLines(r);
 
+  // TIM-1122: funding_sources — same migration pattern as forecast_lines.
+  const funding_sources: FundingSourceLine[] = Array.isArray(r.funding_sources)
+    ? (r.funding_sources as unknown[])
+        .map((entry, idx) => normalizeFundingSource(entry, `funding:${idx}:${Date.now()}`))
+        .filter((x): x is FundingSourceLine => x !== null)
+    : migrateLegacyFundingSources(r);
+
   // Global ramp + growth (still applies to base foot-traffic revenue)
   const ramp_months =
     typeof r.ramp_months === "number" ? Math.min(12, Math.max(0, Math.round(r.ramp_months))) : 0;
@@ -504,6 +611,7 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     weekly_schedule,
     cogs_pct: typeof r.cogs_pct === "number" ? r.cogs_pct : defaults.cogs_pct,
     forecast_lines,
+    funding_sources,
     taxes_pct:
       typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
     ramp_months,
@@ -996,6 +1104,10 @@ export interface MonthlySlice extends MonthlyProjectionRow {
   retained_earnings_cents: number;
   total_equity_cents: number;
   total_liabilities_and_equity_cents: number;
+  // TIM-1122: equity composition from Funding tab. Sums to owner_equity_cents.
+  founder_equity_cents: number;
+  investor_equity_cents: number;
+  grants_cents: number;
 }
 
 // FinancialInputs: extended model inputs used by the Startup / Inputs tabs.
@@ -1146,17 +1258,65 @@ export function computeMonthlySlices(
   const daysInventory = inputs.days_inventory ?? 7;
   const daysPayable = inputs.days_payable ?? 30;
   const daysReceivable = inputs.days_receivable ?? 0;
-  const ownerCapital = inputs.owner_capital_cents ?? 0;
-  const loanAmount = inputs.loan_amount_cents ?? 0;
-  const loanRate = (inputs.loan_annual_rate_pct ?? 0) / 100 / 12;
-  const loanTerms = inputs.loan_term_months ?? 0;
+  // TIM-1122: funding_sources is the source of truth when present. Each loan
+  // amortizes independently so users can model e.g. a 60mo SBA loan alongside
+  // a 24mo equipment loan with different rates. Equity sources roll up into
+  // owner_capital_cents for backward-compat balance-sheet math.
+  const fundingSources = mp.funding_sources ?? [];
+  const sourceEquity = (kind: FundingKind) =>
+    fundingSources
+      .filter((s) => s.kind === kind)
+      .reduce((sum, s) => sum + (s.amount_cents || 0), 0);
+  const founderEquityCents = sourceEquity("founder_equity");
+  const investorEquityCents = sourceEquity("investor_equity");
+  const grantsCents = sourceEquity("grant");
+  const fundingHasEntries = fundingSources.length > 0;
+  // Sources rolled up; fall back to legacy FinancialInputs when no funding_sources
+  // are configured (pre-1122 stored rows in dev/staging).
+  const ownerCapital = fundingHasEntries
+    ? founderEquityCents + investorEquityCents + grantsCents
+    : (inputs.owner_capital_cents ?? 0);
+
+  type LoanState = { balance: number; monthlyRate: number; monthlyPayment: number };
+  const loanStates: LoanState[] = (fundingHasEntries
+    ? fundingSources.filter((s) => s.kind === "loan" && (s.amount_cents || 0) > 0)
+    : []
+  ).map((s) => {
+    const balance = s.amount_cents || 0;
+    const monthlyRate = ((s.annual_rate_pct ?? 0) / 100) / 12;
+    const term = Math.max(1, s.term_months ?? 0);
+    const monthlyPayment =
+      monthlyRate > 0
+        ? Math.round(
+            balance * monthlyRate * Math.pow(1 + monthlyRate, term) /
+              (Math.pow(1 + monthlyRate, term) - 1)
+          )
+        : Math.round(balance / term);
+    return { balance, monthlyRate, monthlyPayment };
+  });
+  // Legacy single-loan fallback if no funding_sources are present.
+  if (!fundingHasEntries) {
+    const legacyAmount = inputs.loan_amount_cents ?? 0;
+    const legacyTerms = inputs.loan_term_months ?? 0;
+    if (legacyAmount > 0 && legacyTerms > 0) {
+      const monthlyRate = ((inputs.loan_annual_rate_pct ?? 0) / 100) / 12;
+      const monthlyPayment =
+        monthlyRate > 0
+          ? Math.round(
+              legacyAmount * monthlyRate * Math.pow(1 + monthlyRate, legacyTerms) /
+                (Math.pow(1 + monthlyRate, legacyTerms) - 1)
+            )
+          : Math.round(legacyAmount / legacyTerms);
+      loanStates.push({ balance: legacyAmount, monthlyRate, monthlyPayment });
+    }
+  }
+
   const fixedAssetsGross = (inputs.equipment_cost_cents ?? 0) + (inputs.buildout_cost_cents ?? 0);
   const openingCash = (inputs.opening_cash_buffer_cents ?? 0) + (inputs.working_capital_reserve_cents ?? 0);
 
   let cumulativeNetIncome = 0;
   let cumulativeDepreciation = 0;
   let cashBalance = openingCash;
-  let loanBalance = loanAmount;
 
   return rows.map((row) => {
     const rev = row.revenue_cents;
@@ -1177,16 +1337,18 @@ export function computeMonthlySlices(
     cumulativeNetIncome += row.net_income_cents;
     cumulativeDepreciation += row.depreciation_cents;
 
-    // Loan amortization
+    // Loan amortization — amortize each loan independently and sum principal
+    // payments into loan_repayment_cents for the cash-flow statement.
     let loanRepaymentCents = 0;
-    if (loanBalance > 0 && loanTerms > 0) {
-      const interest = Math.round(loanBalance * loanRate);
-      const monthlyPayment = loanRate > 0
-        ? Math.round(loanAmount * loanRate * Math.pow(1 + loanRate, loanTerms) / (Math.pow(1 + loanRate, loanTerms) - 1))
-        : Math.round(loanAmount / loanTerms);
-      const principal = Math.min(monthlyPayment - interest, loanBalance);
-      loanBalance = Math.max(0, loanBalance - principal);
-      loanRepaymentCents = principal;
+    let totalLoanBalance = 0;
+    for (const loan of loanStates) {
+      if (loan.balance > 0) {
+        const interest = Math.round(loan.balance * loan.monthlyRate);
+        const principal = Math.min(loan.monthlyPayment - interest, loan.balance);
+        loan.balance = Math.max(0, loan.balance - principal);
+        loanRepaymentCents += principal;
+      }
+      totalLoanBalance += loan.balance;
     }
 
     // Cash flow: net income + depreciation (add back) - loan repayment - capex
@@ -1204,7 +1366,7 @@ export function computeMonthlySlices(
     const netFixedAssets = Math.max(0, cumulativeFixedAssetsGross - cumulativeDepreciation);
     const totalAssets = cashBalance + arCents + inventoryCents + netFixedAssets;
     const apCents = Math.round(row.cogs_cents * (daysPayable / 30));
-    const totalLiabilities = apCents + loanBalance;
+    const totalLiabilities = apCents + totalLoanBalance;
     const retainedEarnings = cumulativeNetIncome;
     const totalEquity = ownerCapital + retainedEarnings;
 
@@ -1235,12 +1397,15 @@ export function computeMonthlySlices(
       total_assets_cents: Math.max(0, totalAssets),
       accounts_payable_cents: apCents,
       current_debt_cents: 0,
-      long_term_debt_cents: loanBalance,
+      long_term_debt_cents: totalLoanBalance,
       total_liabilities_cents: totalLiabilities,
       owner_equity_cents: ownerCapital,
       retained_earnings_cents: retainedEarnings,
       total_equity_cents: totalEquity,
       total_liabilities_and_equity_cents: totalLiabilities + totalEquity,
+      founder_equity_cents: fundingHasEntries ? founderEquityCents : ownerCapital,
+      investor_equity_cents: investorEquityCents,
+      grants_cents: grantsCents,
     };
   });
 }

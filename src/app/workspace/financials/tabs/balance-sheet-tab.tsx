@@ -236,7 +236,9 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Equity" colCount={colCount} />
-            <BSRow currencyCode={currencyCode} label="Owner Equity" values={vals("owner_equity_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Founder Equity" values={vals("founder_equity_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Investor Equity" values={vals("investor_equity_cents")} indent />
+            <BSRow currencyCode={currencyCode} label="Grants / Other" values={vals("grants_cents")} indent />
             <BSRow currencyCode={currencyCode} label="Retained Earnings" values={vals("retained_earnings_cents")} indent />
             <BSRow currencyCode={currencyCode} label="Total Equity" values={vals("total_equity_cents")} bold />
 
