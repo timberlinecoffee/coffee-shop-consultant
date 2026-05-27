@@ -5,6 +5,7 @@
 // resizable columns (pointer events), per-section totals, grand total,
 // column visibility toggle (localStorage), collapsible sections.
 // TIM-1174: Vendor column links to Suppliers & Vendors workspace.
+// TIM-1179: AI equipment recommendations + referral disclosure cards.
 
 import {
   useCallback,
@@ -43,8 +44,10 @@ import {
 } from "lucide-react";
 import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
+import type { EquipmentRecommendation } from "@/types/referral";
 import { formatCurrency } from "@/lib/financial-projection";
 import { type VendorCandidate, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
+import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 
@@ -395,6 +398,7 @@ function SortableRow({
   visibleCols,
   colWidths,
   vendorCandidates,
+  recommendations,
   onUpdate,
   onDelete,
   isDragOverlay,
@@ -405,6 +409,7 @@ function SortableRow({
   visibleCols: ColDef[];
   colWidths: Map<string, number>;
   vendorCandidates: VendorCandidate[];
+  recommendations?: Map<string, EquipmentRecommendation>;
   onUpdate: (id: string, patch: Partial<AnyItem>) => void;
   onDelete: (id: string) => void;
   isDragOverlay?: boolean;
@@ -450,7 +455,8 @@ function SortableRow({
           </td>
         );
 
-      case "name":
+      case "name": {
+        const rec = listType === "equipment" ? recommendations?.get(item.id) : undefined;
         return (
           <td key="name" className={`${cellCls} sticky left-[0px] z-10 bg-white`} style={{ width: colWidths.get("name") }}>
             <div className="flex items-center gap-1.5">
@@ -464,8 +470,12 @@ function SortableRow({
                 onCommit={(v) => onUpdate(item.id, { name: v } as Partial<AnyItem>)}
               />
             </div>
+            {rec && !isDragOverlay && (
+              <EquipmentRecommendationCard recommendation={rec} />
+            )}
           </td>
         );
+      }
 
       case "vendor":
         return (
@@ -715,6 +725,7 @@ export interface SectionedListGridProps {
   items: AnyItem[];
   onItemsChange: (items: AnyItem[]) => void;
   onSectionsChange: (sections: ListSection[]) => void;
+  recommendations?: Map<string, EquipmentRecommendation>;
 }
 
 const AUTOSAVE_MS = 400;
@@ -727,6 +738,7 @@ export function SectionedListGrid({
   items,
   onItemsChange,
   onSectionsChange,
+  recommendations,
 }: SectionedListGridProps) {
   const cols = listType === "equipment" ? EQUIPMENT_COLS : SUPPLIES_COLS;
 
@@ -1347,6 +1359,7 @@ export function SectionedListGrid({
                               visibleCols={visibleCols}
                               colWidths={colWidths}
                               vendorCandidates={vendorCandidates}
+                              recommendations={recommendations}
                               onUpdate={updateItem}
                               onDelete={deleteItem}
                             />
@@ -1397,6 +1410,7 @@ export function SectionedListGrid({
                       visibleCols={visibleCols}
                       colWidths={colWidths}
                       vendorCandidates={vendorCandidates}
+                      recommendations={recommendations}
                       onUpdate={updateItem}
                       onDelete={deleteItem}
                     />
@@ -1454,6 +1468,7 @@ export function SectionedListGrid({
                       onDelete={() => {}}
                       isDragOverlay
                     />
+
                   </tbody>
                 </table>
               )}
