@@ -169,7 +169,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
   });
 
   const revenueBarSeries: ChartSeries[] = [
-    { key: "foot_traffic", label: "Foot Traffic", color: CHART_COLORS.primary },
+    { key: "foot_traffic", label: "In-Store Ticket Sales", color: CHART_COLORS.primary },
     ...revenueLines.map((rl) => ({ key: `line_${rl.id}`, label: rl.label })),
   ];
   const revenueLineSeries: ChartSeries[] = [
@@ -312,7 +312,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
             </tr>
             {showRevenue && (
               <>
-                <StatRow currencyCode={currencyCode} label="Foot-Traffic Revenue" values={vals("gross_revenue_cents").map((v, i) => {
+                <StatRow currencyCode={currencyCode} label="In-Store Ticket Sales" values={vals("gross_revenue_cents").map((v, i) => {
                   // base revenue = gross_revenue - sum of additional revenue lines for the column
                   const addls = revenueLines.reduce(
                     (s, rl) => s + (columns[i].lineAmounts.find((ln) => ln.id === rl.id)?.amount_cents ?? 0),

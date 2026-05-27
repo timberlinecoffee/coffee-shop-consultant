@@ -20,25 +20,50 @@ import type {
 } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 
-const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
+// TIM-1167: Each category gets a plain-English description, an "includes" /
+// "doesn't include" pair so brand-new users know exactly what belongs on each
+// line, and a concrete example so the input feels less abstract.
+const CATEGORY_META: Record<
+  ForecastCategory,
+  {
+    label: string;
+    hint: string;
+    includes: string;
+    excludes: string;
+    example: string;
+    valueLabel: string;
+  }
+> = {
   revenue: {
-    label: "Revenue",
-    hint: "Additional revenue streams beyond foot-traffic ticket sales (e.g. wholesale, catering, retail).",
+    label: "Additional Revenue Streams",
+    hint: "Income that does NOT come through your counter — added on top of In-Store Ticket Sales above.",
+    includes: "Wholesale beans to other cafes, catering invoices, subscription boxes shipped to homes, classes, online orders shipped (not picked up in-store), event bookings.",
+    excludes: "Anything a customer pays for at your counter or POS — that's already counted in In-Store Ticket Sales. Don't double-count.",
+    example: "e.g. \"Wholesale Coffee Beans — $4,200 / mo\" or \"Catering — 8% growth / mo\".",
     valueLabel: "of base revenue",
   },
   cogs: {
-    label: "Cost Of Goods (COGS)",
-    hint: "Costs that scale with a revenue stream: ingredients, packaging, wholesale supply. Default: % of the linked revenue stream.",
+    label: "Cost Of Goods Sold (COGS)",
+    hint: "What it costs you to make what you sell. Scales with the revenue stream you tie it to.",
+    includes: "Coffee beans, milk, syrups, cups & lids, food ingredients, packaging, wholesale supply costs.",
+    excludes: "Labor (that's an Operating Expense), rent, utilities, equipment purchases.",
+    example: "e.g. \"Beverage Ingredients — 28% of In-Store Sales\".",
     valueLabel: "of revenue",
   },
   overhead: {
     label: "Operating Expenses (Overhead)",
-    hint: "Fixed and variable expenses to run the business: labor, rent, utilities, marketing. Use the \"% of\" dropdown on each line to tie it to a specific revenue stream, overall revenue, or a fixed monthly amount.",
+    hint: "What it costs to keep the doors open every month — fixed bills and variable expenses that don't come from product cost.",
+    includes: "Labor & payroll taxes, rent, utilities, insurance, marketing, software, repairs, supplies.",
+    excludes: "Product ingredients (those go under COGS) and one-time equipment purchases (those go under Asset Purchases).",
+    example: "e.g. \"Rent — Fixed $4,500 / mo\" or \"Labor — 32% of total revenue\".",
     valueLabel: "of revenue",
   },
   capex: {
     label: "Asset Purchases (Capex)",
-    hint: "One-time investments (equipment, build-out). Charged in the start month and depreciated.",
+    hint: "One-time investments. Charged in the month you buy them and depreciated over time.",
+    includes: "Espresso machine, grinders, refrigeration, furniture, signage, build-out & renovations.",
+    excludes: "Recurring monthly costs (those are Operating Expenses) and consumables like cups (those are COGS).",
+    example: "e.g. \"La Marzocco Linea PB — $18,500, Month 1\".",
     valueLabel: "(one-time)",
   },
 };
@@ -537,16 +562,25 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <div>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">{meta.label}</p>
-          <p className="text-[10px] text-[#afafaf] mt-0.5">{meta.hint}</p>
+          <p className="text-xs text-[#6b6b6b] mt-1 leading-snug">{meta.hint}</p>
+          <div className="mt-1.5 space-y-0.5">
+            <p className="text-[11px] text-[#6b6b6b] leading-snug">
+              <span className="font-semibold text-[#1a1a1a]">Includes:</span> {meta.includes}
+            </p>
+            <p className="text-[11px] text-[#6b6b6b] leading-snug">
+              <span className="font-semibold text-[#1a1a1a]">Doesn&rsquo;t include:</span> {meta.excludes}
+            </p>
+            <p className="text-[11px] text-[#afafaf] italic leading-snug">{meta.example}</p>
+          </div>
         </div>
         {canEdit && (
           <button
             type="button"
             onClick={addLine}
-            className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md"
+            className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md shrink-0"
           >
             <Plus size={12} /> Add line
           </button>
@@ -588,9 +622,12 @@ interface Props {
 // "All revenue" is the legacy / safe default; "Base (foot-traffic)" is the
 // non-line ticket sales; each revenue line shows up by its user-entered label.
 function streamOptionsFromLines(lines: ForecastLine[]): RevenueStreamOption[] {
+  // TIM-1167: "base" used to read "foot-traffic ticket sales" — confusing for
+  // new users who didn't know whether that meant just walk-ins, just POS, etc.
+  // Canonical term is now "In-Store Ticket Sales" (counter checkouts).
   const opts: RevenueStreamOption[] = [
-    { id: DEFAULT_STREAM_ID, label: "All revenue (total)" },
-    { id: "base", label: "Base (foot-traffic ticket sales)" },
+    { id: DEFAULT_STREAM_ID, label: "Total revenue (everything)" },
+    { id: "base", label: "In-Store Ticket Sales" },
   ];
   for (const l of lines) {
     if (l.category === "revenue") {
