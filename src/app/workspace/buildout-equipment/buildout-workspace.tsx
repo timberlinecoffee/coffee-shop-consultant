@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wrench, X, Save } from "lucide-react";
+import { formatCurrency } from "@/lib/financial-projection";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
@@ -252,8 +253,42 @@ export function BuildoutEquipmentWorkspace({
   const equipmentSections = sections.filter((s) => s.list_type === "equipment");
   const hasAiEquipment = equipment.some((i) => i.source === "ai_suggested");
 
+  const activeEquipment = equipment.filter((i) => !i.archived);
+  const grandTotalCents = activeEquipment.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+  const stationCount = equipmentSections.length;
+  const itemCount = activeEquipment.length;
+
   return (
     <div className="bg-[#faf9f7] min-h-screen">
+      {/* Sticky grand total summary — appears once items exist */}
+      {grandTotalCents > 0 && (
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[#e8f0f0] shadow-sm">
+          <div className="px-6 py-3 flex items-center gap-6">
+            <div>
+              <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Grand Total</p>
+              <p className="text-xl font-bold text-[#155e63]">{formatCurrency(grandTotalCents / 100)}</p>
+            </div>
+            {stationCount > 0 && (
+              <>
+                <div className="h-9 w-px bg-[#efefef]" aria-hidden="true" />
+                <div>
+                  <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Stations</p>
+                  <p className="text-sm font-semibold text-[#1a1a1a]">{stationCount}</p>
+                </div>
+              </>
+            )}
+            {itemCount > 0 && (
+              <>
+                <div className="h-9 w-px bg-[#efefef]" aria-hidden="true" />
+                <div>
+                  <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Items</p>
+                  <p className="text-sm font-semibold text-[#1a1a1a]">{itemCount}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">

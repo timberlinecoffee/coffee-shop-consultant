@@ -1164,16 +1164,24 @@ export function SectionedListGrid({
                               onDelete={deleteItem}
                             />
                           ))}
-                          {costVisible && sectionItems.length > 0 && (
-                            <tr className="border-b border-[#efefef] bg-[#faf9f7]">
-                              <td colSpan={visibleCols.length - 1} className="px-3 py-1 text-right text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide">
-                                Section total
-                              </td>
-                              <td className="px-2 py-1 text-xs font-semibold text-[#155e63] text-right">
-                                {formatCurrency(total / 100)}
-                              </td>
-                            </tr>
-                          )}
+                          {costVisible && sectionItems.length > 0 && (() => {
+                            const costIdx = visibleCols.findIndex((c) => c.id === "unit_cost_cents");
+                            if (costIdx < 0) return null;
+                            const afterSpan = visibleCols.length - costIdx - 1;
+                            return (
+                              <tr className="border-t-2 border-[#cfe0e1] bg-[#f4f9f8]">
+                                {costIdx > 0 && (
+                                  <td colSpan={costIdx} className="px-3 py-1.5 text-right text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide">
+                                    Section total
+                                  </td>
+                                )}
+                                <td className="px-2 py-1.5 text-xs font-bold text-[#155e63] text-right">
+                                  {formatCurrency(total / 100)}
+                                </td>
+                                {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[#f4f9f8]" />}
+                              </tr>
+                            );
+                          })()}
                         </>
                       )}
                     </SortableContext>
@@ -1217,16 +1225,24 @@ export function SectionedListGrid({
                 )}
 
                 {/* Grand total */}
-                {costVisible && grandTotal > 0 && (
-                  <tr className="bg-[#f4f9f8] border-t-2 border-[#cfe0e1]">
-                    <td colSpan={visibleCols.length - 1} className="px-3 py-2 text-right text-xs font-bold text-[#1a1a1a] uppercase tracking-wide">
-                      Grand total
-                    </td>
-                    <td className="px-2 py-2 text-sm font-bold text-[#155e63] text-right">
-                      {formatCurrency(grandTotal / 100)}
-                    </td>
-                  </tr>
-                )}
+                {costVisible && grandTotal > 0 && (() => {
+                  const costIdx = visibleCols.findIndex((c) => c.id === "unit_cost_cents");
+                  if (costIdx < 0) return null;
+                  const afterSpan = visibleCols.length - costIdx - 1;
+                  return (
+                    <tr className="bg-[#f4f9f8] border-t-2 border-[#155e63]">
+                      {costIdx > 0 && (
+                        <td colSpan={costIdx} className="px-3 py-2.5 text-right text-xs font-bold text-[#1a1a1a] uppercase tracking-wide">
+                          Grand total
+                        </td>
+                      )}
+                      <td className="px-2 py-2.5 text-sm font-bold text-[#155e63] text-right">
+                        {formatCurrency(grandTotal / 100)}
+                      </td>
+                      {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[#f4f9f8]" />}
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
 
