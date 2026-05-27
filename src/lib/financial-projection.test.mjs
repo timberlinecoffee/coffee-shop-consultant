@@ -1,6 +1,7 @@
 // TIM-1102: pin computeMonthlyProjections against the new forecast_lines schema.
 // TIM-1117: COGS lines can target a parent revenue stream and/or derive their
 // pct from menu item costing — pinned below.
+// TIM-1122: pin funding_sources roll-up + per-loan amortization.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -631,6 +632,7 @@ test("owner draws reduce cash and equity by the monthly amount", () => {
   mp.ramp_months = 0;
   mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
   mp.forecast_lines = [];
+  mp.funding_sources = [];
   mp.owner_draws_monthly_cents = 200000; // $2,000/mo
 
   const withInputs = { days_inventory: 0, days_payable: 0, days_receivable: 0, owner_capital_cents: 5000000 };
@@ -651,6 +653,7 @@ test("owner contributions inject cash and lift equity at the named month", () =>
   mp.ramp_months = 0;
   mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
   mp.forecast_lines = [];
+  mp.funding_sources = [];
   mp.owner_contributions = [{ month_index: 6, amount_cents: 1000000 }];
 
   const slices = computeMonthlySlices(
@@ -684,6 +687,7 @@ test("balance sheet balances with depreciation + WC + owner activity", () => {
       ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
     },
   ];
+  mp.funding_sources = [];
   mp.owner_draws_monthly_cents = 100000;
   mp.owner_contributions = [{ month_index: 3, amount_cents: 500000 }];
   mp.taxes_pct = 0;
@@ -705,4 +709,69 @@ test("balance sheet balances with depreciation + WC + owner activity", () => {
     const diff = Math.abs(s.total_assets_cents - s.total_liabilities_and_equity_cents);
     assert.ok(diff < 10, `BS out of balance at month ${s.month_index} by ${diff}`);
   }
+});
+
+// ── TIM-1122: funding_sources ─────────────────────────────────────────────────
+
+test("default model seeds founder equity + a starter loan in funding_sources", () => {
+  const mp = defaultMonthlyProjections();
+  assert.ok(Array.isArray(mp.funding_sources));
+  assert.ok(mp.funding_sources.find((s) => s.kind === "founder_equity"));
+  const loan = mp.funding_sources.find((s) => s.kind === "loan");
+  assert.ok(loan);
+  assert.ok((loan.term_months ?? 0) > 0);
+});
+
+test("normalize migrates legacy owner_capital_cents / loan_amount_cents into funding_sources", () => {
+  const mp = normalizeMonthlyProjections({
+    owner_capital_cents: 12000000,
+    loan_amount_cents: 8000000,
+    loan_term_months: 36,
+    loan_annual_rate_pct: 5,
+  });
+  const founder = mp.funding_sources.find((s) => s.kind === "founder_equity");
+  const loan = mp.funding_sources.find((s) => s.kind === "loan");
+  assert.equal(founder?.amount_cents, 12000000);
+  assert.equal(loan?.amount_cents, 8000000);
+  assert.equal(loan?.term_months, 36);
+});
+
+test("funding_sources drive owner_equity + loan balance + amortization", () => {
+  const mp = defaultMonthlyProjections();
+  mp.funding_sources = [
+    { id: "f1", kind: "founder_equity", label: "Founder", amount_cents: 5000000 },
+    { id: "i1", kind: "investor_equity", label: "Investor", amount_cents: 2000000, pct_ownership: 20 },
+    { id: "g1", kind: "grant", label: "City Grant", amount_cents: 500000 },
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6 },
+  ];
+  const slices = computeMonthlySlices(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  const m1 = slices[0];
+  // Equity composition
+  assert.equal(m1.founder_equity_cents, 5000000);
+  assert.equal(m1.investor_equity_cents, 2000000);
+  assert.equal(m1.grants_cents, 500000);
+  assert.equal(m1.owner_equity_cents, 7500000); // founder + investor + grant
+  // Loan: starts at face value, amortizes down each month
+  assert.ok(m1.long_term_debt_cents > 0);
+  assert.ok(m1.long_term_debt_cents < 6000000, "balance reduced after 1st payment");
+  assert.ok(m1.loan_repayment_cents > 0);
+});
+
+test("two separate loans amortize independently and sum repayments", () => {
+  const mp = defaultMonthlyProjections();
+  mp.funding_sources = [
+    { id: "f1", kind: "founder_equity", label: "F", amount_cents: 1000000 },
+    { id: "l1", kind: "loan", label: "SBA", amount_cents: 4000000, term_months: 60, annual_rate_pct: 6 },
+    { id: "l2", kind: "loan", label: "Eq", amount_cents: 1000000, term_months: 24, annual_rate_pct: 9 },
+  ];
+  const slices = computeMonthlySlices(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  const m1 = slices[0];
+  // Combined starting balance is approx 5M (less first month's principal)
+  assert.ok(m1.long_term_debt_cents > 4500000 && m1.long_term_debt_cents < 5000000);
+  // After 24 months the shorter loan should be fully amortized; the longer one is still outstanding
+  const m24 = slices[23];
+  assert.ok(m24.long_term_debt_cents > 0 && m24.long_term_debt_cents < 3000000);
+  // After 60 months everything should be (nearly) paid off
+  const m60 = slices[59];
+  assert.ok(m60.long_term_debt_cents < 100000);
 });

@@ -17,6 +17,7 @@ import {
   type DayKey,
   type DaySchedule,
   type ForecastLine,
+  type FundingSourceLine,
   computeProjections,
   computeMonthlySlices,
   computeDayHours,
@@ -31,6 +32,7 @@ import { CashFlowTab } from "./tabs/cash-flow-tab";
 import { BreakEvenTab } from "./tabs/break-even-tab";
 import { RatiosTab } from "./tabs/ratios-tab";
 import { StartupTab } from "./tabs/startup-tab";
+import { FundingTab } from "./tabs/funding-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import type { CritiqueResult } from "@/lib/financials";
 
@@ -82,7 +84,7 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
+type Tab = "forecast" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
 
 function findLineByKey(lines: ForecastLine[], key: string) {
   return lines.find((l) => l.legacy_key === key);
@@ -104,6 +106,24 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
   const tech = findLineByKey(mp.forecast_lines, "tech");
   const maintenance = findLineByKey(mp.forecast_lines, "maintenance");
   const supplies = findLineByKey(mp.forecast_lines, "supplies");
+
+  // TIM-1122: roll funding_sources into the legacy FinancialInputs fields so
+  // existing tabs (Startup, Inputs, downstream consumers) see consistent totals.
+  // Equity sources sum into owner_capital_cents; loans are summed with a
+  // weighted-average term/rate for display purposes (per-loan amortization is
+  // handled directly inside computeMonthlySlices from the funding_sources).
+  const sources = mp.funding_sources ?? [];
+  const sumKind = (kind: FundingSourceLine["kind"]) =>
+    sources.filter((s) => s.kind === kind).reduce((acc, s) => acc + (s.amount_cents || 0), 0);
+  const ownerCapitalCents = sumKind("founder_equity") + sumKind("investor_equity") + sumKind("grant");
+  const loans = sources.filter((s) => s.kind === "loan" && (s.amount_cents || 0) > 0);
+  const totalLoanCents = loans.reduce((acc, s) => acc + s.amount_cents, 0);
+  const weightedTerm = totalLoanCents > 0
+    ? Math.round(loans.reduce((acc, s) => acc + s.amount_cents * (s.term_months ?? 0), 0) / totalLoanCents)
+    : 60;
+  const weightedRate = totalLoanCents > 0
+    ? loans.reduce((acc, s) => acc + s.amount_cents * (s.annual_rate_pct ?? 0), 0) / totalLoanCents
+    : 0;
 
   return {
     days_per_week: openDays,
@@ -136,10 +156,10 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     initial_inventory_cents: 200000,
     working_capital_reserve_cents: 1500000,
     opening_cash_buffer_cents: 1000000,
-    owner_capital_cents: 15000000,
-    loan_amount_cents: 10000000,
-    loan_term_months: 60,
-    loan_annual_rate_pct: 6.5,
+    owner_capital_cents: ownerCapitalCents > 0 ? ownerCapitalCents : 15000000,
+    loan_amount_cents: totalLoanCents,
+    loan_term_months: weightedTerm,
+    loan_annual_rate_pct: weightedRate,
     depreciation_years: 10,
     tax_rate_pct: mp.taxes_pct,
     days_inventory: 7,
@@ -1265,6 +1285,10 @@ export function FinancialsWorkspace({
     scheduleSave(next);
   }
 
+  function handleFundingUpdate(next: FundingSourceLine[]) {
+    handleMpUpdate({ ...mp, funding_sources: next });
+  }
+
   function handleCritiqueUpdate(c: CritiqueResult | null) {
     setCritique(c);
     latestCritiqueRef.current = c;
@@ -1291,6 +1315,7 @@ export function FinancialsWorkspace({
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "forecast", label: "Forecast Inputs" },
+    { id: "funding", label: "Funding" },
     { id: "projections", label: "P&L" },
     { id: "balance-sheet", label: "Balance Sheet" },
     { id: "cash-flow", label: "Cash Flow" },
@@ -1406,6 +1431,15 @@ export function FinancialsWorkspace({
             menuBlendedCogsPct={menuBlendedCogsPct}
           />
         )}
+        {activeTab === "funding" && (
+          <FundingTab
+            sources={mp.funding_sources ?? []}
+            inputs={financialInputs}
+            canEdit={canEdit}
+            currencyCode={currencyCode}
+            onChange={handleFundingUpdate}
+          />
+        )}
         {activeTab === "projections" && (
           <ProjectionsTab
             projections={projections}
@@ -1430,7 +1464,13 @@ export function FinancialsWorkspace({
         )}
         {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} currencyCode={currencyCode} />}
         {activeTab === "ratios" && <RatiosTab slices={slices} />}
-        {activeTab === "startup" && <StartupTab inputs={financialInputs} currencyCode={currencyCode} />}
+        {activeTab === "startup" && (
+          <StartupTab
+            inputs={financialInputs}
+            fundingSources={mp.funding_sources ?? []}
+            currencyCode={currencyCode}
+          />
+        )}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
