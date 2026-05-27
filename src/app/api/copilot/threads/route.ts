@@ -18,7 +18,8 @@ interface ThreadRow {
 
 export interface ThreadListItem {
   id: string
-  workspace_key: WorkspaceKey
+  // TIM-1149: null = general (workspace-less) conversation.
+  workspace_key: WorkspaceKey | null
   title: string | null
   last_message_at: string
   message_count: number
@@ -34,12 +35,12 @@ export async function GET(request: NextRequest) {
   const planId = request.nextUrl.searchParams.get("planId")
   if (!planId) return NextResponse.json({ error: "planId is required" }, { status: 400 })
 
+  // TIM-1149: include null workspace_key rows (general conversations).
   const { data, error } = await supabase
     .from("ai_conversations")
     .select("thread_id, workspace_key, title, last_message_at, messages")
     .eq("plan_id", planId)
     .not("thread_id", "is", null)
-    .not("workspace_key", "is", null)
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .limit(200)
 
@@ -47,12 +48,11 @@ export async function GET(request: NextRequest) {
 
   const threads: ThreadListItem[] = ((data ?? []) as ThreadRow[])
     .filter(
-      (row): row is ThreadRow & { thread_id: string; workspace_key: WorkspaceKey } =>
-        Boolean(row.thread_id) && Boolean(row.workspace_key),
+      (row): row is ThreadRow & { thread_id: string } => Boolean(row.thread_id),
     )
     .map((row) => ({
       id: row.thread_id,
-      workspace_key: row.workspace_key,
+      workspace_key: row.workspace_key ?? null,
       title: row.title,
       last_message_at: row.last_message_at ?? new Date(0).toISOString(),
       message_count: Array.isArray(row.messages) ? row.messages.length : 0,

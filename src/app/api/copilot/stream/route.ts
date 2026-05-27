@@ -58,11 +58,16 @@ function sse(event: string, data: unknown): string {
 function buildDynamicPrompt(
   onboarding: Record<string, unknown>,
   planSnapshot: string,
-  currentWorkspace: WorkspaceKey,
+  // TIM-1149: null = general (workspace-less) conversation.
+  currentWorkspace: WorkspaceKey | null,
 ): string {
   const shopType = Array.isArray(onboarding?.shop_type)
     ? (onboarding.shop_type as string[]).join(", ")
     : String(onboarding?.shop_type ?? "not specified")
+
+  const workspaceLine = currentWorkspace
+    ? `The user is working in: **${currentWorkspace.replace(/_/g, " ")}**`
+    : `The user is in a **general** conversation, not bound to any specific workspace. Help them across the whole plan as needed.`
 
   return `## User Profile
 - **Budget**: ${String(onboarding?.budget ?? "not specified")}
@@ -74,7 +79,7 @@ function buildDynamicPrompt(
 - **Shop type**: ${shopType}
 
 ## Current Workspace
-The user is working in: **${currentWorkspace.replace(/_/g, " ")}**
+${workspaceLine}
 
 ## Their Plan So Far (all workspaces)
 ${planSnapshot}`
@@ -105,14 +110,15 @@ export async function POST(request: NextRequest) {
 
   // ── Parse body ──────────────────────────────────────────────────────────────
   let planId: string
-  let workspaceKey: WorkspaceKey
+  // TIM-1149: workspaceKey may be null for general (workspace-less) conversations.
+  let workspaceKey: WorkspaceKey | null
   let threadId: string | undefined
   let messages: Array<{ role: "user" | "assistant"; content: string }>
 
   try {
     const body = await request.json()
     planId = body.planId
-    workspaceKey = body.workspaceKey
+    workspaceKey = body.workspaceKey ?? null
     threadId = body.threadId
     messages = body.messages
   } catch {
@@ -122,9 +128,9 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  if (!planId || !workspaceKey || !messages?.length) {
+  if (!planId || !messages?.length) {
     return new Response(
-      sse("error", { code: "bad_request", message: "Missing required fields: planId, workspaceKey, messages." }),
+      sse("error", { code: "bad_request", message: "Missing required fields: planId, messages." }),
       { status: 400, headers: { "Content-Type": "text/event-stream" } },
     )
   }
@@ -351,13 +357,15 @@ export async function POST(request: NextRequest) {
           const costUsd = (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000
           const effectiveThreadId = threadId ?? crypto.randomUUID()
 
-          const { data: existing } = await supabase
+          const existingQuery = supabase
             .from("ai_conversations")
             .select("id, credits_used, cost_usd")
             .eq("plan_id", planId)
-            .eq("workspace_key", workspaceKey)
             .eq("thread_id", effectiveThreadId)
-            .maybeSingle()
+          const { data: existing } = await (workspaceKey === null
+            ? existingQuery.is("workspace_key", null)
+            : existingQuery.eq("workspace_key", workspaceKey)
+          ).maybeSingle()
 
           const updatedMessages = [...messages, { role: "assistant", content: fullText }]
 
@@ -400,7 +408,7 @@ export async function POST(request: NextRequest) {
               user_id: user.id,
               amount: -1,
               type: "usage",
-              description: `Co-pilot: ${workspaceKey}`,
+              description: `Co-pilot: ${workspaceKey ?? "general"}`,
             })
           }
 

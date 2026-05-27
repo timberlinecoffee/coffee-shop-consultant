@@ -1,11 +1,24 @@
 // TIM-634 / TIM-618-E: Conversation thread browser
 // Grouped-by-workspace collapsible list. Click loads a thread into the drawer.
 // TIM-906: Inline rename (pencil icon) and delete (trash icon + confirm) added.
+// TIM-1149: General (workspace-less) conversations group, search/filter,
+// and a split "+ New" affordance for current-workspace vs general threads.
 "use client"
 
 import { useCallback, useMemo, useState, useEffect, useRef } from "react"
-import { ChevronRight, Pencil, Trash2 } from "lucide-react"
+import { ChevronRight, Pencil, Search, Trash2 } from "lucide-react"
 import type { WorkspaceKey } from "@/types/supabase"
+
+// TIM-1149: A thread is either bound to a WorkspaceKey or it is a "general"
+// (workspace-less) conversation, represented by null.
+export type ConversationScope = WorkspaceKey | null
+
+// Sentinel for the "General" group key inside the grouped map. Not a valid
+// WorkspaceKey — we keep it as a separate string union member at the UI layer.
+export const GENERAL_GROUP_KEY = "__general__" as const
+export const GENERAL_CONVERSATION_LABEL = "General"
+
+type GroupKey = typeof GENERAL_GROUP_KEY | WorkspaceKey
 
 export const WORKSPACE_ORDER: WorkspaceKey[] = [
   "concept",
@@ -35,9 +48,14 @@ export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   marketing_pre_launch: "Marketing & Pre-Launch",
 }
 
+export function scopeLabel(scope: ConversationScope): string {
+  return scope === null ? GENERAL_CONVERSATION_LABEL : WORKSPACE_LABELS[scope]
+}
+
 export interface ThreadBrowserItem {
   id: string
-  workspace_key: WorkspaceKey
+  // TIM-1149: null = general (workspace-less) conversation.
+  workspace_key: WorkspaceKey | null
   title: string | null
   last_message_at: string
   message_count: number
@@ -45,14 +63,16 @@ export interface ThreadBrowserItem {
 
 export interface ThreadBrowserProps {
   planId: string
-  activeWorkspaceKey: WorkspaceKey
+  activeScope: ConversationScope
   activeThreadId: string | null
   onSelectThread: (item: ThreadBrowserItem) => void
-  onNewThread: () => void
+  onNewThread: (scope: ConversationScope) => void
   onRenameThread?: (threadId: string, newTitle: string) => void
   onDeleteThread?: (threadId: string) => void
   /** Bump this number from the parent (after a successful send) to force a refresh. */
   refreshKey?: number
+  /** The workspace the drawer was opened from. Drives the "+ New here" button. */
+  currentWorkspaceKey: WorkspaceKey
 }
 
 type LoadState =
@@ -78,20 +98,22 @@ function formatTimestamp(value: string): string {
 
 export function ThreadBrowser({
   planId,
-  activeWorkspaceKey,
+  activeScope,
   activeThreadId,
   onSelectThread,
   onNewThread,
   onRenameThread,
   onDeleteThread,
   refreshKey = 0,
+  currentWorkspaceKey,
 }: ThreadBrowserProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" })
   // Manual collapse overrides — group is open unless explicitly closed by the user.
-  const [collapsed, setCollapsed] = useState<Partial<Record<WorkspaceKey, boolean>>>({})
+  const [collapsed, setCollapsed] = useState<Partial<Record<GroupKey, boolean>>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState("")
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [filter, setFilter] = useState("")
   const editInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -133,10 +155,21 @@ export function ThreadBrowser({
     () => (state.kind === "ready" ? state.items : []),
     [state],
   )
+
+  // TIM-1149: client-side substring filter on titles.
+  const filteredItems = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((item) =>
+      titleOrFallback(item.title).toLowerCase().includes(q),
+    )
+  }, [items, filter])
   const totalCount = items.length
+  const filteredCount = filteredItems.length
 
   const grouped = useMemo(() => {
-    const groups: Record<WorkspaceKey, ThreadBrowserItem[]> = {
+    const groups: Record<GroupKey, ThreadBrowserItem[]> = {
+      [GENERAL_GROUP_KEY]: [],
       concept: [],
       location_lease: [],
       financials: [],
@@ -149,31 +182,37 @@ export function ThreadBrowser({
       operations_playbook: [],
       marketing_pre_launch: [],
     }
-    for (const item of items) {
-      if (groups[item.workspace_key]) groups[item.workspace_key].push(item)
+    for (const item of filteredItems) {
+      const key: GroupKey = item.workspace_key ?? GENERAL_GROUP_KEY
+      if (groups[key]) groups[key].push(item)
     }
-    for (const key of WORKSPACE_ORDER) {
-      groups[key].sort((a, b) => {
-        const at = new Date(a.last_message_at).getTime()
-        const bt = new Date(b.last_message_at).getTime()
-        return bt - at
-      })
+    const sortByRecency = (a: ThreadBrowserItem, b: ThreadBrowserItem) => {
+      const at = new Date(a.last_message_at).getTime()
+      const bt = new Date(b.last_message_at).getTime()
+      return bt - at
+    }
+    for (const key of Object.keys(groups) as GroupKey[]) {
+      groups[key].sort(sortByRecency)
     }
     return groups
-  }, [items])
+  }, [filteredItems])
 
-  const toggleGroup = useCallback((key: WorkspaceKey) => {
+  const toggleGroup = useCallback((key: GroupKey) => {
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
+  const activeGroupKey: GroupKey = activeScope === null ? GENERAL_GROUP_KEY : activeScope
+
   const groupIsOpen = useCallback(
-    (key: WorkspaceKey) => {
-      // Default open. Active workspace is always open even if collapsed elsewhere.
+    (key: GroupKey) => {
+      // Default open. Active scope is always open even if collapsed elsewhere.
+      // When the user is filtering, force every non-empty group open so matches are visible.
+      if (filter.trim()) return true
       if (collapsed[key] === undefined) return true
-      if (key === activeWorkspaceKey) return true
+      if (key === activeGroupKey) return true
       return !collapsed[key]
     },
-    [collapsed, activeWorkspaceKey],
+    [collapsed, activeGroupKey, filter],
   )
 
   const startEdit = useCallback((thread: ThreadBrowserItem) => {
@@ -247,19 +286,60 @@ export function ThreadBrowser({
     [planId, onDeleteThread],
   )
 
+  const orderedGroupKeys: GroupKey[] = useMemo(
+    () => [GENERAL_GROUP_KEY, ...WORKSPACE_ORDER],
+    [],
+  )
+
   return (
     <div className="border-b border-[#efefef]" data-testid="thread-browser">
-      <div className="flex items-center justify-between px-4 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[#666]">
-          Conversations ({totalCount})
+      <div className="flex items-center justify-between px-4 py-2 gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[#666] truncate">
+          Conversations ({filter.trim() ? `${filteredCount} of ${totalCount}` : totalCount})
         </span>
-        <button
-          type="button"
-          onClick={onNewThread}
-          className="text-xs font-semibold text-[#155e63] hover:underline"
-        >
-          + New
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => onNewThread(currentWorkspaceKey)}
+            className="text-xs font-semibold text-[#155e63] hover:underline"
+            title={`New conversation in ${WORKSPACE_LABELS[currentWorkspaceKey]}`}
+          >
+            + Here
+          </button>
+          <span aria-hidden className="text-[#ccc]">·</span>
+          <button
+            type="button"
+            onClick={() => onNewThread(null)}
+            className="text-xs font-semibold text-[#155e63] hover:underline"
+            title="New general conversation (not tied to a workspace)"
+          >
+            + General
+          </button>
+        </div>
+      </div>
+
+      <div className="px-3 pb-2">
+        <div className="flex items-center gap-2 rounded-md border border-[#e5e3df] bg-white px-2 py-1 focus-within:ring-2 focus-within:ring-[#155e63]/30">
+          <Search aria-hidden className="w-3.5 h-3.5 text-[#aaa]" />
+          <input
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search conversations"
+            className="flex-1 bg-transparent text-xs outline-none placeholder:text-[#bbb]"
+            aria-label="Search conversations"
+          />
+          {filter && (
+            <button
+              type="button"
+              onClick={() => setFilter("")}
+              className="text-[10px] text-[#888] hover:text-[#1a1a1a]"
+              aria-label="Clear search"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="max-h-60 overflow-y-auto px-2 pb-2">
@@ -269,12 +349,18 @@ export function ThreadBrowser({
           <p className="px-2 py-3 text-xs text-red-600">{state.message}</p>
         ) : totalCount === 0 ? (
           <p className="px-2 py-3 text-xs text-[#888]">No saved conversations yet.</p>
+        ) : filteredCount === 0 ? (
+          <p className="px-2 py-3 text-xs text-[#888]">No matches.</p>
         ) : (
           <ul className="space-y-1">
-            {WORKSPACE_ORDER.map((key) => {
+            {orderedGroupKeys.map((key) => {
               const groupThreads = grouped[key]
               if (groupThreads.length === 0) return null
               const isOpen = groupIsOpen(key)
+              const label =
+                key === GENERAL_GROUP_KEY
+                  ? GENERAL_CONVERSATION_LABEL
+                  : WORKSPACE_LABELS[key]
               return (
                 <li key={key} className="rounded-lg">
                   <button
@@ -288,7 +374,7 @@ export function ThreadBrowser({
                         aria-hidden
                         className={`inline-block transition-transform ${isOpen ? "rotate-90" : ""}`}
                       />
-                      {WORKSPACE_LABELS[key]}
+                      {label}
                       <span className="text-[10px] font-medium text-[#888]">
                         {groupThreads.length}
                       </span>
