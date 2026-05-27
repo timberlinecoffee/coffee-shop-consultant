@@ -3,6 +3,7 @@
 // TIM-1038: Build Out & Equipment workspace — Equipment sections,
 // workstation sections, drag-drop, resizable columns, per-section totals.
 // TIM-1171: Supplies tab removed — now lives in the Inventory workspace.
+// TIM-1179: AI equipment recommendations + referral cards.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare } from "lucide-react";
@@ -16,6 +17,7 @@ import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportM
 import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
+import type { EquipmentRecommendation } from "@/types/referral";
 
 type AnyItem = EquipmentItem | SuppliesItem;
 
@@ -138,12 +140,44 @@ export function BuildoutEquipmentWorkspace({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [describeOpen, setDescribeOpen] = useState(false);
+  const [recommendations, setRecommendations] = useState<Map<string, EquipmentRecommendation>>(new Map());
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightController = useRef<AbortController | null>(null);
   const latestEquipmentRef = useRef<EquipmentItem[]>(initialEquipment);
 
   const { promoteOnEdit } = useWorkspaceStatus();
+
+  // Fetch AI recommendations for current equipment set (called after load/import/seed).
+  const fetchRecommendations = useCallback(async (items: EquipmentItem[]) => {
+    const active = items.filter((i) => !i.archived && i.name.trim());
+    if (active.length === 0) return;
+    try {
+      const res = await fetch("/api/workspaces/buildout/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: active.map((i) => ({
+            id: i.id,
+            name: i.name,
+            category: i.category,
+            station: i.section_id ?? undefined,
+          })),
+        }),
+      });
+      if (!res.ok) return;
+      const recs = (await res.json()) as EquipmentRecommendation[];
+      setRecommendations(new Map(recs.map((r) => [r.item_id, r])));
+    } catch { /* non-blocking */ }
+  }, []);
+
+  // Load recommendations on initial mount if items exist.
+  useEffect(() => {
+    if (initialEquipment.filter((i) => !i.archived).length > 0) {
+      void fetchRecommendations(initialEquipment);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showReviewBanner =
     !reviewDismissed &&
@@ -240,6 +274,7 @@ export function BuildoutEquipmentWorkspace({
     setSections(newSections);
     scheduleSave(newItems);
     setImportOpen(false);
+    void fetchRecommendations(newItems);
   }
 
   // Equipment seed
@@ -255,6 +290,7 @@ export function BuildoutEquipmentWorkspace({
     setEquipment(newEq as EquipmentItem[]);
     setSections(newSec as ListSection[]);
     scheduleSave(newEq as EquipmentItem[]);
+    void fetchRecommendations(newEq as EquipmentItem[]);
   }
 
   const lastSavedAt =
@@ -402,6 +438,7 @@ export function BuildoutEquipmentWorkspace({
           items={equipment as AnyItem[]}
           onItemsChange={handleEquipmentChange}
           onSectionsChange={handleSectionsChange}
+          recommendations={recommendations}
         />
       </div>
 
