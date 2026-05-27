@@ -1,27 +1,61 @@
 "use client";
 
+// TIM-1121: Beginner-friendly rewrite. Each ratio shows
+//   name → plain definition → current value → benchmark (with source) → status indicator.
+// Core ratios always visible; secondary ones behind "Show advanced".
+
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { type MonthlySlice, sumSlices } from "@/lib/financial-projection";
 
 interface Props {
   slices: MonthlySlice[];
 }
 
+type Status = "good" | "caution" | "warning";
+
 interface Ratio {
+  key: string;
   label: string;
+  plainEnglish: string;
   value: number | null;
-  unit: "pct" | "dollar" | "number";
-  benchmarkMin: number;
-  benchmarkMax: number;
-  higherIsBetter: boolean;
-  note: (v: number) => string;
+  unit: "pct";
+  benchmarkLabel: string;
+  benchmarkSource: string;
+  tier: "core" | "advanced";
+  status: Status;
+  takeaway: string;
 }
+
+// ── Status helpers ────────────────────────────────────────────────────────────
+
+function statusForRange(
+  value: number,
+  healthy: [number, number],
+  cautionPct: number,
+  direction: "higherIsBetter" | "lowerIsBetter",
+): Status {
+  const [min, max] = healthy;
+  if (value >= min && value <= max) return "good";
+  if (direction === "higherIsBetter") {
+    if (value > max) return "good";
+    if (value >= min - cautionPct) return "caution";
+    return "warning";
+  }
+  // lowerIsBetter
+  if (value < min) return "good";
+  if (value <= max + cautionPct) return "caution";
+  return "warning";
+}
+
+// ── Ratio definitions (single source of truth for benchmarks) ─────────────────
 
 function computeRatios(slices: MonthlySlice[]): Ratio[] {
   const y1 = slices.filter((s) => s.year === 1);
   if (y1.length === 0) return [];
 
   const totals = sumSlices(y1);
-  const nr = totals.net_revenue_cents ?? 1;
+  const nr = totals.net_revenue_cents ?? 0;
   const gp = totals.gross_profit_cents ?? 0;
   const oi = totals.operating_income_cents ?? 0;
   const labor = totals.labor_cents ?? 0;
@@ -29,179 +63,243 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
   const rent = totals.rent_cents ?? 0;
   const pp = totals.payment_processing_cents ?? 0;
   const spoilage = totals.spoilage_cents ?? 0;
-  const bevCogs = totals.beverage_cogs_cents ?? 0;
-  const foodCogs = totals.food_cogs_cents ?? 0;
   const ni = totals.net_income_cents ?? 0;
 
-  const avgTicketCents = slices[0]?.net_revenue_cents && slices[0]?.net_revenue_cents > 0
-    ? null : null;
+  if (nr <= 0) return [];
 
-  const grossMargin = nr > 0 ? gp / nr * 100 : 0;
-  const opMargin = nr > 0 ? oi / nr * 100 : 0;
-  const laborPct = nr > 0 ? labor / nr * 100 : 0;
-  const primeCost = nr > 0 ? (cogs + labor) / nr * 100 : 0;
-  const occupancy = nr > 0 ? rent / nr * 100 : 0;
-  const processingPct = nr > 0 ? pp / nr * 100 : 0;
-  const spoilagePct = cogs > 0 ? spoilage / cogs * 100 : 0;
-  const netMargin = nr > 0 ? ni / nr * 100 : 0;
+  const grossMargin = (gp / nr) * 100;
+  const opMargin = (oi / nr) * 100;
+  const laborPct = (labor / nr) * 100;
+  const primeCost = ((cogs + labor) / nr) * 100;
+  const occupancy = (rent / nr) * 100;
+  const processingPct = (pp / nr) * 100;
+  const spoilagePct = cogs > 0 ? (spoilage / cogs) * 100 : 0;
+  const netMargin = (ni / nr) * 100;
 
-  return [
+  const ratios: Ratio[] = [
     {
-      label: "Gross Margin",
-      value: grossMargin,
-      unit: "pct",
-      benchmarkMin: 60,
-      benchmarkMax: 70,
-      higherIsBetter: true,
-      note: (v) => v >= 60 && v <= 70
-        ? `${v.toFixed(1)}% — right in the healthy zone for a coffee shop.`
-        : v < 60
-        ? `${v.toFixed(1)}% — below the 60–70% target. Check your COGS percentages.`
-        : `${v.toFixed(1)}% — above 70%. Strong margin, but double-check your inputs.`,
-    },
-    {
-      label: "Operating Margin",
-      value: opMargin,
-      unit: "pct",
-      benchmarkMin: 5,
-      benchmarkMax: 15,
-      higherIsBetter: true,
-      note: (v) => v >= 5 && v <= 15
-        ? `${v.toFixed(1)}% — healthy for an indie coffee shop.`
-        : v < 0
-        ? `${v.toFixed(1)}% — operating at a loss. Review your OpEx and pricing.`
-        : v < 5
-        ? `${v.toFixed(1)}% — thin but positive. Keep a close eye on OpEx growth.`
-        : `${v.toFixed(1)}% — above 15%. Excellent, but make sure projections are realistic.`,
-    },
-    {
-      label: "Labor As % Of Revenue",
-      value: laborPct,
-      unit: "pct",
-      benchmarkMin: 28,
-      benchmarkMax: 35,
-      higherIsBetter: false,
-      note: (v) => v >= 28 && v <= 35
-        ? `${v.toFixed(1)}% — in the normal range. Most shops land here.`
-        : v > 35
-        ? `${v.toFixed(1)}% — above 35%. Either you are over-staffed or under-priced. Both are worth looking at.`
-        : `${v.toFixed(1)}% — under 28%. Possible if you are in the early days or running lean. Make sure your schedule is sustainable.`,
-    },
-    {
+      key: "prime_cost",
       label: "Prime Cost",
+      plainEnglish:
+        "Cost of goods + labor combined. The single best predictor of whether a shop survives.",
       value: primeCost,
       unit: "pct",
-      benchmarkMin: 55,
-      benchmarkMax: 65,
-      higherIsBetter: false,
-      note: (v) => v <= 65
-        ? `${v.toFixed(1)}% — within the 55–65% benchmark. This is the number that separates shops that make it from shops that don't.`
-        : `${v.toFixed(1)}% — above 65%. This is the most important number to fix. Raising prices or tightening labor scheduling is usually the fastest path.`,
+      benchmarkLabel: "55–65% (≤65% target)",
+      benchmarkSource: "National Restaurant Association industry data",
+      tier: "core",
+      status: statusForRange(primeCost, [55, 65], 5, "lowerIsBetter"),
+      takeaway:
+        primeCost <= 65
+          ? "Within the healthy range. This is the number that separates shops that make it from shops that don't."
+          : primeCost <= 70
+            ? "Slightly above 65%. Tighten labor schedule or revisit pricing in the next quarter."
+            : "Above 70%. The biggest lever you have. Raising prices or trimming labor hours is usually the fastest fix.",
     },
     {
-      label: "Occupancy",
+      key: "gross_margin",
+      label: "Gross Margin",
+      plainEnglish:
+        "Of every dollar you take in, how much is left after paying for ingredients.",
+      value: grossMargin,
+      unit: "pct",
+      benchmarkLabel: "60–70%",
+      benchmarkSource: "Specialty Coffee Association industry surveys",
+      tier: "core",
+      status: statusForRange(grossMargin, [60, 70], 5, "higherIsBetter"),
+      takeaway:
+        grossMargin >= 60 && grossMargin <= 70
+          ? "In the healthy zone for a coffee shop."
+          : grossMargin < 60
+            ? "Below the 60–70% target. Check your COGS percentages — pour sizes, drink prices, or supplier costs may be off."
+            : "Above 70% is unusually strong. Double-check your COGS inputs are realistic.",
+    },
+    {
+      key: "labor_pct",
+      label: "Labor",
+      plainEnglish:
+        "Wages, payroll taxes, and benefits as a share of every dollar earned.",
+      value: laborPct,
+      unit: "pct",
+      benchmarkLabel: "28–35%",
+      benchmarkSource: "Specialty Coffee Association benchmarks",
+      tier: "core",
+      status: statusForRange(laborPct, [28, 35], 5, "lowerIsBetter"),
+      takeaway:
+        laborPct >= 28 && laborPct <= 35
+          ? "In the normal range. Most shops land here."
+          : laborPct > 35
+            ? "Above 35%. Either you are over-staffed or under-priced. Both are worth looking at."
+            : "Under 28%. Possible if you're running lean or owner-operated. Make sure the schedule is sustainable long-term.",
+    },
+    {
+      key: "occupancy",
+      label: "Rent (Occupancy)",
+      plainEnglish:
+        "Rent plus other occupancy costs as a share of every dollar earned.",
       value: occupancy,
       unit: "pct",
-      benchmarkMin: 8,
-      benchmarkMax: 15,
-      higherIsBetter: false,
-      note: (v) => v <= 10
-        ? `${v.toFixed(1)}% — under 10%. Healthy. You have real cushion here.`
-        : v <= 15
-        ? `${v.toFixed(1)}% — in range, but pushing toward the high end. Worth renegotiating if you can.`
-        : `${v.toFixed(1)}% — above 15%. Your rent is eating too much of your revenue. See if you can renegotiate after Year 1.`,
+      benchmarkLabel: "≤10% ideal, 10–15% acceptable",
+      benchmarkSource: "Specialty Coffee Association industry data",
+      tier: "core",
+      status: statusForRange(occupancy, [0, 10], 5, "lowerIsBetter"),
+      takeaway:
+        occupancy <= 10
+          ? "Under 10%. You have real cushion here."
+          : occupancy <= 15
+            ? "In range, but pushing the high end. Worth renegotiating when your lease comes up."
+            : "Above 15%. Your rent is eating too much of your revenue (\"the rent trap\"). Renegotiate or, longer-term, relocate.",
     },
     {
-      label: "Payment Processing",
-      value: processingPct,
-      unit: "pct",
-      benchmarkMin: 2.5,
-      benchmarkMax: 3.0,
-      higherIsBetter: false,
-      note: (v) => `${v.toFixed(2)}% — typical range is 2.5–3.0%. ${v > 3 ? "Worth negotiating your processor rate or adding a cash discount." : "In line with industry rates."}`,
-    },
-    {
-      label: "Spoilage",
-      value: spoilagePct,
-      unit: "pct",
-      benchmarkMin: 2,
-      benchmarkMax: 5,
-      higherIsBetter: false,
-      note: (v) => v <= 5
-        ? `${v.toFixed(1)}% of COGS — within the 2–5% benchmark.`
-        : `${v.toFixed(1)}% of COGS — above 5%. Tighter ordering and rotating stock can bring this down.`,
-    },
-    {
+      key: "net_margin",
       label: "Net Margin",
+      plainEnglish:
+        "What you actually keep after every expense — taxes, interest, depreciation, everything.",
       value: netMargin,
       unit: "pct",
-      benchmarkMin: 3,
-      benchmarkMax: 15,
-      higherIsBetter: true,
-      note: (v) => v < 0
-        ? `${v.toFixed(1)}% — operating at a net loss. Not unusual in Year 1, but you need a path to positive.`
-        : v < 3
-        ? `${v.toFixed(1)}% — thin. Any unexpected expense or slow month could wipe it out.`
-        : `${v.toFixed(1)}% — solid for a coffee shop. Most indie shops run in this range.`,
+      benchmarkLabel: "Year 1: ≥0%; mature: 3–15%",
+      benchmarkSource: "SCA + independent operator surveys",
+      tier: "core",
+      status: statusForRange(netMargin, [3, 15], 3, "higherIsBetter"),
+      takeaway:
+        netMargin < 0
+          ? "Operating at a net loss. Not unusual in Year 1, but you need a clear path to positive by Year 2."
+          : netMargin < 3
+            ? "Thin. Any surprise expense or slow month could wipe it out."
+            : "Solid for a coffee shop. Most indie shops run in this range.",
+    },
+    {
+      key: "operating_margin",
+      label: "Operating Margin",
+      plainEnglish:
+        "Profit from running the business, before interest and taxes, as % of revenue.",
+      value: opMargin,
+      unit: "pct",
+      benchmarkLabel: "5–15% (mature shop)",
+      benchmarkSource: "Specialty Coffee Association industry surveys",
+      tier: "advanced",
+      status: statusForRange(opMargin, [5, 15], 5, "higherIsBetter"),
+      takeaway:
+        opMargin >= 5 && opMargin <= 15
+          ? "Healthy for an indie coffee shop."
+          : opMargin < 0
+            ? "Operating at a loss. Review OpEx and pricing — Year 1 losses happen but should narrow fast."
+            : opMargin < 5
+              ? "Thin but positive. Keep a close eye on OpEx growth."
+              : "Above 15% is excellent. Make sure your projections aren't underestimating real-world costs.",
+    },
+    {
+      key: "payment_processing",
+      label: "Payment Processing",
+      plainEnglish:
+        "Card processor fees (Square, Toast, Stripe, etc.) as % of revenue.",
+      value: processingPct,
+      unit: "pct",
+      benchmarkLabel: "2.5–3.0%",
+      benchmarkSource: "Common indie POS rate cards (Square, Toast, Clover)",
+      tier: "advanced",
+      status: statusForRange(processingPct, [2.5, 3.0], 0.5, "lowerIsBetter"),
+      takeaway:
+        processingPct <= 3
+          ? "In line with industry rates."
+          : "Above 3%. Worth negotiating your processor rate, switching providers, or offering a cash discount.",
+    },
+    {
+      key: "spoilage",
+      label: "Spoilage",
+      plainEnglish:
+        "Food and drink wasted (expired milk, dropped pastries, etc.) as % of cost of goods.",
+      value: spoilagePct,
+      unit: "pct",
+      benchmarkLabel: "2–5% of COGS",
+      benchmarkSource: "National Restaurant Association",
+      tier: "advanced",
+      status: statusForRange(spoilagePct, [0, 5], 2, "lowerIsBetter"),
+      takeaway:
+        spoilagePct <= 5
+          ? "Within the 2–5% benchmark."
+          : "Above 5%. Tighter ordering, smaller par levels, and stricter FIFO rotation can bring this down.",
     },
   ];
+
+  return ratios.filter((r) => r.value !== null);
 }
 
-function RatioTile({ ratio }: { ratio: Ratio }) {
+// ── Presentation ──────────────────────────────────────────────────────────────
+
+const STATUS_STYLES: Record<Status, { wrap: string; chip: string; chipLabel: string; dot: string }> = {
+  good: {
+    wrap: "border-green-200 bg-green-50",
+    chip: "bg-green-100 text-green-800",
+    chipLabel: "On track",
+    dot: "bg-green-500",
+  },
+  caution: {
+    wrap: "border-amber-200 bg-amber-50",
+    chip: "bg-amber-100 text-amber-900",
+    chipLabel: "Watch",
+    dot: "bg-amber-500",
+  },
+  warning: {
+    wrap: "border-red-200 bg-red-50",
+    chip: "bg-red-100 text-red-800",
+    chipLabel: "Needs attention",
+    dot: "bg-red-500",
+  },
+};
+
+function RatioCard({ ratio }: { ratio: Ratio }) {
   if (ratio.value === null) return null;
-
+  const styles = STATUS_STYLES[ratio.status];
   const v = ratio.value;
-  const { benchmarkMin, benchmarkMax, higherIsBetter } = ratio;
-  const inBenchmark = v >= benchmarkMin && v <= benchmarkMax;
-  const good = higherIsBetter ? v >= benchmarkMin : v <= benchmarkMax;
-
-  const statusColor = inBenchmark
-    ? "text-green-700 bg-green-50 border-green-200"
-    : good
-    ? "text-[#155e63] bg-[#f0f9f9] border-[#c5dfe0]"
-    : "text-red-700 bg-red-50 border-red-200";
-
-  const barPosition = (() => {
-    const range = benchmarkMax - benchmarkMin;
-    if (range <= 0) return 50;
-    const midpoint = (benchmarkMin + benchmarkMax) / 2;
-    const distFromMid = v - midpoint;
-    const normalized = 50 + (distFromMid / range) * 50;
-    return Math.max(0, Math.min(100, normalized));
-  })();
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${statusColor}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-70 mb-1">{ratio.label}</p>
-      <p className="text-2xl font-bold">
-        {ratio.unit === "pct"
-          ? `${v.toFixed(1)}%`
-          : ratio.unit === "dollar"
-          ? `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-          : v.toFixed(1)}
-      </p>
-      <div className="mt-2 relative">
-        <div className="h-1.5 rounded-full bg-black/10 overflow-hidden">
-          <div
-            className="h-full bg-current opacity-30 absolute top-0 left-0"
-            style={{
-              left: `${(benchmarkMin / (benchmarkMax * 1.5)) * 100}%`,
-              width: `${((benchmarkMax - benchmarkMin) / (benchmarkMax * 1.5)) * 100}%`,
-            }}
-          />
+    <div className={`rounded-2xl border px-5 py-4 ${styles.wrap}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#1a1a1a]">{ratio.label}</p>
+          <p className="text-xs text-[#5a5a5a] mt-1 leading-snug">
+            {ratio.plainEnglish}
+          </p>
         </div>
-        <div
-          className="w-2 h-2 rounded-full bg-current absolute top-[-2px]"
-          style={{ left: `calc(${Math.min(95, (v / (benchmarkMax * 1.5)) * 100)}% - 4px)` }}
-        />
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${styles.chip} whitespace-nowrap`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
+          {styles.chipLabel}
+        </span>
       </div>
-      <p className="text-xs opacity-70 mt-1">Benchmark: {benchmarkMin}–{benchmarkMax}%</p>
-      <p className="text-xs mt-2 leading-snug">{ratio.note(v)}</p>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-[#7a7a7a]">
+            Your value
+          </p>
+          <p className="text-2xl font-bold text-[#1a1a1a] mt-0.5">
+            {v.toFixed(1)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-[#7a7a7a]">
+            Healthy range
+          </p>
+          <p className="text-sm font-medium text-[#1a1a1a] mt-1">
+            {ratio.benchmarkLabel}
+          </p>
+          <p className="text-[10px] text-[#9a9a9a] mt-0.5 leading-tight">
+            Source: {ratio.benchmarkSource}
+          </p>
+        </div>
+      </div>
+
+      <p className="text-xs text-[#2a2a2a] mt-3 leading-relaxed">
+        {ratio.takeaway}
+      </p>
     </div>
   );
 }
 
 export function RatiosTab({ slices }: Props) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const ratios = computeRatios(slices);
 
   if (ratios.length === 0) {
@@ -212,49 +310,102 @@ export function RatiosTab({ slices }: Props) {
     );
   }
 
-  const allGood = ratios.filter((r) => r.value !== null).every((r) => {
-    const v = r.value!;
-    return r.higherIsBetter ? v >= r.benchmarkMin : v <= r.benchmarkMax;
-  });
-  const criticalIssues = ratios.filter((r) => {
-    if (r.value === null) return false;
-    const v = r.value;
-    return r.higherIsBetter ? v < r.benchmarkMin : v > r.benchmarkMax;
-  });
+  const core = ratios.filter((r) => r.tier === "core");
+  const advanced = ratios.filter((r) => r.tier === "advanced");
+
+  const warnings = ratios.filter((r) => r.status === "warning");
+  const cautions = ratios.filter((r) => r.status === "caution");
+
+  // Summary banner
+  const summary = (() => {
+    if (warnings.length > 0) {
+      return {
+        tone: "warning" as const,
+        title: `${warnings.length} ratio${warnings.length > 1 ? "s" : ""} need${warnings.length > 1 ? "" : "s"} attention`,
+        body: `Focus on: ${warnings.map((r) => r.label).join(", ")}. These are outside the healthy range for a coffee shop.`,
+      };
+    }
+    if (cautions.length > 0) {
+      return {
+        tone: "caution" as const,
+        title: `${cautions.length} ratio${cautions.length > 1 ? "s" : ""} to watch`,
+        body: `Close to the edge: ${cautions.map((r) => r.label).join(", ")}. Worth a check, not a crisis.`,
+      };
+    }
+    return {
+      tone: "good" as const,
+      title: "All ratios are healthy.",
+      body: "Your numbers are within industry benchmarks for an indie coffee shop. Focus on execution.",
+    };
+  })();
+
+  const summaryStyles = STATUS_STYLES[summary.tone];
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-4">
-        <p className="text-sm font-semibold text-[#1a1a1a]">Year 1 Key Ratios</p>
-        <p className="text-xs text-[#afafaf] mt-0.5">
-          Benchmarks based on SCA data and industry surveys. Green = in benchmark range.
-        </p>
-        {criticalIssues.length > 0 && (
-          <p className="text-xs text-red-700 mt-2">
-            {criticalIssues.length} ratio{criticalIssues.length > 1 ? "s" : ""} outside benchmark: {criticalIssues.map(r => r.label).join(", ")}.
-          </p>
-        )}
+      {/* Summary banner */}
+      <div className={`rounded-2xl border px-5 py-4 ${summaryStyles.wrap}`}>
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${summaryStyles.dot}`} />
+          <p className="text-sm font-semibold text-[#1a1a1a]">{summary.title}</p>
+        </div>
+        <p className="text-xs text-[#3a3a3a] mt-1 leading-relaxed">{summary.body}</p>
       </div>
 
+      {/* How to read this */}
+      <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-3">
+        <p className="text-[11px] uppercase tracking-wide text-[#7a7a7a] font-semibold">
+          How to read this
+        </p>
+        <p className="text-xs text-[#5a5a5a] mt-1 leading-relaxed">
+          Each card shows what the ratio means in plain English, your Year 1
+          value, and the healthy range for an indie coffee shop with the source
+          we used. Green = on track, amber = watch, red = needs attention.
+        </p>
+      </div>
+
+      {/* Core ratios */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {ratios.map((r) => (
-          <RatioTile key={r.label} ratio={r} />
+        {core.map((r) => (
+          <RatioCard key={r.key} ratio={r} />
         ))}
       </div>
 
-      <div className="rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-2">The Ones That Matter Most</p>
-        <div className="space-y-2">
-          <p className="text-sm text-[#2a4a4c] leading-relaxed">
-            Prime cost and occupancy together tell you whether your business model works. If prime cost is under 65% and occupancy is under 10%, you have a healthy foundation. Everything else is optimization.
-          </p>
-          {allGood && (
-            <p className="text-sm text-[#2a4a4c] leading-relaxed font-medium">
-              Your ratios are all within benchmark ranges. That is a good sign — now focus on execution.
-            </p>
+      {/* Advanced toggle */}
+      {advanced.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((s) => !s)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-medium text-[#3a3a3a] hover:bg-[#f5f5f5] transition-colors"
+            aria-expanded={showAdvanced}
+            aria-controls="ratios-advanced-section"
+          >
+            {showAdvanced ? (
+              <>
+                <ChevronUp className="w-3.5 h-3.5" />
+                Hide advanced ratios
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3.5 h-3.5" />
+                Show advanced ratios ({advanced.length})
+              </>
+            )}
+          </button>
+
+          {showAdvanced && (
+            <div
+              id="ratios-advanced-section"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3"
+            >
+              {advanced.map((r) => (
+                <RatioCard key={r.key} ratio={r} />
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
