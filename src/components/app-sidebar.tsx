@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { WorkspaceNavItem, NavIcon } from "@/lib/workspace-manifest";
+import type { WorkspaceNavItem, NavIcon, WorkspaceCategory } from "@/lib/workspace-manifest";
 import {
   WORKSPACE_CATEGORY_LABEL,
   WORKSPACE_CATEGORY_ORDER,
@@ -71,6 +71,26 @@ function CollapseIcon({ flipped }: { flipped?: boolean }) {
       style={{ transform: flipped ? "scaleX(-1)" : undefined }}
     >
       <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="transition-transform duration-150"
+      style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}
+    >
+      <polyline points="6 9 12 15 18 9" />
     </svg>
   );
 }
@@ -224,6 +244,87 @@ function NavItem({
 
 // ── Sidebar content ───────────────────────────────────────────────────────────
 
+// TIM-1154: persist per-user expand/collapse state for each sidebar category.
+// Versioned key — bump suffix if the set of categories changes incompatibly.
+const CATEGORY_COLLAPSED_KEY = "tcs-sidebar-category-collapsed-v1";
+
+type CategoryCollapsedMap = Partial<Record<WorkspaceCategory, boolean>>;
+
+const EMPTY_COLLAPSED_MAP: CategoryCollapsedMap = {};
+
+function parseCollapsedMap(raw: string | null): CategoryCollapsedMap {
+  if (!raw) return EMPTY_COLLAPSED_MAP;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return EMPTY_COLLAPSED_MAP;
+    const out: CategoryCollapsedMap = {};
+    let hasAny = false;
+    for (const cat of WORKSPACE_CATEGORY_ORDER) {
+      const v = (parsed as Record<string, unknown>)[cat];
+      if (typeof v === "boolean") {
+        out[cat] = v;
+        hasAny = true;
+      }
+    }
+    return hasAny ? out : EMPTY_COLLAPSED_MAP;
+  } catch {
+    return EMPTY_COLLAPSED_MAP;
+  }
+}
+
+// Cache the parsed snapshot so useSyncExternalStore gets a stable reference
+// between calls when the underlying storage hasn't changed.
+let cachedRaw: string | null | undefined = undefined;
+let cachedSnapshot: CategoryCollapsedMap = EMPTY_COLLAPSED_MAP;
+
+function getCollapsedSnapshot(): CategoryCollapsedMap {
+  const raw = window.localStorage.getItem(CATEGORY_COLLAPSED_KEY);
+  if (raw === cachedRaw) return cachedSnapshot;
+  cachedRaw = raw;
+  cachedSnapshot = parseCollapsedMap(raw);
+  return cachedSnapshot;
+}
+
+function subscribeCollapsed(notify: () => void): () => void {
+  const handler = (e: StorageEvent) => {
+    if (e.key === CATEGORY_COLLAPSED_KEY) notify();
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
+function useCategoryCollapsed(): {
+  isCollapsed: (cat: WorkspaceCategory) => boolean;
+  toggle: (cat: WorkspaceCategory) => void;
+} {
+  const state = useSyncExternalStore(
+    subscribeCollapsed,
+    getCollapsedSnapshot,
+    () => EMPTY_COLLAPSED_MAP,
+  );
+
+  const isCollapsed = useCallback(
+    (cat: WorkspaceCategory) => Boolean(state[cat]),
+    [state]
+  );
+
+  const toggle = useCallback((cat: WorkspaceCategory) => {
+    const current = getCollapsedSnapshot();
+    const next: CategoryCollapsedMap = { ...current, [cat]: !current[cat] };
+    try {
+      window.localStorage.setItem(CATEGORY_COLLAPSED_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+    // localStorage writes from this tab don't fire `storage`, so bust the
+    // snapshot cache and dispatch a same-tab event to trigger re-render.
+    cachedRaw = undefined;
+    window.dispatchEvent(new StorageEvent("storage", { key: CATEGORY_COLLAPSED_KEY }));
+  }, []);
+
+  return { isCollapsed, toggle };
+}
+
 function SidebarContent({
   items,
   collapsed,
@@ -238,6 +339,8 @@ function SidebarContent({
   firstLinkRef?: React.RefObject<HTMLAnchorElement | null>;
 }) {
   const pathname = usePathname();
+  const { isCollapsed: isCategoryCollapsed, toggle: toggleCategory } =
+    useCategoryCollapsed();
 
   return (
     <div className="flex flex-col h-full">
@@ -296,41 +399,57 @@ function SidebarContent({
           const groupItems = items.filter((item) => item.category === category);
           if (groupItems.length === 0) return null;
 
+          // TIM-1154: in icon-only collapsed mode, the category headers reduce to
+          // hairline separators (no toggle UX). Per-category expand/collapse only
+          // applies when the sidebar is in its full-width state.
+          const isOpen = collapsed ? true : !isCategoryCollapsed(category);
+          const panelId = `nav-cat-panel-${category}`;
+          const headerId = `nav-cat-${category}`;
+
           return (
             <section
               key={category}
-              aria-labelledby={`nav-cat-${category}`}
+              aria-labelledby={headerId}
               className={collapsed ? (index === 0 ? "" : "mt-3") : index === 0 ? "" : "mt-4"}
             >
               {collapsed ? (
                 <div
-                  id={`nav-cat-${category}`}
+                  id={headerId}
                   role="separator"
                   aria-label={WORKSPACE_CATEGORY_LABEL[category]}
                   className="mx-2 my-2 h-px bg-[#efefef]"
                 />
               ) : (
-                <div className="mb-1.5 px-3">
-                  <span
-                    id={`nav-cat-${category}`}
-                    className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wider"
-                  >
+                <button
+                  id={headerId}
+                  type="button"
+                  onClick={() => toggleCategory(category)}
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  className="group flex w-full items-center justify-between px-3 py-1 mb-1 rounded-md text-left hover:bg-[#f5f4f0] transition-colors"
+                >
+                  <span className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wider group-hover:text-[#6b6b6b]">
                     {WORKSPACE_CATEGORY_LABEL[category]}
                   </span>
-                </div>
+                  <span className="text-[#afafaf] group-hover:text-[#6b6b6b]">
+                    <ChevronIcon open={isOpen} />
+                  </span>
+                </button>
               )}
-              <ul role="list" className="space-y-0.5">
-                {groupItems.map((item) => (
-                  <li key={item.moduleNumber}>
-                    <NavItem
-                      item={item}
-                      isActive={pathname.startsWith(item.href)}
-                      collapsed={collapsed}
-                      onNavigate={onClose}
-                    />
-                  </li>
-                ))}
-              </ul>
+              {isOpen && (
+                <ul id={panelId} role="list" className="space-y-0.5">
+                  {groupItems.map((item) => (
+                    <li key={item.moduleNumber}>
+                      <NavItem
+                        item={item}
+                        isActive={pathname.startsWith(item.href)}
+                        collapsed={collapsed}
+                        onNavigate={onClose}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           );
         })}
