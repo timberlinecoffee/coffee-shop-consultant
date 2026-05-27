@@ -352,7 +352,7 @@ function ForecastTab({
                             className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-28"
                           />
                         ) : (
-                          <span className="text-sm text-[#c0c0c0]">—</span>
+                          <span className="text-sm text-[#c0c0c0]">Closed</span>
                         )}
                       </td>
                       <td className="py-2 px-2">
@@ -365,11 +365,11 @@ function ForecastTab({
                             className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-28"
                           />
                         ) : (
-                          <span className="text-sm text-[#c0c0c0]">—</span>
+                          <span className="text-sm text-[#c0c0c0]"></span>
                         )}
                       </td>
                       <td className="py-2.5 pl-2 pr-4 text-right text-sm text-[#6b6b6b]">
-                        {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : "—"}
+                        {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : ""}
                       </td>
                     </tr>
                   );
