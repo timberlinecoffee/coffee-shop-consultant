@@ -162,7 +162,7 @@ export default async function BusinessPlanPrintPage({
       .order("created_at"),
     supabase
       .from("menu_items_with_cogs")
-      .select("id, name, category, price_cents, expected_mix_pct, notes")
+      .select("id, name, category_name, price_cents, expected_mix_pct, notes")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
@@ -598,7 +598,8 @@ function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
 type MenuRow = {
   id: string;
   name: string;
-  category: string | null;
+  // TIM-1140: view exposes joined category name as `category_name`.
+  category_name: string | null;
   price_cents: number | null;
   expected_mix_pct: number | null;
   notes: string | null;
@@ -612,27 +613,16 @@ function MenuSection({ items }: { items: MenuRow[] }) {
   }
   const byCategory: Record<string, MenuRow[]> = {};
   for (const item of items) {
-    const cat = item.category ?? "Other";
+    const cat = item.category_name ?? "Other";
     if (!byCategory[cat]) byCategory[cat] = [];
     byCategory[cat].push(item);
   }
-  const categoryOrder = ["espresso", "brewed", "food", "retail", "seasonal", "Other"];
-  const categoryLabel: Record<string, string> = {
-    espresso: "Espresso",
-    brewed: "Brewed Coffee",
-    food: "Food",
-    retail: "Retail",
-    seasonal: "Signature & Seasonal",
-    Other: "Other",
-  };
-  const cats = Object.keys(byCategory).sort(
-    (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
-  );
+  const cats = Object.keys(byCategory).sort((a, b) => a.localeCompare(b));
 
   return (
     <div className="space-y-5">
       {cats.map((cat) => (
-        <SectionCard key={cat} label={categoryLabel[cat] ?? cat}>
+        <SectionCard key={cat} label={cat}>
           <ul className="divide-y divide-[#efefef]">
             {byCategory[cat].map((item) => (
               <li key={item.id} className="py-2 first:pt-0 last:pb-0 flex items-baseline gap-3">

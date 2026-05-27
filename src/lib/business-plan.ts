@@ -74,8 +74,10 @@ export interface BpEquipmentItem {
 export interface BpMenuItem {
   id: string;
   name: string;
-  category: string | null;
-  base_price_cents: number | null;
+  // TIM-1140: category is now a per-plan editable row; the view exposes the
+  // joined name as `category_name`.
+  category_name: string | null;
+  price_cents: number | null;
 }
 
 export interface BpLaunchItem {
@@ -249,7 +251,7 @@ export function assembleMenuPricing(menuItems: BpMenuItem[]): string {
 
   const byCategory: Record<string, BpMenuItem[]> = {};
   for (const item of menuItems) {
-    const cat = item.category ?? "Other";
+    const cat = item.category_name ?? "Other";
     if (!byCategory[cat]) byCategory[cat] = [];
     byCategory[cat].push(item);
   }
@@ -258,7 +260,7 @@ export function assembleMenuPricing(menuItems: BpMenuItem[]): string {
   for (const [cat, items] of Object.entries(byCategory)) {
     lines.push(`\n${cat}`);
     for (const item of items.slice(0, 12)) {
-      const price = item.base_price_cents ? centsToUsd(item.base_price_cents) : "";
+      const price = item.price_cents ? centsToUsd(item.price_cents) : "";
       lines.push(`- ${item.name}${price ? `  ${price}` : ""}`);
     }
     if (items.length > 12) lines.push(`  … and ${items.length - 12} more`);

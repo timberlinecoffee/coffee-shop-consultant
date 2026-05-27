@@ -1,7 +1,10 @@
 "use client";
 
-// TIM-967: Menu & Pricing workspace — drink overview, recipe builder, ingredient costing, and AI price suggestion.
-// TIM-1020: (1) searchable ingredient combobox, (2) COGS+GP on overview rows, (3) concept-aware AI price suggestion.
+// TIM-967: Menu & Pricing workspace — drink overview, recipe builder, ingredient costing, AI price suggestion.
+// TIM-1020: searchable ingredient combobox, COGS+GP on overview rows, concept-aware price suggestion.
+// TIM-1140: editable per-plan categories, drag/drop item reorder + move between categories,
+// workspace + per-category aggregate metrics (avg COGS%, avg GP%), category-level default
+// ingredients (amortized disposables), 'piece' unit, badge-styled category UX on item card.
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
@@ -10,12 +13,30 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   X,
   Sparkles,
   Package,
   Edit2,
   Search,
+  GripVertical,
+  FolderOpen,
+  Tag,
+  Settings,
 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import {
@@ -23,10 +44,12 @@ import {
   type MenuIngredient,
   type MenuItemIngredient,
   type MenuCategory,
-  CATEGORY_LABELS,
-  CATEGORY_ORDER,
+  type CategoryDefaultIngredient,
+  type IngredientUnit,
+  UNIT_OPTIONS,
   formatCents,
   costPerUnit,
+  aggregateMargins,
 } from "@/lib/menu";
 
 interface ConceptContext {
@@ -43,6 +66,8 @@ interface Props {
   initialItems: MenuItemWithCogs[];
   initialIngredients: MenuIngredient[];
   initialItemIngredients: MenuItemIngredient[];
+  initialCategories: MenuCategory[];
+  initialCategoryDefaults: CategoryDefaultIngredient[];
   conceptContext?: ConceptContext;
 }
 
@@ -203,44 +228,7 @@ function IngredientCombobox({
   );
 }
 
-interface MenuTabProps {
-  planId: string;
-  canEdit: boolean;
-  items: MenuItemWithCogs[];
-  ingredients: MenuIngredient[];
-  itemIngredients: MenuItemIngredient[];
-  selectedItemId: string | null;
-  onSelectItem: (id: string | null) => void;
-  onAddItem: (category: MenuCategory) => Promise<void>;
-  onUpdateItem: (id: string, patch: Partial<MenuItemWithCogs>) => Promise<void>;
-  onDeleteItem: (id: string) => Promise<void>;
-  onAddRecipeLine: (
-    menuItemId: string,
-    ingredientId: string,
-    amount: number,
-    unit: string
-  ) => Promise<void>;
-  onUpdateRecipeLine: (
-    id: string,
-    patch: { amount?: number; unit?: string }
-  ) => Promise<void>;
-  onDeleteRecipeLine: (id: string) => Promise<void>;
-  onSuggestPrice: (item: MenuItemWithCogs) => Promise<void>;
-  priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
-}
-
-interface IngredientsTabProps {
-  planId: string;
-  canEdit: boolean;
-  ingredients: MenuIngredient[];
-  onAddIngredient: () => Promise<void>;
-  onUpdateIngredient: (
-    id: string,
-    patch: Partial<MenuIngredient>
-  ) => Promise<void>;
-  onDeleteIngredient: (id: string) => Promise<void>;
-}
+// ─── Ingredients tab ─────────────────────────────────────────────────────────
 
 function IngredientRow({
   ingredient,
@@ -258,7 +246,9 @@ function IngredientRow({
   const [packageSize, setPackageSize] = useState(
     ingredient.package_size.toString()
   );
-  const [packageUnit, setPackageUnit] = useState(ingredient.package_unit);
+  const [packageUnit, setPackageUnit] = useState<IngredientUnit>(
+    ingredient.package_unit
+  );
   const [packageCost, setPackageCost] = useState(
     ingredient.package_cost_cents > 0
       ? (ingredient.package_cost_cents / 100).toFixed(2)
@@ -275,24 +265,20 @@ function IngredientRow({
   function handleNameBlur() {
     if (name !== ingredient.name) onUpdate({ name });
   }
-
   function handlePackageSizeBlur() {
     const n = parseFloat(packageSize);
     if (!isNaN(n) && n !== ingredient.package_size) onUpdate({ package_size: n });
   }
-
   function handlePackageUnitChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const val = e.target.value as MenuIngredient["package_unit"];
+    const val = e.target.value as IngredientUnit;
     setPackageUnit(val);
     onUpdate({ package_unit: val });
   }
-
   function handlePackageCostBlur() {
     const dollars = parseFloat(packageCost);
     const cents = isNaN(dollars) ? 0 : Math.round(dollars * 100);
     if (cents !== ingredient.package_cost_cents) onUpdate({ package_cost_cents: cents });
   }
-
   function handleNotesBlur() {
     const val = notes.trim() === "" ? null : notes;
     if (val !== ingredient.notes) onUpdate({ notes: val });
@@ -360,10 +346,9 @@ function IngredientRow({
                 disabled={!canEdit}
                 onChange={handlePackageUnitChange}
               >
-                <option value="g">g</option>
-                <option value="ml">ml</option>
-                <option value="oz">oz</option>
-                <option value="each">each</option>
+                {UNIT_OPTIONS.map((u) => (
+                  <option key={u.value} value={u.value}>{u.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -416,13 +401,18 @@ function IngredientRow({
 }
 
 function IngredientsTab({
-  planId,
   canEdit,
   ingredients,
   onAddIngredient,
   onUpdateIngredient,
   onDeleteIngredient,
-}: IngredientsTabProps) {
+}: {
+  canEdit: boolean;
+  ingredients: MenuIngredient[];
+  onAddIngredient: () => Promise<void>;
+  onUpdateIngredient: (id: string, patch: Partial<MenuIngredient>) => Promise<void>;
+  onDeleteIngredient: (id: string) => Promise<void>;
+}) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
@@ -468,8 +458,12 @@ function IngredientsTab({
   );
 }
 
+// ─── Item editor panel ───────────────────────────────────────────────────────
+
 function ItemEditorPanel({
   item,
+  category,
+  categories,
   ingredients,
   itemIngredients,
   canEdit,
@@ -483,6 +477,8 @@ function ItemEditorPanel({
   priceSuggestion,
 }: {
   item: MenuItemWithCogs;
+  category: MenuCategory | undefined;
+  categories: MenuCategory[];
   ingredients: MenuIngredient[];
   itemIngredients: MenuItemIngredient[];
   canEdit: boolean;
@@ -491,11 +487,11 @@ function ItemEditorPanel({
   onAddRecipeLine: (
     ingredientId: string,
     amount: number,
-    unit: string
+    unit: IngredientUnit
   ) => Promise<void>;
   onUpdateRecipeLine: (
     id: string,
-    patch: { amount?: number; unit?: string }
+    patch: { amount?: number; unit?: IngredientUnit }
   ) => Promise<void>;
   onDeleteRecipeLine: (id: string) => Promise<void>;
   onSuggestPrice: () => Promise<void>;
@@ -542,7 +538,7 @@ function ItemEditorPanel({
   }
 
   function handleCategoryChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    onUpdateItem({ category: e.target.value as MenuCategory });
+    onUpdateItem({ category_id: e.target.value });
   }
 
   function handleNotesBlur() {
@@ -582,18 +578,23 @@ function ItemEditorPanel({
             onBlur={handleNameBlur}
             placeholder="Item name"
           />
-          <div className="mt-1.5">
+          {/* TIM-1140: Category badge — "Category:" label + folder icon makes
+              it unambiguous, then an inline <select> for fast reassignment. */}
+          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-[#6b6b6b] bg-[#f4f9f8] border border-[#cfe0e1] rounded-full pl-2 pr-1 py-0.5">
+            <Tag size={10} className="text-[#155e63]" />
+            <span className="font-semibold uppercase tracking-wider">Category</span>
             <select
-              className="text-xs border border-[#e0e0e0] rounded-md px-2 py-1 text-[#6b6b6b] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] transition-colors"
-              value={item.category}
+              className="text-xs text-[#155e63] font-medium bg-transparent border-0 focus:outline-none cursor-pointer pr-1"
+              value={item.category_id}
               disabled={!canEdit}
               onChange={handleCategoryChange}
             >
-              {CATEGORY_ORDER.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_LABELS[cat]}
-                </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
+              {category === undefined && (
+                <option value={item.category_id}>Unknown</option>
+              )}
             </select>
           </div>
         </div>
@@ -787,7 +788,7 @@ function RecipeLineRow({
   ingredient: MenuIngredient | null;
   lineCost: number | null;
   canEdit: boolean;
-  onUpdate: (patch: { amount?: number; unit?: string }) => void;
+  onUpdate: (patch: { amount?: number; unit?: IngredientUnit }) => void;
   onDelete: () => void;
 }) {
   const [amount, setAmount] = useState(line.amount.toString());
@@ -798,7 +799,7 @@ function RecipeLineRow({
   }
 
   function handleUnitChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    onUpdate({ unit: e.target.value });
+    onUpdate({ unit: e.target.value as IngredientUnit });
   }
 
   return (
@@ -822,10 +823,9 @@ function RecipeLineRow({
         disabled={!canEdit}
         onChange={handleUnitChange}
       >
-        <option value="g">g</option>
-        <option value="ml">ml</option>
-        <option value="oz">oz</option>
-        <option value="each">each</option>
+        {UNIT_OPTIONS.map((u) => (
+          <option key={u.value} value={u.value}>{u.label}</option>
+        ))}
       </select>
       {lineCost !== null && (
         <span className="text-xs text-[#6b6b6b] shrink-0 min-w-[3rem] text-right">
@@ -845,134 +845,44 @@ function RecipeLineRow({
   );
 }
 
-function MenuTab({
-  planId,
-  canEdit,
-  items,
-  ingredients,
-  itemIngredients,
-  selectedItemId,
-  onSelectItem,
-  onAddItem,
-  onUpdateItem,
-  onDeleteItem,
-  onAddRecipeLine,
-  onUpdateRecipeLine,
-  onDeleteRecipeLine,
-  onSuggestPrice,
-  priceLoading,
-  priceSuggestion,
-}: MenuTabProps) {
-  const selectedItem = items.find((i) => i.id === selectedItemId) ?? null;
+// ─── Sortable menu item row (drag/drop within & across categories) ───────────
 
-  return (
-    <div
-      className={
-        selectedItemId
-          ? "grid grid-cols-[1fr_360px] gap-5 items-start"
-          : "block"
-      }
-    >
-      <div className="space-y-4">
-        {CATEGORY_ORDER.map((cat) => {
-          const catItems = items.filter(
-            (i) => i.category === cat && !i.archived
-          );
-          return (
-            <div
-              key={cat}
-              className="rounded-xl border border-[#efefef] bg-white overflow-hidden"
-            >
-              <div className="px-5 py-3 border-b border-[#efefef] flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-[#1a1a1a]">
-                    {CATEGORY_LABELS[cat]}
-                  </span>
-                  <span className="text-xs text-[#afafaf]">
-                    {catItems.length}
-                  </span>
-                </div>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => onAddItem(cat)}
-                    className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:text-[#0e4448] transition-colors"
-                  >
-                    <Plus size={12} />
-                    Add
-                  </button>
-                )}
-              </div>
-
-              {catItems.length === 0 ? (
-                <div className="py-6 text-center">
-                  <p className="text-xs text-[#d0d0d0]">No items yet</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-[#f5f5f5]">
-                  {catItems.map((item) => {
-                    const isSelected = item.id === selectedItemId;
-                    return (
-                      <MenuItemRow
-                        key={item.id}
-                        item={item}
-                        isSelected={isSelected}
-                        canEdit={canEdit}
-                        onSelect={() =>
-                          onSelectItem(isSelected ? null : item.id)
-                        }
-                        onUpdate={(patch) => onUpdateItem(item.id, patch)}
-                        onDelete={() => onDeleteItem(item.id)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {selectedItem && (
-        <div className="sticky top-6">
-          <ItemEditorPanel
-            item={selectedItem}
-            ingredients={ingredients}
-            itemIngredients={itemIngredients}
-            canEdit={canEdit}
-            onClose={() => onSelectItem(null)}
-            onUpdateItem={(patch) => onUpdateItem(selectedItem.id, patch)}
-            onAddRecipeLine={(ingId, amount, unit) =>
-              onAddRecipeLine(selectedItem.id, ingId, amount, unit)
-            }
-            onUpdateRecipeLine={onUpdateRecipeLine}
-            onDeleteRecipeLine={onDeleteRecipeLine}
-            onSuggestPrice={() => onSuggestPrice(selectedItem)}
-            priceLoading={priceLoading}
-            priceSuggestion={priceSuggestion}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// TIM-1020: Overview row shows price (large) + COGS + GP $ and %.
-function MenuItemRow({
+function SortableMenuItemRow({
   item,
+  category,
   isSelected,
   canEdit,
   onSelect,
   onUpdate,
   onDelete,
+  isOverlay,
 }: {
   item: MenuItemWithCogs;
+  category: MenuCategory | undefined;
   isSelected: boolean;
   canEdit: boolean;
   onSelect: () => void;
   onUpdate: (patch: Partial<MenuItemWithCogs>) => void;
   onDelete: () => void;
+  isOverlay?: boolean;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !canEdit || isOverlay });
+
+  const style = isOverlay
+    ? {}
+    : {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      };
+
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(item.name);
 
@@ -994,6 +904,8 @@ function MenuItemRow({
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className={`flex items-center gap-3 px-5 py-3 transition-colors cursor-pointer hover:bg-[#faf9f7] ${
         isSelected
           ? "border-l-2 border-[#155e63] bg-[#f0f8f8]"
@@ -1001,7 +913,19 @@ function MenuItemRow({
       }`}
       onClick={onSelect}
     >
-      {/* Name + inline edit */}
+      {canEdit && (
+        <button
+          type="button"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[#c0c0c0] hover:text-[#888] transition-colors shrink-0"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={14} />
+        </button>
+      )}
+
       <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
         {editingName ? (
           <input
@@ -1019,18 +943,25 @@ function MenuItemRow({
             }}
           />
         ) : (
-          <span
-            className="text-sm font-medium text-[#1a1a1a] truncate block"
-            onClick={onSelect}
-          >
-            {item.name || (
-              <span className="text-[#afafaf] font-normal">Unnamed item</span>
-            )}
-          </span>
+          <div onClick={onSelect}>
+            <span className="text-sm font-medium text-[#1a1a1a] truncate block">
+              {item.name || (
+                <span className="text-[#afafaf] font-normal">Unnamed item</span>
+              )}
+            </span>
+            {/* TIM-1140: explicit "Category:" tag on the row so it isn't
+                mistakable for a subtitle. */}
+            <span className="text-[10px] text-[#afafaf] uppercase tracking-wider mt-0.5 inline-flex items-center gap-1">
+              <Tag size={9} />
+              <span>Category:</span>
+              <span className="text-[#6b6b6b] font-medium normal-case tracking-normal">
+                {category?.name ?? "—"}
+              </span>
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Price + COGS + GP column */}
       <div className="text-right shrink-0">
         {item.price_cents > 0 ? (
           <p className="text-sm font-semibold text-[#155e63]">
@@ -1041,12 +972,8 @@ function MenuItemRow({
         )}
         {(cogs > 0 || gpCents !== null) && (
           <p className="text-[10px] text-[#6b6b6b] mt-0.5 whitespace-nowrap">
-            {cogs > 0 && (
-              <span>COGS {formatCents(cogs)}</span>
-            )}
-            {gpCents !== null && cogs > 0 && (
-              <span className="mx-1">·</span>
-            )}
+            {cogs > 0 && <span>COGS {formatCents(cogs)}</span>}
+            {gpCents !== null && cogs > 0 && <span className="mx-1">·</span>}
             {gpCents !== null && (
               <span>
                 GP {formatCents(gpCents)}
@@ -1059,7 +986,6 @@ function MenuItemRow({
         )}
       </div>
 
-      {/* Action buttons */}
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -1088,6 +1014,591 @@ function MenuItemRow({
   );
 }
 
+// ─── Category-default ingredients editor ─────────────────────────────────────
+
+function CategoryDefaultsEditor({
+  category,
+  defaults,
+  ingredients,
+  canEdit,
+  onAdd,
+  onUpdate,
+  onDelete,
+  onApplyToExisting,
+}: {
+  category: MenuCategory;
+  defaults: CategoryDefaultIngredient[];
+  ingredients: MenuIngredient[];
+  canEdit: boolean;
+  onAdd: (ingredientId: string, amount: number, unit: IngredientUnit) => Promise<void>;
+  onUpdate: (id: string, patch: { amount?: number; unit?: IngredientUnit }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onApplyToExisting: () => Promise<void>;
+}) {
+  const used = new Set(defaults.map((d) => d.ingredient_id));
+  const available = ingredients.filter((i) => !used.has(i.id));
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState<number | null>(null);
+
+  async function handleApply() {
+    setApplying(true);
+    setApplied(null);
+    try {
+      await onApplyToExisting();
+    } finally {
+      setApplying(false);
+    }
+    setApplied(0);
+  }
+
+  return (
+    <div className="px-5 py-4 bg-[#fafaf7] border-t border-[#f0f0f0] space-y-3">
+      <div>
+        <p className="text-[11px] text-[#6b6b6b] leading-relaxed">
+          Default ingredients are auto-added to every <strong>new</strong> item in <strong>{category.name}</strong> — handy for amortizing
+          cups, lids, sleeves, and napkins across beverages (try 0.7 cups to represent 70% to-go).
+          Editing or removing a default on an existing item won&apos;t change the category default.
+        </p>
+      </div>
+
+      {defaults.length > 0 ? (
+        <div className="space-y-2">
+          {defaults.map((d) => {
+            const ing = ingredients.find((i) => i.id === d.ingredient_id);
+            return (
+              <DefaultLineRow
+                key={d.id}
+                def={d}
+                ingredient={ing ?? null}
+                canEdit={canEdit}
+                onUpdate={(patch) => onUpdate(d.id, patch)}
+                onDelete={() => onDelete(d.id)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-[#afafaf]">No default ingredients yet.</p>
+      )}
+
+      {canEdit && available.length > 0 && (
+        <DefaultAddRow
+          available={available}
+          onAdd={onAdd}
+        />
+      )}
+
+      {canEdit && defaults.length > 0 && (
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={applying}
+            className="text-[11px] font-medium text-[#155e63] hover:text-[#0e4448] disabled:opacity-50 transition-colors"
+          >
+            {applying ? "Applying…" : "Apply to existing items in this category"}
+          </button>
+          {applied !== null && (
+            <span className="text-[11px] text-[#6b6b6b]">Done</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DefaultLineRow({
+  def,
+  ingredient,
+  canEdit,
+  onUpdate,
+  onDelete,
+}: {
+  def: CategoryDefaultIngredient;
+  ingredient: MenuIngredient | null;
+  canEdit: boolean;
+  onUpdate: (patch: { amount?: number; unit?: IngredientUnit }) => void;
+  onDelete: () => void;
+}) {
+  const [amount, setAmount] = useState(def.amount.toString());
+
+  function handleAmountBlur() {
+    const n = parseFloat(amount);
+    if (!isNaN(n) && n > 0 && n !== def.amount) onUpdate({ amount: n });
+  }
+
+  return (
+    <div className="flex items-center gap-2 bg-white border border-[#efefef] rounded-lg px-3 py-2">
+      <span className="flex-1 text-xs font-medium text-[#1a1a1a] truncate">
+        {ingredient?.name ?? "Unknown ingredient"}
+      </span>
+      <input
+        type="number"
+        className="w-16 text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-transparent transition-colors"
+        value={amount}
+        disabled={!canEdit}
+        onChange={(e) => setAmount(e.target.value)}
+        onBlur={handleAmountBlur}
+        min={0}
+        step="any"
+      />
+      <select
+        className="text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#6b6b6b] focus:outline-none focus:border-[#155e63] disabled:bg-transparent transition-colors"
+        value={def.unit}
+        disabled={!canEdit}
+        onChange={(e) => onUpdate({ unit: e.target.value as IngredientUnit })}
+      >
+        {UNIT_OPTIONS.map((u) => (
+          <option key={u.value} value={u.value}>{u.label}</option>
+        ))}
+      </select>
+      {canEdit && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-[#d0d0d0] hover:text-[#c44] transition-colors shrink-0"
+        >
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DefaultAddRow({
+  available,
+  onAdd,
+}: {
+  available: MenuIngredient[];
+  onAdd: (ingredientId: string, amount: number, unit: IngredientUnit) => Promise<void>;
+}) {
+  return (
+    <IngredientCombobox
+      ingredients={available}
+      onSelect={(id) => {
+        const ing = available.find((i) => i.id === id);
+        if (!ing) return;
+        onAdd(id, 1, ing.package_unit);
+      }}
+    />
+  );
+}
+
+// ─── Workspace aggregate metrics + per-category header ───────────────────────
+
+function MetricsBar({ items }: { items: MenuItemWithCogs[] }) {
+  const agg = aggregateMargins(items);
+  if (agg.count === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-5 py-3 text-xs text-[#6b6b6b]">
+        Add an item with a price and recipe ingredients (or a manual COGS) to see workspace-level margin metrics.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-1.5">
+      <div>
+        <span className="text-[10px] uppercase tracking-wider text-[#155e63] font-semibold">Avg COGS</span>{" "}
+        <span className="text-base font-bold text-[#1a1a1a] ml-1">{agg.avgCogsPct?.toFixed(1)}%</span>
+      </div>
+      <div>
+        <span className="text-[10px] uppercase tracking-wider text-[#155e63] font-semibold">Avg Gross Profit</span>{" "}
+        <span className="text-base font-bold text-[#155e63] ml-1">{agg.avgGpPct?.toFixed(1)}%</span>
+      </div>
+      <div className="text-[11px] text-[#6b6b6b]">
+        Unweighted simple mean across {agg.count} priced item{agg.count !== 1 ? "s" : ""} with COGS.
+      </div>
+    </div>
+  );
+}
+
+function CategoryMetrics({ items }: { items: MenuItemWithCogs[] }) {
+  const agg = aggregateMargins(items);
+  if (agg.count === 0) return null;
+  return (
+    <span className="text-[10px] text-[#6b6b6b]">
+      Avg COGS <span className="font-semibold text-[#1a1a1a]">{agg.avgCogsPct?.toFixed(0)}%</span>
+      <span className="mx-1.5 text-[#d0d0d0]">·</span>
+      GP <span className="font-semibold text-[#155e63]">{agg.avgGpPct?.toFixed(0)}%</span>
+    </span>
+  );
+}
+
+// ─── Menu tab ────────────────────────────────────────────────────────────────
+
+interface MenuTabProps {
+  canEdit: boolean;
+  items: MenuItemWithCogs[];
+  categories: MenuCategory[];
+  ingredients: MenuIngredient[];
+  itemIngredients: MenuItemIngredient[];
+  categoryDefaults: CategoryDefaultIngredient[];
+  selectedItemId: string | null;
+  expandedDefaultsCatId: string | null;
+  onToggleDefaults: (catId: string) => void;
+  onSelectItem: (id: string | null) => void;
+  onAddItem: (categoryId: string) => Promise<void>;
+  onUpdateItem: (id: string, patch: Partial<MenuItemWithCogs>) => Promise<void>;
+  onDeleteItem: (id: string) => Promise<void>;
+  onAddRecipeLine: (
+    menuItemId: string,
+    ingredientId: string,
+    amount: number,
+    unit: IngredientUnit
+  ) => Promise<void>;
+  onUpdateRecipeLine: (
+    id: string,
+    patch: { amount?: number; unit?: IngredientUnit }
+  ) => Promise<void>;
+  onDeleteRecipeLine: (id: string) => Promise<void>;
+  onSuggestPrice: (item: MenuItemWithCogs) => Promise<void>;
+  priceLoading: boolean;
+  priceSuggestion: PriceSuggestion | null;
+  onReorderItems: (updates: Array<{ id: string; position: number; category_id: string }>) => Promise<void>;
+  onAddCategory: () => Promise<void>;
+  onRenameCategory: (id: string, name: string) => Promise<void>;
+  onDeleteCategory: (id: string) => Promise<void>;
+  onReorderCategories: (updates: Array<{ id: string; position: number }>) => Promise<void>;
+  onAddDefault: (categoryId: string, ingredientId: string, amount: number, unit: IngredientUnit) => Promise<void>;
+  onUpdateDefault: (id: string, patch: { amount?: number; unit?: IngredientUnit }) => Promise<void>;
+  onDeleteDefault: (id: string) => Promise<void>;
+  onApplyDefaults: (categoryId: string) => Promise<void>;
+}
+
+function MenuTab(props: MenuTabProps) {
+  const {
+    canEdit, items, categories, ingredients, itemIngredients, categoryDefaults,
+    selectedItemId, expandedDefaultsCatId, onToggleDefaults,
+    onSelectItem, onAddItem, onUpdateItem, onDeleteItem,
+    onAddRecipeLine, onUpdateRecipeLine, onDeleteRecipeLine,
+    onSuggestPrice, priceLoading, priceSuggestion, onReorderItems,
+    onAddCategory, onRenameCategory, onDeleteCategory,
+    onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
+  } = props;
+
+  const selectedItem = items.find((i) => i.id === selectedItemId) ?? null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  // Map item id → its category id (live, so cross-section moves resolve fast).
+  const itemToCategory = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const i of items) m.set(i.id, i.category_id);
+    return m;
+  }, [items]);
+
+  function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // The `over.id` is either another item id (drop on an item) or a category
+    // sentinel "__cat__:<id>" (drop on an empty category list).
+    let targetCategoryId: string;
+    if (overId.startsWith("__cat__:")) {
+      targetCategoryId = overId.slice("__cat__:".length);
+    } else {
+      const overCat = itemToCategory.get(overId);
+      if (!overCat) return;
+      targetCategoryId = overCat;
+    }
+
+    const activeCat = itemToCategory.get(activeId);
+    if (!activeCat) return;
+
+    // Compute the new ordered list for the target category.
+    const targetItems = items
+      .filter((i) => !i.archived && i.category_id === targetCategoryId && i.id !== activeId)
+      .sort((a, b) => a.position - b.position);
+
+    let insertIdx = targetItems.length;
+    if (!overId.startsWith("__cat__:")) {
+      insertIdx = targetItems.findIndex((i) => i.id === overId);
+      if (insertIdx === -1) insertIdx = targetItems.length;
+    }
+
+    const moved = items.find((i) => i.id === activeId);
+    if (!moved) return;
+    const next = [...targetItems];
+    next.splice(insertIdx, 0, { ...moved, category_id: targetCategoryId });
+
+    const updates = next.map((item, idx) => ({
+      id: item.id,
+      position: idx,
+      category_id: targetCategoryId,
+    }));
+
+    onReorderItems(updates);
+  }
+
+  return (
+    <div
+      className={
+        selectedItemId
+          ? "grid grid-cols-[1fr_360px] gap-5 items-start"
+          : "block"
+      }
+    >
+      <div className="space-y-4">
+        <MetricsBar items={items} />
+
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+          {categories.map((cat) => {
+            const catItems = items
+              .filter((i) => i.category_id === cat.id && !i.archived)
+              .sort((a, b) => a.position - b.position);
+            const catDefaults = categoryDefaults
+              .filter((d) => d.category_id === cat.id)
+              .sort((a, b) => a.position - b.position);
+            const defaultsOpen = expandedDefaultsCatId === cat.id;
+            return (
+              <div
+                key={cat.id}
+                className="rounded-xl border border-[#efefef] bg-white overflow-hidden"
+              >
+                <CategoryHeader
+                  category={cat}
+                  itemCount={catItems.length}
+                  catItems={catItems}
+                  defaultsCount={catDefaults.length}
+                  defaultsOpen={defaultsOpen}
+                  canEdit={canEdit}
+                  canDelete={categories.length > 1}
+                  onAddItem={() => onAddItem(cat.id)}
+                  onToggleDefaults={() => onToggleDefaults(cat.id)}
+                  onRename={(name) => onRenameCategory(cat.id, name)}
+                  onDelete={() => onDeleteCategory(cat.id)}
+                />
+
+                {defaultsOpen && (
+                  <CategoryDefaultsEditor
+                    category={cat}
+                    defaults={catDefaults}
+                    ingredients={ingredients}
+                    canEdit={canEdit}
+                    onAdd={(ingId, amt, unit) => onAddDefault(cat.id, ingId, amt, unit)}
+                    onUpdate={onUpdateDefault}
+                    onDelete={onDeleteDefault}
+                    onApplyToExisting={() => onApplyDefaults(cat.id)}
+                  />
+                )}
+
+                <SortableContext
+                  id={`__cat__:${cat.id}`}
+                  items={catItems.length > 0 ? catItems.map((i) => i.id) : [`__cat__:${cat.id}`]}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {catItems.length === 0 ? (
+                    <EmptyCategoryDropZone categoryId={cat.id} canEdit={canEdit} />
+                  ) : (
+                    <div className="divide-y divide-[#f5f5f5]">
+                      {catItems.map((item) => (
+                        <SortableMenuItemRow
+                          key={item.id}
+                          item={item}
+                          category={cat}
+                          isSelected={item.id === selectedItemId}
+                          canEdit={canEdit}
+                          onSelect={() =>
+                            onSelectItem(item.id === selectedItemId ? null : item.id)
+                          }
+                          onUpdate={(patch) => onUpdateItem(item.id, patch)}
+                          onDelete={() => onDeleteItem(item.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </SortableContext>
+              </div>
+            );
+          })}
+        </DndContext>
+
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onAddCategory}
+            className="flex items-center gap-2 text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors"
+          >
+            <Plus size={14} />
+            Add category
+          </button>
+        )}
+      </div>
+
+      {selectedItem && (
+        <div className="sticky top-6">
+          <ItemEditorPanel
+            item={selectedItem}
+            category={categories.find((c) => c.id === selectedItem.category_id)}
+            categories={categories}
+            ingredients={ingredients}
+            itemIngredients={itemIngredients}
+            canEdit={canEdit}
+            onClose={() => onSelectItem(null)}
+            onUpdateItem={(patch) => onUpdateItem(selectedItem.id, patch)}
+            onAddRecipeLine={(ingId, amount, unit) =>
+              onAddRecipeLine(selectedItem.id, ingId, amount, unit)
+            }
+            onUpdateRecipeLine={onUpdateRecipeLine}
+            onDeleteRecipeLine={onDeleteRecipeLine}
+            onSuggestPrice={() => onSuggestPrice(selectedItem)}
+            priceLoading={priceLoading}
+            priceSuggestion={priceSuggestion}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyCategoryDropZone({
+  categoryId,
+  canEdit,
+}: {
+  categoryId: string;
+  canEdit: boolean;
+}) {
+  // Empty categories still need a droppable so cross-category drag works.
+  const { setNodeRef, isOver } = useSortable({
+    id: `__cat__:${categoryId}`,
+    disabled: !canEdit,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`py-6 text-center transition-colors ${
+        isOver ? "bg-[#f4f9f8]" : ""
+      }`}
+    >
+      <p className="text-xs text-[#d0d0d0]">No items yet</p>
+    </div>
+  );
+}
+
+function CategoryHeader({
+  category,
+  itemCount,
+  catItems,
+  defaultsCount,
+  defaultsOpen,
+  canEdit,
+  canDelete,
+  onAddItem,
+  onToggleDefaults,
+  onRename,
+  onDelete,
+}: {
+  category: MenuCategory;
+  itemCount: number;
+  catItems: MenuItemWithCogs[];
+  defaultsCount: number;
+  defaultsOpen: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  onAddItem: () => void;
+  onToggleDefaults: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  // Re-sync draft on every edit-enter (no useEffect needed) and on each new
+  // server-confirmed category.name via the `key` on the input.
+  const [draft, setDraft] = useState(category.name);
+
+  function startEdit() {
+    setDraft(category.name);
+    setEditing(true);
+  }
+
+  function commit() {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== category.name) onRename(trimmed);
+    else setDraft(category.name);
+  }
+
+  return (
+    <div className="px-5 py-3 border-b border-[#efefef] flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <FolderOpen size={14} className="text-[#155e63] shrink-0" />
+        {editing ? (
+          <input
+            autoFocus
+            className="text-sm font-semibold text-[#1a1a1a] border-0 border-b border-[#155e63] focus:outline-none bg-transparent min-w-[140px]"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") { setDraft(category.name); setEditing(false); }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => canEdit && startEdit()}
+            className="text-sm font-semibold text-[#1a1a1a] hover:underline decoration-dotted truncate"
+            title={canEdit ? "Click to rename" : undefined}
+          >
+            {category.name}
+          </button>
+        )}
+        <span className="text-xs text-[#afafaf]">{itemCount}</span>
+        <CategoryMetrics items={catItems} />
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onToggleDefaults}
+            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
+              defaultsOpen ? "text-[#155e63]" : "text-[#6b6b6b] hover:text-[#155e63]"
+            }`}
+            title="Edit default ingredients for this category"
+          >
+            <Settings size={11} />
+            Defaults
+            {defaultsCount > 0 && (
+              <span className="text-[10px] bg-[#e8f4f5] text-[#155e63] rounded-full px-1.5 py-0.5 font-semibold">
+                {defaultsCount}
+              </span>
+            )}
+            {defaultsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          </button>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:text-[#0e4448] transition-colors"
+          >
+            <Plus size={12} />
+            Add
+          </button>
+        )}
+        {canEdit && canDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-[#c0c0c0] hover:text-[#a13d3d] transition-colors"
+            aria-label="Delete category"
+            title="Delete category"
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Top-level workspace ─────────────────────────────────────────────────────
+
 type Tab = "menu" | "ingredients";
 
 export function MenuWorkspace({
@@ -1097,33 +1608,43 @@ export function MenuWorkspace({
   initialItems,
   initialIngredients,
   initialItemIngredients,
+  initialCategories,
+  initialCategoryDefaults,
   conceptContext,
 }: Props) {
   const [items, setItems] = useState<MenuItemWithCogs[]>(initialItems);
-  const [ingredients, setIngredients] =
-    useState<MenuIngredient[]>(initialIngredients);
-  const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(
-    initialItemIngredients
-  );
+  const [ingredients, setIngredients] = useState<MenuIngredient[]>(initialIngredients);
+  const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(initialItemIngredients);
+  const [categories, setCategories] = useState<MenuCategory[]>(initialCategories);
+  const [categoryDefaults, setCategoryDefaults] = useState<CategoryDefaultIngredient[]>(initialCategoryDefaults);
   const [activeTab, setActiveTab] = useState<Tab>("menu");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [expandedDefaultsCatId, setExpandedDefaultsCatId] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
-  const [priceSuggestion, setPriceSuggestion] =
-    useState<PriceSuggestion | null>(null);
+  const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
 
   const tabs: { id: Tab; label: string; Icon: typeof Utensils }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
     { id: "ingredients", label: "Ingredients", Icon: Package },
   ];
 
-  async function addItem(category: MenuCategory) {
+  async function refetchItems() {
+    const r = await fetch("/api/workspaces/menu-pricing/items");
+    if (r.ok) {
+      const data = (await r.json()) as MenuItemWithCogs[];
+      setItems(data);
+    }
+  }
+
+  // ── Item operations ──────────────────────────────────────────────────────
+  async function addItem(categoryId: string) {
     const optimistic: MenuItemWithCogs = {
       id: makeLocalId(),
       plan_id: planId,
-      position: items.length,
+      position: items.filter((i) => i.category_id === categoryId).length,
       name: "",
-      category,
+      category_id: categoryId,
       price_cents: 0,
       cogs_cents: null,
       expected_mix_pct: 0,
@@ -1142,32 +1663,30 @@ export function MenuWorkspace({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        plan_id: planId,
         name: "",
-        category,
-        position: items.length,
+        category_id: categoryId,
+        position: optimistic.position,
         price_cents: 0,
       }),
     });
     if (res.ok) {
       const created = (await res.json()) as MenuItemWithCogs;
-      const withCogs: MenuItemWithCogs = {
-        ...created,
-        computed_cogs_cents: created.computed_cogs_cents ?? 0,
-      };
-      setItems((prev) =>
-        prev.map((i) => (i.id === optimistic.id ? withCogs : i))
-      );
-      setSelectedItemId(withCogs.id);
+      // Server may have auto-attached category default ingredients — refresh
+      // both items (for new computed COGS) and item-ingredients.
+      setItems((prev) => prev.map((i) => (i.id === optimistic.id ? created : i)));
+      setSelectedItemId(created.id);
+      const r = await fetch("/api/workspaces/menu-pricing/item-ingredients?item_id=" + created.id);
+      if (r.ok) {
+        const lines = (await r.json()) as MenuItemIngredient[];
+        setItemIngredients((prev) => [...prev.filter((ii) => ii.menu_item_id !== created.id), ...lines]);
+      }
     } else {
       setItems((prev) => prev.filter((i) => i.id !== optimistic.id));
     }
   }
 
   async function updateItem(id: string, patch: Partial<MenuItemWithCogs>) {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, ...patch } : i))
-    );
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
     await fetch("/api/workspaces/menu-pricing/items", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -1179,13 +1698,118 @@ export function MenuWorkspace({
     const prev = items;
     setItems((p) => p.filter((i) => i.id !== id));
     if (selectedItemId === id) setSelectedItemId(null);
-    const res = await fetch(
-      `/api/workspaces/menu-pricing/items?id=${id}`,
-      { method: "DELETE" }
-    );
+    const res = await fetch(`/api/workspaces/menu-pricing/items?id=${id}`, { method: "DELETE" });
     if (!res.ok) setItems(prev);
   }
 
+  async function reorderItems(updates: Array<{ id: string; position: number; category_id: string }>) {
+    setItems((prev) =>
+      prev.map((i) => {
+        const u = updates.find((x) => x.id === i.id);
+        return u ? { ...i, position: u.position, category_id: u.category_id } : i;
+      })
+    );
+    await fetch("/api/workspaces/menu-pricing/items", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reorder: updates }),
+    });
+  }
+
+  // ── Category operations ──────────────────────────────────────────────────
+  async function addCategory() {
+    const baseName = "New Category";
+    let name = baseName;
+    let counter = 2;
+    while (categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      name = `${baseName} ${counter++}`;
+    }
+    const position = (categories[categories.length - 1]?.position ?? -1) + 1;
+    const optimistic: MenuCategory = {
+      id: makeLocalId(),
+      plan_id: planId,
+      name,
+      position,
+      is_default: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setCategories((prev) => [...prev, optimistic]);
+
+    const res = await fetch("/api/workspaces/menu-pricing/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, position }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as MenuCategory;
+      setCategories((prev) => prev.map((c) => (c.id === optimistic.id ? created : c)));
+    } else {
+      setCategories((prev) => prev.filter((c) => c.id !== optimistic.id));
+    }
+  }
+
+  async function renameCategory(id: string, name: string) {
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name } : c))
+    );
+    const res = await fetch("/api/workspaces/menu-pricing/categories", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name }),
+    });
+    if (res.ok) {
+      const updated = (await res.json()) as MenuCategory;
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    }
+  }
+
+  async function deleteCategory(id: string) {
+    const cat = categories.find((c) => c.id === id);
+    if (!cat) return;
+    const itemsInCat = items.filter((i) => i.category_id === id && !i.archived);
+    let moveToId: string | null = null;
+
+    if (itemsInCat.length > 0) {
+      const others = categories.filter((c) => c.id !== id);
+      if (others.length === 0) {
+        alert("Can't delete the last category — create another category first.");
+        return;
+      }
+      const choices = others.map((c, idx) => `${idx + 1}. ${c.name}`).join("\n");
+      const input = window.prompt(
+        `"${cat.name}" has ${itemsInCat.length} item${itemsInCat.length !== 1 ? "s" : ""}. Move them where?\n\n${choices}\n\nType a number, or Cancel to abort.`,
+        "1",
+      );
+      if (input === null) return;
+      const idx = parseInt(input, 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= others.length) {
+        alert("Invalid selection.");
+        return;
+      }
+      moveToId = others[idx].id;
+    } else if (!confirm(`Delete empty category "${cat.name}"?`)) {
+      return;
+    }
+
+    const url = moveToId
+      ? `/api/workspaces/menu-pricing/categories?id=${id}&moveToId=${moveToId}`
+      : `/api/workspaces/menu-pricing/categories?id=${id}`;
+    const res = await fetch(url, { method: "DELETE" });
+    if (res.ok) {
+      if (moveToId) {
+        setItems((prev) =>
+          prev.map((i) => (i.category_id === id ? { ...i, category_id: moveToId as string } : i))
+        );
+      }
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      if (expandedDefaultsCatId === id) setExpandedDefaultsCatId(null);
+    } else {
+      alert("Failed to delete category. Try again.");
+    }
+  }
+
+  // ── Ingredient operations ────────────────────────────────────────────────
   async function addIngredient() {
     const optimistic: MenuIngredient = {
       id: makeLocalId(),
@@ -1214,29 +1838,21 @@ export function MenuWorkspace({
     });
     if (res.ok) {
       const created = (await res.json()) as MenuIngredient;
-      setIngredients((prev) =>
-        prev.map((i) => (i.id === optimistic.id ? created : i))
-      );
+      setIngredients((prev) => prev.map((i) => (i.id === optimistic.id ? created : i)));
     } else {
       setIngredients((prev) => prev.filter((i) => i.id !== optimistic.id));
     }
   }
 
   async function updateIngredient(id: string, patch: Partial<MenuIngredient>) {
-    setIngredients((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, ...patch } : i))
-    );
+    setIngredients((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
     await fetch("/api/workspaces/menu-pricing/ingredients", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...patch }),
     });
     if ("package_cost_cents" in patch || "package_size" in patch) {
-      const r = await fetch("/api/workspaces/menu-pricing/items");
-      if (r.ok) {
-        const data = (await r.json()) as MenuItemWithCogs[];
-        setItems(data);
-      }
+      await refetchItems();
     }
   }
 
@@ -1244,25 +1860,18 @@ export function MenuWorkspace({
     const prev = ingredients;
     setIngredients((p) => p.filter((i) => i.id !== id));
     setItemIngredients((p) => p.filter((ii) => ii.ingredient_id !== id));
-    const res = await fetch(
-      `/api/workspaces/menu-pricing/ingredients?id=${id}`,
-      { method: "DELETE" }
-    );
+    const res = await fetch(`/api/workspaces/menu-pricing/ingredients?id=${id}`, { method: "DELETE" });
     if (!res.ok) setIngredients(prev);
   }
 
-  async function addRecipeLine(
-    menuItemId: string,
-    ingredientId: string,
-    amount: number,
-    unit: string
-  ) {
+  // ── Recipe line operations ───────────────────────────────────────────────
+  async function addRecipeLine(menuItemId: string, ingredientId: string, amount: number, unit: IngredientUnit) {
     const optimistic: MenuItemIngredient = {
       id: makeLocalId(),
       menu_item_id: menuItemId,
       ingredient_id: ingredientId,
       amount,
-      unit: unit as MenuItemIngredient["unit"],
+      unit,
       created_at: new Date().toISOString(),
     };
     setItemIngredients((prev) => [...prev, optimistic]);
@@ -1270,81 +1879,97 @@ export function MenuWorkspace({
     const res = await fetch("/api/workspaces/menu-pricing/item-ingredients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        menu_item_id: menuItemId,
-        ingredient_id: ingredientId,
-        amount,
-        unit,
-      }),
+      body: JSON.stringify({ menu_item_id: menuItemId, ingredient_id: ingredientId, amount, unit }),
     });
     if (res.ok) {
       const created = (await res.json()) as MenuItemIngredient;
-      setItemIngredients((prev) =>
-        prev.map((ii) => (ii.id === optimistic.id ? created : ii))
-      );
-      const r = await fetch("/api/workspaces/menu-pricing/items");
-      if (r.ok) {
-        const data = (await r.json()) as MenuItemWithCogs[];
-        setItems(data);
-      }
+      setItemIngredients((prev) => prev.map((ii) => (ii.id === optimistic.id ? created : ii)));
+      await refetchItems();
     } else {
-      setItemIngredients((prev) =>
-        prev.filter((ii) => ii.id !== optimistic.id)
-      );
+      setItemIngredients((prev) => prev.filter((ii) => ii.id !== optimistic.id));
     }
   }
 
-  async function updateRecipeLine(
-    id: string,
-    patch: { amount?: number; unit?: string }
-  ) {
-    const typedPatch: Partial<MenuItemIngredient> = {
-      ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
-      ...(patch.unit !== undefined
-        ? { unit: patch.unit as MenuItemIngredient["unit"] }
-        : {}),
-    };
+  async function updateRecipeLine(id: string, patch: { amount?: number; unit?: IngredientUnit }) {
     setItemIngredients((prev) =>
-      prev.map((ii) => (ii.id === id ? { ...ii, ...typedPatch } : ii))
+      prev.map((ii) => (ii.id === id ? { ...ii, ...patch } : ii))
     );
     await fetch("/api/workspaces/menu-pricing/item-ingredients", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...patch }),
     });
-    const r = await fetch("/api/workspaces/menu-pricing/items");
-    if (r.ok) {
-      const data = (await r.json()) as MenuItemWithCogs[];
-      setItems(data);
-    }
+    await refetchItems();
   }
 
   async function deleteRecipeLine(id: string) {
     const prev = itemIngredients;
     setItemIngredients((p) => p.filter((ii) => ii.id !== id));
-    const res = await fetch(
-      `/api/workspaces/menu-pricing/item-ingredients?id=${id}`,
-      { method: "DELETE" }
-    );
-    if (!res.ok) {
-      setItemIngredients(prev);
-    } else {
-      const r = await fetch("/api/workspaces/menu-pricing/items");
-      if (r.ok) {
-        const data = (await r.json()) as MenuItemWithCogs[];
-        setItems(data);
-      }
+    const res = await fetch(`/api/workspaces/menu-pricing/item-ingredients?id=${id}`, { method: "DELETE" });
+    if (res.ok) await refetchItems();
+    else setItemIngredients(prev);
+  }
+
+  // ── Category default ingredients ─────────────────────────────────────────
+  async function addDefault(categoryId: string, ingredientId: string, amount: number, unit: IngredientUnit) {
+    const res = await fetch("/api/workspaces/menu-pricing/category-defaults", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category_id: categoryId, ingredient_id: ingredientId, amount, unit }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as CategoryDefaultIngredient;
+      setCategoryDefaults((prev) => [...prev, created]);
     }
   }
 
-  // TIM-1020: Pass concept context (location, identity, target customer) to the price suggestion endpoint.
+  async function updateDefault(id: string, patch: { amount?: number; unit?: IngredientUnit }) {
+    setCategoryDefaults((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, ...patch } : d))
+    );
+    await fetch("/api/workspaces/menu-pricing/category-defaults", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+  }
+
+  async function deleteDefault(id: string) {
+    const prev = categoryDefaults;
+    setCategoryDefaults((p) => p.filter((d) => d.id !== id));
+    const res = await fetch(`/api/workspaces/menu-pricing/category-defaults?id=${id}`, { method: "DELETE" });
+    if (!res.ok) setCategoryDefaults(prev);
+  }
+
+  async function applyDefaults(categoryId: string) {
+    await fetch("/api/workspaces/menu-pricing/category-defaults", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category_id: categoryId, applyToExisting: true }),
+    });
+    // Refresh both items (for computed COGS) and item-ingredients.
+    await refetchItems();
+    const r = await fetch("/api/workspaces/menu-pricing/items"); // touch above
+    if (r.ok) await r.json();
+    // No single endpoint returns every line for the plan; pull lines for items in the category.
+    const itemIds = items.filter((i) => i.category_id === categoryId).map((i) => i.id);
+    const allLines: MenuItemIngredient[] = [];
+    for (const itemId of itemIds) {
+      const lr = await fetch(`/api/workspaces/menu-pricing/item-ingredients?item_id=${itemId}`);
+      if (lr.ok) allLines.push(...((await lr.json()) as MenuItemIngredient[]));
+    }
+    setItemIngredients((prev) => [
+      ...prev.filter((ii) => !itemIds.includes(ii.menu_item_id)),
+      ...allLines,
+    ]);
+  }
+
+  // ── AI price suggestion ──────────────────────────────────────────────────
   async function suggestPrice(item: MenuItemWithCogs) {
     setPriceLoading(true);
     setPriceSuggestion(null);
 
-    const recipeLines = itemIngredients.filter(
-      (ii) => ii.menu_item_id === item.id
-    );
+    const recipeLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
     let cogsCents = 0;
     if (recipeLines.length > 0) {
       for (const line of recipeLines) {
@@ -1418,12 +2043,17 @@ export function MenuWorkspace({
 
         {activeTab === "menu" && (
           <MenuTab
-            planId={planId}
             canEdit={canEdit}
             items={items}
+            categories={categories}
             ingredients={ingredients}
             itemIngredients={itemIngredients}
+            categoryDefaults={categoryDefaults}
             selectedItemId={selectedItemId}
+            expandedDefaultsCatId={expandedDefaultsCatId}
+            onToggleDefaults={(catId) =>
+              setExpandedDefaultsCatId((prev) => (prev === catId ? null : catId))
+            }
             onSelectItem={handleSelectItem}
             onAddItem={addItem}
             onUpdateItem={updateItem}
@@ -1434,12 +2064,20 @@ export function MenuWorkspace({
             onSuggestPrice={suggestPrice}
             priceLoading={priceLoading}
             priceSuggestion={priceSuggestion}
+            onReorderItems={reorderItems}
+            onAddCategory={addCategory}
+            onRenameCategory={renameCategory}
+            onDeleteCategory={deleteCategory}
+            onReorderCategories={async () => {}}
+            onAddDefault={addDefault}
+            onUpdateDefault={updateDefault}
+            onDeleteDefault={deleteDefault}
+            onApplyDefaults={applyDefaults}
           />
         )}
 
         {activeTab === "ingredients" && (
           <IngredientsTab
-            planId={planId}
             canEdit={canEdit}
             ingredients={ingredients}
             onAddIngredient={addIngredient}

@@ -64,14 +64,16 @@ function extractConceptContext(content: unknown): {
 
 interface MenuItemRow {
   name: string | null;
-  category: string | null;
+  // TIM-1140: menu_items_with_cogs exposes the joined category name; we use
+  // the view here so we can group by user-facing name without an extra join.
+  category_name: string | null;
 }
 
 function summarizeMenu(items: MenuItemRow[] | null): string {
   if (!items || items.length === 0) return "No menu items yet.";
   const grouped = new Map<string, string[]>();
   for (const item of items) {
-    const cat = item.category ?? "Other";
+    const cat = item.category_name ?? "Other";
     const list = grouped.get(cat) ?? [];
     if (item.name) list.push(item.name);
     grouped.set(cat, list);
@@ -267,8 +269,8 @@ export async function POST(request: Request) {
       .eq("workspace_key", "concept")
       .maybeSingle(),
     supabase
-      .from("menu_items")
-      .select("name, category")
+      .from("menu_items_with_cogs")
+      .select("name, category_name")
       .eq("plan_id", plan.id)
       .eq("archived", false)
       .limit(50),
