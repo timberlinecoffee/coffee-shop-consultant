@@ -62,6 +62,14 @@ export interface LineGrowth {
   monthly_pct: number;   // compounding % per month, applied AFTER ramp completes
 }
 
+// TIM-1117: COGS lines can target a specific revenue stream and/or derive their
+// pct from the Menu module. revenue_stream_id values:
+//   undefined / "all" → applies against total revenue (legacy default)
+//   "base"            → applies against the foot-traffic base revenue
+//   <line.id>         → applies against that revenue line's amount this month
+// menu_linked: when true on a COGS line, the line's effective pct comes from the
+// blended menu COGS ratio (computed in the workspace from menu_items) and
+// line.value is ignored. Falls back to line.value if no menu data is supplied.
 export interface ForecastLine {
   id: string;
   label: string;
@@ -71,6 +79,8 @@ export interface ForecastLine {
   ramp?: LineRamp;
   growth?: LineGrowth;
   legacy_key?: LegacyLineKey;
+  revenue_stream_id?: string;
+  menu_linked?: boolean;
 }
 
 export interface MonthlyProjections {
@@ -342,6 +352,11 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
   const legacy = typeof r.legacy_key === "string" && ALL_LEGACY_KEYS.includes(r.legacy_key as LegacyLineKey)
     ? (r.legacy_key as LegacyLineKey)
     : undefined;
+  const revenue_stream_id =
+    typeof r.revenue_stream_id === "string" && r.revenue_stream_id.length > 0
+      ? r.revenue_stream_id
+      : undefined;
+  const menu_linked = r.menu_linked === true ? true : undefined;
   return {
     id,
     label,
@@ -351,6 +366,8 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
     ramp: normalizeRamp(r.ramp),
     growth: normalizeGrowth(r.growth),
     legacy_key: legacy,
+    revenue_stream_id,
+    menu_linked,
   };
 }
 
@@ -712,6 +729,49 @@ function computeLineAmountCents(
   return Math.round(line.value * factor);
 }
 
+// TIM-1117: COGS lines may target a specific revenue stream and/or derive their
+// pct from the menu. This picks the right base + pct given the runtime context.
+export interface ProjectionContext {
+  // Blended menu COGS percent (0–100), or null if no menu data is available.
+  // Computed as Σ(item.cogs_cents × mix) / Σ(item.price_cents × mix) × 100 by
+  // the caller; we just consume the number here so the projection stays pure.
+  menu_blended_cogs_pct?: number | null;
+}
+
+function computeCogsLineAmountCents(
+  line: ForecastLine,
+  monthIndex: number,
+  baseRevenueCents: number,
+  totalRevenueCents: number,
+  revenueByLineId: Map<string, number>,
+  ctx: ProjectionContext
+): number {
+  const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
+  if (factor === 0) return 0;
+
+  // Resolve the revenue base this COGS line applies to.
+  const target = line.revenue_stream_id;
+  let baseForPct: number;
+  if (!target || target === "all") {
+    baseForPct = totalRevenueCents;
+  } else if (target === "base") {
+    baseForPct = baseRevenueCents;
+  } else {
+    // A specific revenue line id; if it's been deleted, fall back to total.
+    baseForPct = revenueByLineId.get(target) ?? totalRevenueCents;
+  }
+
+  // Resolve the effective rate / amount.
+  if (line.menu_linked && typeof ctx.menu_blended_cogs_pct === "number") {
+    return Math.round(baseForPct * (ctx.menu_blended_cogs_pct / 100) * factor);
+  }
+  if (line.mode === "pct") {
+    return Math.round(baseForPct * (line.value / 100) * factor);
+  }
+  // flat: value is base cents/mo (revenue_stream_id is meaningless for flat lines)
+  return Math.round(line.value * factor);
+}
+
 // One-time capex: charged in full on its start_month (or month 1 if no ramp).
 function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number {
   const startMonth = line.ramp?.enabled ? Math.max(1, line.ramp.start_month) : 1;
@@ -722,7 +782,8 @@ function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number
 
 export function computeMonthlyProjections(
   mp: MonthlyProjections,
-  equipment: EquipmentSummary
+  equipment: EquipmentSummary,
+  ctx: ProjectionContext = {}
 ): MonthlyProjectionRow[] {
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
   const weeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
@@ -780,10 +841,12 @@ export function computeMonthlyProjections(
       // as a percent of base (e.g. retail = 10% of beverage revenue).
       let revenueAdds = 0;
       const revenueLineResults: LineMonthlyAmount[] = [];
+      const revenueByLineId = new Map<string, number>();
       for (const l of revenueLines) {
         const amt = computeLineAmountCents(l, month_index_abs, baseRevenue);
         revenueAdds += amt;
         revenueLineResults.push({ id: l.id, label: l.label, category: "revenue", amount_cents: amt });
+        revenueByLineId.set(l.id, amt);
       }
       const revenue_cents = baseRevenue + revenueAdds;
 
@@ -792,7 +855,14 @@ export function computeMonthlyProjections(
       let extraCogs = 0;
       const cogsLineResults: LineMonthlyAmount[] = [];
       for (const l of cogsLines) {
-        const amt = computeLineAmountCents(l, month_index_abs, revenue_cents);
+        const amt = computeCogsLineAmountCents(
+          l,
+          month_index_abs,
+          baseRevenue,
+          revenue_cents,
+          revenueByLineId,
+          ctx
+        );
         extraCogs += amt;
         cogsLineResults.push({ id: l.id, label: l.label, category: "cogs", amount_cents: amt });
       }
@@ -936,9 +1006,10 @@ export function computeAnnualSummary(
 
 export function computeProjections(
   mp: MonthlyProjections,
-  equipment: EquipmentSummary
+  equipment: EquipmentSummary,
+  ctx: ProjectionContext = {}
 ): FinancialProjections {
-  const rows = computeMonthlyProjections(mp, equipment);
+  const rows = computeMonthlyProjections(mp, equipment, ctx);
   return {
     year1: computeAnnualSummary(rows, 1),
     year3: computeAnnualSummary(rows, 3),
@@ -946,6 +1017,44 @@ export function computeProjections(
     startup_equipment_total: equipment.total_cost_cents / 100,
     financed_total: equipment.financed_cost_cents / 100,
   };
+}
+
+// TIM-1117: compute the blended menu COGS percent from menu items.
+// Each item contributes (cogs × mix) to total cost and (price × mix) to total
+// revenue; the ratio × 100 is the blended COGS %. Returns null when the menu
+// has no valid items (no positive priced item with a non-zero mix), so the
+// caller can render "Menu not available" rather than apply a zero rate.
+export interface MenuItemForCogs {
+  price_cents: number;
+  computed_cogs_cents?: number | null;
+  cogs_cents?: number | null;
+  expected_mix_pct?: number | null;
+  archived?: boolean | null;
+}
+
+export function computeMenuBlendedCogsPct(
+  items: ReadonlyArray<MenuItemForCogs> | null | undefined
+): number | null {
+  if (!items || items.length === 0) return null;
+  let totalCost = 0;
+  let totalPrice = 0;
+  for (const it of items) {
+    if (it.archived) continue;
+    const price = typeof it.price_cents === "number" && it.price_cents > 0 ? it.price_cents : 0;
+    const mix = typeof it.expected_mix_pct === "number" && it.expected_mix_pct > 0
+      ? it.expected_mix_pct
+      : 0;
+    if (price === 0 || mix === 0) continue;
+    const cogs = typeof it.computed_cogs_cents === "number"
+      ? it.computed_cogs_cents
+      : typeof it.cogs_cents === "number"
+        ? it.cogs_cents
+        : 0;
+    totalCost += cogs * mix;
+    totalPrice += price * mix;
+  }
+  if (totalPrice <= 0) return null;
+  return (totalCost / totalPrice) * 100;
 }
 
 // TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the
@@ -1133,9 +1242,10 @@ export function getQuarterSlices(
 export function computeMonthlySlices(
   mp: MonthlyProjections,
   equipment: EquipmentSummary,
-  inputs: Partial<FinancialInputs> = {}
+  inputs: Partial<FinancialInputs> = {},
+  ctx: ProjectionContext = {}
 ): MonthlySlice[] {
-  const rows = computeMonthlyProjections(mp, equipment);
+  const rows = computeMonthlyProjections(mp, equipment, ctx);
 
   const paymentProcessingPct = (inputs.payment_processing_pct ?? 0) / 100;
   const spoilagePct = (inputs.spoilage_pct ?? 0) / 100;

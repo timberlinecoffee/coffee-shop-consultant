@@ -156,6 +156,10 @@ interface Props {
   initialModelUpdatedAtForReview: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  // TIM-1117: blended COGS pct from the Menu module (or null when no priced
+  // items exist). When a COGS forecast line opts to "link to menu", this rate
+  // is applied instead of the user-entered % value.
+  menuBlendedCogsPct?: number | null;
 }
 
 
@@ -215,10 +219,12 @@ function ForecastTab({
   mp,
   canEdit,
   onUpdateMp,
+  menuBlendedCogsPct,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
   onUpdateMp: (next: MonthlyProjections) => void;
+  menuBlendedCogsPct: number | null;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -437,6 +443,7 @@ function ForecastTab({
             canEdit={canEdit}
             onChange={updateForecastLines}
             currencyCode={mp.currency_code ?? "USD"}
+            menuBlendedCogsPct={menuBlendedCogsPct}
           />
         </div>
       </div>
@@ -938,6 +945,7 @@ export function FinancialsWorkspace({
   initialModelUpdatedAtForReview,
   canEdit,
   initialTrialMessagesUsed,
+  menuBlendedCogsPct = null,
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
@@ -981,14 +989,21 @@ export function FinancialsWorkspace({
 
   const equipment = useMemo(() => ({ total_cost_cents: 0, financed_cost_cents: 0 }), []);
 
+  // TIM-1117: feed the blended menu COGS pct into the projection so menu-linked
+  // COGS lines compute against menu costing rather than the user-entered %.
+  const projectionCtx = useMemo(
+    () => ({ menu_blended_cogs_pct: menuBlendedCogsPct }),
+    [menuBlendedCogsPct]
+  );
+
   const projections = useMemo(
-    () => computeProjections(mp, equipment),
-    [mp, equipment]
+    () => computeProjections(mp, equipment, projectionCtx),
+    [mp, equipment, projectionCtx]
   );
 
   const slices = useMemo(
-    () => computeMonthlySlices(mp, equipment, {}),
-    [mp, equipment]
+    () => computeMonthlySlices(mp, equipment, {}, projectionCtx),
+    [mp, equipment, projectionCtx]
   );
 
   const lastSavedAt =
@@ -1207,7 +1222,12 @@ export function FinancialsWorkspace({
         </div>
 
         {activeTab === "forecast" && (
-          <ForecastTab mp={mp} canEdit={canEdit} onUpdateMp={handleMpUpdate} />
+          <ForecastTab
+            mp={mp}
+            canEdit={canEdit}
+            onUpdateMp={handleMpUpdate}
+            menuBlendedCogsPct={menuBlendedCogsPct}
+          />
         )}
         {activeTab === "projections" && (
           <ProjectionsTab
