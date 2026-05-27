@@ -15,9 +15,13 @@ import {
   Sparkles,
   AlertCircle,
   Star,
+  Map,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/info-tip'
+import { AddressAutocomplete, type PlacePick } from './AddressAutocomplete'
+import { AreaAnalysisPanel } from './AreaAnalysisPanel'
 import type { Candidate, CandidateStatus } from './CandidateListCard'
 
 // ── Status config (kept in sync with CandidateListCard) ──────────────────
@@ -859,13 +863,58 @@ function parseAiFeedback(text: string): ParsedFeedback | null {
   }
 }
 
-// ── LeaseTermsSection ────────────────────────────────────────────────────
+// ── LabelWithTip ─────────────────────────────────────────────────────────
 
-function LeaseTermsSection({ candidateId }: { candidateId: string }) {
+function LabelWithTip({
+  label,
+  tipLabel,
+  children,
+}: {
+  label: string
+  tipLabel: string
+  children: React.ReactNode
+}) {
+  return (
+    <label className="flex items-center gap-1 text-xs font-medium text-[#888]">
+      {label}
+      <InfoTip label={tipLabel}>{children}</InfoTip>
+    </label>
+  )
+}
+
+// ── LeaseTermsSection ─────────────────────────────────────────────────────
+// TIM-1145: Asking Rent and CAM now live here (moved from intake card).
+// Rent per month auto-fills from Asking Rent when the user first opens a
+// card that has asking_rent_cents but no base_rent yet.
+
+function LeaseTermsSection({
+  candidateId,
+  askingRentCents,
+  camCents,
+  onUpdateCandidate,
+}: {
+  candidateId: string
+  askingRentCents: number | null
+  camCents: number | null
+  onUpdateCandidate: (patch: { asking_rent_cents?: number | null; cam_cents?: number | null }) => void
+}) {
   const [terms, setTerms] = useState<TermsDisplay>(EMPTY_TERMS)
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [rentLinked, setRentLinked] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Local display values for asking rent and CAM (candidate-level, not lease_terms)
+  const [askingRentLocal, setAskingRentLocal] = useState(centsToDisplay(askingRentCents))
+  const [camLocal, setCamLocal] = useState(centsToDisplay(camCents))
+
+  useEffect(() => {
+    setAskingRentLocal(centsToDisplay(askingRentCents))
+  }, [askingRentCents])
+
+  useEffect(() => {
+    setCamLocal(centsToDisplay(camCents))
+  }, [camCents])
 
   useEffect(() => {
     const supabase = createClient()
@@ -875,10 +924,16 @@ function LeaseTermsSection({ candidateId }: { candidateId: string }) {
       .eq('candidate_id', candidateId)
       .maybeSingle()
       .then(({ data }) => {
-        setTerms(rowToTerms((data ?? null) as TermsRow | null))
+        const display = rowToTerms((data ?? null) as TermsRow | null)
+        // Auto-fill base_rent from asking_rent when there is none yet.
+        if (!display.base_rent && askingRentCents != null) {
+          display.base_rent = centsToDisplay(askingRentCents)
+          setRentLinked(true)
+        }
+        setTerms(display)
         setLoaded(true)
       })
-  }, [candidateId])
+  }, [candidateId, askingRentCents])
 
   const persist = useCallback(
     (next: TermsDisplay) => {
@@ -902,25 +957,100 @@ function LeaseTermsSection({ candidateId }: { candidateId: string }) {
   function update(field: keyof TermsDisplay, value: string) {
     setTerms((prev) => {
       const next = { ...prev, [field]: value }
+      // Once the user edits base_rent, it's no longer linked.
+      if (field === 'base_rent') setRentLinked(false)
       persist(next)
       return next
     })
+  }
+
+  function commitAskingRent(raw: string) {
+    const cents = displayToCents(raw)
+    setAskingRentLocal(centsToDisplay(cents))
+    onUpdateCandidate({ asking_rent_cents: cents })
+    // Keep base_rent in sync if still linked.
+    if (rentLinked) {
+      setTerms((prev) => {
+        const next = { ...prev, base_rent: centsToDisplay(cents) }
+        persist(next)
+        return next
+      })
+    }
+  }
+
+  function commitCam(raw: string) {
+    const cents = displayToCents(raw)
+    setCamLocal(centsToDisplay(cents))
+    onUpdateCandidate({ cam_cents: cents })
   }
 
   if (!loaded) return <p className="text-xs text-[#888]">Loading lease terms…</p>
 
   return (
     <div className="flex flex-col gap-4">
-      {saving && (
-        <p className="text-[10px] italic text-[#888] -mt-1">Saving…</p>
-      )}
+      {saving && <p className="text-[10px] italic text-[#888] -mt-1">Saving…</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FieldGroup label="Base Rent / Month">
+        {/* Asking Rent (moved from intake card, stored on candidate) */}
+        <FieldGroup
+          label={
+            <LabelWithTip label="Asking Rent / Month" tipLabel="Asking Rent">
+              The monthly rent the landlord is asking for. This is the starting number
+              before any negotiation — it may or may not include CAM charges. Check your
+              listing sheet or ask the broker to clarify.
+            </LabelWithTip>
+          }
+        >
+          <CurrencyInput
+            value={askingRentLocal}
+            onChange={setAskingRentLocal}
+            onBlur={() => commitAskingRent(askingRentLocal)}
+          />
+        </FieldGroup>
+
+        {/* CAM (moved from intake card, stored on candidate) */}
+        <FieldGroup
+          label={
+            <LabelWithTip label="CAM / Month" tipLabel="CAM (Common Area Maintenance)">
+              CAM stands for Common Area Maintenance. It is an extra monthly charge on top of
+              base rent that covers shared spaces like hallways, parking lots, and lobbies in a
+              shopping center or multi-tenant building. Not all leases have it — single-tenant
+              buildings usually don&apos;t.
+            </LabelWithTip>
+          }
+        >
+          <CurrencyInput
+            value={camLocal}
+            onChange={setCamLocal}
+            onBlur={() => commitCam(camLocal)}
+          />
+        </FieldGroup>
+
+        {/* Rent per Month — auto-fills from Asking Rent */}
+        <FieldGroup
+          label={
+            <span className="flex items-center gap-1 text-xs font-medium text-[#888]">
+              Rent per Month (Your Budget)
+              {rentLinked && (
+                <span className="text-[10px] text-[#155e63] font-normal normal-case">
+                  · auto-filled from Asking Rent
+                </span>
+              )}
+            </span>
+          }
+        >
           <CurrencyInput value={terms.base_rent} onChange={(v) => update('base_rent', v)} />
         </FieldGroup>
 
-        <FieldGroup label="Annual Escalation">
+        <FieldGroup
+          label={
+            <LabelWithTip label="Annual Escalation" tipLabel="Annual Escalation">
+              The percentage your rent increases each year automatically. Common leases include
+              3–5% annual bumps. A 3.5% escalation means if you pay $3,000 now, you&apos;ll pay
+              $3,105 next year.
+            </LabelWithTip>
+          }
+        >
           <PctInput
             value={terms.rent_escalation_pct}
             onChange={(v) => update('rent_escalation_pct', v)}
@@ -932,11 +1062,19 @@ function LeaseTermsSection({ candidateId }: { candidateId: string }) {
           <CurrencyInput value={terms.security_deposit} onChange={(v) => update('security_deposit', v)} />
         </FieldGroup>
 
-        <FieldGroup label="TI Allowance">
+        <FieldGroup
+          label={
+            <LabelWithTip label="Tenant Improvement Allowance" tipLabel="Tenant Improvement Allowance (TIA)">
+              Money the landlord agrees to give you toward building out the space — new flooring,
+              plumbing, electrical, etc. It&apos;s usually written as a dollar amount per square foot.
+              A higher TIA means lower out-of-pocket build-out costs for you.
+            </LabelWithTip>
+          }
+        >
           <CurrencyInput value={terms.ti_allowance} onChange={(v) => update('ti_allowance', v)} />
         </FieldGroup>
 
-        <FieldGroup label="Term (months)">
+        <FieldGroup label="Term (Months)">
           <input
             type="number"
             min="0"
@@ -960,7 +1098,15 @@ function LeaseTermsSection({ candidateId }: { candidateId: string }) {
           />
         </FieldGroup>
 
-        <FieldGroup label="Personal Guarantee">
+        <FieldGroup
+          label={
+            <LabelWithTip label="Personal Guarantee" tipLabel="Personal Guarantee">
+              A legal promise that if the business can&apos;t pay rent, you personally are on
+              the hook. Landlords often require this for first-time tenants. Try to negotiate a
+              burn-down guarantee that reduces over time.
+            </LabelWithTip>
+          }
+        >
           <textarea
             value={terms.personal_guarantee}
             onChange={(e) => update('personal_guarantee', e.target.value)}
@@ -970,7 +1116,15 @@ function LeaseTermsSection({ candidateId }: { candidateId: string }) {
           />
         </FieldGroup>
 
-        <FieldGroup label="Exit Clauses">
+        <FieldGroup
+          label={
+            <LabelWithTip label="Exit Clauses" tipLabel="Exit Clauses">
+              Conditions in your lease that let either party end the agreement early. Common ones
+              include a co-tenancy clause (you can leave if an anchor tenant closes) or a kick-out
+              clause (landlord can end the lease if a bigger tenant wants the space).
+            </LabelWithTip>
+          }
+        >
           <textarea
             value={terms.exit_clauses}
             onChange={(e) => update('exit_clauses', e.target.value)}
@@ -984,10 +1138,14 @@ function LeaseTermsSection({ candidateId }: { candidateId: string }) {
   )
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-[#888]">{label}</label>
+      {typeof label === 'string' ? (
+        <label className="text-xs font-medium text-[#888]">{label}</label>
+      ) : (
+        label
+      )}
       {children}
     </div>
   )
@@ -996,10 +1154,12 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
 function CurrencyInput({
   value,
   onChange,
+  onBlur,
   placeholder,
 }: {
   value: string
   onChange: (v: string) => void
+  onBlur?: () => void
   placeholder?: string
 }) {
   return (
@@ -1010,6 +1170,7 @@ function CurrencyInput({
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder ?? '0.00'}
         className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
       />
@@ -1064,6 +1225,7 @@ export function LocationCard({
 
   const canUseAI = subscriptionTier !== 'free' && aiCreditsRemaining > 0
   const isShortlisted = candidate.status === 'shortlisted'
+  const hasCoords = candidate.lat != null && candidate.lng != null
 
   function toggleShortlist() {
     if (isShortlisted) {
@@ -1078,13 +1240,35 @@ export function LocationCard({
     onPatch(candidate.id, { [field]: v } as Partial<Candidate>)
   }
 
-  function commitCents(field: 'asking_rent_cents' | 'cam_cents', raw: string) {
-    onPatch(candidate.id, { [field]: displayToCents(raw) })
-  }
-
   function commitSqFt(raw: string) {
     const n = parseInt(raw, 10)
     onPatch(candidate.id, { sq_ft: isNaN(n) ? null : n })
+  }
+
+  // Called when user picks a structured suggestion from the autocomplete.
+  function handleAddressPick(place: PlacePick) {
+    onPatch(candidate.id, {
+      address: place.address,
+      neighborhood: place.neighborhood ?? candidate.neighborhood,
+      city: place.city,
+      postal_code: place.postal_code,
+      country: place.country,
+      lat: place.lat,
+      lng: place.lng,
+      area_analysis: null,
+      area_analysis_at: null,
+    } as Partial<Candidate>)
+  }
+
+  // Called when the user edits the address text after a pick (clears geo).
+  function handleAddressClearGeo(newText: string) {
+    onPatch(candidate.id, {
+      address: newText || null,
+      lat: null,
+      lng: null,
+      area_analysis: null,
+      area_analysis_at: null,
+    } as Partial<Candidate>)
   }
 
   return (
@@ -1147,12 +1331,14 @@ export function LocationCard({
           {/* Intake fields */}
           <Section icon={ClipboardList} title="Identity & Intake" defaultOpen>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* Address — autocomplete replaces plain text field */}
               <div className="sm:col-span-2 flex flex-col gap-1">
                 <FieldLabel>Address</FieldLabel>
-                <InlineInput
+                <AddressAutocomplete
                   value={candidate.address ?? ''}
-                  placeholder="Street address"
-                  onCommit={(v) => commitText('address', v)}
+                  hasCoords={hasCoords}
+                  onPick={handleAddressPick}
+                  onClearGeo={handleAddressClearGeo}
                 />
               </div>
 
@@ -1173,26 +1359,6 @@ export function LocationCard({
                   type="number"
                   suffix="sq ft"
                   onCommit={commitSqFt}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <FieldLabel>Asking Rent / Mo</FieldLabel>
-                <InlineInput
-                  value={centsToDisplay(candidate.asking_rent_cents)}
-                  placeholder="0.00"
-                  prefix="$"
-                  onCommit={(v) => commitCents('asking_rent_cents', v)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <FieldLabel>CAM / Mo</FieldLabel>
-                <InlineInput
-                  value={centsToDisplay(candidate.cam_cents)}
-                  placeholder="0.00"
-                  prefix="$"
-                  onCommit={(v) => commitCents('cam_cents', v)}
                 />
               </div>
 
@@ -1241,6 +1407,19 @@ export function LocationCard({
             </div>
           </Section>
 
+          {/* Area Analysis — powered by OpenStreetMap + AI */}
+          <Section icon={Map} title="Area Analysis">
+            <AreaAnalysisPanel
+              candidateId={candidate.id}
+              hasCoords={hasCoords}
+              initialText={candidate.area_analysis ?? null}
+              initialAt={candidate.area_analysis_at ?? null}
+              canUse={canUseAI}
+              subscriptionTier={subscriptionTier}
+              aiCreditsRemaining={aiCreditsRemaining}
+            />
+          </Section>
+
           {/* Scorecard + AI feedback */}
           <Section icon={ClipboardList} title="Scorecard & AI Feedback">
             <ScorecardSection
@@ -1252,9 +1431,14 @@ export function LocationCard({
             />
           </Section>
 
-          {/* Lease terms */}
+          {/* Lease terms — Asking Rent + CAM now live here */}
           <Section icon={Receipt} title="Lease Terms">
-            <LeaseTermsSection candidateId={candidate.id} />
+            <LeaseTermsSection
+              candidateId={candidate.id}
+              askingRentCents={candidate.asking_rent_cents}
+              camCents={candidate.cam_cents}
+              onUpdateCandidate={(patch) => onPatch(candidate.id, patch)}
+            />
           </Section>
         </div>
       )}
