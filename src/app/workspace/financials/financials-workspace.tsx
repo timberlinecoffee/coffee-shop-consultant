@@ -914,7 +914,33 @@ function ProjectionsTab({
                 <span className={`text-sm font-bold shrink-0 mt-0.5 ${bulletColor[b.type]}`}>
                   {bulletIcon[b.type]}
                 </span>
-                <p className="text-sm text-[#1a1a1a] leading-relaxed">{b.text}</p>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm text-[#1a1a1a] leading-relaxed">{b.text}</p>
+                  {b.type !== "strength" && b.recommendation && (
+                    <p className="text-sm text-[#1a1a1a] leading-relaxed">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2">
+                        Recommendation
+                      </span>
+                      {b.recommendation}
+                    </p>
+                  )}
+                  {b.type !== "strength" && b.next_step && (
+                    <p className="text-sm text-[#155e63] leading-relaxed">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2">
+                        Next Step
+                      </span>
+                      {b.next_step}
+                    </p>
+                  )}
+                  {b.type !== "strength" && b.why && (
+                    <p className="text-xs text-[#6b6b6b] leading-relaxed italic">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2 not-italic">
+                        Why
+                      </span>
+                      {b.why}
+                    </p>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

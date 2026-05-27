@@ -51,8 +51,20 @@ export interface ForecastInputs {
 
 // ── AI Critique ──────────────────────────────────────────────────────────────
 
+// TIM-1104: weaknesses and suggestions must now ship with a recommendation,
+// concrete next step, and short reason. Strengths only carry text. Older
+// persisted records may not have the new fields, so renderers must treat
+// recommendation/next_step/why as optional.
+export interface CritiqueBullet {
+  type: "strength" | "weakness" | "suggestion";
+  text: string;
+  recommendation?: string;
+  next_step?: string;
+  why?: string;
+}
+
 export interface CritiqueResult {
-  bullets: Array<{ type: "strength" | "weakness" | "suggestion"; text: string }>;
+  bullets: CritiqueBullet[];
   generated_at: string;
 }
 

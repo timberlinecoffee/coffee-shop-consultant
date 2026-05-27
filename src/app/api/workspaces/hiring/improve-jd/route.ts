@@ -1,5 +1,8 @@
 // TIM-965: AI improvement for job description fields.
 // Returns {rewrite, gaps, competitorNote} — same shape as Concept workspace Improve panel.
+// TIM-1104: Each gap now carries recommendation/next_step/why so consumers can
+//           render the problem → fix → next step → reason shape required across
+//           every AI consultant surface in Groundwork.
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -60,15 +63,23 @@ ${content || "(empty — please draft a strong starting version)"}
 Respond with a JSON object in this exact format (no markdown fences):
 {
   "rewrite": "improved version of the content",
-  "gaps": ["specific gap or missing element", "another gap if applicable"],
+  "gaps": [
+    {
+      "gap": "specific missing element or weakness",
+      "recommendation": "what to add or change to close the gap, concrete",
+      "next_step": "a single named thing the owner can do this week",
+      "why": "one sentence on why this fix works"
+    }
+  ],
   "competitorNote": "optional one-sentence note about how top coffee shops handle this, or null"
 }
 
 Rules:
 - No emojis.
 - Keep it concise and human — this is not a corporate HR document.
-- "gaps" should be actionable and specific. Max 3 items. Empty array if none.
-- "competitorNote" is null if not useful.`;
+- "gaps" is an array of objects (max 3). Empty array if none. Every gap MUST carry recommendation, next_step, and why — never list a gap without telling the owner exactly what to do.
+- "competitorNote" is null if not useful.
+- Voice: founder-direct. NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, actually, genuinely, honestly.`;
 
   try {
     const response = await anthropic.messages.create({
@@ -80,9 +91,28 @@ Rules:
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
     const parsed = JSON.parse(text);
 
+    const gaps = Array.isArray(parsed.gaps)
+      ? parsed.gaps.map((g: unknown) => {
+          if (typeof g === "string") {
+            // Older callers / responses may still emit flat strings.
+            return { gap: g, recommendation: null, next_step: null, why: null };
+          }
+          if (g && typeof g === "object") {
+            const r = g as Record<string, unknown>;
+            return {
+              gap: String(r.gap ?? "").trim(),
+              recommendation: r.recommendation ? String(r.recommendation).trim() : null,
+              next_step: r.next_step ? String(r.next_step).trim() : null,
+              why: r.why ? String(r.why).trim() : null,
+            };
+          }
+          return null;
+        }).filter((g: unknown) => g && typeof g === "object" && (g as { gap?: string }).gap)
+      : [];
+
     return Response.json({
       rewrite: parsed.rewrite ?? "",
-      gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+      gaps,
       competitorNote: parsed.competitorNote ?? null,
     });
   } catch {

@@ -3,6 +3,8 @@
 // TIM-1100: User-facing term is now "AI Assessment" (route path retained for compat).
 // TIM-1101: Multi-currency — request body may include currencyCode (ISO 4217);
 //   prompt + formatted figures use the selected currency.
+// TIM-1104: Every weakness or suggestion must include recommendation, next_step,
+//   and why. Pure problem-listing without a fix is no longer acceptable.
 // TIM-1121: Pre-flagged "Ratios outside healthy benchmark" block ensures the
 //   consultant always ties Ratios-tab red flags into the broader advice.
 // POST /api/workspaces/financials/critique
@@ -154,11 +156,19 @@ ${concept_summary ? `## Concept Context\n${concept_summary}` : ""}
 - Net income year 1: small loss or breakeven is realistic; year 3+ should trend toward 8–12%
 
 ## Instructions
-Return a JSON object with a "bullets" array containing 4–6 items. Each bullet must have:
-- type: "strength", "weakness", or "suggestion"
-- text: a concise, specific observation (1–2 sentences). Reference the actual numbers and % from the projections above. For any category outside the typical range, call it out explicitly with the actual % and the benchmark range (e.g. "Labor at 45% of revenue is above the typical 28–32% range for a full-service café — consider reviewing staffing levels."). Do NOT be generic.
+Return a JSON object with a "bullets" array containing 4–6 items. Each bullet has these fields:
+- type: "strength" | "weakness" | "suggestion"
+- text: a concise, specific observation (1–2 sentences). Reference the actual numbers and % from the projections above. For any category outside the typical range, call it out explicitly with the actual % and the benchmark range (e.g. "Labor at 45% of revenue is above the typical 28–32% range for a full-service café."). Do NOT be generic.
+- recommendation: REQUIRED for "weakness" and "suggestion". OMIT for "strength". One sentence naming what to change to fix it. Be concrete with numbers when possible (e.g. "Raise espresso drink prices by ~7% to drop COGS toward 28% of revenue."). No vague verbs like "consider", "explore", "look into".
+- next_step: REQUIRED for "weakness" and "suggestion". OMIT for "strength". One sentence the owner can do this week — a single, named action with a concrete target (e.g. "Update your menu price grid: lattes from ${fc(525)} to ${fc(565)}, cappuccinos from ${fc(475)} to ${fc(510)}."). Quote any currency figures in the operator's currency (${currencyMeta.code}); never substitute USD or "$".
+- why: REQUIRED for "weakness" and "suggestion". OMIT for "strength". One short sentence explaining why the recommendation should work (the mechanism — price elasticity, labor leverage, traffic timing, etc.).
 
-Mix: typically 1–2 strengths, 2–3 weaknesses or suggestions. Be direct. Owners need honest feedback, not cheerleading.
+Mix: typically 1–2 strengths, 2–3 weaknesses or suggestions. Be direct. Owners need honest feedback, not cheerleading. Never flag a problem without telling the owner exactly what to do about it.
+
+Voice rules:
+- Founder voice. Plain English. Direct.
+- NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, journey, actually, genuinely, honestly.
+- No emojis. No headings inside any field — these are flat strings.
 
 If any ratios were flagged 🔴 or 🟡 in the "Ratios Outside Healthy Benchmark" block above, at least one bullet MUST address the most severe red flag by name, quote its current value and the healthy range, and recommend a concrete next step (pricing, staffing, supplier change, lease renegotiation, etc.).
 
@@ -180,15 +190,28 @@ Return ONLY the JSON object, no other text.`;
     }
 
     const parsed = JSON.parse(jsonMatch[0]) as {
-      bullets: Array<{ type: string; text: string }>;
+      bullets: Array<{
+        type: string;
+        text: string;
+        recommendation?: string;
+        next_step?: string;
+        why?: string;
+      }>;
     };
 
-    const bullets = (parsed.bullets ?? []).map((b) => ({
-      type: (["strength", "weakness", "suggestion"].includes(b.type)
+    const bullets = (parsed.bullets ?? []).map((b) => {
+      const type = (["strength", "weakness", "suggestion"].includes(b.type)
         ? b.type
-        : "suggestion") as "strength" | "weakness" | "suggestion",
-      text: String(b.text ?? ""),
-    }));
+        : "suggestion") as "strength" | "weakness" | "suggestion";
+      const base = { type, text: String(b.text ?? "") };
+      if (type === "strength") return base;
+      return {
+        ...base,
+        recommendation: String(b.recommendation ?? "").trim() || undefined,
+        next_step: String(b.next_step ?? "").trim() || undefined,
+        why: String(b.why ?? "").trim() || undefined,
+      };
+    });
 
     return Response.json({
       bullets,
