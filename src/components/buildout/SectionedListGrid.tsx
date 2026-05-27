@@ -15,6 +15,7 @@ import {
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -24,6 +25,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -572,7 +574,10 @@ export function SectionedListGrid({
 
   // Drag state
   const [activeId, setActiveId] = useState<string | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Resize state
   const resizeRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
@@ -742,6 +747,7 @@ export function SectionedListGrid({
   }
 
   function deleteItem(id: string) {
+    if (!confirm("Delete this item?")) return;
     onItemsChange(items.filter((i) => i.id !== id));
     apiDeleteItem(id);
   }
@@ -833,7 +839,7 @@ export function SectionedListGrid({
   async function deleteSection(sectionId: string) {
     const sectionItems = items.filter((i) => i.section_id === sectionId);
     const confirmMsg = sectionItems.length > 0
-      ? `Delete this section and move ${sectionItems.length} item${sectionItems.length !== 1 ? "s" : ""} to unsectioned?`
+      ? `Delete this section and move ${sectionItems.length} item${sectionItems.length !== 1 ? "s" : ""} to General?`
       : "Delete this empty section?";
     if (!confirm(confirmMsg)) return;
 
@@ -1102,7 +1108,7 @@ export function SectionedListGrid({
                       <span>{col.label}</span>
                       {col.resizable && (
                         <span
-                          className="absolute right-0 top-0 h-full w-[4px] cursor-col-resize hover:bg-[#155e63]/30 transition-colors"
+                          className="absolute right-0 top-0 h-full w-[10px] cursor-col-resize hover:bg-[#155e63]/30 transition-colors"
                           onPointerDown={(e) => onResizeStart(e, col.id)}
                         />
                       )}
@@ -1205,7 +1211,7 @@ export function SectionedListGrid({
                 {items.filter((i) => !i.archived).length === 0 && sections.length === 0 && (
                   <tr>
                     <td colSpan={visibleCols.length} className="text-center py-10 text-sm text-[#afafaf]">
-                      No items yet. Add a section or generate a starter list.
+                      No items yet. Add a section or use a starter list.
                     </td>
                   </tr>
                 )}
