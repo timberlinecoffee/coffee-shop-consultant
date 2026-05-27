@@ -77,7 +77,7 @@ export function SoftOpenPlanCard() {
     <section className="bg-white rounded-2xl border border-[#efefef] p-6">
       <header className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="font-semibold text-lg text-[#1a1a1a]">Soft open plan</h2>
+          <h2 className="font-semibold text-lg text-[#1a1a1a]">Soft Open Plan</h2>
           <p className="text-xs text-[#6b6b6b]">
             Task checklist grouped by day — from pre-open prep through the first month.
           </p>

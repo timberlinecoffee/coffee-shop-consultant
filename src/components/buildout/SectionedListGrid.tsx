@@ -1245,7 +1245,7 @@ export function SectionedListGrid({
           </button>
           {colPickerOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1 min-w-[160px]">
-              <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Show / hide columns</p>
+              <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Show / Hide Columns</p>
               {cols.filter((c) => c.toggleable).map((col) => {
                 const hidden = hiddenCols.has(col.id);
                 return (

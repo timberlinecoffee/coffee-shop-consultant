@@ -42,7 +42,7 @@ export default async function CopilotDemoPage({
     return (
       <main className="min-h-screen bg-[#faf9f7] px-6 py-12">
         <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-[#efefef] p-8">
-          <h1 className="text-xl font-semibold text-[#1a1a1a]">Co-pilot demo</h1>
+          <h1 className="text-xl font-semibold text-[#1a1a1a]">Co-Pilot Demo</h1>
           <p className="mt-2 text-sm text-[#666]">
             You don&apos;t have a coffee shop plan yet. Finish onboarding to start using the co-pilot.
           </p>
@@ -63,7 +63,7 @@ export default async function CopilotDemoPage({
   return (
     <main className="min-h-screen bg-[#faf9f7] pb-32">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold text-[#1a1a1a]">CoPilotDrawer demo</h1>
+        <h1 className="text-2xl font-semibold text-[#1a1a1a]">CoPilotDrawer Demo</h1>
         <p className="mt-2 text-sm text-[#666]">
           Test page for [TIM-633] — streaming, thinking pill, and thread switching.
           Use the workspace selector below to mount the drawer with a different
