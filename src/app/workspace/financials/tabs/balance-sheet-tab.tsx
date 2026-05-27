@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronRight, AlertCircle, CheckCircle2, Lightbulb } from "lucide-react";
 import {
   type MonthlySlice,
+  type FinancialInputs,
   fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
@@ -16,6 +18,7 @@ import {
   type ChartSeries,
   type ViewMode,
 } from "./financial-charts";
+import { diagnoseBalanceSheet } from "@/lib/balance-diagnostic";
 
 type Period = "monthly" | "annual";
 
@@ -73,9 +76,15 @@ interface Props {
   slices: MonthlySlice[];
   fiscalYearStartMonth?: number;
   currencyCode?: string;
+  financialInputs?: Partial<FinancialInputs>;
 }
 
-export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
+export function BalanceSheetTab({
+  slices,
+  fiscalYearStartMonth = 1,
+  currencyCode = "USD",
+  financialInputs,
+}: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [view, setView] = useState<ViewMode>("table");
@@ -100,11 +109,14 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
 
   const colCount = columns.length;
 
-  // Verification: does the balance sheet balance?
   const lastSlice = yearSlices[yearSlices.length - 1];
-  const balances = lastSlice
-    ? Math.abs(lastSlice.total_assets_cents - lastSlice.total_liabilities_and_equity_cents) < 2
-    : true;
+  const diagnostic = lastSlice
+    ? diagnoseBalanceSheet({
+        slice: lastSlice,
+        allSlices: slices,
+        inputs: financialInputs,
+      })
+    : null;
 
   // Chart data: assets composition + liabilities/equity over the period
   const chartData: ChartDatum[] = columns.map((c) => ({
@@ -162,10 +174,9 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
             ))}
           </div>
         )}
-        <div className={`text-xs px-2.5 py-1 rounded-full ${balances ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-          {balances ? "Balance Sheet Checks Out" : "Balance Sheet Out Of Balance — Check Inputs"}
-        </div>
       </div>
+
+      {diagnostic && <BalanceDiagnosticBanner diagnostic={diagnostic} currencyCode={currencyCode} />}
 
       {view === "chart" ? (
         <div className="space-y-4">
@@ -251,6 +262,116 @@ export function BalanceSheetTab({ slices, fiscalYearStartMonth = 1, currencyCode
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <BalanceSheetCritique slices={slices} year={year} />
       </div>
+    </div>
+  );
+}
+
+// TIM-1119: expandable banner that replaces the simple red badge. When
+// balanced, collapses to a one-line green confirmation. When out of balance,
+// shows headline + summary + ranked causes + suggested fix.
+function BalanceDiagnosticBanner({
+  diagnostic,
+  currencyCode,
+}: {
+  diagnostic: ReturnType<typeof diagnoseBalanceSheet>;
+  currencyCode: string;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  if (diagnostic.balanced) {
+    return (
+      <div className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2.5">
+        <CheckCircle2 size={16} className="text-green-700 shrink-0" aria-hidden="true" />
+        <p className="text-sm font-medium text-green-800">
+          Balance sheet checks out
+        </p>
+        <p className="text-xs text-green-700">
+          Total assets equal liabilities plus equity.
+        </p>
+      </div>
+    );
+  }
+
+  const causes = diagnostic.causes.slice(0, 3);
+
+  return (
+    <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-red-100/40 transition-colors"
+        aria-expanded={expanded}
+      >
+        <AlertCircle size={18} className="text-red-700 shrink-0" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-red-900">
+            Balance sheet is out of balance —{" "}
+            <span className="font-bold">{fmt(Math.abs(diagnostic.gap_cents), currencyCode)}</span>
+          </p>
+          <p className="text-xs text-red-800 mt-0.5">{diagnostic.headline}</p>
+        </div>
+        {expanded ? (
+          <ChevronDown size={16} className="text-red-700 shrink-0" aria-hidden="true" />
+        ) : (
+          <ChevronRight size={16} className="text-red-700 shrink-0" aria-hidden="true" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="px-5 pb-5 pt-1 space-y-4 border-t border-red-200">
+          <p className="text-sm text-red-900 leading-relaxed">{diagnostic.summary}</p>
+
+          {causes.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-2">
+                Likely Cause{causes.length > 1 ? "s" : ""}
+              </p>
+              <ol className="space-y-2">
+                {causes.map((cause, i) => (
+                  <li key={cause.id} className="flex gap-3">
+                    <span className="shrink-0 text-xs font-semibold text-red-800 w-5 mt-0.5">
+                      {i + 1}.
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-900">{cause.label}</p>
+                      <p className="text-xs text-red-800 mt-0.5 leading-relaxed">
+                        {cause.explanation}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {diagnostic.suggested_fix && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3">
+              <Lightbulb size={16} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-amber-900 uppercase tracking-wide mb-1">
+                  Suggested Fix
+                </p>
+                <p className="text-sm font-medium text-amber-900">
+                  {diagnostic.suggested_fix.label}
+                </p>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  {diagnostic.suggested_fix.rationale}
+                </p>
+                <p className="text-[10px] text-amber-700 mt-2 uppercase tracking-wide">
+                  Where to make the change:{" "}
+                  <span className="font-semibold">
+                    {diagnostic.suggested_fix.location === "startup_costs"
+                      ? "Startup Costs tab"
+                      : diagnostic.suggested_fix.location === "funding_sources"
+                      ? "Startup Costs tab → Funding"
+                      : "Forecast Inputs tab"}
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
