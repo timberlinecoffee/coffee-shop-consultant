@@ -79,7 +79,11 @@ async function parseWorkbook(buffer: Buffer, filename: string): Promise<{ header
     const stream = Readable.from(buffer.toString("utf-8"));
     await wb.csv.read(stream);
   } else {
-    await wb.xlsx.load(buffer);
+    // TIM-1147 build unblock: Node 22 typings widen `Buffer` to
+    // `Buffer<ArrayBufferLike>`, which exceljs's stricter `Buffer` parameter
+    // refuses. Runtime types are identical — cast through unknown to
+    // satisfy tsc without forcing every caller to convert.
+    await wb.xlsx.load(buffer as unknown as Parameters<typeof wb.xlsx.load>[0]);
   }
 
   const ws = wb.worksheets[0];
