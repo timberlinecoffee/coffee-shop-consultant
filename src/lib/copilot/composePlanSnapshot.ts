@@ -41,7 +41,8 @@ function renderContent(workspaceKey: WorkspaceKey, content: unknown): string {
 
 export async function composePlanSnapshot(
   planId: string,
-  currentWorkspace: WorkspaceKey,
+  // TIM-1149: null = general conversation; no workspace is marked "current".
+  currentWorkspace: WorkspaceKey | null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
 ): Promise<{ snapshot: string; estimatedTokens: number }> {

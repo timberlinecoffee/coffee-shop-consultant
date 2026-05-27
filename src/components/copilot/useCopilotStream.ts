@@ -10,7 +10,8 @@ import type {
 
 interface SendArgs {
   planId: string;
-  workspaceKey: WorkspaceKey;
+  // TIM-1149: null means a general (workspace-less) conversation.
+  workspaceKey: WorkspaceKey | null;
   threadId: string;
   history: CopilotMessage[];
   prompt: string;

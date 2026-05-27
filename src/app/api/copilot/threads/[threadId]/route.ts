@@ -10,7 +10,8 @@ import type { WorkspaceKey } from "@/types/supabase"
 
 interface ThreadDetailRow {
   thread_id: string
-  workspace_key: WorkspaceKey
+  // TIM-1149: null = general (workspace-less) conversation.
+  workspace_key: WorkspaceKey | null
   title: string | null
   last_message_at: string | null
   messages: unknown

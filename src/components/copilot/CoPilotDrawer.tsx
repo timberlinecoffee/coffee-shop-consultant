@@ -10,11 +10,22 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { Sparkles, X } from "lucide-react";
+import { Maximize2, Minimize2, Sparkles, X } from "lucide-react";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
 import type { WorkspaceKey } from "@/types/supabase";
-import { ThreadBrowser, WORKSPACE_LABELS, type ThreadBrowserItem } from "./ThreadBrowser";
+import {
+  COPILOT_AI_DISCLAIMER,
+  COPILOT_NAME,
+  COPILOT_SUBTITLE,
+} from "@/lib/copilot/branding";
+import {
+  GENERAL_CONVERSATION_LABEL,
+  ThreadBrowser,
+  WORKSPACE_LABELS,
+  type ConversationScope,
+  type ThreadBrowserItem,
+} from "./ThreadBrowser";
 import { MarkdownMessage } from "./MarkdownMessage";
 import type {
   CopilotErrorState,
@@ -22,6 +33,22 @@ import type {
   CopilotMessage,
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
+
+// TIM-1149: Resizable / expandable panel constants.
+const PANEL_MIN_WIDTH = 360;
+const PANEL_MAX_WIDTH = 1100;
+const PANEL_DEFAULT_WIDTH = 448;
+const PANEL_EXPANDED_FRACTION = 0.85;
+const PANEL_WIDTH_STORAGE_KEY = "copilot_panel_width_v1";
+const PANEL_EXPANDED_STORAGE_KEY = "copilot_panel_expanded_v1";
+
+function readNumber(key: string): number | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 const FREE_TRIAL_COPILOT_LIMIT = 5;
 
@@ -121,15 +148,22 @@ export function CoPilotDrawer({
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
     key: workspaceKey,
   }));
-  const [activeWorkspaceKey, setActiveWorkspaceKey] = useState<WorkspaceKey>(workspaceKey);
+  const [activeScope, setActiveScope] = useState<ConversationScope>(workspaceKey);
   if (workspaceKeyVersion.key !== workspaceKey) {
     setWorkspaceKeyVersion({ key: workspaceKey });
-    setActiveWorkspaceKey(workspaceKey);
+    setActiveScope(workspaceKey);
   }
   const [activeThreadId, setActiveThreadId] = useState<string>(() => {
     if (typeof window === "undefined") return newThreadId();
     return localStorage.getItem(`copilot_last_thread_${workspaceKey}`) ?? newThreadId();
   });
+  // TIM-1149: Resizable / expandable panel state.
+  const [panelWidth, setPanelWidth] = useState<number>(PANEL_DEFAULT_WIDTH);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [viewportWidth, setViewportWidth] = useState<number>(
+    typeof window === "undefined" ? 1280 : window.innerWidth,
+  );
+  const [isDragging, setIsDragging] = useState(false);
   const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -183,16 +217,19 @@ export function CoPilotDrawer({
     setOpen(false);
   }, [abort]);
 
-  const handleNewThread = useCallback(() => {
-    abort();
-    reset();
-    setActiveThreadId(newThreadId());
-    setActiveWorkspaceKey(workspaceKey);
-    setActiveThreadTitle(null);
-    setMessages([]);
-    setInput("");
-    setPendingRetry(null);
-  }, [abort, reset, workspaceKey]);
+  const handleNewThread = useCallback(
+    (scope: ConversationScope = workspaceKey) => {
+      abort();
+      reset();
+      setActiveThreadId(newThreadId());
+      setActiveScope(scope);
+      setActiveThreadTitle(null);
+      setMessages([]);
+      setInput("");
+      setPendingRetry(null);
+    },
+    [abort, reset, workspaceKey],
+  );
 
   const handleRenameThread = useCallback(
     (threadId: string, newTitle: string) => {
@@ -216,12 +253,12 @@ export function CoPilotDrawer({
 
   const handleSelectThread = useCallback(
     async (item: ThreadBrowserItem) => {
-      if (item.id === activeThreadId && item.workspace_key === activeWorkspaceKey) return;
+      if (item.id === activeThreadId && item.workspace_key === activeScope) return;
       abort();
       reset();
       setLoadingThread(true);
       setActiveThreadId(item.id);
-      setActiveWorkspaceKey(item.workspace_key);
+      setActiveScope(item.workspace_key);
       setActiveThreadTitle(item.title);
       setMessages([]);
       setInput("");
@@ -238,16 +275,17 @@ export function CoPilotDrawer({
         const payload = (await res.json()) as {
           messages: { role: "user" | "assistant"; content: string }[];
           title: string | null;
-          workspace_key: WorkspaceKey;
+          workspace_key: WorkspaceKey | null;
         };
         setMessages(payload.messages ?? []);
         setActiveThreadTitle(payload.title);
-        if (payload.workspace_key) setActiveWorkspaceKey(payload.workspace_key);
+        // TIM-1149: workspace_key may be null (general conversation).
+        setActiveScope(payload.workspace_key ?? null);
       } finally {
         setLoadingThread(false);
       }
     },
-    [abort, reset, planId, activeThreadId, activeWorkspaceKey],
+    [abort, reset, planId, activeThreadId, activeScope],
   );
 
   const maybeRequestTitle = useCallback(
@@ -303,7 +341,7 @@ export function CoPilotDrawer({
 
       const result = await send({
         planId,
-        workspaceKey: activeWorkspaceKey,
+        workspaceKey: activeScope,
         threadId: activeThreadId,
         history: messages,
         prompt: trimmed,
@@ -334,7 +372,7 @@ export function CoPilotDrawer({
     },
     [
       activeThreadId,
-      activeWorkspaceKey,
+      activeScope,
       isStreaming,
       maybeRequestTitle,
       messages,
@@ -406,13 +444,86 @@ export function CoPilotDrawer({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setExternalFocusLabel(null);
-  }, [activeThreadId, activeWorkspaceKey]);
+  }, [activeThreadId, activeScope]);
 
   // TIM-662: persist active thread so reload can restore it.
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem(`copilot_last_thread_${workspaceKey}`, activeThreadId);
   }, [activeThreadId, workspaceKey]);
+
+  // TIM-1149: hydrate panel width + expanded preference from localStorage.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedWidth = readNumber(PANEL_WIDTH_STORAGE_KEY);
+    if (storedWidth !== null) {
+      setPanelWidth(Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, storedWidth)));
+    }
+    const storedExpanded = window.localStorage.getItem(PANEL_EXPANDED_STORAGE_KEY);
+    if (storedExpanded === "1") setIsExpanded(true);
+  }, []);
+
+  // TIM-1149: persist panel width and expanded state.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth));
+  }, [panelWidth]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PANEL_EXPANDED_STORAGE_KEY, isExpanded ? "1" : "0");
+  }, [isExpanded]);
+
+  // TIM-1149: track viewport width so we can clamp the panel responsively.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => setViewportWidth(window.innerWidth);
+    handler();
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  // TIM-1149: drag-to-resize. Mouse down on the handle starts dragging; mouse
+  // move (window-level) sets new width; mouse up ends. Touch parallel for mobile.
+  useEffect(() => {
+    if (!isDragging) return;
+    const onMove = (clientX: number) => {
+      const next = window.innerWidth - clientX;
+      const clamped = Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, next));
+      setPanelWidth(clamped);
+    };
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX);
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t) onMove(t.clientX);
+    };
+    const stop = () => setIsDragging(false);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", stop);
+    window.addEventListener("touchmove", onTouchMove);
+    window.addEventListener("touchend", stop);
+    const prevSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", stop);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", stop);
+      document.body.style.userSelect = prevSelect;
+      document.body.style.cursor = prevCursor;
+    };
+  }, [isDragging]);
+
+  // TIM-1149: ESC closes the panel.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, closeDrawer]);
 
   // TIM-662: hydrate messages for the restored thread on first mount.
   useEffect(() => {
@@ -432,11 +543,12 @@ export function CoPilotDrawer({
         const payload = (await res.json()) as {
           messages: { role: "user" | "assistant"; content: string }[];
           title: string | null;
-          workspace_key: WorkspaceKey;
+          workspace_key: WorkspaceKey | null;
         };
         setMessages(payload.messages ?? []);
         setActiveThreadTitle(payload.title ?? null);
-        if (payload.workspace_key) setActiveWorkspaceKey(payload.workspace_key);
+        // TIM-1149: workspace_key may be null (general conversation).
+        setActiveScope(payload.workspace_key ?? null);
       })
       .catch(() => {})
       .finally(() => setLoadingThread(false));
@@ -453,6 +565,23 @@ export function CoPilotDrawer({
     return deriveTitle(messages);
   }, [activeThreadTitle, isStreaming, messages]);
 
+  // TIM-1149: compute the on-screen panel width. Expanded mode overrides the
+  // user's preferred width to a large fraction of the viewport. On small
+  // screens we fall back to a full-bleed drawer so phones stay usable.
+  const computedPanelWidth = useMemo(() => {
+    if (viewportWidth < 640) return viewportWidth;
+    const target = isExpanded
+      ? Math.round(viewportWidth * PANEL_EXPANDED_FRACTION)
+      : panelWidth;
+    return Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, target, viewportWidth - 16));
+  }, [isExpanded, panelWidth, viewportWidth]);
+
+  const scopeHeaderLabel =
+    activeScope === null
+      ? GENERAL_CONVERSATION_LABEL
+      : WORKSPACE_LABELS[activeScope];
+  const isMobile = viewportWidth < 640;
+
   return (
     <>
       <PaywallModal
@@ -463,12 +592,12 @@ export function CoPilotDrawer({
       {!open && (
         <button
           type="button"
-          aria-label="Open AI co-pilot"
+          aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           onClick={openDrawer}
           className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full bg-[#155e63] text-white shadow-lg shadow-[#155e63]/30 flex items-center gap-2 active:scale-95 transition-transform"
         >
           <Sparkles aria-hidden className="w-4 h-4" />
-          <span className="text-sm font-semibold">Co-pilot</span>
+          <span className="text-sm font-semibold">{COPILOT_NAME}</span>
         </button>
       )}
 
@@ -476,26 +605,52 @@ export function CoPilotDrawer({
         <div className="fixed inset-0 z-50 flex">
           <button
             type="button"
-            aria-label="Close co-pilot"
+            aria-label={`Close ${COPILOT_NAME}`}
             onClick={closeDrawer}
             className="flex-1 bg-black/40"
           />
           <aside
             role="dialog"
-            aria-label="AI co-pilot"
-            className="w-full max-w-md bg-white flex flex-col h-full shadow-xl"
+            aria-label={`${COPILOT_NAME} — ${COPILOT_SUBTITLE}`}
+            style={{ width: computedPanelWidth }}
+            className="relative bg-white flex flex-col h-full shadow-xl"
           >
-            <header className="px-4 pt-4 pb-3 border-b border-[#efefef] flex items-center gap-2">
+            {/* TIM-1149: drag-to-resize handle on the left edge. Hidden on mobile. */}
+            {!isMobile && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize panel"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDoubleClick={() => setPanelWidth(PANEL_DEFAULT_WIDTH)}
+                className={`absolute top-0 left-0 h-full w-1.5 cursor-col-resize z-10 group ${
+                  isDragging ? "bg-[#155e63]/40" : "hover:bg-[#155e63]/20"
+                }`}
+                title="Drag to resize · double-click to reset"
+              >
+                <span className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-[2px] h-12 rounded-full bg-[#155e63]/30 group-hover:bg-[#155e63]/60 pointer-events-none" />
+              </div>
+            )}
+
+            <header className="px-4 pt-4 pb-3 border-b border-[#efefef] flex items-start gap-2">
+              <div className="shrink-0 w-9 h-9 rounded-full bg-[#155e63]/10 text-[#155e63] flex items-center justify-center mt-0.5">
+                <Sparkles aria-hidden className="w-4 h-4" />
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-[11px] uppercase tracking-wide text-[#888] font-semibold">
-                    {WORKSPACE_LABELS[activeWorkspaceKey]}
-                    {externalFocusLabel && activeWorkspaceKey === workspaceKey
-                      ? ` · ${externalFocusLabel}`
-                      : currentFocus?.label && activeWorkspaceKey === workspaceKey
-                      ? ` · ${currentFocus.label}`
-                      : ""}
-                  </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-semibold text-[#1a1a1a] truncate">
+                    {COPILOT_NAME}
+                  </h2>
+                  <span className="text-[11px] uppercase tracking-wide text-[#888] font-medium">
+                    {COPILOT_SUBTITLE}
+                  </span>
                   {credits?.mode === "trial" && (
                     <span
                       className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
@@ -508,28 +663,50 @@ export function CoPilotDrawer({
                     </span>
                   )}
                 </div>
-                <h2 className="text-base font-semibold text-[#1a1a1a] truncate">
-                  {activeThreadLabel}
-                </h2>
+                <p className="text-[11px] text-[#888] truncate">
+                  {scopeHeaderLabel}
+                  {externalFocusLabel && activeScope === workspaceKey
+                    ? ` · ${externalFocusLabel}`
+                    : currentFocus?.label && activeScope === workspaceKey
+                    ? ` · ${currentFocus.label}`
+                    : ""}
+                  {` · ${activeThreadLabel}`}
+                </p>
               </div>
               {trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
                 <span
-                  className={`text-[11px] font-medium whitespace-nowrap ${
+                  className={`text-[11px] font-medium whitespace-nowrap mt-1 ${
                     COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed <= 2
                       ? "text-amber-600"
                       : "text-[#888]"
                   }`}
                 >
                   {trialMessagesUsed === 0
-                    ? `${COPILOT_FREE_TRIAL_LIMIT} free messages`
-                    : `${COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed} free messages left`}
+                    ? `${COPILOT_FREE_TRIAL_LIMIT} free`
+                    : `${COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed} free left`}
                 </span>
+              )}
+              {!isMobile && (
+                <button
+                  type="button"
+                  aria-label={isExpanded ? "Restore panel size" : "Expand panel"}
+                  aria-pressed={isExpanded}
+                  onClick={() => setIsExpanded((v) => !v)}
+                  className="ml-1 w-8 h-8 rounded-full hover:bg-[#f5f5f5] flex items-center justify-center text-[#888]"
+                  title={isExpanded ? "Restore" : "Expand"}
+                >
+                  {isExpanded ? (
+                    <Minimize2 className="w-4 h-4" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4" />
+                  )}
+                </button>
               )}
               <button
                 type="button"
                 aria-label="Close"
                 onClick={closeDrawer}
-                className="ml-1 w-8 h-8 rounded-full hover:bg-[#f5f5f5] flex items-center justify-center text-[#888]"
+                className="w-8 h-8 rounded-full hover:bg-[#f5f5f5] flex items-center justify-center text-[#888]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -537,8 +714,9 @@ export function CoPilotDrawer({
 
             <ThreadBrowser
               planId={planId}
-              activeWorkspaceKey={activeWorkspaceKey}
+              activeScope={activeScope}
               activeThreadId={activeThreadId}
+              currentWorkspaceKey={workspaceKey}
               onSelectThread={(item) => void handleSelectThread(item)}
               onNewThread={handleNewThread}
               onRenameThread={handleRenameThread}
@@ -553,8 +731,9 @@ export function CoPilotDrawer({
 
               {showEmpty && (
                 <div className="text-sm text-[#666] bg-[#faf9f7] border border-[#efefef] rounded-xl p-4">
-                  Ask anything about your {WORKSPACE_LABELS[activeWorkspaceKey].toLowerCase()} plan.
-                  The co-pilot can see your plan snapshot across every workspace.
+                  {activeScope === null
+                    ? `Ask ${COPILOT_NAME} anything about your plan. This conversation isn't tied to a specific workspace — useful for cross-cutting questions like cash flow, opening sequencing, or "is this realistic?"`
+                    : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()} plan. ${COPILOT_NAME} can see your plan snapshot across every workspace.`}
                 </div>
               )}
 
@@ -605,7 +784,7 @@ export function CoPilotDrawer({
                       {error?.code === "timeout" && (
                         <button
                           type="button"
-                          onClick={handleNewThread}
+                          onClick={() => handleNewThread()}
                           className="text-xs font-semibold text-red-800 underline"
                         >
                           Smaller question
@@ -617,42 +796,52 @@ export function CoPilotDrawer({
               )}
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="border-t border-[#efefef] px-3 py-3 flex items-end gap-2 safe-area-pb"
-            >
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void performSend(input);
-                  }
-                }}
-                placeholder="Ask the co-pilot…"
-                rows={1}
-                disabled={isStreaming}
-                className="flex-1 resize-none rounded-xl border border-[#e5e3df] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#155e63]/40 disabled:bg-[#f7f6f3] disabled:text-[#888]"
-              />
-              {isStreaming ? (
-                <button
-                  type="button"
-                  onClick={abort}
-                  className="h-10 px-3 rounded-xl bg-[#1a1a1a]/10 text-[#1a1a1a] text-sm font-semibold"
-                >
-                  Stop
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!input.trim()}
-                  className="h-10 px-4 rounded-xl bg-[#155e63] text-white text-sm font-semibold disabled:opacity-40"
-                >
-                  Send
-                </button>
-              )}
-            </form>
+            <div className="border-t border-[#efefef] safe-area-pb">
+              <form
+                onSubmit={handleSubmit}
+                className="px-3 pt-3 pb-1 flex items-end gap-2"
+              >
+                <textarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      void performSend(input);
+                    }
+                  }}
+                  placeholder={`Ask ${COPILOT_NAME}…`}
+                  rows={1}
+                  disabled={isStreaming}
+                  className="flex-1 resize-none rounded-xl border border-[#e5e3df] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#155e63]/40 disabled:bg-[#f7f6f3] disabled:text-[#888]"
+                />
+                {isStreaming ? (
+                  <button
+                    type="button"
+                    onClick={abort}
+                    className="h-10 px-3 rounded-xl bg-[#1a1a1a]/10 text-[#1a1a1a] text-sm font-semibold"
+                  >
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="h-10 px-4 rounded-xl bg-[#155e63] text-white text-sm font-semibold disabled:opacity-40"
+                  >
+                    Send
+                  </button>
+                )}
+              </form>
+              {/* TIM-1149: persistent AI-mistake disclaimer. Low-emphasis, doesn't
+                  steal chat space. Visible on every conversation view. */}
+              <p
+                role="note"
+                className="px-3 pb-2 pt-0.5 text-[10.5px] leading-tight text-[#9a9a9a] text-center"
+              >
+                {COPILOT_AI_DISCLAIMER}
+              </p>
+            </div>
           </aside>
         </div>
       )}
