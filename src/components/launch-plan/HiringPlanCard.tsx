@@ -73,7 +73,7 @@ export function HiringPlanCard() {
     <section className="bg-white rounded-2xl border border-[#efefef] p-6">
       <header className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="font-semibold text-lg text-[#1a1a1a]">Hiring plan</h2>
+          <h2 className="font-semibold text-lg text-[#1a1a1a]">Hiring Plan</h2>
           <p className="text-xs text-[#6b6b6b]">
             Roles, headcount, start dates, and monthly payroll cost.
           </p>

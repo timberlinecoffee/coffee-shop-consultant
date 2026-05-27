@@ -287,7 +287,7 @@ export function TradeoffPanel({
           <div>
             <h2 className="text-base font-semibold text-foreground">Shortlist Trade-Off</h2>
             <p className="text-xs text-[#888]">
-              {candidates.length} shortlisted · visual comparison + AI recommendation
+              {candidates.length} Shortlisted · Visual Comparison + AI Recommendation
             </p>
           </div>
           <button

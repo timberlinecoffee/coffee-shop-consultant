@@ -57,7 +57,7 @@ export function MarketingKickoffChecklistCard() {
     <section className="bg-white rounded-2xl border border-[#efefef] p-6">
       <header className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="font-semibold text-lg text-[#1a1a1a]">Marketing kickoff</h2>
+          <h2 className="font-semibold text-lg text-[#1a1a1a]">Marketing Kickoff</h2>
           <p className="text-xs text-[#6b6b6b]">
             Channel assets, launch dates, and ownership across your pre-opening campaign.
           </p>

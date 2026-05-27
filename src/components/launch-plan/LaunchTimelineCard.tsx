@@ -601,7 +601,7 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
       <section className="bg-white rounded-2xl border border-[#efefef] p-6">
         <header className="flex items-center justify-between mb-2">
           <div>
-            <h2 className="font-semibold text-lg text-[#1a1a1a]">Launch timeline</h2>
+            <h2 className="font-semibold text-lg text-[#1a1a1a]">Launch Timeline</h2>
             <p className="text-xs text-[#6b6b6b]">
               Milestone sequence from T-90 through Day+30 opening.
             </p>

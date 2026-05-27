@@ -170,7 +170,7 @@ function IngredientCombobox({
 
   return (
     <div data-combobox className="relative">
-      <label className={labelCls}>Add ingredient</label>
+      <label className={labelCls}>Add Ingredient</label>
       <div className="relative">
         <Search
           size={12}
@@ -326,7 +326,7 @@ function IngredientRow({
               />
             </div>
             <div>
-              <label className={labelCls}>Package size</label>
+              <label className={labelCls}>Package Size</label>
               <input
                 type="number"
                 className={inputCls}
@@ -352,7 +352,7 @@ function IngredientRow({
               </select>
             </div>
             <div>
-              <label className={labelCls}>Package cost ($)</label>
+              <label className={labelCls}>Package Cost ($)</label>
               <input
                 type="number"
                 className={inputCls}
@@ -367,7 +367,7 @@ function IngredientRow({
             </div>
             <div className="flex items-end">
               <div>
-                <label className={labelCls}>Cost per unit</label>
+                <label className={labelCls}>Cost per Unit</label>
                 <p className="text-sm font-semibold text-[#155e63]">{cpuDisplay}</p>
               </div>
             </div>
@@ -612,7 +612,7 @@ function ItemEditorPanel({
           <p className={sectionLabelCls}>Pricing</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Retail price ($)</label>
+              <label className={labelCls}>Retail Price ($)</label>
               <input
                 type="number"
                 className={inputCls}
@@ -626,7 +626,7 @@ function ItemEditorPanel({
               />
             </div>
             <div>
-              <label className={labelCls}>Cost of goods</label>
+              <label className={labelCls}>Cost of Goods</label>
               <p className="text-sm font-semibold text-[#1a1a1a] py-2">
                 {cogsDisplay}
               </p>

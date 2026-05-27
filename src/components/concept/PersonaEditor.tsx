@@ -239,7 +239,7 @@ export function PersonaEditor({
 
           {/* Values chips */}
           <div>
-            <p className="text-xs font-semibold text-[#1a1a1a] mb-2">What they value</p>
+            <p className="text-xs font-semibold text-[#1a1a1a] mb-2">What They Value</p>
             <div className="flex flex-wrap gap-2">
               {PERSONA_VALUE_OPTIONS.map((v) => {
                 const selected = (draft.values ?? []).includes(v);
@@ -271,14 +271,14 @@ export function PersonaEditor({
               aria-expanded={aboutOpen}
             >
               <span className="text-[10px] leading-none">{aboutOpen ? "▾" : "▸"}</span>
-              About them
+              About Them
             </button>
 
             {aboutOpen && (
               <div className="mt-3 space-y-4 pl-3 border-l border-[#efefef]">
                 {/* Age range */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">Age range</label>
+                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">Age Range</label>
                   <div className="flex flex-wrap gap-2">
                     {(Object.keys(PERSONA_AGE_RANGE_LABELS) as PersonaAgeRange[]).map((ar) => (
                       <button
@@ -316,7 +316,7 @@ export function PersonaEditor({
 
                 {/* Income range */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">Income range</label>
+                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">Income Range</label>
                   <div className="flex flex-wrap gap-2">
                     {(Object.keys(PERSONA_INCOME_RANGE_LABELS) as PersonaIncomeRange[]).map((ir) => (
                       <button
@@ -339,7 +339,7 @@ export function PersonaEditor({
                 {/* Daily context */}
                 <div>
                   <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5" htmlFor="persona-daily">
-                    Daily context
+                    Daily Context
                   </label>
                   <textarea
                     id="persona-daily"
@@ -360,7 +360,7 @@ export function PersonaEditor({
             <p className="text-xs font-semibold text-[#1a1a1a]">Habits</p>
 
             <div>
-              <label className="block text-xs text-[#6b6b6b] mb-1.5">Visit frequency</label>
+              <label className="block text-xs text-[#6b6b6b] mb-1.5">Visit Frequency</label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(PERSONA_VISIT_FREQUENCY_LABELS) as PersonaVisitFrequency[]).map((vf) => (
                   <button
@@ -383,7 +383,7 @@ export function PersonaEditor({
             </div>
 
             <div>
-              <label className="block text-xs text-[#6b6b6b] mb-1.5">Spend per visit</label>
+              <label className="block text-xs text-[#6b6b6b] mb-1.5">Spend per Visit</label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(PERSONA_SPEND_LABELS) as PersonaSpendPerVisit[]).map((sp) => (
                   <button
