@@ -5,12 +5,13 @@
 // TIM-1171: Supplies tab removed — now lives in the Inventory workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wrench, X, Save } from "lucide-react";
+import { Wrench, X, Save, Settings2 } from "lucide-react";
 import { formatCurrency } from "@/lib/financial-projection";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
+import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 
@@ -132,6 +133,7 @@ export function BuildoutEquipmentWorkspace({
   });
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightController = useRef<AbortController | null>(null);
@@ -212,6 +214,12 @@ export function BuildoutEquipmentWorkspace({
 
   function handleSectionsChange(next: ListSection[]) {
     setSections(next);
+  }
+
+  function handleItemsSectionRemoved(sectionId: string) {
+    setEquipment((prev) =>
+      prev.map((i) => (i.section_id === sectionId ? { ...i, section_id: null } : i))
+    );
   }
 
   function handleManualSave() {
@@ -323,6 +331,16 @@ export function BuildoutEquipmentWorkspace({
 
         {/* Save toolbar */}
         <div className="flex items-center gap-3 mb-5">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+            >
+              <Settings2 size={12} aria-hidden="true" />
+              Manage Stations
+            </button>
+          )}
           <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
             {saveLabel}
           </span>
@@ -355,6 +373,18 @@ export function BuildoutEquipmentWorkspace({
           onSectionsChange={handleSectionsChange}
         />
       </div>
+
+      {settingsOpen && (
+        <CategorySettingsPanel
+          sections={equipmentSections}
+          items={equipment}
+          canEdit={canEdit}
+          planId={planId}
+          onClose={() => setSettingsOpen(false)}
+          onSectionsChange={handleSectionsChange}
+          onItemsSectionRemoved={handleItemsSectionRemoved}
+        />
+      )}
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
       <CoPilotDrawer
