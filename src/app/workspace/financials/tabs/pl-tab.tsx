@@ -12,6 +12,16 @@ import {
   fmt,
   pct,
 } from "@/lib/financial-projection";
+import {
+  ChartCard,
+  FinancialBarChart,
+  FinancialLineChart,
+  ViewModeToggle,
+  CHART_COLORS,
+  type ChartDatum,
+  type ChartSeries,
+  type ViewMode,
+} from "./financial-charts";
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
 
@@ -66,6 +76,7 @@ interface Props {
 export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [view, setView] = useState<ViewMode>("table");
   const [showCogs, setShowCogs] = useState(true);
   const [showOpex, setShowOpex] = useState(true);
   const [showRevenue, setShowRevenue] = useState(true);
@@ -136,9 +147,70 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
 
   const colCount = columns.length;
 
+  // ── Chart datasets ──
+  // Revenue forecast: net revenue + foot-traffic vs. extra revenue lines
+  const revenueChartData: ChartDatum[] = columns.map((c) => {
+    const addls = revenueLines.reduce(
+      (sum, rl) =>
+        sum + (c.lineAmounts.find((ln) => ln.id === rl.id)?.amount_cents ?? 0),
+      0
+    );
+    const gross = (c.data.gross_revenue_cents as number | undefined) ?? 0;
+    const row: ChartDatum = {
+      label: c.label,
+      foot_traffic: gross - addls,
+      net_revenue: (c.data.net_revenue_cents as number | undefined) ?? 0,
+    };
+    for (const rl of revenueLines) {
+      row[`line_${rl.id}`] =
+        c.lineAmounts.find((ln) => ln.id === rl.id)?.amount_cents ?? 0;
+    }
+    return row;
+  });
+
+  const revenueBarSeries: ChartSeries[] = [
+    { key: "foot_traffic", label: "Foot Traffic", color: CHART_COLORS.primary },
+    ...revenueLines.map((rl) => ({ key: `line_${rl.id}`, label: rl.label })),
+  ];
+  const revenueLineSeries: ChartSeries[] = [
+    { key: "net_revenue", label: "Net Revenue", color: CHART_COLORS.primary },
+  ];
+
+  // Expense forecast: total COGS + line-item overhead + total opex
+  const expenseChartData: ChartDatum[] = columns.map((c) => {
+    const row: ChartDatum = {
+      label: c.label,
+      total_cogs: (c.data.total_cogs_cents as number | undefined) ?? 0,
+      total_opex: (c.data.total_opex_cents as number | undefined) ?? 0,
+      operating_income: (c.data.operating_income_cents as number | undefined) ?? 0,
+    };
+    for (const ol of overheadLines) {
+      row[`opex_${ol.id}`] =
+        c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0;
+    }
+    return row;
+  });
+
+  const expenseStackedSeries: ChartSeries[] = [
+    { key: "total_cogs", label: "COGS", color: CHART_COLORS.warning },
+    ...overheadLines.map((ol) => ({
+      key: `opex_${ol.id}`,
+      label: ol.label,
+    })),
+  ];
+
+  const profitSeries: ChartSeries[] = [
+    {
+      key: "operating_income",
+      label: "Operating Income",
+      color: CHART_COLORS.primary,
+    },
+  ];
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
           {(["monthly", "quarterly", "annual"] as Period[]).map((p) => (
             <button
@@ -168,6 +240,51 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
         )}
       </div>
 
+      {view === "chart" ? (
+        <div className="space-y-4">
+          <ChartCard
+            title="Revenue Forecast"
+            description="Stacked revenue by source over the period, with net revenue overlaid as a line."
+          >
+            <FinancialBarChart
+              data={revenueChartData}
+              series={revenueBarSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Revenue Trajectory"
+            description="Net revenue trend across the selected period."
+          >
+            <FinancialLineChart
+              data={revenueChartData}
+              series={revenueLineSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Expense Forecast"
+            description="Stacked operating expenses and COGS by period. Heavier bars = larger total expense burden."
+          >
+            <FinancialBarChart
+              data={expenseChartData}
+              series={expenseStackedSeries}
+              currencyCode={currencyCode}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Operating Income"
+            description="What you keep after COGS and operating expenses. Negative values mean you're burning cash."
+          >
+            <FinancialLineChart
+              data={expenseChartData}
+              series={profitSeries}
+              currencyCode={currencyCode}
+              showZero
+            />
+          </ChartCard>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -280,6 +397,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
         <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
