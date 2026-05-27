@@ -5,7 +5,7 @@
 // TIM-1171: Supplies tab removed — now lives in the Inventory workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wrench, X, Save, Settings2, FileSpreadsheet } from "lucide-react";
+import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare } from "lucide-react";
 import { formatCurrency } from "@/lib/financial-projection";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -13,6 +13,7 @@ import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressPr
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
+import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 
@@ -136,6 +137,7 @@ export function BuildoutEquipmentWorkspace({
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [describeOpen, setDescribeOpen] = useState(false);
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightController = useRef<AbortController | null>(null);
@@ -353,6 +355,16 @@ export function BuildoutEquipmentWorkspace({
           {canEdit && (
             <button
               type="button"
+              onClick={() => setDescribeOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+            >
+              <MessageSquare size={12} aria-hidden="true" />
+              Describe your setup
+            </button>
+          )}
+          {canEdit && (
+            <button
+              type="button"
               onClick={() => setImportOpen(true)}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
             >
@@ -409,6 +421,15 @@ export function BuildoutEquipmentWorkspace({
         <SpreadsheetImportModal
           sections={equipmentSections}
           onClose={() => setImportOpen(false)}
+          onCommitted={handleImportCommitted}
+        />
+      )}
+
+      {describeOpen && (
+        <DescribeSetupModal
+          sections={equipmentSections}
+          hasExistingItems={activeEquipment.length > 0}
+          onClose={() => setDescribeOpen(false)}
           onCommitted={handleImportCommitted}
         />
       )}
