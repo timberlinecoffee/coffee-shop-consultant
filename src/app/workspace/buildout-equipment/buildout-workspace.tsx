@@ -5,13 +5,14 @@
 // TIM-1171: Supplies tab removed — now lives in the Inventory workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wrench, X, Save, Settings2 } from "lucide-react";
+import { Wrench, X, Save, Settings2, FileSpreadsheet } from "lucide-react";
 import { formatCurrency } from "@/lib/financial-projection";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceProgress } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
+import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 
@@ -134,6 +135,7 @@ export function BuildoutEquipmentWorkspace({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightController = useRef<AbortController | null>(null);
@@ -229,6 +231,13 @@ export function BuildoutEquipmentWorkspace({
       pendingSaveTimer.current = null;
     }
     void persist(latestEquipmentRef.current);
+  }
+
+  function handleImportCommitted(newItems: EquipmentItem[], newSections: ListSection[]) {
+    setEquipment(newItems);
+    setSections(newSections);
+    scheduleSave(newItems);
+    setImportOpen(false);
   }
 
   // Equipment seed
@@ -341,6 +350,16 @@ export function BuildoutEquipmentWorkspace({
               Manage Stations
             </button>
           )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+            >
+              <FileSpreadsheet size={12} aria-hidden="true" />
+              Import from spreadsheet
+            </button>
+          )}
           <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
             {saveLabel}
           </span>
@@ -383,6 +402,14 @@ export function BuildoutEquipmentWorkspace({
           onClose={() => setSettingsOpen(false)}
           onSectionsChange={handleSectionsChange}
           onItemsSectionRemoved={handleItemsSectionRemoved}
+        />
+      )}
+
+      {importOpen && (
+        <SpreadsheetImportModal
+          sections={equipmentSections}
+          onClose={() => setImportOpen(false)}
+          onCommitted={handleImportCommitted}
         />
       )}
 
