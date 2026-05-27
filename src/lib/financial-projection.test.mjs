@@ -358,10 +358,13 @@ test("COGS change flows through to cash flow (net_cash_cents)", () => {
   mpNoCogs.forecast_lines = [
     { id: "rev-w", label: "Wholesale", category: "revenue", mode: "flat", value: 1000000 },
   ];
+  // TIM-1169: zero out working-capital days so the cash delta isolates net
+  // income — otherwise ΔInventory and ΔAP move alongside COGS changes.
+  const wcInputs = { days_inventory: 0, days_payable: 0, days_receivable: 0 };
   const noCogs = computeMonthlySlices(
     mpNoCogs,
     { total_cost_cents: 0, financed_cost_cents: 0 },
-    {}
+    wcInputs
   );
 
   const mpWithCogs = baseMp();
@@ -379,7 +382,7 @@ test("COGS change flows through to cash flow (net_cash_cents)", () => {
   const withCogs = computeMonthlySlices(
     mpWithCogs,
     { total_cost_cents: 0, financed_cost_cents: 0 },
-    {}
+    wcInputs
   );
 
   // Same revenue, higher COGS → lower net income → lower net cash.
@@ -516,4 +519,190 @@ test("net income reflects COGS change when a stream-linked line is added", () =>
   assert.equal(rowsNoCogs[0].revenue_cents, rowsWithCogs[0].revenue_cents);
   assert.ok(rowsWithCogs[0].cogs_cents > rowsNoCogs[0].cogs_cents);
   assert.ok(rowsWithCogs[0].net_income_cents < rowsNoCogs[0].net_income_cents);
+});
+
+// ── TIM-1169: per-capex-line depreciation, working-capital deltas, owner activity ─
+
+test("capex line: depreciation uses per-line useful_life_years (default 7)", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    {
+      id: "cap-1",
+      label: "Espresso Machine",
+      category: "capex",
+      mode: "flat",
+      value: 840000, // $8,400
+      useful_life_years: 7,
+      ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 }, {});
+  // $8,400 / (7 * 12) = $100/mo = 10000 cents
+  assert.equal(rows[0].depreciation_cents, 10000);
+  assert.equal(rows[11].depreciation_cents, 10000); // still depreciating in year 1
+  // After year 7 = month 84 (beyond 60), so should still be depreciating at month 60
+  assert.equal(rows[59].depreciation_cents, 10000);
+});
+
+test("capex line: shorter useful_life_years compresses depreciation", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    {
+      id: "cap-pos",
+      label: "POS Tablet",
+      category: "capex",
+      mode: "flat",
+      value: 360000, // $3,600
+      useful_life_years: 3,
+      ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 }, {});
+  // $3,600 / (3 * 12) = $100/mo = 10000 cents
+  assert.equal(rows[0].depreciation_cents, 10000);
+  // Month 36 is the last month of depreciation; month 37 should be zero
+  assert.equal(rows[35].depreciation_cents, 10000);
+  assert.equal(rows[36].depreciation_cents, 0);
+});
+
+test("multiple capex lines depreciate independently, summed at each month", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    {
+      id: "cap-a", label: "POS", category: "capex", mode: "flat",
+      value: 360000, useful_life_years: 3,
+      ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+    },
+    {
+      id: "cap-b", label: "Buildout", category: "capex", mode: "flat",
+      value: 2400000, useful_life_years: 10,
+      ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 }, {});
+  // POS: $3,600 / 36 = $100/mo. Buildout: $24,000 / 120 = $200/mo. Sum: $300/mo = 30000 cents.
+  assert.equal(rows[0].depreciation_cents, 30000);
+});
+
+test("ΔWC: AP delta from prior month's COGS feeds into operating cash", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 30;
+  mp.ramp_months = 0;
+  // Steady-state flat customers so COGS is constant — ΔAP = 0 from M2 onward.
+  mp.daily_flow = { mon: 100, tue: 100, wed: 100, thu: 100, fri: 100, sat: 100, sun: 100 };
+  mp.weekly_schedule = {
+    mon: { open: true, open_time: "06:30", close_time: "17:00" },
+    tue: { open: true, open_time: "06:30", close_time: "17:00" },
+    wed: { open: true, open_time: "06:30", close_time: "17:00" },
+    thu: { open: true, open_time: "06:30", close_time: "17:00" },
+    fri: { open: true, open_time: "06:30", close_time: "17:00" },
+    sat: { open: true, open_time: "06:30", close_time: "17:00" },
+    sun: { open: true, open_time: "06:30", close_time: "17:00" },
+  };
+  mp.forecast_lines = [];
+  mp.taxes_pct = 0;
+  mp.growth_monthly_pct = 0;
+  mp.growth_custom_monthly = [];
+
+  const slices = computeMonthlySlices(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    { days_inventory: 7, days_payable: 30, days_receivable: 0 }
+  );
+  // M1: AP grows from 0 → AP_M1; positive ΔAP frees cash.
+  assert.ok(slices[0].delta_ap_cents > 0, "M1 ΔAP should be positive");
+  assert.equal(slices[0].delta_ap_cents, slices[0].accounts_payable_cents);
+  // M2 (steady state, same COGS): ΔAP ≈ 0
+  assert.ok(Math.abs(slices[1].delta_ap_cents) < 2);
+});
+
+test("owner draws reduce cash and equity by the monthly amount", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [];
+  mp.owner_draws_monthly_cents = 200000; // $2,000/mo
+
+  const withInputs = { days_inventory: 0, days_payable: 0, days_receivable: 0, owner_capital_cents: 5000000 };
+  const slices = computeMonthlySlices(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    withInputs
+  );
+  assert.equal(slices[0].owner_draws_cents, 200000);
+  // Owner equity = capital - cumulative draws (no contributions)
+  assert.equal(slices[0].owner_equity_cents, 5000000 - 200000);
+  assert.equal(slices[11].owner_equity_cents, 5000000 - 200000 * 12);
+});
+
+test("owner contributions inject cash and lift equity at the named month", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [];
+  mp.owner_contributions = [{ month_index: 6, amount_cents: 1000000 }];
+
+  const slices = computeMonthlySlices(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    { days_inventory: 0, days_payable: 0, days_receivable: 0, owner_capital_cents: 0 }
+  );
+  assert.equal(slices[5].owner_contributions_cents, 1000000); // month_index 6 → index 5
+  assert.equal(slices[4].owner_contributions_cents, 0);
+  assert.equal(slices[5].owner_equity_cents, 1000000);
+});
+
+test("balance sheet balances with depreciation + WC + owner activity", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 30;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 100, tue: 100, wed: 100, thu: 100, fri: 100, sat: 100, sun: 100 };
+  mp.weekly_schedule = {
+    mon: { open: true, open_time: "06:30", close_time: "17:00" },
+    tue: { open: true, open_time: "06:30", close_time: "17:00" },
+    wed: { open: true, open_time: "06:30", close_time: "17:00" },
+    thu: { open: true, open_time: "06:30", close_time: "17:00" },
+    fri: { open: true, open_time: "06:30", close_time: "17:00" },
+    sat: { open: true, open_time: "06:30", close_time: "17:00" },
+    sun: { open: true, open_time: "06:30", close_time: "17:00" },
+  };
+  mp.forecast_lines = [
+    {
+      id: "cap-1", label: "Equip", category: "capex", mode: "flat",
+      value: 500000, useful_life_years: 5,
+      ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+    },
+  ];
+  mp.owner_draws_monthly_cents = 100000;
+  mp.owner_contributions = [{ month_index: 3, amount_cents: 500000 }];
+  mp.taxes_pct = 0;
+
+  const slices = computeMonthlySlices(
+    mp,
+    { total_cost_cents: 0, financed_cost_cents: 0 },
+    {
+      days_inventory: 7,
+      days_payable: 30,
+      days_receivable: 0,
+      owner_capital_cents: 1000000,
+      // Seed-the-pump identity: opening_cash + fixed_assets = owner + loan.
+      // No loan here, so opening cash = owner capital, no other fixed assets.
+      opening_cash_buffer_cents: 1000000,
+    }
+  );
+  for (const s of slices.slice(0, 12)) {
+    const diff = Math.abs(s.total_assets_cents - s.total_liabilities_and_equity_cents);
+    assert.ok(diff < 10, `BS out of balance at month ${s.month_index} by ${diff}`);
+  }
 });

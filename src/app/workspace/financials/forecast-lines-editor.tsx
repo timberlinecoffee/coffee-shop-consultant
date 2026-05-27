@@ -38,7 +38,7 @@ const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; val
   },
   capex: {
     label: "Asset Purchases (Capex)",
-    hint: "One-time investments (equipment, build-out). Charged in the start month and depreciated.",
+    hint: "One-time investments (equipment, build-out, technology). Charged in the start month and depreciated over the asset's useful life — the per-month expense flows to your P&L without affecting cash again.",
     valueLabel: "(one-time)",
   },
 };
@@ -281,6 +281,33 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
 
       {expanded && (
         <div className="px-3 pb-3 border-t border-[#f5f5f5] pt-3 space-y-3 bg-[#fafafa]">
+          {isCapex && (
+            <div>
+              <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
+                Useful life (years)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                step={1}
+                value={line.useful_life_years ?? 7}
+                disabled={!canEdit}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  onChange({
+                    ...line,
+                    useful_life_years: isFinite(v) && v > 0 ? Math.round(v) : 7,
+                  });
+                }}
+                className={inputCls + " w-full max-w-[140px]"}
+                aria-label="Useful life in years"
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Spreads the cost on your P&amp;L over this many years. Common defaults: POS hardware 3y, espresso & equipment 5–7y, vehicles 5y, build-out & furniture 10–15y.
+              </p>
+            </div>
+          )}
           {isCogs && (
             <div>
               <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
@@ -508,8 +535,9 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
       value: 0,
     };
     if (category === "capex") {
-      // Capex defaults to start at month 1
+      // Capex defaults to start at month 1 with 7-year straight-line depreciation
       newLine.ramp = { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 };
+      newLine.useful_life_years = 7;
     }
     if (category === "cogs") {
       // TIM-1117: default new COGS lines to "all revenue" (legacy behavior).

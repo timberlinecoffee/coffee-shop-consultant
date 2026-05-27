@@ -202,6 +202,103 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
+// ── Owner contributions editor (TIM-1169) ─────────────────────────────────────
+
+function OwnerContributionsEditor({
+  contributions,
+  canEdit,
+  currencyCode,
+  onChange,
+}: {
+  contributions: { month_index: number; amount_cents: number }[];
+  canEdit: boolean;
+  currencyCode: string;
+  onChange: (next: { month_index: number; amount_cents: number }[]) => void;
+}) {
+  const rowCls =
+    "text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]";
+  function update(idx: number, patch: Partial<{ month_index: number; amount_cents: number }>) {
+    const next = contributions.map((c, i) => (i === idx ? { ...c, ...patch } : c));
+    onChange(next);
+  }
+  function remove(idx: number) {
+    onChange(contributions.filter((_, i) => i !== idx));
+  }
+  function add() {
+    onChange([...contributions, { month_index: 1, amount_cents: 0 }]);
+  }
+  return (
+    <div className="space-y-2">
+      {contributions.length === 0 && (
+        <p className="text-[10px] text-[#afafaf]">
+          None — add one if you plan to inject more cash later (e.g. month 6, $5,000).
+        </p>
+      )}
+      {contributions.map((c, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <span className="text-[10px] text-[#6b6b6b] w-12">Month</span>
+          <input
+            type="number"
+            min={1}
+            max={60}
+            step={1}
+            value={c.month_index}
+            disabled={!canEdit}
+            onChange={(e) =>
+              update(idx, {
+                month_index: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)),
+              })
+            }
+            className={rowCls + " w-16 text-right"}
+            aria-label="Contribution month"
+          />
+          <span className="text-[10px] text-[#6b6b6b]">{currencyCode}</span>
+          <input
+            type="number"
+            min={0}
+            step={100}
+            value={c.amount_cents ? c.amount_cents / 100 : ""}
+            placeholder="0"
+            disabled={!canEdit}
+            onChange={(e) =>
+              update(idx, {
+                amount_cents: Math.max(
+                  0,
+                  Math.round((parseFloat(e.target.value) || 0) * 100)
+                ),
+              })
+            }
+            className={rowCls + " flex-1 text-right"}
+            aria-label="Contribution amount"
+          />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => remove(idx)}
+              className="text-[#afafaf] hover:text-[#a13d3d] text-xs"
+              aria-label="Remove contribution"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+      {canEdit && (
+        <button
+          type="button"
+          onClick={add}
+          className="text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md"
+        >
+          + Add contribution
+        </button>
+      )}
+      <p className="text-[10px] text-[#afafaf] mt-1">
+        Cash you put into the business at a future month. Shows up on the cash flow as a financing inflow.
+      </p>
+    </div>
+  );
+}
+
 // ── Forecast tab ──────────────────────────────────────────────────────────────
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -449,6 +546,55 @@ function ForecastTab({
             currencyCode={mp.currency_code ?? "USD"}
             menuBlendedCogsPct={menuBlendedCogsPct}
           />
+        </div>
+      </div>
+
+      {/* Owner Activity — TIM-1169 */}
+      <div>
+        <p className={sectionLabelCls}>Owner Activity</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Money you (the owner) take out of the business each month, plus any extra cash you put back in
+            later on. These move equity and cash without touching net income.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Owner draws ({mp.currency_code ?? "USD"} / month)</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                step={100}
+                value={
+                  (mp.owner_draws_monthly_cents ?? 0) > 0
+                    ? (mp.owner_draws_monthly_cents ?? 0) / 100
+                    : ""
+                }
+                onChange={(e) =>
+                  update({
+                    owner_draws_monthly_cents: Math.max(
+                      0,
+                      Math.round((parseFloat(e.target.value) || 0) * 100)
+                    ),
+                  })
+                }
+                placeholder="0"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                What you pay yourself from the business each month. Shows up on the cash flow as a financing outflow.
+              </p>
+            </div>
+            <div>
+              <label className={labelCls}>Owner contributions</label>
+              <OwnerContributionsEditor
+                contributions={mp.owner_contributions ?? []}
+                canEdit={canEdit}
+                currencyCode={mp.currency_code ?? "USD"}
+                onChange={(next) => update({ owner_contributions: next })}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
