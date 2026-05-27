@@ -30,6 +30,7 @@ interface WorkspaceStatusContextValue {
   statusByKey: ReadonlyMap<string, WorkspaceStatus>;
   setStatus: (componentKey: string, status: WorkspaceStatus) => Promise<void>;
   promoteOnEdit: (componentKey: string) => void;
+  hydrateStatuses: (statuses: Record<string, WorkspaceStatus>) => void;
 }
 
 const WorkspaceStatusContext = createContext<WorkspaceStatusContextValue | null>(null);
@@ -73,6 +74,18 @@ export function WorkspaceProgressProvider({
         localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
       } catch {
         // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  // TIM-1093: Called by WorkspaceStatusApplier after the out-of-band bootstrap
+  // resolves. Merges server-fetched statuses without triggering an API write.
+  const hydrateStatuses = useCallback((statuses: Record<string, WorkspaceStatus>) => {
+    setStatusByKey((prev) => {
+      const next = new Map(prev);
+      for (const [key, status] of Object.entries(statuses)) {
+        if (isWorkspaceStatus(status)) next.set(key, status);
       }
       return next;
     });
@@ -153,8 +166,8 @@ export function WorkspaceProgressProvider({
   const contentPadding = sidebarCollapsed ? "lg:pl-[64px]" : "lg:pl-[224px]";
 
   const contextValue = useMemo<WorkspaceStatusContextValue>(
-    () => ({ statusByKey, setStatus, promoteOnEdit }),
-    [statusByKey, setStatus, promoteOnEdit]
+    () => ({ statusByKey, setStatus, promoteOnEdit, hydrateStatuses }),
+    [statusByKey, setStatus, promoteOnEdit, hydrateStatuses]
   );
 
   return (

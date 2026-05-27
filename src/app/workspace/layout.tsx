@@ -1,14 +1,15 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { WORKSPACE_MANIFEST } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
-import {
-  isWorkspaceStatus,
-  type WorkspaceStatus,
-} from "@/lib/workspace-status";
+import { WorkspaceStatusBootstrap } from "@/components/workspace/WorkspaceStatusBootstrap";
 
 export const dynamic = "force-dynamic";
 
+// TIM-1093: Only block on auth (fast JWT verify). Progress statuses are fetched
+// by <WorkspaceStatusBootstrap> behind a Suspense boundary so a slow or failing
+// Supabase query never prevents the sidebar shell from rendering.
 export default async function WorkspaceLayout({
   children,
 }: {
@@ -21,34 +22,14 @@ export default async function WorkspaceLayout({
 
   if (!user) redirect("/login");
 
-  const initialStatuses: Record<string, WorkspaceStatus> = {};
-
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (plan?.id) {
-    const { data: rows } = await supabase
-      .from("workspace_status")
-      .select("component_key, status")
-      .eq("plan_id", plan.id);
-
-    for (const row of rows ?? []) {
-      if (isWorkspaceStatus(row.status)) {
-        initialStatuses[row.component_key] = row.status;
-      }
-    }
-  }
-
   return (
     <WorkspaceProgressProvider
       manifest={WORKSPACE_MANIFEST}
-      initialStatuses={initialStatuses}
+      initialStatuses={{}}
     >
+      <Suspense fallback={null}>
+        <WorkspaceStatusBootstrap userId={user.id} />
+      </Suspense>
       {children}
     </WorkspaceProgressProvider>
   );
