@@ -34,11 +34,12 @@ import type {
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
 
-// TIM-1149: Resizable / expandable panel constants.
+// TIM-1149 / TIM-1151: Resizable / expandable panel constants.
+// Expanded mode is a true full-width overlay (TIM-1151 founder feedback) —
+// it ignores PANEL_MAX_WIDTH so the chat takes the whole workspace area.
 const PANEL_MIN_WIDTH = 360;
 const PANEL_MAX_WIDTH = 1100;
 const PANEL_DEFAULT_WIDTH = 448;
-const PANEL_EXPANDED_FRACTION = 0.85;
 const PANEL_WIDTH_STORAGE_KEY = "copilot_panel_width_v1";
 const PANEL_EXPANDED_STORAGE_KEY = "copilot_panel_expanded_v1";
 
@@ -565,15 +566,18 @@ export function CoPilotDrawer({
     return deriveTitle(messages);
   }, [activeThreadTitle, isStreaming, messages]);
 
-  // TIM-1149: compute the on-screen panel width. Expanded mode overrides the
-  // user's preferred width to a large fraction of the viewport. On small
-  // screens we fall back to a full-bleed drawer so phones stay usable.
+  // TIM-1149 / TIM-1151: compute the on-screen panel width. Expanded mode is a
+  // true full-width overlay over the workspace (founder feedback) — bypass the
+  // PANEL_MAX_WIDTH clamp so the chat takes the entire viewport. Default mode
+  // stays clamped to a comfortable reading width. On phones we always go
+  // full-bleed so the drawer stays usable.
   const computedPanelWidth = useMemo(() => {
     if (viewportWidth < 640) return viewportWidth;
-    const target = isExpanded
-      ? Math.round(viewportWidth * PANEL_EXPANDED_FRACTION)
-      : panelWidth;
-    return Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, target, viewportWidth - 16));
+    if (isExpanded) return viewportWidth;
+    return Math.max(
+      PANEL_MIN_WIDTH,
+      Math.min(PANEL_MAX_WIDTH, panelWidth, viewportWidth - 16),
+    );
   }, [isExpanded, panelWidth, viewportWidth]);
 
   const scopeHeaderLabel =
@@ -615,8 +619,10 @@ export function CoPilotDrawer({
             style={{ width: computedPanelWidth }}
             className="relative bg-white flex flex-col h-full shadow-xl"
           >
-            {/* TIM-1149: drag-to-resize handle on the left edge. Hidden on mobile. */}
-            {!isMobile && (
+            {/* TIM-1149: drag-to-resize handle on the left edge. Hidden on
+                mobile and when the panel is expanded to full-width (no room
+                to resize). */}
+            {!isMobile && !isExpanded && (
               <div
                 role="separator"
                 aria-orientation="vertical"

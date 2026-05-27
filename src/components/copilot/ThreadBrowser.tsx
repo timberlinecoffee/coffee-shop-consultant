@@ -1,12 +1,14 @@
 // TIM-634 / TIM-618-E: Conversation thread browser
 // Grouped-by-workspace collapsible list. Click loads a thread into the drawer.
-// TIM-906: Inline rename (pencil icon) and delete (trash icon + confirm) added.
+// TIM-906: Inline rename and delete added.
 // TIM-1149: General (workspace-less) conversations group, search/filter,
 // and a split "+ New" affordance for current-workspace vs general threads.
+// TIM-1151: Per-thread actions consolidated into a kebab (⋯) menu with
+// Rename + Delete entries; delete still triggers the inline confirm card.
 "use client"
 
 import { useCallback, useMemo, useState, useEffect, useRef } from "react"
-import { ChevronRight, Pencil, Search, Trash2 } from "lucide-react"
+import { ChevronRight, MoreHorizontal, Pencil, Search, Trash2 } from "lucide-react"
 import type { WorkspaceKey } from "@/types/supabase"
 
 // TIM-1149: A thread is either bound to a WorkspaceKey or it is a "general"
@@ -114,8 +116,30 @@ export function ThreadBrowser({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState("")
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [filter, setFilter] = useState("")
   const editInputRef = useRef<HTMLInputElement | null>(null)
+  const menuContainerRef = useRef<HTMLDivElement | null>(null)
+
+  // Close the kebab menu on outside click or Escape.
+  useEffect(() => {
+    if (!openMenuId) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!menuContainerRef.current) return
+      if (!menuContainerRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenuId(null)
+    }
+    document.addEventListener("mousedown", onDocClick)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onDocClick)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [openMenuId])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -468,26 +492,61 @@ export function ThreadBrowser({
                               )}
 
                               {!isEditing && (
-                                <div className="pr-1 shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                                <div
+                                  ref={openMenuId === thread.id ? menuContainerRef : undefined}
+                                  className="relative pr-1 shrink-0 flex items-center"
+                                >
                                   <button
                                     type="button"
-                                    aria-label="Rename"
-                                    onClick={() => startEdit(thread)}
-                                    className="w-6 h-6 flex items-center justify-center rounded text-[#aaa] hover:text-[#155e63] hover:bg-[#155e63]/10"
+                                    aria-label="Conversation actions"
+                                    aria-haspopup="menu"
+                                    aria-expanded={openMenuId === thread.id}
+                                    onClick={() =>
+                                      setOpenMenuId((cur) =>
+                                        cur === thread.id ? null : thread.id,
+                                      )
+                                    }
+                                    className={`w-7 h-7 flex items-center justify-center rounded text-[#aaa] hover:text-[#1a1a1a] hover:bg-[#155e63]/10 ${
+                                      openMenuId === thread.id
+                                        ? "opacity-100 text-[#1a1a1a] bg-[#155e63]/10"
+                                        : "opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
+                                    }`}
                                   >
-                                    <Pencil className="w-3 h-3" />
+                                    <MoreHorizontal className="w-4 h-4" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    aria-label="Delete"
-                                    onClick={() => {
-                                      setEditingId(null)
-                                      setPendingDeleteId(thread.id)
-                                    }}
-                                    className="w-6 h-6 flex items-center justify-center rounded text-[#aaa] hover:text-red-600 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
+                                  {openMenuId === thread.id && (
+                                    <div
+                                      role="menu"
+                                      aria-label="Conversation actions"
+                                      className="absolute right-1 top-7 z-20 min-w-[140px] rounded-md border border-[#e5e3df] bg-white shadow-md py-1"
+                                    >
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuId(null)
+                                          startEdit(thread)
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[#1a1a1a] hover:bg-[#f7f6f3]"
+                                      >
+                                        <Pencil className="w-3 h-3 text-[#888]" />
+                                        Rename
+                                      </button>
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuId(null)
+                                          setEditingId(null)
+                                          setPendingDeleteId(thread.id)
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                        Delete
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
