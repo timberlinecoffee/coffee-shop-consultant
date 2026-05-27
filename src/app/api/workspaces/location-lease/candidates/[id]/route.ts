@@ -1,6 +1,8 @@
 // TIM-776 / TIM-620-B: Update + soft-archive a location candidate.
+// TIM-1115: Title-case name + neighborhood on patch.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
+import { toTitleCase } from "@/lib/text"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -44,6 +46,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const patch: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) patch[key] = body[key]
+  }
+  if (typeof patch.name === "string") {
+    patch.name = patch.name.trim() ? toTitleCase(patch.name) : "Untitled"
+  }
+  if (typeof patch.neighborhood === "string") {
+    patch.neighborhood = patch.neighborhood.trim() ? toTitleCase(patch.neighborhood) : null
   }
 
   if (Object.keys(patch).length === 0) {
