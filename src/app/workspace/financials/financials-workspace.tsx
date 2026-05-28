@@ -480,9 +480,9 @@ function ForecastTab({
   function updateStartupField(key: keyof StartupCosts, cents: number) {
     update({ startup_costs: { ...sc, [key]: Math.max(0, Math.round(cents)) } });
   }
+  // TIM-1254: buildout_cents and equipment_cents removed — capital assets are now
+  // entered as per-asset capex ForecastLines in the Costs & Expenses section above.
   const startupFields: { key: keyof StartupCosts; label: string; hint?: string }[] = [
-    { key: "buildout_cents", label: "Build-Out & Renovation" },
-    { key: "equipment_cents", label: "Equipment" },
     { key: "deposits_cents", label: "Deposits (Rent, Utilities)" },
     { key: "licenses_cents", label: "Licenses & Permits" },
     { key: "pre_opening_marketing_cents", label: "Pre-Opening Marketing" },
@@ -1000,12 +1000,16 @@ function ForecastTab({
         </div>
       </Section>
 
-      {/* Startup & Build-Out Costs — TIM-1244 */}
-      <Section title="Startup & Build-Out Costs" advanced>
+      {/* Pre-Opening Costs — TIM-1254: capital assets moved to Costs & Expenses capex section */}
+      <Section title="Other Opening Costs" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
-            One-time costs to open the doors. These flow into your Startup Costs tab,
+          <p className="text-xs text-[#6b6b6b] mb-1">
+            One-time costs to open the doors (non-capital). These flow into your Startup Costs tab,
             balance sheet, and funding gap.
+          </p>
+          <p className="text-xs text-[#afafaf] mb-4">
+            Capital assets (build-out, equipment, fixtures) are entered in the{" "}
+            <strong>Costs &amp; Expenses</strong> section above under &ldquo;Capital Assets (Capex).&rdquo;
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {startupFields.map((fld) => (
@@ -2141,6 +2145,9 @@ export function FinancialsWorkspace({
             inputs={financialInputs}
             fundingSources={mp.funding_sources ?? []}
             currencyCode={currencyCode}
+            capexLines={mp.forecast_lines.filter((l) => l.category === "capex" && !l.linked_equipment_item_id)}
+            equipmentItemLines={equipmentItemsToCapexLines(initialEquipmentItems)}
+            startupCosts={mp.startup_costs}
           />
         )}
       </div>

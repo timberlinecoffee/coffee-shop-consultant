@@ -7,7 +7,7 @@
 // existing MonthlyProjections so the detailed input page is pre-filled.
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, X, Coffee } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X, Coffee, Plus, Trash2 } from "lucide-react";
 import {
   type MonthlyProjections,
   type DayKey,
@@ -15,6 +15,7 @@ import {
   type PersonnelLine,
   type FundingSourceLine,
   type StartupCosts,
+  type AssetCategory,
   defaultStartupCosts,
 } from "@/lib/financial-projection";
 
@@ -22,6 +23,35 @@ const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_FULL: Record<DayKey, string> = {
   mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday",
   fri: "Friday", sat: "Saturday", sun: "Sunday",
+};
+
+// ── Wizard asset model ────────────────────────────────────────────────────────
+// TIM-1254: capital assets entered in the wizard become capex ForecastLines.
+
+interface WizardAsset {
+  id: string;
+  label: string;
+  asset_category: AssetCategory;
+  cost_cents: number;
+  useful_life_years: number;
+}
+
+const ASSET_CATEGORY_LABELS: Record<AssetCategory, string> = {
+  build_out: "Build-Out & Renovation",
+  equipment: "Equipment",
+  pos_tech: "POS & Technology",
+  furniture: "Furniture & Fixtures",
+  vehicle: "Vehicle",
+  other: "Other",
+};
+
+const DEFAULT_USEFUL_LIFE: Record<AssetCategory, number> = {
+  build_out: 15,
+  equipment: 7,
+  pos_tech: 5,
+  furniture: 10,
+  vehicle: 5,
+  other: 7,
 };
 
 // ── Answers ───────────────────────────────────────────────────────────────────
@@ -43,6 +73,8 @@ interface Answers {
   insuranceCents: number;
   marketingPct: number;
   startup: StartupCosts;
+  // TIM-1254: per-asset capital items replace startup.buildout_cents / equipment_cents.
+  wizardAssets: WizardAsset[];
   founderEquityCents: number;
   loanCents: number;
   loanTermMonths: number;
@@ -53,6 +85,44 @@ interface Answers {
 
 function findLine(lines: ForecastLine[], key: ForecastLine["legacy_key"]) {
   return lines.find((l) => l.legacy_key === key);
+}
+
+function seedWizardAssets(mp: MonthlyProjections): WizardAsset[] {
+  // Prefer real persisted capex ForecastLines (not synthetic equipment-item mirrors).
+  const capexLines = mp.forecast_lines.filter(
+    (l) => l.category === "capex" && !l.linked_equipment_item_id && l.value > 0
+  );
+  if (capexLines.length > 0) {
+    return capexLines.map((l) => ({
+      id: l.id,
+      label: l.label,
+      asset_category: l.asset_category ?? "other",
+      cost_cents: l.value,
+      useful_life_years: l.useful_life_years ?? DEFAULT_USEFUL_LIFE[l.asset_category ?? "other"],
+    }));
+  }
+  // Legacy migration: convert lump-sum startup_costs buckets to wizard assets.
+  const sc = mp.startup_costs ?? defaultStartupCosts();
+  const assets: WizardAsset[] = [];
+  if (sc.buildout_cents > 0) {
+    assets.push({
+      id: "wizard:build_out",
+      label: "Build-Out & Renovation",
+      asset_category: "build_out",
+      cost_cents: sc.buildout_cents,
+      useful_life_years: sc.buildout_useful_life_years ?? 15,
+    });
+  }
+  if (sc.equipment_cents > 0) {
+    assets.push({
+      id: "wizard:equipment",
+      label: "Equipment",
+      asset_category: "equipment",
+      cost_cents: sc.equipment_cents,
+      useful_life_years: sc.equipment_useful_life_years ?? 7,
+    });
+  }
+  return assets;
 }
 
 function seedAnswers(mp: MonthlyProjections): Answers {
@@ -105,6 +175,9 @@ function seedAnswers(mp: MonthlyProjections): Answers {
     insuranceCents: insurance?.mode === "flat" ? insurance.value : 20000,
     marketingPct: marketing?.mode === "pct" ? marketing.value : 2,
     startup: { ...defaultStartupCosts(), ...(mp.startup_costs ?? {}) },
+    // TIM-1254: seed wizard assets from existing capex ForecastLines (non-item-workspace),
+    // falling back to the legacy buildout_cents / equipment_cents lump sums so no data is lost.
+    wizardAssets: seedWizardAssets(mp),
     founderEquityCents: equity > 0 && !equityIsSeed ? equity : 5000000,
     loanCents: loanIsSeed ? 0 : loanRaw,
     loanTermMonths: loanLine?.term_months ?? 60,
@@ -212,6 +285,29 @@ function buildProjections(base: MonthlyProjections, a: Answers): MonthlyProjecti
   forecast_lines = upsertOverhead(forecast_lines, "insurance", "Insurance", "flat", a.insuranceCents);
   forecast_lines = upsertOverhead(forecast_lines, "marketing", "Marketing", "pct", a.marketingPct);
 
+  // TIM-1254: apply wizard capex assets as persisted ForecastLines.
+  // Keep non-wizard capex lines (e.g. equipment-item mirrors, other capex the user added manually).
+  // Replace any lines whose id appears in the wizard asset list.
+  const wizardIds = new Set(a.wizardAssets.map((w) => w.id));
+  forecast_lines = forecast_lines.filter(
+    (l) => l.category !== "capex" || l.linked_equipment_item_id || !wizardIds.has(l.id)
+  );
+  // Also remove old wizard-generated lines by their id prefix in case the user cleared assets.
+  forecast_lines = forecast_lines.filter(
+    (l) => l.category !== "capex" || l.linked_equipment_item_id || !l.id.startsWith("wizard:")
+  );
+  for (const w of a.wizardAssets) {
+    forecast_lines.push({
+      id: w.id,
+      label: w.label,
+      category: "capex",
+      mode: "flat",
+      value: Math.max(0, w.cost_cents),
+      useful_life_years: Math.max(1, w.useful_life_years),
+      asset_category: w.asset_category,
+    });
+  }
+
   // TIM-1245: the wizard collects a single average sale. If the owner had the
   // beverage/food split on, keep the invariant (beverage + food === ticket) by
   // rescaling each side proportionally to the new total.
@@ -240,7 +336,11 @@ function buildProjections(base: MonthlyProjections, a: Answers): MonthlyProjecti
     personnel: applyStaffing(base.personnel ?? [], a),
     forecast_lines,
     funding_sources: applyFunding(base.funding_sources ?? [], a),
-    startup_costs: a.startup,
+    // TIM-1254: zero the aggregate lump-sum buckets when wizard assets exist —
+    // the per-asset capex ForecastLines above now drive depreciation instead.
+    startup_costs: a.wizardAssets.length > 0
+      ? { ...a.startup, buildout_cents: 0, equipment_cents: 0 }
+      : a.startup,
     income_tax_pct: Math.max(0, a.incomeTaxPct),
     sales_tax_pct: Math.max(0, a.salesTaxPct),
   };
@@ -358,18 +458,52 @@ export function ForecastWizard({
   const [answers, setAnswers] = useState<Answers>(() => seedAnswers(initialMp));
   const cur = currencyCode || "USD";
 
+  // TIM-1254: state for the inline "add capital asset" form.
+  const [showAddAsset, setShowAddAsset] = useState(false);
+  const [newAssetLabel, setNewAssetLabel] = useState("");
+  const [newAssetCategory, setNewAssetCategory] = useState<AssetCategory>("equipment");
+  const [newAssetCents, setNewAssetCents] = useState(0);
+  const [newAssetLife, setNewAssetLife] = useState(DEFAULT_USEFUL_LIFE["equipment"]);
+
   function set<K extends keyof Answers>(key: K, value: Answers[K]) {
     setAnswers((a) => ({ ...a, [key]: value }));
   }
   function setStartup(patch: Partial<StartupCosts>) {
     setAnswers((a) => ({ ...a, startup: { ...a.startup, ...patch } }));
   }
+  function addWizardAsset() {
+    if (!newAssetLabel.trim() || newAssetCents <= 0) return;
+    const asset: WizardAsset = {
+      id: `wizard:${Date.now()}`,
+      label: newAssetLabel.trim(),
+      asset_category: newAssetCategory,
+      cost_cents: Math.max(0, Math.round(newAssetCents)),
+      useful_life_years: Math.max(1, Math.round(newAssetLife)),
+    };
+    setAnswers((a) => ({ ...a, wizardAssets: [...a.wizardAssets, asset] }));
+    setNewAssetLabel("");
+    setNewAssetCents(0);
+    setShowAddAsset(false);
+  }
+  function removeWizardAsset(id: string) {
+    setAnswers((a) => ({ ...a, wizardAssets: a.wizardAssets.filter((w) => w.id !== id) }));
+  }
 
   const openCount = DAY_KEYS.filter((d) => answers.daysOpen[d]).length;
-  const startupTotal = useMemo(
-    () => Object.values(answers.startup).reduce((a, b) => a + b, 0),
-    [answers.startup]
-  );
+  // TIM-1254: startup total = wizard capital assets + non-capital one-time costs.
+  const startupTotal = useMemo(() => {
+    const sc = answers.startup;
+    const assetTotal = answers.wizardAssets.reduce((s, w) => s + w.cost_cents, 0);
+    return (
+      assetTotal +
+      sc.deposits_cents +
+      sc.licenses_cents +
+      sc.pre_opening_marketing_cents +
+      sc.initial_inventory_cents +
+      sc.working_capital_reserve_cents +
+      sc.opening_cash_buffer_cents
+    );
+  }, [answers.startup, answers.wizardAssets]);
 
   // Step definitions. The first (welcome) and last (review) are not questions.
   const steps: { title: string; body: React.ReactNode }[] = [
@@ -697,58 +831,155 @@ export function ForecastWizard({
       ),
     },
     {
-      title: "Opening costs",
+      // TIM-1254: unified capital-asset step replaces the two lump-sum fields.
+      title: "Capital assets",
       body: (
         <div>
           <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">
-            What will it take to open the doors?
+            What are you buying to open?
           </h2>
           <p className="text-sm text-[#6b6b6b] mb-4">
-            One-time costs you pay before your first sale. Estimates are fine.
+            Add each capital item once — build-out, equipment, fixtures. You can edit
+            costs and useful lives on the Costs &amp; Expenses page anytime.
           </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-[#6b6b6b] mb-1">
-                Build-out and renovation
-              </label>
-              <MoneyField
-                cents={answers.startup.buildout_cents}
-                onChange={(c) => setStartup({ buildout_cents: c })}
-                currency={cur}
-                placeholder="150000"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#6b6b6b] mb-1">
-                Equipment (espresso machine, grinders, fridges)
-              </label>
-              <MoneyField
-                cents={answers.startup.equipment_cents}
-                onChange={(c) => setStartup({ equipment_cents: c })}
-                currency={cur}
-                placeholder="50000"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#6b6b6b] mb-1">
-                Opening cash cushion (to cover the first slow months)
-              </label>
-              <MoneyField
-                cents={answers.startup.opening_cash_buffer_cents}
-                onChange={(c) => setStartup({ opening_cash_buffer_cents: c })}
-                currency={cur}
-                placeholder="10000"
-              />
-            </div>
+
+          {/* Asset list */}
+          <div className="space-y-2 mb-3">
+            {answers.wizardAssets.length === 0 && (
+              <p className="text-xs text-[#afafaf] text-center py-3 rounded-xl border border-dashed border-[#e0e0e0]">
+                No assets added yet. Use the button below to add your first item.
+              </p>
+            )}
+            {answers.wizardAssets.map((asset) => (
+              <div
+                key={asset.id}
+                className="flex items-center gap-2 rounded-xl border border-[#e8f0f0] bg-[#f4f9f8] px-3 py-2.5"
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-[#1a1a1a] block truncate">
+                    {asset.label}
+                  </span>
+                  <span className="text-xs text-[#6b6b6b]">
+                    {ASSET_CATEGORY_LABELS[asset.asset_category]} &middot; {asset.useful_life_years}yr life
+                  </span>
+                </div>
+                <span className="text-sm font-semibold text-[#1a1a1a] shrink-0">
+                  {fmtMoney(asset.cost_cents, cur)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeWizardAsset(asset.id)}
+                  className="text-[#afafaf] hover:text-red-500 transition-colors shrink-0"
+                  aria-label={`Remove ${asset.label}`}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
           </div>
+
+          {/* Add asset form */}
+          {showAddAsset ? (
+            <div className="rounded-xl border border-[#155e63]/30 bg-white p-3 space-y-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-[#6b6b6b] mb-1">Asset name</label>
+                <input
+                  type="text"
+                  className={inputCls}
+                  value={newAssetLabel}
+                  onChange={(e) => setNewAssetLabel(e.target.value)}
+                  placeholder="Espresso machine, bar build-out…"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#6b6b6b] mb-1">Type</label>
+                  <select
+                    className={inputCls}
+                    value={newAssetCategory}
+                    onChange={(e) => {
+                      const cat = e.target.value as AssetCategory;
+                      setNewAssetCategory(cat);
+                      setNewAssetLife(DEFAULT_USEFUL_LIFE[cat]);
+                    }}
+                  >
+                    {(Object.keys(ASSET_CATEGORY_LABELS) as AssetCategory[]).map((cat) => (
+                      <option key={cat} value={cat}>{ASSET_CATEGORY_LABELS[cat]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#6b6b6b] mb-1">Useful life (years)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    className={inputCls}
+                    value={newAssetLife || ""}
+                    onChange={(e) => setNewAssetLife(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6b6b6b] mb-1">Cost ({cur})</label>
+                <MoneyField
+                  cents={newAssetCents}
+                  onChange={(c) => setNewAssetCents(c)}
+                  currency={cur}
+                  placeholder="50000"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={addWizardAsset}
+                  disabled={!newAssetLabel.trim() || newAssetCents <= 0}
+                  className="flex-1 text-sm font-semibold text-white bg-[#155e63] disabled:opacity-40 hover:bg-[#124e52] rounded-lg px-4 py-2 transition-colors"
+                >
+                  Add asset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddAsset(false); setNewAssetLabel(""); setNewAssetCents(0); }}
+                  className="text-sm text-[#6b6b6b] hover:text-[#1a1a1a] border border-[#e0e0e0] rounded-lg px-4 py-2 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAddAsset(true)}
+              className="flex items-center gap-1.5 text-sm font-medium text-[#155e63] hover:text-[#124e52] border border-dashed border-[#155e63]/40 rounded-xl px-4 py-2 w-full justify-center transition-colors mb-3"
+            >
+              <Plus size={15} /> Add a capital asset
+            </button>
+          )}
+
+          {/* Opening cash cushion */}
+          <div className="pt-3 border-t border-[#f0f0f0]">
+            <label className="block text-xs font-medium text-[#6b6b6b] mb-1">
+              Opening cash cushion (to cover the first slow months)
+            </label>
+            <MoneyField
+              cents={answers.startup.opening_cash_buffer_cents}
+              onChange={(c) => setStartup({ opening_cash_buffer_cents: c })}
+              currency={cur}
+              placeholder="10000"
+            />
+          </div>
+
           <p className="text-xs text-[#afafaf] mt-3">
-            Estimated to open: <span className="font-semibold text-[#6b6b6b]">{fmtMoney(startupTotal, cur)}</span>{" "}
+            Estimated to open:{" "}
+            <span className="font-semibold text-[#6b6b6b]">{fmtMoney(startupTotal, cur)}</span>{" "}
             (includes deposits, permits, and starting inventory you can adjust on the Startup Costs page).
           </p>
           <Why>
-            These costs don&apos;t repeat every month, so we keep them separate from
-            your running budget. They tell you how much money you need raised before
-            day one.
+            Enter each capital asset once here — it drives the cash outflow on day one,
+            depreciates over its useful life on the P&amp;L, and shows on your balance sheet.
+            No need to enter the same item in multiple places.
           </Why>
         </div>
       ),
@@ -908,7 +1139,13 @@ export function ForecastWizard({
                 }`,
               },
               { k: "Rent", v: `${fmtMoney(answers.rentCents, cur)} / mo` },
-              { k: "Cost to open", v: fmtMoney(startupTotal, cur) },
+              {
+                k: "Capital assets",
+                v: answers.wizardAssets.length > 0
+                  ? `${answers.wizardAssets.length} asset${answers.wizardAssets.length !== 1 ? "s" : ""} · ${fmtMoney(answers.wizardAssets.reduce((s, w) => s + w.cost_cents, 0), cur)}`
+                  : "None added",
+              },
+              { k: "Total to open", v: fmtMoney(startupTotal, cur) },
               {
                 k: "Funding",
                 v: fmtMoney(answers.founderEquityCents + answers.loanCents, cur),
