@@ -25,6 +25,7 @@ import {
   computeWeeklyHours,
   fiscalYearMonthLabels,
   formatCurrency,
+  BASE_REVENUE_LINE_ID,
 } from "@/lib/financial-projection";
 import { CURRENCIES } from "@/lib/currency";
 import { PLTab } from "./tabs/pl-tab";
@@ -1038,6 +1039,10 @@ function ProjectionsTab({
   onCritiqueUpdate,
   fiscalYearStartMonth,
   currencyCode,
+  manualLines,
+  onSetOverride,
+  onClearOverride,
+  onToggleManual,
 }: {
   projections: FinancialProjections;
   slices: MonthlySlice[];
@@ -1046,6 +1051,10 @@ function ProjectionsTab({
   onCritiqueUpdate: (c: CritiqueResult | null) => void;
   fiscalYearStartMonth: number;
   currencyCode: string;
+  manualLines: string[];
+  onSetOverride: (lineId: string, monthIndexAbs: number, cents: number) => void;
+  onClearOverride: (lineId: string, monthIndexAbs: number) => void;
+  onToggleManual: (lineId: string, manual: boolean) => void;
 }) {
   const { year1: y1, year3: y3, year5: y5 } = projections;
   const [assessmentStatus, setAssessmentStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -1082,7 +1091,16 @@ function ProjectionsTab({
       <RevenueChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
 
       {/* Monthly / Quarterly / Annual P&L table — defaults to monthly Y1 */}
-      <PLTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
+      <PLTab
+        slices={slices}
+        fiscalYearStartMonth={fiscalYearStartMonth}
+        currencyCode={currencyCode}
+        editable={canEdit}
+        manualLines={manualLines}
+        onSetOverride={onSetOverride}
+        onClearOverride={onClearOverride}
+        onToggleManual={onToggleManual}
+      />
 
       {/* KPI summary tiles */}
       <div className="grid grid-cols-3 gap-3">
@@ -1385,6 +1403,64 @@ export function FinancialsWorkspace({
     handleMpUpdate({ ...mp, personnel: next });
   }
 
+  // TIM-1243: manual override handlers. All mutate manual_overrides / manual_lines
+  // on the model; recompute flows downstream automatically via the slices memo.
+  function handleSetOverride(lineId: string, monthIndexAbs: number, cents: number) {
+    const others = (mp.manual_overrides ?? []).filter(
+      (o) => !(o.line_id === lineId && o.month_index === monthIndexAbs)
+    );
+    handleMpUpdate({
+      ...mp,
+      manual_overrides: [
+        ...others,
+        { line_id: lineId, month_index: monthIndexAbs, amount_cents: Math.max(0, Math.round(cents)) },
+      ],
+    });
+  }
+
+  function handleClearOverride(lineId: string, monthIndexAbs: number) {
+    handleMpUpdate({
+      ...mp,
+      manual_overrides: (mp.manual_overrides ?? []).filter(
+        (o) => !(o.line_id === lineId && o.month_index === monthIndexAbs)
+      ),
+    });
+  }
+
+  // Seed a line's current calculated values into overrides for all 60 months so
+  // switching to manual entry is non-destructive ("starts with fields, then
+  // converts to information" — LivePlan). Switching back drops them.
+  function amountForLine(slice: MonthlySlice, lineId: string): number {
+    if (lineId === BASE_REVENUE_LINE_ID) return slice.base_revenue_cents;
+    const found = [
+      ...(slice.forecast_line_amounts ?? []),
+      ...(slice.personnel_line_amounts ?? []),
+    ].find((a) => a.id === lineId);
+    return found?.amount_cents ?? 0;
+  }
+
+  function handleToggleManual(lineId: string, manual: boolean) {
+    const withoutLine = (mp.manual_overrides ?? []).filter((o) => o.line_id !== lineId);
+    if (manual) {
+      const seeds = slices.map((s) => ({
+        line_id: lineId,
+        month_index: s.month_index,
+        amount_cents: amountForLine(s, lineId),
+      }));
+      handleMpUpdate({
+        ...mp,
+        manual_overrides: [...withoutLine, ...seeds],
+        manual_lines: Array.from(new Set([...(mp.manual_lines ?? []), lineId])),
+      });
+    } else {
+      handleMpUpdate({
+        ...mp,
+        manual_overrides: withoutLine,
+        manual_lines: (mp.manual_lines ?? []).filter((id) => id !== lineId),
+      });
+    }
+  }
+
   function handleCritiqueUpdate(c: CritiqueResult | null) {
     setCritique(c);
     latestCritiqueRef.current = c;
@@ -1555,6 +1631,10 @@ export function FinancialsWorkspace({
             onCritiqueUpdate={handleCritiqueUpdate}
             fiscalYearStartMonth={fiscalYearStartMonth}
             currencyCode={currencyCode}
+            manualLines={mp.manual_lines ?? []}
+            onSetOverride={handleSetOverride}
+            onClearOverride={handleClearOverride}
+            onToggleManual={handleToggleManual}
           />
         )}
         {activeTab === "balance-sheet" && (

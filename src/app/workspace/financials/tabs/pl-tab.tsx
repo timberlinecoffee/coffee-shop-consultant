@@ -12,6 +12,7 @@ import {
   fiscalYearMonthLabels,
   fmt,
   pct,
+  BASE_REVENUE_LINE_ID,
 } from "@/lib/financial-projection";
 import {
   ChartCard,
@@ -68,13 +69,171 @@ function DividerRow({ cols }: { cols: number }) {
   );
 }
 
+// TIM-1243: edit in major currency units (dollars), store integer cents — same
+// convention as the forecast-lines editor.
+function centsToInput(cents: number | undefined): string {
+  if (cents === undefined) return "";
+  return String(Math.round(cents) / 100);
+}
+function inputToCents(val: string): number {
+  return Math.max(0, Math.round((parseFloat(val) || 0) * 100));
+}
+
+interface EditableCell {
+  amount: number | undefined;
+  overridden: boolean;
+  monthIndexAbs: number | undefined;
+}
+
+interface EditableLineRowProps {
+  label: string;
+  lineId: string;
+  cells: EditableCell[];
+  editable: boolean; // monthly view + canEdit
+  manual: boolean;
+  currencyCode: string;
+  indent?: boolean;
+  onSet: (lineId: string, monthIndexAbs: number, cents: number) => void;
+  onClear: (lineId: string, monthIndexAbs: number) => void;
+  onToggleManual: (lineId: string, manual: boolean) => void;
+}
+
+// TIM-1243: a revenue/expense line rendered across the monthly columns with
+// click-to-edit per-cell overrides and a per-line manual-entry toggle.
+function EditableLineRow({
+  label,
+  lineId,
+  cells,
+  editable,
+  manual,
+  currencyCode,
+  indent,
+  onSet,
+  onClear,
+  onToggleManual,
+}: EditableLineRowProps) {
+  const [editingCol, setEditingCol] = useState<number | null>(null);
+  const [draft, setDraft] = useState("");
+
+  const startEdit = (i: number, current: number | undefined) => {
+    if (!editable || cells[i].monthIndexAbs === undefined) return;
+    setEditingCol(i);
+    setDraft(centsToInput(current));
+  };
+  const commit = (i: number) => {
+    const mi = cells[i].monthIndexAbs;
+    if (mi !== undefined) onSet(lineId, mi, inputToCents(draft));
+    setEditingCol(null);
+  };
+
+  return (
+    <tr className={manual ? "bg-[#fbf7ef]" : ""}>
+      <td
+        className={`py-2 pr-4 text-sm sticky left-0 ${manual ? "bg-[#fbf7ef]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span>{label}</span>
+          {editable && manual && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#9a6b00] bg-[#f3e6c4] rounded px-1.5 py-0.5">
+              Manual
+            </span>
+          )}
+          {editable && (
+            <button
+              type="button"
+              onClick={() => onToggleManual(lineId, !manual)}
+              title={
+                manual
+                  ? "Switch back to assumption-driven (clears manual entries)"
+                  : "Switch to manual monthly entry (seeds from current values)"
+              }
+              className="text-[10px] text-[#8a8a8a] hover:text-[#155e63] underline decoration-dotted"
+            >
+              {manual ? "use assumptions" : "enter manually"}
+            </button>
+          )}
+        </span>
+      </td>
+      {cells.map((cell, i) => {
+        const isEditing = editingCol === i;
+        const canEditCell = editable && cell.monthIndexAbs !== undefined;
+        const overridden = cell.overridden;
+        if (isEditing) {
+          return (
+            <td key={i} className="py-1 px-2 text-right">
+              <input
+                type="number"
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => commit(i)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commit(i);
+                  else if (e.key === "Escape") setEditingCol(null);
+                }}
+                className="w-24 text-right text-sm border border-[#155e63] rounded px-1.5 py-1 focus:outline-none"
+              />
+            </td>
+          );
+        }
+        return (
+          <td
+            key={i}
+            className={`py-2 px-3 text-right text-sm whitespace-nowrap relative ${
+              overridden ? "bg-[#eef6f6]" : ""
+            } ${canEditCell ? "cursor-pointer hover:bg-[#f3faf9] group" : ""}`}
+            onClick={() => canEditCell && startEdit(i, cell.amount)}
+            title={canEditCell ? (overridden ? "Manual override — click to edit" : "Click to override this month") : undefined}
+          >
+            <span className="inline-flex items-center justify-end gap-1">
+              {overridden && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] inline-block" aria-label="overridden" />
+              )}
+              {cell.amount !== undefined ? fmt(cell.amount, currencyCode) : "—"}
+              {canEditCell && overridden && !manual && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (cell.monthIndexAbs !== undefined) onClear(lineId, cell.monthIndexAbs);
+                  }}
+                  title="Revert to calculated"
+                  className="opacity-0 group-hover:opacity-100 text-[#8a8a8a] hover:text-[#155e63] text-xs leading-none"
+                >
+                  ↺
+                </button>
+              )}
+            </span>
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
 interface Props {
   slices: MonthlySlice[];
   fiscalYearStartMonth?: number;
   currencyCode?: string;
+  // TIM-1243: manual override controls. When `editable` and the period is
+  // monthly, revenue/expense line-item cells become click-to-edit.
+  editable?: boolean;
+  manualLines?: string[];
+  onSetOverride?: (lineId: string, monthIndexAbs: number, cents: number) => void;
+  onClearOverride?: (lineId: string, monthIndexAbs: number) => void;
+  onToggleManual?: (lineId: string, manual: boolean) => void;
 }
 
-export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }: Props) {
+export function PLTab({
+  slices,
+  fiscalYearStartMonth = 1,
+  currencyCode = "USD",
+  editable = false,
+  manualLines = [],
+  onSetOverride,
+  onClearOverride,
+  onToggleManual,
+}: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [view, setView] = useState<ViewMode>("table");
@@ -144,6 +303,33 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
 
   const valsForLine = (id: string) =>
     columns.map((c) => c.lineAmounts.find((ln) => ln.id === id)?.amount_cents);
+
+  // TIM-1243: per-cell editing is only meaningful in the monthly view (each
+  // column maps to a single absolute month). Quarterly/annual stay read-only.
+  const monthlyEditable =
+    editable && period === "monthly" && !!onSetOverride && !!onClearOverride && !!onToggleManual;
+  const manualSet = new Set(manualLines);
+  const cellsForLine = (id: string): EditableCell[] =>
+    columns.map((c) => {
+      const ln = c.lineAmounts.find((l) => l.id === id);
+      return {
+        amount: ln?.amount_cents,
+        overridden: !!ln?.overridden,
+        monthIndexAbs: c.data.month_index,
+      };
+    });
+  const baseCells: EditableCell[] = columns.map((c) => ({
+    amount: c.data.base_revenue_cents,
+    overridden: !!c.data.base_revenue_overridden,
+    monthIndexAbs: c.data.month_index,
+  }));
+  const editProps = {
+    editable: monthlyEditable,
+    currencyCode,
+    onSet: onSetOverride ?? (() => {}),
+    onClear: onClearOverride ?? (() => {}),
+    onToggleManual: onToggleManual ?? (() => {}),
+  };
 
   const vals = (key: keyof MonthlySlice) => columns.map((c) => c.data[key] as number | undefined);
   const pctOf = (numKey: keyof MonthlySlice, denKey: keyof MonthlySlice) =>
@@ -316,17 +502,18 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
             </tr>
             {showRevenue && (
               <>
-                <StatRow currencyCode={currencyCode} label="Foot-Traffic Revenue" values={vals("gross_revenue_cents").map((v, i) => {
-                  // base revenue = gross_revenue - sum of additional revenue lines for the column
-                  const addls = revenueLines.reduce(
-                    (s, rl) => s + (columns[i].lineAmounts.find((ln) => ln.id === rl.id)?.amount_cents ?? 0),
-                    0
-                  );
-                  return v !== undefined ? v - addls : undefined;
-                })} indent />
-                {revenueLines.map((rl) => (
-                  <StatRow currencyCode={currencyCode} key={rl.id} label={rl.label} values={valsForLine(rl.id)} indent />
-                ))}
+                {monthlyEditable ? (
+                  <EditableLineRow {...editProps} label="Foot-Traffic Revenue" lineId={BASE_REVENUE_LINE_ID} cells={baseCells} manual={manualSet.has(BASE_REVENUE_LINE_ID)} indent />
+                ) : (
+                  <StatRow currencyCode={currencyCode} label="Foot-Traffic Revenue" values={vals("base_revenue_cents")} indent />
+                )}
+                {revenueLines.map((rl) =>
+                  monthlyEditable ? (
+                    <EditableLineRow {...editProps} key={rl.id} label={rl.label} lineId={rl.id} cells={cellsForLine(rl.id)} manual={manualSet.has(rl.id)} indent />
+                  ) : (
+                    <StatRow currencyCode={currencyCode} key={rl.id} label={rl.label} values={valsForLine(rl.id)} indent />
+                  )
+                )}
                 <StatRow currencyCode={currencyCode} label="Less: Loyalty Discounts" values={vals("loyalty_discounts_cents")} negative indent />
               </>
             )}
@@ -348,9 +535,13 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
                 <StatRow currencyCode={currencyCode} label="Beverage COGS" values={vals("beverage_cogs_cents")} indent />
                 <StatRow currencyCode={currencyCode} label="Food COGS" values={vals("food_cogs_cents")} indent />
                 <StatRow currencyCode={currencyCode} label="Retail COGS" values={vals("retail_cogs_cents")} indent />
-                {cogsLines.map((cl) => (
-                  <StatRow currencyCode={currencyCode} key={cl.id} label={cl.label} values={valsForLine(cl.id)} indent />
-                ))}
+                {cogsLines.map((cl) =>
+                  monthlyEditable ? (
+                    <EditableLineRow {...editProps} key={cl.id} label={cl.label} lineId={cl.id} cells={cellsForLine(cl.id)} manual={manualSet.has(cl.id)} indent />
+                  ) : (
+                    <StatRow currencyCode={currencyCode} key={cl.id} label={cl.label} values={valsForLine(cl.id)} indent />
+                  )
+                )}
               </>
             )}
             <StatRow
@@ -376,9 +567,13 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
             </tr>
             {showOpex && (
               <>
-                {overheadLines.map((ol) => (
-                  <StatRow currencyCode={currencyCode} key={ol.id} label={ol.label} values={valsForLine(ol.id)} indent />
-                ))}
+                {overheadLines.map((ol) =>
+                  monthlyEditable ? (
+                    <EditableLineRow {...editProps} key={ol.id} label={ol.label} lineId={ol.id} cells={cellsForLine(ol.id)} manual={manualSet.has(ol.id)} indent />
+                  ) : (
+                    <StatRow currencyCode={currencyCode} key={ol.id} label={ol.label} values={valsForLine(ol.id)} indent />
+                  )
+                )}
                 <StatRow currencyCode={currencyCode} label="Payment Processing Fees" values={vals("payment_processing_cents")} indent pctValues={pctOf("payment_processing_cents", "net_revenue_cents")} />
                 <StatRow currencyCode={currencyCode} label="Spoilage And Waste" values={vals("spoilage_cents")} indent />
               </>
@@ -402,6 +597,22 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
           </tbody>
         </table>
       </div>
+      )}
+
+      {editable && view === "table" && (
+        <p className="mt-2 text-xs text-[#8a8a8a] leading-relaxed">
+          {period === "monthly" ? (
+            <>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#155e63] align-middle mr-1" />
+              Click any revenue or expense cell to override it for that month — overridden cells are
+              flagged and survive recalculation. Use <span className="text-[#155e63]">enter manually</span> on
+              a line to type all months directly (LivePlan-style). Overrides flow into the P&amp;L, cash
+              flow, balance sheet, break-even, and ratios.
+            </>
+          ) : (
+            <>Switch to the <span className="font-medium">monthly</span> view to edit individual cells. Overridden cells are flagged with a dot.</>
+          )}
+        </p>
       )}
 
       <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">

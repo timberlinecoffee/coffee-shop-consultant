@@ -12,6 +12,7 @@ import {
   computeMonthlySlices,
   computeMenuBlendedCogsPct,
   computeBreakEvenModel,
+  BASE_REVENUE_LINE_ID,
 } from "./financial-projection.ts";
 
 test("default model seeds overhead forecast_lines and a personnel plan (TIM-1206)", () => {
@@ -1122,4 +1123,126 @@ test("TIM-1180: normalize defaults missing rates and preserves stored ones", () 
   assert.equal(stored.payment_processing_pct, 3.1);
   assert.equal(stored.spoilage_pct, 0);
   assert.equal(stored.loyalty_discount_pct, 0);
+});
+
+// ── TIM-1243: per-cell overrides + per-line manual mode ───────────────────────
+
+function singleOverheadModel(value = 100000) {
+  const mp = defaultMonthlyProjections();
+  mp.forecast_lines = [
+    { id: "ovh", label: "Software", category: "overhead", mode: "flat", value },
+  ];
+  mp.personnel = [];
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_monthly_pct = 0;
+  return mp;
+}
+
+test("TIM-1243: per-cell override on an overhead line replaces only that month", () => {
+  const mp = singleOverheadModel(100000);
+  mp.manual_overrides = [{ line_id: "ovh", month_index: 2, amount_cents: 250000 }];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].other_misc_cents, 100000); // m1: formula
+  assert.equal(rows[1].other_misc_cents, 250000); // m2: override
+  assert.equal(rows[2].other_misc_cents, 100000); // m3: formula
+  const m2line = rows[1].forecast_line_amounts.find((l) => l.id === "ovh");
+  assert.equal(m2line.amount_cents, 250000);
+  assert.equal(m2line.overridden, true);
+  assert.equal(rows[0].forecast_line_amounts.find((l) => l.id === "ovh").overridden, false);
+});
+
+test("TIM-1243: override flows downstream into total_opex and net_income", () => {
+  const mp = singleOverheadModel(100000);
+  const base = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  mp.manual_overrides = [{ line_id: "ovh", month_index: 1, amount_cents: 500000 }];
+  const over = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // opex rises by exactly the override delta (500000 - 100000), net income falls.
+  assert.equal(over[0].total_opex_cents - base[0].total_opex_cents, 400000);
+  assert.ok(over[0].net_income_cents < base[0].net_income_cents);
+});
+
+test("TIM-1243: base foot-traffic revenue override changes revenue_cents", () => {
+  const mp = singleOverheadModel();
+  mp.manual_overrides = [{ line_id: BASE_REVENUE_LINE_ID, month_index: 1, amount_cents: 1234500 }];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].base_revenue_cents, 1234500);
+  assert.equal(rows[0].base_revenue_overridden, true);
+  // revenue_cents = base + additional revenue lines (none here)
+  assert.equal(rows[0].revenue_cents, 1234500);
+  assert.equal(rows[1].base_revenue_overridden, false);
+});
+
+test("TIM-1243: manual-mode line ignores its formula; un-entered months are 0", () => {
+  const mp = singleOverheadModel(100000);
+  mp.manual_lines = ["ovh"];
+  mp.manual_overrides = [{ line_id: "ovh", month_index: 1, amount_cents: 333000 }];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[0].other_misc_cents, 333000); // entered
+  assert.equal(rows[1].other_misc_cents, 0);      // manual, no entry → 0, NOT formula
+  assert.equal(rows[2].other_misc_cents, 0);
+});
+
+test("TIM-1243: overrides survive recalculation when assumptions change", () => {
+  const mp = singleOverheadModel(100000);
+  mp.manual_overrides = [{ line_id: "ovh", month_index: 1, amount_cents: 777000 }];
+  const before = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // Change an upstream assumption (the line's formula value).
+  mp.forecast_lines[0].value = 9999999;
+  const after = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(before[0].other_misc_cents, 777000);
+  assert.equal(after[0].other_misc_cents, 777000); // override preserved
+  // a non-overridden month does track the new assumption
+  assert.equal(after[1].other_misc_cents, 9999999);
+});
+
+test("TIM-1243: revenue-line override feeds pct-COGS that targets that stream", () => {
+  const mp = defaultMonthlyProjections();
+  mp.personnel = [];
+  mp.cogs_pct = 0;
+  mp.forecast_lines = [
+    { id: "wholesale", label: "Wholesale", category: "revenue", mode: "flat", value: 200000 },
+    { id: "wcogs", label: "Wholesale COGS", category: "cogs", mode: "pct", value: 50, revenue_stream_id: "wholesale" },
+  ];
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.ramp_months = 0; mp.ramp_multipliers = []; mp.growth_monthly_pct = 0;
+  mp.manual_overrides = [{ line_id: "wholesale", month_index: 1, amount_cents: 1000000 }];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // wholesale overridden to 1,000,000 → its 50% COGS = 500,000
+  assert.equal(rows[0].forecast_line_amounts.find((l) => l.id === "wholesale").amount_cents, 1000000);
+  assert.equal(rows[0].forecast_line_amounts.find((l) => l.id === "wcogs").amount_cents, 500000);
+});
+
+test("TIM-1243: overrides flow into cash flow + balance sheet via slices", () => {
+  const mp = singleOverheadModel(100000);
+  const base = computeMonthlySlices(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  mp.manual_overrides = [{ line_id: "ovh", month_index: 1, amount_cents: 600000 }];
+  const over = computeMonthlySlices(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // Higher opex in m1 → lower month-1 net cash → lower ending cash balance.
+  assert.ok(over[0].cash_cents < base[0].cash_cents);
+});
+
+test("TIM-1243: normalize round-trips overrides, drops invalid, dedupes", () => {
+  const mp = normalizeMonthlyProjections({
+    manual_overrides: [
+      { line_id: "a", month_index: 1, amount_cents: 5000 },
+      { line_id: "a", month_index: 1, amount_cents: 8000 }, // dupe → last wins
+      { line_id: "b", month_index: 0, amount_cents: 100 },  // bad month
+      { line_id: "b", month_index: 61, amount_cents: 100 }, // bad month
+      { line_id: "", month_index: 2, amount_cents: 100 },   // bad id
+      { line_id: "c", month_index: 3, amount_cents: -50 },  // negative → 0
+    ],
+    manual_lines: ["a", "a", "b", 7],
+  });
+  const a1 = mp.manual_overrides.find((o) => o.line_id === "a" && o.month_index === 1);
+  assert.equal(a1.amount_cents, 8000);
+  assert.equal(mp.manual_overrides.filter((o) => o.line_id === "b").length, 0);
+  assert.equal(mp.manual_overrides.find((o) => o.line_id === "c").amount_cents, 0);
+  assert.deepEqual([...mp.manual_lines].sort(), ["a", "b"]);
+});
+
+test("TIM-1243: default model has empty overrides + manual_lines", () => {
+  const mp = defaultMonthlyProjections();
+  assert.deepEqual(mp.manual_overrides, []);
+  assert.deepEqual(mp.manual_lines, []);
 });

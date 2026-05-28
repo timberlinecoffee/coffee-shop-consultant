@@ -139,6 +139,25 @@ export interface PersonnelLine {
   end_month?: number;            // optional 1..60 — last month the role is paid (seasonal/temp)
 }
 
+// TIM-1243: LivePlan-style manual control. Two layers, both resolved at compute
+// time in computeMonthlyProjections so overrides flow into the P&L, cash flow,
+// balance sheet, break-even, and ratios identically to calculated values:
+//   1. Per-cell override — `manual_overrides` pins a single (line, month) value.
+//      The rest of the line keeps computing from its assumptions.
+//   2. Per-line manual mode — a line id in `manual_lines` ignores its formula
+//      entirely; every month comes from `manual_overrides` (a month with no
+//      override resolves to 0). Switching a line to manual seeds overrides from
+//      its current calculated values so the numbers are unchanged on conversion.
+// `line_id` is a forecast_line id, a personnel line id, or BASE_REVENUE_LINE_ID
+// for the foot-traffic base revenue. `month_index` is 1..60 (absolute).
+export const BASE_REVENUE_LINE_ID = "__base_revenue__";
+
+export interface ManualOverride {
+  line_id: string;
+  month_index: number;
+  amount_cents: number;
+}
+
 export interface MonthlyProjections {
   // Customer flow
   daily_flow: DailyFlow;
@@ -202,6 +221,10 @@ export interface MonthlyProjections {
   payment_processing_pct?: number;
   spoilage_pct?: number;
   loyalty_discount_pct?: number;
+
+  // TIM-1243: per-cell manual overrides and per-line manual-entry mode.
+  manual_overrides?: ManualOverride[];
+  manual_lines?: string[];
 
   // ── Legacy fields kept on the type for migration / backward-compat reads ────
   // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
@@ -391,6 +414,8 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     payment_processing_pct: 2.5,
     spoilage_pct: 2,
     loyalty_discount_pct: 1,
+    manual_overrides: [],
+    manual_lines: [],
   };
 }
 
@@ -816,6 +841,26 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
         .filter((x): x is { month_index: number; amount_cents: number } => x !== null)
     : [];
 
+  // TIM-1243: manual overrides. Drop non-finite / out-of-range entries; clamp
+  // negative amounts to 0 (revenue/expense magnitudes); dedupe on (line, month)
+  // keeping the last write.
+  const overrideMap = new Map<string, ManualOverride>();
+  if (Array.isArray(r.manual_overrides)) {
+    for (const c of r.manual_overrides as unknown[]) {
+      if (!c || typeof c !== "object") continue;
+      const o = c as Record<string, unknown>;
+      const lineId = typeof o.line_id === "string" ? o.line_id : "";
+      const mi = typeof o.month_index === "number" ? Math.round(o.month_index) : NaN;
+      const amt = typeof o.amount_cents === "number" ? Math.round(o.amount_cents) : NaN;
+      if (!lineId || !Number.isFinite(mi) || mi < 1 || mi > 60 || !Number.isFinite(amt)) continue;
+      overrideMap.set(`${lineId}:${mi}`, { line_id: lineId, month_index: mi, amount_cents: Math.max(0, amt) });
+    }
+  }
+  const manual_overrides = Array.from(overrideMap.values());
+  const manual_lines = Array.isArray(r.manual_lines)
+    ? Array.from(new Set((r.manual_lines as unknown[]).filter((x): x is string => typeof x === "string" && x.length > 0)))
+    : [];
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -843,6 +888,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     spoilage_pct: typeof r.spoilage_pct === "number" ? r.spoilage_pct : 2,
     loyalty_discount_pct:
       typeof r.loyalty_discount_pct === "number" ? r.loyalty_discount_pct : 1,
+    manual_overrides,
+    manual_lines,
   };
 }
 
@@ -862,6 +909,9 @@ export interface LineMonthlyAmount {
   label: string;
   category: ForecastCategory;
   amount_cents: number;
+  // TIM-1243: true when this month's value is a manual override (per-cell or
+  // because the line is in full manual-entry mode). Lets the grid flag the cell.
+  overridden?: boolean;
 }
 
 export interface MonthlyProjectionRow {
@@ -870,6 +920,11 @@ export interface MonthlyProjectionRow {
   month_index: number; // 1–60 (absolute)
   // All values in cents
   revenue_cents: number;
+  // TIM-1243: foot-traffic base revenue (before additional revenue lines), and
+  // whether it was manually overridden this month. revenue_cents still equals
+  // base + additional revenue lines, so downstream rollups are unchanged.
+  base_revenue_cents: number;
+  base_revenue_overridden: boolean;
   // TIM-1180: loyalty discounts are contra-revenue; net_revenue = revenue − loyalty.
   loyalty_discounts_cents: number;
   net_revenue_cents: number;
@@ -1216,6 +1271,31 @@ export function computeMonthlyProjections(
   const overheadLines = lines.filter((l) => l.category === "overhead");
   const capexLines = lines.filter((l) => l.category === "capex");
 
+  // TIM-1243: resolve a per-line per-month amount against manual control.
+  //   - an explicit (line, month) override always wins (returns overridden:true)
+  //   - else if the line is in full manual-entry mode, the formula is ignored
+  //     and a month with no override is 0
+  //   - else the calculated formula value is used
+  // Applying this here is the single chokepoint that makes overrides flow into
+  // every downstream statement, since they all derive from these rows.
+  const overrideMap = new Map<string, number>();
+  for (const o of mp.manual_overrides ?? []) {
+    if (o && typeof o.line_id === "string" && Number.isFinite(o.month_index)) {
+      overrideMap.set(`${o.line_id}:${o.month_index}`, Math.round(o.amount_cents) || 0);
+    }
+  }
+  const manualLineSet = new Set(mp.manual_lines ?? []);
+  const resolveAmount = (
+    lineId: string,
+    monthIndex: number,
+    formulaCents: number
+  ): { amount: number; overridden: boolean } => {
+    const key = `${lineId}:${monthIndex}`;
+    if (overrideMap.has(key)) return { amount: overrideMap.get(key)!, overridden: true };
+    if (manualLineSet.has(lineId)) return { amount: 0, overridden: false };
+    return { amount: formulaCents, overridden: false };
+  };
+
   // Pre-compute monthly depreciation per capex line.
   //   - life = useful_life_years (default 7)
   //   - start = ramp.start_month if enabled, else 1
@@ -1251,8 +1331,12 @@ export function computeMonthlyProjections(
         growth_monthly_pct,
         growth_custom_monthly
       );
-      // Base foot-traffic revenue (after global ramp/growth)
-      const baseRevenue = Math.round(baseMonthlyRevenueCents * revFactor);
+      // Base foot-traffic revenue (after global ramp/growth). TIM-1243: a manual
+      // override or manual-mode base replaces the formula. The overridden base is
+      // also the denominator for pct-mode revenue lines that reference it.
+      const baseFormulaCents = Math.round(baseMonthlyRevenueCents * revFactor);
+      const baseRes = resolveAmount(BASE_REVENUE_LINE_ID, month_index_abs, baseFormulaCents);
+      const baseRevenue = Math.max(0, baseRes.amount);
       // Revenue lines stack ON TOP of base. For now we compute each revenue
       // line against itself (its `value` is treated as a standalone cents/mo
       // amount with line ramp/growth); pct-mode revenue lines are interpreted
@@ -1261,9 +1345,11 @@ export function computeMonthlyProjections(
       const revenueLineResults: LineMonthlyAmount[] = [];
       const revenueByLineId = new Map<string, number>();
       for (const l of revenueLines) {
-        const amt = computeLineAmountCents(l, month_index_abs, baseRevenue);
+        const formula = computeLineAmountCents(l, month_index_abs, baseRevenue);
+        const res = resolveAmount(l.id, month_index_abs, formula);
+        const amt = res.amount;
         revenueAdds += amt;
-        revenueLineResults.push({ id: l.id, label: l.label, category: "revenue", amount_cents: amt });
+        revenueLineResults.push({ id: l.id, label: l.label, category: "revenue", amount_cents: amt, overridden: res.overridden });
         revenueByLineId.set(l.id, amt);
       }
       const revenue_cents = baseRevenue + revenueAdds;
@@ -1275,9 +1361,11 @@ export function computeMonthlyProjections(
       let labor_cogs_cents = 0;
       let labor_overhead_cents = 0;
       for (const p of mp.personnel ?? []) {
-        const amt = personnelMonthlyLoadedCents(p, month_index_abs);
+        const formula = personnelMonthlyLoadedCents(p, month_index_abs);
+        const res = resolveAmount(p.id, month_index_abs, formula);
+        const amt = res.amount;
         const cat: ForecastCategory = p.cost_category === "cogs" ? "cogs" : "overhead";
-        personnelResults.push({ id: p.id, label: p.role, category: cat, amount_cents: amt });
+        personnelResults.push({ id: p.id, label: p.role, category: cat, amount_cents: amt, overridden: res.overridden });
         if (cat === "cogs") labor_cogs_cents += amt;
         else labor_overhead_cents += amt;
       }
@@ -1287,7 +1375,7 @@ export function computeMonthlyProjections(
       let extraCogs = 0;
       const cogsLineResults: LineMonthlyAmount[] = [];
       for (const l of cogsLines) {
-        const amt = computeCogsLineAmountCents(
+        const formula = computeCogsLineAmountCents(
           l,
           month_index_abs,
           baseRevenue,
@@ -1295,8 +1383,10 @@ export function computeMonthlyProjections(
           revenueByLineId,
           ctx
         );
+        const res = resolveAmount(l.id, month_index_abs, formula);
+        const amt = res.amount;
         extraCogs += amt;
-        cogsLineResults.push({ id: l.id, label: l.label, category: "cogs", amount_cents: amt });
+        cogsLineResults.push({ id: l.id, label: l.label, category: "cogs", amount_cents: amt, overridden: res.overridden });
       }
       // TIM-1206: direct (COGS-designated) labor is part of cost of goods sold.
       const cogs_cents = baseCogs + extraCogs + labor_cogs_cents;
@@ -1328,14 +1418,16 @@ export function computeMonthlyProjections(
       let other_misc_cents = 0;
       let interest_cents = 0;
       for (const l of overheadLines) {
-        const amt = computeOverheadLineAmountCents(
+        const formula = computeOverheadLineAmountCents(
           l,
           month_index_abs,
           baseRevenue,
           revenue_cents,
           revenueByLineId
         );
-        overheadResults.push({ id: l.id, label: l.label, category: "overhead", amount_cents: amt });
+        const res = resolveAmount(l.id, month_index_abs, formula);
+        const amt = res.amount;
+        overheadResults.push({ id: l.id, label: l.label, category: "overhead", amount_cents: amt, overridden: res.overridden });
         switch (l.legacy_key) {
           case "labor": labor_cents += amt; break;
           case "rent": rent_cents += amt; break;
@@ -1365,8 +1457,10 @@ export function computeMonthlyProjections(
       const capexResults: LineMonthlyAmount[] = [];
       let capex_cents = 0;
       for (const l of capexLines) {
-        const amt = computeCapexAmountCents(l, month_index_abs);
-        capexResults.push({ id: l.id, label: l.label, category: "capex", amount_cents: amt });
+        const formula = computeCapexAmountCents(l, month_index_abs);
+        const res = resolveAmount(l.id, month_index_abs, formula);
+        const amt = res.amount;
+        capexResults.push({ id: l.id, label: l.label, category: "capex", amount_cents: amt, overridden: res.overridden });
         capex_cents += amt;
       }
 
@@ -1388,6 +1482,8 @@ export function computeMonthlyProjections(
         month,
         month_index: month_index_abs,
         revenue_cents,
+        base_revenue_cents: baseRevenue,
+        base_revenue_overridden: baseRes.overridden,
         loyalty_discounts_cents,
         net_revenue_cents,
         cogs_cents,
@@ -1754,6 +1850,7 @@ export function aggregateLineAmounts(slices: MonthlySlice[]): LineMonthlyAmount[
       const existing = byId.get(entry.id);
       if (existing) {
         existing.amount_cents += entry.amount_cents;
+        if (entry.overridden) existing.overridden = true;
       } else {
         byId.set(entry.id, { ...entry });
       }
@@ -1770,6 +1867,7 @@ export function aggregatePersonnelAmounts(slices: MonthlySlice[]): LineMonthlyAm
       const existing = byId.get(entry.id);
       if (existing) {
         existing.amount_cents += entry.amount_cents;
+        if (entry.overridden) existing.overridden = true;
       } else {
         byId.set(entry.id, { ...entry });
       }
