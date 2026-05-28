@@ -608,8 +608,8 @@ function SidebarContent({
             role="switch"
             aria-checked={showStatus}
             onClick={toggleShowStatus}
-            title={showStatus ? "Hide Statuses" : "Show Statuses"}
-            aria-label={showStatus ? "Hide Statuses" : "Show Statuses"}
+            title={showStatus ? "Hide Progress" : "Show Progress"}
+            aria-label={showStatus ? "Hide Progress" : "Show Progress"}
             className={`flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-colors ${
               showStatus
                 ? "text-[#155e63] bg-[#155e63]/5"
@@ -624,12 +624,12 @@ function SidebarContent({
             role="switch"
             aria-checked={showStatus}
             onClick={toggleShowStatus}
-            title={showStatus ? "Hide Statuses" : "Show Statuses"}
+            title={showStatus ? "Hide Progress" : "Show Progress"}
             className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a] transition-colors"
           >
             <span className="flex items-center gap-2">
               {showStatus ? <EyeIcon /> : <EyeOffIcon />}
-              <span className="text-xs">Statuses</span>
+              <span className="text-xs">Show Progress</span>
             </span>
             <span
               aria-hidden="true"
