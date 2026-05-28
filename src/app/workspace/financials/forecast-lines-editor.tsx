@@ -11,7 +11,7 @@
 // revenue stream, overall revenue, or kept as a fixed monthly amount.
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Sliders, Info, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Info, AlertCircle } from "lucide-react";
 import type {
   ForecastLine,
   ForecastCategory,
@@ -19,6 +19,7 @@ import type {
   LineGrowth,
 } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
@@ -122,8 +123,13 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="text-[#afafaf] hover:text-[#1a1a1a] shrink-0"
+          className={`shrink-0 transition-colors ${
+            line.ramp?.enabled || line.growth?.enabled || isCapex
+              ? "text-[#155e63]"
+              : "text-[#afafaf] hover:text-[#1a1a1a]"
+          }`}
           aria-label={expanded ? "Collapse" : "Expand"}
+          title="Ramp & growth"
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -211,7 +217,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
                 {sym}
               </span>
-              <input
+              <NumericInput
                 className={`${inputCls} w-full pl-5`}
                 type="number"
                 min={0}
@@ -231,7 +237,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
             </>
           ) : (
             <>
-              <input
+              <NumericInput
                 className={`${inputCls} w-full pr-6`}
                 type="number"
                 min={0}
@@ -275,21 +281,6 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
         {isCapex && (
           <span className="text-[10px] text-[#afafaf] shrink-0 w-16">one-time</span>
         )}
-
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          disabled={!canEdit}
-          className={`text-xs px-2 py-1 rounded-md transition-colors shrink-0 ${
-            line.ramp?.enabled || line.growth?.enabled || isCapex
-              ? "bg-[#155e63]/10 text-[#155e63]"
-              : "text-[#afafaf] hover:text-[#1a1a1a]"
-          }`}
-          aria-label="Advanced settings"
-          title="Ramp & growth"
-        >
-          <Sliders size={12} />
-        </button>
 
         <button
           type="button"
@@ -343,7 +334,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
                 Useful life (years)
               </label>
-              <input
+              <NumericInput
                 type="number"
                 min={1}
                 max={50}
@@ -496,7 +487,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               <div className="ml-6 mt-2 grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">Start month</label>
-                  <input
+                  <NumericInput
                     type="number"
                     min={1}
                     max={60}
@@ -517,7 +508,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                       <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
                         Ramp duration (mo)
                       </label>
-                      <input
+                      <NumericInput
                         type="number"
                         min={0}
                         max={24}
@@ -539,7 +530,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                       <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">
                         Start at % of full
                       </label>
-                      <input
+                      <NumericInput
                         type="number"
                         min={0}
                         max={100}
@@ -591,7 +582,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               {line.growth?.enabled && (
                 <div className="ml-6 mt-2 max-w-[200px]">
                   <label className="block text-[10px] font-medium text-[#6b6b6b] mb-1">Growth % / mo</label>
-                  <input
+                  <NumericInput
                     type="number"
                     min={-100}
                     max={100}
