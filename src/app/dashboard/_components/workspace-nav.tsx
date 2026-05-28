@@ -1,13 +1,17 @@
-// TIM-1268: dashboard workspace display that mirrors the sidebar. Workspace
-// names are grouped under their phase categories (Plan / Set Up / Launch /
-// Operate) with no numbers, matching the sidebar exactly. The grouping comes
-// from the shared manifest source of truth (WORKSPACE_MANIFEST +
-// WORKSPACE_CATEGORY_ORDER/LABEL via buildNavItems) so the two cannot drift.
+// TIM-1286: dashboard workspace list. Replaces the old wall of small bordered
+// tiles + loud status pills (which read as cluttered and unprofessional) with
+// a clean, grouped list. Each phase (Plan / Set Up / Launch / Operate) is a
+// single card of hairline-divided rows. Every row carries a one-line "why I'd
+// click it" blurb so it reads as a real destination, plus a quiet status dot
+// instead of a loud pill. Taxonomy comes from the shared manifest, so the
+// dashboard and the sidebar stay in lockstep.
 
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import {
   WORKSPACE_CATEGORY_LABEL,
   WORKSPACE_CATEGORY_ORDER,
+  type WorkspaceCategory,
   type WorkspaceNavItem,
 } from "@/lib/workspace-manifest";
 import { WORKSPACE_ICONS } from "@/lib/workspace-icons";
@@ -16,20 +20,29 @@ import {
   type WorkspaceStatus,
 } from "@/lib/workspace-status";
 
-function statusPillClasses(status: WorkspaceStatus): string {
+// Short, plainspoken descriptor per phase — gives the grouping meaning without
+// reintroducing clutter. No emojis, no em dashes.
+const CATEGORY_BLURB: Record<WorkspaceCategory, string> = {
+  plan: "Get the idea and the numbers right.",
+  setup: "Lock in the place, the menu, and the gear.",
+  launch: "Hire, build buzz, and open the doors.",
+  operate: "Keep the shop running day to day.",
+};
+
+function statusDotClass(status: WorkspaceStatus): string {
   switch (status) {
     case "complete":
-      return "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20";
+      return "bg-[#155e63]";
     case "in_progress":
-      return "bg-amber-100 text-amber-800 border-amber-200";
+      return "bg-amber-400";
     case "not_started":
-      return "bg-[#f5f4f0] text-[#8a8a8a] border-[#e6e3dd]";
+      return "bg-[#d6d3cd]";
   }
 }
 
 function LockIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
@@ -41,33 +54,52 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
 
   if (!item.isUnlocked) {
     return (
-      <span
+      <div
         aria-disabled="true"
         title="Coming soon"
-        className="flex items-center gap-2.5 rounded-lg border border-[#efefef] px-3 py-2.5 text-[#afafaf] cursor-default select-none"
+        className="flex items-center gap-4 px-4 py-3.5 select-none"
       >
-        <LockIcon />
-        <span className="text-sm truncate flex-1 min-w-0">{item.label}</span>
-      </span>
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#f5f4f0] text-[#c0c0c0]">
+          <LockIcon />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-[#afafaf]">{item.label}</span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-[#c4c4c4]">Coming soon</span>
+        </span>
+      </div>
     );
   }
 
   return (
     <Link
       href={item.href}
-      className="group flex items-center gap-2.5 rounded-lg border border-[#efefef] px-3 py-2.5 hover:border-[#155e63]/30 hover:bg-[#155e63]/[0.03] transition-colors"
+      className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-[#155e63]/[0.035]"
     >
-      <span className="text-[#155e63] flex-shrink-0">
-        {Icon ? <Icon width={16} height={16} strokeWidth={1.75} aria-hidden="true" /> : null}
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#155e63]/[0.07] text-[#155e63] transition-colors group-hover:bg-[#155e63]/10">
+        {Icon ? <Icon width={18} height={18} strokeWidth={1.75} aria-hidden="true" /> : null}
       </span>
-      <span className="text-sm font-medium text-[#1a1a1a] truncate flex-1 min-w-0 group-hover:text-[#155e63] transition-colors">
-        {item.label}
+
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-medium text-[#1a1a1a] transition-colors group-hover:text-[#155e63]">
+            {item.label}
+          </span>
+          <span
+            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${statusDotClass(item.status)}`}
+            aria-hidden="true"
+          />
+          <span className="sr-only">{WORKSPACE_STATUS_LABEL[item.status]}</span>
+        </span>
+        <span className="mt-0.5 block text-[13px] leading-snug text-[#6b6b6b]">
+          {item.blurb}
+        </span>
       </span>
-      <span
-        className={`inline-flex items-center text-[10px] font-medium px-1.5 py-[1px] rounded-full border leading-none whitespace-nowrap flex-shrink-0 ${statusPillClasses(item.status)}`}
-      >
-        {WORKSPACE_STATUS_LABEL[item.status]}
-      </span>
+
+      <ChevronRight
+        size={18}
+        className="flex-shrink-0 text-[#cfcdc7] transition-all group-hover:translate-x-0.5 group-hover:text-[#155e63]"
+        aria-hidden="true"
+      />
     </Link>
   );
 }
@@ -75,19 +107,23 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
 export function WorkspaceNav({ items }: { items: WorkspaceNavItem[] }) {
   return (
     <div className="mb-10">
-      <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mb-3">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#afafaf]">
         Your Workspaces
       </p>
-      <div className="bg-white rounded-xl border border-[#efefef] p-5 space-y-6">
+
+      <div className="space-y-6">
         {WORKSPACE_CATEGORY_ORDER.map((category) => {
           const groupItems = items.filter((item) => item.category === category);
           if (groupItems.length === 0) return null;
           return (
             <section key={category}>
-              <h2 className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wider mb-2.5">
-                {WORKSPACE_CATEGORY_LABEL[category]}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              <div className="mb-2.5 px-1">
+                <h2 className="text-sm font-semibold text-[#1a1a1a]">
+                  {WORKSPACE_CATEGORY_LABEL[category]}
+                </h2>
+                <p className="text-xs text-[#9a9a9a]">{CATEGORY_BLURB[category]}</p>
+              </div>
+              <div className="divide-y divide-[#f0eee9] overflow-hidden rounded-xl border border-[#ebe9e4] bg-white">
                 {groupItems.map((item) => (
                   <WorkspaceRow key={item.moduleNumber} item={item} />
                 ))}
