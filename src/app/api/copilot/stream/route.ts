@@ -403,6 +403,8 @@ export async function POST(request: NextRequest) {
                 cost_usd: (Number(existing.cost_usd) || 0) + costUsd,
                 last_message_at: new Date().toISOString(),
                 model_used: modelId,
+                cache_read_tokens: cacheReadTokens,
+                cache_creation_tokens: cacheCreateTokens,
               })
               .eq("id", existing.id)
           } else {
@@ -415,6 +417,8 @@ export async function POST(request: NextRequest) {
               cost_usd: costUsd,
               last_message_at: new Date().toISOString(),
               model_used: modelId,
+              cache_read_tokens: cacheReadTokens,
+              cache_creation_tokens: cacheCreateTokens,
             })
           }
 
