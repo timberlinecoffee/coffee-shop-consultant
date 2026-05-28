@@ -1,7 +1,7 @@
 // TIM-1037: Business Plan Generator v1 — types, section keys, assemblers.
 
 import { normalizeConceptV2 } from "@/lib/concept";
-import { normalizeMonthlyProjections, computeMonthlyProjections, type EquipmentSummary } from "@/lib/financial-projection";
+import { normalizeMonthlyProjections, computeMonthlyProjections, totalCapexCents, type EquipmentSummary } from "@/lib/financial-projection";
 
 // ── Section keys ─────────────────────────────────────────────────────────────
 
@@ -394,13 +394,13 @@ export function assembleFinancialPlan(
     }
   }
 
-  // Startup costs
-  if (financialModel.startup_costs) {
-    const sc = financialModel.startup_costs as Record<string, unknown>;
-    const totalEquipCents = typeof sc.total_equipment_cents === "number" ? sc.total_equipment_cents : 0;
-    if (totalEquipCents > 0) {
-      lines.push(`\nStartup Costs`);
-      lines.push(`- Equipment: ${centsToUsd(totalEquipCents)}`);
+  // Capital assets — use the unified capex ForecastLines (TIM-1255)
+  const capexTotal = totalCapexCents(projections);
+  if (capexTotal > 0) {
+    lines.push(`\nCapital Assets`);
+    const capexLines = projections.forecast_lines.filter((l) => l.category === "capex" && l.mode === "flat" && l.value > 0);
+    for (const l of capexLines) {
+      lines.push(`- ${l.label}: ${centsToUsd(l.value)} (${l.useful_life_years ?? 7}yr life)`);
     }
   }
 

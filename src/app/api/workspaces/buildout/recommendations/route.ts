@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
+import { normalizeMonthlyProjections, totalCapexCents } from "@/lib/financial-projection";
 import type { NextRequest } from "next/server";
 import type { EquipmentRecommendation, EquipmentReferral } from "@/types/referral";
 
@@ -85,17 +86,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Also read total equipment spend as budget signal
+    // Also read total equipment spend as budget signal (TIM-1255: use unified capex lines)
     if (!conceptSnippet) {
       const { data: model } = await supabase
         .from("financial_models")
-        .select("startup_costs")
+        .select("forecast_inputs")
         .eq("plan_id", plan.id)
         .maybeSingle();
 
-      if (model?.startup_costs) {
-        const costs = model.startup_costs as Record<string, unknown>;
-        const total = typeof costs.total_equipment_cents === "number" ? costs.total_equipment_cents : 0;
+      if (model?.forecast_inputs) {
+        const mp = normalizeMonthlyProjections(model.forecast_inputs);
+        const total = totalCapexCents(mp);
         if (total > 0) {
           const band = total < 2000000 ? "budget (under $20k)" :
                        total < 5000000 ? "mid-range ($20k–$50k)" :

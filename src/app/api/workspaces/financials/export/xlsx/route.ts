@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import {
   defaultMonthlyProjections,
+  mergeEquipmentItemsIntoMp,
   type MonthlyProjections,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
@@ -69,38 +70,42 @@ export async function GET() {
     (model?.forecast_inputs as MonthlyProjections | null) ??
     defaultMonthlyProjections();
 
+  // TIM-1255: query full item details so we can inject per-item capex lines.
   const { data: equipmentRows } = await supabase
     .from("buildout_equipment_items")
-    .select("quantity, unit_cost_cents, financing_method, archived")
+    .select("id, name, category, quantity, unit_cost_cents, financing_method, useful_life_years, purchase_month, archived")
     .eq("plan_id", plan.id);
 
-  const equipment: EquipmentSummary = (equipmentRows ?? [])
-    .filter((r: { archived: boolean | null }) => !r.archived)
-    .reduce(
-      (
-        acc: EquipmentSummary,
-        r: {
-          quantity: number | null;
-          unit_cost_cents: number | null;
-          financing_method: string | null;
-        }
-      ) => {
-        const cost = (r.quantity ?? 0) * (r.unit_cost_cents ?? 0);
-        acc.total_cost_cents += cost;
-        if (
-          r.financing_method === "loan" ||
-          r.financing_method === "lease" ||
-          r.financing_method === "in_house_financing"
-        ) {
-          acc.financed_cost_cents += cost;
-        }
-        return acc;
-      },
-      { total_cost_cents: 0, financed_cost_cents: 0 }
-    );
+  const activeItems = (equipmentRows ?? []).filter((r: { archived: boolean | null }) => !r.archived);
+
+  // Merge equipment items into mp as synthetic capex lines (TIM-1255).
+  const mpFinal = mergeEquipmentItemsIntoMp(mp, activeItems);
+
+  const equipment: EquipmentSummary = activeItems.reduce(
+    (
+      acc: EquipmentSummary,
+      r: {
+        quantity: number | null;
+        unit_cost_cents: number | null;
+        financing_method: string | null;
+      }
+    ) => {
+      const cost = (r.quantity ?? 0) * (r.unit_cost_cents ?? 0);
+      acc.total_cost_cents += cost;
+      if (
+        r.financing_method === "loan" ||
+        r.financing_method === "lease" ||
+        r.financing_method === "in_house_financing"
+      ) {
+        acc.financed_cost_cents += cost;
+      }
+      return acc;
+    },
+    { total_cost_cents: 0, financed_cost_cents: 0 }
+  );
 
   const wb = buildFinancialPlannerWorkbook({
-    mp,
+    mp: mpFinal,
     equipment,
     shopName: plan.shop_name,
     generatedDate: fmtDateLong(new Date()),

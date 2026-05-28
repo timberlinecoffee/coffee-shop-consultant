@@ -25,6 +25,7 @@ import {
 import {
   normalizeMonthlyProjections,
   computeMonthlyProjections,
+  totalCapexCents,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
 import { PrintButton, SectionToggle } from "./print-button";
@@ -1059,13 +1060,13 @@ function FinancialsSection({
   const breakEvenIdx = monthRows.findIndex((r) => r.net_income_cents > 0);
   const breakEvenMonth = breakEvenIdx === -1 ? null : breakEvenIdx + 1;
 
-  const sc = (financialModel.startup_costs as Record<string, unknown>) ?? {};
-  const buildOutCents = typeof sc.build_out_cents === "number" ? sc.build_out_cents : 0;
-  const totalEquipCents = typeof sc.total_equipment_cents === "number" ? sc.total_equipment_cents : 0;
-  const licensesCents = typeof sc.licenses_cents === "number" ? sc.licenses_cents : 0;
-  const depositsCents = typeof sc.deposits_cents === "number" ? sc.deposits_cents : 0;
-  const cashReserveCents = typeof sc.cash_reserve_cents === "number" ? sc.cash_reserve_cents : 0;
-  const totalStartupCents = buildOutCents + totalEquipCents + licensesCents + depositsCents + cashReserveCents;
+  // TIM-1255: use unified capex lines instead of dead total_equipment_cents field.
+  const capexTotalCents = totalCapexCents(projections);
+  const sc = projections.startup_costs;
+  const licensesCents = sc?.licenses_cents ?? 0;
+  const depositsCents = sc?.deposits_cents ?? 0;
+  const cashReserveCents = (sc?.working_capital_reserve_cents ?? 0) + (sc?.opening_cash_buffer_cents ?? 0);
+  const totalStartupCents = capexTotalCents + licensesCents + depositsCents + cashReserveCents;
 
   return (
     <div className="space-y-5">
@@ -1103,18 +1104,15 @@ function FinancialsSection({
       {totalStartupCents > 0 && (
         <SectionCard label="Startup Costs">
           <ul className="divide-y divide-[#efefef]">
-            {totalEquipCents > 0 && (
-              <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Equipment</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(totalEquipCents)}</span>
-              </li>
-            )}
-            {buildOutCents > 0 && (
-              <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Build-out</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(buildOutCents)}</span>
-              </li>
-            )}
+            {/* TIM-1255: show per-asset capex lines instead of dead lump-sum field */}
+            {projections.forecast_lines
+              .filter((l) => l.category === "capex" && l.mode === "flat" && l.value > 0)
+              .map((l) => (
+                <li key={l.id} className="py-2 flex items-baseline justify-between">
+                  <span className="text-sm text-[#1a1a1a]">{l.label}</span>
+                  <span className="text-sm text-[#6b6b6b]">{centsToUsd(l.value)}</span>
+                </li>
+              ))}
             {licensesCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[#1a1a1a]">Licenses & permits</span>

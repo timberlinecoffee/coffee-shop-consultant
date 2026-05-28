@@ -2519,3 +2519,80 @@ export function computeMonthlySlices(
     };
   });
 }
+
+// ── TIM-1255: shared equipment-item → capex-line helpers ─────────────────────
+// Mirror the runtime mpForProjection logic from financials-workspace so any
+// server-side consumer (export routes, AI assessment) sees the same unified
+// asset model the workspace UI computes from.
+
+export interface EquipmentItemCapexInput {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit_cost_cents: number;
+  useful_life_years?: number | null;
+  purchase_month?: number | null;
+  archived?: boolean | null;
+}
+
+function _equipmentCategoryToAsset(cat: string): AssetCategory {
+  switch (cat) {
+    case "pos_tech": case "pos": return "pos_tech";
+    case "furniture_fixtures": case "furniture": case "signage_decor": case "signage": return "furniture";
+    default: return "equipment";
+  }
+}
+
+// Convert active buildout_equipment_items to synthetic capex ForecastLines.
+// These are NEVER persisted; they exist only so projection/export engines see
+// per-item depreciation instead of lump-sum startup_costs buckets.
+export function buildEquipmentCapexLines(items: EquipmentItemCapexInput[]): ForecastLine[] {
+  return items
+    .filter((i) => !i.archived && i.unit_cost_cents > 0)
+    .map((i): ForecastLine => ({
+      id: `equipment-item:${i.id}`,
+      label: i.name || "Equipment",
+      category: "capex",
+      mode: "flat",
+      value: i.unit_cost_cents * i.quantity,
+      useful_life_years: i.useful_life_years ?? 7,
+      asset_category: _equipmentCategoryToAsset(i.category),
+      linked_equipment_item_id: i.id,
+      ramp: {
+        enabled: true,
+        start_month: i.purchase_month ?? 1,
+        ramp_months: 0,
+        start_pct: 100,
+      },
+    }));
+}
+
+// Merge equipment items into MonthlyProjections by:
+// 1. Adding synthetic capex ForecastLines for each active item.
+// 2. Zeroing startup_costs.equipment_cents to prevent double-depreciation.
+// Returns mp unchanged when there are no active items with cost.
+export function mergeEquipmentItemsIntoMp(
+  mp: MonthlyProjections,
+  items: EquipmentItemCapexInput[]
+): MonthlyProjections {
+  const itemLines = buildEquipmentCapexLines(items);
+  if (itemLines.length === 0) return mp;
+  const sc = mp.startup_costs ?? defaultStartupCosts();
+  return {
+    ...mp,
+    startup_costs: { ...sc, equipment_cents: 0 },
+    forecast_lines: [
+      ...mp.forecast_lines.filter((l) => !l.linked_equipment_item_id),
+      ...itemLines,
+    ],
+  };
+}
+
+// Sum of all capex ForecastLine values (in cents) for the unified asset total.
+// Includes both user-authored capex lines and synthetic equipment-item lines.
+export function totalCapexCents(mp: MonthlyProjections): number {
+  return (mp.forecast_lines ?? [])
+    .filter((l) => l.category === "capex" && l.mode === "flat")
+    .reduce((s, l) => s + l.value, 0);
+}

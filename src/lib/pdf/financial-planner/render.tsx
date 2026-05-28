@@ -1184,32 +1184,57 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
         {mp.forecast_lines.length === 0 && (
           <Text style={styles.paragraph}>No custom forecast lines configured.</Text>
         )}
-        {mp.forecast_lines.map((line) => {
-          const valueDisplay =
-            line.mode === "pct"
-              ? `${line.value}% of revenue`
-              : formatMinorUnits(line.value, code) + "/mo";
-          const ramp = line.ramp?.enabled
-            ? ` · ramp ${line.ramp.ramp_months} mo from ${line.ramp.start_pct}%`
-            : "";
-          const growth = line.growth?.enabled
-            ? ` · growth ${line.growth.monthly_pct}%/mo`
-            : "";
-          return (
-            <View style={styles.assumptionRow} key={line.id}>
-              <Text style={styles.assumptionLabel}>
-                {line.label}
-                {"  "}
-                <Text style={styles.small}>({line.category})</Text>
-              </Text>
-              <Text style={styles.assumptionValue}>
-                {valueDisplay}
-                {ramp}
-                {growth}
-              </Text>
-            </View>
-          );
-        })}
+        {mp.forecast_lines
+          .filter((line) => line.category !== "capex")
+          .map((line) => {
+            const valueDisplay =
+              line.mode === "pct"
+                ? `${line.value}% of revenue`
+                : formatMinorUnits(line.value, code) + "/mo";
+            const ramp = line.ramp?.enabled
+              ? ` · ramp ${line.ramp.ramp_months} mo from ${line.ramp.start_pct}%`
+              : "";
+            const growth = line.growth?.enabled
+              ? ` · growth ${line.growth.monthly_pct}%/mo`
+              : "";
+            return (
+              <View style={styles.assumptionRow} key={line.id}>
+                <Text style={styles.assumptionLabel}>
+                  {line.label}
+                  {"  "}
+                  <Text style={styles.small}>({line.category})</Text>
+                </Text>
+                <Text style={styles.assumptionValue}>
+                  {valueDisplay}
+                  {ramp}
+                  {growth}
+                </Text>
+              </View>
+            );
+          })}
+
+        {/* TIM-1255: per-asset depreciation schedule */}
+        {mp.forecast_lines.some((l) => l.category === "capex") && (
+          <>
+            <View style={{ height: 8 }} />
+            <SectionHeading>Capital Assets and Depreciation</SectionHeading>
+            {mp.forecast_lines
+              .filter((l) => l.category === "capex" && l.mode === "flat" && l.value > 0)
+              .map((l) => {
+                const lifeYears = l.useful_life_years && l.useful_life_years > 0 ? l.useful_life_years : 7;
+                const monthlyDep = Math.round(l.value / (lifeYears * 12));
+                const startMo = l.ramp?.enabled ? (l.ramp.start_month ?? 1) : 1;
+                return (
+                  <View style={styles.assumptionRow} key={l.id}>
+                    <Text style={styles.assumptionLabel}>{l.label}</Text>
+                    <Text style={styles.assumptionValue}>
+                      {formatMinorUnits(l.value, code)} cost {"·"} {lifeYears}yr life {"·"} {formatMinorUnits(monthlyDep, code)}/mo dep {"·"} start mo {startMo}
+                    </Text>
+                  </View>
+                );
+              })}
+          </>
+        )}
 
         <Footer generatedDate={generatedDate} />
       </Page>

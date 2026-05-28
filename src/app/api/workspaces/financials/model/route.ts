@@ -38,7 +38,7 @@ export async function GET() {
     .insert({
       plan_id: plan.id,
       forecast_inputs: defaultMonthlyProjections(),
-      startup_costs: { total_equipment_cents: 0 },
+      startup_costs: {},
     })
     .select()
     .single();

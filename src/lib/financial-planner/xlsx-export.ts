@@ -8,6 +8,7 @@ import ExcelJS from "exceljs";
 import {
   type MonthlyProjections,
   type MonthlySlice,
+  type ForecastLine,
   type EquipmentSummary,
   computeMonthlySlices,
   fiscalYearMonthLabels,
@@ -133,6 +134,13 @@ export function buildFinancialPlannerWorkbook(
     generatedDate,
     meta,
   });
+
+  // ── Asset Schedule sheet ─────────────────────────────────────────────────
+  const capexLines = mp.forecast_lines.filter((l) => l.category === "capex");
+  if (capexLines.length > 0) {
+    const asc = wb.addWorksheet("Asset Schedule");
+    buildAssetSchedule(asc, { mp, capexLines, moneyFormat, shopName, generatedDate, meta, code });
+  }
 
   // ── Assumptions sheet ────────────────────────────────────────────────────
   const asm = wb.addWorksheet("Assumptions");
@@ -610,6 +618,83 @@ function buildBalanceSheet(ws: ExcelJS.Worksheet, ctx: SheetCtx) {
   }
 
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: 5 }];
+}
+
+// TIM-1255: per-asset depreciation schedule sheet.
+function buildAssetSchedule(
+  ws: ExcelJS.Worksheet,
+  opts: {
+    mp: MonthlyProjections;
+    capexLines: ForecastLine[];
+    moneyFormat: string;
+    shopName: string | null;
+    generatedDate: string;
+    meta: ReturnType<typeof getCurrencyMeta>;
+    code: string;
+  }
+) {
+  const { capexLines, moneyFormat, shopName, generatedDate, meta, code } = opts;
+  ws.getCell("A1").value = "Groundwork — Financial Planner";
+  ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
+  ws.getCell("A2").value = `${shopName ?? "Your coffee shop"} · Asset Schedule`;
+  ws.getCell("A2").font = { bold: true, size: 12 };
+  ws.getCell("A3").value = `Currency: ${meta.code} (${meta.name})  ·  Generated ${generatedDate}`;
+  ws.getCell("A3").font = { italic: true, color: { argb: "FF6B7B70" } };
+
+  let row = 5;
+  // Header row
+  const headers = ["Asset", "Cost", "Useful Life (yr)", "Annual Dep.", "Monthly Dep.", "Start Month"];
+  const colWidths = [34, 16, 18, 16, 16, 14];
+  headers.forEach((h, i) => {
+    const cell = ws.getCell(row, i + 1);
+    cell.value = h;
+    cell.font = { bold: true };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEF2EE" } };
+    ws.getColumn(i + 1).width = colWidths[i];
+  });
+  row++;
+
+  let totalCost = 0;
+  let totalMonthlyDep = 0;
+
+  for (const l of capexLines) {
+    if (l.mode !== "flat" || l.value <= 0) continue;
+    const lifeYears = l.useful_life_years && l.useful_life_years > 0 ? l.useful_life_years : 7;
+    const annualDep = Math.round(l.value / lifeYears);
+    const monthlyDep = Math.round(l.value / (lifeYears * 12));
+    const startMonth = l.ramp?.enabled ? (l.ramp.start_month ?? 1) : 1;
+    const divisor = Math.pow(10, meta.fractionDigits);
+
+    ws.getCell(row, 1).value = l.label;
+    const costCell = ws.getCell(row, 2);
+    costCell.value = l.value / divisor;
+    costCell.numFmt = moneyFormat;
+    ws.getCell(row, 3).value = lifeYears;
+    const annCell = ws.getCell(row, 4);
+    annCell.value = annualDep / divisor;
+    annCell.numFmt = moneyFormat;
+    const moCell = ws.getCell(row, 5);
+    moCell.value = monthlyDep / divisor;
+    moCell.numFmt = moneyFormat;
+    ws.getCell(row, 6).value = startMonth;
+
+    totalCost += l.value;
+    totalMonthlyDep += monthlyDep;
+    row++;
+    void code;
+  }
+
+  // Totals row
+  ws.getCell(row, 1).value = "Total";
+  ws.getCell(row, 1).font = { bold: true };
+  const totalCostCell = ws.getCell(row, 2);
+  totalCostCell.value = totalCost / Math.pow(10, meta.fractionDigits);
+  totalCostCell.numFmt = moneyFormat;
+  totalCostCell.font = { bold: true };
+  const totalMoCell = ws.getCell(row, 5);
+  totalMoCell.value = totalMonthlyDep / Math.pow(10, meta.fractionDigits);
+  totalMoCell.numFmt = moneyFormat;
+  totalMoCell.font = { bold: true };
 }
 
 function buildAssumptions(
