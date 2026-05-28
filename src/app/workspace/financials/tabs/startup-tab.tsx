@@ -326,7 +326,7 @@ export function StartupTab({
           )}
           {loanTotal > 0 && (
             <p>
-              Your loan payment of {f(totalMonthlyLoanPayment)}/month starts from day one — before
+              Your loan payment of {f(totalMonthlyLoanPayment)}/month starts from day one, before
               you have any revenue. Make sure your opening cash buffer can cover at least 3 months of
               loan payments.
             </p>

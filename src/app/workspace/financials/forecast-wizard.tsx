@@ -839,7 +839,7 @@ export function ForecastWizard({
             What are you buying to open?
           </h2>
           <p className="text-sm text-[#6b6b6b] mb-4">
-            Add each capital item once — build-out, equipment, fixtures. You can edit
+            Add each capital item once: build-out, equipment, fixtures. You can edit
             costs and useful lives on the Costs &amp; Expenses page anytime.
           </p>
 
@@ -977,7 +977,7 @@ export function ForecastWizard({
             (includes deposits, permits, and starting inventory you can adjust on the Startup Costs page).
           </p>
           <Why>
-            Enter each capital asset once here — it drives the cash outflow on day one,
+            Enter each capital asset once here. It drives the cash outflow on day one,
             depreciates over its useful life on the P&amp;L, and shows on your balance sheet.
             No need to enter the same item in multiple places.
           </Why>
