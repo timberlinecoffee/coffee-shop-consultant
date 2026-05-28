@@ -1,8 +1,11 @@
 // TIM-1037: Business Plan Generator workspace page.
+// TIM-1225: loads cover settings + signed logo URL for CoverBrandingPanel.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { BusinessPlanWorkspace } from "./business-plan-workspace";
+import type { CoverSettings } from "./cover-branding-panel";
+import type { CoverTemplateId } from "@/lib/pdf/business-plan/covers";
 import {
   BUSINESS_PLAN_SECTIONS,
   assembleCompanyConcept,
@@ -56,6 +59,7 @@ export default async function BusinessPlanWorkspacePage() {
     { data: financialModel },
     { data: savedSections },
     { data: profile },
+    { data: coverRow },
   ] = await Promise.all([
     supabase
       .from("workspace_documents")
@@ -108,6 +112,11 @@ export default async function BusinessPlanWorkspacePage() {
       .from("users")
       .select("subscription_status, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("business_plan_cover")
+      .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name")
+      .eq("plan_id", planId)
       .maybeSingle(),
   ]);
 
@@ -164,6 +173,24 @@ export default async function BusinessPlanWorkspacePage() {
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
 
+  const initialCoverSettings: CoverSettings = {
+    template_id: (coverRow?.template_id ?? "classic") as CoverTemplateId,
+    accent_color: coverRow?.accent_color ?? null,
+    logo_path: coverRow?.logo_path ?? null,
+    tagline: coverRow?.tagline ?? null,
+    prepared_for: coverRow?.prepared_for ?? null,
+    author_name: coverRow?.author_name ?? null,
+  };
+
+  // Get a signed URL for the logo preview (1 hour).
+  let logoPublicUrl: string | null = null;
+  if (coverRow?.logo_path) {
+    const { data: signed } = await supabase.storage
+      .from("business-plan-logos")
+      .createSignedUrl(coverRow.logo_path, 3600);
+    logoPublicUrl = signed?.signedUrl ?? null;
+  }
+
   return (
     <BusinessPlanWorkspace
       planId={planId}
@@ -171,6 +198,8 @@ export default async function BusinessPlanWorkspacePage() {
       initialSections={sections}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      initialCoverSettings={initialCoverSettings}
+      logoPublicUrl={logoPublicUrl}
     />
   );
 }
