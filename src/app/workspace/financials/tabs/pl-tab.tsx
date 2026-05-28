@@ -387,10 +387,11 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
               pctValues={pctOf("total_opex_cents", "net_revenue_cents")} />
             <DividerRow cols={colCount} />
 
-            <StatRow currencyCode={currencyCode} label="Operating Income (EBIT)" values={vals("operating_income_cents")} bold highlight
-              pctValues={pctOf("operating_income_cents", "net_revenue_cents")} />
-            <StatRow currencyCode={currencyCode} label="Depreciation" values={vals("depreciation_cents")} indent />
-            <StatRow currencyCode={currencyCode} label="EBITDA (Earnings Before Interest, Taxes, Depreciation & Amortization)" values={vals("ebitda_cents")} bold />
+            <StatRow currencyCode={currencyCode} label="EBITDA (Earnings Before Interest, Taxes, Depreciation & Amortization)" values={vals("ebitda_cents")} bold
+              pctValues={pctOf("ebitda_cents", "net_revenue_cents")} />
+            <StatRow currencyCode={currencyCode} label="Depreciation" values={vals("depreciation_cents")} negative indent />
+            <StatRow currencyCode={currencyCode} label="Operating Income (EBIT)" values={vals("ebit_cents")} bold highlight
+              pctValues={pctOf("ebit_cents", "net_revenue_cents")} />
             <StatRow currencyCode={currencyCode} label="Interest Expense" values={vals("interest_cents")} negative indent />
             <StatRow currencyCode={currencyCode} label="Income Before Taxes" values={vals("income_before_taxes_cents")} bold />
             <StatRow currencyCode={currencyCode} label="Taxes" values={vals("taxes_cents")} indent />

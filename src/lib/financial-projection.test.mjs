@@ -605,6 +605,37 @@ test("capex line: shorter useful_life_years compresses depreciation", () => {
   assert.equal(rows[36].depreciation_cents, 0);
 });
 
+test("TIM-1182: EBITDA is operating income (pre-D&A); EBIT subtracts depreciation once", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [
+    {
+      id: "cap-1",
+      label: "Espresso Machine",
+      category: "capex",
+      mode: "flat",
+      value: 840000, // $8,400 → $100/mo depreciation
+      useful_life_years: 7,
+      ramp: { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+    },
+  ];
+  const slices = computeMonthlySlices(mp, EQUIP, {}, {});
+  const s = slices[0];
+  assert.ok(s.depreciation_cents > 0, "fixture must depreciate to exercise the EBITDA/EBIT split");
+  // operating_income_cents excludes depreciation (applied below the line), so it IS EBITDA.
+  assert.equal(s.ebitda_cents, s.operating_income_cents);
+  // EBIT subtracts depreciation exactly once.
+  assert.equal(s.ebit_cents, s.operating_income_cents - s.depreciation_cents);
+  // EBITDA is strictly above EBIT whenever depreciation > 0.
+  assert.equal(s.ebitda_cents - s.ebit_cents, s.depreciation_cents);
+  // Regression guard: the old bug double-counted depreciation (EBITDA = OI + dep).
+  assert.notEqual(s.ebitda_cents, s.operating_income_cents + s.depreciation_cents);
+  // Income before taxes flows from EBIT minus interest (depreciation already removed).
+  assert.equal(s.income_before_taxes_cents, s.ebit_cents - s.interest_cents);
+});
+
 test("multiple capex lines depreciate independently, summed at each month", () => {
   const mp = defaultMonthlyProjections();
   mp.cogs_pct = 0;

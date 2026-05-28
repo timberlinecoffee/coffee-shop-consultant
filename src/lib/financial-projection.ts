@@ -1538,6 +1538,7 @@ export interface MonthlySlice extends MonthlyProjectionRow {
   retail_cogs_cents: number;
   other_opex_cents: number;
   ebitda_cents: number;
+  ebit_cents: number;
   avg_ticket_cents: number;
   // Cash-flow statement
   net_cash_cents: number;
@@ -1924,7 +1925,11 @@ export function computeMonthlySlices(
     const bevCogsCents = Math.round(bevRevCents * bevCogsPct);
     const foodCogsCents = Math.round(foodRevCents * foodCogsPct);
     const retailCogsCents = Math.round(retailRevCents * ((inputs.retail_cogs_pct ?? 40) / 100));
-    const ebitdaCents = row.operating_income_cents + row.depreciation_cents;
+    // TIM-1182: total_opex excludes depreciation (applied below the line), so
+    // operating_income_cents is gross profit minus opex-excl-D&A — i.e. it IS
+    // EBITDA. EBIT subtracts depreciation; adding it back would double-count.
+    const ebitdaCents = row.operating_income_cents;
+    const ebitCents = row.operating_income_cents - row.depreciation_cents;
 
     cumulativeNetIncome += row.net_income_cents;
     cumulativeDepreciation += row.depreciation_cents;
@@ -2002,6 +2007,7 @@ export function computeMonthlySlices(
       retail_cogs_cents: retailCogsCents,
       other_opex_cents: row.other_misc_cents,
       ebitda_cents: ebitdaCents,
+      ebit_cents: ebitCents,
       avg_ticket_cents: mp.avg_ticket_cents,
       net_cash_cents: netCashCents,
       loan_repayment_cents: loanRepaymentCents,
