@@ -389,7 +389,7 @@ export async function POST(request: NextRequest) {
 
           const existingQuery = supabase
             .from("ai_conversations")
-            .select("id, credits_used, cost_usd")
+            .select("id, credits_used, cost_usd, cache_read_tokens, cache_creation_tokens")
             .eq("plan_id", planId)
             .eq("thread_id", effectiveThreadId)
           const { data: existing } = await (workspaceKey === null
@@ -408,6 +408,8 @@ export async function POST(request: NextRequest) {
                 cost_usd: (Number(existing.cost_usd) || 0) + costUsd,
                 last_message_at: new Date().toISOString(),
                 model_used: modelId,
+                cache_read_tokens: (existing.cache_read_tokens ?? 0) + cacheReadTokens,
+                cache_creation_tokens: (existing.cache_creation_tokens ?? 0) + cacheCreateTokens,
               })
               .eq("id", existing.id)
           } else {
@@ -420,6 +422,8 @@ export async function POST(request: NextRequest) {
               cost_usd: costUsd,
               last_message_at: new Date().toISOString(),
               model_used: modelId,
+              cache_read_tokens: cacheReadTokens,
+              cache_creation_tokens: cacheCreateTokens,
             })
           }
 
