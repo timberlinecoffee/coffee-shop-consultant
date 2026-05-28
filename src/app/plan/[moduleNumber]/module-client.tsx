@@ -1239,23 +1239,23 @@ function CoachPanel({
               <p className="text-sm text-neutral-950 font-medium mb-1">AI coaching requires a paid plan</p>
               <p className="text-xs text-neutral-500 mb-3">Free accounts can explore modules but cannot use the AI coach.</p>
               <Link
-                href="/account"
+                href="/pricing"
                 className="inline-block text-xs bg-teal text-white px-4 py-2 rounded-lg font-medium hover:bg-teal-dark transition-colors"
               >
-                Upgrade to Builder →
+                See plans →
               </Link>
             </div>
           ) : credits === 0 ? (
             <div className="text-center">
               <p className="text-sm text-neutral-950 font-medium mb-1">You&apos;re out of AI credits</p>
               <p className="text-xs text-neutral-500 mb-3">
-                Your monthly credits have been used up. Upgrade to Accelerator for more credits, or wait for your monthly reset.
+                Your monthly credits have been used up. Upgrade your plan for more credits, or wait for your monthly reset.
               </p>
               <Link
-                href="/account"
+                href="/pricing"
                 className="inline-block text-xs bg-teal text-white px-4 py-2 rounded-lg font-medium hover:bg-teal-dark transition-colors"
               >
-                Upgrade to Accelerator →
+                Upgrade your plan →
               </Link>
             </div>
           ) : (
@@ -1263,7 +1263,7 @@ function CoachPanel({
               {credits <= 10 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
                   <p className="text-xs text-amber-700">
-                    <strong>{credits} credits left</strong> this month. <Link href="/account" className="underline hover:no-underline">Upgrade to Accelerator</Link> for more credits.
+                    <strong>{credits} credits left</strong> this month. <Link href="/pricing" className="underline hover:no-underline">Upgrade your plan</Link> for more credits.
                   </p>
                 </div>
               )}

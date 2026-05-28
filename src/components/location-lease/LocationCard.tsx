@@ -700,14 +700,14 @@ function AiFeedbackPanel({
           {subscriptionTier === 'free' ? (
             <>
               AI feedback requires a paid plan.{' '}
-              <a href="/account" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[#155e63] underline">
                 Upgrade →
               </a>
             </>
           ) : aiCreditsRemaining === 0 ? (
             <>
               You&apos;re out of credits.{' '}
-              <a href="/account" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[#155e63] underline">
                 Upgrade for more →
               </a>
             </>

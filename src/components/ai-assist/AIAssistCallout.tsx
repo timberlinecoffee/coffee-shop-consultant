@@ -418,7 +418,11 @@ export function AIAssistCallout({
 
               <div className="flex items-center gap-2">
                 <Link
-                  href="/account/billing"
+                  href={
+                    phase.reason === "paused" || phase.reason === "expired"
+                      ? "/account/billing"
+                      : "/pricing"
+                  }
                   className="flex-1 text-center bg-[#155e63] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
                 >
                   {phase.reason === "paused" || phase.reason === "expired"
