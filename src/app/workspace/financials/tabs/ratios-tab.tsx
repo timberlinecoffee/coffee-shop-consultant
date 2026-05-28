@@ -182,9 +182,9 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
         opMargin >= 5 && opMargin <= 15
           ? "Healthy for an indie coffee shop."
           : opMargin < 0
-            ? "Operating at a loss. Review OpEx and pricing — Year 1 losses happen but should narrow fast."
+            ? "Operating at a loss. Review operating expenses and pricing — Year 1 losses happen but should narrow fast."
             : opMargin < 5
-              ? "Thin but positive. Keep a close eye on OpEx growth."
+              ? "Thin but positive. Keep a close eye on operating expense growth."
               : "Above 15% is excellent. Make sure your projections aren't underestimating real-world costs.",
     },
     {
