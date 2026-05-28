@@ -130,6 +130,21 @@ export type PersonnelPayBasis = "annual" | "monthly" | "hourly";
 //   "overhead" → operating expense below gross profit (e.g. manager, bookkeeper).
 export type PersonnelCostCategory = "cogs" | "overhead";
 
+// TIM-1260: recurring seasonal staffing. When enabled, the role is only paid in
+// its active calendar months, and (when repeat_yearly) that pattern repeats
+// every year across the multi-year horizon — e.g. active Jun–Aug each summer for
+// a tourist-season hire. active_months holds 1..12 calendar month numbers
+// (1 = Jan), so the pattern lands on real calendar months regardless of the
+// plan's fiscal_year_start_month. repeat_yearly === false restricts it to the
+// first fiscal year only. This composes as an AND gate with `ramp` (hire month /
+// phase-in) and `end_month` (hard final stop): a month is paid only if it passes
+// every gate that is set.
+export interface PersonnelSeasonal {
+  enabled: boolean;
+  active_months: number[]; // 1..12 calendar months the role is active
+  repeat_yearly: boolean;  // true → repeats every year; false → first fiscal year only
+}
+
 export interface PersonnelLine {
   id: string;
   role: string;                  // role / title (Title Case)
@@ -146,7 +161,8 @@ export interface PersonnelLine {
   // ramp_months / start_pct phase headcount in (e.g. start at 50%, reach full
   // staffing over 3 months). No per-line growth — pay changes are explicit edits.
   ramp?: LineRamp;
-  end_month?: number;            // optional 1..60 — last month the role is paid (seasonal/temp)
+  end_month?: number;            // optional 1..60 — last month the role is paid (one-time temp end)
+  seasonal?: PersonnelSeasonal;  // TIM-1260: recurring yearly active-month pattern
 }
 
 // TIM-1243: LivePlan-style manual control. Two layers, both resolved at compute
@@ -811,7 +827,30 @@ function normalizePersonnelLine(raw: unknown, fallbackId: string): PersonnelLine
   if (typeof r.end_month === "number" && r.end_month >= 1 && r.end_month <= 60) {
     line.end_month = Math.round(r.end_month);
   }
+  const seasonal = normalizePersonnelSeasonal(r.seasonal);
+  if (seasonal) line.seasonal = seasonal;
   return line;
+}
+
+// TIM-1260: normalize a recurring seasonal pattern. Dedupes and clamps months to
+// 1..12, sorts them, and defaults repeat_yearly to true (the founder's primary
+// "every summer" use case). Returns undefined for an absent/empty-and-disabled
+// pattern so unset lines stay clean.
+function normalizePersonnelSeasonal(raw: unknown): PersonnelSeasonal | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const enabled = r.enabled === true;
+  const active_months = Array.isArray(r.active_months)
+    ? Array.from(
+        new Set(
+          (r.active_months as unknown[])
+            .map((m) => (typeof m === "number" ? Math.round(m) : NaN))
+            .filter((m) => Number.isFinite(m) && m >= 1 && m <= 12)
+        )
+      ).sort((a, b) => a - b)
+    : [];
+  if (!enabled && active_months.length === 0) return undefined;
+  return { enabled, active_months, repeat_yearly: r.repeat_yearly !== false };
 }
 
 // TIM-1206: when a stored row predates the personnel module, best-effort seed it.
@@ -1372,12 +1411,28 @@ function personnelMonthlyBaseCents(line: PersonnelLine): number {
   return perHead * heads;
 }
 
-// TIM-1206: a personnel line's loaded monthly cost (base pay + benefits burden)
-// for a given 1-based month, after applying phased-hiring ramp and any seasonal
-// end month. Returns 0 before the hire month or after end_month.
-function personnelMonthlyLoadedCents(line: PersonnelLine, monthIndex: number): number {
+// TIM-1206 / TIM-1260: a personnel line's loaded monthly cost (base pay +
+// benefits burden) for a given 1-based month, after applying phased-hiring ramp,
+// any one-time seasonal end month, and any recurring seasonal active-month
+// pattern. Returns 0 before the hire month, after end_month, or in a month the
+// recurring pattern marks inactive. fiscalYearStartMonth (1..12) maps month
+// index 1 to its calendar month so the recurring pattern lands on real calendar
+// months (e.g. Jun–Aug stays summer regardless of fiscal year start).
+function personnelMonthlyLoadedCents(
+  line: PersonnelLine,
+  monthIndex: number,
+  fiscalYearStartMonth: number = 1
+): number {
   if (typeof line.end_month === "number" && line.end_month > 0 && monthIndex > line.end_month) {
     return 0;
+  }
+  const s = line.seasonal;
+  if (s?.enabled && s.active_months.length > 0) {
+    // repeat_yearly off → the pattern applies only during the first fiscal year.
+    if (!s.repeat_yearly && monthIndex > 12) return 0;
+    const fyStart = Math.min(12, Math.max(1, Math.round(fiscalYearStartMonth || 1)));
+    const calendarMonth = ((fyStart - 1 + (monthIndex - 1)) % 12) + 1;
+    if (!s.active_months.includes(calendarMonth)) return 0;
   }
   const factor = lineMonthFactor(monthIndex, line.ramp, undefined);
   if (factor === 0) return 0;
@@ -1547,7 +1602,7 @@ export function computeMonthlyProjections(
       let labor_cogs_cents = 0;
       let labor_overhead_cents = 0;
       for (const p of mp.personnel ?? []) {
-        const formula = personnelMonthlyLoadedCents(p, month_index_abs);
+        const formula = personnelMonthlyLoadedCents(p, month_index_abs, mp.fiscal_year_start_month ?? 1);
         const res = resolveAmount(p.id, month_index_abs, formula);
         const amt = res.amount;
         const cat: ForecastCategory = p.cost_category === "cogs" ? "cogs" : "overhead";

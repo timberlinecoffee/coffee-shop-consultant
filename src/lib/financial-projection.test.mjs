@@ -106,6 +106,122 @@ test("TIM-1206: an explicit personnel array (even empty) is preserved verbatim",
   assert.equal(custom.personnel[0].hours_per_week, 25);
 });
 
+// ── TIM-1260: recurring seasonal staffing ──────────────────────────────────
+
+test("TIM-1260: normalize dedupes/clamps/sorts seasonal active_months", () => {
+  const mp = normalizeMonthlyProjections({
+    personnel: [
+      {
+        id: "s1", role: "Summer Barista", headcount: 1, pay_basis: "monthly",
+        pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+        seasonal: { enabled: true, active_months: [8, 6, 6, 0, 13, 7], repeat_yearly: false },
+      },
+    ],
+  });
+  assert.deepEqual(mp.personnel[0].seasonal, {
+    enabled: true,
+    active_months: [6, 7, 8],
+    repeat_yearly: false,
+  });
+});
+
+test("TIM-1260: repeat_yearly defaults to true and absent/empty seasonal is dropped", () => {
+  const mp = normalizeMonthlyProjections({
+    personnel: [
+      {
+        id: "s1", role: "Summer Barista", headcount: 1, pay_basis: "monthly",
+        pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+        seasonal: { enabled: true, active_months: [6, 7, 8] },
+      },
+      {
+        id: "s2", role: "Year Round", headcount: 1, pay_basis: "monthly",
+        pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+        seasonal: { enabled: false, active_months: [] },
+      },
+    ],
+  });
+  assert.equal(mp.personnel[0].seasonal.repeat_yearly, true);
+  assert.equal(mp.personnel[1].seasonal, undefined);
+});
+
+test("TIM-1260: seasonal role is paid only in active calendar months, every year", () => {
+  const mp = defaultMonthlyProjections();
+  mp.fiscal_year_start_month = 1; // Jan
+  mp.personnel = [
+    {
+      id: "s1", role: "Summer Barista", headcount: 1, pay_basis: "monthly",
+      pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+      seasonal: { enabled: true, active_months: [6, 7, 8], repeat_yearly: true },
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // Year 1: Jun/Jul/Aug = month index 6/7/8 → rows[5..7] active; Jan/Sep off.
+  assert.equal(rows[0].labor_overhead_cents, 0, "Jan off");
+  assert.equal(rows[5].labor_overhead_cents, 300000, "Jun on");
+  assert.equal(rows[6].labor_overhead_cents, 300000, "Jul on");
+  assert.equal(rows[7].labor_overhead_cents, 300000, "Aug on");
+  assert.equal(rows[8].labor_overhead_cents, 0, "Sep off");
+  // Year 2: Jun = month index 18 → rows[17] active (pattern repeats).
+  assert.equal(rows[17].labor_overhead_cents, 300000, "Jun year 2 on");
+  assert.equal(rows[12].labor_overhead_cents, 0, "Jan year 2 off");
+});
+
+test("TIM-1260: seasonal pattern follows fiscal_year_start_month (calendar-aware)", () => {
+  const mp = defaultMonthlyProjections();
+  mp.fiscal_year_start_month = 6; // fiscal year opens in Jun
+  mp.personnel = [
+    {
+      id: "s1", role: "Summer Barista", headcount: 1, pay_basis: "monthly",
+      pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+      seasonal: { enabled: true, active_months: [6, 7, 8], repeat_yearly: true },
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // Month index 1 = Jun, 2 = Jul, 3 = Aug (all active), 4 = Sep (off).
+  assert.equal(rows[0].labor_overhead_cents, 300000, "month 1 = Jun on");
+  assert.equal(rows[1].labor_overhead_cents, 300000, "month 2 = Jul on");
+  assert.equal(rows[2].labor_overhead_cents, 300000, "month 3 = Aug on");
+  assert.equal(rows[3].labor_overhead_cents, 0, "month 4 = Sep off");
+});
+
+test("TIM-1260: repeat_yearly=false limits the pattern to the first fiscal year", () => {
+  const mp = defaultMonthlyProjections();
+  mp.fiscal_year_start_month = 1;
+  mp.personnel = [
+    {
+      id: "s1", role: "Summer Barista", headcount: 1, pay_basis: "monthly",
+      pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+      seasonal: { enabled: true, active_months: [6, 7, 8], repeat_yearly: false },
+    },
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  assert.equal(rows[5].labor_overhead_cents, 300000, "Jun year 1 on");
+  assert.equal(rows[17].labor_overhead_cents, 0, "Jun year 2 off (no repeat)");
+});
+
+test("TIM-1260: break-even reflects seasonal labor in an active month", () => {
+  const mp = defaultMonthlyProjections();
+  mp.fiscal_year_start_month = 6; // month 1 = Jun, an active month
+  mp.personnel = [
+    {
+      id: "s1", role: "Summer Barista", headcount: 2, pay_basis: "monthly",
+      pay_amount_cents: 300000, benefits_pct: 0, cost_category: "overhead",
+      seasonal: { enabled: true, active_months: [6, 7, 8], repeat_yearly: true },
+    },
+  ];
+  const slices = computeMonthlySlices(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  const withSeasonal = computeBreakEvenModel(slices[0], mp.forecast_lines, mp.avg_ticket_cents);
+
+  const mpOff = { ...mp, personnel: [] };
+  const slicesOff = computeMonthlySlices(mpOff, { total_cost_cents: 0, financed_cost_cents: 0 });
+  const withoutSeasonal = computeBreakEvenModel(slicesOff[0], mpOff.forecast_lines, mpOff.avg_ticket_cents);
+
+  assert.ok(
+    withSeasonal.fixedCostsCents > withoutSeasonal.fixedCostsCents,
+    "active seasonal labor raises fixed costs and thus break-even"
+  );
+});
+
 test("computeMonthlyProjections rolls overhead lines into legacy named fields", () => {
   const mp = defaultMonthlyProjections();
   const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });

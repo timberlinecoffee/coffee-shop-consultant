@@ -8,9 +8,22 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Sliders, Users } from "lucide-react";
-import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
+import type { PersonnelLine, PersonnelPayBasis, PersonnelSeasonal } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents, fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+
+// TIM-1260: calendar months (1=Jan) and common-season quick picks for the
+// recurring seasonal staffing pattern.
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+const SEASON_PRESETS: { label: string; months: number[] }[] = [
+  { label: "Summer", months: [6, 7, 8] },
+  { label: "Fall", months: [9, 10, 11] },
+  { label: "Winter", months: [12, 1, 2] },
+  { label: "Spring", months: [3, 4, 5] },
+];
 
 function genId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -42,6 +55,48 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
   const [expanded, setExpanded] = useState(false);
   const isHourly = line.pay_basis === "hourly";
   const loaded = personnelLoadedMonthlyCents(line);
+  const seasonalOn = line.seasonal?.enabled ?? false;
+  const activeMonths = line.seasonal?.active_months ?? [];
+
+  function updateSeasonal(patch: Partial<PersonnelSeasonal>) {
+    const cur: PersonnelSeasonal = line.seasonal ?? {
+      enabled: true,
+      active_months: [6, 7, 8],
+      repeat_yearly: true,
+    };
+    onChange({ ...line, seasonal: { ...cur, ...patch } });
+  }
+  function toggleSeasonalMonth(month: number) {
+    const cur = line.seasonal?.active_months ?? [];
+    const next = cur.includes(month)
+      ? cur.filter((m) => m !== month)
+      : [...cur, month].sort((a, b) => a - b);
+    updateSeasonal({ active_months: next });
+  }
+  // Recurring season and one-time end are alternative ways to express "not
+  // year-round"; enabling one clears the other so only one is ever active.
+  function enableSeasonal(enabled: boolean) {
+    if (enabled) {
+      onChange({
+        ...line,
+        end_month: undefined,
+        seasonal: { enabled: true, active_months: [6, 7, 8], repeat_yearly: true },
+      });
+    } else {
+      const { seasonal: _drop, ...rest } = line;
+      void _drop;
+      onChange(rest as PersonnelLine);
+    }
+  }
+  function enableEndMonth(enabled: boolean) {
+    if (enabled) {
+      const { seasonal: _drop, ...rest } = line;
+      void _drop;
+      onChange({ ...(rest as PersonnelLine), end_month: (line.ramp?.start_month ?? 1) + 2 });
+    } else {
+      onChange({ ...line, end_month: undefined });
+    }
+  }
 
   // Pay amount is shown in whole currency units for salary, dollars for hourly rate.
   const payValue = line.pay_amount_cents ? line.pay_amount_cents / 100 : "";
@@ -86,12 +141,12 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
             onClick={() => setExpanded(!expanded)}
             disabled={!canEdit}
             className={`text-xs px-2 py-1 rounded-md transition-colors shrink-0 ${
-              line.ramp?.enabled || line.end_month || line.benefits_fixed_cents
+              line.ramp?.enabled || line.end_month || line.seasonal?.enabled || line.benefits_fixed_cents
                 ? "bg-[#155e63]/10 text-[#155e63]"
                 : "text-[#afafaf] hover:text-[#1a1a1a]"
             }`}
             aria-label="Hire timing & extra benefits"
-            title="Hire timing, seasonal end, fixed benefits"
+            title="Hire timing, seasonal pattern, fixed benefits"
           >
             <Sliders size={12} />
           </button>
@@ -337,42 +392,116 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
             )}
           </div>
 
-          {/* Seasonal end month */}
+          {/* Recurring seasonal pattern (TIM-1260) */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={typeof line.end_month === "number"}
+                checked={seasonalOn}
                 disabled={!canEdit}
-                onChange={(e) =>
-                  onChange({ ...line, end_month: e.target.checked ? (line.ramp?.start_month ?? 1) + 2 : undefined })
-                }
+                onChange={(e) => enableSeasonal(e.target.checked)}
                 className="w-3.5 h-3.5 accent-[#155e63]"
               />
               <span className="text-xs font-medium text-[#1a1a1a]">
-                Seasonal / temporary: stop paying this role after a set month
+                Recurring season: only pay this role in certain months each year
               </span>
             </label>
-            {typeof line.end_month === "number" && (
-              <div className="ml-6 mt-2 w-32">
-                <label className={fieldLabelCls}>Last paid month</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={line.end_month}
-                  disabled={!canEdit}
-                  onChange={(e) =>
-                    onChange({
-                      ...line,
-                      end_month: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)),
-                    })
-                  }
-                  className={`${inputCls} w-full`}
-                />
+            {seasonalOn && (
+              <div className="ml-6 mt-2 space-y-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] text-[#afafaf]">Quick pick:</span>
+                  {SEASON_PRESETS.map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      disabled={!canEdit}
+                      onClick={() => updateSeasonal({ active_months: p.months })}
+                      className="text-[10px] px-2 py-0.5 rounded-md border border-[#e0e0e0] text-[#155e63] hover:bg-[#155e63]/5 disabled:opacity-50"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1" role="group" aria-label="Active months">
+                  {MONTH_ABBR.map((label, i) => {
+                    const month = i + 1;
+                    const active = activeMonths.includes(month);
+                    return (
+                      <button
+                        key={month}
+                        type="button"
+                        disabled={!canEdit}
+                        aria-pressed={active}
+                        onClick={() => toggleSeasonalMonth(month)}
+                        className={`text-[11px] w-10 py-1 rounded-md border transition-colors disabled:opacity-50 ${
+                          active
+                            ? "bg-[#155e63] text-white border-[#155e63]"
+                            : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={line.seasonal?.repeat_yearly ?? true}
+                    disabled={!canEdit}
+                    onChange={(e) => updateSeasonal({ repeat_yearly: e.target.checked })}
+                    className="w-3.5 h-3.5 accent-[#155e63]"
+                  />
+                  <span className="text-xs text-[#1a1a1a]">Repeat every year</span>
+                </label>
+                {activeMonths.length === 0 ? (
+                  <p className="text-[10px] text-[#a13d3d]">Pick at least one active month.</p>
+                ) : (
+                  <p className="text-[10px] text-[#6b6b6b]">
+                    Paid in: {activeMonths.map((m) => MONTH_ABBR[m - 1]).join(", ")}
+                    {(line.seasonal?.repeat_yearly ?? true) ? ", every year." : ", first year only."}
+                  </p>
+                )}
               </div>
             )}
           </div>
+
+          {/* One-time temporary end month */}
+          {!seasonalOn && (
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={typeof line.end_month === "number"}
+                  disabled={!canEdit}
+                  onChange={(e) => enableEndMonth(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-[#155e63]"
+                />
+                <span className="text-xs font-medium text-[#1a1a1a]">
+                  Temporary: stop paying this role after a set month (one time)
+                </span>
+              </label>
+              {typeof line.end_month === "number" && (
+                <div className="ml-6 mt-2 w-32">
+                  <label className={fieldLabelCls}>Last paid month</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={line.end_month}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      onChange({
+                        ...line,
+                        end_month: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)),
+                      })
+                    }
+                    className={`${inputCls} w-full`}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
