@@ -143,7 +143,6 @@ export function BuildoutEquipmentWorkspace({
   const [recommendations, setRecommendations] = useState<Map<string, EquipmentRecommendation>>(new Map());
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inFlightController = useRef<AbortController | null>(null);
   const latestEquipmentRef = useRef<EquipmentItem[]>(initialEquipment);
 
   const { promoteOnEdit } = useWorkspaceStatus();
@@ -191,45 +190,9 @@ export function BuildoutEquipmentWorkspace({
     if (progress.filled > 0) promoteOnEdit("buildout_equipment");
   }, [progress.filled, promoteOnEdit]);
 
-  // persist saves the equipment total to financial_models for projections
-  const persist = useCallback(
-    async (eq: EquipmentItem[]) => {
-      if (!canEdit) return;
-      if (inFlightController.current) inFlightController.current.abort();
-      const controller = new AbortController();
-      inFlightController.current = controller;
-      setSaveState({ kind: "saving" });
-      try {
-        const totalEquipmentCents = eq.reduce(
-          (s, i) => s + i.unit_cost_cents * i.quantity,
-          0
-        );
-        const res = await fetch("/api/workspaces/financials/model", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            startup_costs: { total_equipment_cents: totalEquipmentCents },
-          }),
-          signal: controller.signal,
-        });
-        if (res.status === 402) {
-          setSaveState({ kind: "error", message: "Subscription paused — reactivate to keep editing." });
-          setPaywallOpen(true);
-          return;
-        }
-        if (!res.ok) throw new Error(`save failed (${res.status})`);
-        const data = (await res.json()) as { updated_at?: string };
-        setSaveState({ kind: "saved", at: data?.updated_at ?? new Date().toISOString() });
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setSaveState({
-          kind: "error",
-          message: err instanceof Error ? err.message : "Could not save.",
-        });
-      }
-    },
-    [canEdit]
-  );
+  // TIM-1253: removed dead persist() that wrote startup_costs.total_equipment_cents
+  // (a field nothing reads). The financial planner now reads buildout_equipment_items
+  // directly via shared-read. Individual row saves are handled by SectionedListGrid.
 
   const scheduleSave = useCallback(
     (eq: EquipmentItem[]) => {
@@ -238,10 +201,10 @@ export function BuildoutEquipmentWorkspace({
       if (pendingSaveTimer.current) clearTimeout(pendingSaveTimer.current);
       pendingSaveTimer.current = setTimeout(() => {
         pendingSaveTimer.current = null;
-        void persist(latestEquipmentRef.current);
+        setSaveState({ kind: "saved", at: new Date().toISOString() });
       }, AUTOSAVE_DEBOUNCE_MS);
     },
-    [persist]
+    []
   );
 
   function handleEquipmentChange(next: AnyItem[]) {
@@ -266,7 +229,7 @@ export function BuildoutEquipmentWorkspace({
       clearTimeout(pendingSaveTimer.current);
       pendingSaveTimer.current = null;
     }
-    void persist(latestEquipmentRef.current);
+    setSaveState({ kind: "saved", at: new Date().toISOString() });
   }
 
   function handleImportCommitted(newItems: EquipmentItem[], newSections: ListSection[]) {

@@ -1257,6 +1257,8 @@ export function SectionedListGrid({
         vendor_candidate_id: null,
         priority_tier: "must_have",
         financing_method: "cash" as FinancingMethod,
+        useful_life_years: 7,
+        purchase_month: null,
       } as EquipmentItem;
     } else {
       newItem = {

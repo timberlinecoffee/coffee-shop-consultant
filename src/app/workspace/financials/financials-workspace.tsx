@@ -17,6 +17,7 @@ import {
   type DayKey,
   type DaySchedule,
   type ForecastLine,
+  type AssetCategory,
   type FundingSourceLine,
   type PersonnelLine,
   type StartupCosts,
@@ -86,6 +87,9 @@ export interface EquipmentItem {
   source: EquipmentSource;
   notes: string | null;
   archived: boolean;
+  // TIM-1253: per-item depreciation horizon and capitalization month.
+  useful_life_years: number;          // 1–50, default 7
+  purchase_month: number | null;      // 1–12, null = month 1 of operations
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -185,6 +189,38 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
   };
 }
 
+// TIM-1253: map equipment categories to the AssetCategory taxonomy on ForecastLine.
+function equipmentCategoryToAsset(cat: EquipmentCategory): AssetCategory {
+  switch (cat) {
+    case "pos_tech": case "pos": return "pos_tech";
+    case "furniture_fixtures": case "furniture": case "signage_decor": case "signage": return "furniture";
+    default: return "equipment";
+  }
+}
+
+// TIM-1253: convert active buildout_equipment_items to synthetic capex ForecastLines
+// for computation. These are NEVER persisted — they exist only for the projection engine.
+export function equipmentItemsToCapexLines(items: EquipmentItem[]): ForecastLine[] {
+  return items
+    .filter((i) => !i.archived && i.unit_cost_cents > 0)
+    .map((i): ForecastLine => ({
+      id: `equipment-item:${i.id}`,
+      label: i.name || "Equipment",
+      category: "capex",
+      mode: "flat",
+      value: i.unit_cost_cents * i.quantity,
+      useful_life_years: i.useful_life_years ?? 7,
+      asset_category: equipmentCategoryToAsset(i.category),
+      linked_equipment_item_id: i.id,
+      ramp: {
+        enabled: true,
+        start_month: i.purchase_month ?? 1,
+        ramp_months: 0,
+        start_pct: 100,
+      },
+    }));
+}
+
 interface Props {
   planId: string;
   initialProjections: MonthlyProjections;
@@ -194,6 +230,9 @@ interface Props {
   initialModelUpdatedAtForReview: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  // TIM-1253: equipment items from buildout_equipment_items — shared-read from the DB.
+  // These drive per-item capex depreciation in the projections without re-typing.
+  initialEquipmentItems?: EquipmentItem[];
   // TIM-1117: blended COGS pct from the Menu module (or null when no priced
   // items exist). When a COGS forecast line opts to "link to menu", this rate
   // is applied instead of the user-entered % value.
@@ -404,6 +443,7 @@ function ForecastTab({
   onUpdateMp,
   menuBlendedCogsPct,
   menuCogsItems,
+  equipmentItems,
   onStartWizard,
 }: {
   mp: MonthlyProjections;
@@ -411,6 +451,7 @@ function ForecastTab({
   onUpdateMp: (next: MonthlyProjections) => void;
   menuBlendedCogsPct: number | null;
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  equipmentItems: EquipmentItem[];
   onStartWizard?: () => void;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
@@ -809,6 +850,42 @@ function ForecastTab({
             menuCogsItems={menuCogsItems}
             categories={["cogs", "overhead", "capex"]}
           />
+          {/* TIM-1253: show equipment items from Build-Out & Equipment workspace
+              as read-only capex entries so the user sees them in the capex
+              schedule without re-typing. Editing happens in the other workspace. */}
+          {equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0).length > 0 && (
+            <div className="mt-4 border-t border-[#efefef] pt-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63] mb-2">
+                Asset Purchases — From Build-Out &amp; Equipment
+              </p>
+              <div className="space-y-1">
+                {equipmentItems
+                  .filter((i) => !i.archived && i.unit_cost_cents > 0)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-[#f4f9f8] text-xs"
+                    >
+                      <span className="font-medium text-[#1a1a1a] truncate min-w-0 flex-1">
+                        {item.name || "Unnamed asset"}
+                      </span>
+                      <span className="text-[#6b6b6b] shrink-0">
+                        {formatCurrency((item.unit_cost_cents * item.quantity) / 100)}
+                      </span>
+                      <span className="text-[#afafaf] shrink-0 hidden sm:inline">
+                        {item.useful_life_years ?? 7}yr life
+                      </span>
+                    </div>
+                  ))}
+              </div>
+              <a
+                href="/workspace/buildout-equipment"
+                className="mt-2 inline-block text-xs font-medium text-[#155e63] hover:underline"
+              >
+                Edit in Build-Out &amp; Equipment →
+              </a>
+            </div>
+          )}
         </div>
       </Section>
 
@@ -1494,6 +1571,7 @@ export function FinancialsWorkspace({
   initialModelUpdatedAtForReview,
   canEdit,
   initialTrialMessagesUsed,
+  initialEquipmentItems = [],
   menuBlendedCogsPct = null,
   menuCogsItems = [],
 }: Props) {
@@ -1584,7 +1662,35 @@ export function FinancialsWorkspace({
     if (progress.filled > 0) promoteOnEdit("financials");
   }, [progress.filled, promoteOnEdit]);
 
-  const equipment = useMemo(() => ({ total_cost_cents: 0, financed_cost_cents: 0 }), []);
+  // TIM-1253: derive EquipmentSummary from actual buildout_equipment_items so
+  // startup_equipment_total and financed_total in FinancialProjections are real.
+  const equipment = useMemo(() => {
+    const active = initialEquipmentItems.filter((i) => !i.archived);
+    const total_cost_cents = active.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+    const FINANCED: FinancingMethod[] = ["loan", "lease", "in_house_financing", "credit_card", "credit", "other"];
+    const financed_cost_cents = active
+      .filter((i) => FINANCED.includes(i.financing_method))
+      .reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+    return { total_cost_cents, financed_cost_cents };
+  }, [initialEquipmentItems]);
+
+  // TIM-1253: build an mp variant used ONLY for computation — it adds the
+  // synthetic per-item capex ForecastLines from buildout_equipment_items and
+  // zeros out startup_costs.equipment_cents so that TIM-1246's aggregate
+  // depreciation path doesn't double-count with the per-item lines.
+  const mpForProjection = useMemo(() => {
+    const itemLines = equipmentItemsToCapexLines(initialEquipmentItems);
+    if (itemLines.length === 0) return mp;
+    const sc = mp.startup_costs ?? defaultStartupCosts();
+    return {
+      ...mp,
+      startup_costs: { ...sc, equipment_cents: 0 },
+      forecast_lines: [
+        ...mp.forecast_lines.filter((l) => !l.linked_equipment_item_id),
+        ...itemLines,
+      ],
+    };
+  }, [mp, initialEquipmentItems]);
 
   // TIM-1117: feed the blended menu COGS pct into the projection so menu-linked
   // COGS lines compute against menu costing rather than the user-entered %.
@@ -1594,8 +1700,8 @@ export function FinancialsWorkspace({
   );
 
   const projections = useMemo(
-    () => computeProjections(mp, equipment, projectionCtx),
-    [mp, equipment, projectionCtx]
+    () => computeProjections(mpForProjection, equipment, projectionCtx),
+    [mpForProjection, equipment, projectionCtx]
   );
 
   const slices = useMemo(() => {
@@ -1605,7 +1711,7 @@ export function FinancialsWorkspace({
     // spoilage %) are intentionally excluded — they render as line items but are
     // not part of computed operating income, so passing them here would make the
     // P&L sub-lines exceed the operating-expense total.
-    const fi = deriveFinancialInputs(mp);
+    const fi = deriveFinancialInputs(mpForProjection);
     const balanceSheetInputs = {
       equipment_cost_cents: fi.equipment_cost_cents,
       buildout_cost_cents: fi.buildout_cost_cents,
@@ -1614,8 +1720,8 @@ export function FinancialsWorkspace({
       pre_opening_marketing_cents: fi.pre_opening_marketing_cents,
       initial_inventory_cents: fi.initial_inventory_cents,
     };
-    return computeMonthlySlices(mp, equipment, balanceSheetInputs, projectionCtx);
-  }, [mp, equipment, projectionCtx]);
+    return computeMonthlySlices(mpForProjection, equipment, balanceSheetInputs, projectionCtx);
+  }, [mpForProjection, equipment, projectionCtx]);
 
   const lastSavedAt =
     saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null;
@@ -1952,6 +2058,7 @@ export function FinancialsWorkspace({
             onUpdateMp={handleMpUpdate}
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
+            equipmentItems={initialEquipmentItems}
             onStartWizard={openWizard}
           />
         )}

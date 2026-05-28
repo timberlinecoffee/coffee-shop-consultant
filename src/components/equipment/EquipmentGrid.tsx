@@ -34,13 +34,14 @@ import { formatCurrency } from "@/lib/financial-projection";
 const COL_VISIBILITY_KEY = "tcs-equipment-col-visibility";
 
 const TOGGLEABLE_COLS: { id: string; label: string }[] = [
-  { id: "vendor",           label: "Brand" },
-  { id: "model",            label: "Model" },
-  { id: "supplier",         label: "Supplier" },
-  { id: "unit_cost_cents",  label: "Cost" },
-  { id: "financing_method", label: "Financing" },
-  { id: "category",         label: "Category" },
-  { id: "notes",            label: "Notes" },
+  { id: "vendor",             label: "Brand" },
+  { id: "model",              label: "Model" },
+  { id: "supplier",           label: "Supplier" },
+  { id: "unit_cost_cents",    label: "Cost" },
+  { id: "financing_method",   label: "Financing" },
+  { id: "category",           label: "Category" },
+  { id: "useful_life_years",  label: "Useful Life" },
+  { id: "notes",              label: "Notes" },
 ];
 
 function loadColVisibility(): VisibilityState {
@@ -162,6 +163,8 @@ function newBlankItem(planId: string, position: number): EquipmentItem {
     source: "user_added",
     notes: null,
     archived: false,
+    useful_life_years: 7,
+    purchase_month: null,
   };
 }
 
@@ -174,6 +177,7 @@ const EDITABLE_COLS = [
   "unit_cost_cents",
   "financing_method",
   "category",
+  "useful_life_years",
   "notes",
 ] as const;
 
@@ -269,6 +273,38 @@ function CostCell({
       disabled={disabled}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
+      onKeyDown={onKeyDown}
+    />
+  );
+}
+
+function UsefulLifeCell({
+  value,
+  disabled,
+  onCommit,
+  onKeyDown,
+  inputRef,
+}: {
+  value: number;
+  disabled: boolean;
+  onCommit: (years: number) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  inputRef: React.Ref<HTMLInputElement>;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => { setDraft(String(value)); }, [value]);
+  return (
+    <input
+      ref={inputRef}
+      type="number"
+      min={1}
+      max={50}
+      step={1}
+      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0"
+      value={draft}
+      disabled={disabled}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => onCommit(Math.max(1, Math.min(50, Math.round(parseFloat(draft) || 7))))}
       onKeyDown={onKeyDown}
     />
   );
@@ -650,6 +686,9 @@ export function EquipmentGrid({
         patch = { notes: (rawValue as string) || null };
       } else if (colKey === "name") {
         patch = { name: rawValue as string };
+      } else if (colKey === "useful_life_years") {
+        const v = Math.max(1, Math.min(50, Math.round((rawValue as number) || 7)));
+        patch = { useful_life_years: v };
       }
 
       updateItemLocal(id, patch);
@@ -992,6 +1031,32 @@ export function EquipmentGrid({
                 )}
               </div>
             </div>
+          );
+        },
+      }),
+      columnHelper.accessor("useful_life_years", {
+        id: "useful_life_years",
+        header: "Useful Life",
+        size: 90,
+        cell: ({ row }) => {
+          const item = row.original;
+          const active = editingCell?.rowId === item.id && editingCell?.colKey === "useful_life_years";
+          const refKey = `${item.id}:useful_life_years`;
+          return active ? (
+            <UsefulLifeCell
+              value={item.useful_life_years ?? 7}
+              disabled={!canEdit}
+              onCommit={(v) => handleCellCommit(item.id, "useful_life_years", v)}
+              onKeyDown={(e) => handleCellKeyDown(e, item.id, "useful_life_years")}
+              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
+            />
+          ) : (
+            <span
+              className="block truncate text-xs text-[#1a1a1a] cursor-text"
+              onClick={() => canEdit && focusCell(item.id, "useful_life_years")}
+            >
+              {item.useful_life_years ?? 7}yr
+            </span>
           );
         },
       }),
