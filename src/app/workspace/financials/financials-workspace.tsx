@@ -98,10 +98,10 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "startup",
     tab: "startup",
-    targetId: "tour-startup-equipment",
-    title: "Start with your equipment",
-    body: "Begin your opening costs with equipment: espresso machine, grinders, fridge, added in the Build-Out & Equipment workspace. Then add build-out and supplies here; the total builds up from what you actually need.",
-    hint: "a full espresso bar's equipment runs about $40k–$120k.",
+    targetId: "tour-startup-capital-assets",
+    title: "Add up your opening costs",
+    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Build-Out & Equipment workspace; add supplies, deposits and other one-time costs directly. The total builds up as you go.",
+    hint: "opening a small espresso bar often runs $80k–$250k all in.",
   },
   {
     id: "taxes",
