@@ -19,7 +19,7 @@ interface Props {
 // One-time costs the owner enters directly. Build-Out & Capital Assets are
 // handled in the Capital Assets section above; these are the non-capex items.
 const EDITABLE_FIELDS: { key: keyof StartupCosts; label: string; hint?: string }[] = [
-  { key: "startup_supplies_cents", label: "Startup Supplies & Smallwares", hint: "Cups, lids, smallwares, cleaning, packaging — the consumables you open with" },
+  { key: "startup_supplies_cents", label: "Startup Supplies & Smallwares", hint: "Cups, lids, smallwares, cleaning, packaging: the consumables you open with" },
   { key: "initial_inventory_cents", label: "Initial Inventory", hint: "Opening coffee, food, and retail stock" },
   { key: "deposits_cents", label: "Deposits (Rent, Utilities)", hint: "Refundable deposits held by your landlord and utilities" },
   { key: "licenses_cents", label: "Licenses & Permits", hint: "Business license, food service, health and signage permits" },
