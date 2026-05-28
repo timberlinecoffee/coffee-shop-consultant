@@ -593,6 +593,9 @@ test("net income reflects COGS change when a stream-linked line is added", () =>
 
 test("capex line: depreciation uses per-line useful_life_years (default 7)", () => {
   const mp = defaultMonthlyProjections();
+  // TIM-1246: isolate capex-line depreciation — startup build-out/equipment now
+  // depreciate too, so zero them here to pin only the capex line under test.
+  mp.startup_costs = { ...mp.startup_costs, buildout_cents: 0, equipment_cents: 0 };
   mp.cogs_pct = 0;
   mp.ramp_months = 0;
   mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
@@ -617,6 +620,8 @@ test("capex line: depreciation uses per-line useful_life_years (default 7)", () 
 
 test("capex line: shorter useful_life_years compresses depreciation", () => {
   const mp = defaultMonthlyProjections();
+  // TIM-1246: isolate capex-line depreciation (see note above).
+  mp.startup_costs = { ...mp.startup_costs, buildout_cents: 0, equipment_cents: 0 };
   mp.cogs_pct = 0;
   mp.ramp_months = 0;
   mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
@@ -672,6 +677,8 @@ test("TIM-1182: EBITDA is operating income (pre-D&A); EBIT subtracts depreciatio
 
 test("multiple capex lines depreciate independently, summed at each month", () => {
   const mp = defaultMonthlyProjections();
+  // TIM-1246: isolate capex-line depreciation (see note above).
+  mp.startup_costs = { ...mp.startup_costs, buildout_cents: 0, equipment_cents: 0 };
   mp.cogs_pct = 0;
   mp.ramp_months = 0;
   mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
@@ -690,6 +697,69 @@ test("multiple capex lines depreciate independently, summed at each month", () =
   const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 }, {});
   // POS: $3,600 / 36 = $100/mo. Buildout: $24,000 / 120 = $200/mo. Sum: $300/mo = 30000 cents.
   assert.equal(rows[0].depreciation_cents, 30000);
+});
+
+test("TIM-1246: startup build-out & equipment depreciate straight-line over their useful life", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = []; // no capex lines — depreciation must come from startup assets
+  mp.personnel = [];
+  mp.startup_costs = {
+    ...mp.startup_costs,
+    buildout_cents: 15000000,   // $150,000 / (15*12) = $833.33/mo
+    equipment_cents: 5000000,   // $50,000 / (7*12)  = $595.24/mo
+    buildout_useful_life_years: 15,
+    equipment_useful_life_years: 7,
+  };
+  const rows = computeMonthlyProjections(mp, EQUIP, {});
+  const expectedBuildout = Math.round(15000000 / (15 * 12)); // 83333
+  const expectedEquip = Math.round(5000000 / (7 * 12));      // 59524
+  const expected = expectedBuildout + expectedEquip;
+  assert.equal(rows[0].depreciation_cents, expected);
+  // Both lives exceed the 60-mo horizon, so depreciation is constant across it.
+  assert.equal(rows[59].depreciation_cents, expected);
+});
+
+test("TIM-1246: startup assets that depreciate stay coherent on the balance sheet", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.forecast_lines = [];
+  mp.personnel = [];
+  mp.startup_costs = {
+    ...mp.startup_costs,
+    buildout_cents: 15000000,
+    equipment_cents: 5000000,
+    deposits_cents: 0,
+    licenses_cents: 0,
+    pre_opening_marketing_cents: 0,
+    initial_inventory_cents: 0,
+  };
+  // Seed gross fixed assets from the same startup buckets so depreciation draws
+  // them down coherently (this is the deliverable-#3 invariant).
+  const slices = computeMonthlySlices(
+    mp,
+    EQUIP,
+    { equipment_cost_cents: 5000000, buildout_cost_cents: 15000000, owner_capital_cents: 30000000 },
+    {}
+  );
+  const m1 = slices[0];
+  assert.ok(m1.depreciation_cents > 0, "startup assets must produce depreciation expense");
+  assert.equal(m1.accumulated_depreciation_cents, m1.depreciation_cents);
+  assert.ok(
+    m1.net_fixed_assets_cents < m1.fixed_assets_gross_cents,
+    "accumulated depreciation must draw net fixed assets below gross"
+  );
+  // Accumulated depreciation grows monotonically.
+  assert.ok(slices[11].accumulated_depreciation_cents > m1.accumulated_depreciation_cents);
+  // The balance sheet identity must hold every month after the change.
+  for (const s of slices) {
+    const gap = Math.abs(s.total_assets_cents - s.total_liabilities_and_equity_cents);
+    assert.ok(gap < 10, `BS out of balance at month ${s.month_index} by ${gap} cents`);
+  }
 });
 
 test("ΔWC: AP delta from prior month's COGS feeds into operating cash", () => {

@@ -171,6 +171,15 @@ export interface StartupCosts {
   initial_inventory_cents: number;
   working_capital_reserve_cents: number;
   opening_cash_buffer_cents: number;
+  // TIM-1246: build-out and equipment are capital assets, so they depreciate
+  // straight-line over a useful life — the same coherent treatment capex
+  // ForecastLines get (TIM-1169). Before this, these buckets seeded gross fixed
+  // assets on the balance sheet but never depreciated, so net fixed assets never
+  // declined and no depreciation expense / tax shield ever hit the P&L — even
+  // though the Startup tab told owners equipment was "on a depreciation
+  // schedule". Defaults: build-out / leasehold improvements 15y, equipment 7y.
+  buildout_useful_life_years: number;
+  equipment_useful_life_years: number;
 }
 
 export interface MonthlyProjections {
@@ -434,6 +443,8 @@ export function defaultStartupCosts(): StartupCosts {
     initial_inventory_cents: 200000,
     working_capital_reserve_cents: 1500000,
     opening_cash_buffer_cents: 1000000,
+    buildout_useful_life_years: 15,
+    equipment_useful_life_years: 7,
   };
 }
 
@@ -919,6 +930,14 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       ? Math.round(v)
       : scDefaults[key];
   };
+  // TIM-1246: useful life is clamped to a sane 1..50y range, defaulting to the
+  // per-bucket default when missing (older payloads) or out of range.
+  const startupLife = (key: "buildout_useful_life_years" | "equipment_useful_life_years"): number => {
+    const v = sc[key];
+    return typeof v === "number" && Number.isFinite(v) && v > 0
+      ? Math.min(50, Math.max(1, Math.round(v)))
+      : scDefaults[key];
+  };
   const startup_costs: StartupCosts = {
     buildout_cents: startupCent("buildout_cents"),
     equipment_cents: startupCent("equipment_cents"),
@@ -928,6 +947,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     initial_inventory_cents: startupCent("initial_inventory_cents"),
     working_capital_reserve_cents: startupCent("working_capital_reserve_cents"),
     opening_cash_buffer_cents: startupCent("opening_cash_buffer_cents"),
+    buildout_useful_life_years: startupLife("buildout_useful_life_years"),
+    equipment_useful_life_years: startupLife("equipment_useful_life_years"),
   };
 
   // TIM-1245: optional beverage/food split of the average ticket. avg_ticket
@@ -1414,6 +1435,29 @@ export function computeMonthlyProjections(
       depreciationByMonth[m - 1] += perMonth;
     }
   }
+
+  // TIM-1246: the one-time startup build-out and equipment buckets are capital
+  // assets and must depreciate too, on the same straight-line basis as capex
+  // lines. They are capitalized at open (month 1), so depreciation runs from
+  // month 1 over each bucket's useful life. This is what makes depreciation
+  // coherent across the whole asset model: every fixed asset on the balance
+  // sheet — whether entered as an itemized capex line or as a startup bucket —
+  // depreciates over a useful life, hits the P&L as expense (with the tax
+  // shield), and draws down accumulated depreciation. Without this the startup
+  // assets sat on the balance sheet at gross forever (see computeMonthlySlices
+  // fixedAssetsGross seeding) with no expense ever recognized.
+  const sc = mp.startup_costs ?? defaultStartupCosts();
+  const addStraightLineDep = (costCents: number, lifeYears: number) => {
+    if (!(costCents > 0)) return;
+    const months = Math.max(1, Math.round((lifeYears > 0 ? lifeYears : 7) * 12));
+    const perMonth = Math.round(costCents / months);
+    if (perMonth <= 0) return;
+    for (let m = 1; m <= months && m <= 60; m++) {
+      depreciationByMonth[m - 1] += perMonth;
+    }
+  };
+  addStraightLineDep(sc.buildout_cents ?? 0, sc.buildout_useful_life_years ?? 15);
+  addStraightLineDep(sc.equipment_cents ?? 0, sc.equipment_useful_life_years ?? 7);
 
   const rows: MonthlyProjectionRow[] = [];
 
@@ -2076,7 +2120,17 @@ export function computeMonthlySlices(
     }
   }
 
-  const fixedAssetsGross = (inputs.equipment_cost_cents ?? 0) + (inputs.buildout_cost_cents ?? 0);
+  // TIM-1246: gross fixed assets are seeded from the SAME source that drives
+  // depreciation (mp.startup_costs), so the two can never diverge — a capital
+  // asset that depreciates on the P&L is always the asset that sits on the
+  // balance sheet at gross. Previously this read inputs.equipment_cost_cents /
+  // buildout_cost_cents while depreciation read mp.startup_costs; in production
+  // those are equal (FinancialInputs is derived from the model), but any caller
+  // that passed divergent inputs would break the balance-sheet identity once the
+  // startup buckets started depreciating.
+  const startupAssets = mp.startup_costs ?? defaultStartupCosts();
+  const fixedAssetsGross =
+    (startupAssets.equipment_cents || 0) + (startupAssets.buildout_cents || 0);
   // TIM-1181: The opening balance sheet must reconcile sources (funding) against
   // uses (assets + pre-opening spend), or Assets = Liabilities + Equity never
   // holds and the planner shows "Out Of Balance" on every valid input. Opening
