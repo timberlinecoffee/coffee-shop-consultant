@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { computePlanReadiness } from "@/lib/workspace-manifest";
+import { buildNavItems } from "@/lib/workspace-manifest";
 import { capitalizeFirst } from "@/lib/format";
 import {
   buildRecentActivity,
@@ -19,11 +19,10 @@ import {
 } from "@/lib/workspace-status";
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { ProgressDashboard } from "./_components/progress-dashboard";
+import { DashboardHero } from "./_components/dashboard-hero";
+import { WorkspaceNav } from "./_components/workspace-nav";
 
 export const dynamic = 'force-dynamic';
-
-const WORKSPACE_1 = { num: 1, title: "Workspace 1: Concept", subtitle: "Define your shop identity" };
-const WORKSPACE_2 = { num: 2 };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -90,14 +89,12 @@ export default async function DashboardPage() {
     }
   }
 
-  // W1-specific labels for the "Start here" card.
-  const w1Status = statusByKey.get("concept") ?? "not_started";
-  const w1Completed = w1Status === "complete";
-  const w1Started = w1Status !== "not_started";
-  const w1Pct = w1Status === "complete" ? 100 : w1Status === "in_progress" ? 50 : 0;
+  // Concept completion gates the milestones quick-link + unlock note.
+  const w1Completed = (statusByKey.get("concept") ?? "not_started") === "complete";
 
-  // Overall plan readiness: average of per-workspace manual statuses (0/50/100).
-  const readinessScore = computePlanReadiness(statusByKey).pct;
+  // TIM-1268: workspace nav grouped by category, mirroring the sidebar. Uses
+  // the shared manifest source of truth so the grouping cannot drift.
+  const navItems = buildNavItems(statusByKey);
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
@@ -183,118 +180,23 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Greeting + readiness */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
-          <div>
-            <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">
-              <span className="sm:hidden">Hey {firstName}.</span>
-              <span className="hidden sm:inline">Hey {firstName}. You have started.</span>
-            </h1>
-          </div>
-          <div
-            className="bg-white rounded-2xl border border-[#efefef] p-5 min-w-48 text-center"
-            title="Complete sections in each available workspace to raise this score."
-          >
-            <div className="text-4xl font-bold text-[#155e63] mb-1">{readinessScore}%</div>
-            <div className="text-xs text-[#afafaf] uppercase tracking-wide font-medium">
-              <span className="sm:hidden">Taking shape</span>
-              <span className="hidden sm:inline">Your plan is taking shape</span>
-            </div>
-            <div className="mt-3 bg-[#efefef] rounded-full h-2 overflow-hidden max-w-[140px] mx-auto">
-              <div
-                className="bg-[#155e63] h-2 rounded-full transition-all duration-500"
-                style={{ width: `${readinessScore}%` }}
-              />
-            </div>
-          </div>
-        </div>
+        {/* TIM-1268: personable hero — time-of-day greeting + rotating fact. */}
+        <DashboardHero firstName={firstName} />
 
-        {/* START HERE — Workspace 1 */}
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">Start Here</p>
-          <div className="bg-white rounded-xl border border-[#155e63]/30 p-6 flex gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-              w1Completed ? "bg-[#155e63] text-white" :
-              w1Started ? "bg-[#155e63]/20 text-[#155e63]" :
-              "bg-[#155e63] text-white"
-            }`}>
-              {w1Completed
-                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                : 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-[#1a1a1a] mb-0.5">{WORKSPACE_1.title}</h3>
-              <p className="text-xs text-[#afafaf] mb-3">{WORKSPACE_1.subtitle}</p>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 bg-[#efefef] rounded-full h-1.5 overflow-hidden max-w-[200px]">
-                  <div
-                    className={`h-1.5 rounded-full transition-all duration-500 ${w1Completed ? "bg-[#155e63]" : w1Started ? "bg-amber-400" : "bg-[#efefef]"}`}
-                    style={{ width: `${w1Pct}%` }}
-                  />
-                </div>
-                <span className="text-xs text-[#afafaf] whitespace-nowrap flex-shrink-0">
-                  {w1Completed ? "Complete" : w1Started ? "In Progress" : "Not Started"}
-                </span>
-              </div>
-              <Link
-                href="/workspace/concept"
-                className="inline-block text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-1.5 rounded-lg transition-colors"
-              >
-                {w1Completed ? "Review →" : w1Started ? "Continue →" : "Start →"}
-              </Link>
-            </div>
-          </div>
-        </div>
+        {/* TIM-1268: workspace display grouped by category, mirroring the
+            sidebar. Replaces the old numbered "Start Here" + "Coming Up" lists. */}
+        <ConceptUnlockNote show={showUnlockNote} />
+        <WorkspaceNav items={navItems} />
 
-        {/* TIM-1063: Progress dashboard — next-step nudge, completion strip,
-           stale nudges, recent activity, quick actions. Sits above the
-           Coming Up list so the owner always sees a concrete next move. */}
+        {/* TIM-1063: Progress dashboard — next-step nudge, stale nudges,
+           recent activity, quick actions. */}
         <ProgressDashboard
           nextStep={nextStep}
-          snapshots={workspaceSnapshots}
           staleNudges={staleNudges}
           recentActivity={recentActivity}
           weakest={weakestWorkspace}
           nowIso={nowIso}
         />
-
-        {/* COMING UP */}
-        <div className="mb-10">
-          <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mt-6 mb-3">Coming Up</p>
-          <ConceptUnlockNote show={showUnlockNote} />
-          <div className="bg-white rounded-xl border border-[#efefef] divide-y divide-[#efefef]">
-            {[
-              { num: 2, title: "Location & Lease", href: "/workspace/location-lease", lockedNote: <><span>Finish your Concept to open all modules.</span>{" "}<Link href="/workspace/concept" className="underline font-medium">Go to Concept</Link></> },
-              { num: 3, title: "Build-out & Equipment", href: "/workspace/buildout-equipment", lockedNote: <span>Opens with Concept</span> },
-              { num: 4, title: "Financials", href: "/workspace/financials", lockedNote: <span>Opens with Concept</span> },
-              { num: 5, title: "Menu & Pricing", href: "/workspace/menu-pricing", lockedNote: <span>Opens with Concept</span> },
-              { num: 6, title: "Launch Plan", href: "/workspace/launch-plan", lockedNote: <span>Opens with Concept</span> },
-              { num: 7, title: "Suppliers & Vendors", href: "/workspace/suppliers", lockedNote: <span>Opens with Concept</span> },
-              { num: 8, title: "Operations Playbook", href: "/workspace/operations-playbook", lockedNote: <span>Opens with Concept</span> },
-            ].map(({ num, title, href, lockedNote }) => (
-              <div key={num} className="p-5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#efefef] flex items-center justify-center flex-shrink-0">
-                  {allUnlocked ? (
-                    <span className="text-xs font-bold text-[#155e63]">{num}</span>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#afafaf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1a1a1a]">Workspace {num}: {title}</p>
-                  <p className="text-xs text-[#afafaf]">
-                    {allUnlocked ? "Ready to start" : lockedNote}
-                  </p>
-                </div>
-                {allUnlocked && (
-                  <Link href={href} className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0 inline-flex items-center gap-1">Open <ArrowRight size={12} /></Link>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Quick links */}
         <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick Links</h2>

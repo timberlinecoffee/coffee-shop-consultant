@@ -14,7 +14,6 @@ import type {
 
 interface ProgressDashboardProps {
   nextStep: NextStepSuggestion | null;
-  snapshots: WorkspaceProgressSnapshot[];
   staleNudges: StaleNudge[];
   recentActivity: ActivityEntry[];
   weakest: WorkspaceProgressSnapshot | null;
@@ -24,7 +23,6 @@ interface ProgressDashboardProps {
 
 export function ProgressDashboard({
   nextStep,
-  snapshots,
   staleNudges,
   recentActivity,
   weakest,
@@ -38,8 +36,6 @@ export function ProgressDashboard({
       className="mb-10"
     >
       {nextStep && <NextStepCard step={nextStep} />}
-
-      <CompletionStrip snapshots={snapshots} />
 
       {staleNudges.length > 0 && <StaleNudgeList nudges={staleNudges} />}
 
@@ -76,58 +72,6 @@ function NextStepCard({ step }: { step: NextStepSuggestion }) {
       </div>
     </div>
   );
-}
-
-// ── Workspace completion strip ───────────────────────────────────────────────
-
-function CompletionStrip({ snapshots }: { snapshots: WorkspaceProgressSnapshot[] }) {
-  if (snapshots.length === 0) return null;
-  return (
-    <div className="mb-4">
-      <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mb-3">
-        Workspace Progress
-      </p>
-      <div className="bg-white rounded-xl border border-[#efefef] p-4">
-        <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
-          {snapshots.map((snap) => (
-            <li key={snap.moduleNumber} className="min-w-0">
-              <Link
-                href={snap.href}
-                className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#155e63]/40 rounded-md"
-              >
-                <div className="flex items-center justify-between mb-1.5 gap-2">
-                  <span className="text-xs font-medium text-[#1a1a1a] truncate group-hover:text-[#155e63] transition-colors">
-                    {snap.label}
-                  </span>
-                  <span className="text-[11px] text-[#afafaf] font-medium flex-shrink-0 tabular-nums">
-                    {progressLabel(snap)}
-                  </span>
-                </div>
-                <div className="bg-[#efefef] rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className={`h-1.5 rounded-full transition-all duration-500 ${
-                      snap.isComplete
-                        ? "bg-[#155e63]"
-                        : snap.status === "in_progress"
-                          ? "bg-amber-400"
-                          : "bg-[#efefef]"
-                    }`}
-                    style={{ width: `${snap.pct}%` }}
-                  />
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-function progressLabel(snap: WorkspaceProgressSnapshot): string {
-  if (snap.status === "complete") return "Complete";
-  if (snap.status === "in_progress") return "In Progress";
-  return "Not Started";
 }
 
 // ── Stale nudges ─────────────────────────────────────────────────────────────
