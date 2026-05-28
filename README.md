@@ -112,6 +112,10 @@ See `supabase/schema.sql` for the complete schema. Tables:
 
 All tables have Row Level Security (RLS) enabled. Users can only access their own data.
 
+Schema changes go through `supabase/migrations/`. Before authoring one, read the
+migration authoring standard: [`supabase/migrations/README.md`](supabase/migrations/README.md)
+(the committed filename version must match the applied `schema_migrations` version — CI enforces it).
+
 ## Deployment
 
 The app deploys to Vercel automatically on push to `main`.

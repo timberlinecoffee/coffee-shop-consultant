@@ -32,8 +32,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 When you call the Supabase MCP `apply_migration` tool, you MUST also commit the exact SQL you applied to `supabase/migrations/<version>_<name>.sql` in the same PR that introduced the change. No exceptions.
 
 - The filename `<version>` must match the version recorded in `supabase_migrations.schema_migrations` on the project you applied against.
+- `apply_migration` assigns the version **server-side** — you do not choose it. Read it back, don't invent it:
+  `SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 5;`
+  then name the file `<version>_<name>.sql` with that exact version.
+- NEVER hand-assign a synthetic / round-number version (e.g. `20260525000000`, sequential `...000001`). That caused TIM-1231 — 15 migrations committed under invented versions that never matched `schema_migrations`, forcing a 15-file rename. The `migration-drift` CI check hard-fails on any mismatch.
 - Use the same SQL body verbatim (no edits between `apply_migration` and the file).
 - This applies to dev, staging, and prod projects equally.
+- Full authoring standard (incl. the `supabase db push` CLI path that makes applied == committed by construction): `supabase/migrations/README.md`.
 
 Why: The repo is the auditable source of truth for the deployed schema. Applying without committing breaks `supabase db diff`, makes rollback impossible, and forces archeology like TIM-759. If you only need a dev experiment, use a Supabase development branch — not direct `apply_migration` on a long-lived project.
 
