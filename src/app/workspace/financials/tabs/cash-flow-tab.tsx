@@ -55,6 +55,41 @@ function CFRow({ label, values, bold, indent, highlight, negative, currencyCode 
   );
 }
 
+// TIM-1183: cash can now go negative (the $0 clamp was removed in TIM-1169), so
+// surface the runway breach prominently. The per-year critique and red table
+// cells are easy to miss when a different year is selected; this banner scans
+// the whole projection so a deficit is never silently hidden.
+function CashRunwayBanner({
+  slices,
+  fiscalYearStartMonth,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  fiscalYearStartMonth: number;
+  currencyCode: string;
+}) {
+  const firstNegative = slices.find((s) => s.cash_cents < 0);
+  if (!firstNegative) return null;
+
+  const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
+  const monthLabel = (s: MonthlySlice) => labels[s.month - 1] ?? `Month ${s.month}`;
+  const trough = slices.reduce((lowest, s) => (s.cash_cents < lowest.cash_cents ? s : lowest), slices[0]);
+
+  return (
+    <div className="mb-4 rounded-2xl border border-[#e7c3c3] bg-[#fbeded] px-5 py-4">
+      <p className="text-sm font-semibold text-red-700">
+        Cash runs out in {monthLabel(firstNegative)} of Year {firstNegative.year}.
+      </p>
+      <p className="text-sm text-red-700/90 mt-1 leading-relaxed">
+        Your projected cash balance first goes negative in {monthLabel(firstNegative)} (Year{" "}
+        {firstNegative.year}) and bottoms out at {fmt(trough.cash_cents, currencyCode)} in{" "}
+        {monthLabel(trough)} of Year {trough.year}. You would need additional funding or lower costs
+        before then to stay solvent — this is a real deficit, not a $0 balance.
+      </p>
+    </div>
+  );
+}
+
 function SectionHeader({ label, colCount }: { label: string; colCount: number }) {
   return (
     <tr>
@@ -178,6 +213,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
 
   return (
     <div>
+      <CashRunwayBanner slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
