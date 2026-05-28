@@ -18,6 +18,7 @@ import {
   type DaySchedule,
   type ForecastLine,
   type FundingSourceLine,
+  type PersonnelLine,
   computeProjections,
   computeMonthlySlices,
   computeDayHours,
@@ -34,6 +35,7 @@ import { RatiosTab } from "./tabs/ratios-tab";
 import { StartupTab } from "./tabs/startup-tab";
 import { FundingTab } from "./tabs/funding-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
+import { PersonnelEditor } from "./personnel-editor";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -84,7 +86,7 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
+type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
 
 function findLineByKey(lines: ForecastLine[], key: string) {
   return lines.find((l) => l.legacy_key === key);
@@ -1312,6 +1314,10 @@ export function FinancialsWorkspace({
     handleMpUpdate({ ...mp, funding_sources: next });
   }
 
+  function handlePersonnelUpdate(next: PersonnelLine[]) {
+    handleMpUpdate({ ...mp, personnel: next });
+  }
+
   function handleCritiqueUpdate(c: CritiqueResult | null) {
     setCritique(c);
     latestCritiqueRef.current = c;
@@ -1338,6 +1344,7 @@ export function FinancialsWorkspace({
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "forecast", label: "Forecast Inputs" },
+    { id: "personnel", label: "Salaries" },
     { id: "funding", label: "Funding" },
     { id: "projections", label: "P&L" },
     { id: "balance-sheet", label: "Balance Sheet" },
@@ -1453,6 +1460,14 @@ export function FinancialsWorkspace({
             onUpdateMp={handleMpUpdate}
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
+          />
+        )}
+        {activeTab === "personnel" && (
+          <PersonnelEditor
+            personnel={mp.personnel ?? []}
+            canEdit={canEdit}
+            currencyCode={currencyCode}
+            onChange={handlePersonnelUpdate}
           />
         )}
         {activeTab === "funding" && (

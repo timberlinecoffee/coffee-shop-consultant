@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultMonthlyProjections,
+  defaultPersonnel,
   normalizeMonthlyProjections,
   computeMonthlyProjections,
   computeMonthlySlices,
@@ -13,12 +14,14 @@ import {
   computeBreakEvenModel,
 } from "./financial-projection.ts";
 
-test("default model has forecast_lines seeded with legacy overhead keys", () => {
+test("default model seeds overhead forecast_lines and a personnel plan (TIM-1206)", () => {
   const mp = defaultMonthlyProjections();
   assert.ok(Array.isArray(mp.forecast_lines));
-  assert.ok(mp.forecast_lines.find((l) => l.legacy_key === "labor"));
+  // TIM-1206: labor is no longer a forecast_line — it lives in `personnel`.
+  assert.equal(mp.forecast_lines.find((l) => l.legacy_key === "labor"), undefined);
   assert.ok(mp.forecast_lines.find((l) => l.legacy_key === "rent"));
   assert.ok(mp.forecast_lines.find((l) => l.legacy_key === "marketing"));
+  assert.ok(Array.isArray(mp.personnel) && mp.personnel.length > 0);
 });
 
 test("legacy stored payload (no forecast_lines) migrates into labeled lines", () => {
@@ -31,12 +34,41 @@ test("legacy stored payload (no forecast_lines) migrates into labeled lines", ()
     utilities_monthly_cents: 70000,
   };
   const mp = normalizeMonthlyProjections(raw);
-  const labor = mp.forecast_lines.find((l) => l.legacy_key === "labor");
-  assert.equal(labor?.value, 28);
-  assert.equal(labor?.mode, "pct");
+  // TIM-1206: the legacy labor line is dropped (labor moves to personnel); a
+  // %-of-revenue labor line has no headcount mapping, so personnel seeds defaults.
+  assert.equal(mp.forecast_lines.find((l) => l.legacy_key === "labor"), undefined);
+  assert.ok(Array.isArray(mp.personnel) && mp.personnel.length > 0);
   const rent = mp.forecast_lines.find((l) => l.legacy_key === "rent");
   assert.equal(rent?.value, 500000);
   assert.equal(rent?.mode, "flat");
+});
+
+test("TIM-1206: a flat (salaried) legacy labor line migrates to a monthly-pay role", () => {
+  const mp = normalizeMonthlyProjections({
+    forecast_lines: [
+      { id: "line:labor", label: "Labor", category: "overhead", mode: "flat", value: 700000, legacy_key: "labor" },
+      { id: "line:rent", label: "Rent", category: "overhead", mode: "flat", value: 450000, legacy_key: "rent" },
+    ],
+  });
+  // labor forecast line dropped, preserved as a single monthly personnel role.
+  assert.equal(mp.forecast_lines.find((l) => l.legacy_key === "labor"), undefined);
+  assert.equal(mp.personnel.length, 1);
+  assert.equal(mp.personnel[0].pay_basis, "monthly");
+  assert.equal(mp.personnel[0].pay_amount_cents, 700000);
+  assert.equal(mp.personnel[0].cost_category, "overhead");
+});
+
+test("TIM-1206: an explicit personnel array (even empty) is preserved verbatim", () => {
+  const empty = normalizeMonthlyProjections({ personnel: [] });
+  assert.deepEqual(empty.personnel, []);
+  const custom = normalizeMonthlyProjections({
+    personnel: [
+      { id: "s1", role: "Barista", headcount: 2, pay_basis: "hourly", pay_amount_cents: 1600, hours_per_week: 25, benefits_pct: 10, cost_category: "cogs" },
+    ],
+  });
+  assert.equal(custom.personnel.length, 1);
+  assert.equal(custom.personnel[0].cost_category, "cogs");
+  assert.equal(custom.personnel[0].hours_per_week, 25);
 });
 
 test("computeMonthlyProjections rolls overhead lines into legacy named fields", () => {
@@ -777,72 +809,124 @@ test("two separate loans amortize independently and sum repayments", () => {
   assert.ok(m60.long_term_debt_cents < 100000);
 });
 
-// ── TIM-1178: break-even cost model must count labor ─────────────────────────
+// ── TIM-1206: personnel plan — labor source of truth + break-even ────────────
 
 const EQUIP = { total_cost_cents: 0, financed_cost_cents: 0 };
 
-test("TIM-1178: break-even counts pct-mode labor as a variable cost", () => {
+test("TIM-1206: annual / monthly / hourly pay convert to the right monthly cost", () => {
+  const base = defaultMonthlyProjections();
+  base.personnel = [];
+
+  const annual = { ...base, personnel: [
+    { id: "a", role: "Manager", headcount: 1, pay_basis: "annual", pay_amount_cents: 12000000, benefits_pct: 0, cost_category: "overhead" },
+  ]};
+  assert.equal(computeMonthlyProjections(annual, EQUIP)[0].labor_overhead_cents, 1000000); // $120k/12
+
+  const monthly = { ...base, personnel: [
+    { id: "m", role: "Manager", headcount: 1, pay_basis: "monthly", pay_amount_cents: 500000, benefits_pct: 20, benefits_fixed_cents: 10000, cost_category: "overhead" },
+  ]};
+  // $5,000 × 1.20 + $100 fixed = $6,100
+  assert.equal(computeMonthlyProjections(monthly, EQUIP)[0].labor_overhead_cents, 610000);
+
+  const hourly = { ...base, personnel: [
+    { id: "h", role: "Baristas", headcount: 2, pay_basis: "hourly", pay_amount_cents: 2000, hours_per_week: 30, benefits_pct: 10, cost_category: "cogs" },
+  ]};
+  // 2 × $20 × 30h × 52/12 = $5,200 base; +10% = $5,720 → COGS-labor bucket
+  assert.equal(computeMonthlyProjections(hourly, EQUIP)[0].labor_cogs_cents, 572000);
+});
+
+test("TIM-1206: phased hiring ramp and seasonal end_month gate the cost", () => {
+  const mp = defaultMonthlyProjections();
+  mp.personnel = [
+    { id: "r", role: "Crew", headcount: 2, pay_basis: "monthly", pay_amount_cents: 300000, benefits_pct: 0,
+      cost_category: "overhead", ramp: { enabled: true, start_month: 1, ramp_months: 4, start_pct: 50 } },
+  ];
+  const rows = computeMonthlyProjections(mp, EQUIP);
+  // base = 2 × $3,000 = $6,000; m1 at 50% = $3,000; m4 at 100% = $6,000
+  assert.equal(rows[0].labor_overhead_cents, 300000);
+  assert.equal(rows[3].labor_overhead_cents, 600000);
+
+  const seasonal = defaultMonthlyProjections();
+  seasonal.personnel = [
+    { id: "s", role: "Holiday Help", headcount: 1, pay_basis: "monthly", pay_amount_cents: 100000, benefits_pct: 0, cost_category: "overhead", end_month: 3 },
+  ];
+  const srows = computeMonthlyProjections(seasonal, EQUIP);
+  assert.equal(srows[2].labor_overhead_cents, 100000); // month 3 — last paid month
+  assert.equal(srows[3].labor_overhead_cents, 0);      // month 4 — off payroll
+});
+
+test("TIM-1206: COGS-labor flows into cogs; overhead-labor flows into opex", () => {
+  const mp = defaultMonthlyProjections();
+  mp.cogs_pct = 0;
+  mp.ramp_months = 0;
+  mp.forecast_lines = [];
+  mp.daily_flow = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
+  mp.personnel = [
+    { id: "bar", role: "Baristas", headcount: 1, pay_basis: "monthly", pay_amount_cents: 400000, benefits_pct: 0, cost_category: "cogs" },
+    { id: "mgr", role: "Manager", headcount: 1, pay_basis: "monthly", pay_amount_cents: 500000, benefits_pct: 0, cost_category: "overhead" },
+  ];
+  const m1 = computeMonthlyProjections(mp, EQUIP)[0];
+  assert.equal(m1.labor_cogs_cents, 400000);
+  assert.equal(m1.labor_overhead_cents, 500000);
+  assert.equal(m1.labor_cents, 500000, "labor_cents is the operating-overhead labor line");
+  assert.equal(m1.cogs_cents, 400000, "direct labor is part of COGS");
+  assert.equal(m1.total_opex_cents, 500000, "overhead labor is in operating expenses");
+});
+
+test("TIM-1206: break-even counts personnel as a FIXED cost (labor not understated)", () => {
   const mp = defaultMonthlyProjections();
   const slices = computeMonthlySlices(mp, EQUIP, {}, {});
   const m1 = slices[0];
-
-  const labor = mp.forecast_lines.find((l) => l.legacy_key === "labor");
-  assert.equal(labor?.mode, "pct", "default labor line is pct-of-revenue");
-  assert.ok(m1.labor_cents > 0, "labor has a nonzero month-1 amount");
+  assert.ok(m1.labor_overhead_cents > 0, "default personnel produces labor cost");
 
   const model = computeBreakEvenModel(m1, mp.forecast_lines, mp.avg_ticket_cents);
   assert.ok(model, "model computed");
 
-  // Labor belongs in the VARIABLE bucket: variablePct must be at least labor's
-  // share of revenue (on top of COGS/processing/spoilage).
-  const laborShare = m1.labor_cents / m1.net_revenue_cents;
-  assert.ok(
-    model.variablePct >= laborShare - 1e-9,
-    `variablePct (${model.variablePct}) must include labor (${laborShare})`,
-  );
-
-  // Fixed costs must EXCLUDE labor: only flat overhead + interest + depreciation.
+  // Fixed costs include ALL personnel (labor is fixed, not per-transaction).
   const flatOverhead =
     m1.rent_cents + m1.insurance_cents + m1.tech_cents + m1.maintenance_cents +
     m1.supplies_cents + m1.utilities_cents + m1.other_opex_cents;
   assert.equal(
     model.fixedCostsCents,
-    flatOverhead + m1.interest_cents + m1.depreciation_cents,
-    "fixed costs must not include labor",
+    flatOverhead + m1.interest_cents + m1.depreciation_cents + m1.labor_cogs_cents + m1.labor_overhead_cents,
+    "fixed costs must include personnel labor",
   );
 
-  // Regression for the original bug: dropping labor entirely (its old behavior of
-  // belonging to neither bucket) understates the break-even volume.
-  const noLaborLines = mp.forecast_lines.filter((l) => l.legacy_key !== "labor");
-  const noLaborSlices = computeMonthlySlices({ ...mp, forecast_lines: noLaborLines }, EQUIP, {}, {});
-  const noLaborModel = computeBreakEvenModel(noLaborSlices[0], noLaborLines, mp.avg_ticket_cents);
-  assert.ok(noLaborModel, "labor-free model computed");
+  // Regression for TIM-1178: removing labor (personnel) understates break-even.
+  const noStaff = { ...mp, personnel: [] };
+  const noStaffModel = computeBreakEvenModel(
+    computeMonthlySlices(noStaff, EQUIP, {}, {})[0],
+    noStaff.forecast_lines,
+    mp.avg_ticket_cents,
+  );
   assert.ok(
-    model.breakEvenTransactions > noLaborModel.breakEvenTransactions,
-    `including labor must raise break-even volume (${model.breakEvenTransactions} > ${noLaborModel.breakEvenTransactions})`,
+    model.breakEvenTransactions > noStaffModel.breakEvenTransactions,
+    `personnel must raise break-even volume (${model.breakEvenTransactions} > ${noStaffModel.breakEvenTransactions})`,
+  );
+  // Overhead personnel does NOT enter the variable bucket.
+  assert.ok(
+    Math.abs(model.variablePct - noStaffModel.variablePct) < 1e-9,
+    "overhead personnel must not change the variable cost ratio",
   );
 });
 
-test("TIM-1178: flat-mode labor is a fixed cost, not variable", () => {
-  const mp = defaultMonthlyProjections();
-  const pctSlices = computeMonthlySlices(mp, EQUIP, {}, {});
-  const pctModel = computeBreakEvenModel(pctSlices[0], mp.forecast_lines, mp.avg_ticket_cents);
-
-  // Pin the same month-1 labor dollars as a flat (salaried) line.
-  const laborCents = pctSlices[0].labor_cents;
-  const flatLines = mp.forecast_lines.map((l) =>
-    l.legacy_key === "labor"
-      ? { ...l, mode: "flat", value: laborCents, ramp: undefined, growth: undefined }
-      : l,
-  );
-  const flatSlices = computeMonthlySlices({ ...mp, forecast_lines: flatLines }, EQUIP, {}, {});
-  const flatModel = computeBreakEvenModel(flatSlices[0], flatLines, mp.avg_ticket_cents);
-
-  assert.ok(flatModel.fixedCostsCents > pctModel.fixedCostsCents, "flat labor adds to fixed costs");
-  assert.ok(flatModel.variablePct < pctModel.variablePct, "flat labor leaves the variable bucket");
+test("TIM-1206: COGS-labor is fixed in break-even (same as overhead-labor)", () => {
+  const mk = (cat) => {
+    const mp = defaultMonthlyProjections();
+    mp.personnel = [
+      { id: "x", role: "Staff", headcount: 1, pay_basis: "monthly", pay_amount_cents: 500000, benefits_pct: 0, cost_category: cat },
+    ];
+    return computeMonthlySlices(mp, EQUIP, {}, {})[0];
+  };
+  const mpRef = defaultMonthlyProjections();
+  const cogsModel = computeBreakEvenModel(mk("cogs"), mpRef.forecast_lines, mpRef.avg_ticket_cents);
+  const ohModel = computeBreakEvenModel(mk("overhead"), mpRef.forecast_lines, mpRef.avg_ticket_cents);
+  // A salaried role is fixed regardless of its P&L bucket: identical break-even.
+  assert.equal(cogsModel.fixedCostsCents, ohModel.fixedCostsCents);
+  assert.ok(Math.abs(cogsModel.variablePct - ohModel.variablePct) < 1e-9);
 });
 
-test("TIM-1178: interest stays a fixed below-the-line cost (not double-counted)", () => {
+test("TIM-1206: interest stays a fixed below-the-line cost (not double-counted)", () => {
   const mp = defaultMonthlyProjections();
   const slices = computeMonthlySlices(mp, EQUIP, {}, {});
   const m1 = slices[0];
@@ -851,12 +935,13 @@ test("TIM-1178: interest stays a fixed below-the-line cost (not double-counted)"
   const flatOverhead =
     m1.rent_cents + m1.insurance_cents + m1.tech_cents + m1.maintenance_cents +
     m1.supplies_cents + m1.utilities_cents + m1.other_opex_cents;
-  // interest_cents is added exactly once (via the dedicated field), even though
-  // the interest line also appears in forecast_line_amounts.
-  assert.equal(model.fixedCostsCents, flatOverhead + m1.interest_cents + m1.depreciation_cents);
+  assert.equal(
+    model.fixedCostsCents,
+    flatOverhead + m1.interest_cents + m1.depreciation_cents + m1.labor_cogs_cents + m1.labor_overhead_cents,
+  );
 });
 
-test("TIM-1178: returns null when revenue or ticket is non-positive", () => {
+test("TIM-1206: break-even returns null when revenue or ticket is non-positive", () => {
   const mp = defaultMonthlyProjections();
   const slices = computeMonthlySlices(mp, EQUIP, {}, {});
   assert.equal(computeBreakEvenModel(undefined, mp.forecast_lines, mp.avg_ticket_cents), null);

@@ -58,7 +58,10 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
   const nr = totals.net_revenue_cents ?? 0;
   const gp = totals.gross_profit_cents ?? 0;
   const oi = totals.operating_income_cents ?? 0;
-  const labor = totals.labor_cents ?? 0;
+  // TIM-1206: labor_cents is overhead labor; COGS-labor is folded into total_cogs.
+  const laborOverhead = totals.labor_cents ?? 0;
+  const laborCogs = totals.labor_cogs_cents ?? 0;
+  const totalLabor = laborOverhead + laborCogs;
   const cogs = totals.total_cogs_cents ?? 0;
   const rent = totals.rent_cents ?? 0;
   const pp = totals.payment_processing_cents ?? 0;
@@ -69,8 +72,9 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
 
   const grossMargin = (gp / nr) * 100;
   const opMargin = (oi / nr) * 100;
-  const laborPct = (labor / nr) * 100;
-  const primeCost = ((cogs + labor) / nr) * 100;
+  const laborPct = (totalLabor / nr) * 100;
+  // cogs already includes COGS-labor; add only overhead labor for prime cost.
+  const primeCost = ((cogs + laborOverhead) / nr) * 100;
   const occupancy = (rent / nr) * 100;
   const processingPct = (pp / nr) * 100;
   const spoilagePct = cogs > 0 ? (spoilage / cogs) * 100 : 0;
