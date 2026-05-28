@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Pencil, RotateCcw } from "lucide-react";
 import {
   type MonthlySlice,
   type LineMonthlyAmount,
@@ -130,31 +131,35 @@ function EditableLineRow({
   };
 
   return (
-    <tr className={manual ? "bg-[#fbf7ef]" : ""}>
+    <tr className={`group/row ${manual ? "bg-[#fbf7ef]" : ""}`}>
       <td
         className={`py-2 pr-4 text-sm sticky left-0 ${manual ? "bg-[#fbf7ef]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
       >
         <span className="inline-flex items-center gap-1.5">
           <span>{label}</span>
-          {editable && manual && (
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#9a6b00] bg-[#f3e6c4] rounded px-1.5 py-0.5">
-              Manual
-            </span>
-          )}
-          {editable && (
-            <button
-              type="button"
-              onClick={() => onToggleManual(lineId, !manual)}
-              title={
-                manual
-                  ? "Switch back to assumption-driven (clears manual entries)"
-                  : "Switch to manual monthly entry (seeds from current values)"
-              }
-              className="text-[10px] text-[#8a8a8a] hover:text-[#155e63] underline decoration-dotted"
-            >
-              {manual ? "use assumptions" : "enter manually"}
-            </button>
-          )}
+          {editable &&
+            (manual ? (
+              <button
+                type="button"
+                onClick={() => onToggleManual(lineId, false)}
+                title="Entering all months by hand — click to switch back to assumptions"
+                aria-label="Switch back to assumption-driven entry"
+                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[#9a6b00] bg-[#f3e6c4] hover:bg-[#ecdaa8] rounded px-1.5 py-0.5 transition-colors"
+              >
+                Manual
+                <RotateCcw size={9} className="opacity-60" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onToggleManual(lineId, true)}
+                title="Enter every month by hand (seeds from current values)"
+                aria-label="Enter all months manually"
+                className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 text-[#c4c4c4] hover:text-[#155e63] transition-opacity"
+              >
+                <Pencil size={11} />
+              </button>
+            ))}
         </span>
       </td>
       {cells.map((cell, i) => {
@@ -201,9 +206,10 @@ function EditableLineRow({
                     if (cell.monthIndexAbs !== undefined) onClear(lineId, cell.monthIndexAbs);
                   }}
                   title="Revert to calculated"
-                  className="opacity-0 group-hover:opacity-100 text-[#8a8a8a] hover:text-[#155e63] text-xs leading-none"
+                  aria-label="Revert to calculated"
+                  className="opacity-0 group-hover:opacity-100 text-[#8a8a8a] hover:text-[#155e63] inline-flex items-center"
                 >
-                  ↺
+                  <RotateCcw size={11} />
                 </button>
               )}
             </span>
@@ -616,10 +622,11 @@ export function PLTab({
           {period === "monthly" ? (
             <>
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#155e63] align-middle mr-1" />
-              Click any revenue or expense cell to override it for that month — overridden cells are
-              flagged and survive recalculation. Use <span className="text-[#155e63]">enter manually</span> on
-              a line to type all months directly (LivePlan-style). Overrides flow into the P&amp;L, cash
-              flow, balance sheet, break-even, and ratios.
+              Click any revenue or expense cell to type an override for that month — overridden cells are
+              flagged and survive recalculation. To enter every month by hand, hover a line and click the{" "}
+              <Pencil size={11} className="inline align-text-bottom text-[#155e63]" /> pencil (LivePlan-style);
+              the <span className="text-[#9a6b00] font-semibold">Manual</span> tag marks those lines and reverts
+              them when clicked. Overrides flow into the P&amp;L, cash flow, balance sheet, break-even, and ratios.
             </>
           ) : (
             <>Switch to the <span className="font-medium">monthly</span> view to edit individual cells. Overridden cells are flagged with a dot.</>
