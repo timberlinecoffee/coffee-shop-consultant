@@ -1,5 +1,6 @@
 // TIM-965: CRUD for hiring_plan_roles (org structure).
 import { createClient } from "@/lib/supabase/server"
+import { isProvidedString } from "@/lib/hiring"
 import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
 
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
 
-  if (!body.role_title || typeof body.role_title !== "string") {
+  // TIM-1217: allow blank role_title (optimistic inline-edit row). See isProvidedString.
+  if (!isProvidedString(body.role_title)) {
     return Response.json({ error: "Missing required field: role_title" }, { status: 400 })
   }
 

@@ -1,5 +1,6 @@
 // TIM-965: CRUD for staff_competencies (plan-level competency template).
 import { createClient } from "@/lib/supabase/server"
+import { isProvidedString } from "@/lib/hiring"
 import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
 
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
 
-  if (!body.skill || typeof body.skill !== "string") {
+  // TIM-1217: allow blank skill (optimistic inline-edit row). See isProvidedString.
+  if (!isProvidedString(body.skill)) {
     return Response.json({ error: "Missing required field: skill" }, { status: 400 })
   }
 
