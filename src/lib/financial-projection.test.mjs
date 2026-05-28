@@ -1279,3 +1279,49 @@ test("TIM-1243: default model has empty overrides + manual_lines", () => {
   assert.deepEqual(mp.manual_overrides, []);
   assert.deepEqual(mp.manual_lines, []);
 });
+
+// TIM-1245: optional beverage/food split of the average ticket. avg_ticket stays
+// the single engine driver, kept equal to beverage + food.
+test("TIM-1245: split disabled by default; ticket untouched", () => {
+  const mp = normalizeMonthlyProjections({ avg_ticket_cents: 900 });
+  assert.equal(mp.revenue_split_enabled, false);
+  assert.equal(mp.avg_ticket_cents, 900);
+  assert.equal(mp.beverage_ticket_cents, undefined);
+  assert.equal(mp.food_ticket_cents, undefined);
+});
+
+test("TIM-1245: split self-heals avg_ticket to beverage + food", () => {
+  const mp = normalizeMonthlyProjections({
+    avg_ticket_cents: 1, // stale / drifted value
+    revenue_split_enabled: true,
+    beverage_ticket_cents: 550,
+    food_ticket_cents: 200,
+  });
+  assert.equal(mp.avg_ticket_cents, 750);
+  assert.equal(mp.beverage_ticket_cents, 550);
+  assert.equal(mp.food_ticket_cents, 200);
+});
+
+test("TIM-1245: enabling split with no split entered seeds beverage from ticket", () => {
+  const mp = normalizeMonthlyProjections({
+    avg_ticket_cents: 800,
+    revenue_split_enabled: true,
+  });
+  assert.equal(mp.avg_ticket_cents, 800);
+  assert.equal(mp.beverage_ticket_cents, 800);
+  assert.equal(mp.food_ticket_cents, 0);
+});
+
+test("TIM-1245: split does not change base revenue (engine uses avg_ticket)", () => {
+  const base = {
+    ...defaultMonthlyProjections(),
+    daily_flow: { mon: 100, tue: 100, wed: 100, thu: 100, fri: 100, sat: 100, sun: 100 },
+    avg_ticket_cents: 750,
+  };
+  const single = computeMonthlyProjections(normalizeMonthlyProjections(base), { total_cost_cents: 0, financed_cost_cents: 0 });
+  const split = computeMonthlyProjections(
+    normalizeMonthlyProjections({ ...base, revenue_split_enabled: true, beverage_ticket_cents: 500, food_ticket_cents: 250 }),
+    { total_cost_cents: 0, financed_cost_cents: 0 }
+  );
+  assert.equal(split[0].base_revenue_cents, single[0].base_revenue_cents);
+});

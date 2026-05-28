@@ -456,7 +456,35 @@ function ForecastTab({
 
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
   const totalWeeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
+  const avgCustomersPerDay =
+    openDays.length > 0 ? Math.round(totalWeeklyCustomers / openDays.length) : 0;
   const weeklyHours = computeWeeklyHours(mp.weekly_schedule);
+
+  // TIM-1245: beverage/food split of the average ticket. avg_ticket stays the
+  // single engine driver; the split just attributes it so the owner can read
+  // average beverage/food sales per day.
+  const splitOn = mp.revenue_split_enabled === true;
+  const bevTicketCents = mp.beverage_ticket_cents ?? 0;
+  const foodTicketCents = mp.food_ticket_cents ?? 0;
+  function setBeverageTicket(cents: number) {
+    const bev = Math.max(0, Math.round(cents));
+    update({ beverage_ticket_cents: bev, avg_ticket_cents: bev + foodTicketCents });
+  }
+  function setFoodTicket(cents: number) {
+    const food = Math.max(0, Math.round(cents));
+    update({ food_ticket_cents: food, avg_ticket_cents: bevTicketCents + food });
+  }
+  function toggleSplit(on: boolean) {
+    if (on) {
+      update({
+        revenue_split_enabled: true,
+        beverage_ticket_cents: mp.beverage_ticket_cents ?? mp.avg_ticket_cents,
+        food_ticket_cents: mp.food_ticket_cents ?? 0,
+      });
+    } else {
+      update({ revenue_split_enabled: false });
+    }
+  }
 
   const inputCls =
     "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
@@ -615,26 +643,64 @@ function ForecastTab({
         </div>
       </Section>
 
-      {/* Revenue Drivers */}
-      <Section title="Revenue Drivers" defaultOpen>
+      {/* Primary Revenue Streams (TIM-1245) — was "Revenue Drivers" */}
+      <Section title="Primary Revenue Streams" defaultOpen>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Your day-to-day food &amp; beverage sales. Customers per day (above) ×
+            average sale is your primary revenue. Keep it as one number, or split it
+            into beverage and food to plan each separately.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={0.5}
-                value={mp.avg_ticket_cents ? mp.avg_ticket_cents / 100 : ""}
-                onChange={(e) =>
-                  update({ avg_ticket_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                }
-                placeholder="7.50"
-                disabled={!canEdit}
-              />
-              <p className="text-[10px] text-[#afafaf] mt-1">Typical espresso bar: $6–$10</p>
-            </div>
+            {splitOn ? (
+              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Beverage — average per sale ({mp.currency_code ?? "USD"})</label>
+                  <input
+                    className={inputCls}
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={bevTicketCents ? bevTicketCents / 100 : ""}
+                    onChange={(e) => setBeverageTicket((parseFloat(e.target.value) || 0) * 100)}
+                    placeholder="5.50"
+                    disabled={!canEdit}
+                  />
+                  <p className="text-[10px] text-[#afafaf] mt-1">Espresso, drip, tea, etc.</p>
+                </div>
+                <div>
+                  <label className={labelCls}>Food — average per sale ({mp.currency_code ?? "USD"})</label>
+                  <input
+                    className={inputCls}
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={foodTicketCents ? foodTicketCents / 100 : ""}
+                    onChange={(e) => setFoodTicket((parseFloat(e.target.value) || 0) * 100)}
+                    placeholder="2.00"
+                    disabled={!canEdit}
+                  />
+                  <p className="text-[10px] text-[#afafaf] mt-1">Pastries, sandwiches, snacks</p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={mp.avg_ticket_cents ? mp.avg_ticket_cents / 100 : ""}
+                  onChange={(e) =>
+                    update({ avg_ticket_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
+                  }
+                  placeholder="7.50"
+                  disabled={!canEdit}
+                />
+                <p className="text-[10px] text-[#afafaf] mt-1">Typical espresso bar: $6–$10</p>
+              </div>
+            )}
             <div>
               <label className={labelCls}>COGS % of revenue</label>
               <input
@@ -650,14 +716,83 @@ function ForecastTab({
               <p className="text-[10px] text-[#afafaf] mt-1">Typical coffee shop: 28–35%</p>
             </div>
           </div>
+
+          {/* Progressive disclosure: optional beverage/food split */}
+          <label className="flex items-center gap-2 cursor-pointer mt-4">
+            <input
+              type="checkbox"
+              checked={splitOn}
+              onChange={(e) => toggleSplit(e.target.checked)}
+              disabled={!canEdit}
+              className="w-3.5 h-3.5 accent-[#155e63] disabled:opacity-50"
+            />
+            <span className="text-xs font-medium text-[#1a1a1a]">
+              Split into beverage &amp; food sales
+            </span>
+          </label>
+
+          {splitOn && (
+            <div className="mt-3 rounded-lg border border-[#e8f4f4] bg-[#f5fbfb] px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63] mb-1.5">
+                Average sales per day {avgCustomersPerDay > 0 ? `(at ~${avgCustomersPerDay} customers/day)` : ""}
+              </p>
+              {avgCustomersPerDay > 0 ? (
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-[#6b6b6b]">Beverage</span>
+                    <p className="font-semibold text-[#1a1a1a]">
+                      {formatCurrency((bevTicketCents * avgCustomersPerDay) / 100, mp.currency_code ?? "USD")}/day
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[#6b6b6b]">Food</span>
+                    <p className="font-semibold text-[#1a1a1a]">
+                      {formatCurrency((foodTicketCents * avgCustomersPerDay) / 100, mp.currency_code ?? "USD")}/day
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[#6b6b6b]">Total</span>
+                    <p className="font-semibold text-[#155e63]">
+                      {formatCurrency((mp.avg_ticket_cents * avgCustomersPerDay) / 100, mp.currency_code ?? "USD")}/day
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-[#afafaf]">
+                  Add customers per day above to see beverage and food sales per day.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </Section>
 
-      {/* Forecast Lines — categorized (Revenue / COGS / Overhead / Capex) */}
-      <Section title="Forecast Line Items" defaultOpen>
+      {/* Additional Revenue Streams (TIM-1245) — promoted to a first-class section */}
+      <Section title="Additional Revenue Streams" defaultOpen>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
-            Add, rename, or remove any line. For revenue and COGS lines, toggle{" "}
+            Income beyond your primary food &amp; beverage sales. Use the quick-add
+            chips to start a common stream, or add your own. Each line can be a fixed
+            monthly amount; click the sliders icon to ramp it up or grow it over time.
+          </p>
+          <ForecastLinesEditor
+            lines={mp.forecast_lines}
+            canEdit={canEdit}
+            onChange={updateForecastLines}
+            currencyCode={mp.currency_code ?? "USD"}
+            menuBlendedCogsPct={menuBlendedCogsPct}
+            menuCogsItems={menuCogsItems}
+            categories={["revenue"]}
+            revenueStarterLabels={["Retail Sales", "Events", "Workshops", "Wholesale"]}
+          />
+        </div>
+      </Section>
+
+      {/* Costs & Expenses — COGS / Overhead / Capex */}
+      <Section title="Costs & Expenses" defaultOpen>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Add, rename, or remove any line. For COGS lines, toggle{" "}
             <span className="font-semibold">$</span> (static monthly amount) or{" "}
             <span className="font-semibold">%</span> (percent of revenue). For operating
             expenses, pick the basis from the <span className="font-semibold">% of</span>{" "}
@@ -672,6 +807,7 @@ function ForecastTab({
             currencyCode={mp.currency_code ?? "USD"}
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
+            categories={["cogs", "overhead", "capex"]}
           />
         </div>
       </Section>

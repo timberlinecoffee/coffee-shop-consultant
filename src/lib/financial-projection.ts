@@ -178,6 +178,16 @@ export interface MonthlyProjections {
   daily_flow: DailyFlow;
   avg_ticket_cents: number;
 
+  // TIM-1245: optional beverage/food split of the average ticket. When
+  // revenue_split_enabled is true, avg_ticket_cents is kept in sync as
+  // beverage_ticket_cents + food_ticket_cents, so the projection engine
+  // (customers/day × avg ticket) is unchanged — the split is an attribution
+  // layer the owner can read as average beverage/food sales per day. Beginners
+  // leave it disabled and enter a single average-ticket number.
+  revenue_split_enabled?: boolean;
+  beverage_ticket_cents?: number;
+  food_ticket_cents?: number;
+
   // Per-day operating schedule
   weekly_schedule: WeekSchedule;
 
@@ -920,10 +930,37 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     opening_cash_buffer_cents: startupCent("opening_cash_buffer_cents"),
   };
 
+  // TIM-1245: optional beverage/food split of the average ticket. avg_ticket
+  // stays the single engine driver; when the split is on we keep it equal to
+  // beverage + food so customers/day × avg-ticket is unchanged.
+  const revenue_split_enabled = r.revenue_split_enabled === true;
+  let beverage_ticket_cents =
+    typeof r.beverage_ticket_cents === "number" && r.beverage_ticket_cents >= 0
+      ? Math.round(r.beverage_ticket_cents)
+      : undefined;
+  let food_ticket_cents =
+    typeof r.food_ticket_cents === "number" && r.food_ticket_cents >= 0
+      ? Math.round(r.food_ticket_cents)
+      : undefined;
+  let avg_ticket_cents =
+    typeof r.avg_ticket_cents === "number" ? r.avg_ticket_cents : defaults.avg_ticket_cents;
+  if (revenue_split_enabled) {
+    if (beverage_ticket_cents === undefined && food_ticket_cents === undefined) {
+      // Enabled with nothing entered yet: seed the split from the current ticket
+      // (all beverage) so the rolled-up total is unchanged.
+      beverage_ticket_cents = avg_ticket_cents;
+      food_ticket_cents = 0;
+    } else {
+      avg_ticket_cents = (beverage_ticket_cents ?? 0) + (food_ticket_cents ?? 0);
+    }
+  }
+
   return {
     daily_flow: flow,
-    avg_ticket_cents:
-      typeof r.avg_ticket_cents === "number" ? r.avg_ticket_cents : defaults.avg_ticket_cents,
+    avg_ticket_cents,
+    revenue_split_enabled,
+    beverage_ticket_cents,
+    food_ticket_cents,
     weekly_schedule,
     cogs_pct: typeof r.cogs_pct === "number" ? r.cogs_pct : defaults.cogs_pct,
     forecast_lines: forecast_lines_final,

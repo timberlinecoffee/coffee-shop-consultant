@@ -210,11 +210,30 @@ function buildProjections(base: MonthlyProjections, a: Answers): MonthlyProjecti
   forecast_lines = upsertOverhead(forecast_lines, "insurance", "Insurance", "flat", a.insuranceCents);
   forecast_lines = upsertOverhead(forecast_lines, "marketing", "Marketing", "pct", a.marketingPct);
 
+  // TIM-1245: the wizard collects a single average sale. If the owner had the
+  // beverage/food split on, keep the invariant (beverage + food === ticket) by
+  // rescaling each side proportionally to the new total.
+  const nextTicket = Math.max(0, a.avgTicketCents);
+  const split = base.revenue_split_enabled === true;
+  const priorTotal = (base.beverage_ticket_cents ?? 0) + (base.food_ticket_cents ?? 0);
+  const beverage_ticket_cents = split
+    ? priorTotal > 0
+      ? Math.round(((base.beverage_ticket_cents ?? 0) / priorTotal) * nextTicket)
+      : nextTicket
+    : base.beverage_ticket_cents;
+  const food_ticket_cents = split
+    ? priorTotal > 0
+      ? nextTicket - Math.round(((base.beverage_ticket_cents ?? 0) / priorTotal) * nextTicket)
+      : 0
+    : base.food_ticket_cents;
+
   return {
     ...base,
     weekly_schedule,
     daily_flow,
-    avg_ticket_cents: Math.max(0, a.avgTicketCents),
+    avg_ticket_cents: nextTicket,
+    beverage_ticket_cents,
+    food_ticket_cents,
     cogs_pct: Math.max(0, a.cogsPct),
     personnel: applyStaffing(base.personnel ?? [], a),
     forecast_lines,

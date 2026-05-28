@@ -23,7 +23,7 @@ import { currencySymbol } from "@/lib/currency";
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
     label: "Revenue",
-    hint: "Additional revenue streams beyond foot-traffic ticket sales (e.g. wholesale, catering, retail).",
+    hint: "Income beyond your primary food & beverage sales — retail, events, workshops, wholesale. Add, rename, or remove any stream.",
     valueLabel: "of base revenue",
   },
   cogs: {
@@ -625,18 +625,26 @@ interface SectionProps {
   streamOptions: RevenueStreamOption[];
   menuBlendedCogsPct: number | null;
   menuCogsItems: MenuCogsItem[];
+  // TIM-1245: one-tap starter streams for the revenue section (e.g. Retail
+  // Sales, Events, Workshops, Wholesale). Already-present labels are hidden.
+  starterLabels?: string[];
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
   const hasMenuData = typeof menuBlendedCogsPct === "number";
 
-  function addLine() {
+  const existingLabels = new Set(myLines.map((l) => l.label.trim().toLowerCase()));
+  const availableStarters = (starterLabels ?? []).filter(
+    (s) => !existingLabels.has(s.trim().toLowerCase())
+  );
+
+  function addLine(label?: string) {
     const defaultMode = category === "capex" ? "flat" : (category === "cogs" ? "pct" : "flat");
     const newLine: ForecastLine = {
       id: genId(),
-      label: `New ${meta.label.split(" ")[0].toLowerCase()} line`,
+      label: label ?? `New ${meta.label.split(" ")[0].toLowerCase()} line`,
       category,
       mode: defaultMode,
       value: 0,
@@ -683,13 +691,28 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
         {canEdit && (
           <button
             type="button"
-            onClick={addLine}
+            onClick={() => addLine()}
             className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md"
           >
             <Plus size={12} /> Add line
           </button>
         )}
       </div>
+      {canEdit && availableStarters.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="text-[10px] text-[#afafaf]">Quick add:</span>
+          {availableStarters.map((label) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => addLine(label)}
+              className="flex items-center gap-1 text-[11px] font-medium text-[#155e63] border border-[#155e63]/25 bg-[#155e63]/5 hover:bg-[#155e63]/10 px-2 py-0.5 rounded-full transition-colors"
+            >
+              <Plus size={10} /> {label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="space-y-2">
         {/* TIM-1168: COGS empty-state guides user to menu builder when no menu data exists */}
         {category === "cogs" && !hasMenuData && myLines.length === 0 && (
@@ -740,6 +763,12 @@ interface Props {
   currencyCode?: string;
   menuBlendedCogsPct?: number | null;
   menuCogsItems?: MenuCogsItem[];
+  // TIM-1245: restrict which category sections render so the workspace can show
+  // "Additional Revenue Streams" and "Costs & Expenses" as separate sections.
+  // Defaults to all four categories for backward compatibility.
+  categories?: ForecastCategory[];
+  // Starter streams offered as one-tap chips on the revenue section.
+  revenueStarterLabels?: string[];
 }
 
 // Build the revenue stream picker options from the current forecast lines.
@@ -765,6 +794,8 @@ export function ForecastLinesEditor({
   currencyCode = "USD",
   menuBlendedCogsPct = null,
   menuCogsItems = [],
+  categories = ["revenue", "cogs", "overhead", "capex"],
+  revenueStarterLabels,
 }: Props) {
   const streamOptions = streamOptionsFromLines(lines);
   const shared = {
@@ -778,10 +809,14 @@ export function ForecastLinesEditor({
   };
   return (
     <div className="space-y-6">
-      <CategorySection category="revenue" {...shared} />
-      <CategorySection category="cogs" {...shared} />
-      <CategorySection category="overhead" {...shared} />
-      <CategorySection category="capex" {...shared} />
+      {categories.map((category) => (
+        <CategorySection
+          key={category}
+          category={category}
+          {...shared}
+          starterLabels={category === "revenue" ? revenueStarterLabels : undefined}
+        />
+      ))}
     </div>
   );
 }
