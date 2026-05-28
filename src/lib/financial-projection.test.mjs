@@ -778,7 +778,7 @@ test("ΔWC: AP delta from prior month's COGS feeds into operating cash", () => {
     sun: { open: true, open_time: "06:30", close_time: "17:00" },
   };
   mp.forecast_lines = [];
-  mp.taxes_pct = 0;
+  mp.income_tax_pct = 0;
   mp.growth_monthly_pct = 0;
   mp.growth_custom_monthly = [];
 
@@ -858,7 +858,7 @@ test("balance sheet balances with depreciation + WC + owner activity", () => {
   mp.funding_sources = [];
   mp.owner_draws_monthly_cents = 100000;
   mp.owner_contributions = [{ month_index: 3, amount_cents: 500000 }];
-  mp.taxes_pct = 0;
+  mp.income_tax_pct = 0;
 
   const slices = computeMonthlySlices(
     mp,
@@ -1149,7 +1149,7 @@ function tim1180Mp() {
   mp.ramp_multipliers = [];
   mp.growth_mode = "simple";
   mp.growth_monthly_pct = 0;
-  mp.taxes_pct = 0;
+  mp.income_tax_pct = 0;
   return mp;
 }
 

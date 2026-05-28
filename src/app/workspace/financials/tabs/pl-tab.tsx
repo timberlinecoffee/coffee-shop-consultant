@@ -37,19 +37,22 @@ interface RowProps {
   indent?: boolean;
   highlight?: boolean;
   pctValues?: (string | undefined)[];
+  // TIM-1247: render as a muted memo line (e.g. sales-tax pass-through) that is
+  // shown for information but is not part of the P&L math.
+  memo?: boolean;
 }
 
-function StatRow({ label, values, bold, negative, indent, highlight, pctValues, currencyCode }: RowProps & { currencyCode: string }) {
+function StatRow({ label, values, bold, negative, indent, highlight, pctValues, memo, currencyCode }: RowProps & { currencyCode: string }) {
   const isNeg = (v?: number) => (v !== undefined && v < 0) || negative;
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
-      <td className={`py-2 pr-4 text-sm sticky left-0 bg-white ${highlight ? "bg-[#f7fafa]" : ""} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}>
+      <td className={`py-2 pr-4 text-sm sticky left-0 bg-white ${highlight ? "bg-[#f7fafa]" : ""} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""}`}>
         {label}
       </td>
       {values.map((v, i) => (
         <td
           key={i}
-          className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
+          className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
         >
           {v !== undefined ? fmt(v, currencyCode) : "—"}
           {pctValues?.[i] && <span className="text-xs text-[#afafaf] ml-1">({pctValues[i]})</span>}
@@ -589,11 +592,20 @@ export function PLTab({
               pctValues={pctOf("ebit_cents", "net_revenue_cents")} />
             <StatRow currencyCode={currencyCode} label="Interest Expense" values={vals("interest_cents")} negative indent />
             <StatRow currencyCode={currencyCode} label="Income Before Taxes" values={vals("income_before_taxes_cents")} bold />
-            <StatRow currencyCode={currencyCode} label="Taxes" values={vals("taxes_cents")} indent />
+            <StatRow currencyCode={currencyCode} label="Income Tax" values={vals("taxes_cents")} indent />
             <StatRow currencyCode={currencyCode} label="Net Income" values={vals("net_income_cents")} bold highlight
               pctValues={pctOf("net_income_cents", "net_revenue_cents")} />
             <DividerRow cols={colCount} />
             <StatRow currencyCode={currencyCode} label="Cash Balance" values={vals("cash_cents")} bold highlight />
+            <DividerRow cols={colCount} />
+            {/* TIM-1247: sales tax is a pass-through liability, not revenue or
+                expense. Shown as a memo so it never affects the P&L lines above. */}
+            <StatRow currencyCode={currencyCode} label="Sales Tax Collected & Remitted (Pass-Through)" values={vals("sales_tax_collected_cents")} indent memo />
+            <tr>
+              <td colSpan={colCount + 1} className="pl-8 pr-4 pb-2 text-[10px] text-[#afafaf] italic">
+                Collected from customers and remitted to the state — not part of revenue or net income.
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

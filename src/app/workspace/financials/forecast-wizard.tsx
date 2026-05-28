@@ -47,7 +47,8 @@ interface Answers {
   loanCents: number;
   loanTermMonths: number;
   loanRatePct: number;
-  taxesPct: number;
+  incomeTaxPct: number;
+  salesTaxPct: number;
 }
 
 function findLine(lines: ForecastLine[], key: ForecastLine["legacy_key"]) {
@@ -108,7 +109,8 @@ function seedAnswers(mp: MonthlyProjections): Answers {
     loanCents: loanIsSeed ? 0 : loanRaw,
     loanTermMonths: loanLine?.term_months ?? 60,
     loanRatePct: loanLine?.annual_rate_pct ?? 6.5,
-    taxesPct: mp.taxes_pct || 25,
+    incomeTaxPct: mp.income_tax_pct || 25,
+    salesTaxPct: mp.sales_tax_pct || 0,
   };
 }
 
@@ -239,7 +241,8 @@ function buildProjections(base: MonthlyProjections, a: Answers): MonthlyProjecti
     forecast_lines,
     funding_sources: applyFunding(base.funding_sources ?? [], a),
     startup_costs: a.startup,
-    taxes_pct: Math.max(0, a.taxesPct),
+    income_tax_pct: Math.max(0, a.incomeTaxPct),
+    sales_tax_pct: Math.max(0, a.salesTaxPct),
   };
 }
 
@@ -844,22 +847,36 @@ export function ForecastWizard({
           <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">
             One last thing — taxes
           </h2>
-          <p className="text-sm text-[#6b6b6b] mb-4">
-            The share of profit you set aside for income tax. If you&apos;re not
-            sure, the default is a safe starting point.
+          <p className="text-sm text-[#6b6b6b] mb-1">
+            <strong>Income tax</strong> — the share of profit you set aside. If
+            you&apos;re not sure, the default is a safe starting point.
           </p>
           <NumberField
-            value={answers.taxesPct}
-            onChange={(n) => set("taxesPct", Math.max(0, n))}
+            value={answers.incomeTaxPct}
+            onChange={(n) => set("incomeTaxPct", Math.max(0, n))}
             min={0}
             max={60}
             placeholder="25"
             suffix="% of profit"
           />
+          <p className="text-sm text-[#6b6b6b] mb-1 mt-4">
+            <strong>Sales tax</strong> — what you collect from customers and remit
+            to the state. It doesn&apos;t change your revenue or profit. Set your
+            local rate, or leave 0% if none.
+          </p>
+          <NumberField
+            value={answers.salesTaxPct}
+            onChange={(n) => set("salesTaxPct", Math.max(0, n))}
+            min={0}
+            max={20}
+            placeholder="0"
+            suffix="% of sales"
+          />
           <Why>
-            You only pay income tax when the shop is profitable, and only on the
-            profit — not on every sale. Planning for it now means the bill won&apos;t
-            catch you off guard.
+            Income tax is a cost — you only pay it when the shop is profitable, and
+            only on the profit, not on every sale. Sales tax is different: you
+            collect it on top of your prices and pass it straight through to the
+            state, so it never counts as your income.
           </Why>
         </div>
       ),

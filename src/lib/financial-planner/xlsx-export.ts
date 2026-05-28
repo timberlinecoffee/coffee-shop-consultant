@@ -404,7 +404,7 @@ function buildPlSheet(ws: ExcelJS.Worksheet, ctx: SheetCtx) {
     ws,
     row++,
     {
-      label: "Taxes",
+      label: "Income tax",
       values: slices.map((s) => -toMajor(s.taxes_cents, code)),
     },
     ctx,
@@ -419,6 +419,19 @@ function buildPlSheet(ws: ExcelJS.Worksheet, ctx: SheetCtx) {
       label: "Net income",
       values: slices.map((s) => toMajor(s.net_income_cents, code)),
       bold: true,
+    },
+    ctx,
+    true
+  );
+
+  // TIM-1247: sales tax is a pass-through liability (collected then remitted),
+  // not revenue or expense — shown as a memo so it never affects net income.
+  writeLineRow(
+    ws,
+    row++,
+    {
+      label: "Sales tax collected & remitted (pass-through memo)",
+      values: slices.map((s) => toMajor(s.sales_tax_collected_cents, code)),
     },
     ctx,
     true
@@ -633,7 +646,8 @@ function buildAssumptions(
     { label: "Fiscal year starts", value: months[0] },
     { label: "Average ticket", value: mp.avg_ticket_cents / Math.pow(10, meta.fractionDigits), money: true },
     { label: "Base COGS rate (%)", value: mp.cogs_pct, pct: true },
-    { label: "Tax rate (%)", value: mp.taxes_pct, pct: true },
+    { label: "Income tax rate (%)", value: mp.income_tax_pct, pct: true },
+    { label: "Sales tax rate — pass-through (%)", value: mp.sales_tax_pct, pct: true },
     { label: "Revenue ramp (months)", value: mp.ramp_months },
     {
       label: "Growth mode",

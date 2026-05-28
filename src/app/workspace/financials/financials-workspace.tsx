@@ -178,7 +178,7 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     loan_term_months: weightedTerm,
     loan_annual_rate_pct: weightedRate,
     depreciation_years: 10,
-    tax_rate_pct: mp.taxes_pct,
+    tax_rate_pct: mp.income_tax_pct,
     days_inventory: 7,
     days_payable: 30,
     days_receivable: 1,
@@ -955,24 +955,53 @@ function ForecastTab({
         </div>
       </Section>
 
-      {/* Tax rate */}
+      {/* Tax rates — TIM-1247: sales tax and income tax are clearly separated */}
       <Section title="Taxes" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <div className="max-w-[200px]">
-            <label className={labelCls}>Tax rate %</label>
-            <input
-              className={inputCls}
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={mp.taxes_pct || ""}
-              onChange={(e) => update({ taxes_pct: parseFloat(e.target.value) || 0 })}
-              placeholder="25"
-              disabled={!canEdit}
-            />
-            <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Income Tax Rate %</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={mp.income_tax_pct || ""}
+                onChange={(e) => update({ income_tax_pct: parseFloat(e.target.value) || 0 })}
+                placeholder="25"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Tax on your profit. Applied to pre-tax profit (only when positive)
+                and subtracted to reach Net Income on the P&amp;L.
+              </p>
+            </div>
+            <div>
+              <label className={labelCls}>Sales Tax Rate %</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={mp.sales_tax_pct || ""}
+                onChange={(e) => update({ sales_tax_pct: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">
+                Tax you collect from customers and pass through to the state. It
+                does not change revenue or profit — your revenue figures here are
+                shown without sales tax. Set your local rate (0% if none).
+              </p>
+            </div>
           </div>
+          <p className="text-[10px] text-[#8a8a8a]">
+            Two different taxes: <strong>income tax</strong> is your cost and
+            reduces net income; <strong>sales tax</strong> is collected on sales
+            and remitted to the state — money that passes through you, not income.
+          </p>
         </div>
       </Section>
 
@@ -1694,7 +1723,7 @@ export function FinancialsWorkspace({
       maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : prev.maintenance_cents,
       supplies_cents: supplies?.mode === "flat" ? supplies.value : prev.supplies_cents,
       other_opex_cents: prev.other_opex_cents,
-      tax_rate_pct: next.taxes_pct,
+      tax_rate_pct: next.income_tax_pct,
       payment_processing_pct: next.payment_processing_pct ?? prev.payment_processing_pct,
       spoilage_pct: next.spoilage_pct ?? prev.spoilage_pct,
       loyalty_discount_pct: next.loyalty_discount_pct ?? prev.loyalty_discount_pct,

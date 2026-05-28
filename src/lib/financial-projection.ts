@@ -221,7 +221,15 @@ export interface MonthlyProjections {
   startup_costs?: StartupCosts;
 
   // Below-the-line items
-  taxes_pct: number;
+  // TIM-1247: income tax — applied to pre-tax profit, only when positive, and
+  // flows to the P&L Net Income line. Renamed from the old ambiguous taxes_pct;
+  // normalizeMonthlyProjections migrates legacy taxes_pct into this field.
+  income_tax_pct: number;
+  // TIM-1247: sales tax — a pass-through liability on taxable sales (collected
+  // from customers, remitted to the state). Per standard accounting it is NOT
+  // revenue or expense, so it does not touch any P&L line; it is surfaced only
+  // as a memo (sales_tax_collected_cents). Projected revenue is tax-exclusive.
+  sales_tax_pct: number;
 
   // Global ramp for the base (foot-traffic-driven) revenue. Per-line ramps
   // are configured inside each ForecastLine.
@@ -458,7 +466,8 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     funding_sources: defaultFundingSources(),
     personnel: defaultPersonnel(),
     startup_costs: defaultStartupCosts(),
-    taxes_pct: 25,
+    income_tax_pct: 25,
+    sales_tax_pct: 0,
     ramp_months: 3,
     ramp_multipliers: [30, 55, 80],
     growth_mode: "simple",
@@ -988,8 +997,16 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     funding_sources,
     personnel,
     startup_costs,
-    taxes_pct:
-      typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
+    // TIM-1247: migrate the legacy single rate (taxes_pct) into income_tax_pct
+    // so saved plans keep the same meaning — the old rate was always income tax.
+    income_tax_pct:
+      typeof r.income_tax_pct === "number"
+        ? r.income_tax_pct
+        : typeof r.taxes_pct === "number"
+        ? r.taxes_pct
+        : defaults.income_tax_pct,
+    sales_tax_pct:
+      typeof r.sales_tax_pct === "number" ? r.sales_tax_pct : defaults.sales_tax_pct,
     ramp_months,
     ramp_multipliers,
     growth_mode,
@@ -1074,6 +1091,10 @@ export interface MonthlyProjectionRow {
   income_before_taxes_cents: number;
   taxes_cents: number;
   net_income_cents: number;
+  // TIM-1247: sales tax collected on taxable sales this month — a pass-through
+  // liability (collected then remitted), NOT part of revenue/expense/net income.
+  // Memo only, so downstream tabs can show the cash flowing through.
+  sales_tax_collected_cents: number;
   // TIM-1102: per-line breakdown so downstream tabs can render category groups
   forecast_line_amounts: LineMonthlyAmount[];
   capex_line_amounts: LineMonthlyAmount[];
@@ -1110,6 +1131,8 @@ export interface YearProjection {
   income_before_taxes: number;
   taxes: number;
   net_income: number;
+  // TIM-1247: sales tax collected & remitted (pass-through memo, not in net income)
+  sales_tax_collected: number;
   // Aliases for backward compatibility
   gross_margin: number;  // === gross_profit
   ebitda: number;        // === operating_income
@@ -1614,9 +1637,19 @@ export function computeMonthlyProjections(
         operating_income_cents - depreciation_cents - interest_cents;
       const taxes_cents =
         income_before_taxes_cents > 0
-          ? Math.round(income_before_taxes_cents * (mp.taxes_pct / 100))
+          ? Math.round(income_before_taxes_cents * (mp.income_tax_pct / 100))
           : 0;
       const net_income_cents = income_before_taxes_cents - taxes_cents;
+
+      // TIM-1247: sales tax is a pass-through liability — collected from
+      // customers on taxable sales and remitted to the state. It is neither
+      // revenue nor expense, so it touches no P&L line above; we compute it
+      // purely as a memo on net (taxable) revenue so owners can see the cash
+      // they collect and remit. Assumes net revenue is taxable; projected
+      // revenue figures are tax-exclusive.
+      const sales_tax_collected_cents = Math.round(
+        net_revenue_cents * ((mp.sales_tax_pct ?? 0) / 100)
+      );
 
       rows.push({
         year,
@@ -1649,6 +1682,7 @@ export function computeMonthlyProjections(
         income_before_taxes_cents,
         taxes_cents,
         net_income_cents,
+        sales_tax_collected_cents,
         forecast_line_amounts: [...revenueLineResults, ...cogsLineResults, ...overheadResults],
         capex_line_amounts: capexResults,
         capex_cents,
@@ -1690,12 +1724,13 @@ export function computeAnnualSummary(
   const income_before_taxes = sumUsd("income_before_taxes_cents");
   const taxes = sumUsd("taxes_cents");
   const net_income = sumUsd("net_income_cents");
+  const sales_tax_collected = sumUsd("sales_tax_collected_cents");
 
   return {
     revenue, cogs, gross_profit, gross_margin_pct,
     labor, rent, marketing, utilities, insurance, tech, maintenance, supplies, other_misc,
     total_opex, operating_income,
-    depreciation, interest, income_before_taxes, taxes, net_income,
+    depreciation, interest, income_before_taxes, taxes, net_income, sales_tax_collected,
     gross_margin: gross_profit,
     ebitda: operating_income,
   };
@@ -1859,6 +1894,8 @@ export interface FinancialInputs {
   loan_annual_rate_pct: number;
   // Depreciation & taxes
   depreciation_years: number;
+  // TIM-1247: this is the income tax rate (derived from MonthlyProjections
+  // .income_tax_pct). Sales tax is pass-through and not modeled here.
   tax_rate_pct: number;
   // Working capital cycle
   days_inventory: number;

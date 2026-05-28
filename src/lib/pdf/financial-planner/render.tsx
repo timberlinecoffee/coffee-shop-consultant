@@ -746,6 +746,8 @@ function buildPlRows(year1: MonthlySlice[], fiscalStart: number, code: string): 
   const interest = ordered.map((s) => -s.interest_cents);
   const taxes = ordered.map((s) => -s.taxes_cents);
   const netIncome = ordered.map((s) => s.net_income_cents);
+  // TIM-1247: sales tax is a pass-through memo (collected then remitted), not P&L.
+  const salesTax = ordered.map((s) => s.sales_tax_collected_cents);
 
   return [
     { label: "Net revenue", values: rev, bold: true, highlight: true },
@@ -765,8 +767,9 @@ function buildPlRows(year1: MonthlySlice[], fiscalStart: number, code: string): 
     { label: "Depreciation", values: depreciation, negative: true },
     { label: "Operating income (EBIT)", values: ordered.map((s) => s.ebit_cents), bold: true },
     { label: "Interest", values: interest, negative: true },
-    { label: "Taxes", values: taxes, negative: true },
+    { label: "Income tax", values: taxes, negative: true },
     { label: "Net income", values: netIncome, bold: true, highlight: true },
+    { label: "Sales tax collected & remitted (pass-through)", values: salesTax },
   ];
 }
 
@@ -1139,8 +1142,12 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
           <Text style={styles.assumptionValue}>{mp.cogs_pct}%</Text>
         </View>
         <View style={styles.assumptionRow}>
-          <Text style={styles.assumptionLabel}>Tax rate</Text>
-          <Text style={styles.assumptionValue}>{mp.taxes_pct}%</Text>
+          <Text style={styles.assumptionLabel}>Income tax rate</Text>
+          <Text style={styles.assumptionValue}>{mp.income_tax_pct}%</Text>
+        </View>
+        <View style={styles.assumptionRow}>
+          <Text style={styles.assumptionLabel}>Sales tax rate (pass-through)</Text>
+          <Text style={styles.assumptionValue}>{mp.sales_tax_pct}%</Text>
         </View>
         <View style={styles.assumptionRow}>
           <Text style={styles.assumptionLabel}>Revenue ramp (months)</Text>
