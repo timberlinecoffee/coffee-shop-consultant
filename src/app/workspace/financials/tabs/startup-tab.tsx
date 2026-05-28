@@ -187,9 +187,9 @@ export function StartupTab({
       )}
 
       {/* Startup cost table */}
-      {/* tour-startup-equipment is on this always-rendered card so the guided tour
-          lands even when a new user has no capex lines yet */}
-      <div id="tour-startup-equipment" className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+      {/* tour-startup-capital-assets is on this always-rendered card so the guided tour
+          lands even when a new user has no capex lines yet (TIM-1267) */}
+      <div id="tour-startup-capital-assets" className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
           <p className="text-sm font-semibold text-[#1a1a1a]">What It Takes To Open The Door</p>
           <p className="text-xs text-[#afafaf] mt-0.5">
