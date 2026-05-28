@@ -1,7 +1,8 @@
 // Streaming co-pilot route with thinking, model routing, and SSE.
 // TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
 // SSE event names: text | thinking | error | done
-// Model routing: sonnet-4-6 default; opus-4-7 when snapshot >8000 tokens OR 3+ workspace mentions.
+// Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions.
+// Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
 
 export const runtime = "nodejs" // service-role writes (ai_errors) need node; Edge has no advantage here
 export const maxDuration = 60
@@ -235,9 +236,12 @@ export async function POST(request: NextRequest) {
   const dynamicPrompt = buildDynamicPrompt(onboarding, planSnapshot, workspaceKey)
 
   // ── Model routing ────────────────────────────────────────────────────────────
+  // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
+  // "Complex" = snapshot >8000 tokens OR user mentions 3+ workspaces in one turn.
+  // Haiku 4.5 does not support extended thinking; thinking is only enabled for sonnet tier.
   const workspaceMentions = countWorkspaceMentions(messages)
-  const useOpus = snapshotTokens > 8_000 || workspaceMentions >= 3
-  const modelId = useOpus ? "claude-opus-4-7" : "claude-sonnet-4-6"
+  const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3
+  const modelId = useComplexModel ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
@@ -322,7 +326,8 @@ export async function POST(request: NextRequest) {
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 16_000,
-          thinking: { type: "enabled", budget_tokens: 4_000 },
+          // Extended thinking only available on sonnet and above (haiku-4-5 does not support it).
+          ...(useComplexModel ? { thinking: { type: "enabled", budget_tokens: 4_000 } } : {}),
           system: systemBlocks as Anthropic.TextBlockParam[],
           messages: anthropicMessages,
         })
@@ -358,9 +363,10 @@ export async function POST(request: NextRequest) {
           clearTimers()
           closed = true
 
-          // Persist completed turn (only on clean stream close — dropped on disconnect)
-          const costPerInputM = useOpus ? 15 : 3
-          const costPerOutputM = useOpus ? 75 : 15
+          // Persist completed turn (only on clean stream close — dropped on disconnect).
+          // TIM-1272: haiku-4-5 = $0.80/$4.00 per M; sonnet-4-6 = $3/$15 per M.
+          const costPerInputM = useComplexModel ? 3 : 0.8
+          const costPerOutputM = useComplexModel ? 15 : 4
           const costUsd = (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000
           const effectiveThreadId = threadId ?? crypto.randomUUID()
 
