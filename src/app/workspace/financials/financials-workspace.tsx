@@ -40,6 +40,7 @@ import { StartupTab } from "./tabs/startup-tab";
 import { FundingTab } from "./tabs/funding-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PersonnelEditor } from "./personnel-editor";
+import { OrgSyncPanel } from "./org-sync-panel";
 import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
 
@@ -2078,12 +2079,22 @@ export function FinancialsWorkspace({
           />
         )}
         {activeTab === "personnel" && (
-          <PersonnelEditor
-            personnel={mp.personnel ?? []}
-            canEdit={canEdit}
-            currencyCode={currencyCode}
-            onChange={handlePersonnelUpdate}
-          />
+          <>
+            <OrgSyncPanel
+              personnel={mp.personnel ?? []}
+              enabled={mp.org_sync_enabled ?? false}
+              canEdit={canEdit}
+              currencyCode={currencyCode}
+              onToggle={(next) => handleMpUpdate({ ...mp, org_sync_enabled: next })}
+              onPersonnelChange={handlePersonnelUpdate}
+            />
+            <PersonnelEditor
+              personnel={mp.personnel ?? []}
+              canEdit={canEdit}
+              currencyCode={currencyCode}
+              onChange={handlePersonnelUpdate}
+            />
+          </>
         )}
         {activeTab === "funding" && (
           <FundingTab
