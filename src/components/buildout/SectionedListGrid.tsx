@@ -8,6 +8,9 @@
 // TIM-1179: AI equipment recommendations + referral disclosure cards.
 // TIM-1214: Section I — drag between sections/stations with droppable headers,
 //   empty-section drop zones, and live-recomputing totals.
+// TIM-1215: Section J — reorderable columns in Columns picker (up/down buttons +
+//   mouse drag with GripHorizontal, distinct from row GripVertical handles).
+//   Default order puts Cost closer to Name. Column order persisted server-side.
 
 import {
   useCallback,
@@ -31,6 +34,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -38,11 +42,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   GripVertical,
+  GripHorizontal,
   Plus,
   Trash2,
   Settings2,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   X,
 } from "lucide-react";
 import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
@@ -63,15 +69,16 @@ type ColDef = {
   costClass?: boolean;
 };
 
+// TIM-1215: default order puts Cost right after Name/Model so name→attrs→price reads naturally.
 const EQUIPMENT_COLS: ColDef[] = [
   { id: "drag",             label: "",          defaultWidth: 28,  resizable: false, toggleable: false },
   { id: "name",             label: "Name",      defaultWidth: 200, resizable: true,  toggleable: false },
   { id: "vendor",           label: "Brand",     defaultWidth: 130, resizable: true,  toggleable: true  },
   { id: "model",            label: "Model",     defaultWidth: 130, resizable: true,  toggleable: true  },
-  { id: "supplier",         label: "Vendor",    defaultWidth: 150, resizable: true,  toggleable: true  },
   { id: "unit_cost_cents",  label: "Cost",      defaultWidth: 110, resizable: true,  toggleable: true,  costClass: true },
   { id: "financing_method", label: "Financing", defaultWidth: 130, resizable: true,  toggleable: true  },
   { id: "category",         label: "Category",  defaultWidth: 160, resizable: true,  toggleable: true  },
+  { id: "supplier",         label: "Vendor",    defaultWidth: 150, resizable: true,  toggleable: true  },
   { id: "notes",            label: "Notes",     defaultWidth: 180, resizable: true,  toggleable: true  },
   { id: "actions",          label: "",          defaultWidth: 32,  resizable: false, toggleable: false },
 ];
@@ -153,6 +160,51 @@ function saveColVisibility(listType: string, hidden: Set<string>) {
     for (const id of hidden) obj[id] = false;
     localStorage.setItem(key, JSON.stringify(obj));
   } catch { /* ignore */ }
+}
+
+// ── Column order (server-side + localStorage fallback) ────────────────────────
+
+function loadColOrderLocal(listType: string, defaultOrder: string[]): string[] {
+  const key = `tcs-${listType}-col-order`;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw) as string[];
+      // Validate: must include all default ids (guards against stale data)
+      if (Array.isArray(parsed) && defaultOrder.every((id) => parsed.includes(id))) {
+        return parsed;
+      }
+    }
+  } catch { /* ignore */ }
+  return defaultOrder;
+}
+
+function saveColOrderLocal(listType: string, order: string[]) {
+  try {
+    localStorage.setItem(`tcs-${listType}-col-order`, JSON.stringify(order));
+  } catch { /* ignore */ }
+}
+
+async function fetchColOrderServer(listType: string): Promise<string[] | null> {
+  try {
+    const res = await fetch(`/api/ui-prefs/col-order-${listType}`);
+    if (!res.ok) return null;
+    const json = await res.json() as { data: string[] | null };
+    if (Array.isArray(json.data)) return json.data;
+  } catch { /* ignore */ }
+  return null;
+}
+
+let saveOrderTimer: ReturnType<typeof setTimeout> | null = null;
+function saveColOrderServer(listType: string, order: string[]) {
+  if (saveOrderTimer) clearTimeout(saveOrderTimer);
+  saveOrderTimer = setTimeout(() => {
+    fetch(`/api/ui-prefs/col-order-${listType}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(order),
+    }).catch(() => {});
+  }, 600);
 }
 
 // ── Generic row type ──────────────────────────────────────────────────────────
@@ -388,6 +440,91 @@ function VendorLinkedInput({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Column picker row (TIM-1215) ──────────────────────────────────────────────
+// Rendered inside the Columns dropdown. Uses GripHorizontal (horizontal grip)
+// so it is visually distinct from the row-reorder GripVertical handles in the table body.
+
+function ColPickerRow({
+  col,
+  hidden,
+  isFirst,
+  isLast,
+  isDragging,
+  onToggle,
+  onMoveUp,
+  onMoveDown,
+}: {
+  col: ColDef;
+  hidden: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  isDragging: boolean;
+  onToggle: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: col.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-1 px-2 py-1.5 hover:bg-[#faf9f7] group"
+      role="listitem"
+    >
+      {/* Drag handle — horizontal grip distinguishes column reorder from row reorder */}
+      <button
+        type="button"
+        className="cursor-grab active:cursor-grabbing touch-none text-[#c0c0c0] hover:text-[#888] shrink-0 p-0.5"
+        aria-label={`Drag to reorder ${col.label} column`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripHorizontal size={12} />
+      </button>
+
+      {/* Visibility toggle */}
+      <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+        <input
+          type="checkbox"
+          className="accent-[#155e63] cursor-pointer shrink-0"
+          checked={!hidden}
+          onChange={onToggle}
+        />
+        <span className="text-xs text-[#1a1a1a] truncate">{col.label}</span>
+      </label>
+
+      {/* Keyboard up/down buttons — always visible on focus/hover for a11y */}
+      <div className="flex flex-col opacity-0 group-hover:opacity-100 focus-within:opacity-100 shrink-0">
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          aria-label={`Move ${col.label} column up`}
+          className="text-[#afafaf] hover:text-[#155e63] disabled:opacity-20 disabled:cursor-not-allowed p-0"
+        >
+          <ChevronUp size={11} />
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast}
+          aria-label={`Move ${col.label} column down`}
+          className="text-[#afafaf] hover:text-[#155e63] disabled:opacity-20 disabled:cursor-not-allowed p-0"
+        >
+          <ChevronDown size={11} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -786,6 +923,7 @@ export function SectionedListGrid({
   recommendations,
 }: SectionedListGridProps) {
   const cols = listType === "equipment" ? EQUIPMENT_COLS : SUPPLIES_COLS;
+  const defaultColOrder = useMemo(() => cols.map((c) => c.id), [cols]);
 
   // TIM-1174: Vendor candidates for autocomplete in equipment Vendor column
   const [vendorCandidates, setVendorCandidates] = useState<VendorCandidate[]>([]);
@@ -810,6 +948,40 @@ export function SectionedListGrid({
     setHiddenCols(loadColVisibility(listType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listType]);
+
+  // TIM-1215: Column order — ordered array of col ids.
+  // Loads from server on mount (with localStorage fallback); saves to both on change.
+  const [colOrder, setColOrder] = useState<string[]>(() => loadColOrderLocal(listType, defaultColOrder));
+  useEffect(() => {
+    const localOrder = loadColOrderLocal(listType, defaultColOrder);
+    setColOrder(localOrder);
+    fetchColOrderServer(listType).then((serverOrder) => {
+      if (serverOrder) {
+        // Merge: add any new cols not in saved order at the end (before non-toggleable tail)
+        const merged = [
+          ...serverOrder.filter((id) => defaultColOrder.includes(id)),
+          ...defaultColOrder.filter((id) => !serverOrder.includes(id)),
+        ];
+        setColOrder(merged);
+        saveColOrderLocal(listType, merged);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listType]);
+
+  function applyColOrder(order: string[]) {
+    setColOrder(order);
+    saveColOrderLocal(listType, order);
+    saveColOrderServer(listType, order);
+  }
+
+  // TIM-1215: Column picker drag state (for dragging column rows in the picker)
+  const [colPickerDragId, setColPickerDragId] = useState<string | null>(null);
+  const colPickerSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const [colPickerOpen, setColPickerOpen] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
 
@@ -829,10 +1001,13 @@ export function SectionedListGrid({
   const pendingItemPatches = useRef<Map<string, Record<string, unknown>>>(new Map());
   const creatingItems = useRef<Set<string>>(new Set());
 
-  const visibleCols = useMemo(
-    () => cols.filter((c) => !c.toggleable || !hiddenCols.has(c.id)),
-    [cols, hiddenCols]
-  );
+  // TIM-1215: Apply user-defined column order, then filter hidden.
+  const visibleCols = useMemo(() => {
+    const colMap = new Map(cols.map((c) => [c.id, c]));
+    return colOrder
+      .map((id) => colMap.get(id))
+      .filter((c): c is ColDef => !!c && (!c.toggleable || !hiddenCols.has(c.id)));
+  }, [cols, colOrder, hiddenCols]);
 
   const costVisible = useMemo(
     () => visibleCols.some((c) => c.costClass),
@@ -1291,7 +1466,9 @@ export function SectionedListGrid({
           </div>
         )}
 
-        {/* Column visibility picker */}
+        {/* TIM-1215: Column picker — show/hide + reorder.
+            Uses GripHorizontal handles (distinct from row GripVertical) and
+            up/down arrow buttons for full keyboard accessibility. */}
         <div className="relative flex-shrink-0" ref={colPickerRef}>
           <button
             type="button"
@@ -1302,36 +1479,82 @@ export function SectionedListGrid({
             <Settings2 size={12} />
             Columns
           </button>
-          {colPickerOpen && (
-            <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1 min-w-[160px]">
-              <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Show / Hide Columns</p>
-              {cols.filter((c) => c.toggleable).map((col) => {
-                const hidden = hiddenCols.has(col.id);
-                return (
-                  <label
-                    key={col.id}
-                    className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#faf9f7] cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-[#155e63] cursor-pointer"
-                      checked={!hidden}
-                      onChange={() => {
-                        setHiddenCols((prev) => {
-                          const next = new Set(prev);
-                          if (hidden) next.delete(col.id);
-                          else next.add(col.id);
-                          saveColVisibility(listType, next);
-                          return next;
-                        });
-                      }}
-                    />
-                    {col.label}
-                  </label>
-                );
-              })}
-            </div>
-          )}
+          {colPickerOpen && (() => {
+            // Ordered list of toggleable columns only (non-toggleable stay fixed)
+            const toggleableCols = colOrder
+              .map((id) => cols.find((c) => c.id === id))
+              .filter((c): c is ColDef => !!c && c.toggleable);
+
+            return (
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1 min-w-[200px]">
+                <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Columns</p>
+                <DndContext
+                  sensors={colPickerSensors}
+                  onDragStart={({ active }) => setColPickerDragId(active.id as string)}
+                  onDragEnd={({ active, over }) => {
+                    setColPickerDragId(null);
+                    if (!over || active.id === over.id) return;
+                    const toggleableIds = toggleableCols.map((c) => c.id);
+                    const fromIdx = toggleableIds.indexOf(active.id as string);
+                    const toIdx = toggleableIds.indexOf(over.id as string);
+                    if (fromIdx === -1 || toIdx === -1) return;
+                    const newToggleable = arrayMove(toggleableIds, fromIdx, toIdx);
+                    // Rebuild full colOrder: fixed leading cols → reordered toggleable → fixed trailing cols
+                    const fixed = cols.filter((c) => !c.toggleable).map((c) => c.id);
+                    const leading = fixed.slice(0, fixed.indexOf("name") + 1); // drag + name
+                    const trailing = fixed.slice(fixed.indexOf("name") + 1); // actions
+                    const newOrder = [...leading, ...newToggleable, ...trailing];
+                    applyColOrder(newOrder);
+                  }}
+                >
+                  <SortableContext items={toggleableCols.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                    {toggleableCols.map((col, idx) => {
+                      const hidden = hiddenCols.has(col.id);
+                      return (
+                        <ColPickerRow
+                          key={col.id}
+                          col={col}
+                          hidden={hidden}
+                          isFirst={idx === 0}
+                          isLast={idx === toggleableCols.length - 1}
+                          isDragging={colPickerDragId === col.id}
+                          onToggle={() => {
+                            setHiddenCols((prev) => {
+                              const next = new Set(prev);
+                              if (hidden) next.delete(col.id);
+                              else next.add(col.id);
+                              saveColVisibility(listType, next);
+                              return next;
+                            });
+                          }}
+                          onMoveUp={() => {
+                            const ids = toggleableCols.map((c) => c.id);
+                            const i = ids.indexOf(col.id);
+                            if (i <= 0) return;
+                            const reordered = arrayMove(ids, i, i - 1);
+                            const fixed = cols.filter((c) => !c.toggleable).map((c) => c.id);
+                            const leading = fixed.slice(0, fixed.indexOf("name") + 1);
+                            const trailing = fixed.slice(fixed.indexOf("name") + 1);
+                            applyColOrder([...leading, ...reordered, ...trailing]);
+                          }}
+                          onMoveDown={() => {
+                            const ids = toggleableCols.map((c) => c.id);
+                            const i = ids.indexOf(col.id);
+                            if (i >= ids.length - 1) return;
+                            const reordered = arrayMove(ids, i, i + 1);
+                            const fixed = cols.filter((c) => !c.toggleable).map((c) => c.id);
+                            const leading = fixed.slice(0, fixed.indexOf("name") + 1);
+                            const trailing = fixed.slice(fixed.indexOf("name") + 1);
+                            applyColOrder([...leading, ...reordered, ...trailing]);
+                          }}
+                        />
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
