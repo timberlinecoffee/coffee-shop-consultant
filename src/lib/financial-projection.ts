@@ -179,6 +179,12 @@ export interface StartupCosts {
   licenses_cents: number;
   pre_opening_marketing_cents: number;
   initial_inventory_cents: number;
+  // TIM-1258: opening smallwares/supplies (cups, smallwares, cleaning, packaging)
+  // and one-time professional/legal fees (entity formation, attorney, accountant
+  // setup). These are real coffee-shop opening costs that were previously
+  // uncaptured, so the startup total understated what it takes to open.
+  startup_supplies_cents: number;
+  professional_fees_cents: number;
   working_capital_reserve_cents: number;
   opening_cash_buffer_cents: number;
   // TIM-1246: build-out and equipment are capital assets, so they depreciate
@@ -459,6 +465,10 @@ export function defaultStartupCosts(): StartupCosts {
     licenses_cents: 500000,
     pre_opening_marketing_cents: 300000,
     initial_inventory_cents: 200000,
+    // TIM-1258: new buckets default to 0 so they never inflate an existing
+    // plan's total — owners build them up from their own real inputs.
+    startup_supplies_cents: 0,
+    professional_fees_cents: 0,
     working_capital_reserve_cents: 1500000,
     opening_cash_buffer_cents: 1000000,
     buildout_useful_life_years: 15,
@@ -964,6 +974,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     licenses_cents: startupCent("licenses_cents"),
     pre_opening_marketing_cents: startupCent("pre_opening_marketing_cents"),
     initial_inventory_cents: startupCent("initial_inventory_cents"),
+    startup_supplies_cents: startupCent("startup_supplies_cents"),
+    professional_fees_cents: startupCent("professional_fees_cents"),
     working_capital_reserve_cents: startupCent("working_capital_reserve_cents"),
     opening_cash_buffer_cents: startupCent("opening_cash_buffer_cents"),
     buildout_useful_life_years: startupLife("buildout_useful_life_years"),
@@ -1895,6 +1907,8 @@ export interface FinancialInputs {
   license_permits_cents: number;
   pre_opening_marketing_cents: number;
   initial_inventory_cents: number;
+  startup_supplies_cents: number;
+  professional_fees_cents: number;
   working_capital_reserve_cents: number;
   opening_cash_buffer_cents: number;
   // Funding
@@ -1991,6 +2005,8 @@ export function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     license_permits_cents: sc.licenses_cents,
     pre_opening_marketing_cents: sc.pre_opening_marketing_cents,
     initial_inventory_cents: sc.initial_inventory_cents,
+    startup_supplies_cents: sc.startup_supplies_cents,
+    professional_fees_cents: sc.professional_fees_cents,
     working_capital_reserve_cents: sc.working_capital_reserve_cents,
     opening_cash_buffer_cents: sc.opening_cash_buffer_cents,
     owner_capital_cents: ownerCapitalCents > 0 ? ownerCapitalCents : 15000000,
@@ -2282,7 +2298,12 @@ export function computeMonthlySlices(
     (inputs.rent_deposits_cents ?? 0) +
     (inputs.license_permits_cents ?? 0) +
     (inputs.pre_opening_marketing_cents ?? 0) +
-    (inputs.initial_inventory_cents ?? 0);
+    (inputs.initial_inventory_cents ?? 0) +
+    // TIM-1258: opening supplies and professional/legal fees are pre-opening
+    // uses of cash, so they reduce opening cash and seed the accumulated deficit
+    // exactly like the other pre-opening buckets.
+    (inputs.startup_supplies_cents ?? 0) +
+    (inputs.professional_fees_cents ?? 0);
   const openingCash =
     ownerCapital + initialLoanTotalCents - fixedAssetsGross - preOpeningExpensesCents;
 

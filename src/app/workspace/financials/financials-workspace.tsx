@@ -94,11 +94,10 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "startup",
-    tab: "forecast",
+    tab: "startup",
     targetId: "tour-startup-equipment",
-    sectionId: "section-startup",
     title: "Start with your equipment",
-    body: "Begin your opening costs with equipment: espresso machine, grinders, fridge. Add build-out and supplies after; the total builds up from what you actually need.",
+    body: "Begin your opening costs with equipment: espresso machine, grinders, fridge, added in the Build-Out & Equipment workspace. Then add build-out and supplies here; the total builds up from what you actually need.",
     hint: "a full espresso bar's equipment runs about $40k–$120k.",
   },
   {
@@ -461,6 +460,7 @@ function ForecastTab({
   menuCogsItems,
   equipmentItems,
   onStartWizard,
+  onGoToStartup,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
@@ -469,6 +469,7 @@ function ForecastTab({
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
   equipmentItems: EquipmentItem[];
   onStartWizard?: () => void;
+  onGoToStartup?: () => void;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -490,28 +491,6 @@ function ForecastTab({
   function updateForecastLines(next: ForecastLine[]) {
     update({ forecast_lines: next });
   }
-
-  // TIM-1244: editable one-time startup costs (was read-only on the Startup tab).
-  const sc: StartupCosts = mp.startup_costs ?? defaultStartupCosts();
-  function updateStartupField(key: keyof StartupCosts, cents: number) {
-    update({ startup_costs: { ...sc, [key]: Math.max(0, Math.round(cents)) } });
-  }
-  // TIM-1244 (v2): Equipment leads so the owner builds the number up from real
-  // purchases instead of being handed a discouraging total first.
-  const startupFields: { key: keyof StartupCosts; label: string; hint?: string }[] = [
-    { key: "equipment_cents", label: "Equipment" },
-    { key: "buildout_cents", label: "Build-Out & Renovation" },
-    { key: "deposits_cents", label: "Deposits (Rent, Utilities)" },
-    { key: "licenses_cents", label: "Licenses & Permits" },
-    { key: "pre_opening_marketing_cents", label: "Pre-Opening Marketing" },
-    { key: "initial_inventory_cents", label: "Initial Inventory" },
-    {
-      key: "working_capital_reserve_cents",
-      label: "Working Capital Reserve",
-      hint: "Cushion: 3–6 months of fixed costs",
-    },
-    { key: "opening_cash_buffer_cents", label: "Opening Cash Buffer" },
-  ];
 
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
   const totalWeeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
@@ -1018,39 +997,32 @@ function ForecastTab({
         </div>
       </Section>
 
-      {/* Startup & Build-Out Costs — TIM-1244 */}
-      <Section id="section-startup" title="Startup & Build-Out Costs" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
-            One-time costs to open the doors. Start with equipment, then add the rest —
-            the total builds up from what you actually need. These flow into your Startup
-            Costs tab, balance sheet, and funding gap.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {startupFields.map((fld) => (
-              <div
-                key={fld.key}
-                id={fld.key === "equipment_cents" ? "tour-startup-equipment" : undefined}
-              >
-                <label className={labelCls}>
-                  {fld.label} ({mp.currency_code ?? "USD"})
-                </label>
-                <input
-                  className={inputCls}
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={sc[fld.key] ? sc[fld.key] / 100 : ""}
-                  onChange={(e) =>
-                    updateStartupField(fld.key, (parseFloat(e.target.value) || 0) * 100)
-                  }
-                  placeholder="0"
-                  disabled={!canEdit}
-                />
-                {fld.hint && <p className="text-[10px] text-[#afafaf] mt-1">{fld.hint}</p>}
-              </div>
-            ))}
+      {/* Startup & opening costs — TIM-1258: entry moved to the Startup Costs tab
+          so owners find it where they expect it, led by equipment. */}
+      <Section id="section-startup" title="Startup & Opening Costs" advanced>
+        <div className="rounded-xl border border-[#155e63]/20 bg-[#155e63]/5 p-4 flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Compass size={18} className="text-[#155e63] shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#1a1a1a]">
+                One-time costs to open the doors live on the Startup Costs tab.
+              </p>
+              <p className="text-xs text-[#6b6b6b] mt-0.5">
+                Start with your equipment, then add build-out and supplies — the total
+                builds up from what you actually need, and flows into your balance sheet
+                and funding gap.
+              </p>
+            </div>
           </div>
+          {onGoToStartup && (
+            <button
+              type="button"
+              onClick={onGoToStartup}
+              className="text-xs font-semibold text-white bg-[#155e63] rounded-lg px-4 py-2 hover:bg-[#124e52] transition-colors whitespace-nowrap"
+            >
+              Go to Startup Costs →
+            </button>
+          )}
         </div>
       </Section>
 
@@ -1732,6 +1704,15 @@ export function FinancialsWorkspace({
     return { total_cost_cents, financed_cost_cents };
   }, [initialEquipmentItems]);
 
+  // TIM-1258: when the owner has real equipment items in the Build-Out &
+  // Equipment workspace, the Startup tab sources the Equipment line from that
+  // total (read-only). Otherwise it falls back to the legacy startup_costs
+  // equipment bucket — mirroring the projection's mpForProjection logic.
+  const hasEquipmentItems = useMemo(
+    () => initialEquipmentItems.some((i) => !i.archived && i.unit_cost_cents > 0),
+    [initialEquipmentItems]
+  );
+
   // TIM-1253: build an mp variant used ONLY for computation — it adds the
   // synthetic per-item capex ForecastLines from buildout_equipment_items and
   // zeros out startup_costs.equipment_cents so that TIM-1246's aggregate
@@ -1777,6 +1758,8 @@ export function FinancialsWorkspace({
       license_permits_cents: fi.license_permits_cents,
       pre_opening_marketing_cents: fi.pre_opening_marketing_cents,
       initial_inventory_cents: fi.initial_inventory_cents,
+      startup_supplies_cents: fi.startup_supplies_cents,
+      professional_fees_cents: fi.professional_fees_cents,
     };
     return computeMonthlySlices(mpForProjection, equipment, balanceSheetInputs, projectionCtx);
   }, [mpForProjection, equipment, projectionCtx]);
@@ -1846,6 +1829,17 @@ export function FinancialsWorkspace({
 
   function handleFundingUpdate(next: FundingSourceLine[]) {
     handleMpUpdate({ ...mp, funding_sources: next });
+  }
+
+  // TIM-1258: startup costs are now entered directly on the Startup Costs tab.
+  // Every edit writes to mp.startup_costs (source of truth) through handleMpUpdate,
+  // so the change propagates to the balance sheet, funding gap, and exports.
+  function handleStartupCostUpdate(key: keyof StartupCosts, cents: number) {
+    const cur = mp.startup_costs ?? defaultStartupCosts();
+    handleMpUpdate({
+      ...mp,
+      startup_costs: { ...cur, [key]: Math.max(0, Math.round(cents)) },
+    });
   }
 
   function handlePersonnelUpdate(next: PersonnelLine[]) {
@@ -2080,6 +2074,7 @@ export function FinancialsWorkspace({
             menuCogsItems={menuCogsItems}
             equipmentItems={initialEquipmentItems}
             onStartWizard={openWizard}
+            onGoToStartup={() => setActiveTab("startup")}
           />
         )}
         {activeTab === "personnel" && (
@@ -2129,9 +2124,17 @@ export function FinancialsWorkspace({
         {activeTab === "ratios" && <RatiosTab slices={slices} />}
         {activeTab === "startup" && (
           <StartupTab
-            inputs={financialInputs}
+            startupCosts={mp.startup_costs ?? defaultStartupCosts()}
+            equipmentTotalCents={
+              hasEquipmentItems
+                ? equipment.total_cost_cents
+                : (mp.startup_costs ?? defaultStartupCosts()).equipment_cents
+            }
+            hasEquipmentItems={hasEquipmentItems}
             fundingSources={mp.funding_sources ?? []}
             currencyCode={currencyCode}
+            canEdit={canEdit}
+            onUpdateField={handleStartupCostUpdate}
           />
         )}
       </div>
