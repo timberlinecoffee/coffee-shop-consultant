@@ -6,9 +6,15 @@
 // fill that actual field. They see where the data lives, so it doubles as
 // platform training. The tour drives tab switches and expands collapsed
 // sections so each target is on screen before it's highlighted.
+//
+// v2.1 (founder refinements): the pop-out must never cover the highlighted
+// field. It auto-places beside / below / above the target (never overlapping by
+// construction), repositions on scroll/resize, is draggable (and remembers
+// where the owner put it for the rest of the session), and collapses to a
+// bottom sheet on small screens with the field scrolled clear above it.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X, GripHorizontal } from "lucide-react";
 
 export interface TourStep {
   id: string;
@@ -35,8 +41,46 @@ interface Props {
   onClose: (index: number) => void;
 }
 
-const POP_W = 344;
+const POP_W = 340;
 const PAD = 8; // spotlight padding around the target
+const GAP = 14; // gap between the target and the pop-out
+const MARGIN = 12; // keep the pop-out this far from the viewport edge
+const SHEET_BP = 640; // below this width we dock to a bottom sheet
+const SHEET_EST_H = 280; // reserved height when scrolling a field clear of the sheet
+
+type Placement =
+  | { mode: "float"; left: number; top: number }
+  | { mode: "sheet" };
+
+function resolvePlacement(
+  rect: DOMRect | null,
+  popH: number,
+  popW: number,
+  vw: number,
+  vh: number
+): Placement {
+  if (!rect) {
+    return { mode: "float", left: Math.max(MARGIN, (vw - popW) / 2), top: Math.max(MARGIN, vh * 0.18) };
+  }
+  const clampTop = (t: number) => Math.max(MARGIN, Math.min(t, vh - popH - MARGIN));
+  const clampLeft = (l: number) => Math.max(MARGIN, Math.min(l, vw - popW - MARGIN));
+  // Prefer beside (keeps vertical context and never eats the field's row).
+  if (vw - rect.right - GAP >= popW) {
+    return { mode: "float", left: rect.right + GAP, top: clampTop(rect.top) };
+  }
+  if (rect.left - GAP >= popW) {
+    return { mode: "float", left: rect.left - GAP - popW, top: clampTop(rect.top) };
+  }
+  // Then below / above the target.
+  if (vh - rect.bottom - GAP >= popH) {
+    return { mode: "float", left: clampLeft(rect.left), top: rect.bottom + GAP };
+  }
+  if (rect.top - GAP >= popH) {
+    return { mode: "float", left: clampLeft(rect.left), top: rect.top - GAP - popH };
+  }
+  // Nothing fits without overlapping — dock to a sheet.
+  return { mode: "sheet" };
+}
 
 export function GuidedTour({
   steps,
@@ -49,8 +93,26 @@ export function GuidedTour({
 }: Props) {
   const [index, setIndex] = useState(() => Math.min(Math.max(0, startIndex), steps.length - 1));
   const [rect, setRect] = useState<DOMRect | null>(null);
-  const popRef = useRef<HTMLDivElement | null>(null);
   const [popH, setPopH] = useState(220);
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth : 1280,
+    h: typeof window !== "undefined" ? window.innerHeight : 800,
+  }));
+  // Once the owner drags the pop-out, it stays where they put it for the rest
+  // of the session (across steps) — only clamped back into view on resize.
+  const [dragPos, setDragPos] = useState<{ left: number; top: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const popRef = useRef<HTMLDivElement | null>(null);
+  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const popHRef = useRef(popH);
+  const dragPosRef = useRef(dragPos);
+  useEffect(() => {
+    popHRef.current = popH;
+  }, [popH]);
+  useEffect(() => {
+    dragPosRef.current = dragPos;
+  }, [dragPos]);
 
   const step = steps[index];
   const isFirst = index === 0;
@@ -63,8 +125,7 @@ export function GuidedTour({
   }, [index, steps]);
 
   // On step change: switch tab, expand the section, scroll the target into
-  // view, then measure. Staggered timeouts let React mount the tab/section
-  // before we look for the element.
+  // view (clear of a bottom sheet when one will be used), then measure.
   useEffect(() => {
     const s = steps[index];
     onTabChange(s.tab);
@@ -75,17 +136,28 @@ export function GuidedTour({
       const t2 = setTimeout(() => {
         if (cancelled) return;
         const el = document.getElementById(s.targetId);
-        if (el) {
-          el.scrollIntoView({ block: "center", inline: "nearest" });
-          requestAnimationFrame(() => {
-            if (!cancelled) {
-              const el2 = document.getElementById(s.targetId);
-              setRect(el2 ? el2.getBoundingClientRect() : null);
-            }
-          });
-        } else {
+        if (!el) {
           setRect(null);
+          return;
         }
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const willSheet =
+          !dragPosRef.current &&
+          (w < SHEET_BP ||
+            resolvePlacement(el.getBoundingClientRect(), popHRef.current, Math.min(POP_W, w - 24), w, h)
+              .mode === "sheet");
+        el.scrollIntoView({ block: willSheet ? "start" : "center", inline: "nearest" });
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          let r = el.getBoundingClientRect();
+          // If a sheet will sit at the bottom, make sure the field isn't under it.
+          if (willSheet && r.bottom > h - SHEET_EST_H - MARGIN) {
+            window.scrollBy(0, r.bottom - (h - SHEET_EST_H) + MARGIN);
+            r = el.getBoundingClientRect();
+          }
+          setRect(r);
+        });
       }, 140);
       return () => clearTimeout(t2);
     }, 200);
@@ -96,19 +168,23 @@ export function GuidedTour({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  // Keep the spotlight glued to the field while the user scrolls or resizes.
+  // Keep the spotlight + pop-out glued to the field while scrolling / resizing.
   useEffect(() => {
+    function onResize() {
+      setViewport({ w: window.innerWidth, h: window.innerHeight });
+      measure();
+    }
     window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
+      window.removeEventListener("resize", onResize);
     };
   }, [measure]);
 
   useLayoutEffect(() => {
     if (popRef.current) setPopH(popRef.current.offsetHeight);
-  }, [index, rect]);
+  }, [index, rect, dragPos, viewport]);
 
   function next() {
     if (isLast) onFinish();
@@ -118,25 +194,40 @@ export function GuidedTour({
     setIndex((i) => Math.max(0, i - 1));
   }
 
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const clampLeft = (x: number) => Math.max(12, Math.min(x, vw - POP_W - 12));
+  // ── Drag ──────────────────────────────────────────────────────────────────
+  function onDragMove(e: PointerEvent) {
+    setDragPos({ left: e.clientX - dragOffset.current.x, top: e.clientY - dragOffset.current.y });
+  }
+  function onDragEnd() {
+    setDragging(false);
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", onDragEnd);
+  }
+  function onDragStart(e: React.PointerEvent) {
+    if (!popRef.current) return;
+    const r = popRef.current.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+    setDragging(true);
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", onDragEnd);
+  }
 
-  // Popover placement relative to the spotlight.
-  let popStyle: React.CSSProperties;
-  if (!rect) {
-    popStyle = { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+  const { w: vw, h: vh } = viewport;
+  const popWidth = Math.min(POP_W, vw - 2 * MARGIN);
+
+  // Resolve placement: a dragged pop-out floats where the owner left it; a
+  // narrow screen docks to a sheet; otherwise auto-place around the target.
+  let placement: Placement;
+  if (dragPos) {
+    placement = {
+      mode: "float",
+      left: Math.max(MARGIN, Math.min(dragPos.left, vw - popWidth - MARGIN)),
+      top: Math.max(MARGIN, Math.min(dragPos.top, vh - popH - MARGIN)),
+    };
+  } else if (vw < SHEET_BP) {
+    placement = { mode: "sheet" };
   } else {
-    const belowSpace = vh - rect.bottom;
-    const aboveSpace = rect.top;
-    const left = clampLeft(rect.left);
-    if (belowSpace > popH + 24) {
-      popStyle = { top: rect.bottom + 12, left };
-    } else if (aboveSpace > popH + 24) {
-      popStyle = { top: Math.max(12, rect.top - popH - 12), left };
-    } else {
-      popStyle = { bottom: 16, left };
-    }
+    placement = resolvePlacement(rect, popH, popWidth, vw, vh);
   }
 
   // Dim panels around the spotlight (block clicks outside; the hole stays
@@ -153,17 +244,18 @@ export function GuidedTour({
     panels.push({ top, left: right, width: Math.max(0, vw - right), height: bottom - top });
   }
 
+  const isSheet = placement.mode === "sheet";
+  const popStyle: React.CSSProperties =
+    placement.mode === "sheet"
+      ? { left: MARGIN, right: MARGIN, bottom: MARGIN }
+      : { left: placement.left, top: placement.top, width: popWidth };
+
   return (
     <div className="fixed inset-0 z-50" aria-live="polite">
       {rect ? (
         <>
           {panels.map((p, i) => (
-            <div
-              key={i}
-              className="fixed bg-[#1a1a1a]/55"
-              style={p}
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div key={i} className="fixed bg-[#1a1a1a]/55" style={p} onClick={(e) => e.stopPropagation()} />
           ))}
           {/* Highlight ring — does not capture clicks so the field stays usable */}
           <div
@@ -181,22 +273,30 @@ export function GuidedTour({
         <div className="fixed inset-0 bg-[#1a1a1a]/40" />
       )}
 
-      {/* Coachmark popover */}
+      {/* Coachmark pop-out */}
       <div
         ref={popRef}
-        className="fixed z-[51] bg-white rounded-2xl shadow-xl border border-[#efefef]"
-        style={{ width: POP_W, ...popStyle }}
+        className={`fixed z-[52] rounded-2xl bg-white shadow-xl border border-[#efefef] ${
+          isSheet ? "mx-auto max-w-md" : ""
+        } ${dragging ? "select-none" : ""}`}
+        style={popStyle}
         role="dialog"
         aria-modal="false"
         aria-label="Guided setup step"
       >
-        <div className="px-5 pt-4 pb-3 border-b border-[#f0f0f0]">
+        {/* Header doubles as the drag handle */}
+        <div
+          onPointerDown={onDragStart}
+          className={`px-5 pt-4 pb-3 border-b border-[#f0f0f0] ${dragging ? "cursor-grabbing" : "cursor-grab"} touch-none`}
+        >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+              <GripHorizontal size={13} className="text-[#c0c0c0]" aria-hidden="true" />
               Guided Setup
             </span>
             <button
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onClose(index)}
               className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
               aria-label="Close guided setup"
@@ -226,13 +326,9 @@ export function GuidedTour({
               <span className="font-semibold">Typical coffee shop:</span> {step.hint}
             </p>
           )}
-          {step.why && (
-            <p className="mt-2 text-[11px] text-[#afafaf] leading-relaxed">{step.why}</p>
-          )}
+          {step.why && <p className="mt-2 text-[11px] text-[#afafaf] leading-relaxed">{step.why}</p>}
           {!rect && (
-            <p className="mt-3 text-[11px] text-[#c0723d]">
-              Finding this field… you can still continue.
-            </p>
+            <p className="mt-3 text-[11px] text-[#c0723d]">Finding this field. You can still continue.</p>
           )}
         </div>
 
