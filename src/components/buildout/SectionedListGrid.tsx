@@ -6,6 +6,8 @@
 // column visibility toggle (localStorage), collapsible sections.
 // TIM-1174: Vendor column links to Suppliers & Vendors workspace.
 // TIM-1179: AI equipment recommendations + referral disclosure cards.
+// TIM-1214: Section I — drag between sections/stations with droppable headers,
+//   empty-section drop zones, and live-recomputing totals.
 
 import {
   useCallback,
@@ -20,6 +22,7 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -615,6 +618,7 @@ function SectionHeader({
   sectionTotal,
   costVisible,
   canEdit,
+  isDragging,
   onToggleCollapse,
   onRename,
   onDelete,
@@ -625,11 +629,13 @@ function SectionHeader({
   sectionTotal: number;
   costVisible: boolean;
   canEdit: boolean;
+  isDragging: boolean;
   onToggleCollapse: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
   onAddItem: () => void;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: section.id });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(section.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -642,8 +648,17 @@ function SectionHeader({
 
   useEffect(() => { setDraft(section.name); }, [section.name]);
 
+  const dropHighlight = isDragging && isOver;
+
   return (
-    <tr className="bg-[#f4f9f8] border-b border-[#e4eded]">
+    <tr
+      ref={setNodeRef}
+      className={`border-b border-[#e4eded] transition-colors ${
+        dropHighlight
+          ? "bg-[#d8eeef] ring-2 ring-inset ring-[#155e63]"
+          : "bg-[#f4f9f8]"
+      }`}
+    >
       <td colSpan={colCount} className="px-2 py-1.5">
         <div className="flex items-center gap-2">
           <button
@@ -710,6 +725,36 @@ function SectionHeader({
             </>
           )}
         </div>
+      </td>
+    </tr>
+  );
+}
+
+// ── Droppable empty zone ──────────────────────────────────────────────────────
+
+// Visible drop target when a section (or the unsectioned area) has no items
+// and a drag is in progress. The id uses a "__drop_" prefix so onDragOver can
+// distinguish it from item ids while still resolving the target section.
+
+function DroppableEmptyZone({
+  droppableId,
+  colCount,
+}: {
+  droppableId: string;
+  colCount: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: droppableId });
+  return (
+    <tr ref={setNodeRef}>
+      <td
+        colSpan={colCount}
+        className={`py-4 px-6 text-xs text-center border-2 border-dashed rounded-sm transition-colors ${
+          isOver
+            ? "border-[#155e63] text-[#155e63] bg-[#e8f4f5]"
+            : "border-[#d8e8e8] text-[#b0c8c8]"
+        }`}
+      >
+        {isOver ? "Release to move here" : "Drop item here"}
       </td>
     </tr>
   );
@@ -1053,28 +1098,33 @@ export function SectionedListGrid({
     setActiveId(active.id as string);
   }
 
+  function resolveSectionId(overId: string): string | null | undefined {
+    const overItem = items.find((i) => i.id === overId);
+    if (overItem) return overItem.section_id;
+    const overSection = sections.find((s) => s.id === overId);
+    if (overSection) return overSection.id;
+    if (overId === "__unsectioned__") return null;
+    // Empty-zone droppable: "__drop_<sectionId>" or "__drop___unsectioned__"
+    if (overId.startsWith("__drop_")) {
+      const inner = overId.slice("__drop_".length);
+      if (inner === "__unsectioned__") return null;
+      const sec = sections.find((s) => s.id === inner);
+      if (sec) return sec.id;
+    }
+    return undefined; // unresolvable
+  }
+
   function onDragOver({ active, over }: DragOverEvent) {
     if (!over) return;
     const activeItemId = active.id as string;
     const overId = over.id as string;
 
     const activeSectionId = findItemSectionId(activeItemId);
-
-    // Determine target section: either from an item or a section header droppable
-    let targetSectionId: string | null = null;
-    const overItem = items.find((i) => i.id === overId);
-    if (overItem) {
-      targetSectionId = overItem.section_id;
-    } else {
-      // over is a section id or "unsectioned"
-      const overSection = sections.find((s) => s.id === overId);
-      if (overSection) targetSectionId = overSection.id;
-      else if (overId === "__unsectioned__") targetSectionId = null;
-    }
-
+    const targetSectionId = resolveSectionId(overId);
+    if (targetSectionId === undefined) return;
     if (activeSectionId === targetSectionId) return; // same section — sortable handles it
 
-    // Move active item to target section
+    // Optimistically move active item to target section
     const updated = items.map((i) =>
       i.id === activeItemId ? { ...i, section_id: targetSectionId } : i
     );
@@ -1090,11 +1140,8 @@ export function SectionedListGrid({
 
     // Determine final section and index
     const targetSectionId = (() => {
-      const overItem = items.find((i) => i.id === overId);
-      if (overItem) return overItem.section_id;
-      const overSection = sections.find((s) => s.id === overId);
-      if (overSection) return overSection.id;
-      if (overId === "__unsectioned__") return null;
+      const resolved = resolveSectionId(overId);
+      if (resolved !== undefined) return resolved;
       return findItemSectionId(activeItemId);
     })();
 
@@ -1322,6 +1369,7 @@ export function SectionedListGrid({
                     .filter((i) => i.section_id === section.id && !i.archived)
                     .sort((a, b) => a.position - b.position);
                   const total = sectionTotal(section.id);
+                  const isDraggingActive = activeId !== null;
 
                   return (
                     <SortableContext
@@ -1336,6 +1384,7 @@ export function SectionedListGrid({
                         sectionTotal={total}
                         costVisible={costVisible}
                         canEdit={canEdit}
+                        isDragging={isDraggingActive}
                         onToggleCollapse={() => toggleCollapse(section.id)}
                         onRename={(name) => renameSection(section.id, name)}
                         onDelete={() => deleteSection(section.id)}
@@ -1343,12 +1392,18 @@ export function SectionedListGrid({
                       />
                       {!section.collapsed && (
                         <>
-                          {sectionItems.length === 0 && (
+                          {sectionItems.length === 0 && !isDraggingActive && (
                             <tr>
                               <td colSpan={visibleCols.length} className="py-2 px-6 text-xs text-[#c0c0c0] italic">
                                 No items — click + to add
                               </td>
                             </tr>
+                          )}
+                          {sectionItems.length === 0 && isDraggingActive && (
+                            <DroppableEmptyZone
+                              droppableId={`__drop_${section.id}`}
+                              colCount={visibleCols.length}
+                            />
                           )}
                           {sectionItems.map((item) => (
                             <SortableRow
@@ -1415,6 +1470,12 @@ export function SectionedListGrid({
                       onDelete={deleteItem}
                     />
                   ))}
+                  {unsectionedItems.length === 0 && activeId !== null && sections.length > 0 && (
+                    <DroppableEmptyZone
+                      droppableId="__drop___unsectioned__"
+                      colCount={visibleCols.length}
+                    />
+                  )}
                 </SortableContext>
 
                 {/* Empty state */}
