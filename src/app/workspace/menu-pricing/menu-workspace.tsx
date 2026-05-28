@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Tag,
   Settings,
+  StickyNote,
 } from "lucide-react";
 import {
   DndContext,
@@ -80,6 +81,16 @@ const inputCls =
 const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
 const sectionLabelCls =
   "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
+
+// TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
+// so the ingredient grid stays flat and scannable.
+const cellInputCls =
+  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[#1a1a1a] placeholder-[#c5c5c5] hover:border-[#e6e6e6] focus:outline-none focus:border-[#155e63] focus:bg-white disabled:text-[#6b6b6b] disabled:hover:border-transparent transition-colors";
+const quickInputCls =
+  "w-full text-sm bg-white border border-[#cfe3e3] rounded-md px-2 py-1.5 text-[#1a1a1a] placeholder-[#9fb4b4] focus:outline-none focus:border-[#155e63] transition-colors";
+// Shared column template so the header, data rows, and quick-add row stay aligned.
+const ingGridCls =
+  "grid grid-cols-[minmax(0,1fr)_5rem_5.5rem_6rem_6.5rem_3.5rem] gap-2 items-center";
 
 type PriceSuggestion = {
   suggested_price_cents: number;
@@ -230,7 +241,12 @@ function IngredientCombobox({
 
 // ─── Ingredients tab ─────────────────────────────────────────────────────────
 
-function IngredientRow({
+type IngredientSortKey = "name" | "unit" | "cpu";
+type IngredientSortDir = "asc" | "desc";
+
+// TIM-1212: flat inline row — name, size, unit, cost edited in place (no accordion).
+// Cost/unit is computed and read-only; notes live behind a compact per-row toggle.
+function IngredientTableRow({
   ingredient,
   canEdit,
   onUpdate,
@@ -241,13 +257,9 @@ function IngredientRow({
   onUpdate: (patch: Partial<MenuIngredient>) => void;
   onDelete: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [name, setName] = useState(ingredient.name);
   const [packageSize, setPackageSize] = useState(
     ingredient.package_size.toString()
-  );
-  const [packageUnit, setPackageUnit] = useState<IngredientUnit>(
-    ingredient.package_unit
   );
   const [packageCost, setPackageCost] = useState(
     ingredient.package_cost_cents > 0
@@ -255,12 +267,14 @@ function IngredientRow({
       : ""
   );
   const [notes, setNotes] = useState(ingredient.notes ?? "");
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const cpu = costPerUnit(ingredient);
   const cpuDisplay =
-    ingredient.package_size > 0
-      ? "$" + cpu.toFixed(4) + " / " + ingredient.package_unit
+    ingredient.package_size > 0 && ingredient.package_cost_cents > 0
+      ? "$" + cpu.toFixed(4)
       : "—";
+  const hasNotes = (ingredient.notes ?? "").trim().length > 0;
 
   function handleNameBlur() {
     if (name !== ingredient.name) onUpdate({ name });
@@ -270,9 +284,7 @@ function IngredientRow({
     if (!isNaN(n) && n !== ingredient.package_size) onUpdate({ package_size: n });
   }
   function handlePackageUnitChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const val = e.target.value as IngredientUnit;
-    setPackageUnit(val);
-    onUpdate({ package_unit: val });
+    onUpdate({ package_unit: e.target.value as IngredientUnit });
   }
   function handlePackageCostBlur() {
     const dollars = parseFloat(packageCost);
@@ -285,118 +297,248 @@ function IngredientRow({
   }
 
   return (
-    <div className="border-b border-[#f5f5f5] last:border-0">
-      <div
-        className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-[#faf9f7] transition-colors"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-[#1a1a1a] truncate block">
-            {ingredient.name || (
-              <span className="text-[#afafaf] font-normal">Unnamed ingredient</span>
-            )}
-          </span>
-          <span className="text-xs text-[#6b6b6b]">{cpuDisplay}</span>
-        </div>
-        <span className="text-xs text-[#6b6b6b] shrink-0">
-          {ingredient.package_size} {ingredient.package_unit} /{" "}
-          {formatCents(ingredient.package_cost_cents)}
-        </span>
-        {expanded ? (
-          <ChevronUp size={14} className="text-[#afafaf] shrink-0" />
-        ) : (
-          <ChevronDown size={14} className="text-[#afafaf] shrink-0" />
-        )}
-      </div>
-
-      {expanded && (
-        <div
-          className="px-5 pb-5 pt-2 bg-[#faf9f7] border-t border-[#f0f0f0]"
-          onClick={(e) => e.stopPropagation()}
+    <div className="hover:bg-[#faf9f7] transition-colors">
+      <div className={ingGridCls + " px-5 py-1.5"}>
+        <input
+          className={cellInputCls + " font-medium"}
+          value={name}
+          disabled={!canEdit}
+          placeholder="Unnamed ingredient"
+          aria-label="Ingredient name"
+          onChange={(e) => setName(e.target.value)}
+          onBlur={handleNameBlur}
+        />
+        <input
+          type="number"
+          className={cellInputCls + " tabular-nums"}
+          value={packageSize}
+          disabled={!canEdit}
+          min={0}
+          step="any"
+          aria-label="Package size"
+          onChange={(e) => setPackageSize(e.target.value)}
+          onBlur={handlePackageSizeBlur}
+        />
+        <select
+          className={cellInputCls}
+          value={ingredient.package_unit}
+          disabled={!canEdit}
+          aria-label="Unit"
+          onChange={handlePackageUnitChange}
         >
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="col-span-2">
-              <label className={labelCls}>Name</label>
-              <input
-                className={inputCls}
-                value={name}
-                disabled={!canEdit}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={handleNameBlur}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Package Size</label>
-              <input
-                type="number"
-                className={inputCls}
-                value={packageSize}
-                disabled={!canEdit}
-                onChange={(e) => setPackageSize(e.target.value)}
-                onBlur={handlePackageSizeBlur}
-                min={0}
-                step="any"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Unit</label>
-              <select
-                className={inputCls}
-                value={packageUnit}
-                disabled={!canEdit}
-                onChange={handlePackageUnitChange}
-              >
-                {UNIT_OPTIONS.map((u) => (
-                  <option key={u.value} value={u.value}>{u.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Package Cost ($)</label>
-              <input
-                type="number"
-                className={inputCls}
-                value={packageCost}
-                disabled={!canEdit}
-                onChange={(e) => setPackageCost(e.target.value)}
-                onBlur={handlePackageCostBlur}
-                min={0}
-                step="0.01"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex items-end">
-              <div>
-                <label className={labelCls}>Cost per Unit</label>
-                <p className="text-sm font-semibold text-[#155e63]">{cpuDisplay}</p>
-              </div>
-            </div>
-            <div className="col-span-2">
-              <label className={labelCls}>Notes</label>
-              <textarea
-                className={inputCls + " resize-none"}
-                rows={2}
-                value={notes}
-                disabled={!canEdit}
-                onChange={(e) => setNotes(e.target.value)}
-                onBlur={handleNotesBlur}
-                placeholder="Vendor info, storage notes…"
-              />
-            </div>
-          </div>
+          {UNIT_OPTIONS.map((u) => (
+            <option key={u.value} value={u.value}>{u.label}</option>
+          ))}
+        </select>
+        <input
+          type="number"
+          className={cellInputCls + " tabular-nums"}
+          value={packageCost}
+          disabled={!canEdit}
+          min={0}
+          step="0.01"
+          placeholder="0.00"
+          aria-label="Package cost in dollars"
+          onChange={(e) => setPackageCost(e.target.value)}
+          onBlur={handlePackageCostBlur}
+        />
+        <span
+          className="px-2 text-sm font-semibold text-[#155e63] tabular-nums truncate"
+          title="Cost per unit"
+        >
+          {cpuDisplay}
+        </span>
+        <div className="flex items-center justify-end gap-0.5">
+          {(canEdit || hasNotes) && (
+            <button
+              type="button"
+              onClick={() => setNotesOpen((v) => !v)}
+              title={hasNotes ? "Notes: " + ingredient.notes : "Add notes"}
+              aria-label="Toggle notes"
+              className={`p-1 rounded-md transition-colors ${
+                hasNotes
+                  ? "text-[#155e63] hover:bg-[#e8f4f5]"
+                  : "text-[#cccccc] hover:text-[#6b6b6b] hover:bg-[#f2f2f2]"
+              }`}
+            >
+              <StickyNote size={13} />
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
               onClick={onDelete}
-              className="flex items-center gap-1.5 text-xs font-medium text-[#c44] hover:text-[#a33] transition-colors"
+              title="Delete ingredient"
+              aria-label="Delete ingredient"
+              className="p-1 rounded-md text-[#cccccc] hover:text-[#c44] hover:bg-[#fbeaea] transition-colors"
             >
-              <Trash2 size={12} />
-              Delete ingredient
+              <Trash2 size={13} />
             </button>
           )}
         </div>
+      </div>
+      {notesOpen && (
+        <div className="px-5 pb-2.5 pt-0.5">
+          <input
+            className={inputCls + " text-xs"}
+            value={notes}
+            disabled={!canEdit}
+            placeholder="Vendor info, storage notes…"
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={handleNotesBlur}
+          />
+        </div>
       )}
     </div>
+  );
+}
+
+// TIM-1212: persistent quick-add row — type name → size → unit → cost, press
+// Enter to commit; focus returns to the name field for rapid multi-entry.
+function QuickAddRow({
+  onAdd,
+}: {
+  onAdd: (init: {
+    name: string;
+    package_size: number;
+    package_unit: IngredientUnit;
+    package_cost_cents: number;
+  }) => Promise<boolean>;
+}) {
+  const [name, setName] = useState("");
+  const [size, setSize] = useState("");
+  const [unit, setUnit] = useState<IngredientUnit>("g");
+  const [cost, setCost] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const sizeNum = parseFloat(size);
+  const costNum = parseFloat(cost);
+  const cpuPreview =
+    !isNaN(sizeNum) && sizeNum > 0 && !isNaN(costNum) && costNum > 0
+      ? "$" + (costNum / sizeNum).toFixed(4)
+      : "—";
+  const canCommit = name.trim().length > 0 && !busy;
+
+  async function commit() {
+    if (name.trim().length === 0 || submittingRef.current) return;
+    submittingRef.current = true;
+    setBusy(true);
+    const ok = await onAdd({
+      name: name.trim(),
+      package_size: !isNaN(sizeNum) && sizeNum > 0 ? sizeNum : 1,
+      package_unit: unit,
+      package_cost_cents:
+        !isNaN(costNum) && costNum > 0 ? Math.round(costNum * 100) : 0,
+    });
+    submittingRef.current = false;
+    setBusy(false);
+    if (ok) {
+      setName("");
+      setSize("");
+      setCost("");
+      // keep the unit selection for rapid same-unit entry
+      nameRef.current?.focus();
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit();
+    }
+  }
+
+  return (
+    <div
+      className={ingGridCls + " px-5 py-2.5 bg-[#f3f8f8] border-t border-[#e0eeee]"}
+      onKeyDown={handleKeyDown}
+    >
+      <input
+        ref={nameRef}
+        className={quickInputCls}
+        value={name}
+        placeholder="Add an ingredient…"
+        autoComplete="off"
+        aria-label="New ingredient name"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        type="number"
+        className={quickInputCls + " tabular-nums"}
+        value={size}
+        placeholder="Qty"
+        min={0}
+        step="any"
+        aria-label="New ingredient package size"
+        onChange={(e) => setSize(e.target.value)}
+      />
+      <select
+        className={quickInputCls}
+        value={unit}
+        aria-label="New ingredient unit"
+        onChange={(e) => setUnit(e.target.value as IngredientUnit)}
+      >
+        {UNIT_OPTIONS.map((u) => (
+          <option key={u.value} value={u.value}>{u.label}</option>
+        ))}
+      </select>
+      <input
+        type="number"
+        className={quickInputCls + " tabular-nums"}
+        value={cost}
+        placeholder="0.00"
+        min={0}
+        step="0.01"
+        aria-label="New ingredient package cost in dollars"
+        onChange={(e) => setCost(e.target.value)}
+      />
+      <span className="px-2 text-sm font-medium text-[#6b6b6b] tabular-nums truncate">
+        {cpuPreview}
+      </span>
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={commit}
+          disabled={!canCommit}
+          title="Add ingredient (Enter)"
+          aria-label="Add ingredient"
+          className="flex items-center justify-center w-8 h-8 rounded-md bg-[#155e63] text-white hover:bg-[#0e4448] disabled:bg-[#c8d6d6] disabled:cursor-not-allowed transition-colors"
+        >
+          <Plus size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function IngredientSortHeader({
+  label,
+  k,
+  sortKey,
+  sortDir,
+  onToggle,
+}: {
+  label: string;
+  k: IngredientSortKey;
+  sortKey: IngredientSortKey;
+  sortDir: IngredientSortDir;
+  onToggle: (k: IngredientSortKey) => void;
+}) {
+  const active = sortKey === k;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(k)}
+      className={`flex items-center gap-1 px-2 text-left uppercase tracking-wider transition-colors ${
+        active ? "text-[#155e63]" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+      }`}
+    >
+      {label}
+      {active &&
+        (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+    </button>
   );
 }
 
@@ -409,48 +551,129 @@ function IngredientsTab({
 }: {
   canEdit: boolean;
   ingredients: MenuIngredient[];
-  onAddIngredient: () => Promise<void>;
+  onAddIngredient: (init: {
+    name: string;
+    package_size: number;
+    package_unit: IngredientUnit;
+    package_cost_cents: number;
+  }) => Promise<boolean>;
   onUpdateIngredient: (id: string, patch: Partial<MenuIngredient>) => Promise<void>;
   onDeleteIngredient: (id: string) => Promise<void>;
 }) {
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<IngredientSortKey>("name");
+  const [sortDir, setSortDir] = useState<IngredientSortDir>("asc");
+
+  function toggleSort(key: IngredientSortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? ingredients.filter(
+          (i) =>
+            i.name.toLowerCase().includes(q) ||
+            (i.notes ?? "").toLowerCase().includes(q)
+        )
+      : ingredients;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      let primary: number;
+      if (sortKey === "unit") {
+        primary = a.package_unit.localeCompare(b.package_unit);
+      } else if (sortKey === "cpu") {
+        const d = costPerUnit(a) - costPerUnit(b);
+        primary = d < 0 ? -1 : d > 0 ? 1 : 0;
+      } else {
+        primary = a.name.localeCompare(b.name);
+      }
+      if (primary === 0) primary = a.name.localeCompare(b.name);
+      return primary * dir;
+    });
+  }, [ingredients, search, sortKey, sortDir]);
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">Ingredients</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
-              Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically.
-            </p>
+        <div className="px-5 py-4 border-b border-[#efefef]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[#1a1a1a]">Ingredients</p>
+              <p className="text-xs text-[#6b6b6b] mt-0.5">
+                Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically.
+              </p>
+            </div>
+            <span className="text-xs text-[#afafaf] shrink-0 mt-0.5 whitespace-nowrap">
+              {ingredients.length} {ingredients.length === 1 ? "ingredient" : "ingredients"}
+            </span>
           </div>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={onAddIngredient}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#155e63] px-3 py-2 rounded-lg hover:bg-[#0e4448] transition-colors whitespace-nowrap shrink-0"
-            >
-              <Plus size={13} />
-              Add ingredient
-            </button>
-          )}
+          <div className="relative mt-3 max-w-xs">
+            <Search
+              size={12}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#afafaf] pointer-events-none"
+            />
+            <input
+              type="text"
+              className={inputCls + " pl-8"}
+              value={search}
+              placeholder="Search ingredients…"
+              autoComplete="off"
+              aria-label="Search ingredients"
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
-        {ingredients.length === 0 ? (
+        {ingredients.length === 0 && !canEdit ? (
           <div className="py-10 text-center">
             <Package size={28} className="text-[#d0d0d0] mx-auto mb-2" />
-            <p className="text-sm text-[#afafaf]">No ingredients yet. Add your first ingredient above.</p>
+            <p className="text-sm text-[#afafaf]">No ingredients yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#f5f5f5]">
-            {ingredients.map((ing) => (
-              <IngredientRow
-                key={ing.id}
-                ingredient={ing}
-                canEdit={canEdit}
-                onUpdate={(patch) => onUpdateIngredient(ing.id, patch)}
-                onDelete={() => onDeleteIngredient(ing.id)}
-              />
-            ))}
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              <div
+                className={
+                  ingGridCls +
+                  " px-5 py-2.5 bg-[#faf9f7] border-b border-[#efefef] text-[10px] font-semibold"
+                }
+              >
+                <IngredientSortHeader label="Ingredient" k="name" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                <span className="px-2 uppercase tracking-wider text-[#6b6b6b]">Size</span>
+                <IngredientSortHeader label="Unit" k="unit" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                <span className="px-2 uppercase tracking-wider text-[#6b6b6b]">Pkg Cost</span>
+                <IngredientSortHeader label="Cost / Unit" k="cpu" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                <span className="sr-only">Actions</span>
+              </div>
+
+              {visible.length === 0 ? (
+                <div className="px-5 py-8 text-center text-sm text-[#afafaf]">
+                  {ingredients.length === 0
+                    ? "No ingredients yet — add your first below."
+                    : `No ingredients match “${search.trim()}”.`}
+                </div>
+              ) : (
+                <div className="divide-y divide-[#f5f5f5]">
+                  {visible.map((ing) => (
+                    <IngredientTableRow
+                      key={ing.id}
+                      ingredient={ing}
+                      canEdit={canEdit}
+                      onUpdate={(patch) => onUpdateIngredient(ing.id, patch)}
+                      onDelete={() => onDeleteIngredient(ing.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {canEdit && <QuickAddRow onAdd={onAddIngredient} />}
+            </div>
           </div>
         )}
       </div>
@@ -1810,14 +2033,26 @@ export function MenuWorkspace({
   }
 
   // ── Ingredient operations ────────────────────────────────────────────────
-  async function addIngredient() {
+  async function addIngredient(init?: {
+    name?: string;
+    package_size?: number;
+    package_unit?: IngredientUnit;
+    package_cost_cents?: number;
+  }): Promise<boolean> {
+    const payload = {
+      plan_id: planId,
+      name: init?.name ?? "New ingredient",
+      package_size: init?.package_size ?? 1,
+      package_unit: init?.package_unit ?? "g",
+      package_cost_cents: init?.package_cost_cents ?? 0,
+    };
     const optimistic: MenuIngredient = {
       id: makeLocalId(),
       plan_id: planId,
-      name: "New ingredient",
-      package_size: 1,
-      package_unit: "g",
-      package_cost_cents: 0,
+      name: payload.name,
+      package_size: payload.package_size,
+      package_unit: payload.package_unit,
+      package_cost_cents: payload.package_cost_cents,
       vendor_id: null,
       notes: null,
       created_at: new Date().toISOString(),
@@ -1828,19 +2063,15 @@ export function MenuWorkspace({
     const res = await fetch("/api/workspaces/menu-pricing/ingredients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        plan_id: planId,
-        name: "New ingredient",
-        package_size: 1,
-        package_unit: "g",
-        package_cost_cents: 0,
-      }),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       const created = (await res.json()) as MenuIngredient;
       setIngredients((prev) => prev.map((i) => (i.id === optimistic.id ? created : i)));
+      return true;
     } else {
       setIngredients((prev) => prev.filter((i) => i.id !== optimistic.id));
+      return false;
     }
   }
 
