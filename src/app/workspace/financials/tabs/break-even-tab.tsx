@@ -1,50 +1,39 @@
 "use client";
 
-import { type MonthlySlice, type FinancialInputs, fmt } from "@/lib/financial-projection";
+import {
+  type MonthlySlice,
+  type FinancialInputs,
+  type ForecastLine,
+  computeBreakEvenModel,
+  fmt,
+} from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 
 interface Props {
   slices: MonthlySlice[];
   inputs: FinancialInputs;
+  forecastLines: ForecastLine[];
   currencyCode?: string;
 }
 
-function computeBreakEven(inputs: FinancialInputs, slices: MonthlySlice[]) {
-  // Use Year 1 Month 1 as the base
-  const m1 = slices[0];
-  if (!m1) return null;
+function computeBreakEven(inputs: FinancialInputs, slices: MonthlySlice[], forecastLines: ForecastLine[]) {
+  // Use Year 1 Month 1 as the base. TIM-1178: cost classification (incl. labor
+  // as a variable, %-of-revenue cost) lives in computeBreakEvenModel.
+  const model = computeBreakEvenModel(slices[0], forecastLines, inputs.avg_ticket_cents);
+  if (!model) return null;
 
-  const avgTicket = inputs.avg_ticket_cents / 100;
-  const nr = m1.net_revenue_cents;
-  if (nr <= 0 || avgTicket <= 0) return null;
-
-  // Variable costs per dollar of revenue (COGS + payment processing + spoilage + labor if hourly)
-  // We treat labor as fixed since it's % of revenue — actually it's semi-variable.
-  // Simplified: variable = COGS + payment processing + spoilage (COGS-based)
-  const variableCents = m1.total_cogs_cents + m1.payment_processing_cents + m1.spoilage_cents;
-  const variablePct = variableCents / nr;
-  const contributionMarginPct = 1 - variablePct;
-  const avgVariableCost = avgTicket * variablePct;
-  const contributionPerTicket = avgTicket - avgVariableCost;
-
-  // Fixed costs = everything that doesn't scale with revenue
-  const fixedCosts = m1.rent_cents + m1.insurance_cents + m1.tech_cents +
-    m1.maintenance_cents + m1.supplies_cents + m1.utilities_cents +
-    m1.other_opex_cents + m1.interest_cents + m1.depreciation_cents;
-
-  const breakEvenRevenue = contributionMarginPct > 0
-    ? fixedCosts / contributionMarginPct
-    : Infinity;
-  const breakEvenTransactions = contributionPerTicket > 0
-    ? Math.ceil(fixedCosts / 100 / contributionPerTicket)
-    : Infinity;
+  const avgTicket = model.avgTicketCents / 100;
+  const breakEvenRevenue = model.breakEvenRevenueCents; // cents; fmt() divides by 100
+  const breakEvenTransactions = model.breakEvenTransactions;
+  const contributionMarginPct = model.contributionMarginPct;
+  const contributionPerTicket = model.contributionPerTicketCents / 100;
+  const fixedCosts = model.fixedCostsCents;
 
   const projectedTransactions = Math.round(
     inputs.customers_per_day * (inputs.days_per_week * 52 / 12)
   );
   const transactionSurplus = projectedTransactions - breakEvenTransactions;
 
-  const daysPerMonth = inputs.days_per_week * 52 / 12;
   const daysToBreakEven = breakEvenTransactions / inputs.customers_per_day;
 
   return {
@@ -85,8 +74,8 @@ function SensitivityRow({
   );
 }
 
-export function BreakEvenTab({ slices, inputs, currencyCode = "USD" }: Props) {
-  const result = computeBreakEven(inputs, slices);
+export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "USD" }: Props) {
+  const result = computeBreakEven(inputs, slices, forecastLines);
 
   if (!result) {
     return (
@@ -105,19 +94,15 @@ export function BreakEvenTab({ slices, inputs, currencyCode = "USD" }: Props) {
     ? transactionSurplus / projectedTransactions
     : 0;
 
-  // Sensitivity scenarios: ticket -10%, traffic -15%, fixed costs +10%
+  // Sensitivity scenarios: avg ticket ±, fixed costs ±. Reuses the same
+  // contribution margin as the headline metric (TIM-1178) so labor stays in the
+  // variable bucket here too.
   const sensitivityBase = breakEvenTransactions;
 
-  function beAt(ticketMult: number, trafficMult: number, fixedMult: number) {
-    const ticket = avgTicket * ticketMult;
-    const fixedC = fixedCosts * fixedMult;
-    const m1 = slices[0];
-    if (!m1) return Infinity;
-    const nr = m1.net_revenue_cents;
-    const varPct = (m1.total_cogs_cents + m1.payment_processing_cents + m1.spoilage_cents) / (nr || 1);
-    const cm = 1 - varPct;
-    const cp = ticket * cm;
-    return cp > 0 ? Math.ceil(fixedC / 100 / cp) : Infinity;
+  function beAt(ticketMult: number, fixedMult: number) {
+    const contributionPerTicketCents = avgTicket * 100 * ticketMult * contributionMarginPct;
+    const fixedC = fixedCosts * fixedMult; // cents
+    return contributionPerTicketCents > 0 ? Math.ceil(fixedC / contributionPerTicketCents) : Infinity;
   }
 
   const projectedCustomers = inputs.customers_per_day * (inputs.days_per_week * 52 / 12);
@@ -211,20 +196,20 @@ export function BreakEvenTab({ slices, inputs, currencyCode = "USD" }: Props) {
               label="Avg Ticket"
               baseValue={sensitivityBase}
               scenarios={[
-                { label: "-10%", value: beAt(0.9, 1, 1) },
-                { label: "-5%", value: beAt(0.95, 1, 1) },
-                { label: "+5%", value: beAt(1.05, 1, 1) },
-                { label: "+10%", value: beAt(1.1, 1, 1) },
+                { label: "-10%", value: beAt(0.9, 1) },
+                { label: "-5%", value: beAt(0.95, 1) },
+                { label: "+5%", value: beAt(1.05, 1) },
+                { label: "+10%", value: beAt(1.1, 1) },
               ]}
             />
             <SensitivityRow
               label="Fixed Costs"
               baseValue={sensitivityBase}
               scenarios={[
-                { label: "-10%", value: beAt(1, 1, 0.9) },
-                { label: "-5%", value: beAt(1, 1, 0.95) },
-                { label: "+5%", value: beAt(1, 1, 1.05) },
-                { label: "+10%", value: beAt(1, 1, 1.1) },
+                { label: "-10%", value: beAt(1, 0.9) },
+                { label: "-5%", value: beAt(1, 0.95) },
+                { label: "+5%", value: beAt(1, 1.05) },
+                { label: "+10%", value: beAt(1, 1.1) },
               ]}
             />
           </tbody>

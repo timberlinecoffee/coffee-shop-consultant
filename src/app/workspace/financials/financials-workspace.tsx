@@ -1472,7 +1472,7 @@ export function FinancialsWorkspace({
         {activeTab === "cash-flow" && (
           <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
         )}
-        {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} currencyCode={currencyCode} />}
+        {activeTab === "break-even" && <BreakEvenTab slices={slices} inputs={financialInputs} forecastLines={mp.forecast_lines} currencyCode={currencyCode} />}
         {activeTab === "ratios" && <RatiosTab slices={slices} />}
         {activeTab === "startup" && (
           <StartupTab
