@@ -1,0 +1,495 @@
+"use client";
+
+// TIM-1206: Salaries / Personnel plan editor (LivePlan-style). Each row is a
+// role: headcount, hire timing, pay (annual / monthly / hourly × expected
+// hours), benefits burden, and a COGS-labor vs operating-overhead designation.
+// This is the single source of truth for labor — its loaded cost flows into the
+// P&L, cash flow, and break-even via the projection engine.
+
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Sliders, Users } from "lucide-react";
+import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
+import { personnelLoadedMonthlyCents, fmt } from "@/lib/financial-projection";
+import { currencySymbol } from "@/lib/currency";
+
+function genId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `staff:${crypto.randomUUID()}`;
+  }
+  return `staff:${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+}
+
+const PAY_BASIS_LABEL: Record<PersonnelPayBasis, string> = {
+  annual: "Annual Salary",
+  monthly: "Monthly Salary",
+  hourly: "Hourly",
+};
+
+const inputCls =
+  "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+const fieldLabelCls = "block text-[10px] font-medium text-[#6b6b6b] mb-1";
+
+interface RowProps {
+  line: PersonnelLine;
+  canEdit: boolean;
+  currencyCode: string;
+  onChange: (next: PersonnelLine) => void;
+  onDelete: () => void;
+}
+
+function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowProps) {
+  const sym = currencySymbol(currencyCode);
+  const [expanded, setExpanded] = useState(false);
+  const isHourly = line.pay_basis === "hourly";
+  const loaded = personnelLoadedMonthlyCents(line);
+
+  // Pay amount is shown in whole currency units for salary, dollars for hourly rate.
+  const payValue = line.pay_amount_cents ? line.pay_amount_cents / 100 : "";
+
+  return (
+    <div className="border border-[#efefef] rounded-xl bg-white">
+      <div className="px-3 py-2.5 space-y-2.5">
+        {/* Row A: role + designation + delete */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="text-[#afafaf] hover:text-[#1a1a1a] shrink-0"
+            aria-label={expanded ? "Collapse" : "Expand"}
+          >
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+          <input
+            type="text"
+            value={line.role}
+            onChange={(e) => onChange({ ...line, role: e.target.value })}
+            disabled={!canEdit}
+            className={`${inputCls} flex-1 min-w-0 font-medium`}
+            aria-label="Role or title"
+            placeholder="Role or person"
+          />
+          <select
+            className={`${inputCls} shrink-0 w-44 py-1`}
+            value={line.cost_category}
+            disabled={!canEdit}
+            onChange={(e) =>
+              onChange({ ...line, cost_category: e.target.value === "cogs" ? "cogs" : "overhead" })
+            }
+            aria-label="Cost category"
+            title="Direct service labor reduces gross profit (COGS); overhead labor is an operating expense"
+          >
+            <option value="cogs">Direct Labor (COGS)</option>
+            <option value="overhead">Operating Overhead</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            disabled={!canEdit}
+            className={`text-xs px-2 py-1 rounded-md transition-colors shrink-0 ${
+              line.ramp?.enabled || line.end_month || line.benefits_fixed_cents
+                ? "bg-[#155e63]/10 text-[#155e63]"
+                : "text-[#afafaf] hover:text-[#1a1a1a]"
+            }`}
+            aria-label="Hire timing & extra benefits"
+            title="Hire timing, seasonal end, fixed benefits"
+          >
+            <Sliders size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={!canEdit}
+            className="text-[#afafaf] hover:text-[#a13d3d] shrink-0 disabled:opacity-50"
+            aria-label="Remove role"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        {/* Row B: headcount + pay basis + pay amount (+ hours) + benefits */}
+        <div className="flex flex-wrap items-end gap-3 pl-6">
+          <div className="w-20">
+            <label className={fieldLabelCls}>Headcount</label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={line.headcount || ""}
+              disabled={!canEdit}
+              onChange={(e) =>
+                onChange({ ...line, headcount: Math.max(0, parseInt(e.target.value, 10) || 0) })
+              }
+              className={`${inputCls} w-full`}
+              aria-label="Number of staff in this role"
+            />
+          </div>
+          <div className="w-36">
+            <label className={fieldLabelCls}>Pay basis</label>
+            <select
+              className={`${inputCls} w-full`}
+              value={line.pay_basis}
+              disabled={!canEdit}
+              onChange={(e) => {
+                const next = e.target.value as PersonnelPayBasis;
+                const patch: PersonnelLine = { ...line, pay_basis: next };
+                if (next === "hourly" && line.hours_per_week === undefined) patch.hours_per_week = 30;
+                onChange(patch);
+              }}
+              aria-label="Pay basis"
+            >
+              {(Object.keys(PAY_BASIS_LABEL) as PersonnelPayBasis[]).map((b) => (
+                <option key={b} value={b}>
+                  {PAY_BASIS_LABEL[b]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-32">
+            <label className={fieldLabelCls}>{isHourly ? "Rate / hour" : "Pay amount"}</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+                {sym}
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={isHourly ? 0.25 : 100}
+                value={payValue}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  onChange({
+                    ...line,
+                    pay_amount_cents: Math.round((parseFloat(e.target.value) || 0) * 100),
+                  })
+                }
+                className={`${inputCls} w-full pl-5`}
+                aria-label={isHourly ? "Hourly rate" : "Salary amount"}
+              />
+            </div>
+          </div>
+          {isHourly && (
+            <div className="w-28">
+              <label className={fieldLabelCls}>Hours / week</label>
+              <input
+                type="number"
+                min={0}
+                max={168}
+                step={1}
+                value={line.hours_per_week ?? ""}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  onChange({
+                    ...line,
+                    hours_per_week: Math.max(0, parseFloat(e.target.value) || 0),
+                  })
+                }
+                className={`${inputCls} w-full`}
+                aria-label="Expected hours per week per person"
+              />
+            </div>
+          )}
+          <div className="w-28">
+            <label className={fieldLabelCls}>Benefits %</label>
+            <div className="relative">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={line.benefits_pct || ""}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  onChange({ ...line, benefits_pct: Math.max(0, parseFloat(e.target.value) || 0) })
+                }
+                className={`${inputCls} w-full pr-6`}
+                aria-label="Benefits as a percent of pay"
+                title="Payroll taxes, health, and other burden as a % of base pay"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+                %
+              </span>
+            </div>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-[10px] font-medium text-[#6b6b6b]">Loaded cost</p>
+            <p className="text-sm font-semibold text-[#155e63]">{fmt(loaded, currencyCode)}/mo</p>
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-3 pb-3 pt-3 border-t border-[#f5f5f5] bg-[#fafafa] space-y-3">
+          {/* Fixed per-head benefits */}
+          <div>
+            <label className={fieldLabelCls}>Fixed benefits ({sym} per person / month)</label>
+            <div className="relative w-40">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+                {sym}
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={10}
+                value={line.benefits_fixed_cents ? line.benefits_fixed_cents / 100 : ""}
+                disabled={!canEdit}
+                onChange={(e) => {
+                  const v = Math.round((parseFloat(e.target.value) || 0) * 100);
+                  onChange({ ...line, benefits_fixed_cents: v > 0 ? v : undefined });
+                }}
+                className={`${inputCls} w-full pl-5`}
+                aria-label="Fixed benefits per person per month"
+                placeholder="0"
+              />
+            </div>
+            <p className="text-[10px] text-[#afafaf] mt-1">
+              A flat per-head amount on top of the percentage (e.g. a fixed health stipend).
+            </p>
+          </div>
+
+          {/* Phased hiring */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={line.ramp?.enabled ?? false}
+                disabled={!canEdit}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    onChange({
+                      ...line,
+                      ramp: line.ramp
+                        ? { ...line.ramp, enabled: true }
+                        : { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 },
+                    });
+                  } else if (line.ramp) {
+                    onChange({ ...line, ramp: { ...line.ramp, enabled: false } });
+                  }
+                }}
+                className="w-3.5 h-3.5 accent-[#155e63]"
+              />
+              <span className="text-xs font-medium text-[#1a1a1a]">
+                Phased hiring: set the hire month and ramp staffing in gradually
+              </span>
+            </label>
+            {line.ramp?.enabled && (
+              <div className="ml-6 mt-2 grid grid-cols-3 gap-3 max-w-md">
+                <div>
+                  <label className={fieldLabelCls}>Hire month</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={line.ramp.start_month}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      onChange({
+                        ...line,
+                        ramp: { ...line.ramp!, start_month: Math.max(1, parseInt(e.target.value, 10) || 1) },
+                      })
+                    }
+                    className={`${inputCls} w-full`}
+                  />
+                  <p className="text-[10px] text-[#afafaf] mt-1">Month 1 = opening</p>
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>Ramp-up months</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={24}
+                    value={line.ramp.ramp_months}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      onChange({
+                        ...line,
+                        ramp: {
+                          ...line.ramp!,
+                          ramp_months: Math.max(0, Math.min(24, parseInt(e.target.value, 10) || 0)),
+                        },
+                      })
+                    }
+                    className={`${inputCls} w-full`}
+                  />
+                  <p className="text-[10px] text-[#afafaf] mt-1">0 = full staff at once</p>
+                </div>
+                <div>
+                  <label className={fieldLabelCls}>Start at % of staff</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={line.ramp.start_pct}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      onChange({
+                        ...line,
+                        ramp: {
+                          ...line.ramp!,
+                          start_pct: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)),
+                        },
+                      })
+                    }
+                    className={`${inputCls} w-full`}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Seasonal end month */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={typeof line.end_month === "number"}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  onChange({ ...line, end_month: e.target.checked ? (line.ramp?.start_month ?? 1) + 2 : undefined })
+                }
+                className="w-3.5 h-3.5 accent-[#155e63]"
+              />
+              <span className="text-xs font-medium text-[#1a1a1a]">
+                Seasonal / temporary: stop paying this role after a set month
+              </span>
+            </label>
+            {typeof line.end_month === "number" && (
+              <div className="ml-6 mt-2 w-32">
+                <label className={fieldLabelCls}>Last paid month</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={line.end_month}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    onChange({
+                      ...line,
+                      end_month: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)),
+                    })
+                  }
+                  className={`${inputCls} w-full`}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface Props {
+  personnel: PersonnelLine[];
+  canEdit: boolean;
+  onChange: (next: PersonnelLine[]) => void;
+  currencyCode?: string;
+}
+
+export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "USD" }: Props) {
+  function addRole() {
+    const newRole: PersonnelLine = {
+      id: genId(),
+      role: "New Role",
+      headcount: 1,
+      pay_basis: "hourly",
+      pay_amount_cents: 1700,
+      hours_per_week: 30,
+      benefits_pct: 12,
+      cost_category: "overhead",
+    };
+    onChange([...personnel, newRole]);
+  }
+
+  function updateRole(idx: number, next: PersonnelLine) {
+    const copy = [...personnel];
+    copy[idx] = next;
+    onChange(copy);
+  }
+
+  function deleteRole(idx: number) {
+    onChange(personnel.filter((_, i) => i !== idx));
+  }
+
+  const totalLoaded = personnel.reduce((sum, p) => sum + personnelLoadedMonthlyCents(p), 0);
+  const cogsLoaded = personnel
+    .filter((p) => p.cost_category === "cogs")
+    .reduce((sum, p) => sum + personnelLoadedMonthlyCents(p), 0);
+  const overheadLoaded = totalLoaded - cogsLoaded;
+  const totalHeadcount = personnel.reduce((sum, p) => sum + (p.headcount || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-[#efefef] bg-white p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Users size={15} className="text-[#155e63]" aria-hidden="true" />
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">Staff & Salaries</p>
+              <p className="text-[10px] text-[#afafaf] mt-0.5">
+                Each role drives labor cost on your P&amp;L, cash flow, and break-even. Mark baristas
+                and other hands-on staff as Direct Labor; managers and back-office roles as Overhead.
+              </p>
+            </div>
+          </div>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={addRole}
+              className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md shrink-0"
+            >
+              <Plus size={12} /> Add role
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {personnel.length === 0 ? (
+            <p className="text-xs text-[#afafaf] italic py-3 px-3 bg-[#faf9f7] rounded-lg">
+              No staff yet. Add roles to model your payroll — or leave this empty if you&apos;re
+              running owner-only (use an owner draw on the Forecast tab instead of a salary).
+            </p>
+          ) : (
+            personnel.map((line, idx) => (
+              <PersonnelRow
+                key={line.id}
+                line={line}
+                canEdit={canEdit}
+                currencyCode={currencyCode}
+                onChange={(next) => updateRole(idx, next)}
+                onDelete={() => deleteRole(idx)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
+      {personnel.length > 0 && (
+        <div className="rounded-xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Total Headcount</p>
+              <p className="text-lg font-bold text-[#1a1a1a]">{totalHeadcount}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Loaded Payroll / Month</p>
+              <p className="text-lg font-bold text-[#1a1a1a]">{fmt(totalLoaded, currencyCode)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Direct Labor (COGS)</p>
+              <p className="text-lg font-bold text-[#1a1a1a]">{fmt(cogsLoaded, currencyCode)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Overhead Labor</p>
+              <p className="text-lg font-bold text-[#1a1a1a]">{fmt(overheadLoaded, currencyCode)}</p>
+            </div>
+          </div>
+          <p className="text-[10px] text-[#6b6b6b] mt-3">
+            Loaded cost includes benefits. At full staffing — phased hires ramp in over the months
+            you set. This is the labor figure used everywhere else in your plan.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

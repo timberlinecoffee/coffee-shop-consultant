@@ -106,6 +106,39 @@ export interface FundingSourceLine {
   notes?: string;
 }
 
+// TIM-1206: Salaries / Personnel plan. `personnel` is the single source of truth
+// for labor cost. Each line's loaded cost (base pay + benefits burden) flows
+// into the P&L (in the COGS or operating-overhead bucket per its designation),
+// cash flow (as cash out in the month paid), and break-even. Personnel are
+// fixed monthly costs — they do not scale per transaction — so break-even
+// counts them in the fixed bucket. The legacy "labor" forecast_line is dropped
+// on normalize so labor is never double-counted across the two models.
+export type PersonnelPayBasis = "annual" | "monthly" | "hourly";
+
+// Where a role's loaded cost rolls up on the P&L:
+//   "cogs"     → direct service labor, reduces gross profit (e.g. baristas).
+//   "overhead" → operating expense below gross profit (e.g. manager, bookkeeper).
+export type PersonnelCostCategory = "cogs" | "overhead";
+
+export interface PersonnelLine {
+  id: string;
+  role: string;                  // role / title (Title Case)
+  headcount: number;             // number of staff in this role
+  pay_basis: PersonnelPayBasis;
+  // Per the basis: annual salary (cents/yr), monthly salary (cents/mo), or
+  // hourly rate (cents/hr). Hourly uses hours_per_week × 52/12 per head.
+  pay_amount_cents: number;
+  hours_per_week?: number;       // hourly basis only — expected hours/week per head
+  benefits_pct: number;          // payroll burden as % of base pay (taxes, health, etc.)
+  benefits_fixed_cents?: number; // optional fixed burden per head per month
+  cost_category: PersonnelCostCategory;
+  // Phased hiring reuses the TIM-1102 ramp model: start_month is the hire month;
+  // ramp_months / start_pct phase headcount in (e.g. start at 50%, reach full
+  // staffing over 3 months). No per-line growth — pay changes are explicit edits.
+  ramp?: LineRamp;
+  end_month?: number;            // optional 1..60 — last month the role is paid (seasonal/temp)
+}
+
 export interface MonthlyProjections {
   // Customer flow
   daily_flow: DailyFlow;
@@ -125,6 +158,10 @@ export interface MonthlyProjections {
   // owner_capital_cents / loan_amount_cents in computeMonthlySlices; the
   // legacy single-loan FinancialInputs fields are fall-backs for pre-1122 data.
   funding_sources: FundingSourceLine[];
+
+  // TIM-1206: source-of-truth personnel plan (headcount, hire timing, pay,
+  // benefits). Drives labor cost across P&L / cash flow / break-even.
+  personnel: PersonnelLine[];
 
   // Below-the-line items
   taxes_pct: number;
@@ -204,15 +241,10 @@ const SEED_LINE_ID = {
 } as const;
 
 export function defaultForecastLines(): ForecastLine[] {
+  // TIM-1206: Labor is no longer a forecast_line — it is modeled in `personnel`
+  // (see defaultPersonnel) so headcount, hire timing, pay, and benefits are the
+  // single source of truth. The labor forecast_line is dropped on normalize.
   return [
-    {
-      id: SEED_LINE_ID.labor,
-      label: "Labor",
-      category: "overhead",
-      mode: "pct",
-      value: 30,
-      legacy_key: "labor",
-    },
     {
       id: SEED_LINE_ID.rent,
       label: "Rent",
@@ -298,6 +330,35 @@ export function defaultFundingSources(): FundingSourceLine[] {
   ];
 }
 
+// TIM-1206: starter personnel plan. Roles default to operating-overhead labor
+// (the common coffee-shop treatment, matching the prior labor line's placement);
+// users can re-designate any role as COGS-labor. Realistic loaded labor here is
+// intentionally higher than the old 30%-of-revenue line, which understated labor
+// and break-even (see TIM-1178). Role names are Title Case (TIM-1002).
+export function defaultPersonnel(): PersonnelLine[] {
+  return [
+    {
+      id: "staff:baristas",
+      role: "Baristas",
+      headcount: 2,
+      pay_basis: "hourly",
+      pay_amount_cents: 1700, // $17.00/hr
+      hours_per_week: 28,
+      benefits_pct: 12,
+      cost_category: "overhead",
+    },
+    {
+      id: "staff:store-manager",
+      role: "Store Manager",
+      headcount: 1,
+      pay_basis: "annual",
+      pay_amount_cents: 4600000, // $46,000/yr
+      benefits_pct: 18,
+      cost_category: "overhead",
+    },
+  ];
+}
+
 export function defaultMonthlyProjections(): MonthlyProjections {
   return {
     daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
@@ -306,6 +367,7 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     cogs_pct: 30,
     forecast_lines: defaultForecastLines(),
     funding_sources: defaultFundingSources(),
+    personnel: defaultPersonnel(),
     taxes_pct: 25,
     ramp_months: 3,
     ramp_multipliers: [30, 55, 80],
@@ -583,6 +645,73 @@ function migrateLegacyToForecastLines(r: Record<string, unknown>): ForecastLine[
   return lines.length > 0 ? lines : defaultForecastLines();
 }
 
+// TIM-1206: normalize one stored personnel row, clamping to sane ranges.
+function normalizePersonnelLine(raw: unknown, fallbackId: string): PersonnelLine | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = typeof r.id === "string" && r.id.length > 0 ? r.id : fallbackId;
+  const role = typeof r.role === "string" && r.role.length > 0 ? r.role : "Staff";
+  const headcount =
+    typeof r.headcount === "number" && r.headcount >= 0 ? Math.floor(r.headcount) : 1;
+  const pay_basis: PersonnelPayBasis =
+    r.pay_basis === "annual" || r.pay_basis === "monthly" || r.pay_basis === "hourly"
+      ? r.pay_basis
+      : "hourly";
+  const pay_amount_cents =
+    typeof r.pay_amount_cents === "number" && r.pay_amount_cents >= 0
+      ? Math.round(r.pay_amount_cents)
+      : 0;
+  const cost_category: PersonnelCostCategory = r.cost_category === "cogs" ? "cogs" : "overhead";
+  const benefits_pct =
+    typeof r.benefits_pct === "number" && r.benefits_pct >= 0 ? r.benefits_pct : 0;
+  const line: PersonnelLine = {
+    id,
+    role,
+    headcount,
+    pay_basis,
+    pay_amount_cents,
+    benefits_pct,
+    cost_category,
+  };
+  if (pay_basis === "hourly") {
+    line.hours_per_week =
+      typeof r.hours_per_week === "number" && r.hours_per_week >= 0
+        ? r.hours_per_week
+        : 30;
+  }
+  if (typeof r.benefits_fixed_cents === "number" && r.benefits_fixed_cents > 0) {
+    line.benefits_fixed_cents = Math.round(r.benefits_fixed_cents);
+  }
+  const ramp = normalizeRamp(r.ramp);
+  if (ramp) line.ramp = ramp;
+  if (typeof r.end_month === "number" && r.end_month >= 1 && r.end_month <= 60) {
+    line.end_month = Math.round(r.end_month);
+  }
+  return line;
+}
+
+// TIM-1206: when a stored row predates the personnel module, best-effort seed it.
+// A flat (salaried) legacy labor line carries a fixed dollar amount we can keep
+// exactly as a single monthly-pay role; a %-of-revenue labor line has no
+// headcount mapping, so fall back to the realistic starter plan.
+function migratePersonnelFromLegacy(forecastLines: ForecastLine[]): PersonnelLine[] {
+  const labor = forecastLines.find((l) => l.legacy_key === "labor");
+  if (labor && labor.mode === "flat" && labor.value > 0) {
+    return [
+      {
+        id: "staff:legacy-labor",
+        role: "Staff",
+        headcount: 1,
+        pay_basis: "monthly",
+        pay_amount_cents: labor.value,
+        benefits_pct: 0,
+        cost_category: "overhead",
+      },
+    ];
+  }
+  return defaultPersonnel();
+}
+
 export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
   const defaults = defaultMonthlyProjections();
   if (!raw || typeof raw !== "object") return defaults;
@@ -618,6 +747,19 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
         .map((entry, idx) => normalizeFundingSource(entry, `funding:${idx}:${Date.now()}`))
         .filter((x): x is FundingSourceLine => x !== null)
     : migrateLegacyFundingSources(r);
+
+  // TIM-1206: personnel is the source of truth for labor. A stored array (even
+  // an empty one — meaning owner-only) normalizes through; legacy rows with no
+  // personnel seed from the old labor line / the starter plan.
+  const personnel: PersonnelLine[] = Array.isArray(r.personnel)
+    ? (r.personnel as unknown[])
+        .map((entry, idx) => normalizePersonnelLine(entry, `staff:${idx}:${Date.now()}`))
+        .filter((x): x is PersonnelLine => x !== null)
+    : migratePersonnelFromLegacy(forecast_lines);
+
+  // Drop the legacy "labor" forecast_line so labor is never double-counted — it
+  // now lives entirely in `personnel`.
+  const forecast_lines_final = forecast_lines.filter((l) => l.legacy_key !== "labor");
 
   // Global ramp + growth (still applies to base foot-traffic revenue)
   const ramp_months =
@@ -667,8 +809,9 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       typeof r.avg_ticket_cents === "number" ? r.avg_ticket_cents : defaults.avg_ticket_cents,
     weekly_schedule,
     cogs_pct: typeof r.cogs_pct === "number" ? r.cogs_pct : defaults.cogs_pct,
-    forecast_lines,
+    forecast_lines: forecast_lines_final,
     funding_sources,
+    personnel,
     taxes_pct:
       typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
     ramp_months,
@@ -709,7 +852,13 @@ export interface MonthlyProjectionRow {
   revenue_cents: number;
   cogs_cents: number;
   gross_profit_cents: number;
+  // labor_cents is operating-overhead labor (the P&L "Labor" opex line). TIM-1206:
+  // it is sourced from personnel lines designated "overhead". COGS-labor sits in
+  // labor_cogs_cents (and is included in cogs_cents).
   labor_cents: number;
+  // TIM-1206: personnel loaded cost split by P&L designation.
+  labor_cogs_cents: number;      // direct service labor, included in cogs_cents
+  labor_overhead_cents: number;  // operating labor, equals labor_cents
   rent_cents: number;
   marketing_cents: number;
   utilities_cents: number;
@@ -729,6 +878,11 @@ export interface MonthlyProjectionRow {
   forecast_line_amounts: LineMonthlyAmount[];
   capex_line_amounts: LineMonthlyAmount[];
   capex_cents: number;
+  // TIM-1206: per-role personnel breakdown. Each entry's category is the role's
+  // designation ("cogs" | "overhead") so the P&L can group it correctly. Kept
+  // separate from forecast_line_amounts so break-even can treat personnel as a
+  // fixed cost regardless of its P&L bucket.
+  personnel_line_amounts: LineMonthlyAmount[];
 }
 
 // ── Projections output ────────────────────────────────────────────────────────
@@ -956,6 +1110,50 @@ function computeOverheadLineAmountCents(
   return Math.round(line.value * factor);
 }
 
+// TIM-1206: a personnel line's full-staffing monthly base pay (before benefits),
+// in cents. Hourly converts hours_per_week to a monthly figure via 52/12.
+function personnelMonthlyBaseCents(line: PersonnelLine): number {
+  const heads = Math.max(0, Math.floor(line.headcount || 0));
+  if (heads <= 0) return 0;
+  let perHead = 0;
+  if (line.pay_basis === "annual") {
+    perHead = (line.pay_amount_cents || 0) / 12;
+  } else if (line.pay_basis === "monthly") {
+    perHead = line.pay_amount_cents || 0;
+  } else {
+    const hrs = Math.max(0, line.hours_per_week || 0);
+    perHead = (line.pay_amount_cents || 0) * hrs * (52 / 12);
+  }
+  return perHead * heads;
+}
+
+// TIM-1206: a personnel line's loaded monthly cost (base pay + benefits burden)
+// for a given 1-based month, after applying phased-hiring ramp and any seasonal
+// end month. Returns 0 before the hire month or after end_month.
+function personnelMonthlyLoadedCents(line: PersonnelLine, monthIndex: number): number {
+  if (typeof line.end_month === "number" && line.end_month > 0 && monthIndex > line.end_month) {
+    return 0;
+  }
+  const factor = lineMonthFactor(monthIndex, line.ramp, undefined);
+  if (factor === 0) return 0;
+  const heads = Math.max(0, Math.floor(line.headcount || 0));
+  const base = personnelMonthlyBaseCents(line);
+  const benefits =
+    base * ((line.benefits_pct || 0) / 100) + (line.benefits_fixed_cents || 0) * heads;
+  return Math.round((base + benefits) * factor);
+}
+
+// TIM-1206: full-staffing loaded monthly cost (base pay + benefits burden),
+// ignoring ramp/end_month. Exposed for UI previews and exports.
+export function personnelLoadedMonthlyCents(line: PersonnelLine): number {
+  const heads = Math.max(0, Math.floor(line.headcount || 0));
+  if (heads <= 0) return 0;
+  const base = personnelMonthlyBaseCents(line);
+  return Math.round(
+    base + base * ((line.benefits_pct || 0) / 100) + (line.benefits_fixed_cents || 0) * heads
+  );
+}
+
 // One-time capex: charged in full on its start_month (or month 1 if no ramp).
 function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number {
   const startMonth = line.ramp?.enabled ? Math.max(1, line.ramp.start_month) : 1;
@@ -1043,6 +1241,20 @@ export function computeMonthlyProjections(
       }
       const revenue_cents = baseRevenue + revenueAdds;
 
+      // TIM-1206: personnel — the source of truth for labor. Each role's loaded
+      // monthly cost rolls into COGS-labor or operating-overhead per its
+      // designation. Computed up front so COGS-labor can fold into cogs_cents.
+      const personnelResults: LineMonthlyAmount[] = [];
+      let labor_cogs_cents = 0;
+      let labor_overhead_cents = 0;
+      for (const p of mp.personnel ?? []) {
+        const amt = personnelMonthlyLoadedCents(p, month_index_abs);
+        const cat: ForecastCategory = p.cost_category === "cogs" ? "cogs" : "overhead";
+        personnelResults.push({ id: p.id, label: p.role, category: cat, amount_cents: amt });
+        if (cat === "cogs") labor_cogs_cents += amt;
+        else labor_overhead_cents += amt;
+      }
+
       // Default COGS (legacy cogs_pct) applies to total revenue
       const baseCogs = Math.round(revenue_cents * (mp.cogs_pct / 100));
       let extraCogs = 0;
@@ -1059,7 +1271,8 @@ export function computeMonthlyProjections(
         extraCogs += amt;
         cogsLineResults.push({ id: l.id, label: l.label, category: "cogs", amount_cents: amt });
       }
-      const cogs_cents = baseCogs + extraCogs;
+      // TIM-1206: direct (COGS-designated) labor is part of cost of goods sold.
+      const cogs_cents = baseCogs + extraCogs + labor_cogs_cents;
       const gross_profit_cents = revenue_cents - cogs_cents;
 
       // Overhead lines — sum per-line and roll up to legacy named buckets via legacy_key
@@ -1100,6 +1313,10 @@ export function computeMonthlyProjections(
         if (l.legacy_key !== "interest") total_opex_cents += amt;
       }
 
+      // TIM-1206: operating-overhead personnel is the P&L "Labor" opex line.
+      labor_cents += labor_overhead_cents;
+      total_opex_cents += labor_overhead_cents;
+
       // Capex lines — one-time charge in their start_month
       const capexResults: LineMonthlyAmount[] = [];
       let capex_cents = 0;
@@ -1130,6 +1347,8 @@ export function computeMonthlyProjections(
         cogs_cents,
         gross_profit_cents,
         labor_cents,
+        labor_cogs_cents,
+        labor_overhead_cents,
         rent_cents,
         marketing_cents,
         utilities_cents,
@@ -1148,6 +1367,7 @@ export function computeMonthlyProjections(
         forecast_line_amounts: [...revenueLineResults, ...cogsLineResults, ...overheadResults],
         capex_line_amounts: capexResults,
         capex_cents,
+        personnel_line_amounts: personnelResults,
       });
     }
   }
@@ -1363,14 +1583,17 @@ export interface FinancialInputs {
   days_receivable: number;
 }
 
-// ── Break-even cost model (TIM-1178) ─────────────────────────────────────────
+// ── Break-even cost model (TIM-1178, TIM-1206) ───────────────────────────────
 // Splits the month-1 cost base into variable (scales with revenue) and fixed
 // (does not) buckets, then derives break-even revenue and transactions.
 //
-// Variable costs scale with revenue: COGS, payment processing, spoilage, and any
-// overhead line in "pct" mode — labor and marketing are %-of-revenue by default.
-// Fixed costs do not scale: "flat" mode overhead lines plus interest and
-// depreciation (both below-the-line, fixed monthly charges).
+// Variable costs scale with revenue: non-labor COGS, payment processing,
+// spoilage, and any overhead line in "pct" mode (e.g. marketing).
+// Fixed costs do not scale: "flat" mode overhead lines, interest, depreciation,
+// and — per TIM-1206 — all personnel cost. Salaries and expected-hours pay are
+// fixed monthly commitments, not per-transaction costs, so they belong in the
+// fixed bucket regardless of whether a role is designated COGS-labor or
+// overhead. Personnel is the single source of truth for labor here.
 //
 // Before TIM-1178 labor was excluded from BOTH buckets, understating break-even
 // by ~43% at default inputs and telling owners a loss-making volume was profit.
@@ -1405,12 +1628,25 @@ export function computeBreakEvenModel(
     else fixedOverheadCents += a.amount_cents;
   }
 
+  // TIM-1206: personnel is fixed. total_cogs_cents includes COGS-labor, so strip
+  // it out of the variable bucket and add all personnel to the fixed bucket.
+  const laborCogsCents = m1.labor_cogs_cents ?? 0;
+  const laborOverheadCents = m1.labor_overhead_cents ?? 0;
+
   const variableCents =
-    m1.total_cogs_cents + m1.payment_processing_cents + m1.spoilage_cents + variableOverheadCents;
+    (m1.total_cogs_cents - laborCogsCents) +
+    m1.payment_processing_cents +
+    m1.spoilage_cents +
+    variableOverheadCents;
   const variablePct = variableCents / nr;
   const contributionMarginPct = 1 - variablePct;
 
-  const fixedCostsCents = fixedOverheadCents + m1.interest_cents + m1.depreciation_cents;
+  const fixedCostsCents =
+    fixedOverheadCents +
+    m1.interest_cents +
+    m1.depreciation_cents +
+    laborCogsCents +
+    laborOverheadCents;
 
   const contributionPerTicketCents = avgTicketCents * contributionMarginPct;
 
@@ -1469,6 +1705,22 @@ export function aggregateLineAmounts(slices: MonthlySlice[]): LineMonthlyAmount[
   const byId = new Map<string, LineMonthlyAmount>();
   for (const slice of slices) {
     for (const entry of slice.forecast_line_amounts ?? []) {
+      const existing = byId.get(entry.id);
+      if (existing) {
+        existing.amount_cents += entry.amount_cents;
+      } else {
+        byId.set(entry.id, { ...entry });
+      }
+    }
+  }
+  return Array.from(byId.values());
+}
+
+// TIM-1206: same shape for personnel roles, summed across slices.
+export function aggregatePersonnelAmounts(slices: MonthlySlice[]): LineMonthlyAmount[] {
+  const byId = new Map<string, LineMonthlyAmount>();
+  for (const slice of slices) {
+    for (const entry of slice.personnel_line_amounts ?? []) {
       const existing = byId.get(entry.id);
       if (existing) {
         existing.amount_cents += entry.amount_cents;
@@ -1619,7 +1871,10 @@ export function computeMonthlySlices(
     const loyaltyDiscountCents = Math.round(rev * loyaltyDiscountPct);
     const grossRevenueCents = rev;
     const paymentProcessingCents = Math.round(rev * paymentProcessingPct);
-    const spoilageCents = Math.round(row.cogs_cents * spoilagePct);
+    // TIM-1206: spoilage and working capital apply to goods, not labor — so
+    // exclude any COGS-designated labor folded into cogs_cents.
+    const cogsExLaborCents = row.cogs_cents - (row.labor_cogs_cents ?? 0);
+    const spoilageCents = Math.round(cogsExLaborCents * spoilagePct);
     const netRevenueCents = rev - paymentProcessingCents;
     const bevRevCents = Math.round(rev * bevRevPct);
     const foodRevCents = Math.round(rev * foodRevPct);
@@ -1651,8 +1906,8 @@ export function computeMonthlySlices(
     // TIM-1169: working-capital deltas. Compute end-of-period working-capital
     // balances first, then take the delta from the prior period.
     const arCents = Math.round(rev * (daysReceivable / 30));
-    const inventoryCents = Math.round(row.cogs_cents * (daysInventory / 30));
-    const apCents = Math.round(row.cogs_cents * (daysPayable / 30));
+    const inventoryCents = Math.round(cogsExLaborCents * (daysInventory / 30));
+    const apCents = Math.round(cogsExLaborCents * (daysPayable / 30));
     const deltaAr = arCents - prevArCents;
     const deltaInventory = inventoryCents - prevInventoryCents;
     const deltaAp = apCents - prevApCents;

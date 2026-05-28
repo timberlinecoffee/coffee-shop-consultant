@@ -8,6 +8,7 @@ import {
   sumSlices,
   getQuarterSlices,
   aggregateLineAmounts,
+  aggregatePersonnelAmounts,
   fiscalYearMonthLabels,
   fmt,
   pct,
@@ -94,11 +95,14 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
   }
   let columns: PLColumn[] = [];
 
+  // TIM-1206: personnel roles carry their own per-line amounts (category =
+  // cogs | overhead per role). Merge them with forecast lines so each role
+  // renders under the right P&L section; totals already include them.
   if (period === "monthly") {
     columns = yearSlices.map((s, i) => ({
       label: MONTHS[i],
       data: s,
-      lineAmounts: s.forecast_line_amounts ?? [],
+      lineAmounts: [...(s.forecast_line_amounts ?? []), ...(s.personnel_line_amounts ?? [])],
     }));
   } else if (period === "quarterly") {
     columns = [1, 2, 3, 4].map((q) => {
@@ -106,7 +110,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
       return {
         label: QUARTERS[q - 1],
         data: sumSlices(qs),
-        lineAmounts: aggregateLineAmounts(qs),
+        lineAmounts: [...aggregateLineAmounts(qs), ...aggregatePersonnelAmounts(qs)],
       };
     });
   } else {
@@ -115,7 +119,7 @@ export function PLTab({ slices, fiscalYearStartMonth = 1, currencyCode = "USD" }
       return {
         label: `Year ${y}`,
         data: sumSlices(ys),
-        lineAmounts: aggregateLineAmounts(ys),
+        lineAmounts: [...aggregateLineAmounts(ys), ...aggregatePersonnelAmounts(ys)],
       };
     });
   }
@@ -415,14 +419,19 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
   const nr = totals.net_revenue_cents ?? 1;
   const gp = totals.gross_profit_cents ?? 0;
   const ni = totals.net_income_cents ?? 0;
-  const labor = totals.labor_cents ?? 0;
+  // TIM-1206: labor_cents is overhead labor; COGS-labor sits inside total_cogs.
+  const laborOverhead = totals.labor_cents ?? 0;
+  const laborCogs = totals.labor_cogs_cents ?? 0;
+  const totalLabor = laborOverhead + laborCogs;
   const cogs = totals.total_cogs_cents ?? 0;
   const rent = totals.rent_cents ?? 0;
 
   const grossMargin = nr > 0 ? gp / nr * 100 : 0;
   const netMargin = nr > 0 ? ni / nr * 100 : 0;
-  const laborPct = nr > 0 ? labor / nr * 100 : 0;
-  const primeCost = nr > 0 ? (cogs + labor) / nr * 100 : 0;
+  const laborPct = nr > 0 ? totalLabor / nr * 100 : 0;
+  // Prime cost = goods COGS + all labor. cogs already includes COGS-labor, so
+  // add only overhead labor to avoid double-counting.
+  const primeCost = nr > 0 ? (cogs + laborOverhead) / nr * 100 : 0;
   const occupancy = nr > 0 ? rent / nr * 100 : 0;
 
   const lines: string[] = [];
