@@ -13,7 +13,6 @@ import {
   type MonthlyProjections,
   type FinancialProjections,
   type MonthlySlice,
-  type FinancialInputs,
   type DayKey,
   type DaySchedule,
   type ForecastLine,
@@ -22,6 +21,7 @@ import {
   type PersonnelLine,
   type StartupCosts,
   defaultStartupCosts,
+  deriveFinancialInputs,
   computeProjections,
   computeMonthlySlices,
   computeDayHours,
@@ -180,91 +180,8 @@ type SaveState =
 
 type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
 
-function findLineByKey(lines: ForecastLine[], key: string) {
-  return lines.find((l) => l.legacy_key === key);
-}
-
-function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
-  const sc: StartupCosts = mp.startup_costs ?? defaultStartupCosts();
-  const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
-  const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
-    (k) => mp.weekly_schedule[k].open
-  );
-  const totalDailyCustomers = openDayKeys.reduce((sum, k) => sum + (mp.daily_flow[k] ?? 0), 0);
-  const avgCustomersPerDay = openDays > 0 ? Math.round(totalDailyCustomers / openDays) : 0;
-
-  const labor = findLineByKey(mp.forecast_lines, "labor");
-  const rent = findLineByKey(mp.forecast_lines, "rent");
-  const marketing = findLineByKey(mp.forecast_lines, "marketing");
-  const utilities = findLineByKey(mp.forecast_lines, "utilities");
-  const insurance = findLineByKey(mp.forecast_lines, "insurance");
-  const tech = findLineByKey(mp.forecast_lines, "tech");
-  const maintenance = findLineByKey(mp.forecast_lines, "maintenance");
-  const supplies = findLineByKey(mp.forecast_lines, "supplies");
-
-  // TIM-1122: roll funding_sources into the legacy FinancialInputs fields so
-  // existing tabs (Startup, Inputs, downstream consumers) see consistent totals.
-  // Equity sources sum into owner_capital_cents; loans are summed with a
-  // weighted-average term/rate for display purposes (per-loan amortization is
-  // handled directly inside computeMonthlySlices from the funding_sources).
-  const sources = mp.funding_sources ?? [];
-  const sumKind = (kind: FundingSourceLine["kind"]) =>
-    sources.filter((s) => s.kind === kind).reduce((acc, s) => acc + (s.amount_cents || 0), 0);
-  const ownerCapitalCents = sumKind("founder_equity") + sumKind("investor_equity") + sumKind("grant");
-  const loans = sources.filter((s) => s.kind === "loan" && (s.amount_cents || 0) > 0);
-  const totalLoanCents = loans.reduce((acc, s) => acc + s.amount_cents, 0);
-  const weightedTerm = totalLoanCents > 0
-    ? Math.round(loans.reduce((acc, s) => acc + s.amount_cents * (s.term_months ?? 0), 0) / totalLoanCents)
-    : 60;
-  const weightedRate = totalLoanCents > 0
-    ? loans.reduce((acc, s) => acc + s.amount_cents * (s.annual_rate_pct ?? 0), 0) / totalLoanCents
-    : 0;
-
-  return {
-    days_per_week: openDays,
-    hours_per_day: 10,
-    avg_ticket_cents: mp.avg_ticket_cents,
-    customers_per_day: avgCustomersPerDay,
-    beverage_revenue_pct: 70,
-    food_revenue_pct: 20,
-    retail_revenue_pct: 10,
-    beverage_cogs_pct: 30,
-    food_cogs_pct: 35,
-    retail_cogs_pct: 45,
-    rent_cents: rent?.mode === "flat" ? rent.value : 0,
-    labor_pct: labor?.mode === "pct" ? labor.value : 30,
-    marketing_pct: marketing?.mode === "pct" ? marketing.value : 2,
-    utilities_cents: utilities?.mode === "flat" ? utilities.value : 0,
-    insurance_cents: insurance?.mode === "flat" ? insurance.value : 0,
-    tech_cents: tech?.mode === "flat" ? tech.value : 0,
-    maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : 0,
-    supplies_cents: supplies?.mode === "flat" ? supplies.value : 0,
-    payment_processing_pct: mp.payment_processing_pct ?? 2.5,
-    spoilage_pct: mp.spoilage_pct ?? 2,
-    loyalty_discount_pct: mp.loyalty_discount_pct ?? 1,
-    other_opex_cents: 0,
-    // TIM-1244: one-time startup costs are now persisted on the model (populated
-    // by the guided interview and editable on the input page). Fall back to
-    // defaults for older payloads.
-    buildout_cost_cents: sc.buildout_cents,
-    equipment_cost_cents: sc.equipment_cents,
-    rent_deposits_cents: sc.deposits_cents,
-    license_permits_cents: sc.licenses_cents,
-    pre_opening_marketing_cents: sc.pre_opening_marketing_cents,
-    initial_inventory_cents: sc.initial_inventory_cents,
-    working_capital_reserve_cents: sc.working_capital_reserve_cents,
-    opening_cash_buffer_cents: sc.opening_cash_buffer_cents,
-    owner_capital_cents: ownerCapitalCents > 0 ? ownerCapitalCents : 15000000,
-    loan_amount_cents: totalLoanCents,
-    loan_term_months: weightedTerm,
-    loan_annual_rate_pct: weightedRate,
-    depreciation_years: 10,
-    tax_rate_pct: mp.income_tax_pct,
-    days_inventory: 7,
-    days_payable: 30,
-    days_receivable: 1,
-  };
-}
+// TIM-1257: deriveFinancialInputs + findForecastLineByKey now live in
+// @/lib/financial-projection (single source of truth, unit-testable).
 
 // TIM-1253: map equipment categories to the AssetCategory taxonomy on ForecastLine.
 function equipmentCategoryToAsset(cat: EquipmentCategory): AssetCategory {
@@ -1702,9 +1619,13 @@ export function FinancialsWorkspace({
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
-  const [financialInputs, setFinancialInputs] = useState<FinancialInputs>(() =>
-    deriveFinancialInputs(initialProjections)
-  );
+  // TIM-1257: financialInputs is the SINGLE derived view of `mp` consumed by the
+  // Funding/Startup/Break-Even/Balance-Sheet tabs. It must be a pure memo of `mp`
+  // so ANY upstream edit (customer flow, funding sources, costs) recomputes every
+  // dependent tab. It was previously a separate useState patched field-by-field in
+  // handleMpUpdate, which silently omitted customers_per_day, days_per_week, and the
+  // funding-derived loan/equity fields — so those tabs showed stale numbers.
+  const financialInputs = useMemo(() => deriveFinancialInputs(mp), [mp]);
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
@@ -1904,46 +1825,10 @@ export function FinancialsWorkspace({
   );
 
   function handleMpUpdate(next: MonthlyProjections) {
+    // TIM-1257: `mp` is the single source of truth. Setting it recomputes
+    // financialInputs, projections, and slices via their memos, so every
+    // dependent tab updates immediately. Do not maintain a parallel inputs copy.
     setMp(next);
-    const labor = findLineByKey(next.forecast_lines, "labor");
-    const rent = findLineByKey(next.forecast_lines, "rent");
-    const marketing = findLineByKey(next.forecast_lines, "marketing");
-    const utilities = findLineByKey(next.forecast_lines, "utilities");
-    const insurance = findLineByKey(next.forecast_lines, "insurance");
-    const tech = findLineByKey(next.forecast_lines, "tech");
-    const maintenance = findLineByKey(next.forecast_lines, "maintenance");
-    const supplies = findLineByKey(next.forecast_lines, "supplies");
-    setFinancialInputs((prev) => ({
-      ...prev,
-      avg_ticket_cents: next.avg_ticket_cents,
-      rent_cents: rent?.mode === "flat" ? rent.value : prev.rent_cents,
-      labor_pct: labor?.mode === "pct" ? labor.value : prev.labor_pct,
-      marketing_pct: marketing?.mode === "pct" ? marketing.value : prev.marketing_pct,
-      utilities_cents: utilities?.mode === "flat" ? utilities.value : prev.utilities_cents,
-      insurance_cents: insurance?.mode === "flat" ? insurance.value : prev.insurance_cents,
-      tech_cents: tech?.mode === "flat" ? tech.value : prev.tech_cents,
-      maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : prev.maintenance_cents,
-      supplies_cents: supplies?.mode === "flat" ? supplies.value : prev.supplies_cents,
-      other_opex_cents: prev.other_opex_cents,
-      tax_rate_pct: next.income_tax_pct,
-      payment_processing_pct: next.payment_processing_pct ?? prev.payment_processing_pct,
-      spoilage_pct: next.spoilage_pct ?? prev.spoilage_pct,
-      loyalty_discount_pct: next.loyalty_discount_pct ?? prev.loyalty_discount_pct,
-      // TIM-1244: keep the read-only Startup tab in sync with edits to the
-      // persisted startup costs.
-      ...(next.startup_costs
-        ? {
-            buildout_cost_cents: next.startup_costs.buildout_cents,
-            equipment_cost_cents: next.startup_costs.equipment_cents,
-            rent_deposits_cents: next.startup_costs.deposits_cents,
-            license_permits_cents: next.startup_costs.licenses_cents,
-            pre_opening_marketing_cents: next.startup_costs.pre_opening_marketing_cents,
-            initial_inventory_cents: next.startup_costs.initial_inventory_cents,
-            working_capital_reserve_cents: next.startup_costs.working_capital_reserve_cents,
-            opening_cash_buffer_cents: next.startup_costs.opening_cash_buffer_cents,
-          }
-        : {}),
-    }));
     scheduleSave(next);
   }
 
