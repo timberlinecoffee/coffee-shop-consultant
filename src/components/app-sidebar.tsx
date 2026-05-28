@@ -116,6 +116,27 @@ function ExportPlanIcon() {
   );
 }
 
+// TIM-1213
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  );
+}
+
 // ── Nav item ─────────────────────────────────────────────────────────────────
 
 // TIM-1152: color-coded status pill rendered in sidebar + workspace headers.
@@ -155,11 +176,14 @@ function NavItem({
   item,
   isActive,
   collapsed,
+  showStatus,
   onNavigate,
 }: {
   item: WorkspaceNavItem;
   isActive: boolean;
   collapsed: boolean;
+  // TIM-1213: when false (Menu mode), suppress all per-item status chrome.
+  showStatus: boolean;
   onNavigate?: () => void;
 }) {
   // TIM-1152: surface manual status as a color-coded pill on every workspace
@@ -193,12 +217,12 @@ function NavItem({
 
   if (collapsed) {
     // Tiny color-coded dot at bottom-right of the icon so status is still
-    // visible when the sidebar is collapsed.
+    // visible when the sidebar is collapsed. TIM-1213: only in Status mode.
     return (
       <Link
         href={item.href}
         aria-current={isActive ? "page" : undefined}
-        title={`${item.label} — ${WORKSPACE_STATUS_LABEL[status]}`}
+        title={showStatus ? `${item.label} — ${WORKSPACE_STATUS_LABEL[status]}` : item.label}
         onClick={onNavigate}
         className={`relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors mx-auto ${
           isActive
@@ -207,10 +231,31 @@ function NavItem({
         }`}
       >
         <NavIconGlyph icon={item.icon} size={17} />
-        <span
-          aria-hidden="true"
-          className={`absolute bottom-1 right-1 w-2 h-2 rounded-full ring-1 ring-white ${statusDotClass(status)}`}
-        />
+        {showStatus && (
+          <span
+            aria-hidden="true"
+            className={`absolute bottom-1 right-1 w-2 h-2 rounded-full ring-1 ring-white ${statusDotClass(status)}`}
+          />
+        )}
+      </Link>
+    );
+  }
+
+  // TIM-1213: Menu mode — clean single-row item, no status pill / check chrome.
+  if (!showStatus) {
+    return (
+      <Link
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
+        onClick={onNavigate}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors min-w-0 ${
+          isActive
+            ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
+            : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
+        }`}
+      >
+        <NavIconGlyph icon={item.icon} size={14} />
+        <span className="text-sm truncate flex-1 min-w-0">{item.label}</span>
       </Link>
     );
   }
@@ -325,6 +370,46 @@ function useCategoryCollapsed(): {
   return { isCollapsed, toggle };
 }
 
+// TIM-1213: persist the sidebar status-visibility preference per user.
+// Stored as "1" (Status mode) / "0" (Menu mode). Default = Menu mode (off):
+// the founder's lead sentiment disliked the per-item statuses, so the glance
+// view is opt-in. Versioned key — bump suffix if semantics change.
+const SHOW_STATUS_KEY = "tcs-sidebar-show-status-v1";
+
+function getShowStatusSnapshot(): boolean {
+  return window.localStorage.getItem(SHOW_STATUS_KEY) === "1";
+}
+
+function subscribeShowStatus(notify: () => void): () => void {
+  const handler = (e: StorageEvent) => {
+    if (e.key === SHOW_STATUS_KEY) notify();
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
+function useShowStatus(): { showStatus: boolean; toggle: () => void } {
+  const showStatus = useSyncExternalStore(
+    subscribeShowStatus,
+    getShowStatusSnapshot,
+    () => false, // SSR / pre-hydration default: Menu mode
+  );
+
+  const toggle = useCallback(() => {
+    const next = !getShowStatusSnapshot();
+    try {
+      window.localStorage.setItem(SHOW_STATUS_KEY, next ? "1" : "0");
+    } catch {
+      // ignore
+    }
+    // localStorage writes from this tab don't fire `storage`; dispatch a
+    // same-tab event so useSyncExternalStore re-reads the snapshot.
+    window.dispatchEvent(new StorageEvent("storage", { key: SHOW_STATUS_KEY }));
+  }, []);
+
+  return { showStatus, toggle };
+}
+
 function SidebarContent({
   items,
   collapsed,
@@ -341,6 +426,7 @@ function SidebarContent({
   const pathname = usePathname();
   const { isCollapsed: isCategoryCollapsed, toggle: toggleCategory } =
     useCategoryCollapsed();
+  const { showStatus, toggle: toggleShowStatus } = useShowStatus();
 
   return (
     <div className="flex flex-col h-full">
@@ -444,6 +530,7 @@ function SidebarContent({
                         item={item}
                         isActive={pathname.startsWith(item.href)}
                         collapsed={collapsed}
+                        showStatus={showStatus}
                         onNavigate={onClose}
                       />
                     </li>
@@ -510,6 +597,53 @@ function SidebarContent({
             <AccountIcon />
             Account
           </Link>
+        )}
+      </div>
+
+      {/* TIM-1213: status visibility toggle (Menu mode vs Status mode) */}
+      <div className={`border-t border-[#efefef] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+        {collapsed ? (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showStatus}
+            onClick={toggleShowStatus}
+            title={showStatus ? "Hide Statuses" : "Show Statuses"}
+            aria-label={showStatus ? "Hide Statuses" : "Show Statuses"}
+            className={`flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-colors ${
+              showStatus
+                ? "text-[#155e63] bg-[#155e63]/5"
+                : "text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0]"
+            }`}
+          >
+            {showStatus ? <EyeIcon /> : <EyeOffIcon />}
+          </button>
+        ) : (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showStatus}
+            onClick={toggleShowStatus}
+            title={showStatus ? "Hide Statuses" : "Show Statuses"}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a] transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              {showStatus ? <EyeIcon /> : <EyeOffIcon />}
+              <span className="text-xs">Statuses</span>
+            </span>
+            <span
+              aria-hidden="true"
+              className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${
+                showStatus ? "bg-[#155e63]" : "bg-[#d6d3cd]"
+              }`}
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${
+                  showStatus ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+          </button>
         )}
       </div>
 
