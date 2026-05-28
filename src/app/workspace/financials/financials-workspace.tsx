@@ -1207,10 +1207,24 @@ export function FinancialsWorkspace({
     [mp, equipment, projectionCtx]
   );
 
-  const slices = useMemo(
-    () => computeMonthlySlices(mp, equipment, {}, projectionCtx),
-    [mp, equipment, projectionCtx]
-  );
+  const slices = useMemo(() => {
+    // TIM-1181: feed the opening-balance-sheet inputs (fixed assets + pre-opening
+    // costs) so the balance sheet reconciles against the funding sources and the
+    // accounting identity holds. P&L display fields (payment processing %,
+    // spoilage %) are intentionally excluded — they render as line items but are
+    // not part of computed operating income, so passing them here would make the
+    // P&L sub-lines exceed the operating-expense total.
+    const fi = deriveFinancialInputs(mp);
+    const balanceSheetInputs = {
+      equipment_cost_cents: fi.equipment_cost_cents,
+      buildout_cost_cents: fi.buildout_cost_cents,
+      rent_deposits_cents: fi.rent_deposits_cents,
+      license_permits_cents: fi.license_permits_cents,
+      pre_opening_marketing_cents: fi.pre_opening_marketing_cents,
+      initial_inventory_cents: fi.initial_inventory_cents,
+    };
+    return computeMonthlySlices(mp, equipment, balanceSheetInputs, projectionCtx);
+  }, [mp, equipment, projectionCtx]);
 
   const lastSavedAt =
     saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null;
