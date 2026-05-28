@@ -137,6 +137,7 @@ export default async function BusinessPlanPrintPage({
     { data: digitalPresence },
     { data: campaigns },
     { data: financialModel },
+    { data: coverRow },
   ] = await Promise.all([
     supabase
       .from("users")
@@ -208,6 +209,11 @@ export default async function BusinessPlanPrintPage({
       .select("forecast_inputs, monthly_projections, startup_costs")
       .eq("plan_id", planId)
       .maybeSingle(),
+    supabase
+      .from("business_plan_cover")
+      .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name")
+      .eq("plan_id", planId)
+      .maybeSingle(),
   ]);
 
   const concept: ConceptDocumentV2 = normalizeConceptV2(conceptDoc?.content);
@@ -226,6 +232,20 @@ export default async function BusinessPlanPrintPage({
   const year = new Date().getFullYear();
 
   const visibleSections: SectionKey[] = SECTION_KEYS.filter((k) => !excluded.has(k));
+
+  const coverTemplateId = coverRow?.template_id ?? "classic";
+  const coverAccent = coverRow?.accent_color ?? "#E8C24A";
+  const coverTagline = coverRow?.tagline ?? null;
+  const coverPreparedFor = coverRow?.prepared_for ?? null;
+  const coverAuthorName = coverRow?.author_name ?? null;
+
+  let logoSignedUrl: string | null = null;
+  if (coverRow?.logo_path) {
+    const { data: signed } = await supabase.storage
+      .from("business-plan-logos")
+      .createSignedUrl(coverRow.logo_path, 3600);
+    logoSignedUrl = signed?.signedUrl ?? null;
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -263,39 +283,16 @@ export default async function BusinessPlanPrintPage({
 
       <div className="max-w-[680px] mx-auto px-8 pt-14 pb-20">
         {/* ── Cover page ───────────────────────────────────────────────────── */}
-        <header className="page-break mb-16">
-          <div className="h-[3px] bg-[#155e63] mb-8 rounded-full" />
-
-          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#155e63] mb-3">
-            Business Plan
-          </p>
-          <h1
-            className="font-bold text-[#1a1a1a] leading-tight mb-6"
-            style={{ fontSize: "44px", letterSpacing: "-0.01em" }}
-          >
-            {shopName}
-          </h1>
-
-          <div className="space-y-1 mb-6">
-            {ownerName && (
-              <p className="text-sm text-[#1a1a1a]">
-                <span className="text-[#6b6b6b]">Prepared by</span> {ownerName}
-              </p>
-            )}
-            <p className="text-sm text-[#1a1a1a]">
-              <span className="text-[#6b6b6b]">Location</span> {city}
-            </p>
-            <p className="text-sm text-[#1a1a1a]">
-              <span className="text-[#6b6b6b]">Target open</span> {targetOpenDate}
-            </p>
-          </div>
-
-          <p className="text-xs text-[#afafaf] tracking-wide">
-            Prepared {printDate} &middot; Timberline Coffee School
-          </p>
-
-          <div className="mt-10 border-t border-[#efefef]" />
-        </header>
+        <PrintCoverPage
+          templateId={coverTemplateId}
+          shopName={shopName}
+          date={printDate}
+          accent={coverAccent}
+          tagline={coverTagline}
+          preparedFor={coverPreparedFor}
+          authorName={coverAuthorName}
+          logoUrl={logoSignedUrl}
+        />
 
         {/* ── Table of contents ────────────────────────────────────────────── */}
         <section className="page-break mb-16">
@@ -1202,5 +1199,146 @@ function AppendixSection({
         )}
       </SectionCard>
     </div>
+  );
+}
+
+// ── PrintCoverPage ────────────────────────────────────────────────────────────
+// HTML mirror of the react-pdf cover templates. Three variants matching the PDF.
+
+interface PrintCoverProps {
+  templateId: string;
+  shopName: string;
+  date: string;
+  accent: string;
+  tagline: string | null;
+  preparedFor: string | null;
+  authorName: string | null;
+  logoUrl: string | null;
+}
+
+function PrintCoverPage(props: PrintCoverProps) {
+  switch (props.templateId) {
+    case "modern":
+      return <PrintCoverModern {...props} />;
+    case "editorial":
+      return <PrintCoverEditorial {...props} />;
+    default:
+      return <PrintCoverClassic {...props} />;
+  }
+}
+
+function PrintCoverClassic({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
+  return (
+    <header className="page-break mb-16 flex flex-col items-center text-center" style={{ paddingBottom: 0 }}>
+      {logoUrl && (
+        <div className="flex justify-center mb-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="Logo" className="max-h-[72px] object-contain" />
+        </div>
+      )}
+
+      <p className="text-sm font-semibold tracking-widest uppercase mb-3" style={{ color: "#1A6E3B" }}>
+        Business Plan
+      </p>
+      <h1 className="font-bold leading-tight mb-3" style={{ fontSize: "40px", color: "#1A6E3B", letterSpacing: "-0.01em" }}>
+        {shopName}
+      </h1>
+
+      <div className="my-4 rounded-full" style={{ width: 120, height: 2, backgroundColor: accent }} />
+
+      {tagline && <p className="text-sm italic text-[#666666] mb-4">{tagline}</p>}
+
+      <div className="mt-auto pt-12 space-y-1 text-sm">
+        {preparedFor && (
+          <p><span className="text-[#888888]">Prepared for</span> <span className="font-semibold text-[#333333]">{preparedFor}</span></p>
+        )}
+        {authorName && (
+          <p><span className="text-[#888888]">Prepared by</span> <span className="font-semibold text-[#333333]">{authorName}</span></p>
+        )}
+        <p className="text-[#888888] text-xs mt-2">{date}</p>
+      </div>
+
+      <div className="mt-8 w-full" style={{ height: 4, backgroundColor: accent }} />
+    </header>
+  );
+}
+
+function PrintCoverModern({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
+  return (
+    <header className="page-break mb-16 relative" style={{ paddingLeft: 0 }}>
+      <div className="absolute top-0 left-0 bottom-0 w-[6px] rounded-sm" style={{ backgroundColor: "#1A6E3B" }} />
+      <div className="pl-16 pr-8 pt-16 pb-12 flex flex-col min-h-[500px]">
+        <h1 className="font-bold leading-tight mb-4" style={{ fontSize: "44px", color: "#1A6E3B", letterSpacing: "-0.01em" }}>
+          {shopName}
+        </h1>
+        <p className="text-lg text-[#555555] mb-3">Business Plan</p>
+        {tagline && <p className="text-sm italic text-[#888888] mb-4">{tagline}</p>}
+        <div className="w-full mb-4" style={{ height: 2, backgroundColor: accent }} />
+
+        <div className="mt-auto space-y-3 text-sm">
+          {preparedFor && (
+            <div>
+              <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared for</p>
+              <p className="font-semibold text-[#333333]">{preparedFor}</p>
+            </div>
+          )}
+          {authorName && (
+            <div>
+              <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared by</p>
+              <p className="font-semibold text-[#333333]">{authorName}</p>
+            </div>
+          )}
+          <p className="text-xs text-[#888888] mt-2">{date}</p>
+        </div>
+      </div>
+
+      {logoUrl && (
+        <div className="absolute bottom-12 left-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="Logo" className="max-h-[52px] max-w-[120px] object-contain" />
+        </div>
+      )}
+      <p className="absolute bottom-6 right-8 text-[10px] text-[#CCCCCC]">Confidential</p>
+    </header>
+  );
+}
+
+function PrintCoverEditorial({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
+  return (
+    <header className="page-break mb-16">
+      {/* Green header block */}
+      <div
+        className="w-full flex flex-col items-center justify-center text-center p-10"
+        style={{ backgroundColor: "#1A6E3B", minHeight: "320px" }}
+      >
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="Logo" className="max-h-[72px] max-w-[160px] object-contain mb-5" />
+        )}
+        <h1 className="font-bold text-white leading-tight mb-4" style={{ fontSize: "38px" }}>
+          {shopName}
+        </h1>
+        <p className="text-lg font-semibold mb-3" style={{ color: accent }}>Business Plan</p>
+        {tagline && <p className="text-sm" style={{ color: "#D4E8DF" }}>{tagline}</p>}
+      </div>
+
+      {/* White metadata block */}
+      <div className="px-14 pt-10 pb-12 space-y-4 text-sm relative">
+        {preparedFor && (
+          <div>
+            <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared for</p>
+            <p className="font-semibold text-[#333333] text-base">{preparedFor}</p>
+          </div>
+        )}
+        {authorName && (
+          <div>
+            <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared by</p>
+            <p className="font-semibold text-[#333333] text-base">{authorName}</p>
+          </div>
+        )}
+        <p className="text-xs text-[#888888]">{date}</p>
+        <div className="absolute bottom-10 right-12" style={{ width: 48, height: 8, backgroundColor: accent, borderRadius: 2 }} />
+      </div>
+    </header>
   );
 }

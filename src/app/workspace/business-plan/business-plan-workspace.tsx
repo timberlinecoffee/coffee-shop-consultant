@@ -1,12 +1,12 @@
 "use client";
 
 // TIM-1037: Business Plan Generator workspace — main client component.
-// LivePlan-style: sections auto-populate from suite data, each user-editable,
-// with per-section "Improve with AI" and PDF export.
+// TIM-1225: adds Cover & Branding panel above section list.
 
 import { useState, useRef, useCallback } from "react";
 import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp } from "lucide-react";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
+import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 
 interface Props {
   planId: string;
@@ -14,6 +14,8 @@ interface Props {
   initialSections: BusinessPlanSectionData[];
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  initialCoverSettings: CoverSettings;
+  logoPublicUrl: string | null;
 }
 
 interface SectionState extends BusinessPlanSectionData {
@@ -99,6 +101,8 @@ export function BusinessPlanWorkspace({
   shopName,
   initialSections,
   canEdit,
+  initialCoverSettings,
+  logoPublicUrl,
 }: Props) {
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
@@ -317,6 +321,12 @@ export function BusinessPlanWorkspace({
             </button>
           </div>
         )}
+
+        {/* Cover & Branding panel */}
+        <CoverBrandingPanel
+          initialSettings={initialCoverSettings}
+          logoPublicUrl={logoPublicUrl}
+        />
 
         {/* Sections */}
         <div className="space-y-4">

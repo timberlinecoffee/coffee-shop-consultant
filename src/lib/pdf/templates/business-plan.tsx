@@ -1,5 +1,5 @@
 // TIM-1037: Business Plan Generator PDF template.
-// Assembles a LivePlan-style printable plan from all suite section data.
+// TIM-1225: wires in branded cover (renderCover) and logo bytes via dataLoader.
 
 import React from "react";
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
@@ -9,6 +9,7 @@ import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
 import type { PdfTemplate } from "../registry";
 import type { BusinessPlanSectionData } from "@/lib/business-plan";
+import { renderCover } from "@/lib/pdf/business-plan/covers";
 import {
   assembleCompanyConcept,
   assembleMarketAnalysis,
@@ -30,9 +31,19 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface BusinessPlanCoverData {
+  template_id: string;
+  accent_color: string | null;
+  tagline: string | null;
+  prepared_for: string | null;
+  author_name: string | null;
+  logo?: { data: Buffer; format: "png" | "jpg" }; // react-pdf uses "jpg" not "jpeg"
+}
+
 export interface BusinessPlanPdfContent {
   shopName: string | null;
   sections: BusinessPlanSectionData[];
+  cover: BusinessPlanCoverData;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -47,40 +58,6 @@ const S = StyleSheet.create({
     paddingBottom: BRAND.page.margin + 20,
     paddingLeft: BRAND.page.margin,
     paddingRight: BRAND.page.margin,
-  },
-  coverPage: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: 80,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin + 10,
-    paddingRight: BRAND.page.margin + 10,
-  },
-  coverTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 28,
-    fontWeight: 600,
-    color: BRAND.colors.ink,
-    marginBottom: 8,
-  },
-  coverSubtitle: {
-    fontSize: 14,
-    color: BRAND.colors.primary,
-    marginBottom: 4,
-  },
-  coverDate: {
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    marginTop: 12,
-  },
-  coverRule: {
-    borderBottomWidth: 2,
-    borderBottomColor: BRAND.colors.primary,
-    marginTop: 24,
-    marginBottom: 24,
-    width: 48,
   },
   tocTitle: {
     fontFamily: BRAND.fonts.serif,
@@ -138,22 +115,6 @@ const S = StyleSheet.create({
 
 // ── Components ────────────────────────────────────────────────────────────────
 
-function CoverPage({ shopName, date }: { shopName: string; date: string }) {
-  return (
-    <Page size={BRAND.page.size} style={S.coverPage}>
-      <View>
-        <Text style={S.coverSubtitle}>Business Plan</Text>
-        <Text style={S.coverTitle}>{shopName}</Text>
-        <View style={S.coverRule} />
-        <Text style={S.coverDate}>Prepared {date}</Text>
-        <Text style={{ ...S.coverDate, marginTop: 4, fontSize: 9, color: BRAND.colors.muted }}>
-          Generated with Groundwork by Timberline Coffee School
-        </Text>
-      </View>
-    </Page>
-  );
-}
-
 function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionData[]; shopName: string; date: string }) {
   const visible = sections.filter((s) => s.isVisible);
   return (
@@ -206,14 +167,22 @@ function SectionPage({
 export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
   workspace_key: "concept", // fallback; dataLoader is used
   render({ content }) {
-    const { shopName, sections } = content;
+    const { shopName, sections, cover } = content;
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
 
     return (
       <PdfDocument>
-        <CoverPage shopName={displayName} date={date} />
+        {renderCover(cover.template_id, {
+          shopName: displayName,
+          tagline: cover.tagline ?? undefined,
+          preparedFor: cover.prepared_for ?? undefined,
+          authorName: cover.author_name ?? undefined,
+          date,
+          accentColor: cover.accent_color ?? undefined,
+          logo: cover.logo,
+        })}
         <TocPage sections={sections} shopName={displayName} date={date} />
         {visible.map((section) => (
           <SectionPage key={section.key} section={section} shopName={displayName} date={date} />
@@ -237,6 +206,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       { data: marketingBrandRow },
       { data: financialModel },
       { data: savedSections },
+      { data: coverRow },
     ] = await Promise.all([
       supabase.from("coffee_shop_plans").select("id, shop_name").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
@@ -248,6 +218,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       supabase.from("marketing_brand").select("positioning_statement, brand_pillar_1, brand_pillar_2, brand_pillar_3").eq("plan_id", planId).maybeSingle(),
       supabase.from("financial_models").select("forecast_inputs, monthly_projections, startup_costs").eq("plan_id", planId).maybeSingle(),
       supabase.from("business_plan_sections").select("section_key, user_content, is_visible").eq("plan_id", planId),
+      supabase.from("business_plan_cover").select("template_id, accent_color, logo_path, tagline, prepared_for, author_name").eq("plan_id", planId).maybeSingle(),
     ]);
 
     const savedMap = new Map(
@@ -280,9 +251,32 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       };
     });
 
+    // Download logo bytes when a path is set.
+    let logoData: { data: Buffer; format: "png" | "jpg" } | undefined;
+    if (coverRow?.logo_path) {
+      const { data: logoBlob } = await supabase.storage
+        .from("business-plan-logos")
+        .download(coverRow.logo_path);
+      if (logoBlob) {
+        const ab = await logoBlob.arrayBuffer();
+        const ext = coverRow.logo_path.endsWith(".jpg") ? "jpg" : "png";
+        logoData = { data: Buffer.from(ab), format: ext as "png" | "jpg" };
+      }
+    }
+
+    const cover: BusinessPlanCoverData = {
+      template_id: coverRow?.template_id ?? "classic",
+      accent_color: coverRow?.accent_color ?? null,
+      tagline: coverRow?.tagline ?? null,
+      prepared_for: coverRow?.prepared_for ?? null,
+      author_name: coverRow?.author_name ?? null,
+      logo: logoData,
+    };
+
     return {
       shopName: plan?.shop_name ?? null,
       sections,
+      cover,
     };
   },
 };
