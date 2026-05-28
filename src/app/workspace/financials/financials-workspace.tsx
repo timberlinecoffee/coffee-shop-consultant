@@ -71,7 +71,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-revenue",
     sectionId: "section-revenue",
     title: "What does a customer spend?",
-    body: "Set your average sale per visit — one drink, or a drink plus a pastry. Customers × average sale is your daily revenue.",
+    body: "Set your average sale per visit: one drink, or a drink plus a pastry. Customers x average sale is your daily revenue.",
     hint: "most espresso bars land between $6 and $10 per visit.",
   },
   {
@@ -80,7 +80,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-cogs",
     sectionId: "section-revenue",
     title: "How much of each sale is ingredients?",
-    body: "Your cost of goods — coffee, milk, cups, syrups — as a percentage of the sale price.",
+    body: "Your cost of goods (coffee, milk, cups, syrups) as a percentage of the sale price.",
     hint: "a well-run coffee shop keeps this around 28–35%.",
   },
   {
@@ -98,7 +98,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-startup-equipment",
     sectionId: "section-startup",
     title: "Start with your equipment",
-    body: "Begin your opening costs with equipment — espresso machine, grinders, fridge. Add build-out and supplies after; the total builds up from what you actually need.",
+    body: "Begin your opening costs with equipment: espresso machine, grinders, fridge. Add build-out and supplies after; the total builds up from what you actually need.",
     hint: "a full espresso bar's equipment runs about $40k–$120k.",
   },
   {
