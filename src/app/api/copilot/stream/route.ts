@@ -254,6 +254,8 @@ export async function POST(request: NextRequest) {
       let fullText = ""
       let inputTokens = 0
       let outputTokens = 0
+      let cacheReadTokens = 0
+      let cacheCreateTokens = 0
 
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null
       let ttftTimer: ReturnType<typeof setTimeout> | null = null
@@ -305,16 +307,22 @@ export async function POST(request: NextRequest) {
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-        // System prompt: two blocks — stable (cached) + dynamic (busts cache on plan edits)
+        // System prompt cached as a single prefix. The cache breakpoint must sit on the
+        // LAST system block so the cached prefix covers identity + style + the plan
+        // snapshot (~2–7K tokens). The stable block alone is ~424 tokens — below the
+        // 1024-token minimum cacheable prefix for Sonnet/Opus, so a breakpoint there
+        // caches nothing (TIM-1263). The dynamic block is identical across turns within a
+        // conversation unless the plan is edited, so turns 2+ hit the cache; an edit just
+        // forces one fresh write at the same cost as no caching — strictly net-positive.
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
             text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
-            cache_control: { type: "ephemeral" },
           },
           {
             type: "text",
             text: dynamicPrompt,
+            cache_control: { type: "ephemeral" },
           },
         ]
 
@@ -356,6 +364,8 @@ export async function POST(request: NextRequest) {
             outputTokens = event.usage.output_tokens ?? 0
           } else if (event.type === "message_start" && event.message?.usage) {
             inputTokens = event.message.usage.input_tokens ?? 0
+            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0
+            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0
           }
         }
 
@@ -365,9 +375,16 @@ export async function POST(request: NextRequest) {
 
           // Persist completed turn (only on clean stream close — dropped on disconnect).
           // TIM-1272: haiku-4-5 = $0.80/$4.00 per M; sonnet-4-6 = $3/$15 per M.
+          // input_tokens already excludes cached tokens; cache reads bill at 0.1x and cache
+          // writes at 1.25x the base input rate, so fold them in to keep cost_usd honest.
           const costPerInputM = useComplexModel ? 3 : 0.8
           const costPerOutputM = useComplexModel ? 15 : 4
-          const costUsd = (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000
+          const costUsd =
+            (inputTokens * costPerInputM +
+              cacheReadTokens * costPerInputM * 0.1 +
+              cacheCreateTokens * costPerInputM * 1.25 +
+              outputTokens * costPerOutputM) /
+            1_000_000
           const effectiveThreadId = threadId ?? crypto.randomUUID()
 
           const existingQuery = supabase
