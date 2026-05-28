@@ -1582,7 +1582,21 @@ export function computeMonthlySlices(
   }
 
   const fixedAssetsGross = (inputs.equipment_cost_cents ?? 0) + (inputs.buildout_cost_cents ?? 0);
-  const openingCash = (inputs.opening_cash_buffer_cents ?? 0) + (inputs.working_capital_reserve_cents ?? 0);
+  // TIM-1181: The opening balance sheet must reconcile sources (funding) against
+  // uses (assets + pre-opening spend), or Assets = Liabilities + Equity never
+  // holds and the planner shows "Out Of Balance" on every valid input. Opening
+  // cash is the residual: funding left after capitalizing fixed assets and
+  // expensing pre-opening costs (deposits, licenses, launch marketing, initial
+  // inventory). Those pre-opening costs become an opening accumulated deficit in
+  // retained earnings, which keeps the identity true for every month.
+  const initialLoanTotalCents = loanStates.reduce((sum, l) => sum + l.balance, 0);
+  const preOpeningExpensesCents =
+    (inputs.rent_deposits_cents ?? 0) +
+    (inputs.license_permits_cents ?? 0) +
+    (inputs.pre_opening_marketing_cents ?? 0) +
+    (inputs.initial_inventory_cents ?? 0);
+  const openingCash =
+    ownerCapital + initialLoanTotalCents - fixedAssetsGross - preOpeningExpensesCents;
 
   const ownerDrawsMonthly = mp.owner_draws_monthly_cents ?? 0;
   const ownerContributionsByMonth = new Map<number, number>();
@@ -1676,7 +1690,9 @@ export function computeMonthlySlices(
     const netFixedAssets = Math.max(0, cumulativeFixedAssetsGross - cumulativeDepreciation);
     const totalAssets = cashBalance + arCents + inventoryCents + netFixedAssets;
     const totalLiabilities = apCents + totalLoanBalance;
-    const retainedEarnings = cumulativeNetIncome;
+    // TIM-1181: pre-opening costs are an opening accumulated deficit, so retained
+    // earnings starts negative by that amount and then accrues operating income.
+    const retainedEarnings = cumulativeNetIncome - preOpeningExpensesCents;
     const totalEquity =
       ownerCapital + cumulativeOwnerContributions - cumulativeOwnerDraws + retainedEarnings;
 

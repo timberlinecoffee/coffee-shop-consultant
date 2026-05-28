@@ -862,3 +862,61 @@ test("TIM-1178: returns null when revenue or ticket is non-positive", () => {
   assert.equal(computeBreakEvenModel(undefined, mp.forecast_lines, mp.avg_ticket_cents), null);
   assert.equal(computeBreakEvenModel(slices[0], mp.forecast_lines, 0), null);
 });
+
+// TIM-1181: the balance sheet must satisfy Assets = Liabilities + Equity for
+// every month. Before the fix, opening cash ignored funding sources, so the
+// model was off by exactly (loan + owner capital) and the planner showed
+// "Out Of Balance" on every valid input.
+const BS_INPUTS = {
+  equipment_cost_cents: 5000000,
+  buildout_cost_cents: 15000000,
+  rent_deposits_cents: 900000,
+  license_permits_cents: 500000,
+  pre_opening_marketing_cents: 300000,
+  initial_inventory_cents: 200000,
+};
+
+test("TIM-1181: balance sheet balances for every month (default model)", () => {
+  const mp = defaultMonthlyProjections();
+  const slices = computeMonthlySlices(mp, EQUIP, BS_INPUTS, {});
+  assert.equal(slices.length, 60);
+  for (const s of slices) {
+    const gap = s.total_assets_cents - s.total_liabilities_and_equity_cents;
+    assert.ok(
+      Math.abs(gap) < 2,
+      `month ${s.month_index} out of balance by ${gap} cents`,
+    );
+  }
+});
+
+test("TIM-1181: opening cash is funding net of fixed assets and pre-opening spend", () => {
+  const mp = defaultMonthlyProjections();
+  const slices = computeMonthlySlices(mp, EQUIP, BS_INPUTS, {});
+  const m1 = slices[0];
+  // Funding: founder equity 1500000000 + loan 1000000000 = 2500000000.
+  // Uses capitalized as fixed assets: 5000000 + 15000000 = 20000000.
+  // Pre-opening expenses: 900000 + 500000 + 300000 + 200000 = 1900000.
+  const fixedAssets = 20000000;
+  const preOpening = 1900000;
+  const totalFunding = 2500000000;
+  const expectedOpeningCash = totalFunding - fixedAssets - preOpening;
+  assert.equal(m1.fixed_assets_gross_cents, fixedAssets);
+  // Pre-opening spend shows up as an opening accumulated deficit in retained
+  // earnings (retained = cumulative net income - pre-opening expenses).
+  assert.ok(
+    m1.retained_earnings_cents <= m1.net_income_cents - preOpening + 1,
+    "retained earnings carries the pre-opening deficit",
+  );
+  const gap = m1.total_assets_cents - m1.total_liabilities_and_equity_cents;
+  assert.ok(Math.abs(gap) < 2, `month 1 gap ${gap}`);
+  assert.ok(expectedOpeningCash > 0, "default funding exceeds startup uses");
+});
+
+test("TIM-1181: balance holds with empty inputs (funding becomes opening cash)", () => {
+  const mp = defaultMonthlyProjections();
+  const slices = computeMonthlySlices(mp, EQUIP, {}, {});
+  for (const s of slices) {
+    const gap = s.total_assets_cents - s.total_liabilities_and_equity_cents;
+    assert.ok(Math.abs(gap) < 2, `month ${s.month_index} gap ${gap}`);
+  }
+});
