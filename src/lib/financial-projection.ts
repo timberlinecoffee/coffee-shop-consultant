@@ -163,6 +163,10 @@ export interface PersonnelLine {
   ramp?: LineRamp;
   end_month?: number;            // optional 1..60 — last month the role is paid (one-time temp end)
   seasonal?: PersonnelSeasonal;  // TIM-1260: recurring yearly active-month pattern
+  // TIM-1259: durable link to a Hiring & Onboarding org-structure role
+  // (hiring_plan_roles.id). Set when this line is linked to the org chart so
+  // bi-directional sync matches on id rather than fuzzy role-name matching.
+  org_role_id?: string;
 }
 
 // TIM-1243: LivePlan-style manual control. Two layers, both resolved at compute
@@ -247,6 +251,11 @@ export interface MonthlyProjections {
   // TIM-1206: source-of-truth personnel plan (headcount, hire timing, pay,
   // benefits). Drives labor cost across P&L / cash flow / break-even.
   personnel: PersonnelLine[];
+
+  // TIM-1259: opt-in link to the Hiring & Onboarding org structure. When true,
+  // the Salaries module can pull role/headcount changes from hiring_plan_roles
+  // and push loaded cost back. Default off keeps the two modules independent.
+  org_sync_enabled?: boolean;
 
   // TIM-1244: persisted one-time startup costs. Optional for backward-compat —
   // older stored payloads without it fall back to defaultStartupCosts().
@@ -829,6 +838,10 @@ function normalizePersonnelLine(raw: unknown, fallbackId: string): PersonnelLine
   }
   const seasonal = normalizePersonnelSeasonal(r.seasonal);
   if (seasonal) line.seasonal = seasonal;
+  // TIM-1259: preserve the org-structure link if present.
+  if (typeof r.org_role_id === "string" && r.org_role_id.length > 0) {
+    line.org_role_id = r.org_role_id;
+  }
   return line;
 }
 
@@ -1057,6 +1070,8 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     forecast_lines: forecast_lines_final,
     funding_sources,
     personnel,
+    // TIM-1259: persist the opt-in org-structure link flag.
+    org_sync_enabled: r.org_sync_enabled === true,
     startup_costs,
     // TIM-1247: migrate the legacy single rate (taxes_pct) into income_tax_pct
     // so saved plans keep the same meaning — the old rate was always income tax.
