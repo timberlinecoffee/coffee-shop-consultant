@@ -255,14 +255,14 @@ export function CoPilotDrawer({
           {subscriptionTier === 'free' ? (
             <p className="text-center text-xs text-[#888]">
               AI co-pilot requires a paid plan.{' '}
-              <a href="/account" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[#155e63] underline">
                 Upgrade →
               </a>
             </p>
           ) : aiCreditsRemaining === 0 ? (
             <p className="text-center text-xs text-[#888]">
               You&apos;re out of credits for this month.{' '}
-              <a href="/account" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[#155e63] underline">
                 Upgrade for more messages →
               </a>
             </p>

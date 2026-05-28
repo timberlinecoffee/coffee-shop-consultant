@@ -360,14 +360,14 @@ export function TradeoffPanel({
                   {subscriptionTier === 'free' ? (
                     <>
                       Paid plan required.{' '}
-                      <a href="/account" className="text-[#155e63] underline">
+                      <a href="/pricing" className="text-[#155e63] underline">
                         Upgrade →
                       </a>
                     </>
                   ) : (
                     <>
                       Out of credits.{' '}
-                      <a href="/account" className="text-[#155e63] underline">
+                      <a href="/pricing" className="text-[#155e63] underline">
                         Upgrade →
                       </a>
                     </>
