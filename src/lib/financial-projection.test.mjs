@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   defaultMonthlyProjections,
   defaultPersonnel,
+  defaultStartupCosts,
   normalizeMonthlyProjections,
   computeMonthlyProjections,
   computeMonthlySlices,
@@ -14,6 +15,38 @@ import {
   computeBreakEvenModel,
   BASE_REVENUE_LINE_ID,
 } from "./financial-projection.ts";
+
+// TIM-1244: persisted startup costs (populated by the guided interview, editable
+// on the input page). Must round-trip through normalize and default cleanly.
+test("TIM-1244: default model includes startup_costs matching defaultStartupCosts", () => {
+  const mp = defaultMonthlyProjections();
+  assert.deepEqual(mp.startup_costs, defaultStartupCosts());
+});
+
+test("TIM-1244: normalize fills startup_costs with defaults when absent", () => {
+  const mp = normalizeMonthlyProjections({ avg_ticket_cents: 800 });
+  assert.deepEqual(mp.startup_costs, defaultStartupCosts());
+});
+
+test("TIM-1244: normalize round-trips stored startup_costs and merges partials", () => {
+  const stored = { ...defaultStartupCosts(), buildout_cents: 9999900, equipment_cents: 3210000 };
+  const full = normalizeMonthlyProjections({ startup_costs: stored });
+  assert.deepEqual(full.startup_costs, stored);
+
+  // A partial payload keeps the provided field and back-fills the rest.
+  const partial = normalizeMonthlyProjections({ startup_costs: { buildout_cents: 7000000 } });
+  assert.equal(partial.startup_costs.buildout_cents, 7000000);
+  assert.equal(partial.startup_costs.equipment_cents, defaultStartupCosts().equipment_cents);
+});
+
+test("TIM-1244: normalize clamps invalid startup cost values to the default", () => {
+  const mp = normalizeMonthlyProjections({
+    startup_costs: { buildout_cents: -500, equipment_cents: "lots", deposits_cents: 12345 },
+  });
+  assert.equal(mp.startup_costs.buildout_cents, defaultStartupCosts().buildout_cents);
+  assert.equal(mp.startup_costs.equipment_cents, defaultStartupCosts().equipment_cents);
+  assert.equal(mp.startup_costs.deposits_cents, 12345);
+});
 
 test("default model seeds overhead forecast_lines and a personnel plan (TIM-1206)", () => {
   const mp = defaultMonthlyProjections();

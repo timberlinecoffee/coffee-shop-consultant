@@ -158,6 +158,21 @@ export interface ManualOverride {
   amount_cents: number;
 }
 
+// TIM-1244: One-time costs to open the doors. Previously these were hardcoded
+// placeholders inside deriveFinancialInputs (workspace) and shown read-only on
+// the Startup tab. They are now persisted so the guided interview can populate
+// them and the owner can edit them on the input page.
+export interface StartupCosts {
+  buildout_cents: number;
+  equipment_cents: number;
+  deposits_cents: number;
+  licenses_cents: number;
+  pre_opening_marketing_cents: number;
+  initial_inventory_cents: number;
+  working_capital_reserve_cents: number;
+  opening_cash_buffer_cents: number;
+}
+
 export interface MonthlyProjections {
   // Customer flow
   daily_flow: DailyFlow;
@@ -181,6 +196,10 @@ export interface MonthlyProjections {
   // TIM-1206: source-of-truth personnel plan (headcount, hire timing, pay,
   // benefits). Drives labor cost across P&L / cash flow / break-even.
   personnel: PersonnelLine[];
+
+  // TIM-1244: persisted one-time startup costs. Optional for backward-compat —
+  // older stored payloads without it fall back to defaultStartupCosts().
+  startup_costs?: StartupCosts;
 
   // Below-the-line items
   taxes_pct: number;
@@ -392,6 +411,22 @@ export function defaultPersonnel(): PersonnelLine[] {
   ];
 }
 
+// TIM-1244: default one-time startup costs. These match the placeholder values
+// that previously lived hardcoded in deriveFinancialInputs, so existing plans
+// (and plans created before startup_costs was persisted) are unchanged.
+export function defaultStartupCosts(): StartupCosts {
+  return {
+    buildout_cents: 15000000,
+    equipment_cents: 5000000,
+    deposits_cents: 900000,
+    licenses_cents: 500000,
+    pre_opening_marketing_cents: 300000,
+    initial_inventory_cents: 200000,
+    working_capital_reserve_cents: 1500000,
+    opening_cash_buffer_cents: 1000000,
+  };
+}
+
 export function defaultMonthlyProjections(): MonthlyProjections {
   return {
     daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
@@ -401,6 +436,7 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     forecast_lines: defaultForecastLines(),
     funding_sources: defaultFundingSources(),
     personnel: defaultPersonnel(),
+    startup_costs: defaultStartupCosts(),
     taxes_pct: 25,
     ramp_months: 3,
     ramp_multipliers: [30, 55, 80],
@@ -861,6 +897,29 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     ? Array.from(new Set((r.manual_lines as unknown[]).filter((x): x is string => typeof x === "string" && x.length > 0)))
     : [];
 
+  // TIM-1244: startup costs. Merge stored values over defaults so older payloads
+  // (without the field) read the same numbers they always did; clamp to >= 0.
+  const sc = (r.startup_costs && typeof r.startup_costs === "object"
+    ? r.startup_costs
+    : {}) as Record<string, unknown>;
+  const scDefaults = defaultStartupCosts();
+  const startupCent = (key: keyof StartupCosts): number => {
+    const v = sc[key];
+    return typeof v === "number" && Number.isFinite(v) && v >= 0
+      ? Math.round(v)
+      : scDefaults[key];
+  };
+  const startup_costs: StartupCosts = {
+    buildout_cents: startupCent("buildout_cents"),
+    equipment_cents: startupCent("equipment_cents"),
+    deposits_cents: startupCent("deposits_cents"),
+    licenses_cents: startupCent("licenses_cents"),
+    pre_opening_marketing_cents: startupCent("pre_opening_marketing_cents"),
+    initial_inventory_cents: startupCent("initial_inventory_cents"),
+    working_capital_reserve_cents: startupCent("working_capital_reserve_cents"),
+    opening_cash_buffer_cents: startupCent("opening_cash_buffer_cents"),
+  };
+
   return {
     daily_flow: flow,
     avg_ticket_cents:
@@ -870,6 +929,7 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     forecast_lines: forecast_lines_final,
     funding_sources,
     personnel,
+    startup_costs,
     taxes_pct:
       typeof r.taxes_pct === "number" ? r.taxes_pct : defaults.taxes_pct,
     ramp_months,

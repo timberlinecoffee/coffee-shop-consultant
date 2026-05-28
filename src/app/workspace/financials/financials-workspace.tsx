@@ -5,7 +5,7 @@
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet } from "lucide-react";
+import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -19,6 +19,8 @@ import {
   type ForecastLine,
   type FundingSourceLine,
   type PersonnelLine,
+  type StartupCosts,
+  defaultStartupCosts,
   computeProjections,
   computeMonthlySlices,
   computeDayHours,
@@ -37,9 +39,17 @@ import { StartupTab } from "./tabs/startup-tab";
 import { FundingTab } from "./tabs/funding-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PersonnelEditor } from "./personnel-editor";
+import { ForecastWizard } from "./forecast-wizard";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
+
+// TIM-1244: per-user wizard state, persisted via /api/ui-prefs.
+const WIZARD_PREF_KEY = "financials_wizard";
+type WizardPref = {
+  status: "completed" | "skipped" | "in_progress";
+  lastStep?: number;
+};
 
 // ── DB row shape from buildout_equipment_items ────────────────────────────────
 
@@ -94,6 +104,7 @@ function findLineByKey(lines: ForecastLine[], key: string) {
 }
 
 function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
+  const sc: StartupCosts = mp.startup_costs ?? defaultStartupCosts();
   const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
   const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
     (k) => mp.weekly_schedule[k].open
@@ -151,14 +162,17 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     spoilage_pct: mp.spoilage_pct ?? 2,
     loyalty_discount_pct: mp.loyalty_discount_pct ?? 1,
     other_opex_cents: 0,
-    buildout_cost_cents: 15000000,
-    equipment_cost_cents: 5000000,
-    rent_deposits_cents: 900000,
-    license_permits_cents: 500000,
-    pre_opening_marketing_cents: 300000,
-    initial_inventory_cents: 200000,
-    working_capital_reserve_cents: 1500000,
-    opening_cash_buffer_cents: 1000000,
+    // TIM-1244: one-time startup costs are now persisted on the model (populated
+    // by the guided interview and editable on the input page). Fall back to
+    // defaults for older payloads.
+    buildout_cost_cents: sc.buildout_cents,
+    equipment_cost_cents: sc.equipment_cents,
+    rent_deposits_cents: sc.deposits_cents,
+    license_permits_cents: sc.licenses_cents,
+    pre_opening_marketing_cents: sc.pre_opening_marketing_cents,
+    initial_inventory_cents: sc.initial_inventory_cents,
+    working_capital_reserve_cents: sc.working_capital_reserve_cents,
+    opening_cash_buffer_cents: sc.opening_cash_buffer_cents,
     owner_capital_cents: ownerCapitalCents > 0 ? ownerCapitalCents : 15000000,
     loan_amount_cents: totalLoanCents,
     loan_term_months: weightedTerm,
@@ -338,18 +352,66 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
   fri: "Friday", sat: "Saturday", sun: "Sunday",
 };
 
+// TIM-1244: progressive-disclosure wrapper. Collapsible section with a teal
+// label header and a chevron; "advanced" tags rarely-used groups so the page
+// leads with the inputs that matter most and feels calm, not like a tax form.
+function Section({
+  title,
+  defaultOpen = false,
+  advanced = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  advanced?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between mb-3 group"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+            {title}
+          </span>
+          {advanced && (
+            <span className="text-[9px] font-medium uppercase tracking-wide text-[#afafaf] bg-[#f3f3f1] rounded px-1.5 py-0.5">
+              Advanced
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          size={15}
+          className={`text-[#afafaf] group-hover:text-[#6b6b6b] transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
 function ForecastTab({
   mp,
   canEdit,
   onUpdateMp,
   menuBlendedCogsPct,
   menuCogsItems,
+  onStartWizard,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
   onUpdateMp: (next: MonthlyProjections) => void;
   menuBlendedCogsPct: number | null;
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  onStartWizard?: () => void;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -372,6 +434,26 @@ function ForecastTab({
     update({ forecast_lines: next });
   }
 
+  // TIM-1244: editable one-time startup costs (was read-only on the Startup tab).
+  const sc: StartupCosts = mp.startup_costs ?? defaultStartupCosts();
+  function updateStartupField(key: keyof StartupCosts, cents: number) {
+    update({ startup_costs: { ...sc, [key]: Math.max(0, Math.round(cents)) } });
+  }
+  const startupFields: { key: keyof StartupCosts; label: string; hint?: string }[] = [
+    { key: "buildout_cents", label: "Build-Out & Renovation" },
+    { key: "equipment_cents", label: "Equipment" },
+    { key: "deposits_cents", label: "Deposits (Rent, Utilities)" },
+    { key: "licenses_cents", label: "Licenses & Permits" },
+    { key: "pre_opening_marketing_cents", label: "Pre-Opening Marketing" },
+    { key: "initial_inventory_cents", label: "Initial Inventory" },
+    {
+      key: "working_capital_reserve_cents",
+      label: "Working Capital Reserve",
+      hint: "Cushion: 3–6 months of fixed costs",
+    },
+    { key: "opening_cash_buffer_cents", label: "Opening Cash Buffer" },
+  ];
+
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
   const totalWeeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
   const weeklyHours = computeWeeklyHours(mp.weekly_schedule);
@@ -379,13 +461,32 @@ function ForecastTab({
   const inputCls =
     "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
   const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
-  const sectionLabelCls = "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
 
   return (
     <div className="space-y-6">
+      {onStartWizard && (
+        <div className="rounded-xl border border-[#155e63]/20 bg-[#155e63]/5 px-4 py-3.5 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-2.5">
+            <Compass size={18} className="text-[#155e63] shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-[#1a1a1a]">New here? Let us walk you through it.</p>
+              <p className="text-xs text-[#6b6b6b] mt-0.5">
+                Answer a few plain questions and we&apos;ll fill in this page for you.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onStartWizard}
+            className="text-xs font-semibold text-white bg-[#155e63] rounded-lg px-4 py-2 hover:bg-[#124e52] transition-colors whitespace-nowrap"
+          >
+            Start guided setup
+          </button>
+        </div>
+      )}
+
       {/* Customer Flow */}
-      <div>
-        <p className={sectionLabelCls}>Customer Flow by Day</p>
+      <Section title="Customer Flow by Day" defaultOpen>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Estimated customers per open day. Closed days are excluded from revenue calculations.
@@ -431,11 +532,10 @@ function ForecastTab({
             Weekly total: {totalWeeklyCustomers.toLocaleString()} customers across {openDays.length} open day{openDays.length !== 1 ? "s" : ""}
           </p>
         </div>
-      </div>
+      </Section>
 
       {/* Operating Schedule */}
-      <div>
-        <p className={sectionLabelCls}>Operating Schedule</p>
+      <Section title="Operating Schedule" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px]">
@@ -513,11 +613,10 @@ function ForecastTab({
             </table>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* Revenue Drivers */}
-      <div>
-        <p className={sectionLabelCls}>Revenue Drivers</p>
+      <Section title="Revenue Drivers" defaultOpen>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -552,11 +651,10 @@ function ForecastTab({
             </div>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* Forecast Lines — categorized (Revenue / COGS / Overhead / Capex) */}
-      <div>
-        <p className={sectionLabelCls}>Forecast Line Items</p>
+      <Section title="Forecast Line Items" defaultOpen>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Add, rename, or remove any line. For revenue and COGS lines, toggle{" "}
@@ -576,11 +674,10 @@ function ForecastTab({
             menuCogsItems={menuCogsItems}
           />
         </div>
-      </div>
+      </Section>
 
       {/* Other Operating Costs — TIM-1180 */}
-      <div>
-        <p className={sectionLabelCls}>Other Operating Costs</p>
+      <Section title="Other Operating Costs" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Costs that scale with sales but aren&apos;t line items above. These flow into your
@@ -640,11 +737,10 @@ function ForecastTab({
             </div>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* Owner Activity — TIM-1169 */}
-      <div>
-        <p className={sectionLabelCls}>Owner Activity</p>
+      <Section title="Owner Activity" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Money you (the owner) take out of the business each month, plus any extra cash you put back in
@@ -689,11 +785,42 @@ function ForecastTab({
             </div>
           </div>
         </div>
-      </div>
+      </Section>
+
+      {/* Startup & Build-Out Costs — TIM-1244 */}
+      <Section title="Startup & Build-Out Costs" advanced>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            One-time costs to open the doors. These flow into your Startup Costs tab,
+            balance sheet, and funding gap.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {startupFields.map((fld) => (
+              <div key={fld.key}>
+                <label className={labelCls}>
+                  {fld.label} ({mp.currency_code ?? "USD"})
+                </label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={sc[fld.key] ? sc[fld.key] / 100 : ""}
+                  onChange={(e) =>
+                    updateStartupField(fld.key, (parseFloat(e.target.value) || 0) * 100)
+                  }
+                  placeholder="0"
+                  disabled={!canEdit}
+                />
+                {fld.hint && <p className="text-[10px] text-[#afafaf] mt-1">{fld.hint}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
 
       {/* Tax rate */}
-      <div>
-        <p className={sectionLabelCls}>Taxes</p>
+      <Section title="Taxes" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="max-w-[200px]">
             <label className={labelCls}>Tax rate %</label>
@@ -711,11 +838,10 @@ function ForecastTab({
             <p className="text-[10px] text-[#afafaf] mt-1">Applied to income before taxes when positive</p>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* Fiscal Year Start — TIM-1100 / Currency — TIM-1101 */}
-      <div>
-        <p className={sectionLabelCls}>Fiscal Year & Currency</p>
+      <Section title="Fiscal Year & Currency" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -757,11 +883,10 @@ function ForecastTab({
             </div>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* Ramp Period */}
-      <div>
-        <p className={sectionLabelCls}>Ramp Period</p>
+      <Section title="Ramp Period" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Reduced revenue assumptions while you build awareness in the first months.
@@ -827,11 +952,10 @@ function ForecastTab({
             </div>
           )}
         </div>
-      </div>
+      </Section>
 
       {/* Monthly Growth Rate */}
-      <div>
-        <p className={sectionLabelCls}>Monthly Growth Rate</p>
+      <Section title="Monthly Growth Rate" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <div className="flex items-center gap-1 mb-4 bg-[#faf9f7] border border-[#e0e0e0] rounded-lg p-1 w-fit">
             {(["simple", "custom"] as const).map((mode) => (
@@ -908,7 +1032,7 @@ function ForecastTab({
             </div>
           )}
         </div>
-      </div>
+      </Section>
     </div>
   );
 }
@@ -1250,6 +1374,53 @@ export function FinancialsWorkspace({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
 
+  // TIM-1244: guided interview wizard. Opened automatically on first run, or
+  // manually via the "Guided setup" button. Skippable + resumable; we never
+  // force it on a returning user who has finished or skipped it.
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStartStep, setWizardStartStep] = useState(0);
+  const [wizardSeq, setWizardSeq] = useState(0); // remount the wizard on each open to reseed answers
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`);
+        if (!res.ok) return;
+        const { data } = (await res.json()) as { data: WizardPref | null };
+        if (cancelled) return;
+        if (!data) {
+          // First-ever visit: greet the new owner with the guided interview.
+          setWizardStartStep(0);
+          setWizardOpen(true);
+        } else if (data.status === "in_progress") {
+          // They paused partway — drop them back where they left off.
+          setWizardStartStep(Math.max(0, data.lastStep ?? 0));
+          setWizardOpen(true);
+        }
+      } catch {
+        // Network hiccup — silently skip auto-open; the button still works.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveWizardPref = useCallback((pref: WizardPref) => {
+    void fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pref),
+    }).catch(() => {});
+  }, []);
+
+  function openWizard() {
+    setWizardSeq((n) => n + 1);
+    setWizardStartStep(0);
+    setWizardOpen(true);
+  }
+
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestMpRef = useRef<MonthlyProjections>(initialProjections);
@@ -1391,6 +1562,20 @@ export function FinancialsWorkspace({
       payment_processing_pct: next.payment_processing_pct ?? prev.payment_processing_pct,
       spoilage_pct: next.spoilage_pct ?? prev.spoilage_pct,
       loyalty_discount_pct: next.loyalty_discount_pct ?? prev.loyalty_discount_pct,
+      // TIM-1244: keep the read-only Startup tab in sync with edits to the
+      // persisted startup costs.
+      ...(next.startup_costs
+        ? {
+            buildout_cost_cents: next.startup_costs.buildout_cents,
+            equipment_cost_cents: next.startup_costs.equipment_cents,
+            rent_deposits_cents: next.startup_costs.deposits_cents,
+            license_permits_cents: next.startup_costs.licenses_cents,
+            pre_opening_marketing_cents: next.startup_costs.pre_opening_marketing_cents,
+            initial_inventory_cents: next.startup_costs.initial_inventory_cents,
+            working_capital_reserve_cents: next.startup_costs.working_capital_reserve_cents,
+            opening_cash_buffer_cents: next.startup_costs.opening_cash_buffer_cents,
+          }
+        : {}),
     }));
     scheduleSave(next);
   }
@@ -1474,6 +1659,23 @@ export function FinancialsWorkspace({
       pendingSaveTimer.current = null;
     }
     void persist(latestMpRef.current, latestCritiqueRef.current);
+  }
+
+  // TIM-1244: wizard outcomes.
+  function handleWizardComplete(next: MonthlyProjections) {
+    handleMpUpdate(next);
+    saveWizardPref({ status: "completed" });
+    setWizardOpen(false);
+    setActiveTab("forecast");
+  }
+  function handleWizardSkip() {
+    saveWizardPref({ status: "skipped" });
+    setWizardOpen(false);
+  }
+  function handleWizardClose(currentStep: number) {
+    // Pause: remember the step so a return visit resumes here.
+    saveWizardPref({ status: "in_progress", lastStep: currentStep });
+    setWizardOpen(false);
   }
 
   const saveLabel =
@@ -1560,6 +1762,17 @@ export function FinancialsWorkspace({
             >
               {saveLabel}
             </span>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={openWizard}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#155e63] rounded-lg px-3 py-1.5 hover:bg-[#124e52] transition-colors"
+                title="Walk through a guided interview that fills in your forecast"
+              >
+                <Compass size={12} aria-hidden="true" />
+                Guided setup
+              </button>
+            )}
             <button
               type="button"
               onClick={() =>
@@ -1603,6 +1816,7 @@ export function FinancialsWorkspace({
             onUpdateMp={handleMpUpdate}
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
+            onStartWizard={openWizard}
           />
         )}
         {activeTab === "personnel" && (
@@ -1658,6 +1872,18 @@ export function FinancialsWorkspace({
           />
         )}
       </div>
+
+      {wizardOpen && canEdit && (
+        <ForecastWizard
+          key={wizardSeq}
+          initialMp={mp}
+          currencyCode={currencyCode}
+          startStep={wizardStartStep}
+          onComplete={handleWizardComplete}
+          onSkip={handleWizardSkip}
+          onClose={handleWizardClose}
+        />
+      )}
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
       <CoPilotDrawer
