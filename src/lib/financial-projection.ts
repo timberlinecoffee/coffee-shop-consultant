@@ -70,6 +70,11 @@ export interface LineGrowth {
 // menu_linked: when true on a COGS line, the line's effective pct comes from the
 // blended menu COGS ratio (computed in the workspace from menu_items) and
 // line.value is ignored. Falls back to line.value if no menu data is supplied.
+// TIM-1253: asset_category tags capex ForecastLines that came from
+// buildout_equipment_items so the financial planner can group / filter by
+// asset type. Ignored on non-capex lines.
+export type AssetCategory = "build_out" | "equipment" | "pos_tech" | "furniture" | "vehicle" | "other";
+
 export interface ForecastLine {
   id: string;
   label: string;
@@ -84,6 +89,11 @@ export interface ForecastLine {
   // TIM-1169: capex lines depreciate straight-line over their own useful life.
   // Default 7 years preserves prior behavior. Ignored on non-capex lines.
   useful_life_years?: number;
+  // TIM-1253: asset classification for capex lines sourced from buildout_equipment_items.
+  asset_category?: AssetCategory;
+  // TIM-1253: ID of the buildout_equipment_items row this line mirrors.
+  // Present only on synthetic lines injected at runtime — never persisted.
+  linked_equipment_item_id?: string;
 }
 
 // TIM-1122: Funding Sources. Multiple line items per category; each kind has

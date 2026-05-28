@@ -1,5 +1,6 @@
 // TIM-972: Financial Suite workspace page.
 // TIM-1029: Equipment moved to Build Out & Equipment; this page loads forecast only.
+// TIM-1253: Also fetches buildout_equipment_items for shared-read capex sync.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
@@ -10,6 +11,7 @@ import {
 } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 import { FinancialsWorkspace } from "./financials-workspace";
+import type { EquipmentItem } from "./financials-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +33,7 @@ export default async function FinancialsWorkspacePage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [modelResult, profileResult, menuItemsResult] = await Promise.all([
+  const [modelResult, profileResult, menuItemsResult, equipmentResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("*")
@@ -49,6 +51,14 @@ export default async function FinancialsWorkspacePage() {
       .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
       .eq("plan_id", plan.id)
       .eq("archived", false),
+    // TIM-1253: fetch equipment items for shared-read capex sync — each item
+    // becomes a synthetic capex ForecastLine in the financial projections.
+    supabase
+      .from("buildout_equipment_items")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .eq("archived", false)
+      .order("position"),
   ]);
 
   let modelRow = modelResult.data;
@@ -82,6 +92,7 @@ export default async function FinancialsWorkspacePage() {
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
 
+  const initialEquipmentItems = (equipmentResult.data ?? []) as EquipmentItem[];
   const rawMenuItems = menuItemsResult.data ?? [];
   const menuBlendedCogsPct = computeMenuBlendedCogsPct(rawMenuItems);
 
@@ -121,6 +132,7 @@ export default async function FinancialsWorkspacePage() {
       initialModelUpdatedAtForReview={initialModelUpdatedAt}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      initialEquipmentItems={initialEquipmentItems}
       menuBlendedCogsPct={menuBlendedCogsPct}
       menuCogsItems={menuCogsItems}
     />
