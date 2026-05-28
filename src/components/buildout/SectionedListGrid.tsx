@@ -1372,7 +1372,10 @@ export function SectionedListGrid({
 
   function onDragEnd({ active, over }: DragEndEvent) {
     setActiveId(null);
-    if (!over) return;
+    if (!over) {
+      onItemsChange(itemsSnapshotRef.current);
+      return;
+    }
 
     const activeItemId = active.id as string;
     const overId = over.id as string;
