@@ -13,6 +13,7 @@ import type {
 } from "@/lib/financial-projection";
 import { fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 const KIND_META: Record<FundingKind, { label: string; hint: string }> = {
   founder_equity: {
@@ -103,7 +104,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
           <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">
             Amount ({sym})
           </label>
-          <input
+          <NumericInput
             className={`${inputCls} w-full`}
             type="number"
             min={0}
@@ -121,7 +122,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
           <>
             <div className="w-[120px]">
               <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Term (months)</label>
-              <input
+              <NumericInput
                 className={`${inputCls} w-full`}
                 type="number"
                 min={1}
@@ -136,7 +137,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
             </div>
             <div className="w-[120px]">
               <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Rate (% APR)</label>
-              <input
+              <NumericInput
                 className={`${inputCls} w-full`}
                 type="number"
                 min={0}
@@ -159,7 +160,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
         {line.kind === "investor_equity" && (
           <div className="w-[140px]">
             <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Ownership %</label>
-            <input
+            <NumericInput
               className={`${inputCls} w-full`}
               type="number"
               min={0}

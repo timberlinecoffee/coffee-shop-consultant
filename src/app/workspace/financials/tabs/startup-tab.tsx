@@ -1,6 +1,7 @@
 "use client";
 
 import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } from "@/lib/financial-projection";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
   startupCosts: StartupCosts;
@@ -274,7 +275,7 @@ export function StartupTab({
                 <td className="py-3 pr-5 text-right align-top">
                   <div className="flex items-center justify-end gap-1.5">
                     <span className="text-xs text-[#afafaf]">{currencyCode}</span>
-                    <input
+                    <NumericInput
                       id={`startup-${fld.key}`}
                       className={inputCls}
                       type="number"

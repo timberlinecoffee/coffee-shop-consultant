@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, RotateCcw } from "lucide-react";
+import { NumericInput } from "@/components/ui/numeric-input";
 import {
   type MonthlySlice,
   type LineMonthlyAmount,
@@ -169,7 +170,7 @@ function EditableLineRow({
         if (isEditing) {
           return (
             <td key={i} className="py-1 px-2 text-right">
-              <input
+              <NumericInput
                 type="number"
                 autoFocus
                 value={draft}

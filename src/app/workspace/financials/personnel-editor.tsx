@@ -7,10 +7,11 @@
 // P&L, cash flow, and break-even via the projection engine.
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Sliders, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Users } from "lucide-react";
 import type { PersonnelLine, PersonnelPayBasis, PersonnelSeasonal } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents, fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 // TIM-1260: calendar months (1=Jan) and common-season quick picks for the
 // recurring seasonal staffing pattern.
@@ -109,8 +110,13 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="text-[#afafaf] hover:text-[#1a1a1a] shrink-0"
+            className={`shrink-0 transition-colors ${
+              line.ramp?.enabled || line.end_month || line.seasonal?.enabled || line.benefits_fixed_cents
+                ? "text-[#155e63]"
+                : "text-[#afafaf] hover:text-[#1a1a1a]"
+            }`}
             aria-label={expanded ? "Collapse" : "Expand"}
+            title="Hire timing, seasonal pattern, fixed benefits"
           >
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
@@ -138,20 +144,6 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
           </select>
           <button
             type="button"
-            onClick={() => setExpanded(!expanded)}
-            disabled={!canEdit}
-            className={`text-xs px-2 py-1 rounded-md transition-colors shrink-0 ${
-              line.ramp?.enabled || line.end_month || line.seasonal?.enabled || line.benefits_fixed_cents
-                ? "bg-[#155e63]/10 text-[#155e63]"
-                : "text-[#afafaf] hover:text-[#1a1a1a]"
-            }`}
-            aria-label="Hire timing & extra benefits"
-            title="Hire timing, seasonal pattern, fixed benefits"
-          >
-            <Sliders size={12} />
-          </button>
-          <button
-            type="button"
             onClick={onDelete}
             disabled={!canEdit}
             className="text-[#afafaf] hover:text-[#a13d3d] shrink-0 disabled:opacity-50"
@@ -165,7 +157,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
         <div className="flex flex-wrap items-end gap-3 pl-6">
           <div className="w-20">
             <label className={fieldLabelCls}>Headcount</label>
-            <input
+            <NumericInput
               type="number"
               min={0}
               step={1}
@@ -205,7 +197,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
                 {sym}
               </span>
-              <input
+              <NumericInput
                 type="number"
                 min={0}
                 step={isHourly ? 0.25 : 100}
@@ -225,7 +217,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
           {isHourly && (
             <div className="w-28">
               <label className={fieldLabelCls}>Hours / week</label>
-              <input
+              <NumericInput
                 type="number"
                 min={0}
                 max={168}
@@ -246,7 +238,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
           <div className="w-28">
             <label className={fieldLabelCls}>Benefits %</label>
             <div className="relative">
-              <input
+              <NumericInput
                 type="number"
                 min={0}
                 max={100}
@@ -281,7 +273,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
                 {sym}
               </span>
-              <input
+              <NumericInput
                 type="number"
                 min={0}
                 step={10}
@@ -330,7 +322,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
               <div className="ml-6 mt-2 grid grid-cols-3 gap-3 max-w-md">
                 <div>
                   <label className={fieldLabelCls}>Hire month</label>
-                  <input
+                  <NumericInput
                     type="number"
                     min={1}
                     max={60}
@@ -348,7 +340,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                 </div>
                 <div>
                   <label className={fieldLabelCls}>Ramp-up months</label>
-                  <input
+                  <NumericInput
                     type="number"
                     min={0}
                     max={24}
@@ -369,7 +361,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                 </div>
                 <div>
                   <label className={fieldLabelCls}>Start at % of staff</label>
-                  <input
+                  <NumericInput
                     type="number"
                     min={0}
                     max={100}
@@ -484,7 +476,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
               {typeof line.end_month === "number" && (
                 <div className="ml-6 mt-2 w-32">
                   <label className={fieldLabelCls}>Last paid month</label>
-                  <input
+                  <NumericInput
                     type="number"
                     min={1}
                     max={60}

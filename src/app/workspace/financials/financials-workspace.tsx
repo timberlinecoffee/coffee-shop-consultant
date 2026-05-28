@@ -9,6 +9,7 @@ import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet, Compass, ChevronDow
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+import { NumericInput } from "@/components/ui/numeric-input";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -31,6 +32,7 @@ import {
   BASE_REVENUE_LINE_ID,
 } from "@/lib/financial-projection";
 import { CURRENCIES } from "@/lib/currency";
+import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
 import { CashFlowTab } from "./tabs/cash-flow-tab";
@@ -319,7 +321,7 @@ function OwnerContributionsEditor({
       {contributions.map((c, idx) => (
         <div key={idx} className="flex items-center gap-2">
           <span className="text-[10px] text-[#6b6b6b] w-12">Month</span>
-          <input
+          <NumericInput
             type="number"
             min={1}
             max={60}
@@ -335,7 +337,7 @@ function OwnerContributionsEditor({
             aria-label="Contribution month"
           />
           <span className="text-[10px] text-[#6b6b6b]">{currencyCode}</span>
-          <input
+          <NumericInput
             type="number"
             min={0}
             step={100}
@@ -577,7 +579,7 @@ function ForecastTab({
                       style={{ height: `${barPct}%` }}
                     />
                   </div>
-                  <input
+                  <NumericInput
                     type="number"
                     min={0}
                     max={999}
@@ -695,7 +697,7 @@ function ForecastTab({
               <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Beverage — average per sale ({mp.currency_code ?? "USD"})</label>
-                  <input
+                  <NumericInput
                     className={inputCls}
                     type="number"
                     min={0}
@@ -709,7 +711,7 @@ function ForecastTab({
                 </div>
                 <div>
                   <label className={labelCls}>Food — average per sale ({mp.currency_code ?? "USD"})</label>
-                  <input
+                  <NumericInput
                     className={inputCls}
                     type="number"
                     min={0}
@@ -725,7 +727,7 @@ function ForecastTab({
             ) : (
               <div>
                 <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
-                <input
+                <NumericInput
                   className={inputCls}
                   type="number"
                   min={0}
@@ -742,7 +744,7 @@ function ForecastTab({
             )}
             <div id="tour-cogs">
               <label className={labelCls}>COGS % of revenue</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -812,7 +814,7 @@ function ForecastTab({
           <p className="text-xs text-[#6b6b6b] mb-4">
             Income beyond your primary food &amp; beverage sales. Use the quick-add
             chips to start a common stream, or add your own. Each line can be a fixed
-            monthly amount; click the sliders icon to ramp it up or grow it over time.
+            monthly amount; click the arrow to expand a line and ramp it up or grow it over time.
           </p>
           <ForecastLinesEditor
             lines={mp.forecast_lines}
@@ -836,8 +838,8 @@ function ForecastTab({
             <span className="font-semibold">%</span> (percent of revenue). For operating
             expenses, pick the basis from the <span className="font-semibold">% of</span>{" "}
             dropdown: a fixed monthly amount, percent of overall revenue, or percent of a
-            specific revenue stream. Click the sliders icon to configure a ramp-up period
-            or month-over-month growth on any line.
+            specific revenue stream. Click the arrow to expand a line and configure a
+            ramp-up period or month-over-month growth.
           </p>
           <ForecastLinesEditor
             lines={mp.forecast_lines}
@@ -897,7 +899,7 @@ function ForecastTab({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelCls}>Payment processing %</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -914,7 +916,7 @@ function ForecastTab({
             </div>
             <div>
               <label className={labelCls}>Spoilage %</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -931,7 +933,7 @@ function ForecastTab({
             </div>
             <div>
               <label className={labelCls}>Loyalty discount %</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -960,7 +962,7 @@ function ForecastTab({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Owner draws ({mp.currency_code ?? "USD"} / month)</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -1036,7 +1038,7 @@ function ForecastTab({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div id="tour-taxes">
               <label className={labelCls}>Income Tax Rate %</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -1054,7 +1056,7 @@ function ForecastTab({
             </div>
             <div id="tour-sales-tax">
               <label className={labelCls}>Sales Tax Rate %</label>
-              <input
+              <NumericInput
                 className={inputCls}
                 type="number"
                 min={0}
@@ -1133,7 +1135,7 @@ function ForecastTab({
           </p>
           <div className="mb-4">
             <label className={labelCls}>Ramp period (months)</label>
-            <input
+            <NumericInput
               className={`${inputCls} max-w-[120px]`}
               type="number"
               min={0}
@@ -1169,7 +1171,7 @@ function ForecastTab({
                   return (
                     <div key={i} className="flex flex-col items-center gap-1">
                       <span className="text-[10px] text-[#afafaf]">Month {i + 1}</span>
-                      <input
+                      <NumericInput
                         type="number"
                         min={0}
                         max={200}
@@ -1218,7 +1220,7 @@ function ForecastTab({
           {(mp.growth_mode ?? "simple") === "simple" ? (
             <div>
               <label className={labelCls}>Monthly growth %</label>
-              <input
+              <NumericInput
                 className={`${inputCls} max-w-[140px]`}
                 type="number"
                 min={-100}
@@ -1244,7 +1246,7 @@ function ForecastTab({
                   return (
                     <div key={i} className="flex flex-col items-center gap-1">
                       <span className="text-[10px] text-[#afafaf]">Month {i + 1}</span>
-                      <input
+                      <NumericInput
                         type="number"
                         min={-100}
                         max={100}
@@ -1346,52 +1348,27 @@ function RevenueChart({
 }) {
   const y1 = slices.filter((s) => s.year === 1);
   if (y1.length === 0) return null;
-  const values = y1.map((s) => s.revenue_cents / 100);
-  const max = Math.max(...values, 1);
-  const w = 100;
-  const h = 48;
-  const pad = 2;
-  const pts = values.map((v, i) => {
-    const x = pad + (i / (values.length - 1 || 1)) * (w - pad * 2);
-    const y = h - pad - ((v / max) * (h - pad * 2));
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const minV = Math.min(...values);
-  const maxV = Math.max(...values);
   const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
+  const data = y1.map((s, i) => ({
+    label: labels[i] ?? `M${i + 1}`,
+    revenue: s.revenue_cents,
+  }));
+  const series = [
+    { key: "revenue", label: "Monthly Revenue", color: CHART_COLORS.primary },
+  ];
   return (
-    <div className="rounded-xl border border-[#efefef] bg-white p-4 mb-4">
-      <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-3">
-        Year 1 Monthly Revenue
-      </p>
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        className="w-full"
-        style={{ height: 80 }}
-        aria-hidden="true"
-        preserveAspectRatio="none"
-      >
-        <polyline
-          fill="none"
-          stroke="#155e63"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          points={pts.join(" ")}
-        />
-        {y1.map((_, i) => {
-          const x = pad + (i / (y1.length - 1 || 1)) * (w - pad * 2);
-          const v = values[i];
-          const y = h - pad - ((v / max) * (h - pad * 2));
-          return <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="1.2" fill="#155e63" />;
-        })}
-      </svg>
-      <div className="flex justify-between text-[10px] text-[#afafaf] mt-1">
-        <span>{labels[0]}</span>
-        <span>{formatCurrency(minV, currencyCode)} – {formatCurrency(maxV, currencyCode)}</span>
-        <span>{labels[11]}</span>
-      </div>
-    </div>
+    <ChartCard
+      title="Year 1 Monthly Revenue"
+      description="Projected revenue for each month of your first operating year."
+    >
+      <FinancialBarChart
+        data={data}
+        series={series}
+        currencyCode={currencyCode}
+        height={240}
+        stack={false}
+      />
+    </ChartCard>
   );
 }
 
