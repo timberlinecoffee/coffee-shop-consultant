@@ -10,6 +10,7 @@ import {
   computeMonthlyProjections,
   computeMonthlySlices,
   computeMenuBlendedCogsPct,
+  computeBreakEvenModel,
 } from "./financial-projection.ts";
 
 test("default model has forecast_lines seeded with legacy overhead keys", () => {
@@ -774,4 +775,90 @@ test("two separate loans amortize independently and sum repayments", () => {
   // After 60 months everything should be (nearly) paid off
   const m60 = slices[59];
   assert.ok(m60.long_term_debt_cents < 100000);
+});
+
+// ── TIM-1178: break-even cost model must count labor ─────────────────────────
+
+const EQUIP = { total_cost_cents: 0, financed_cost_cents: 0 };
+
+test("TIM-1178: break-even counts pct-mode labor as a variable cost", () => {
+  const mp = defaultMonthlyProjections();
+  const slices = computeMonthlySlices(mp, EQUIP, {}, {});
+  const m1 = slices[0];
+
+  const labor = mp.forecast_lines.find((l) => l.legacy_key === "labor");
+  assert.equal(labor?.mode, "pct", "default labor line is pct-of-revenue");
+  assert.ok(m1.labor_cents > 0, "labor has a nonzero month-1 amount");
+
+  const model = computeBreakEvenModel(m1, mp.forecast_lines, mp.avg_ticket_cents);
+  assert.ok(model, "model computed");
+
+  // Labor belongs in the VARIABLE bucket: variablePct must be at least labor's
+  // share of revenue (on top of COGS/processing/spoilage).
+  const laborShare = m1.labor_cents / m1.net_revenue_cents;
+  assert.ok(
+    model.variablePct >= laborShare - 1e-9,
+    `variablePct (${model.variablePct}) must include labor (${laborShare})`,
+  );
+
+  // Fixed costs must EXCLUDE labor: only flat overhead + interest + depreciation.
+  const flatOverhead =
+    m1.rent_cents + m1.insurance_cents + m1.tech_cents + m1.maintenance_cents +
+    m1.supplies_cents + m1.utilities_cents + m1.other_opex_cents;
+  assert.equal(
+    model.fixedCostsCents,
+    flatOverhead + m1.interest_cents + m1.depreciation_cents,
+    "fixed costs must not include labor",
+  );
+
+  // Regression for the original bug: dropping labor entirely (its old behavior of
+  // belonging to neither bucket) understates the break-even volume.
+  const noLaborLines = mp.forecast_lines.filter((l) => l.legacy_key !== "labor");
+  const noLaborSlices = computeMonthlySlices({ ...mp, forecast_lines: noLaborLines }, EQUIP, {}, {});
+  const noLaborModel = computeBreakEvenModel(noLaborSlices[0], noLaborLines, mp.avg_ticket_cents);
+  assert.ok(noLaborModel, "labor-free model computed");
+  assert.ok(
+    model.breakEvenTransactions > noLaborModel.breakEvenTransactions,
+    `including labor must raise break-even volume (${model.breakEvenTransactions} > ${noLaborModel.breakEvenTransactions})`,
+  );
+});
+
+test("TIM-1178: flat-mode labor is a fixed cost, not variable", () => {
+  const mp = defaultMonthlyProjections();
+  const pctSlices = computeMonthlySlices(mp, EQUIP, {}, {});
+  const pctModel = computeBreakEvenModel(pctSlices[0], mp.forecast_lines, mp.avg_ticket_cents);
+
+  // Pin the same month-1 labor dollars as a flat (salaried) line.
+  const laborCents = pctSlices[0].labor_cents;
+  const flatLines = mp.forecast_lines.map((l) =>
+    l.legacy_key === "labor"
+      ? { ...l, mode: "flat", value: laborCents, ramp: undefined, growth: undefined }
+      : l,
+  );
+  const flatSlices = computeMonthlySlices({ ...mp, forecast_lines: flatLines }, EQUIP, {}, {});
+  const flatModel = computeBreakEvenModel(flatSlices[0], flatLines, mp.avg_ticket_cents);
+
+  assert.ok(flatModel.fixedCostsCents > pctModel.fixedCostsCents, "flat labor adds to fixed costs");
+  assert.ok(flatModel.variablePct < pctModel.variablePct, "flat labor leaves the variable bucket");
+});
+
+test("TIM-1178: interest stays a fixed below-the-line cost (not double-counted)", () => {
+  const mp = defaultMonthlyProjections();
+  const slices = computeMonthlySlices(mp, EQUIP, {}, {});
+  const m1 = slices[0];
+  const model = computeBreakEvenModel(m1, mp.forecast_lines, mp.avg_ticket_cents);
+
+  const flatOverhead =
+    m1.rent_cents + m1.insurance_cents + m1.tech_cents + m1.maintenance_cents +
+    m1.supplies_cents + m1.utilities_cents + m1.other_opex_cents;
+  // interest_cents is added exactly once (via the dedicated field), even though
+  // the interest line also appears in forecast_line_amounts.
+  assert.equal(model.fixedCostsCents, flatOverhead + m1.interest_cents + m1.depreciation_cents);
+});
+
+test("TIM-1178: returns null when revenue or ticket is non-positive", () => {
+  const mp = defaultMonthlyProjections();
+  const slices = computeMonthlySlices(mp, EQUIP, {}, {});
+  assert.equal(computeBreakEvenModel(undefined, mp.forecast_lines, mp.avg_ticket_cents), null);
+  assert.equal(computeBreakEvenModel(slices[0], mp.forecast_lines, 0), null);
 });

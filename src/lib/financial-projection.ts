@@ -1363,6 +1363,73 @@ export interface FinancialInputs {
   days_receivable: number;
 }
 
+// ── Break-even cost model (TIM-1178) ─────────────────────────────────────────
+// Splits the month-1 cost base into variable (scales with revenue) and fixed
+// (does not) buckets, then derives break-even revenue and transactions.
+//
+// Variable costs scale with revenue: COGS, payment processing, spoilage, and any
+// overhead line in "pct" mode — labor and marketing are %-of-revenue by default.
+// Fixed costs do not scale: "flat" mode overhead lines plus interest and
+// depreciation (both below-the-line, fixed monthly charges).
+//
+// Before TIM-1178 labor was excluded from BOTH buckets, understating break-even
+// by ~43% at default inputs and telling owners a loss-making volume was profit.
+export interface BreakEvenModel {
+  breakEvenRevenueCents: number;
+  breakEvenTransactions: number;
+  contributionMarginPct: number;     // fraction 0..1
+  contributionPerTicketCents: number;
+  variablePct: number;               // fraction 0..1
+  fixedCostsCents: number;
+  avgTicketCents: number;
+}
+
+export function computeBreakEvenModel(
+  m1: MonthlySlice | undefined,
+  forecastLines: ForecastLine[],
+  avgTicketCents: number
+): BreakEvenModel | null {
+  if (!m1) return null;
+  const nr = m1.net_revenue_cents;
+  if (nr <= 0 || avgTicketCents <= 0) return null;
+
+  const lineById = new Map(forecastLines.map((l) => [l.id, l]));
+  let variableOverheadCents = 0;
+  let fixedOverheadCents = 0;
+  for (const a of m1.forecast_line_amounts) {
+    if (a.category !== "overhead") continue;
+    const line = lineById.get(a.id);
+    // Interest is a flat below-the-line charge counted via m1.interest_cents.
+    if (line?.legacy_key === "interest") continue;
+    if (line?.mode === "pct") variableOverheadCents += a.amount_cents;
+    else fixedOverheadCents += a.amount_cents;
+  }
+
+  const variableCents =
+    m1.total_cogs_cents + m1.payment_processing_cents + m1.spoilage_cents + variableOverheadCents;
+  const variablePct = variableCents / nr;
+  const contributionMarginPct = 1 - variablePct;
+
+  const fixedCostsCents = fixedOverheadCents + m1.interest_cents + m1.depreciation_cents;
+
+  const contributionPerTicketCents = avgTicketCents * contributionMarginPct;
+
+  const breakEvenRevenueCents =
+    contributionMarginPct > 0 ? fixedCostsCents / contributionMarginPct : Infinity;
+  const breakEvenTransactions =
+    contributionPerTicketCents > 0 ? Math.ceil(fixedCostsCents / contributionPerTicketCents) : Infinity;
+
+  return {
+    breakEvenRevenueCents,
+    breakEvenTransactions,
+    contributionMarginPct,
+    contributionPerTicketCents,
+    variablePct,
+    fixedCostsCents,
+    avgTicketCents,
+  };
+}
+
 // fmt: format a cents value (or minor-unit value for non-2dp currencies) as a
 // compact currency string. TIM-1101: accepts optional ISO 4217 code; defaults
 // to USD for legacy single-arg callers.
