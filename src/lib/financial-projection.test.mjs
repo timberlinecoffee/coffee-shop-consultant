@@ -1005,3 +1005,90 @@ test("TIM-1181: balance holds with empty inputs (funding becomes opening cash)",
     assert.ok(Math.abs(gap) < 2, `month ${s.month_index} gap ${gap}`);
   }
 });
+
+// ── TIM-1180: payment processing + spoilage as opex; loyalty as contra-revenue ─
+
+function tim1180Mp() {
+  const mp = defaultMonthlyProjections();
+  mp.ramp_months = 0;
+  mp.ramp_multipliers = [];
+  mp.growth_mode = "simple";
+  mp.growth_monthly_pct = 0;
+  mp.taxes_pct = 0;
+  return mp;
+}
+
+test("TIM-1180: payment processing + spoilage reduce operating income; loyalty nets revenue", () => {
+  const zero = tim1180Mp();
+  zero.payment_processing_pct = 0;
+  zero.spoilage_pct = 0;
+  zero.loyalty_discount_pct = 0;
+  const m0 = computeMonthlyProjections(zero, EQUIP)[0];
+
+  const withCosts = tim1180Mp();
+  withCosts.payment_processing_pct = 2.5;
+  withCosts.spoilage_pct = 2;
+  withCosts.loyalty_discount_pct = 1;
+  const m1 = computeMonthlyProjections(withCosts, EQUIP)[0];
+
+  // Cost drivers do not change top-line revenue or COGS.
+  assert.equal(m1.revenue_cents, m0.revenue_cents);
+  assert.equal(m1.cogs_cents, m0.cogs_cents);
+
+  const pp = Math.round(m1.revenue_cents * 0.025);
+  const spoil = Math.round((m1.cogs_cents - m1.labor_cogs_cents) * 0.02);
+  const loyalty = Math.round(m1.revenue_cents * 0.01);
+  assert.ok(pp > 0 && spoil > 0 && loyalty > 0, "default rates produce non-zero costs");
+  assert.equal(m1.payment_processing_cents, pp);
+  assert.equal(m1.spoilage_cents, spoil);
+  assert.equal(m1.loyalty_discounts_cents, loyalty);
+
+  // Loyalty is contra-revenue; gross profit = net revenue − COGS.
+  assert.equal(m1.net_revenue_cents, m1.revenue_cents - loyalty);
+  assert.equal(m1.gross_profit_cents, m1.net_revenue_cents - m1.cogs_cents);
+
+  // Payment processing + spoilage are folded into total operating expenses.
+  assert.equal(m1.total_opex_cents, m0.total_opex_cents + pp + spoil);
+
+  // Operating income drops by loyalty (via gross profit) + pp + spoilage (via opex).
+  assert.equal(m1.operating_income_cents, m0.operating_income_cents - loyalty - pp - spoil);
+});
+
+test("TIM-1180: slices expose the costs and break-even counts payment processing as variable", () => {
+  const withPp = tim1180Mp();
+  withPp.payment_processing_pct = 2.5;
+  const m1 = computeMonthlySlices(withPp, EQUIP)[0];
+  assert.ok(m1.payment_processing_cents > 0, "payment processing is no longer $0");
+
+  const noPp = tim1180Mp();
+  noPp.payment_processing_pct = 0;
+  const m1NoPp = computeMonthlySlices(noPp, EQUIP)[0];
+
+  const be = computeBreakEvenModel(m1, withPp.forecast_lines, withPp.avg_ticket_cents);
+  const beNoPp = computeBreakEvenModel(m1NoPp, noPp.forecast_lines, noPp.avg_ticket_cents);
+  assert.ok(be.variablePct > beNoPp.variablePct, "payment processing raises variable cost %");
+});
+
+test("TIM-1180: balance sheet identity holds with default payment processing / spoilage / loyalty", () => {
+  const mp = tim1180Mp(); // default funding_sources + default 2.5/2/1 cost rates
+  const slices = computeMonthlySlices(mp, EQUIP, {}, {});
+  for (const s of slices) {
+    const gap = s.total_assets_cents - s.total_liabilities_and_equity_cents;
+    assert.ok(Math.abs(gap) < 2, `month ${s.month_index} gap ${gap}`);
+  }
+});
+
+test("TIM-1180: normalize defaults missing rates and preserves stored ones", () => {
+  const fresh = normalizeMonthlyProjections({});
+  assert.equal(fresh.payment_processing_pct, 2.5);
+  assert.equal(fresh.spoilage_pct, 2);
+  assert.equal(fresh.loyalty_discount_pct, 1);
+  const stored = normalizeMonthlyProjections({
+    payment_processing_pct: 3.1,
+    spoilage_pct: 0,
+    loyalty_discount_pct: 0,
+  });
+  assert.equal(stored.payment_processing_pct, 3.1);
+  assert.equal(stored.spoilage_pct, 0);
+  assert.equal(stored.loyalty_discount_pct, 0);
+});

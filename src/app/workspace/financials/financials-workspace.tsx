@@ -146,9 +146,9 @@ function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     tech_cents: tech?.mode === "flat" ? tech.value : 0,
     maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : 0,
     supplies_cents: supplies?.mode === "flat" ? supplies.value : 0,
-    payment_processing_pct: 2.5,
-    spoilage_pct: 2,
-    loyalty_discount_pct: 1,
+    payment_processing_pct: mp.payment_processing_pct ?? 2.5,
+    spoilage_pct: mp.spoilage_pct ?? 2,
+    loyalty_discount_pct: mp.loyalty_discount_pct ?? 1,
     other_opex_cents: 0,
     buildout_cost_cents: 15000000,
     equipment_cost_cents: 5000000,
@@ -574,6 +574,70 @@ function ForecastTab({
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
           />
+        </div>
+      </div>
+
+      {/* Other Operating Costs — TIM-1180 */}
+      <div>
+        <p className={sectionLabelCls}>Other Operating Costs</p>
+        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+          <p className="text-xs text-[#6b6b6b] mb-4">
+            Costs that scale with sales but aren&apos;t line items above. These flow into your
+            P&amp;L, break-even, and ratios.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className={labelCls}>Payment processing %</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                max={10}
+                step={0.05}
+                value={mp.payment_processing_pct ?? ""}
+                onChange={(e) =>
+                  update({ payment_processing_pct: Math.max(0, parseFloat(e.target.value) || 0) })
+                }
+                placeholder="2.5"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">% of gross revenue. Card fees: 2.5–3.0%</p>
+            </div>
+            <div>
+              <label className={labelCls}>Spoilage %</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                max={20}
+                step={0.5}
+                value={mp.spoilage_pct ?? ""}
+                onChange={(e) =>
+                  update({ spoilage_pct: Math.max(0, parseFloat(e.target.value) || 0) })
+                }
+                placeholder="2"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">% of goods COGS lost to waste; typically 2–5%</p>
+            </div>
+            <div>
+              <label className={labelCls}>Loyalty discount %</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                max={20}
+                step={0.1}
+                value={mp.loyalty_discount_pct ?? ""}
+                onChange={(e) =>
+                  update({ loyalty_discount_pct: Math.max(0, parseFloat(e.target.value) || 0) })
+                }
+                placeholder="1"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-[#afafaf] mt-1">% of revenue redeemed; 0 if no program</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1306,6 +1370,9 @@ export function FinancialsWorkspace({
       supplies_cents: supplies?.mode === "flat" ? supplies.value : prev.supplies_cents,
       other_opex_cents: prev.other_opex_cents,
       tax_rate_pct: next.taxes_pct,
+      payment_processing_pct: next.payment_processing_pct ?? prev.payment_processing_pct,
+      spoilage_pct: next.spoilage_pct ?? prev.spoilage_pct,
+      loyalty_discount_pct: next.loyalty_discount_pct ?? prev.loyalty_discount_pct,
     }));
     scheduleSave(next);
   }

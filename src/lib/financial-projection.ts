@@ -193,6 +193,16 @@ export interface MonthlyProjections {
   owner_draws_monthly_cents?: number;
   owner_contributions?: { month_index: number; amount_cents: number }[];
 
+  // TIM-1180: revenue/cost drivers that are not modeled as forecast_lines.
+  //   payment_processing_pct: card fees as a % of gross revenue (operating expense)
+  //   spoilage_pct: product loss as a % of non-labor COGS (operating expense)
+  //   loyalty_discount_pct: loyalty redemptions as a % of gross revenue (contra-revenue)
+  // These flow through the P&L waterfall in computeMonthlyProjections so the
+  // P&L, annual summary, slices, break-even, and ratios are all consistent.
+  payment_processing_pct?: number;
+  spoilage_pct?: number;
+  loyalty_discount_pct?: number;
+
   // ── Legacy fields kept on the type for migration / backward-compat reads ────
   // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
   // New code should not read them directly — read the rollups on MonthlySlice
@@ -378,6 +388,9 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     currency_code: "USD",
     owner_draws_monthly_cents: 0,
     owner_contributions: [],
+    payment_processing_pct: 2.5,
+    spoilage_pct: 2,
+    loyalty_discount_pct: 1,
   };
 }
 
@@ -823,6 +836,13 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     currency_code,
     owner_draws_monthly_cents,
     owner_contributions,
+    // TIM-1180: default to industry norms when absent so existing plans pick up
+    // realistic payment processing / spoilage / loyalty costs instead of $0.
+    payment_processing_pct:
+      typeof r.payment_processing_pct === "number" ? r.payment_processing_pct : 2.5,
+    spoilage_pct: typeof r.spoilage_pct === "number" ? r.spoilage_pct : 2,
+    loyalty_discount_pct:
+      typeof r.loyalty_discount_pct === "number" ? r.loyalty_discount_pct : 1,
   };
 }
 
@@ -850,7 +870,14 @@ export interface MonthlyProjectionRow {
   month_index: number; // 1–60 (absolute)
   // All values in cents
   revenue_cents: number;
+  // TIM-1180: loyalty discounts are contra-revenue; net_revenue = revenue − loyalty.
+  loyalty_discounts_cents: number;
+  net_revenue_cents: number;
   cogs_cents: number;
+  // TIM-1180: payment processing (% of revenue) and spoilage (% of non-labor COGS)
+  // are operating expenses included in total_opex_cents / operating_income_cents.
+  payment_processing_cents: number;
+  spoilage_cents: number;
   gross_profit_cents: number;
   // labor_cents is operating-overhead labor (the P&L "Labor" opex line). TIM-1206:
   // it is sourced from personnel lines designated "overhead". COGS-labor sits in
@@ -1273,7 +1300,19 @@ export function computeMonthlyProjections(
       }
       // TIM-1206: direct (COGS-designated) labor is part of cost of goods sold.
       const cogs_cents = baseCogs + extraCogs + labor_cogs_cents;
-      const gross_profit_cents = revenue_cents - cogs_cents;
+
+      // TIM-1180: loyalty (contra-revenue), payment processing + spoilage (opex).
+      // Spoilage applies to goods only, so exclude COGS-designated labor.
+      const cogsExLaborCents = cogs_cents - labor_cogs_cents;
+      const loyalty_discounts_cents = Math.round(
+        revenue_cents * ((mp.loyalty_discount_pct ?? 0) / 100)
+      );
+      const net_revenue_cents = revenue_cents - loyalty_discounts_cents;
+      const payment_processing_cents = Math.round(
+        revenue_cents * ((mp.payment_processing_pct ?? 0) / 100)
+      );
+      const spoilage_cents = Math.round(cogsExLaborCents * ((mp.spoilage_pct ?? 0) / 100));
+      const gross_profit_cents = net_revenue_cents - cogs_cents;
 
       // Overhead lines — sum per-line and roll up to legacy named buckets via legacy_key
       const overheadResults: LineMonthlyAmount[] = [];
@@ -1317,6 +1356,11 @@ export function computeMonthlyProjections(
       labor_cents += labor_overhead_cents;
       total_opex_cents += labor_overhead_cents;
 
+      // TIM-1180: payment processing + spoilage are operating expenses. Including
+      // them here means the P&L sub-lines reconcile with Total Operating Expenses
+      // and operating income reflects these real costs (previously $0).
+      total_opex_cents += payment_processing_cents + spoilage_cents;
+
       // Capex lines — one-time charge in their start_month
       const capexResults: LineMonthlyAmount[] = [];
       let capex_cents = 0;
@@ -1344,7 +1388,11 @@ export function computeMonthlyProjections(
         month,
         month_index: month_index_abs,
         revenue_cents,
+        loyalty_discounts_cents,
+        net_revenue_cents,
         cogs_cents,
+        payment_processing_cents,
+        spoilage_cents,
         gross_profit_cents,
         labor_cents,
         labor_cogs_cents,
@@ -1481,13 +1529,10 @@ export function formatCurrency(n: number, currencyCode: string = "USD"): string 
 // MonthlySlice: richer per-month record for 5-year statement tabs.
 // Extends MonthlyProjectionRow with break-even, cash-flow, and balance-sheet fields.
 export interface MonthlySlice extends MonthlyProjectionRow {
-  // P&L extras
+  // P&L extras (loyalty_discounts_cents, net_revenue_cents, payment_processing_cents,
+  // and spoilage_cents now live on MonthlyProjectionRow — see TIM-1180).
   gross_revenue_cents: number;
-  loyalty_discounts_cents: number;
-  net_revenue_cents: number;
   total_cogs_cents: number;
-  payment_processing_cents: number;
-  spoilage_cents: number;
   beverage_cogs_cents: number;
   food_cogs_cents: number;
   retail_cogs_cents: number;
@@ -1771,8 +1816,10 @@ export function computeMonthlySlices(
 ): MonthlySlice[] {
   const rows = computeMonthlyProjections(mp, equipment, ctx);
 
-  const paymentProcessingPct = (inputs.payment_processing_pct ?? 0) / 100;
-  const spoilagePct = (inputs.spoilage_pct ?? 0) / 100;
+  // TIM-1180: payment processing, spoilage, and loyalty discounts are computed
+  // inside computeMonthlyProjections (from mp) and already on each row, so they
+  // flow through the P&L waterfall. Only the revenue-mix / working-capital
+  // display inputs are read here.
   const bevRevPct = (inputs.beverage_revenue_pct ?? 70) / 100;
   const foodRevPct = (inputs.food_revenue_pct ?? 20) / 100;
   const bevCogsPct = (inputs.beverage_cogs_pct ?? 30) / 100;
@@ -1867,15 +1914,10 @@ export function computeMonthlySlices(
 
   return rows.map((row) => {
     const rev = row.revenue_cents;
-    const loyaltyDiscountPct = (inputs.loyalty_discount_pct ?? 0) / 100;
-    const loyaltyDiscountCents = Math.round(rev * loyaltyDiscountPct);
     const grossRevenueCents = rev;
-    const paymentProcessingCents = Math.round(rev * paymentProcessingPct);
-    // TIM-1206: spoilage and working capital apply to goods, not labor — so
-    // exclude any COGS-designated labor folded into cogs_cents.
+    // TIM-1206: working capital applies to goods, not labor — so exclude any
+    // COGS-designated labor folded into cogs_cents.
     const cogsExLaborCents = row.cogs_cents - (row.labor_cogs_cents ?? 0);
-    const spoilageCents = Math.round(cogsExLaborCents * spoilagePct);
-    const netRevenueCents = rev - paymentProcessingCents;
     const bevRevCents = Math.round(rev * bevRevPct);
     const foodRevCents = Math.round(rev * foodRevPct);
     const retailRevCents = Math.round(rev * ((inputs.retail_revenue_pct ?? 10) / 100));
@@ -1954,11 +1996,7 @@ export function computeMonthlySlices(
     return {
       ...row,
       gross_revenue_cents: grossRevenueCents,
-      loyalty_discounts_cents: loyaltyDiscountCents,
-      net_revenue_cents: netRevenueCents,
       total_cogs_cents: row.cogs_cents,
-      payment_processing_cents: paymentProcessingCents,
-      spoilage_cents: spoilageCents,
       beverage_cogs_cents: bevCogsCents,
       food_cogs_cents: foodCogsCents,
       retail_cogs_cents: retailCogsCents,
