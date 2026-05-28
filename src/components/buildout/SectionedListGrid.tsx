@@ -23,14 +23,19 @@ import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
+  KeyboardCode,
   KeyboardSensor,
   PointerSensor,
+  closestCorners,
+  getFirstCollision,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
+  type DroppableContainer,
+  type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -897,6 +902,58 @@ function DroppableEmptyZone({
   );
 }
 
+// ── Cross-section keyboard coordinator (TIM-1220) ─────────────────────────────
+// sortableKeyboardCoordinates is scoped to the active SortableContext and cannot
+// navigate between station sections. This version queries all registered droppables
+// in the DndContext so arrow keys cross section boundaries.
+const crossSectionKeyboardCoordinates: KeyboardCoordinateGetter = (
+  event,
+  { context: { active, collisionRect, droppableRects, droppableContainers } }
+) => {
+  const directions = [KeyboardCode.Down, KeyboardCode.Right, KeyboardCode.Up, KeyboardCode.Left];
+  if (!directions.includes(event.code as KeyboardCode)) return;
+
+  event.preventDefault();
+  if (!active || !collisionRect) return;
+
+  const candidates: DroppableContainer[] = [];
+  droppableContainers.getEnabled().forEach((entry) => {
+    if (!entry || entry.disabled) return;
+    const rect = droppableRects.get(entry.id);
+    if (!rect) return;
+    switch (event.code as KeyboardCode) {
+      case KeyboardCode.Down:
+        if (collisionRect.top < rect.top) candidates.push(entry);
+        break;
+      case KeyboardCode.Up:
+        if (collisionRect.top > rect.top) candidates.push(entry);
+        break;
+      case KeyboardCode.Left:
+        if (collisionRect.left > rect.left) candidates.push(entry);
+        break;
+      case KeyboardCode.Right:
+        if (collisionRect.left < rect.left) candidates.push(entry);
+        break;
+    }
+  });
+
+  const collisions = closestCorners({
+    active,
+    collisionRect,
+    droppableRects,
+    droppableContainers: candidates,
+    pointerCoordinates: null,
+  });
+
+  const closestId = getFirstCollision(collisions, "id");
+  if (closestId == null) return;
+
+  const newRect = droppableRects.get(closestId as string);
+  if (!newRect) return;
+
+  return { x: newRect.left, y: newRect.top };
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export interface SectionedListGridProps {
@@ -987,9 +1044,10 @@ export function SectionedListGrid({
 
   // Drag state
   const [activeId, setActiveId] = useState<string | null>(null);
+  const itemsSnapshotRef = useRef<AnyItem[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: crossSectionKeyboardCoordinates }),
   );
 
   // Resize state
@@ -1270,7 +1328,13 @@ export function SectionedListGrid({
   // ── Drag-and-drop ────────────────────────────────────────────────────────────
 
   function onDragStart({ active }: DragStartEvent) {
+    itemsSnapshotRef.current = items;
     setActiveId(active.id as string);
+  }
+
+  function onDragCancel() {
+    onItemsChange(itemsSnapshotRef.current);
+    setActiveId(null);
   }
 
   function resolveSectionId(overId: string): string | null | undefined {
@@ -1561,7 +1625,7 @@ export function SectionedListGrid({
       {/* Table */}
       <div className="border border-[#efefef] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
+          <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
             <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: visibleCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}>
               <colgroup>
                 {visibleCols.map((col) => (
