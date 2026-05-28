@@ -40,17 +40,94 @@ import { StartupTab } from "./tabs/startup-tab";
 import { FundingTab } from "./tabs/funding-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PersonnelEditor } from "./personnel-editor";
-import { ForecastWizard } from "./forecast-wizard";
+import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
-// TIM-1244: per-user wizard state, persisted via /api/ui-prefs.
+// TIM-1244: per-user guided-setup state, persisted via /api/ui-prefs.
 const WIZARD_PREF_KEY = "financials_wizard";
 type WizardPref = {
   status: "completed" | "skipped" | "in_progress";
-  lastStep?: number;
 };
+
+// TIM-1244 (v2): the on-page guided tour. Each step spotlights a real field
+// (on the named tab, inside the named collapsible section) and gives a plain
+// question plus a typical-coffee-shop range. The owner fills the actual field.
+const TOUR_STEPS: TourStep[] = [
+  {
+    id: "customers",
+    tab: "forecast",
+    targetId: "tour-customer-flow",
+    sectionId: "section-customer-flow",
+    title: "How busy is a typical day?",
+    body: "Enter the customers you expect on each open day. This is the biggest driver of your revenue.",
+    hint: "a new neighborhood cafe often sees 80–150 customers a day.",
+    why: "We only count sales on days you're open.",
+  },
+  {
+    id: "ticket",
+    tab: "forecast",
+    targetId: "tour-revenue",
+    sectionId: "section-revenue",
+    title: "What does a customer spend?",
+    body: "Set your average sale per visit — one drink, or a drink plus a pastry. Customers × average sale is your daily revenue.",
+    hint: "most espresso bars land between $6 and $10 per visit.",
+  },
+  {
+    id: "cogs",
+    tab: "forecast",
+    targetId: "tour-cogs",
+    sectionId: "section-revenue",
+    title: "How much of each sale is ingredients?",
+    body: "Your cost of goods — coffee, milk, cups, syrups — as a percentage of the sale price.",
+    hint: "a well-run coffee shop keeps this around 28–35%.",
+  },
+  {
+    id: "costs",
+    tab: "forecast",
+    targetId: "tour-costs",
+    sectionId: "section-costs",
+    title: "Set your monthly running costs",
+    body: "Rent, utilities, insurance, marketing and more live here. Edit any line; toggle a flat dollar amount or a percent of sales.",
+    hint: "rent for a small cafe is often 8–12% of sales.",
+  },
+  {
+    id: "startup",
+    tab: "forecast",
+    targetId: "tour-startup-equipment",
+    sectionId: "section-startup",
+    title: "Start with your equipment",
+    body: "Begin your opening costs with equipment — espresso machine, grinders, fridge. Add build-out and supplies after; the total builds up from what you actually need.",
+    hint: "a full espresso bar's equipment runs about $40k–$120k.",
+  },
+  {
+    id: "taxes",
+    tab: "forecast",
+    targetId: "tour-taxes",
+    sectionId: "section-taxes",
+    title: "Plan for income tax",
+    body: "Set the share of profit you'll set aside for income tax. You only pay it when the shop is profitable.",
+    hint: "~25% of profit is a safe starting point.",
+  },
+  {
+    id: "staffing",
+    tab: "personnel",
+    targetId: "tour-personnel",
+    title: "Add your team",
+    body: "Add your baristas and any manager here, with their pay. We add a payroll cushion for taxes and benefits automatically.",
+    hint: "baristas often earn $15–$20/hr; a manager $40k–$55k a year.",
+    why: "Staff is usually the largest cost in a coffee shop.",
+  },
+  {
+    id: "funding",
+    tab: "funding",
+    targetId: "tour-funding",
+    title: "How are you paying for it?",
+    body: "Add the money you're putting in, plus any loan. We'll check it covers your opening costs with a cushion for the early months.",
+    hint: "many first owners self-fund $30k–$150k, often with a small loan.",
+  },
+];
 
 // ── DB row shape from buildout_equipment_items ────────────────────────────────
 
@@ -395,19 +472,32 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
 // label header and a chevron; "advanced" tags rarely-used groups so the page
 // leads with the inputs that matter most and feels calm, not like a tax form.
 function Section({
+  id,
   title,
   defaultOpen = false,
   advanced = false,
   children,
 }: {
+  id?: string;
   title: string;
   defaultOpen?: boolean;
   advanced?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // TIM-1244 (v2): the guided tour expands the section a target lives in before
+  // spotlighting it. It dispatches a window event with the section id.
+  useEffect(() => {
+    if (!id) return;
+    function onExpand(e: Event) {
+      const detail = (e as CustomEvent<{ id?: string }>).detail;
+      if (detail?.id === id) setOpen(true);
+    }
+    window.addEventListener("financials-tour-expand", onExpand as EventListener);
+    return () => window.removeEventListener("financials-tour-expand", onExpand as EventListener);
+  }, [id]);
   return (
-    <div>
+    <div id={id}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -480,9 +570,11 @@ function ForecastTab({
   function updateStartupField(key: keyof StartupCosts, cents: number) {
     update({ startup_costs: { ...sc, [key]: Math.max(0, Math.round(cents)) } });
   }
+  // TIM-1244 (v2): Equipment leads so the owner builds the number up from real
+  // purchases instead of being handed a discouraging total first.
   const startupFields: { key: keyof StartupCosts; label: string; hint?: string }[] = [
-    { key: "buildout_cents", label: "Build-Out & Renovation" },
     { key: "equipment_cents", label: "Equipment" },
+    { key: "buildout_cents", label: "Build-Out & Renovation" },
     { key: "deposits_cents", label: "Deposits (Rent, Utilities)" },
     { key: "licenses_cents", label: "Licenses & Permits" },
     { key: "pre_opening_marketing_cents", label: "Pre-Opening Marketing" },
@@ -538,9 +630,9 @@ function ForecastTab({
           <div className="flex items-start gap-2.5">
             <Compass size={18} className="text-[#155e63] shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold text-[#1a1a1a]">New here? Let us walk you through it.</p>
+              <p className="text-sm font-semibold text-[#1a1a1a]">New here? Let us walk you through this page.</p>
               <p className="text-xs text-[#6b6b6b] mt-0.5">
-                Answer a few plain questions and we&apos;ll fill in this page for you.
+                We&apos;ll highlight each field and explain it as you fill it in.
               </p>
             </div>
           </div>
@@ -555,8 +647,8 @@ function ForecastTab({
       )}
 
       {/* Customer Flow */}
-      <Section title="Customer Flow by Day" defaultOpen>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+      <Section id="section-customer-flow" title="Customer Flow by Day" defaultOpen>
+        <div id="tour-customer-flow" className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Estimated customers per open day. Closed days are excluded from revenue calculations.
           </p>
@@ -685,8 +777,8 @@ function ForecastTab({
       </Section>
 
       {/* Primary Revenue Streams (TIM-1245) — was "Revenue Drivers" */}
-      <Section title="Primary Revenue Streams" defaultOpen>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+      <Section id="section-revenue" title="Primary Revenue Streams" defaultOpen>
+        <div id="tour-revenue" className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Your day-to-day food &amp; beverage sales. Customers per day (above) ×
             average sale is your primary revenue. Keep it as one number, or split it
@@ -742,7 +834,7 @@ function ForecastTab({
                 <p className="text-[10px] text-[#afafaf] mt-1">Typical espresso bar: $6–$10</p>
               </div>
             )}
-            <div>
+            <div id="tour-cogs">
               <label className={labelCls}>COGS % of revenue</label>
               <input
                 className={inputCls}
@@ -830,8 +922,8 @@ function ForecastTab({
       </Section>
 
       {/* Costs & Expenses — COGS / Overhead / Capex */}
-      <Section title="Costs & Expenses" defaultOpen>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+      <Section id="section-costs" title="Costs & Expenses" defaultOpen>
+        <div id="tour-costs" className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
             Add, rename, or remove any line. For COGS lines, toggle{" "}
             <span className="font-semibold">$</span> (static monthly amount) or{" "}
@@ -1001,15 +1093,19 @@ function ForecastTab({
       </Section>
 
       {/* Startup & Build-Out Costs — TIM-1244 */}
-      <Section title="Startup & Build-Out Costs" advanced>
+      <Section id="section-startup" title="Startup & Build-Out Costs" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4">
           <p className="text-xs text-[#6b6b6b] mb-4">
-            One-time costs to open the doors. These flow into your Startup Costs tab,
-            balance sheet, and funding gap.
+            One-time costs to open the doors. Start with equipment, then add the rest —
+            the total builds up from what you actually need. These flow into your Startup
+            Costs tab, balance sheet, and funding gap.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {startupFields.map((fld) => (
-              <div key={fld.key}>
+              <div
+                key={fld.key}
+                id={fld.key === "equipment_cents" ? "tour-startup-equipment" : undefined}
+              >
                 <label className={labelCls}>
                   {fld.label} ({mp.currency_code ?? "USD"})
                 </label>
@@ -1033,10 +1129,10 @@ function ForecastTab({
       </Section>
 
       {/* Tax rates — TIM-1247: sales tax and income tax are clearly separated */}
-      <Section title="Taxes" advanced>
+      <Section id="section-taxes" title="Taxes" advanced>
         <div className="rounded-xl border border-[#efefef] bg-white p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div id="tour-taxes">
               <label className={labelCls}>Income Tax Rate %</label>
               <input
                 className={inputCls}
@@ -1617,38 +1713,11 @@ export function FinancialsWorkspace({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
 
-  // TIM-1244: guided interview wizard. Opened automatically on first run, or
-  // manually via the "Guided setup" button. Skippable + resumable; we never
-  // force it on a returning user who has finished or skipped it.
-  const [wizardOpen, setWizardOpen] = useState(false);
-  const [wizardStartStep, setWizardStartStep] = useState(0);
-  const [wizardSeq, setWizardSeq] = useState(0); // remount the wizard on each open to reseed answers
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`);
-        if (!res.ok) return;
-        const { data } = (await res.json()) as { data: WizardPref | null };
-        if (cancelled) return;
-        if (!data) {
-          // First-ever visit: greet the new owner with the guided interview.
-          setWizardStartStep(0);
-          setWizardOpen(true);
-        } else if (data.status === "in_progress") {
-          // They paused partway — drop them back where they left off.
-          setWizardStartStep(Math.max(0, data.lastStep ?? 0));
-          setWizardOpen(true);
-        }
-      } catch {
-        // Network hiccup — silently skip auto-open; the button still works.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // TIM-1244 (v2): inline contextual guided setup. Auto-opens ONCE on the first
+  // visit to the planner, then never again on its own — it's re-triggerable via
+  // the on-page "Guided setup" button. Each invocation runs a single tour.
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourSeq, setTourSeq] = useState(0); // restart the tour from step 1 on each open
 
   const saveWizardPref = useCallback((pref: WizardPref) => {
     void fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`, {
@@ -1658,11 +1727,38 @@ export function FinancialsWorkspace({
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`);
+        if (!res.ok) return;
+        const { data } = (await res.json()) as { data: WizardPref | null };
+        if (cancelled || data) return; // only the very first visit auto-opens
+        // Mark it seen immediately so a reload never re-triggers the auto-open,
+        // even if they close it without finishing.
+        saveWizardPref({ status: "in_progress" });
+        setTourOpen(true);
+      } catch {
+        // Network hiccup — silently skip auto-open; the button still works.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [saveWizardPref]);
+
   function openWizard() {
-    setWizardSeq((n) => n + 1);
-    setWizardStartStep(0);
-    setWizardOpen(true);
+    if (tourOpen) return; // one invocation at a time
+    setTourSeq((n) => n + 1);
+    setTourOpen(true);
   }
+
+  const expandTourSection = useCallback((sectionId: string) => {
+    window.dispatchEvent(
+      new CustomEvent("financials-tour-expand", { detail: { id: sectionId } })
+    );
+  }, []);
 
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1932,21 +2028,19 @@ export function FinancialsWorkspace({
     void persist(latestMpRef.current, latestCritiqueRef.current);
   }
 
-  // TIM-1244: wizard outcomes.
-  function handleWizardComplete(next: MonthlyProjections) {
-    handleMpUpdate(next);
+  // TIM-1244 (v2): guided-tour outcomes. The owner fills the real fields as they
+  // go, so there's nothing to map back — per-field autosave already persisted it.
+  function handleTourFinish() {
     saveWizardPref({ status: "completed" });
-    setWizardOpen(false);
-    setActiveTab("forecast");
+    setTourOpen(false);
   }
-  function handleWizardSkip() {
+  function handleTourSkip() {
     saveWizardPref({ status: "skipped" });
-    setWizardOpen(false);
+    setTourOpen(false);
   }
-  function handleWizardClose(currentStep: number) {
-    // Pause: remember the step so a return visit resumes here.
-    saveWizardPref({ status: "in_progress", lastStep: currentStep });
-    setWizardOpen(false);
+  function handleTourClose() {
+    saveWizardPref({ status: "in_progress" });
+    setTourOpen(false);
   }
 
   const saveLabel =
@@ -2038,7 +2132,7 @@ export function FinancialsWorkspace({
                 type="button"
                 onClick={openWizard}
                 className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#155e63] rounded-lg px-3 py-1.5 hover:bg-[#124e52] transition-colors"
-                title="Walk through a guided interview that fills in your forecast"
+                title="Walk through your forecast inputs step by step, with a hint on each field"
               >
                 <Compass size={12} aria-hidden="true" />
                 Guided setup
@@ -2145,15 +2239,15 @@ export function FinancialsWorkspace({
         )}
       </div>
 
-      {wizardOpen && canEdit && (
-        <ForecastWizard
-          key={wizardSeq}
-          initialMp={mp}
-          currencyCode={currencyCode}
-          startStep={wizardStartStep}
-          onComplete={handleWizardComplete}
-          onSkip={handleWizardSkip}
-          onClose={handleWizardClose}
+      {tourOpen && canEdit && (
+        <GuidedTour
+          key={tourSeq}
+          steps={TOUR_STEPS}
+          onTabChange={(tab) => setActiveTab(tab as Tab)}
+          onExpandSection={expandTourSection}
+          onFinish={handleTourFinish}
+          onSkip={handleTourSkip}
+          onClose={handleTourClose}
         />
       )}
 

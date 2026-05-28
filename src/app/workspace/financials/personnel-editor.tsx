@@ -419,7 +419,7 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
   const totalHeadcount = personnel.reduce((sum, p) => sum + (p.headcount || 0), 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" id="tour-personnel">
       <div className="rounded-xl border border-[#efefef] bg-white p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">

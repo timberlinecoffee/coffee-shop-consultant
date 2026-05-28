@@ -309,7 +309,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" id="tour-funding">
       <div className="rounded-2xl border border-[#efefef] bg-white p-5">
         <p className="text-sm font-semibold text-[#1a1a1a]">Where The Money Comes From</p>
         <p className="text-xs text-[#6b6b6b] mt-1 leading-relaxed">
