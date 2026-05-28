@@ -1238,7 +1238,7 @@ function ProjectionsTab({
           {
             label: "Year 1 Op. Income",
             value: formatCurrency(y1.operating_income, currencyCode),
-            sub: y1.revenue > 0 ? `${((y1.operating_income / y1.revenue) * 100).toFixed(0)}% margin` : "—",
+            sub: y1.revenue > 0 ? `${((y1.operating_income / y1.revenue) * 100).toFixed(0)}% margin` : "n/a",
             ok: y1.operating_income >= 0,
           },
           {
