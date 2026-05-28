@@ -1,5 +1,6 @@
 // TIM-965: CRUD for interview_questions.
 import { createClient } from "@/lib/supabase/server"
+import { isProvidedString } from "@/lib/hiring"
 import type { NextRequest } from "next/server"
 
 async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
 
-  if (!body.prompt || typeof body.prompt !== "string") {
+  // TIM-1217: allow blank prompt (optimistic inline-edit row). See isProvidedString.
+  if (!isProvidedString(body.prompt)) {
     return Response.json({ error: "Missing required field: prompt" }, { status: 400 })
   }
 

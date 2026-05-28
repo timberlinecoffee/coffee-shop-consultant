@@ -1,6 +1,18 @@
 // TIM-965: Hiring & Onboarding Suite — data types and config constants.
 // Row-level tables (not workspace_documents JSONB) back this workspace.
 
+// TIM-1217: Every "add" button in this suite (roles, candidates, questions,
+// competencies, staff) inserts a BLANK row optimistically and lets the user
+// edit the label field (role_title / name / prompt / skill) inline. An empty
+// string is therefore a VALID create. POST handlers must require only that the
+// field is present as a string — `!value` rejected "" with a 400, which made
+// the optimistic row revert: the founder saw "Create a role" open for a split
+// second and instantly close. Use this guard so the contract lives in one place
+// and the next copy-paste can't re-introduce the empty-string rejection.
+export function isProvidedString(value: unknown): value is string {
+  return typeof value === 'string'
+}
+
 export type HiringRoleStatus = 'planned' | 'posted' | 'interviewing' | 'hired'
 export type CandidateStatus = 'applied' | 'screening' | 'interviewing' | 'offered' | 'hired' | 'rejected'
 export type OnboardingPhase = 'day_1' | 'week_1' | 'month_1' | 'month_2' | 'month_3'
