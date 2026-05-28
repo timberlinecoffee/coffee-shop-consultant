@@ -1732,6 +1732,18 @@ export function FinancialsWorkspace({
     };
   }, [mp, initialEquipmentItems]);
 
+  // TIM-1254b: per-asset capex rows for the Startup tab Capital Assets section.
+  // capexLines = user-authored capex ForecastLines (not linked to equipment items).
+  // equipmentItemLines = synthetic lines from buildout_equipment_items.
+  const startupCapexLines = useMemo(
+    () => mp.forecast_lines.filter((l) => l.category === "capex" && !l.linked_equipment_item_id),
+    [mp.forecast_lines]
+  );
+  const startupEquipmentItemLines = useMemo(
+    () => equipmentItemsToCapexLines(initialEquipmentItems),
+    [initialEquipmentItems]
+  );
+
   // TIM-1117: feed the blended menu COGS pct into the projection so menu-linked
   // COGS lines compute against menu costing rather than the user-entered %.
   const projectionCtx = useMemo(
@@ -2142,6 +2154,8 @@ export function FinancialsWorkspace({
                 : (mp.startup_costs ?? defaultStartupCosts()).equipment_cents
             }
             hasEquipmentItems={hasEquipmentItems}
+            capexLines={startupCapexLines}
+            equipmentItemLines={startupEquipmentItemLines}
             fundingSources={mp.funding_sources ?? []}
             currencyCode={currencyCode}
             canEdit={canEdit}
