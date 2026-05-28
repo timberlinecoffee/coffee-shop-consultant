@@ -13,6 +13,7 @@ import {
   computeMonthlySlices,
   computeMenuBlendedCogsPct,
   computeBreakEvenModel,
+  deriveFinancialInputs,
   BASE_REVENUE_LINE_ID,
 } from "./financial-projection.ts";
 
@@ -1394,4 +1395,110 @@ test("TIM-1245: split does not change base revenue (engine uses avg_ticket)", ()
     { total_cost_cents: 0, financed_cost_cents: 0 }
   );
   assert.equal(split[0].base_revenue_cents, single[0].base_revenue_cents);
+});
+
+// ── TIM-1257: cross-page reactivity — single derived source of truth ──────────
+// Regression guard for the board-reported bug: editing a Forecast Input (e.g.
+// anticipated customers) did not recompute dependent tabs (Break-Even projected
+// transactions, etc.) because the workspace held a parallel `financialInputs`
+// copy that was patched field-by-field and silently omitted customers_per_day,
+// days_per_week, and the funding-derived loan/equity fields. The fix makes the
+// component derive financialInputs purely from `mp` via deriveFinancialInputs on
+// every change. These tests pin that derivation contract: any upstream input
+// change must surface in the derived inputs AND in the computed slices, so every
+// dependent tab updates. If a future change reintroduces a stale parallel copy,
+// the component will diverge from this single source of truth.
+
+const EQUIP0 = { total_cost_cents: 0, financed_cost_cents: 0 };
+
+// Mirrors the Break-Even tab's projected-transactions formula exactly.
+function breakEvenProjectedTransactions(inputs) {
+  return Math.round(inputs.customers_per_day * ((inputs.days_per_week * 52) / 12));
+}
+
+test("TIM-1257: raising anticipated customers propagates to break-even + slices", () => {
+  const mp = defaultMonthlyProjections();
+
+  const before = deriveFinancialInputs(mp);
+  const beforeProjected = breakEvenProjectedTransactions(before);
+  const beforeNetRevenue = computeMonthlySlices(mp, EQUIP0)[0].net_revenue_cents;
+
+  // Founder's exact scenario: increase anticipated customers per open day.
+  const bumped = {
+    ...mp,
+    daily_flow: Object.fromEntries(
+      Object.entries(mp.daily_flow).map(([d, v]) => [d, v + 50])
+    ),
+  };
+
+  const after = deriveFinancialInputs(bumped);
+  const afterProjected = breakEvenProjectedTransactions(after);
+  const afterNetRevenue = computeMonthlySlices(bumped, EQUIP0)[0].net_revenue_cents;
+
+  assert.ok(
+    after.customers_per_day > before.customers_per_day,
+    "derived customers_per_day must rise when daily_flow rises"
+  );
+  assert.ok(
+    afterProjected > beforeProjected,
+    "Break-Even projected transactions must rise when customers rise (was stale pre-TIM-1257)"
+  );
+  assert.ok(
+    afterNetRevenue > beforeNetRevenue,
+    "slices feeding P&L / cash-flow / ratios / break-even must reflect higher customer flow"
+  );
+});
+
+test("TIM-1257: editing funding sources propagates to derived owner capital + loan fields", () => {
+  const mp = defaultMonthlyProjections();
+  mp.funding_sources = [
+    { id: "f1", kind: "founder_equity", label: "Founder", amount_cents: 5000000 },
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6 },
+  ];
+
+  const before = deriveFinancialInputs(mp);
+  assert.equal(before.owner_capital_cents, 5000000);
+  assert.equal(before.loan_amount_cents, 6000000);
+
+  // Founder edits funding in one place: raise equity, add a second loan.
+  const edited = {
+    ...mp,
+    funding_sources: [
+      { id: "f1", kind: "founder_equity", label: "Founder", amount_cents: 9000000 },
+      { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6 },
+      { id: "l2", kind: "loan", label: "Equip", amount_cents: 2000000, term_months: 24, annual_rate_pct: 9 },
+    ],
+  };
+
+  const after = deriveFinancialInputs(edited);
+  assert.equal(after.owner_capital_cents, 9000000, "owner capital must follow funding edits (Startup/Funding/Balance tabs)");
+  assert.equal(after.loan_amount_cents, 8000000, "loan total must follow funding edits");
+  assert.notEqual(
+    after.loan_annual_rate_pct,
+    before.loan_annual_rate_pct,
+    "weighted loan rate must recompute when loan mix changes"
+  );
+});
+
+test("TIM-1257: a forecast cost edit surfaces in the derived inputs (no stale copy)", () => {
+  const mp = defaultMonthlyProjections();
+  const rent = mp.forecast_lines.find((l) => l.legacy_key === "rent");
+  assert.ok(rent, "fixture must seed a rent line");
+  assert.equal(rent.mode, "flat");
+
+  const before = deriveFinancialInputs(mp);
+
+  const edited = {
+    ...mp,
+    forecast_lines: mp.forecast_lines.map((l) =>
+      l.legacy_key === "rent" ? { ...l, value: rent.value + 250000 } : l
+    ),
+  };
+  const after = deriveFinancialInputs(edited);
+
+  assert.equal(
+    after.rent_cents,
+    before.rent_cents + 250000,
+    "derived rent must follow the forecast-line edit"
+  );
 });

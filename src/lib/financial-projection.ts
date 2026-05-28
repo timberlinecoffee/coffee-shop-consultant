@@ -1913,6 +1913,98 @@ export interface FinancialInputs {
   days_receivable: number;
 }
 
+// ── Derived FinancialInputs view (TIM-1257) ──────────────────────────────────
+// FinancialInputs is a flat, derived projection of MonthlyProjections consumed by
+// the Funding / Startup / Break-Even / Balance-Sheet tabs. It MUST be derived
+// purely from `mp` (no parallel mutable copy) so any upstream edit — customer
+// flow, funding sources, costs — recomputes every dependent tab. Lives in the
+// engine, not the React component, so it has one definition and is unit-testable.
+export function findForecastLineByKey(lines: ForecastLine[], key: LegacyLineKey) {
+  return lines.find((l) => l.legacy_key === key);
+}
+
+export function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
+  const sc: StartupCosts = mp.startup_costs ?? defaultStartupCosts();
+  const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
+  const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
+    (k) => mp.weekly_schedule[k].open
+  );
+  const totalDailyCustomers = openDayKeys.reduce((sum, k) => sum + (mp.daily_flow[k] ?? 0), 0);
+  const avgCustomersPerDay = openDays > 0 ? Math.round(totalDailyCustomers / openDays) : 0;
+
+  const labor = findForecastLineByKey(mp.forecast_lines, "labor");
+  const rent = findForecastLineByKey(mp.forecast_lines, "rent");
+  const marketing = findForecastLineByKey(mp.forecast_lines, "marketing");
+  const utilities = findForecastLineByKey(mp.forecast_lines, "utilities");
+  const insurance = findForecastLineByKey(mp.forecast_lines, "insurance");
+  const tech = findForecastLineByKey(mp.forecast_lines, "tech");
+  const maintenance = findForecastLineByKey(mp.forecast_lines, "maintenance");
+  const supplies = findForecastLineByKey(mp.forecast_lines, "supplies");
+
+  // TIM-1122: roll funding_sources into the legacy FinancialInputs fields so
+  // existing tabs (Startup, Inputs, downstream consumers) see consistent totals.
+  // Equity sources sum into owner_capital_cents; loans are summed with a
+  // weighted-average term/rate for display purposes (per-loan amortization is
+  // handled directly inside computeMonthlySlices from the funding_sources).
+  const sources = mp.funding_sources ?? [];
+  const sumKind = (kind: FundingSourceLine["kind"]) =>
+    sources.filter((s) => s.kind === kind).reduce((acc, s) => acc + (s.amount_cents || 0), 0);
+  const ownerCapitalCents = sumKind("founder_equity") + sumKind("investor_equity") + sumKind("grant");
+  const loans = sources.filter((s) => s.kind === "loan" && (s.amount_cents || 0) > 0);
+  const totalLoanCents = loans.reduce((acc, s) => acc + s.amount_cents, 0);
+  const weightedTerm = totalLoanCents > 0
+    ? Math.round(loans.reduce((acc, s) => acc + s.amount_cents * (s.term_months ?? 0), 0) / totalLoanCents)
+    : 60;
+  const weightedRate = totalLoanCents > 0
+    ? loans.reduce((acc, s) => acc + s.amount_cents * (s.annual_rate_pct ?? 0), 0) / totalLoanCents
+    : 0;
+
+  return {
+    days_per_week: openDays,
+    hours_per_day: 10,
+    avg_ticket_cents: mp.avg_ticket_cents,
+    customers_per_day: avgCustomersPerDay,
+    beverage_revenue_pct: 70,
+    food_revenue_pct: 20,
+    retail_revenue_pct: 10,
+    beverage_cogs_pct: 30,
+    food_cogs_pct: 35,
+    retail_cogs_pct: 45,
+    rent_cents: rent?.mode === "flat" ? rent.value : 0,
+    labor_pct: labor?.mode === "pct" ? labor.value : 30,
+    marketing_pct: marketing?.mode === "pct" ? marketing.value : 2,
+    utilities_cents: utilities?.mode === "flat" ? utilities.value : 0,
+    insurance_cents: insurance?.mode === "flat" ? insurance.value : 0,
+    tech_cents: tech?.mode === "flat" ? tech.value : 0,
+    maintenance_cents: maintenance?.mode === "flat" ? maintenance.value : 0,
+    supplies_cents: supplies?.mode === "flat" ? supplies.value : 0,
+    payment_processing_pct: mp.payment_processing_pct ?? 2.5,
+    spoilage_pct: mp.spoilage_pct ?? 2,
+    loyalty_discount_pct: mp.loyalty_discount_pct ?? 1,
+    other_opex_cents: 0,
+    // TIM-1244: one-time startup costs are now persisted on the model (populated
+    // by the guided interview and editable on the input page). Fall back to
+    // defaults for older payloads.
+    buildout_cost_cents: sc.buildout_cents,
+    equipment_cost_cents: sc.equipment_cents,
+    rent_deposits_cents: sc.deposits_cents,
+    license_permits_cents: sc.licenses_cents,
+    pre_opening_marketing_cents: sc.pre_opening_marketing_cents,
+    initial_inventory_cents: sc.initial_inventory_cents,
+    working_capital_reserve_cents: sc.working_capital_reserve_cents,
+    opening_cash_buffer_cents: sc.opening_cash_buffer_cents,
+    owner_capital_cents: ownerCapitalCents > 0 ? ownerCapitalCents : 15000000,
+    loan_amount_cents: totalLoanCents,
+    loan_term_months: weightedTerm,
+    loan_annual_rate_pct: weightedRate,
+    depreciation_years: 10,
+    tax_rate_pct: mp.income_tax_pct,
+    days_inventory: 7,
+    days_payable: 30,
+    days_receivable: 1,
+  };
+}
+
 // ── Break-even cost model (TIM-1178, TIM-1206) ───────────────────────────────
 // Splits the month-1 cost base into variable (scales with revenue) and fixed
 // (does not) buckets, then derives break-even revenue and transactions.
