@@ -106,9 +106,18 @@ const TOUR_STEPS: TourStep[] = [
     tab: "forecast",
     targetId: "tour-taxes",
     sectionId: "section-taxes",
-    title: "Plan for income tax",
-    body: "Set the share of profit you'll set aside for income tax. You only pay it when the shop is profitable.",
+    title: "Set your income tax rate",
+    body: "This is income tax: the share of profit you'll set aside. You only pay it when the shop is profitable, and only on the profit.",
     hint: "~25% of profit is a safe starting point.",
+  },
+  {
+    id: "sales-tax",
+    tab: "forecast",
+    targetId: "tour-sales-tax",
+    sectionId: "section-taxes",
+    title: "Now your sales tax rate",
+    body: "Sales tax is separate: you collect it from customers and pass it through to the state. It does not change your revenue or profit. Set your local rate, or leave it 0% if none.",
+    hint: "U.S. sales tax is typically 0% to 10%, depending on your state and city.",
   },
   {
     id: "staffing",
@@ -1046,7 +1055,10 @@ function ForecastTab({
       </Section>
 
       {/* Tax rates — TIM-1247: sales tax and income tax are clearly separated */}
-      <Section id="section-taxes" title="Taxes" advanced>
+      {/* TIM-1247: taxes lead the page (not collapsed/advanced) so the two
+          clearly labeled rates are visible without hunting — founder feedback
+          that the single rate wasn't reaching the user. */}
+      <Section id="section-taxes" title="Taxes" defaultOpen>
         <div className="rounded-xl border border-[#efefef] bg-white p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div id="tour-taxes">
@@ -1067,7 +1079,7 @@ function ForecastTab({
                 and subtracted to reach Net Income on the P&amp;L.
               </p>
             </div>
-            <div>
+            <div id="tour-sales-tax">
               <label className={labelCls}>Sales Tax Rate %</label>
               <input
                 className={inputCls}
@@ -1082,15 +1094,15 @@ function ForecastTab({
               />
               <p className="text-[10px] text-[#afafaf] mt-1">
                 Tax you collect from customers and pass through to the state. It
-                does not change revenue or profit — your revenue figures here are
+                does not change revenue or profit. Your revenue figures here are
                 shown without sales tax. Set your local rate (0% if none).
               </p>
             </div>
           </div>
           <p className="text-[10px] text-[#8a8a8a]">
-            Two different taxes: <strong>income tax</strong> is your cost and
-            reduces net income; <strong>sales tax</strong> is collected on sales
-            and remitted to the state — money that passes through you, not income.
+            Two different taxes. <strong>Income tax</strong> is your cost and
+            reduces net income. <strong>Sales tax</strong> is collected on sales
+            and remitted to the state: money that passes through you, not income.
           </p>
         </div>
       </Section>
