@@ -174,13 +174,15 @@ const TESTIMONIALS = [
     name: "Daniela Reyes",
     city: "Portland, OR",
     initial: "D",
+    disclaimer: undefined as string | undefined,
   },
   {
     quote:
-      "The financial model updated every time I changed my lease terms. I went into negotiations knowing exactly what I could afford.",
-    name: "James Okafor",
+      "Every time I adjusted a lease scenario, the numbers updated instantly. I went into negotiations with a clear picture of what the model suggested I could absorb.",
+    name: "James O.",
     city: "Chicago, IL",
     initial: "J",
+    disclaimer: "Financial outputs are planning estimates only. Consult a licensed accountant before signing lease or financing agreements.",
   },
   {
     quote:
@@ -188,6 +190,7 @@ const TESTIMONIALS = [
     name: "Sarah Kim",
     city: "Seattle, WA",
     initial: "S",
+    disclaimer: undefined as string | undefined,
   },
 ];
 
@@ -216,7 +219,7 @@ const PRICING: PricingPlan[] = [
     features: [
       "Full access to all planning modules",
       "Startup cost estimator",
-      "12-month financial model",
+      "12-month financial model (planning estimate — consult a CPA before lender applications)",
       "Benchmarking against industry standards",
       "50 AI consultant sessions per month",
       "Email support",
@@ -234,10 +237,10 @@ const PRICING: PricingPlan[] = [
     features: [
       "Everything in Builder",
       "500 AI coaching credits/month",
-      "Weekly expert Q&A",
+      "Weekly Q&A with the Groundwork team",
       "Financial model stress-testing",
       "Equipment sourcing guidance",
-      "Strategy call at plan completion",
+      "30-minute planning review call with the Groundwork team",
       "Priority support",
     ],
     cta: "Get the Full Plan",
@@ -680,7 +683,7 @@ export default function LandingPage() {
                     style={{ background: i % 2 === 0 ? "var(--teal)" : "var(--sage)" }}
                   />
                   <blockquote
-                    className="text-neutral-700 mb-5 flex-1"
+                    className="text-neutral-700 mb-3 flex-1"
                     style={{
                       fontSize: "0.95rem",
                       lineHeight: 1.6,
@@ -689,6 +692,11 @@ export default function LandingPage() {
                   >
                     &ldquo;{t.quote}&rdquo;
                   </blockquote>
+                  {t.disclaimer && (
+                    <p className="text-xs text-neutral-400 italic mb-4" style={{ lineHeight: 1.5 }}>
+                      {t.disclaimer}
+                    </p>
+                  )}
                   <div className="flex items-center gap-3 mt-auto">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0"

@@ -305,7 +305,7 @@ export default function HomepageHero() {
           >
             {[
               "Guided suite from concept to grand opening",
-              "Benchmarks built from real coffee-shop operators",
+              "Benchmarks modeled from coffee-shop industry research and operator-reported data",
               "AI co-pilot that fills the business-background gap",
             ].map((feature) => (
               <li key={feature} className="flex items-start gap-2.5">
