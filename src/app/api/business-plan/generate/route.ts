@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, shop_name")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
   }));
 
   const planSnapshot = buildPlanSnapshotForExecutiveSummary(sections);
-  const shopName = plan.shop_name ?? "this coffee shop";
+  const shopName = plan.plan_name ?? "this coffee shop";
   const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
 
   const systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan. Write in the founder's plain voice — direct, confident, operational. Not corporate. Not AI-sounding.

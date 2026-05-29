@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, shop_name")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .single()
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     content,
     brand: BRAND,
     user: { id: user.id, email: profile.email ?? null },
-    plan: { id: plan.id, shop_name: plan.shop_name ?? null },
+    plan: { id: plan.id, shop_name: plan.plan_name ?? null },
   }
 
   const element = (await tmpl.render(ctx)) as ReactElement<DocumentProps, string | JSXElementConstructor<unknown>>
