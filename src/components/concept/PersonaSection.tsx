@@ -109,7 +109,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
             <button
               type="button"
               onClick={() => setShowExample(true)}
-              className="text-[var(--teal)] hover:underline focus:outline-none"
+              className="text-[var(--teal)] hover:underline focus-visible:outline-none"
             >
               See an example
             </button>
@@ -151,7 +151,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
           <button
             type="button"
             onClick={() => setNudgeDismissed(true)}
-            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus:outline-none shrink-0 mt-0.5"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none shrink-0 mt-0.5"
             aria-label="Dismiss"
           >
             <span aria-hidden="true" className="text-xs">&#x2715;</span>
@@ -241,7 +241,7 @@ function ExampleDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
           >
             <span aria-hidden="true" className="text-sm">&#x2715;</span>
           </button>

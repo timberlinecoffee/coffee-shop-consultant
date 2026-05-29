@@ -193,7 +193,7 @@ export function StartupTab({
   const totalMonthlyLoanPayment = loanLines.reduce((acc, l) => acc + monthlyPaymentFor(l), 0);
 
   const inputCls =
-    "w-32 text-sm text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-32 text-sm text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
     <div className="space-y-4">

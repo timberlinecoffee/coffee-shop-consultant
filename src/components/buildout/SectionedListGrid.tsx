@@ -323,7 +323,7 @@ function UsefulLifeInput({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
       />
       {annualDepreciation > 0 && (
-        <span className="text-[10px] text-[#afafaf] leading-tight whitespace-nowrap">
+        <span className="text-[10px] text-[var(--dark-grey)] leading-tight whitespace-nowrap">
           ${annualDepreciation.toLocaleString()}/yr
         </span>
       )}

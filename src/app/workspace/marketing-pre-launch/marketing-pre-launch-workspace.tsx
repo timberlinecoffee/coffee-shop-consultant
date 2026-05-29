@@ -19,7 +19,7 @@ import {
 // ── Shared styles — match Marketing Suite / Concept tokens ──────────────────
 
 const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls = "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
 const cardCls = "rounded-2xl border border-[var(--border)] bg-white";
@@ -488,7 +488,7 @@ function FormFieldsEditor({
           <span className="inline-flex items-center gap-1">
             <input
               type="text"
-              className="text-xs border border-[var(--border-medium)] rounded-md px-2 py-1 w-32 focus:outline-none focus:border-[var(--teal)]"
+              className="text-xs border border-[var(--border-medium)] rounded-md px-2 py-1 w-32 focus-visible:outline-none focus:border-[var(--teal)]"
               placeholder="Add field…"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -797,7 +797,7 @@ function SocialSectionView({
                   </span>
                   <div className="flex items-center gap-2">
                     <select
-                      className="text-xs border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
+                      className="text-xs border border-[var(--border-medium)] rounded-md px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
                       disabled={!canEdit}
                       value={post.format}
                       onChange={(e) => updatePost(i, (p) => ({ ...p, format: e.target.value as SocialPostIdea["format"] }))}
@@ -822,7 +822,7 @@ function SocialSectionView({
                 </div>
                 <input
                   type="text"
-                  className="text-sm font-medium border-0 border-b border-transparent focus:border-[var(--teal)] focus:outline-none w-full mb-2 bg-transparent"
+                  className="text-sm font-medium border-0 border-b border-transparent focus:border-[var(--teal)] focus-visible:outline-none w-full mb-2 bg-transparent"
                   placeholder="Post label, e.g. Founder Intro"
                   disabled={!canEdit}
                   value={post.label}

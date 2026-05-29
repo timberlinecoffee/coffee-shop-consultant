@@ -83,7 +83,7 @@ interface LineRowProps {
 function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const inputCls =
-    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
     <div className="border border-[var(--border)] rounded-xl bg-white p-3">

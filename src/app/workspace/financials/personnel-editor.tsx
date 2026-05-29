@@ -40,7 +40,7 @@ const PAY_BASIS_LABEL: Record<PersonnelPayBasis, string> = {
 };
 
 const inputCls =
-  "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const fieldLabelCls = "block text-[10px] font-medium text-[var(--muted-foreground)] mb-1";
 
 interface RowProps {

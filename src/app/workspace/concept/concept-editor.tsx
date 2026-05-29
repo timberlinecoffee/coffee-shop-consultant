@@ -390,7 +390,7 @@ export function ConceptWorkspace({
                           aria-expanded={openExampleId === meta.id}
                           aria-label={`See a sample answer for ${meta.label}`}
                           title="See a sample answer"
-                          className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${
+                          className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] ${
                             openExampleId === meta.id
                               ? "text-[var(--teal)]"
                               : "text-[var(--warm-900)] hover:text-[var(--teal)]"
@@ -471,7 +471,7 @@ export function ConceptWorkspace({
                             type="button"
                             onClick={() => setOpenExampleId(null)}
                             aria-label="Close example"
-                            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus:outline-none ml-2 shrink-0"
+                            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none ml-2 shrink-0"
                           >
                             <X size={13} aria-hidden="true" />
                           </button>
@@ -484,7 +484,7 @@ export function ConceptWorkspace({
                             <button
                               type="button"
                               onClick={() => setExampleIdx((i) => (i + 1) % examples.length)}
-                              className="text-xs text-[var(--teal)] hover:underline focus:outline-none focus:text-[var(--teal-dark)]"
+                              className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none focus:text-[var(--teal-dark)]"
                             >
                               See another shop
                             </button>
@@ -492,7 +492,7 @@ export function ConceptWorkspace({
                           <button
                             type="button"
                             onClick={() => setOpenExampleId(null)}
-                            className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus:outline-none ml-auto"
+                            className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus-visible:outline-none ml-auto"
                           >
                             Got it
                           </button>
@@ -521,7 +521,7 @@ export function ConceptWorkspace({
                         rows={meta.rows ?? 3}
                         disabled={!canEdit}
                         autoFocus={isEmpty && isActivated}
-                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                       />
                     ) : (
                       <input
@@ -531,7 +531,7 @@ export function ConceptWorkspace({
                         onChange={(e) => updateContent(meta.id, e.target.value)}
                         disabled={!canEdit}
                         autoFocus={isEmpty && isActivated}
-                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                       />
                     )
                   ) : (

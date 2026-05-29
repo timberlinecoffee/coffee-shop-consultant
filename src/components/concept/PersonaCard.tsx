@@ -102,7 +102,7 @@ export function PersonaCard({
                     setConfirmDelete(false);
                   }}
                   aria-label="More options"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
                 >
                   <span aria-hidden="true" className="text-base leading-none tracking-tighter">
                     ...

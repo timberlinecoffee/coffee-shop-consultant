@@ -263,7 +263,7 @@ function EditableLineRow({
                   if (e.key === "Enter") commit(i);
                   else if (e.key === "Escape") setEditingCol(null);
                 }}
-                className="w-24 text-right text-sm border border-[var(--teal)] rounded px-1.5 py-1 focus:outline-none"
+                className="w-24 text-right text-sm border border-[var(--teal)] rounded px-1.5 py-1 focus-visible:outline-none"
               />
             </td>
           );

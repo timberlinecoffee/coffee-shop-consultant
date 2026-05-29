@@ -5,7 +5,9 @@
   --sage: #76b39d;
   --off-white: #faf9f7;
   --light-grey: #efefef;
-  --dark-grey: #afafaf;
+  /* WCAG 1.4.3: #afafaf was 2.8:1. #6b6b6b clears 4.5:1 on both white (5.3:1)
+     and the off-white --background #faf9f7 (5.0:1); #767676 falls to 4.3:1 there. */
+  --dark-grey: #6b6b6b;
   --background: #faf9f7;
   --foreground: #1a1a1a;
   /* Semantic tokens used by component library */
@@ -339,6 +341,40 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* WCAG 2.4.7 Focus Visible (TIM-1390): guaranteed keyboard focus ring.
+   Unlayered, so it overrides Tailwind's layered `outline-none`/`focus-visible:outline-none`
+   utilities regardless of specificity and cannot be silently suppressed. Uses :focus-visible
+   so it never shows on mouse click, only on keyboard/programmatic focus. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Skip-to-main-content link (WCAG 2.4.1 Bypass Blocks) — visible only on focus. */
+.skip-to-main {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 100;
+  border-radius: 0.5rem;
+  background: var(--teal);
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: top 0.15s ease-in-out;
+}
+.skip-to-main:focus {
+  top: 1rem;
+}
+
+/* The skip-link target is a non-interactive container; no visible ring needed
+   when focus lands on it (the next Tab reaches the first real control). */
+#main-content:focus,
+#main-content:focus-visible {
+  outline: none;
 }
 
 /* Section header tokens (TIM-1353)

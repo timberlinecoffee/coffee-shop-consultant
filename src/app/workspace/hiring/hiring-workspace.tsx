@@ -188,7 +188,7 @@ function RolePill({ status }: { status: HiringRoleStatus }) {
 // ── Shared input styles ───────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
   "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
@@ -649,8 +649,11 @@ function RoleRow({
 
         {jdOpen && (
           <div className="px-4 pb-4 space-y-4 bg-[var(--background)] border-t border-[var(--neutral-cool-150)]">
+            <span className="sr-only" role="status">
+              {improvingField ? "Improving job description field with AI…" : ""}
+            </span>
             {jdLoading ? (
-              <p className="text-sm text-[var(--dark-grey)] pt-3">Loading...</p>
+              <p className="text-sm text-[var(--dark-grey)] pt-3" role="status">Loading...</p>
             ) : (
               <>
                 <div className="pt-3 space-y-4">
@@ -1075,7 +1078,7 @@ function RoleHubPanel({
                           <>
                             <input
                               autoFocus
-                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
+                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -1164,7 +1167,7 @@ function RoleHubPanel({
                           <>
                             <input
                               autoFocus
-                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
+                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
                               value={renameFormValue}
                               onChange={(e) => setRenameFormValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -1621,7 +1624,7 @@ function InterviewTab({
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-[10px] text-[var(--muted-foreground)]">Scoring with:</span>
                       <select
-                        className="text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] bg-white"
+                        className="text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] bg-white"
                         value={selectedScorecardId ?? ""}
                         onChange={(e) => setSelectedScorecardId(e.target.value || null)}
                       >
@@ -1665,7 +1668,7 @@ function InterviewTab({
                         <div className="flex items-start gap-2">
                           <div className="flex-1 min-w-0">
                             <input
-                              className="w-full text-sm text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus:outline-none py-0.5 disabled:hover:border-transparent"
+                              className="w-full text-sm text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent"
                               value={q.prompt}
                               onChange={(e) =>
                                 updateQuestion(q.id, { prompt: e.target.value })
@@ -1679,7 +1682,7 @@ function InterviewTab({
                               Weight
                             </span>
                             <select
-                              className="text-xs border border-[var(--border-medium)] rounded px-1 py-0.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)]"
+                              className="text-xs border border-[var(--border-medium)] rounded px-1 py-0.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)]"
                               value={q.weight}
                               onChange={(e) =>
                                 updateQuestion(q.id, {
@@ -1731,7 +1734,7 @@ function InterviewTab({
                             ))}
                           </div>
                           <input
-                            className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
+                            className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                             value={scoreEntry?.notes ?? ""}
                             onChange={(e) =>
                               upsertScore(
@@ -2176,7 +2179,7 @@ function OnboardingTab({
 
                                 <div className="flex-1 min-w-0">
                                   <input
-                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus:outline-none py-0.5 disabled:hover:border-transparent ${
+                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent ${
                                       t.completed_at
                                         ? "line-through text-[var(--dark-grey)]"
                                         : "text-[var(--foreground)]"
@@ -2195,7 +2198,7 @@ function OnboardingTab({
                                   <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                     <span className="whitespace-nowrap">Due: Day</span>
                                     <input
-                                      className="w-12 text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] text-center focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
+                                      className="w-12 text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] text-center focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                                       type="number"
                                       value={t.due_offset_days ?? ""}
                                       onChange={(e) =>
@@ -2249,7 +2252,7 @@ function OnboardingTab({
                                 <div className="ml-7 rounded-lg bg-[var(--warm-1050)] border border-[var(--neutral-cool-200)] p-3 space-y-2">
                                   {canEdit ? (
                                     <textarea
-                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus:outline-none placeholder-[var(--neutral-cool-400)]"
+                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus-visible:outline-none placeholder-[var(--neutral-cool-400)]"
                                       rows={3}
                                       value={t.detail ?? ""}
                                       onChange={(e) =>
@@ -2558,7 +2561,7 @@ function CompetencyTab({
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-[var(--muted-foreground)]">Wt</span>
                         <select
-                          className="text-xs border border-[var(--border-medium)] rounded px-1 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)]"
+                          className="text-xs border border-[var(--border-medium)] rounded px-1 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)]"
                           value={comp.weight}
                           onChange={(e) =>
                             updateCompetency(comp.id, {
@@ -2810,7 +2813,7 @@ function CompetencyTab({
                                 ))}
                               </div>
                               <input
-                                className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
+                                className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                                 value={ev?.notes ?? ""}
                                 onChange={(e) =>
                                   upsertEvaluation(
@@ -2937,7 +2940,7 @@ function RequirementsTab({
                 value={settings.hiring_country ?? ""}
                 onChange={(e) => changeCountry(e.target.value as HiringCountry | "")}
                 disabled={saving}
-                className="text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60"
+                className="text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60"
               >
                 <option value="">Auto-detect</option>
                 {HIRING_COUNTRY_OPTIONS.map((o) => (

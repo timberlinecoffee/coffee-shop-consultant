@@ -470,7 +470,7 @@ function CandidateRow({
           value={row.status}
           disabled={!canEdit}
           onChange={(e) => onStatus(row, e.target.value as VendorStatus)}
-          className={`text-xs font-semibold rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${STATUS_BADGE[row.status]} disabled:opacity-50`}
+          className={`text-xs font-semibold rounded-md border px-2 py-1.5 focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] ${STATUS_BADGE[row.status]} disabled:opacity-50`}
         >
           {(["researching", "shortlisted", "chosen", "rejected"] as VendorStatus[]).map((s) => (
             <option key={s} value={s}>
@@ -523,7 +523,7 @@ function Input({
         const next = e.target.value;
         if (next !== value) onChange(next);
       }}
-      className="w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus:outline-none focus:bg-white disabled:opacity-50"
+      className="w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus-visible:outline-none focus:bg-white disabled:opacity-50"
     />
   );
 }
@@ -607,7 +607,7 @@ function ChooseReasonModal({
             onChange={(e) => onChange(e.target.value)}
             placeholder="Best price, local relationship, fits the brand..."
             rows={4}
-            className="mt-1 w-full text-sm border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 focus:border-[var(--teal)] focus:outline-none"
+            className="mt-1 w-full text-sm border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 focus:border-[var(--teal)] focus-visible:outline-none"
           />
         </label>
         <div className="mt-5 flex items-center justify-end gap-2">

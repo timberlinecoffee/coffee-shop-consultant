@@ -87,7 +87,7 @@ function makeLocalId() {
 }
 
 const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
   "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
@@ -95,9 +95,9 @@ const sectionLabelCls =
 // TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
 // so the ingredient grid stays flat and scannable.
 const cellInputCls =
-  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
+  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus-visible:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
 const quickInputCls =
-  "w-full text-sm bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus:outline-none focus:border-[var(--teal)] transition-colors";
+  "w-full text-sm bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
 // Shared column template so the header, data rows, and quick-add row stay aligned.
 const ingGridCls =
   "grid grid-cols-[minmax(0,1fr)_5rem_5.5rem_6rem_6.5rem_3.5rem] gap-2 items-center";
@@ -876,7 +876,7 @@ function ItemEditorPanel({
         <div className="flex-1 min-w-0">
           <input
             className={
-              "w-full text-base font-semibold border-0 border-b border-transparent focus:border-[var(--teal)] focus:outline-none text-[var(--foreground)] bg-transparent py-0.5 transition-colors disabled:text-[var(--dark-grey)]"
+              "w-full text-base font-semibold border-0 border-b border-transparent focus:border-[var(--teal)] focus-visible:outline-none text-[var(--foreground)] bg-transparent py-0.5 transition-colors disabled:text-[var(--dark-grey)]"
             }
             value={name}
             disabled={!canEdit}
@@ -890,7 +890,7 @@ function ItemEditorPanel({
             <Tag size={10} className="text-[var(--teal)]" />
             <span className="font-semibold uppercase tracking-wider">Category</span>
             <select
-              className="text-xs text-[var(--teal)] font-medium bg-transparent border-0 focus:outline-none cursor-pointer pr-1"
+              className="text-xs text-[var(--teal)] font-medium bg-transparent border-0 focus-visible:outline-none cursor-pointer pr-1"
               value={item.category_id}
               disabled={!canEdit}
               onChange={handleCategoryChange}
@@ -1179,7 +1179,7 @@ function RecipeLineRow({
       </span>
       <input
         type="number"
-        className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
+        className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={amount}
         disabled={!canEdit}
         onChange={(e) => setAmount(e.target.value)}
@@ -1188,7 +1188,7 @@ function RecipeLineRow({
         step="any"
       />
       <select
-        className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
+        className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={line.unit}
         disabled={!canEdit}
         onChange={handleUnitChange}
@@ -1300,7 +1300,7 @@ function SortableMenuItemRow({
         {editingName ? (
           <input
             autoFocus
-            className="text-sm font-medium text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus:outline-none bg-transparent w-full"
+            className="text-sm font-medium text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus-visible:outline-none bg-transparent w-full"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={handleNameBlur}
@@ -1504,7 +1504,7 @@ function DefaultLineRow({
       </span>
       <input
         type="number"
-        className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
+        className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={amount}
         disabled={!canEdit}
         onChange={(e) => setAmount(e.target.value)}
@@ -1513,7 +1513,7 @@ function DefaultLineRow({
         step="any"
       />
       <select
-        className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
+        className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={def.unit}
         disabled={!canEdit}
         onChange={(e) => onUpdate({ unit: e.target.value as IngredientUnit })}
@@ -1924,7 +1924,7 @@ function CategoryHeader({
         {editing ? (
           <input
             autoFocus
-            className="text-sm font-semibold text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus:outline-none bg-transparent min-w-[140px]"
+            className="text-sm font-semibold text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus-visible:outline-none bg-transparent min-w-[140px]"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
@@ -2022,7 +2022,7 @@ function PopularityInlineSelect({
 }) {
   return (
     <select
-      className="text-xs bg-white border border-[var(--border-medium)] rounded-md px-1.5 py-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:opacity-50"
+      className="text-xs bg-white border border-[var(--border-medium)] rounded-md px-1.5 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:opacity-50"
       value={value ?? ""}
       disabled={disabled}
       aria-label="Expected popularity"

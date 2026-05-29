@@ -19,7 +19,7 @@ import {
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
-const inputCls = "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const inputCls = "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls = "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
 
@@ -191,12 +191,12 @@ function DigitalPresenceTab({ canEdit, rows, onRowsChange }: {
             </div>
             <StatusPill status={row.status} config={PRESENCE_STATUS_CONFIG} onClick={() => cycleStatus(row)} />
             <input type="text" disabled={!canEdit}
-              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
+              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
               placeholder="https://..." value={row.url_or_handle ?? ""}
               onChange={(e) => updateField(row, "url_or_handle", e.target.value)}
               onBlur={() => saveField(row, "url_or_handle")} />
             <input type="text" disabled={!canEdit}
-              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
+              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
               placeholder="Name" value={row.owner ?? ""}
               onChange={(e) => updateField(row, "owner", e.target.value)}
               onBlur={() => saveField(row, "owner")} />
@@ -624,7 +624,7 @@ function BudgetTab({ canEdit, lines, onLinesChange, avgMonthlyRevenueCents }: {
           <div key={line.id} className="grid grid-cols-[2fr_1fr_auto] gap-4 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0">
             <span className="text-sm text-[var(--foreground)]">{line.channel_name}</span>
             <input type="number" min="0" disabled={!canEdit}
-              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
+              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
               value={line.monthly_cents / 100} onChange={(e) => updateAmount(line, e.target.value)} />
             <button type="button" disabled={!canEdit} onClick={() => deleteLine(line)}
               className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1"><X className="w-3.5 h-3.5" /></button>

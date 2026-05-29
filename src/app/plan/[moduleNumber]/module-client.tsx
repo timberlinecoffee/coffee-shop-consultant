@@ -288,7 +288,7 @@ function SectionYourWhy({
             onChange={(e) => onChange({ ...data, motivation: e.target.value })}
             rows={4}
             placeholder="I've been a barista for six years and I watch the regulars..."
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors resize-none bg-white"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
           />
         </div>
 
@@ -302,7 +302,7 @@ function SectionYourWhy({
             onChange={(e) => onChange({ ...data, customer_experience: e.target.value })}
             rows={4}
             placeholder="I want people to feel like they've found their spot. Like the barista knows their name and their order..."
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors resize-none bg-white"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
           />
         </div>
 
@@ -316,7 +316,7 @@ function SectionYourWhy({
             onChange={(e) => onChange({ ...data, line_in_sand: e.target.value })}
             rows={4}
             placeholder="I will never serve pre-ground coffee or use flavored syrups with artificial ingredients..."
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors resize-none bg-white"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
           />
         </div>
       </div>
@@ -535,7 +535,7 @@ function SectionCompetitiveAnalysis({
                   value={comp.name}
                   onChange={(e) => updateCompetitor(i, "name", e.target.value)}
                   placeholder="Blue Star Coffee"
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
                 />
               </div>
               <div>
@@ -545,7 +545,7 @@ function SectionCompetitiveAnalysis({
                   value={comp.location}
                   onChange={(e) => updateCompetitor(i, "location", e.target.value)}
                   placeholder="Downtown, 2 blocks away"
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
                 />
               </div>
             </div>
@@ -558,7 +558,7 @@ function SectionCompetitiveAnalysis({
                   onChange={(e) => updateCompetitor(i, "strengths", e.target.value)}
                   rows={2}
                   placeholder="Great location, loyal regulars, strong brand..."
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors resize-none"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
                 />
               </div>
               <div>
@@ -568,7 +568,7 @@ function SectionCompetitiveAnalysis({
                   onChange={(e) => updateCompetitor(i, "weaknesses", e.target.value)}
                   rows={2}
                   placeholder="Long wait times, inconsistent quality..."
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors resize-none"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
                 />
               </div>
             </div>
@@ -599,7 +599,7 @@ function SectionCompetitiveAnalysis({
                   value={comp.vibe}
                   onChange={(e) => updateCompetitor(i, "vibe", e.target.value)}
                   placeholder="Hip, fast-paced, Instagram-friendly..."
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
                 />
               </div>
             </div>
@@ -670,7 +670,7 @@ function SectionConceptBrief({
               value={content}
               onChange={(e) => onChange({ ...data, brief_content: e.target.value })}
               rows={22}
-              className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
+              className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
             />
             <button
               onClick={() => setIsEditing(false)}
@@ -740,7 +740,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
                 value={(data[f.key] as string) ?? ""}
                 onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
                 placeholder={f.placeholder}
-                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
               />
             </div>
           </div>
@@ -783,7 +783,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
               value={(data.avg_ticket as string) ?? ""}
               onChange={(e) => onChange({ ...data, avg_ticket: e.target.value })}
               placeholder="e.g. 8.50"
-              className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+              className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
             />
           </div>
         </div>
@@ -796,7 +796,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
             value={(data.daily_transactions as string) ?? ""}
             onChange={(e) => onChange({ ...data, daily_transactions: e.target.value })}
             placeholder="e.g. 120"
-            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
           />
         </div>
         <div>
@@ -808,7 +808,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
             value={(data.days_per_week as string) ?? ""}
             onChange={(e) => onChange({ ...data, days_per_week: e.target.value })}
             placeholder="e.g. 6"
-            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
           />
         </div>
         <div>
@@ -819,7 +819,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
             onChange={(e) => onChange({ ...data, seasonal_notes: e.target.value })}
             placeholder="e.g. Tourist area: expect 40% volume spike June-August, slower January-February"
             rows={3}
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors resize-none"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none"
           />
         </div>
       </div>
@@ -867,7 +867,7 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
               value={(data.cogs_percentage as string) ?? ""}
               onChange={(e) => onChange({ ...data, cogs_percentage: e.target.value })}
               placeholder="e.g. 30"
-              className="w-full border border-grey-light rounded-xl px-4 pr-8 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+              className="w-full border border-grey-light rounded-xl px-4 pr-8 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">%</span>
           </div>
@@ -884,7 +884,7 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
                 value={(data[f.key] as string) ?? ""}
                 onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
                 placeholder={f.placeholder}
-                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
               />
             </div>
           </div>
@@ -934,7 +934,7 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
                 value={(data[f.key] as string) ?? ""}
                 onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
                 placeholder={f.placeholder}
-                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors"
+                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
               />
             </div>
           </div>
@@ -947,7 +947,7 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
             onChange={(e) => onChange({ ...data, pricing_notes: e.target.value })}
             placeholder="e.g. Premium pricing (10% above market) justified by single-origin sourcing and barista education. Loyalty program to offset frequency sensitivity."
             rows={4}
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors resize-none"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none"
           />
         </div>
       </div>
@@ -1024,7 +1024,7 @@ function SectionFinancialSummary({
           value={content}
           onChange={(e) => onChange({ ...data, summary_notes: e.target.value })}
           rows={18}
-          className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
+          className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
         />
       </div>
     </div>
@@ -1280,7 +1280,7 @@ function CoachPanel({
                   }}
                   rows={2}
                   placeholder="Ask your coach..."
-                  className="flex-1 border border-grey-light rounded-xl px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus:outline-none focus:border-teal transition-colors resize-none"
+                  className="flex-1 border border-grey-light rounded-xl px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
                 />
                 <button
                   data-testid="coach-submit"

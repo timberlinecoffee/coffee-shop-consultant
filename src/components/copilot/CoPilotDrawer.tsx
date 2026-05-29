@@ -836,7 +836,7 @@ export function CoPilotDrawer({
                   placeholder={`Ask ${COPILOT_NAME}…`}
                   rows={1}
                   disabled={isStreaming}
-                  className="flex-1 resize-none rounded-xl border border-[var(--gray-600)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--teal)]/40 disabled:bg-[var(--surface-warm-50)] disabled:text-[var(--neutral-cool-600)]"
+                  className="flex-1 resize-none rounded-xl border border-[var(--gray-600)] bg-white px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-[var(--teal)]/40 disabled:bg-[var(--surface-warm-50)] disabled:text-[var(--neutral-cool-600)]"
                 />
                 {isStreaming ? (
                   <button

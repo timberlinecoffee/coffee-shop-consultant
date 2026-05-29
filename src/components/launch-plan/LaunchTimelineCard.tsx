@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLaunchPlanRows } from "./useLaunchPlanRows";
 import type { LaunchItemStatus } from "@/types/supabase";
@@ -309,12 +309,58 @@ function RowDrawer({
     await onSubmit(values);
   }
 
+  // WCAG 4.1.2 / 2.4.3: focus trap, initial focus, Escape-to-close, and focus
+  // restoration for the milestone drawer. onClose is read via ref so the trap
+  // installs once on mount and tears down (restoring focus) on unmount.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const initial = panel?.querySelector<HTMLElement>("input, select, textarea");
+    (initial ?? panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null,
+      );
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const active = document.activeElement as HTMLElement;
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !panel.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-50 flex"
       role="dialog"
       aria-modal="true"
-      aria-label={mode.kind === "add" ? "Add milestone" : "Edit milestone"}
+      aria-labelledby="rdf-dialog-title"
     >
       {/* Backdrop */}
       <button
@@ -322,12 +368,13 @@ function RowDrawer({
         className="absolute inset-0 bg-black/30"
         onClick={onClose}
         aria-label="Close drawer"
+        tabIndex={-1}
       />
 
       {/* Drawer panel */}
-      <div className="relative ml-auto w-full max-w-md bg-white h-full shadow-xl overflow-y-auto flex flex-col">
+      <div ref={panelRef} className="relative ml-auto w-full max-w-md bg-white h-full shadow-xl overflow-y-auto flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-          <h2 className="font-semibold text-[var(--foreground)]">
+          <h2 id="rdf-dialog-title" className="font-semibold text-[var(--foreground)]">
             {mode.kind === "add" ? "Add milestone" : "Edit milestone"}
           </h2>
           <button
@@ -353,7 +400,7 @@ function RowDrawer({
               id="rdf-milestone"
               type="text"
               placeholder="e.g. Permits submitted"
-              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
               {...register("milestone", { required: true })}
             />
             {errors.milestone && (
@@ -369,7 +416,7 @@ function RowDrawer({
             <input
               id="rdf-target-date"
               type="date"
-              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
               {...register("target_date", { required: true })}
             />
             {errors.target_date && (
@@ -384,7 +431,7 @@ function RowDrawer({
             </label>
             <select
               id="rdf-status"
-              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none"
               {...register("status")}
             >
               {STATUS_OPTIONS.map((s) => (
@@ -400,7 +447,7 @@ function RowDrawer({
             </label>
             <select
               id="rdf-depends-on"
-              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none"
               {...register("depends_on")}
             >
               <option value="">None</option>
@@ -426,7 +473,7 @@ function RowDrawer({
               id="rdf-notes"
               rows={3}
               placeholder="Optional context or next steps"
-              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] resize-none"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] resize-none"
               {...register("notes")}
             />
           </div>

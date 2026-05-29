@@ -21,7 +21,7 @@ export function ExampleDrawer({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-sm text-[var(--teal)] hover:underline focus:outline-none"
+        className="flex items-center gap-1.5 text-sm text-[var(--teal)] hover:underline focus-visible:outline-none"
         aria-expanded={open}
       >
         <span

@@ -410,7 +410,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                 maxLength={7}
                 className={`w-24 h-8 rounded-md border text-[12px] px-2 font-mono ${
                   hexError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-[var(--success)]"
-                } focus:outline-none focus:border-2`}
+                } focus-visible:outline-none focus:border-2`}
                 placeholder="#1F7A80"
               />
             )}
@@ -436,7 +436,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                         setCmykInputs(rgbToCmyk(next.r, next.g, next.b));
                       }}
                       onBlur={() => applyColor(rgbToHex(rgbInputs.r, rgbInputs.g, rgbInputs.b))}
-                      className="w-14 h-8 rounded-md border border-gray-200 text-[11px] px-1 text-center focus:outline-none focus:border-2 focus:border-[var(--success)]"
+                      className="w-14 h-8 rounded-md border border-gray-200 text-[11px] px-1 text-center focus-visible:outline-none focus:border-2 focus:border-[var(--success)]"
                     />
                   </div>
                 ))}
@@ -468,7 +468,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                         const rgb = cmykToRgb(cmykInputs.c, cmykInputs.m, cmykInputs.y, cmykInputs.k);
                         applyColor(rgbToHex(rgb.r, rgb.g, rgb.b));
                       }}
-                      className="w-12 h-8 rounded-md border border-gray-200 text-[11px] px-1 text-center focus:outline-none focus:border-2 focus:border-[var(--success)]"
+                      className="w-12 h-8 rounded-md border border-gray-200 text-[11px] px-1 text-center focus-visible:outline-none focus:border-2 focus:border-[var(--success)]"
                     />
                   </div>
                 ))}
@@ -591,7 +591,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                   value={field.value}
                   onChange={(e) => field.onChange(e.target.value)}
                   placeholder={field.placeholder}
-                  className="w-full h-9 rounded-lg border border-gray-200 px-3 text-[12px] text-[var(--gray-slate-2)] placeholder:text-[var(--gray-slate-3)] focus:outline-none focus:border-2 focus:border-[var(--success)]"
+                  className="w-full h-9 rounded-lg border border-gray-200 px-3 text-[12px] text-[var(--gray-slate-2)] placeholder:text-[var(--gray-slate-3)] focus-visible:outline-none focus:border-2 focus:border-[var(--success)]"
                 />
               </div>
             ))}

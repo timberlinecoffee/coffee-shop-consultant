@@ -418,7 +418,7 @@ interface EditModalProps {
   isNew: boolean;
 }
 
-const inputCls = "w-full rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] transition-colors";
+const inputCls = "w-full rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
 function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
@@ -811,7 +811,7 @@ export function LaunchPlanWorkspace({
                   value={launchDateInput}
                   onChange={(e) => handleLaunchDateChange(e.target.value)}
                   disabled={!canEdit}
-                  className="rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:opacity-50 transition-colors"
+                  className="rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:opacity-50 transition-colors"
                 />
                 {launchDateInput && (
                   <p className="mt-1 text-xs text-[var(--dark-grey)]">

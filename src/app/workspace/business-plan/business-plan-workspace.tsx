@@ -529,8 +529,8 @@ function SectionCard({
         <div className="px-5 pb-5">
           <div className="border-t border-[var(--neutral-cool-150)] pt-4">
             {(isStreaming || section.isGenerating) && !section.editBuffer && (
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex gap-1">
+              <div className="flex items-center gap-2 mb-3" role="status">
+                <div className="flex gap-1" aria-hidden="true">
                   {[0, 1, 2].map((i) => (
                     <span
                       key={i}
@@ -548,7 +548,7 @@ function SectionCard({
                 <textarea
                   value={section.editBuffer}
                   onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
+                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
                   placeholder="Add content for this section..."
                   disabled={section.isGenerating && !section.editBuffer}
                 />

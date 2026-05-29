@@ -50,7 +50,7 @@ export function InfoTip({
         aria-expanded={open}
         aria-label={`What is ${label}?`}
         className={cn(
-          'inline-flex items-center justify-center rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)]',
+          'inline-flex items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)]',
           open ? 'text-[var(--teal)]' : 'text-[var(--warm-900)] hover:text-[var(--teal)]',
         )}
       >

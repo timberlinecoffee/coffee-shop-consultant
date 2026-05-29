@@ -277,7 +277,7 @@ export function AIAssistCallout({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={4}
-                  className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed"
+                  className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed"
                 />
               </div>
 
@@ -295,7 +295,7 @@ export function AIAssistCallout({
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   placeholder="e.g. Make it more specific to the neighbourhood"
-                  className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)]"
+                  className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)]"
                 />
               </div>
 
@@ -322,7 +322,7 @@ export function AIAssistCallout({
           {/* ── Streaming state ──────────────────────────────── */}
           {phase.kind === "streaming" && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)] mb-3">
+              <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)] mb-3" role="status">
                 <span
                   className="inline-block w-3 h-3 rounded-full border-2 border-[var(--teal)] border-t-transparent animate-spin shrink-0"
                   aria-hidden="true"
@@ -330,7 +330,11 @@ export function AIAssistCallout({
                 <span>Writing suggestion...</span>
               </div>
 
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 min-h-[80px]">
+              <div
+                className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 min-h-[80px]"
+                aria-live="polite"
+                aria-atomic="false"
+              >
                 <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
                   {phase.buffer}
                   <span
@@ -368,7 +372,10 @@ export function AIAssistCallout({
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
                   Suggested version
                 </p>
-                <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
+                <div
+                  className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3"
+                  aria-live="polite"
+                >
                   <div className="text-sm text-[var(--foreground)] leading-relaxed">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
