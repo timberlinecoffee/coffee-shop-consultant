@@ -115,6 +115,23 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
       .eq("plan_id", plan.id)
   }
 
+  // TIM-1406: coffee_shop_plans.plan_name is the SoT for shop name. The
+  // shop_identity component in the concept jsonb is a write-through shadow —
+  // forward every concept save into the canonical column.
+  if (workspaceKey === "concept") {
+    const incoming = body.content as { components?: { shop_identity?: { content?: unknown } } } | null
+    const shopIdentity = incoming?.components?.shop_identity?.content
+    if (typeof shopIdentity === "string") {
+      const trimmed = shopIdentity.trim()
+      if (trimmed.length > 0) {
+        await supabase
+          .from("coffee_shop_plans")
+          .update({ plan_name: trimmed })
+          .eq("id", plan.id)
+      }
+    }
+  }
+
   return Response.json({ id: data.id, updated_at: data.updated_at })
 }
 

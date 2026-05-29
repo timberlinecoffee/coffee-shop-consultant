@@ -442,6 +442,25 @@ export function OnboardingFlow({
         );
       if (conceptError) throw conceptError;
 
+      // TIM-1406: also seed marketing_brand with the picked pillars so the
+      // Marketing workspace shows them on first open instead of asking the
+      // user to retype the same answers. Marketing remains the SoT for these
+      // columns after first save.
+      const brandPillars = Array.isArray(wizardState.answers.brand_pillars)
+        ? (wizardState.answers.brand_pillars as string[])
+        : [];
+      if (brandPillars.length > 0) {
+        await supabase.from("marketing_brand").upsert(
+          {
+            plan_id: planId,
+            brand_pillar_1: brandPillars[0] ?? "",
+            brand_pillar_2: brandPillars[1] ?? "",
+            brand_pillar_3: brandPillars[2] ?? "",
+          },
+          { onConflict: "plan_id" },
+        );
+      }
+
       await supabase.from("milestones").insert([
         {
           plan_id: planId,

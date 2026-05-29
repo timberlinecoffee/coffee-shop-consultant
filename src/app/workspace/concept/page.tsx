@@ -19,7 +19,7 @@ export default async function ConceptWorkspacePage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -44,6 +44,17 @@ export default async function ConceptWorkspacePage() {
   ]);
 
   const initialDoc = normalizeConceptV2(doc?.content);
+  // TIM-1406: coffee_shop_plans.plan_name is the SoT for shop name. Hydrate
+  // shop_identity from it so the editor shows the canonical value even when
+  // the jsonb shadow lags (e.g. for plans that haven't re-saved since the
+  // backfill).
+  const planName = plan.plan_name?.trim() ?? "";
+  if (planName.length > 0) {
+    initialDoc.components.shop_identity = {
+      ...initialDoc.components.shop_identity,
+      content: planName,
+    };
+  }
   const canEdit = isSubscriptionActive(profile?.subscription_status);
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"

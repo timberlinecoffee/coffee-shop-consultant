@@ -20,6 +20,7 @@ import {
   isVendorCategoryKey,
   type VendorCategoryKey,
 } from "@/lib/suppliers";
+import { normalizeConceptV2 } from "@/lib/concept";
 
 const anthropic = new Anthropic();
 
@@ -32,20 +33,19 @@ type AiCandidate = {
   notes?: string;
 };
 
+// TIM-1406: V1/V2-safe via normalizer so the digest is non-empty for fresh-
+// from-onboarding plans where workspace_documents still holds the V1 shape.
 function conceptSummary(concept: unknown): string {
-  if (!concept || typeof concept !== "object") return "An independent specialty coffee shop.";
-  const c = concept as { components?: Record<string, { content?: string } | undefined> };
-  const get = (key: string) =>
-    typeof c.components?.[key]?.content === "string" ? (c.components![key]!.content as string).trim() : "";
-  const vision = get("vision");
-  const offering = get("offering");
-  const location = get("location");
-  const personas = get("personas");
+  const doc = normalizeConceptV2(concept);
+  const vision = doc.components.vision.content.trim();
+  const offering = doc.components.offering.content.trim();
+  const location = doc.components.location.content.trim();
+  const targetCustomer = doc.components.target_customer.content.trim();
   const parts = [
     vision && `Vision: ${vision}`,
     offering && `Offering: ${offering}`,
     location && `Location/city: ${location}`,
-    personas && `Customers: ${personas}`,
+    targetCustomer && `Customers: ${targetCustomer}`,
   ].filter(Boolean);
   return parts.join("\n") || "An independent specialty coffee shop.";
 }

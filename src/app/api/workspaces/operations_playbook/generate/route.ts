@@ -24,6 +24,7 @@ import {
   normalizeOperationsPlaybook,
   titleCaseSopCategory,
 } from "@/lib/operations-playbook";
+import { normalizeConceptV2 } from "@/lib/concept";
 
 const anthropic = new Anthropic();
 
@@ -41,25 +42,24 @@ function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-interface ConceptComponentLike {
-  content?: string;
-}
-
-function extractConceptContext(content: unknown): {
+// TIM-1406: normalizer-backed read keeps V1 (onboarding-fresh) and V2
+// (post-edit) concepts behaving the same. shop_identity prefers the SoT
+// (coffee_shop_plans.plan_name) supplied by the caller; city maps to the V2
+// `location` component. service_format and food_program have no V2 equivalent
+// today — they stay empty until a future concept-schema extension.
+function extractConceptContext(content: unknown, planName: string | null): {
   shop_identity: string;
   service_format: string;
   city: string;
   food_program: string;
 } {
-  const empty = { shop_identity: "", service_format: "", city: "", food_program: "" };
-  if (!content || typeof content !== "object") return empty;
-  const obj = content as Record<string, unknown>;
-  const components = (obj.components as Record<string, ConceptComponentLike> | null) ?? null;
+  const concept = normalizeConceptV2(content);
+  const trimmedPlanName = planName?.trim() ?? "";
   return {
-    shop_identity: components?.shop_identity?.content ?? "",
-    service_format: components?.service_format?.content ?? "",
-    city: components?.city?.content ?? "",
-    food_program: components?.food_program?.content ?? "",
+    shop_identity: trimmedPlanName || concept.components.shop_identity.content,
+    service_format: "",
+    city: concept.components.location.content,
+    food_program: "",
   };
 }
 
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
   ]);
 
   const current = normalizeOperationsPlaybook(doc?.content);
-  const concept = extractConceptContext(conceptDoc?.content);
+  const concept = extractConceptContext(conceptDoc?.content, plan.plan_name ?? null);
   const menuSummary = summarizeMenu(menuItems as MenuItemRow[] | null);
 
   const prompt = buildPrompt(
