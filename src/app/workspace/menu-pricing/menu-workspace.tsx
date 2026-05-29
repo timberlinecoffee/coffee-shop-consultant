@@ -695,6 +695,9 @@ function ItemEditorPanel({
   onAddRecipeLine,
   onUpdateRecipeLine,
   onDeleteRecipeLine,
+  onSuggestRecipe,
+  recipeLoading,
+  recipeError,
   onSuggestPrice,
   priceLoading,
   priceSuggestion,
@@ -717,6 +720,9 @@ function ItemEditorPanel({
     patch: { amount?: number; unit?: IngredientUnit }
   ) => Promise<void>;
   onDeleteRecipeLine: (id: string) => Promise<void>;
+  onSuggestRecipe: () => Promise<void>;
+  recipeLoading: boolean;
+  recipeError: string | null;
   onSuggestPrice: () => Promise<void>;
   priceLoading: boolean;
   priceSuggestion: PriceSuggestion | null;
@@ -867,6 +873,54 @@ function ItemEditorPanel({
 
         <div>
           <p className={sectionLabelCls}>Recipe</p>
+
+          {canEdit && (
+            <div className="mb-3">
+              <button
+                type="button"
+                onClick={onSuggestRecipe}
+                disabled={recipeLoading || name.trim().length === 0}
+                title={
+                  name.trim().length === 0
+                    ? "Name the item first"
+                    : "Suggest a starting recipe with AI"
+                }
+                className="flex items-center gap-2 text-xs font-semibold text-[#155e63] bg-[#f0f8f8] border border-[#cfe0e1] px-3 py-2 rounded-lg hover:bg-[#e4f1f1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {recipeLoading ? (
+                  <svg
+                    className="animate-spin w-3.5 h-3.5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeDasharray="31.4"
+                      strokeDashoffset="10"
+                    />
+                  </svg>
+                ) : (
+                  <Sparkles size={13} />
+                )}
+                {recipeLoading ? "Building recipe…" : "Suggest recipe with AI"}
+              </button>
+              {name.trim().length === 0 && (
+                <p className="text-[11px] text-[#afafaf] mt-1.5">
+                  Add an item name above to get a recipe suggestion.
+                </p>
+              )}
+              {recipeError && (
+                <p className="text-[11px] text-[#c44] mt-1.5">{recipeError}</p>
+              )}
+              <p className="text-[11px] text-[#9a9a9a] mt-1.5 leading-relaxed">
+                AI fills in a standard build as a starting point. Edit or remove any line.
+              </p>
+            </div>
+          )}
 
           {recipeLines.length > 0 ? (
             <div className="space-y-2 mb-3">
@@ -1474,6 +1528,9 @@ interface MenuTabProps {
     patch: { amount?: number; unit?: IngredientUnit }
   ) => Promise<void>;
   onDeleteRecipeLine: (id: string) => Promise<void>;
+  onSuggestRecipe: (item: MenuItemWithCogs) => Promise<void>;
+  recipeLoading: boolean;
+  recipeError: string | null;
   onSuggestPrice: (item: MenuItemWithCogs) => Promise<void>;
   priceLoading: boolean;
   priceSuggestion: PriceSuggestion | null;
@@ -1494,6 +1551,7 @@ function MenuTab(props: MenuTabProps) {
     selectedItemId, expandedDefaultsCatId, onToggleDefaults,
     onSelectItem, onAddItem, onUpdateItem, onDeleteItem,
     onAddRecipeLine, onUpdateRecipeLine, onDeleteRecipeLine,
+    onSuggestRecipe, recipeLoading, recipeError,
     onSuggestPrice, priceLoading, priceSuggestion, onReorderItems,
     onAddCategory, onRenameCategory, onDeleteCategory,
     onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
@@ -1669,6 +1727,9 @@ function MenuTab(props: MenuTabProps) {
             }
             onUpdateRecipeLine={onUpdateRecipeLine}
             onDeleteRecipeLine={onDeleteRecipeLine}
+            onSuggestRecipe={() => onSuggestRecipe(selectedItem)}
+            recipeLoading={recipeLoading}
+            recipeError={recipeError}
             onSuggestPrice={() => onSuggestPrice(selectedItem)}
             priceLoading={priceLoading}
             priceSuggestion={priceSuggestion}
@@ -1846,6 +1907,8 @@ export function MenuWorkspace({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
+  const [recipeLoading, setRecipeLoading] = useState(false);
+  const [recipeError, setRecipeError] = useState<string | null>(null);
 
   const tabs: { id: Tab; label: string; Icon: typeof Utensils }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
@@ -2234,9 +2297,52 @@ export function MenuWorkspace({
     }
   }
 
+  // ── AI recipe starting point (TIM-1321) ──────────────────────────────────
+  async function suggestRecipe(item: MenuItemWithCogs) {
+    if (!item.name.trim()) return;
+    setRecipeLoading(true);
+    setRecipeError(null);
+    try {
+      const res = await fetch("/api/workspaces/menu-pricing/suggest-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_id: item.id,
+          item_name: item.name,
+          concept_context: conceptContext ?? {},
+        }),
+      });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        setRecipeError("Couldn't suggest a recipe. Try again in a moment.");
+        return;
+      }
+      const data = (await res.json()) as {
+        ingredients: MenuIngredient[];
+        lines: MenuItemIngredient[];
+      };
+      // Server reused/created the library ingredients and attached recipe lines.
+      // Replace the ingredient list and this item's lines, then refresh COGS.
+      setIngredients(data.ingredients);
+      setItemIngredients((prev) => [
+        ...prev.filter((ii) => ii.menu_item_id !== item.id),
+        ...data.lines,
+      ]);
+      await refetchItems();
+    } catch {
+      setRecipeError("Couldn't suggest a recipe. Try again in a moment.");
+    } finally {
+      setRecipeLoading(false);
+    }
+  }
+
   const handleSelectItem = useCallback((id: string | null) => {
     setSelectedItemId(id);
     setPriceSuggestion(null);
+    setRecipeError(null);
   }, []);
 
   return (
@@ -2292,6 +2398,9 @@ export function MenuWorkspace({
             onAddRecipeLine={addRecipeLine}
             onUpdateRecipeLine={updateRecipeLine}
             onDeleteRecipeLine={deleteRecipeLine}
+            onSuggestRecipe={suggestRecipe}
+            recipeLoading={recipeLoading}
+            recipeError={recipeError}
             onSuggestPrice={suggestPrice}
             priceLoading={priceLoading}
             priceSuggestion={priceSuggestion}
