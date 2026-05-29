@@ -23,10 +23,20 @@ import {
 // Short, plainspoken descriptor per phase — gives the grouping meaning without
 // reintroducing clutter. No emojis, no em dashes.
 const CATEGORY_BLURB: Record<WorkspaceCategory, string> = {
-  plan: "Get the idea and the numbers right.",
+  plan: "Get the concept and the numbers right before you commit.",
   setup: "Lock in the place, the menu, and the gear.",
   launch: "Hire, build buzz, and open the doors.",
-  operate: "Keep the shop running day to day.",
+  operate: "Keep the shop running smoothly once you are open.",
+};
+
+// Locked rows used to read "Coming soon", which is platform-speak (Voice
+// Mandate, TIM-196). Each phase unlocks once the preceding phase is in hand, so
+// the copy names that phase plainly. The first phase has nothing before it.
+const LOCKED_COPY: Record<WorkspaceCategory, string> = {
+  plan: "Available as you get started.",
+  setup: "Available after the Plan phase.",
+  launch: "Available after the Set Up phase.",
+  operate: "Available after the Launch phase.",
 };
 
 function statusDotClass(status: WorkspaceStatus): string {
@@ -53,10 +63,11 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
   const Icon = WORKSPACE_ICONS[item.icon];
 
   if (!item.isUnlocked) {
+    const lockedCopy = LOCKED_COPY[item.category];
     return (
       <div
         aria-disabled="true"
-        title="Coming soon"
+        title={lockedCopy}
         className="flex items-center gap-4 px-4 py-3.5 select-none"
       >
         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#f5f4f0] text-[#c0c0c0]">
@@ -64,7 +75,7 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium text-[#afafaf]">{item.label}</span>
-          <span className="mt-0.5 block text-[13px] leading-snug text-[#c4c4c4]">Coming soon</span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-[#c4c4c4]">{lockedCopy}</span>
         </span>
       </div>
     );
@@ -80,20 +91,19 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="text-sm font-medium text-[#1a1a1a] transition-colors group-hover:text-[#155e63]">
-            {item.label}
-          </span>
-          <span
-            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${statusDotClass(item.status)}`}
-            aria-hidden="true"
-          />
-          <span className="sr-only">{WORKSPACE_STATUS_LABEL[item.status]}</span>
+        <span className="block text-sm font-medium text-[#1a1a1a] transition-colors group-hover:text-[#155e63]">
+          {item.label}
         </span>
         <span className="mt-0.5 block text-[13px] leading-snug text-[#6b6b6b]">
           {item.blurb}
         </span>
       </span>
+
+      <span
+        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${statusDotClass(item.status)}`}
+        aria-hidden="true"
+      />
+      <span className="sr-only">{WORKSPACE_STATUS_LABEL[item.status]}</span>
 
       <ChevronRight
         size={18}
@@ -107,10 +117,6 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
 export function WorkspaceNav({ items }: { items: WorkspaceNavItem[] }) {
   return (
     <div className="mb-10">
-      <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#afafaf]">
-        Your Workspaces
-      </p>
-
       <div className="space-y-6">
         {WORKSPACE_CATEGORY_ORDER.map((category) => {
           const groupItems = items.filter((item) => item.category === category);
