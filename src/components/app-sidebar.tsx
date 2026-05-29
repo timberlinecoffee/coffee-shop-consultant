@@ -104,18 +104,6 @@ function AccountIcon() {
   );
 }
 
-// TIM-1062
-function ExportPlanIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="12" y1="18" x2="12" y2="12" />
-      <polyline points="9 15 12 12 15 15" />
-    </svg>
-  );
-}
-
 // TIM-1213
 function EyeIcon() {
   return (
@@ -542,127 +530,98 @@ function SidebarContent({
         })}
       </nav>
 
-      {/* TIM-1062: Export Business Plan — single entry point from any workspace */}
-      <div className={`border-t border-[#efefef] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+      {/* TIM-1351: compact footer — Account icon + quiet Show Progress toggle,
+          consolidated into one light row. Collapse control rides along on the
+          right in desktop (expanded) mode. */}
+      <div
+        className={`border-t border-[#efefef] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}
+      >
         {collapsed ? (
-          <Link
-            href="/workspace/business-plan/print"
-            target="_blank"
-            title="Export Business Plan"
-            onClick={onClose}
-            className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-[#155e63] hover:bg-[#155e63]/5 transition-colors"
-          >
-            <ExportPlanIcon />
-          </Link>
-        ) : (
-          <Link
-            href="/workspace/business-plan/print"
-            target="_blank"
-            onClick={onClose}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#155e63] hover:bg-[#155e63]/5 transition-colors"
-          >
-            <ExportPlanIcon />
-            Export Business Plan
-          </Link>
-        )}
-      </div>
-
-      {/* Account link */}
-      <div className={`border-t border-[#efefef] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
-        {collapsed ? (
-          <Link
-            href="/account"
-            title="Account"
-            aria-current={pathname.startsWith("/account") ? "page" : undefined}
-            onClick={onClose}
-            className={`flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-colors ${
-              pathname.startsWith("/account")
-                ? "bg-[#155e63]/10 text-[#155e63]"
-                : "text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a]"
-            }`}
-          >
-            <AccountIcon />
-          </Link>
-        ) : (
-          <Link
-            href="/account"
-            aria-current={pathname.startsWith("/account") ? "page" : undefined}
-            onClick={onClose}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname.startsWith("/account")
-                ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
-                : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
-            }`}
-          >
-            <AccountIcon />
-            Account
-          </Link>
-        )}
-      </div>
-
-      {/* TIM-1213: status visibility toggle (Menu mode vs Status mode) */}
-      <div className={`border-t border-[#efefef] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
-        {collapsed ? (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={showStatus}
-            onClick={toggleShowStatus}
-            title={showStatus ? "Hide Progress" : "Show Progress"}
-            aria-label={showStatus ? "Hide Progress" : "Show Progress"}
-            className={`flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-colors ${
-              showStatus
-                ? "text-[#155e63] bg-[#155e63]/5"
-                : "text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0]"
-            }`}
-          >
-            {showStatus ? <EyeIcon /> : <EyeOffIcon />}
-          </button>
-        ) : (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={showStatus}
-            onClick={toggleShowStatus}
-            title={showStatus ? "Hide Progress" : "Show Progress"}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a] transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              {showStatus ? <EyeIcon /> : <EyeOffIcon />}
-              <span className="text-xs">Show Progress</span>
-            </span>
-            <span
-              aria-hidden="true"
-              className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${
-                showStatus ? "bg-[#155e63]" : "bg-[#d6d3cd]"
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/account"
+              title="Account"
+              aria-label="Account"
+              aria-current={pathname.startsWith("/account") ? "page" : undefined}
+              onClick={onClose}
+              className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors ${
+                pathname.startsWith("/account")
+                  ? "bg-[#155e63]/10 text-[#155e63]"
+                  : "text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a]"
               }`}
             >
-              <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${
-                  showStatus ? "translate-x-3.5" : "translate-x-0.5"
-                }`}
-              />
-            </span>
-          </button>
+              <AccountIcon />
+            </Link>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showStatus}
+              onClick={toggleShowStatus}
+              title={showStatus ? "Hide Progress" : "Show Progress"}
+              aria-label={showStatus ? "Hide Progress" : "Show Progress"}
+              className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors ${
+                showStatus
+                  ? "text-[#155e63] bg-[#155e63]/5"
+                  : "text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0]"
+              }`}
+            >
+              {showStatus ? <EyeIcon /> : <EyeOffIcon />}
+            </button>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+                className="flex items-center justify-center w-10 h-10 rounded-lg text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0] transition-colors"
+              >
+                <CollapseIcon flipped />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <Link
+              href="/account"
+              title="Account"
+              aria-label="Account"
+              aria-current={pathname.startsWith("/account") ? "page" : undefined}
+              onClick={onClose}
+              className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                pathname.startsWith("/account")
+                  ? "bg-[#155e63]/10 text-[#155e63]"
+                  : "text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a]"
+              }`}
+            >
+              <AccountIcon />
+            </Link>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showStatus}
+              onClick={toggleShowStatus}
+              title={showStatus ? "Hide Progress" : "Show Progress"}
+              aria-label={showStatus ? "Hide Progress" : "Show Progress"}
+              className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                showStatus
+                  ? "text-[#155e63] bg-[#155e63]/5"
+                  : "text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0]"
+              }`}
+            >
+              {showStatus ? <EyeIcon /> : <EyeOffIcon />}
+            </button>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                className="ml-auto flex items-center justify-center w-9 h-9 rounded-lg text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0] transition-colors"
+              >
+                <CollapseIcon />
+              </button>
+            )}
+          </div>
         )}
       </div>
-
-      {/* Desktop collapse toggle */}
-      {onToggleCollapse && (
-        <div className={`border-t border-[#efefef] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
-          <button
-            onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`flex items-center rounded-lg text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0] transition-colors py-2 ${
-              collapsed ? "justify-center w-10 h-10 mx-auto" : "gap-2 px-3 w-full"
-            }`}
-          >
-            <CollapseIcon flipped={collapsed} />
-            {!collapsed && <span className="text-xs">Collapse</span>}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
