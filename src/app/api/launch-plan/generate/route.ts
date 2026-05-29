@@ -7,6 +7,7 @@ export const maxDuration = 60
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
+import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
@@ -236,8 +237,8 @@ export async function POST(request: NextRequest) {
           targetDate.setDate(targetDate.getDate() - (m.days_before_launch ?? 0))
           return {
             plan_id: planId,
-            title: m.title ?? "Untitled Milestone",
-            description: m.description ?? null,
+            title: normalizeAIOutput(m.title ?? "Untitled Milestone"),
+            description: m.description ? normalizeAIOutput(m.description) : null,
             track: m.track,
             target_date: targetDate.toISOString().slice(0, 10),
             status: "not_started" as const,
@@ -245,7 +246,7 @@ export async function POST(request: NextRequest) {
             depends_on_milestone_ids: [],
             critical_path: m.critical_path ?? false,
             owner: m.owner ?? "founder",
-            ai_notes: m.ai_notes ?? null,
+            ai_notes: m.ai_notes ? normalizeAIOutput(m.ai_notes) : null,
             user_edited: false,
             source: "ai_generated" as const,
             order_index: userEditedIds.length + idx,

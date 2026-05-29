@@ -9,6 +9,7 @@ export const maxDuration = 60;
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { toTitleCase } from "@/lib/text";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
 import { normalizeMonthlyProjections, totalCapexCents } from "@/lib/financial-projection";
@@ -194,8 +195,8 @@ Return ONLY valid JSON, no markdown:
 
     return {
       item_id: rec.item_id,
-      recommended_brand: rec.recommended_brand,
-      recommended_model: rec.recommended_model,
+      recommended_brand: toTitleCase(rec.recommended_brand),
+      recommended_model: toTitleCase(rec.recommended_model),
       estimated_price_cents: rec.estimated_price_cents,
       referral_url: match?.referral_url ?? null,
       partner_name: match?.partner_name || null,
