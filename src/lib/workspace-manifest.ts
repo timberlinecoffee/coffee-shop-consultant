@@ -1,8 +1,8 @@
-import { AVAILABLE_MODULES } from "./modules";
+import { AVAILABLE_MODULES } from "./modules.ts";
 import {
   planReadinessPctFromStatuses,
   type WorkspaceStatus,
-} from "./workspace-status";
+} from "./workspace-status.ts";
 
 export type NavIcon =
   | "lightbulb"

@@ -37,15 +37,28 @@ test("Module 3 (Location & Lease) is navigable — sections shipped in TIM-908",
   );
 });
 
-test("dashboard computes plan readiness through computePlanReadiness", () => {
-  // TIM-903: readiness score must go through the shared formula so locked modules
-  // are weighted in the denominator, preventing 100% on a near-empty plan.
-  const src = read("src/app/dashboard/page.tsx");
-  assert.match(
-    src,
-    /computePlanReadiness/,
-    "dashboard must call computePlanReadiness for the overall readiness score"
+test("computePlanReadiness rolls readiness up through the shared formula", async () => {
+  // TIM-903 invariant: readiness must go through the shared formula so unset /
+  // locked workspaces sit in the denominator and a near-empty plan can never
+  // report 100%. TIM-1329: this was a source-string grep of dashboard/page.tsx,
+  // which broke when the dashboard was refactored (TIM-1063 / TIM-1286) to read
+  // the precomputed `readiness_score` instead of calling the formula inline.
+  // Pin the formula's behavior directly so it survives UI refactors.
+  const { computePlanReadiness, WORKSPACE_MANIFEST } = await import(
+    "./workspace-manifest.ts"
   );
+  const { AVAILABLE_MODULES } = await import("./modules.ts");
+
+  // Near-empty plan → 0%, never 100%.
+  assert.equal(computePlanReadiness(new Map()).pct, 0);
+
+  // Every unlocked workspace complete → 100%.
+  const allComplete = new Map(
+    WORKSPACE_MANIFEST.filter((item) => AVAILABLE_MODULES.has(item.moduleNumber)).map(
+      (item) => [item.workspaceKey, "complete"]
+    )
+  );
+  assert.equal(computePlanReadiness(allComplete).pct, 100);
 });
 
 test("AVAILABLE_MODULES includes all modules with shipped content (1, 2, 3)", () => {
