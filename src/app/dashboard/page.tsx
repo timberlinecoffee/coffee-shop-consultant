@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { buildNavItems } from "@/lib/workspace-manifest";
+import { buildLaunchReadiness } from "@/lib/launch-readiness";
 import { capitalizeFirst } from "@/lib/format";
 import {
   buildRecentActivity,
@@ -20,6 +21,7 @@ import {
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { ProgressDashboard } from "./_components/progress-dashboard";
 import { DashboardHero } from "./_components/dashboard-hero";
+import { LaunchReadinessCard } from "./_components/launch-readiness";
 import { WorkspaceNav } from "./_components/workspace-nav";
 
 export const dynamic = 'force-dynamic';
@@ -95,6 +97,11 @@ export default async function DashboardPage() {
   // TIM-1268: workspace nav grouped by category, mirroring the sidebar. Uses
   // the shared manifest source of truth so the grouping cannot drift.
   const navItems = buildNavItems(statusByKey);
+
+  // TIM-1373: Launch Readiness ring + per-workspace chips. Same denominator as
+  // the workspace nav (unlocked workspaces only) so the headline percent and
+  // the chips can't disagree.
+  const launchReadiness = buildLaunchReadiness(statusByKey);
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
@@ -182,6 +189,10 @@ export default async function DashboardPage() {
 
         {/* TIM-1268: personable hero — time-of-day greeting + rotating fact. */}
         <DashboardHero firstName={firstName} />
+
+        {/* TIM-1373: Launch Readiness — overall progress ring + per-workspace
+            chips that double as a next-best-action nav affordance. */}
+        <LaunchReadinessCard readiness={launchReadiness} />
 
         {/* TIM-1268: workspace display grouped by category, mirroring the
             sidebar. Replaces the old numbered "Start Here" + "Coming Up" lists. */}
