@@ -1,4 +1,5 @@
 import { Font } from "@react-pdf/renderer"
+import path from "path"
 
 export const BRAND = {
   colors: {
@@ -26,35 +27,22 @@ export function registerFonts() {
   if (fontsRegistered) return
   fontsRegistered = true
 
+  const fontsDir = path.join(process.cwd(), "public", "fonts")
+
   Font.register({
     family: "Inter",
     fonts: [
-      {
-        src: "https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2",
-        fontWeight: 400,
-      },
-      {
-        src: "https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYAZ9hiA.woff2",
-        fontWeight: 600,
-      },
-      {
-        src: "https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hiA.woff2",
-        fontWeight: 700,
-      },
+      { src: path.join(fontsDir, "inter-regular.woff2"), fontWeight: 400 },
+      { src: path.join(fontsDir, "inter-semibold.woff2"), fontWeight: 600 },
+      { src: path.join(fontsDir, "inter-bold.woff2"), fontWeight: 700 },
     ],
   })
 
   Font.register({
     family: "Source Serif Pro",
     fonts: [
-      {
-        src: "https://fonts.gstatic.com/s/sourceserifpro/v18/neIQzD-0qpwxpaWvjeD0X88SAOeauXQ-oA.woff2",
-        fontWeight: 400,
-      },
-      {
-        src: "https://fonts.gstatic.com/s/sourceserifpro/v18/neIXzD-0qpwxpaWvjeD0X88SAOeasasatSyqxA.woff2",
-        fontWeight: 600,
-      },
+      { src: path.join(fontsDir, "source-serif-pro-regular.woff2"), fontWeight: 400 },
+      { src: path.join(fontsDir, "source-serif-pro-semibold.woff2"), fontWeight: 600 },
     ],
   })
 }
