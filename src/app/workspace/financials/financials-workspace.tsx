@@ -1472,6 +1472,45 @@ function RevenueChart({
   );
 }
 
+// TIM-1311: top-of-page summary for the Salaries tab, matching the P&L revenue
+// chart (TIM-1261). Year 1 monthly total payroll, stacked into service labor
+// (counted inside COGS) vs. overhead labor (the P&L "Labor" opex line). Hidden
+// when there is no personnel cost modeled.
+function PayrollSummaryChart({
+  slices,
+  fiscalYearStartMonth,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  fiscalYearStartMonth: number;
+  currencyCode: string;
+}) {
+  const y1 = slices.filter((s) => s.year === 1);
+  if (y1.length === 0) return null;
+  const totalPayroll = y1.reduce((sum, s) => sum + (s.labor_cogs_cents ?? 0) + (s.labor_cents ?? 0), 0);
+  if (totalPayroll === 0) return null;
+  const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
+  const data = y1.map((s, i) => ({
+    label: labels[i] ?? `M${i + 1}`,
+    service_labor: s.labor_cogs_cents ?? 0,
+    overhead_labor: s.labor_cents ?? 0,
+  }));
+  const series = [
+    { key: "service_labor", label: "Service Labor (COGS)", color: CHART_COLORS.warning },
+    { key: "overhead_labor", label: "Overhead Labor", color: CHART_COLORS.primary },
+  ];
+  return (
+    <div className="mb-6">
+      <ChartCard
+        title="Year 1 Monthly Payroll"
+        description="Total payroll for each month of your first operating year, split into service labor (counted in COGS) and overhead labor."
+      >
+        <FinancialBarChart data={data} series={series} currencyCode={currencyCode} height={240} />
+      </ChartCard>
+    </div>
+  );
+}
+
 function ProjectionsTab({
   projections,
   slices,
@@ -2212,6 +2251,11 @@ export function FinancialsWorkspace({
         )}
         {activeTab === "personnel" && (
           <>
+            <PayrollSummaryChart
+              slices={slices}
+              fiscalYearStartMonth={fiscalYearStartMonth}
+              currencyCode={currencyCode}
+            />
             <OrgSyncPanel
               personnel={mp.personnel ?? []}
               enabled={mp.org_sync_enabled ?? false}

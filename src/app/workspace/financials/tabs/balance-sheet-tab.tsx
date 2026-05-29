@@ -11,6 +11,7 @@ import {
 import {
   ChartCard,
   FinancialBarChart,
+  FinancialComboChart,
   FinancialLineChart,
   ViewModeToggle,
   CHART_COLORS,
@@ -52,6 +53,49 @@ function BSRow({ label, values, bold, indent, highlight, negative, currencyCode 
         );
       })}
     </tr>
+  );
+}
+
+// TIM-1311: always-visible top-of-page summary, matching the P&L revenue chart
+// (TIM-1261). Fixed to Year 1 monthly. Liabilities + equity stack to the line of
+// total assets, so a reader sees both how the asset base grows and how it is
+// financed. The in-tab chart toggle (TIM-1120) stays for deeper views.
+function BalanceSheetSummaryChart({
+  slices,
+  fiscalYearStartMonth,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  fiscalYearStartMonth: number;
+  currencyCode: string;
+}) {
+  const y1 = slices.filter((s) => s.year === 1);
+  if (y1.length === 0) return null;
+  const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
+  const data: ChartDatum[] = y1.map((s, i) => ({
+    label: labels[i] ?? `M${i + 1}`,
+    total_liabilities: s.total_liabilities_cents,
+    total_equity: s.total_equity_cents,
+    total_assets: s.total_assets_cents,
+  }));
+  return (
+    <div className="mb-4">
+      <ChartCard
+        title="Year 1 Assets vs. Financing"
+        description="How your asset base is funded each month. Liabilities and equity stack up to the total-assets line when the books balance."
+      >
+        <FinancialComboChart
+          data={data}
+          barSeries={[
+            { key: "total_liabilities", label: "Liabilities", color: CHART_COLORS.negative },
+            { key: "total_equity", label: "Equity", color: CHART_COLORS.primary },
+          ]}
+          lineSeries={[{ key: "total_assets", label: "Total Assets", color: CHART_COLORS.warning }]}
+          currencyCode={currencyCode}
+          height={260}
+        />
+      </ChartCard>
+    </div>
   );
 }
 
@@ -149,6 +193,7 @@ export function BalanceSheetTab({
 
   return (
     <div>
+      <BalanceSheetSummaryChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">

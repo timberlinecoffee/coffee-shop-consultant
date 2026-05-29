@@ -91,6 +91,44 @@ function CashRunwayBanner({
   );
 }
 
+// TIM-1311: always-visible top-of-page summary, matching the P&L revenue chart
+// (TIM-1261). Fixed to Year 1 monthly so it reads as a stable headline trend
+// regardless of the table's period/year selection. The in-tab chart toggle
+// (TIM-1120) stays for deeper views.
+function CashSummaryChart({
+  slices,
+  fiscalYearStartMonth,
+  currencyCode,
+}: {
+  slices: MonthlySlice[];
+  fiscalYearStartMonth: number;
+  currencyCode: string;
+}) {
+  const y1 = slices.filter((s) => s.year === 1);
+  if (y1.length === 0) return null;
+  const labels = fiscalYearMonthLabels(fiscalYearStartMonth);
+  const data: ChartDatum[] = y1.map((s, i) => ({
+    label: labels[i] ?? `M${i + 1}`,
+    ending_cash: s.cash_cents,
+  }));
+  return (
+    <div className="mb-4">
+      <ChartCard
+        title="Year 1 Ending Cash Balance"
+        description="Where your cash lands at the end of each month of your first operating year. Watch for any dip toward or below zero."
+      >
+        <FinancialLineChart
+          data={data}
+          series={[{ key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary }]}
+          currencyCode={currencyCode}
+          height={240}
+          showZero
+        />
+      </ChartCard>
+    </div>
+  );
+}
+
 function SectionHeader({ label, colCount }: { label: string; colCount: number }) {
   return (
     <tr>
@@ -215,6 +253,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
   return (
     <div>
       <CashRunwayBanner slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
+      <CashSummaryChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
