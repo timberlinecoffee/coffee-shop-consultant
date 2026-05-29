@@ -78,17 +78,19 @@ type ColDef = {
 };
 
 // TIM-1215: default order puts Cost right after Name/Model so name→attrs→price reads naturally.
+// TIM-1327: useful_life_years column added — editable per item, shows inline annual depreciation.
 const EQUIPMENT_COLS: ColDef[] = [
-  { id: "drag",             label: "",          defaultWidth: 28,  resizable: false, toggleable: false },
-  { id: "name",             label: "Name",      defaultWidth: 200, resizable: true,  toggleable: false },
-  { id: "vendor",           label: "Brand",     defaultWidth: 130, resizable: true,  toggleable: true  },
-  { id: "model",            label: "Model",     defaultWidth: 130, resizable: true,  toggleable: true  },
-  { id: "unit_cost_cents",  label: "Cost",      defaultWidth: 110, resizable: true,  toggleable: true,  costClass: true },
-  { id: "financing_method", label: "Financing", defaultWidth: 130, resizable: true,  toggleable: true  },
-  { id: "category",         label: "Category",  defaultWidth: 160, resizable: true,  toggleable: true  },
-  { id: "supplier",         label: "Vendor",    defaultWidth: 150, resizable: true,  toggleable: true  },
-  { id: "notes",            label: "Notes",     defaultWidth: 180, resizable: true,  toggleable: true  },
-  { id: "actions",          label: "",          defaultWidth: 32,  resizable: false, toggleable: false },
+  { id: "drag",               label: "",            defaultWidth: 28,  resizable: false, toggleable: false },
+  { id: "name",               label: "Name",        defaultWidth: 200, resizable: true,  toggleable: false },
+  { id: "vendor",             label: "Brand",       defaultWidth: 130, resizable: true,  toggleable: true  },
+  { id: "model",              label: "Model",       defaultWidth: 130, resizable: true,  toggleable: true  },
+  { id: "unit_cost_cents",    label: "Cost",        defaultWidth: 110, resizable: true,  toggleable: true,  costClass: true },
+  { id: "useful_life_years",  label: "Life (yr)",   defaultWidth: 110, resizable: true,  toggleable: true  },
+  { id: "financing_method",   label: "Financing",   defaultWidth: 130, resizable: true,  toggleable: true  },
+  { id: "category",           label: "Category",    defaultWidth: 160, resizable: true,  toggleable: true  },
+  { id: "supplier",           label: "Vendor",      defaultWidth: 150, resizable: true,  toggleable: true  },
+  { id: "notes",              label: "Notes",       defaultWidth: 180, resizable: true,  toggleable: true  },
+  { id: "actions",            label: "",            defaultWidth: 32,  resizable: false, toggleable: false },
 ];
 
 const SUPPLIES_COLS: ColDef[] = [
@@ -283,6 +285,49 @@ function SelectInput({
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
+  );
+}
+
+// TIM-1327: editable useful-life field with inline annual-depreciation badge.
+function UsefulLifeInput({
+  years, totalCostCents, disabled, onCommit,
+}: { years: number; totalCostCents: number; disabled: boolean; onCommit: (years: number) => void }) {
+  const [draft, setDraft] = useState(String(years));
+  useEffect(() => { setDraft(String(years)); }, [years]);
+
+  function commit() {
+    const parsed = parseInt(draft, 10);
+    const clamped = isNaN(parsed) ? 7 : Math.min(50, Math.max(1, parsed));
+    setDraft(String(clamped));
+    onCommit(clamped);
+  }
+
+  const annualDepreciation =
+    totalCostCents > 0 && years > 0
+      ? Math.round(totalCostCents / 100 / years)
+      : 0;
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <input
+        type="number"
+        min={1}
+        max={50}
+        step={1}
+        className="w-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+        value={draft}
+        placeholder="7"
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
+      />
+      {annualDepreciation > 0 && (
+        <span className="text-[10px] text-[#afafaf] leading-tight whitespace-nowrap">
+          ${annualDepreciation.toLocaleString()}/yr
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -690,6 +735,18 @@ function SortableRow({
             />
           </td>
         );
+
+      case "useful_life_years":
+        return eq ? (
+          <td key="useful_life_years" className={cellCls} style={{ width: colWidths.get("useful_life_years") }}>
+            <UsefulLifeInput
+              years={eq.useful_life_years ?? 7}
+              totalCostCents={eq.unit_cost_cents * eq.quantity}
+              disabled={!canEdit}
+              onCommit={(years) => onUpdate(item.id, { useful_life_years: years } as Partial<AnyItem>)}
+            />
+          </td>
+        ) : null;
 
       case "financing_method":
         return eq ? (
