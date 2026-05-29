@@ -483,7 +483,7 @@ function RoleRow({
             <span className="text-xs font-semibold text-[#155e63]">Job Description</span>
             {jdFields?.summary && !jdOpen && (
               <span className="text-xs text-[#afafaf] truncate">
-                {"— "}{jdFields.summary.replace(/\n/g, " ").substring(0, 80)}
+                {jdFields.summary.replace(/\n/g, " ").substring(0, 80)}
               </span>
             )}
           </div>
