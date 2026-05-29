@@ -1,0 +1,4 @@
+{
+  "$comment": "TIM-1356 / AI-CONTENT-NORMALIZATION.md. Opt-in terms allowed to keep non-standard casing past normalize.*. Reviewed in PR; do not add to bypass normalization for laziness.",
+  "exemptions": []
+}

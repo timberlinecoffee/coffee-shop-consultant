@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:normalize": "eslint --no-config-lookup --config eslint.normalize.config.mjs 'src/**/*.ts' 'src/**/*.tsx' 'scripts/**/*.js' 'scripts/**/*.mjs'",
     "test": "node --experimental-strip-types --no-warnings --test --test-reporter=spec 'src/**/*.test.mjs'",
     "test:smoke": "node scripts/smoke.mjs",
     "check:links": "node scripts/check-links.mjs",

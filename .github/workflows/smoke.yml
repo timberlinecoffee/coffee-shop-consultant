@@ -15,3 +15,25 @@ jobs:
         with:
           node-version: "20"
       - run: node scripts/check-links.mjs
+
+  normalize-lint:
+    name: AI content normalization gate (TIM-1356)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:normalize
+
+  normalize-tests:
+    name: Normalize unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node --experimental-strip-types --no-warnings --test --test-reporter=spec src/lib/normalize.test.mjs

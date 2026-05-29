@@ -1,0 +1,52 @@
+name: Vercel production-target guardrail
+
+# Codifies TIM-985 as CI. Production deploys come from the Vercel Git
+# integration on `main` only. A `target: production` (or `--prod` / `vercel
+# promote`) deploy must NEVER fire from a non-main ref — stale feature branches
+# promoted to prod reverted the production landing page (TIM-985 / TIM-805).
+#
+# This job FAILS a non-main branch that introduces a production-target deploy in
+# any CI/script/config surface. On `main`, prod deploys are allowed (handled by
+# the Git integration), so the guard passes.
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  prod-target-guard:
+    name: No prod-target deploy from non-main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce production-target only on main
+        run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          echo "Evaluating ref: $BRANCH"
+
+          if [ "$BRANCH" = "main" ]; then
+            echo "✓ On main — production deploys are allowed (Vercel Git integration)."
+            exit 0
+          fi
+
+          # Surfaces that could trigger a deploy. Docs (*.md) are excluded — they
+          # describe the policy in prose. This guard file is excluded too.
+          HITS=$(grep -rnIE \
+            --include='*.yml' --include='*.yaml' \
+            --include='*.sh' --include='*.mjs' --include='*.js' --include='*.ts' \
+            --include='*.json' \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git \
+            -e '--prod([^a-zA-Z]|$)' \
+            -e 'vercel[[:space:]]+promote' \
+            -e '"?target"?[[:space:]]*:[[:space:]]*"?production"?' \
+            . 2>/dev/null \
+            | grep -v 'vercel-prod-guard.yml' || true)
+
+          if [ -n "$HITS" ]; then
+            echo "::error::Production-target deploy found on non-main branch '$BRANCH'. Feature branches deploy to PREVIEW only (TIM-985). Promote to prod by merging to main."
+            echo "$HITS"
+            exit 1
+          fi
+
+          echo "✓ No production-target deploy on '$BRANCH' — preview-only, as required."
