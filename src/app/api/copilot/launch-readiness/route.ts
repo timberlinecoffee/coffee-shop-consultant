@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
+import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -87,6 +88,37 @@ Rules:
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+}
+
+// Normalize the user-facing string fields of the readiness verdict at the
+// generation boundary (blockers, next actions, critical-path action/owner).
+// Status/key enums and dates are left untouched.
+function normalizeStrings(arr: unknown): unknown {
+  return Array.isArray(arr) ? arr.map((s) => (typeof s === "string" ? normalizeAIOutput(s) : s)) : arr
+}
+function normalizeReadiness(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value
+  const v = value as Record<string, unknown>
+  const out: Record<string, unknown> = { ...v }
+  if (Array.isArray(v.perWorkspace)) {
+    out.perWorkspace = v.perWorkspace.map((w) => {
+      if (!w || typeof w !== "object") return w
+      const ws = w as Record<string, unknown>
+      return { ...ws, blockers: normalizeStrings(ws.blockers), topNextActions: normalizeStrings(ws.topNextActions) }
+    })
+  }
+  if (Array.isArray(v.criticalPath)) {
+    out.criticalPath = v.criticalPath.map((c) => {
+      if (!c || typeof c !== "object") return c
+      const cp = c as Record<string, unknown>
+      return {
+        ...cp,
+        action: typeof cp.action === "string" ? normalizeAIOutput(cp.action) : cp.action,
+        owner: typeof cp.owner === "string" ? normalizeAIOutput(cp.owner) : cp.owner,
+      }
+    })
+  }
+  return out
 }
 
 // ── Route ─────────────────────────────────────────────────────────────────────
@@ -270,7 +302,7 @@ export async function POST(request: NextRequest) {
           try {
             // Strip any accidental markdown fences
             const cleaned = fullText.trim().replace(/^```json\n?/, "").replace(/\n?```$/, "")
-            parsed = JSON.parse(cleaned)
+            parsed = normalizeReadiness(JSON.parse(cleaned))
           } catch {
             send(sse("error", { code: "parse_error", message: "AI returned malformed JSON. Please try again." }))
             send(sse("done", {}))

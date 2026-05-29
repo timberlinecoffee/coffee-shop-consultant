@@ -10,6 +10,7 @@ export const maxDuration = 30;
 
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import {
   type OperationsPlaybookDocument,
@@ -169,13 +170,13 @@ function parseAiCategory(raw: string): SopCategory | null {
       intro?: unknown;
       items?: unknown;
     };
-    const intro = typeof obj.intro === "string" ? obj.intro : "";
+    const intro = typeof obj.intro === "string" ? normalizeAIOutput(obj.intro) : "";
     const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
     const items: SopChecklistItem[] = itemsRaw
       .map((r) => {
         if (!r || typeof r !== "object") return null;
         const rec = r as Record<string, unknown>;
-        const text = typeof rec.text === "string" ? rec.text : "";
+        const text = typeof rec.text === "string" ? normalizeAIOutput(rec.text) : "";
         if (!text) return null;
         const dur = rec.duration_min;
         const station = rec.station;

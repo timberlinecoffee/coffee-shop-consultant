@@ -2,6 +2,7 @@
 // TIM-1020: Concept-aware pricing — location, positioning, regional benchmarks, margin floor, range output.
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 
 export const runtime = "nodejs"
@@ -261,7 +262,7 @@ Return ONLY the JSON object, no other text.`
       low_cents: lowCents,
       high_cents: highCents,
       margin_pct: marginAtSuggested,
-      commentary: String(parsed.commentary ?? ""),
+      commentary: normalizeAIOutput(String(parsed.commentary ?? "")),
     })
   } catch (err) {
     console.error("suggest-price error:", err)
