@@ -1,6 +1,8 @@
 // TIM-1140: Categories are per-plan rows in menu_categories (not a hard-coded enum).
 // 'piece' joins the existing unit set for items measured by count.
 
+import type { ExpectedPopularity } from './menu-engineering'
+
 export type IngredientUnit = 'g' | 'ml' | 'oz' | 'each' | 'piece'
 
 export const UNIT_OPTIONS: { value: IngredientUnit; label: string }[] = [
@@ -30,6 +32,9 @@ export type MenuItem = {
   price_cents: number
   cogs_cents: number | null
   expected_mix_pct: number
+  // TIM-1322: owner's popularity estimate (no POS history pre-launch). Feeds
+  // the menu-engineering matrix. null = not estimated yet.
+  expected_popularity: ExpectedPopularity | null
   prep_time_seconds: number | null
   notes: string | null
   recipe: Record<string, unknown>
