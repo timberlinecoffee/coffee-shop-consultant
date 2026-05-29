@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare } from "lucide-react";
-import { formatCurrency } from "@/lib/financial-projection";
+import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -32,6 +32,7 @@ interface Props {
   initialTrialMessagesUsed?: number;
   initialNeedsReviewAt: string | null;
   initialModelUpdatedAtForReview: string | null;
+  initialCurrencyCode?: string;
 }
 
 type SaveState =
@@ -128,6 +129,7 @@ export function BuildoutEquipmentWorkspace({
   initialTrialMessagesUsed,
   initialNeedsReviewAt,
   initialModelUpdatedAtForReview,
+  initialCurrencyCode = "USD",
 }: Props) {
   const [equipment, setEquipment] = useState<EquipmentItem[]>(initialEquipment);
   const [sections, setSections] = useState<ListSection[]>(initialSections);
@@ -284,7 +286,7 @@ export function BuildoutEquipmentWorkspace({
           <div className="px-6 py-3 flex items-center gap-6">
             <div>
               <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Grand Total</p>
-              <p className="text-xl font-bold text-[#155e63]">{formatCurrency(grandTotalCents / 100)}</p>
+              <p className="text-xl font-bold text-[#155e63]">{formatCurrencyAmount(grandTotalCents / 100, initialCurrencyCode)}</p>
             </div>
             {stationCount > 0 && (
               <>
@@ -402,6 +404,7 @@ export function BuildoutEquipmentWorkspace({
           onItemsChange={handleEquipmentChange}
           onSectionsChange={handleSectionsChange}
           recommendations={recommendations}
+          currencyCode={initialCurrencyCode}
         />
       </div>
 

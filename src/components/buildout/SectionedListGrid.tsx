@@ -59,7 +59,7 @@ import {
 import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
-import { formatCurrency } from "@/lib/financial-projection";
+import { formatCurrencyAmount } from "@/lib/currency";
 import { type VendorCandidate, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
 
@@ -761,6 +761,7 @@ function SectionHeader({
   costVisible,
   canEdit,
   isDragging,
+  currencyCode,
   onToggleCollapse,
   onRename,
   onDelete,
@@ -772,6 +773,7 @@ function SectionHeader({
   costVisible: boolean;
   canEdit: boolean;
   isDragging: boolean;
+  currencyCode: string;
   onToggleCollapse: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -840,7 +842,7 @@ function SectionHeader({
 
           {costVisible && sectionTotal > 0 && (
             <span className="text-xs font-semibold text-[#155e63]">
-              {formatCurrency(sectionTotal / 100)}
+              {formatCurrencyAmount(sectionTotal / 100, currencyCode)}
             </span>
           )}
 
@@ -965,6 +967,7 @@ export interface SectionedListGridProps {
   onItemsChange: (items: AnyItem[]) => void;
   onSectionsChange: (sections: ListSection[]) => void;
   recommendations?: Map<string, EquipmentRecommendation>;
+  currencyCode?: string;
 }
 
 const AUTOSAVE_MS = 400;
@@ -978,6 +981,7 @@ export function SectionedListGrid({
   onItemsChange,
   onSectionsChange,
   recommendations,
+  currencyCode = "USD",
 }: SectionedListGridProps) {
   const cols = listType === "equipment" ? EQUIPMENT_COLS : SUPPLIES_COLS;
   const defaultColOrder = useMemo(() => cols.map((c) => c.id), [cols]);
@@ -1506,7 +1510,7 @@ export function SectionedListGrid({
               {costVisible && grandTotal > 0 && (
                 <>
                   <span className="text-[#efefef]">|</span>
-                  <span className="font-semibold text-[#1a1a1a]">Total: {formatCurrency(grandTotal / 100)}</span>
+                  <span className="font-semibold text-[#1a1a1a]">Total: {formatCurrencyAmount(grandTotal / 100, currencyCode)}</span>
                 </>
               )}
             </>
@@ -1677,6 +1681,7 @@ export function SectionedListGrid({
                         costVisible={costVisible}
                         canEdit={canEdit}
                         isDragging={isDraggingActive}
+                        currencyCode={currencyCode}
                         onToggleCollapse={() => toggleCollapse(section.id)}
                         onRename={(name) => renameSection(section.id, name)}
                         onDelete={() => deleteSection(section.id)}
@@ -1723,7 +1728,7 @@ export function SectionedListGrid({
                                   </td>
                                 )}
                                 <td className="px-2 py-1.5 text-xs font-bold text-[#155e63] text-right">
-                                  {formatCurrency(total / 100)}
+                                  {formatCurrencyAmount(total / 100, currencyCode)}
                                 </td>
                                 {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[#f4f9f8]" />}
                               </tr>
@@ -1792,7 +1797,7 @@ export function SectionedListGrid({
                         </td>
                       )}
                       <td className="px-2 py-2.5 text-sm font-bold text-[#155e63] text-right">
-                        {formatCurrency(grandTotal / 100)}
+                        {formatCurrencyAmount(grandTotal / 100, currencyCode)}
                       </td>
                       {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[#f4f9f8]" />}
                     </tr>

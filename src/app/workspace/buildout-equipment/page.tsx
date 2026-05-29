@@ -1,8 +1,10 @@
 // TIM-1038: Build Out & Equipment workspace — Equipment sections.
 // TIM-1171: Supplies removed — now lives in /workspace/inventory.
+// TIM-1325: Pass currency_code from financial_models so prices show the correct symbol.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
+import { normalizeCurrencyCode } from "@/lib/currency";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 import { BuildoutEquipmentWorkspace } from "./buildout-workspace";
@@ -43,7 +45,7 @@ export default async function BuildoutEquipmentPage() {
         .order("position"),
       supabase
         .from("financial_models")
-        .select("updated_at, needs_review_at")
+        .select("updated_at, needs_review_at, forecast_inputs")
         .eq("plan_id", plan.id)
         .maybeSingle(),
       supabase
@@ -62,6 +64,9 @@ export default async function BuildoutEquipmentPage() {
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawCurrencyCode = (modelRow?.forecast_inputs as any)?.currency_code;
+  const initialCurrencyCode = normalizeCurrencyCode(rawCurrencyCode ?? "USD");
 
   return (
     <BuildoutEquipmentWorkspace
@@ -73,6 +78,7 @@ export default async function BuildoutEquipmentPage() {
       initialModelUpdatedAtForReview={modelRow?.updated_at ?? null}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      initialCurrencyCode={initialCurrencyCode}
     />
   );
 }
