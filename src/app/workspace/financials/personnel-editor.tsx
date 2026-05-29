@@ -266,6 +266,22 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
 
       {expanded && (
         <div className="px-3 pb-3 pt-3 border-t border-[var(--neutral-cool-100)] bg-[var(--neutral-cool-50)] space-y-3">
+          {/* TIM-1419: target starting date — owned by Financial Suite, does not write back to Hiring */}
+          <div>
+            <label className={fieldLabelCls}>Target starting date</label>
+            <input
+              type="date"
+              value={line.target_start_date ?? ""}
+              disabled={!canEdit}
+              onChange={(e) => onChange({ ...line, target_start_date: e.target.value || null })}
+              className={`${inputCls} w-40`}
+              aria-label="Target starting date for this role"
+            />
+            <p className="text-[10px] text-[var(--dark-grey)] mt-1">
+              Planned hire date for financial planning. Stays in Financial Suite.
+            </p>
+          </div>
+
           {/* Fixed per-head benefits */}
           <div>
             <label className={fieldLabelCls}>Fixed benefits ({sym} per person / month)</label>
