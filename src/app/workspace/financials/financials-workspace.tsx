@@ -318,7 +318,7 @@ function OwnerContributionsEditor({
     <div className="space-y-2">
       {contributions.length === 0 && (
         <p className="text-[10px] text-[var(--dark-grey)]">
-          None — add one if you plan to inject more cash later (e.g. month 6, $5,000).
+          None. Add one if you plan to inject more cash later (e.g. month 6, $5,000).
         </p>
       )}
       {contributions.map((c, idx) => (
@@ -788,7 +788,7 @@ function ForecastTab({
             {splitOn ? (
               <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Beverage — average per sale ({mp.currency_code ?? "USD"})</label>
+                  <label className={labelCls}>Beverage: average per sale ({mp.currency_code ?? "USD"})</label>
                   <NumericInput
                     className={inputCls}
                     type="number"
@@ -802,7 +802,7 @@ function ForecastTab({
                   <p className="text-[10px] text-[var(--dark-grey)] mt-1">Espresso, drip, tea, etc.</p>
                 </div>
                 <div>
-                  <label className={labelCls}>Food — average per sale ({mp.currency_code ?? "USD"})</label>
+                  <label className={labelCls}>Food: average per sale ({mp.currency_code ?? "USD"})</label>
                   <NumericInput
                     className={inputCls}
                     type="number"
@@ -1111,8 +1111,8 @@ function ForecastTab({
                 One-time costs to open the doors live on the Startup Costs tab.
               </p>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                Start with your equipment, then add build-out and supplies — the total
-                builds up from what you actually need, and flows into your balance sheet
+                Start with your equipment, then add build-out and supplies. The total
+                builds up from what you actually need and flows into your balance sheet
                 and funding gap.
               </p>
             </div>
@@ -1215,7 +1215,7 @@ function ForecastTab({
               >
                 {CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.code} — {c.name}
+                    {c.code}: {c.name}
                   </option>
                 ))}
               </select>
@@ -1919,7 +1919,7 @@ export function FinancialsWorkspace({
         if (res.status === 402) {
           setSaveState({
             kind: "error",
-            message: "Subscription paused — reactivate to keep editing.",
+            message: "Subscription paused. Reactivate to keep editing.",
           });
           setPaywallOpen(true);
           return;
