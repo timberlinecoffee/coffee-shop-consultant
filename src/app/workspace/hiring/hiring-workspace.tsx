@@ -23,6 +23,9 @@ import {
   FileText,
   ClipboardCheck,
   BookOpen,
+  Globe,
+  ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -41,15 +44,19 @@ import {
   type HiringRoleStatus,
   type CandidateStatus,
   type OnboardingPhase,
+  type HiringCountry,
+  type PlanHiringSettings,
+  type HiringRequirementSet,
   CANDIDATE_STATUS_CONFIG,
   CANDIDATE_STATUS_ORDER,
   ROLE_STATUS_CONFIG,
   PHASE_LABELS,
   PHASE_ORDER,
   DEFAULT_ONBOARDING_TASKS,
+  HIRING_COUNTRY_OPTIONS,
 } from "@/lib/hiring";
 
-type Tab = "org" | "interview" | "onboarding" | "competency";
+type Tab = "org" | "interview" | "onboarding" | "competency" | "requirements";
 
 interface Props {
   planId: string;
@@ -64,6 +71,8 @@ interface Props {
   initialCompetencies: StaffCompetency[];
   initialStaffFiles: StaffFile[];
   initialCompetencyEvals: CompetencyEvaluation[];
+  initialHiringSettings: PlanHiringSettings;
+  initialRequirementSets: HiringRequirementSet[];
 }
 
 function makeLocalId() {
@@ -2461,6 +2470,178 @@ function CompetencyTab({
   );
 }
 
+// ── Requirements tab (TIM-1300) ───────────────────────────────────────────────
+
+function RequirementsTab({
+  initialSettings,
+  initialRequirementSets,
+}: {
+  initialSettings: PlanHiringSettings;
+  initialRequirementSets: HiringRequirementSet[];
+}) {
+  const [settings, setSettings] = useState<PlanHiringSettings>(initialSettings);
+  const [requirementSets, setRequirementSets] = useState<HiringRequirementSet[]>(initialRequirementSets);
+  const [saving, setSaving] = useState(false);
+  const [loadingReqs, setLoadingReqs] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const effectiveCountry = settings.effective_country;
+  const countryLabel = HIRING_COUNTRY_OPTIONS.find((o) => o.code === effectiveCountry)?.label ?? effectiveCountry;
+
+  // Group requirement sets by category.
+  const grouped = useMemo(() => {
+    const map: Record<string, HiringRequirementSet[]> = {};
+    for (const r of requirementSets) {
+      if (!map[r.category]) map[r.category] = [];
+      map[r.category].push(r);
+    }
+    return map;
+  }, [requirementSets]);
+
+  async function changeCountry(code: HiringCountry | "") {
+    const newCode = code === "" ? null : code;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/workspaces/hiring/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hiring_country: newCode }),
+      });
+      if (!res.ok) return;
+      const updated: PlanHiringSettings = await res.json();
+      setSettings(updated);
+
+      // Fetch requirement sets for the new effective country.
+      const effective = updated.effective_country;
+      if (effective) {
+        setLoadingReqs(true);
+        const rRes = await fetch(`/api/workspaces/hiring/requirement-sets?country=${effective}`);
+        if (rRes.ok) setRequirementSets(await rRes.json());
+        setLoadingReqs(false);
+      } else {
+        setRequirementSets([]);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleCategory(cat: string) {
+    setExpandedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Country selector */}
+      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#efefef]">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[#1a1a1a]">Hiring Jurisdiction</p>
+              <p className="text-xs text-[#6b6b6b] mt-0.5">
+                {settings.hiring_country
+                  ? "Override set — requirement set sourced from your selection."
+                  : "Auto-detected from your signed or primary location candidate."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe size={14} className="text-[#6b6b6b]" />
+              <select
+                value={settings.hiring_country ?? ""}
+                onChange={(e) => changeCountry(e.target.value as HiringCountry | "")}
+                disabled={saving}
+                className="text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] bg-white disabled:opacity-60"
+              >
+                <option value="">Auto-detect</option>
+                {HIRING_COUNTRY_OPTIONS.map((o) => (
+                  <option key={o.code} value={o.code}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {effectiveCountry ? (
+          <div className="px-5 py-3 bg-[#f4f9f8]">
+            <p className="text-xs text-[#155e63] font-medium">
+              Showing requirements for: {countryLabel} ({effectiveCountry})
+            </p>
+          </div>
+        ) : (
+          <div className="px-5 py-3 bg-[#fdf8f2] border-t border-[#efefef]">
+            <p className="text-xs text-[#b45309] font-medium flex items-center gap-1.5">
+              <AlertTriangle size={12} />
+              No country detected. Add a location candidate or select a jurisdiction above to see requirements.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Content gap notice */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+        <p className="text-xs font-semibold text-amber-800 mb-1">Content in Progress</p>
+        <p className="text-xs text-amber-700 leading-relaxed">
+          Requirement bodies are placeholders pending review by a qualified Legal Analyst. Do not rely on this content for compliance decisions. Verified text will be added once the Legal Analyst role is staffed.
+        </p>
+      </div>
+
+      {/* Requirement sets */}
+      {loadingReqs ? (
+        <div className="py-10 text-center">
+          <p className="text-sm text-[#afafaf]">Loading requirements...</p>
+        </div>
+      ) : requirementSets.length === 0 && effectiveCountry ? (
+        <div className="py-10 text-center">
+          <p className="text-sm text-[#afafaf]">No requirements found for {countryLabel}.</p>
+        </div>
+      ) : (
+        Object.entries(grouped).map(([category, items]) => {
+          const expanded = expandedCategories[category] !== false; // default open
+          return (
+            <div key={category} className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                className="w-full px-5 py-4 border-b border-[#efefef] flex items-center justify-between hover:bg-[#faf9f7] transition-colors"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-[#1a1a1a]">{category}</p>
+                  <p className="text-xs text-[#6b6b6b] mt-0.5">{items.length} requirement{items.length !== 1 ? "s" : ""}</p>
+                </div>
+                {expanded ? <ChevronDown size={14} className="text-[#6b6b6b]" /> : <ChevronRight size={14} className="text-[#6b6b6b]" />}
+              </button>
+
+              {expanded && (
+                <div className="divide-y divide-[#f5f5f5]">
+                  {items.map((req) => (
+                    <div key={req.id} className="px-5 py-4">
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <p className="text-sm font-medium text-[#1a1a1a]">{req.title}</p>
+                        {req.citation_url && (
+                          <a
+                            href={req.citation_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[10px] text-[#155e63] hover:underline shrink-0"
+                          >
+                            <ExternalLink size={10} />
+                            Source
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#6b6b6b] leading-relaxed">{req.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function HiringWorkspace({
@@ -2476,6 +2657,8 @@ export function HiringWorkspace({
   initialCompetencies,
   initialStaffFiles,
   initialCompetencyEvals,
+  initialHiringSettings,
+  initialRequirementSets,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("org");
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -2495,6 +2678,7 @@ export function HiringWorkspace({
     { id: "interview", label: "Interview", Icon: ClipboardList },
     { id: "onboarding", label: "Onboarding", Icon: UserCheck },
     { id: "competency", label: "Competency", Icon: Award },
+    { id: "requirements", label: "Requirements", Icon: Globe },
   ];
 
   const handleRolesChange = useCallback(
@@ -2589,6 +2773,12 @@ export function HiringWorkspace({
             onCompetenciesChange={handleCompetenciesChange}
             onStaffFilesChange={handleStaffFilesChange}
             onEvaluationsChange={handleEvaluationsChange}
+          />
+        )}
+        {activeTab === "requirements" && (
+          <RequirementsTab
+            initialSettings={initialHiringSettings}
+            initialRequirementSets={initialRequirementSets}
           />
         )}
       </div>
