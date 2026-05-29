@@ -103,7 +103,7 @@ function FactorBarRow({
               <span
                 className={cn(
                   'shrink-0 text-[10px] truncate w-20 sm:w-24',
-                  isWinner ? 'font-semibold text-foreground' : 'text-[#888]'
+                  isWinner ? 'font-semibold text-foreground' : 'text-[var(--neutral-cool-600)]'
                 )}
                 title={c.name}
               >
@@ -129,7 +129,7 @@ function FactorBarRow({
               <span
                 className={cn(
                   'shrink-0 w-6 text-right text-[11px] font-semibold',
-                  score == null ? 'text-[#888]/60' : isWinner ? color.text : 'text-foreground'
+                  score == null ? 'text-[var(--neutral-cool-600)]/60' : isWinner ? color.text : 'text-foreground'
                 )}
               >
                 {score != null ? `${score}` : '—'}
@@ -286,7 +286,7 @@ export function TradeoffPanel({
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">Shortlist Trade-Off</h2>
-            <p className="text-xs text-[#888]">
+            <p className="text-xs text-[var(--neutral-cool-600)]">
               {candidates.length} Shortlisted · Visual Comparison + AI Recommendation
             </p>
           </div>
@@ -294,7 +294,7 @@ export function TradeoffPanel({
             type="button"
             onClick={onClose}
             aria-label="Close trade-off"
-            className="flex size-8 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] text-[#888] hover:bg-[var(--surface-warm-50)]/80 hover:text-[var(--foreground)] transition-colors"
+            className="flex size-8 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] text-[var(--neutral-cool-600)] hover:bg-[var(--surface-warm-50)]/80 hover:text-[var(--foreground)] transition-colors"
           >
             <X className="size-4" />
           </button>
@@ -318,12 +318,12 @@ export function TradeoffPanel({
           {/* Visual comparison — bars per factor */}
           <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-4">
             <h3 className="text-sm font-semibold text-foreground mb-1">Score Comparison</h3>
-            <p className="text-xs text-[#888] mb-4">
+            <p className="text-xs text-[var(--neutral-cool-600)] mb-4">
               Highest score per factor wins. Cup icon marks the winner; tied rows show no winner.
             </p>
 
             {scoresLoading ? (
-              <p className="text-sm text-[#888] py-6 text-center">Loading scores…</p>
+              <p className="text-sm text-[var(--neutral-cool-600)] py-6 text-center">Loading scores…</p>
             ) : (
               <div className="flex flex-col">
                 {COMPARE_FACTORS.map((factor) => (
@@ -346,7 +346,7 @@ export function TradeoffPanel({
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-foreground">AI Recommendation</h3>
-                <p className="text-xs text-[#888] mt-0.5">
+                <p className="text-xs text-[var(--neutral-cool-600)] mt-0.5">
                   Get a per-location read on strengths and weaknesses and a recommended ranking based on your scorecard.
                 </p>
               </div>
@@ -356,7 +356,7 @@ export function TradeoffPanel({
                   {tradeoffLoading ? 'Analyzing…' : tradeoff ? 'Refresh' : 'Generate Trade-Off'}
                 </Button>
               ) : (
-                <div className="text-right text-xs text-[#888]">
+                <div className="text-right text-xs text-[var(--neutral-cool-600)]">
                   {subscriptionTier === 'free' ? (
                     <>
                       Paid plan required.{' '}
@@ -416,7 +416,7 @@ export function TradeoffPanel({
                               {color && <span className={cn('inline-block size-2 rounded-full', color.dot)} />}
                               <span className="text-sm font-semibold text-foreground">{r.name}</span>
                             </div>
-                            <p className="text-xs text-[#444] leading-relaxed mt-1">{r.reasoning}</p>
+                            <p className="text-xs text-[var(--gray-1175)] leading-relaxed mt-1">{r.reasoning}</p>
                           </div>
                         </li>
                       )

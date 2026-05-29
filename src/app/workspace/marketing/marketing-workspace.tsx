@@ -32,7 +32,7 @@ function StatusPill<T extends string>({ status, config, onClick }: {
   config: Record<string, { label: string; className: string }>;
   onClick?: (e: React.MouseEvent) => void;
 }) {
-  const cfg = config[status] ?? { label: status, className: "bg-[var(--neutral-cool-100)] text-[#888] border-[var(--border-medium)]" };
+  const cfg = config[status] ?? { label: status, className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" };
   return (
     <button type="button" onClick={onClick}
       className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.className} ${onClick ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}>

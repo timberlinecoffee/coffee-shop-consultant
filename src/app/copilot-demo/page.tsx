@@ -43,7 +43,7 @@ export default async function CopilotDemoPage({
       <main className="min-h-screen bg-[var(--background)] px-6 py-12">
         <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-[var(--border)] p-8">
           <h1 className="text-xl font-semibold text-[var(--foreground)]">Co-Pilot Demo</h1>
-          <p className="mt-2 text-sm text-[#666]">
+          <p className="mt-2 text-sm text-[var(--gray-1100)]">
             You don&apos;t have a coffee shop plan yet. Finish onboarding to start using the co-pilot.
           </p>
           <Link
@@ -64,7 +64,7 @@ export default async function CopilotDemoPage({
     <main className="min-h-screen bg-[var(--background)] pb-32">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-semibold text-[var(--foreground)]">CoPilotDrawer Demo</h1>
-        <p className="mt-2 text-sm text-[#666]">
+        <p className="mt-2 text-sm text-[var(--gray-1100)]">
           Test page for [TIM-633] — streaming, thinking pill, and thread switching.
           Use the workspace selector below to mount the drawer with a different
           <code className="px-1 mx-1 rounded bg-white border border-[var(--border)] text-xs">workspaceKey</code>
@@ -87,7 +87,7 @@ export default async function CopilotDemoPage({
           ))}
         </div>
 
-        <div className="mt-8 bg-white rounded-2xl border border-[var(--border)] p-6 text-sm text-[#444] space-y-2">
+        <div className="mt-8 bg-white rounded-2xl border border-[var(--border)] p-6 text-sm text-[var(--gray-1175)] space-y-2">
           <p>
             <span className="font-semibold">Plan id:</span>{" "}
             <code className="text-xs">{plan.id}</code>

@@ -2258,7 +2258,7 @@ function OnboardingTab({
                                       placeholder="Add detail, instructions, or context for this task..."
                                     />
                                   ) : t.detail ? (
-                                    <p className="text-xs text-[#555]">{t.detail}</p>
+                                    <p className="text-xs text-[var(--gray-1150)]">{t.detail}</p>
                                   ) : (
                                     <p className="text-xs text-[var(--dark-grey)] italic">No detail added.</p>
                                   )}

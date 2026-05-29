@@ -493,7 +493,7 @@ function ColPickerRow({
       {/* Drag handle — horizontal grip distinguishes column reorder from row reorder */}
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing touch-none text-[var(--neutral-cool-400)] hover:text-[#888] shrink-0 p-0.5"
+        className="cursor-grab active:cursor-grabbing touch-none text-[var(--neutral-cool-400)] hover:text-[var(--neutral-cool-600)] shrink-0 p-0.5"
         aria-label={`Drag to reorder ${col.label} column`}
         {...attributes}
         {...listeners}
@@ -596,7 +596,7 @@ function SortableRow({
             {canEdit && (
               <button
                 type="button"
-                className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[#888] transition-colors"
+                className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[var(--neutral-cool-600)] transition-colors"
                 {...attributes}
                 {...listeners}
                 aria-label="Drag to reorder"

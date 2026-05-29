@@ -288,7 +288,7 @@ export function BusinessPlanWorkspace({
 
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-6 gap-3">
-          <p className="text-xs text-[#888]">
+          <p className="text-xs text-[var(--neutral-cool-600)]">
             {visibleCount} of {sections.length} sections visible
           </p>
           <div className="flex items-center gap-2">
@@ -433,9 +433,9 @@ function SectionCard({
           aria-expanded={section.isExpanded}
         >
           {section.isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-[#888] flex-shrink-0" />
+            <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-[#888] flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
           )}
           <div>
             <h2 className="text-sm font-semibold text-[var(--foreground)]">{section.title}</h2>
@@ -476,7 +476,7 @@ function SectionCard({
             <button
               onClick={onResetToAuto}
               title="Reset to auto-generated content"
-              className="p-1.5 rounded-lg text-[#888] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+              className="p-1.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -485,7 +485,7 @@ function SectionCard({
           <button
             onClick={onToggleVisible}
             title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-            className="p-1.5 rounded-lg text-[#888] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
           >
             {section.isVisible ? (
               <Eye className="w-3.5 h-3.5" />
@@ -534,7 +534,7 @@ function SectionCard({
                   </button>
                   <button
                     onClick={onEditCancel}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[#555] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
+                    className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
                   >
                     {section.isGenerating ? "Stop" : "Cancel"}
                   </button>

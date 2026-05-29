@@ -240,7 +240,7 @@ function InlineInput({
   }
 
   const cls =
-    'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[#888]/50 focus-visible:ring-0'
+    'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[var(--neutral-cool-600)]/50 focus-visible:ring-0'
 
   const wrapCls =
     'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[var(--border)] focus-within:border-[var(--teal)] focus-within:ring-2 focus-within:ring-[var(--teal)]/30'
@@ -262,7 +262,7 @@ function InlineInput({
 
   return (
     <div className={wrapCls}>
-      {prefix && <span className="shrink-0 text-sm text-[#888]">{prefix}</span>}
+      {prefix && <span className="shrink-0 text-sm text-[var(--neutral-cool-600)]">{prefix}</span>}
       <input
         type={type}
         value={local}
@@ -271,7 +271,7 @@ function InlineInput({
         placeholder={placeholder}
         className={cls}
       />
-      {suffix && <span className="shrink-0 text-sm text-[#888]">{suffix}</span>}
+      {suffix && <span className="shrink-0 text-sm text-[var(--neutral-cool-600)]">{suffix}</span>}
     </div>
   )
 }
@@ -331,7 +331,7 @@ function StatusPillSelector({
               <span className={cn('rounded-full border px-2 py-0.5', STATUS_CONFIG[s].className)}>
                 {STATUS_CONFIG[s].label}
               </span>
-              {s === status && <span className="ml-auto text-[10px] text-[#888]">current</span>}
+              {s === status && <span className="ml-auto text-[10px] text-[var(--neutral-cool-600)]">current</span>}
             </button>
           ))}
         </div>
@@ -369,7 +369,7 @@ function Section({
         {badge}
         <ChevronDown
           className={cn(
-            'ml-auto size-4 text-[#888] transition-transform duration-200',
+            'ml-auto size-4 text-[var(--neutral-cool-600)] transition-transform duration-200',
             open && 'rotate-180'
           )}
         />
@@ -382,7 +382,7 @@ function Section({
 // ── FieldLabel ───────────────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[10px] font-medium uppercase tracking-wide text-[#888]">{children}</span>
+  return <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--neutral-cool-600)]">{children}</span>
 }
 
 // ── ScoreBadge ───────────────────────────────────────────────────────────
@@ -428,7 +428,7 @@ function RatingPicker({
             'size-7 rounded text-xs font-semibold transition-colors border',
             value === n
               ? 'bg-[var(--teal)] text-white border-[var(--teal)]'
-              : 'bg-background text-[#888] border-[var(--border)] hover:border-[var(--teal)]/60 hover:text-[var(--teal)]'
+              : 'bg-background text-[var(--neutral-cool-600)] border-[var(--border)] hover:border-[var(--teal)]/60 hover:text-[var(--teal)]'
           )}
         >
           {n}
@@ -521,7 +521,7 @@ function ScorecardSection({
   }
 
   if (!loaded) {
-    return <p className="text-xs text-[#888]">Loading scorecard…</p>
+    return <p className="text-xs text-[var(--neutral-cool-600)]">Loading scorecard…</p>
   }
 
   const overallScore = computeOverallScore(scores)
@@ -530,7 +530,7 @@ function ScorecardSection({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-[#888]">
+        <span className="text-[11px] text-[var(--neutral-cool-600)]">
           {filledCount}/{SCORED_FACTORS.length} rated
           {filledCount > 0 && (
             <>
@@ -552,7 +552,7 @@ function ScorecardSection({
                     <ScoreBadge score={scores[factor.key]!.score!} />
                   )}
                 </div>
-                <p className="text-xs text-[#888] mt-0.5 leading-relaxed">{factor.description}</p>
+                <p className="text-xs text-[var(--neutral-cool-600)] mt-0.5 leading-relaxed">{factor.description}</p>
               </div>
               {factor.hasScore && (
                 <div className="shrink-0 pt-0.5">
@@ -572,7 +572,7 @@ function ScorecardSection({
                   : 'Observation or notes (optional)…'
               }
               rows={factor.key === 'gut_feel' ? 3 : 2}
-              className="w-full resize-none rounded-xl border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/40 outline-none focus-visible:border-[var(--teal)] focus-visible:ring-2 focus-visible:ring-[var(--teal)]/30"
+              className="w-full resize-none rounded-xl border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[var(--neutral-cool-600)]/40 outline-none focus-visible:border-[var(--teal)] focus-visible:ring-2 focus-visible:ring-[var(--teal)]/30"
             />
           </div>
         ))}
@@ -696,7 +696,7 @@ function AiFeedbackPanel({
   if (!canUse) {
     return (
       <div className="rounded-xl border border-[var(--border)] p-3 text-center">
-        <p className="text-xs text-[#888]">
+        <p className="text-xs text-[var(--neutral-cool-600)]">
           {subscriptionTier === 'free' ? (
             <>
               AI feedback requires a paid plan.{' '}
@@ -724,7 +724,7 @@ function AiFeedbackPanel({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">AI Feedback</h4>
-          <p className="text-[11px] text-[#888] mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-[var(--neutral-cool-600)] mt-0.5 leading-relaxed">
             Fill in scores above, then run AI feedback for risk profile, strengths, concerns, and due-diligence questions.
           </p>
         </div>
@@ -804,14 +804,14 @@ function FeedbackRenderer({ text, streaming }: { text: string; streaming: boolea
           <ul className="flex flex-col gap-2">
             {sections.questions.map((q, i) => (
               <li key={i} className="text-sm text-foreground leading-relaxed flex gap-2">
-                <span className="shrink-0 text-[#888] font-medium">{i + 1}.</span>
+                <span className="shrink-0 text-[var(--neutral-cool-600)] font-medium">{i + 1}.</span>
                 <span>{q}</span>
               </li>
             ))}
           </ul>
         </FeedbackSection>
       )}
-      {streaming && <p className="text-[11px] text-[#888] italic">Generating…</p>}
+      {streaming && <p className="text-[11px] text-[var(--neutral-cool-600)] italic">Generating…</p>}
     </div>
   )
 }
@@ -968,7 +968,7 @@ function LabelWithTip({
   children: React.ReactNode
 }) {
   return (
-    <label className="flex items-center gap-1 text-xs font-medium text-[#888]">
+    <label className="flex items-center gap-1 text-xs font-medium text-[var(--neutral-cool-600)]">
       {label}
       <InfoTip label={tipLabel}>{children}</InfoTip>
     </label>
@@ -1077,11 +1077,11 @@ function LeaseTermsSection({
     onUpdateCandidate({ cam_cents: cents })
   }
 
-  if (!loaded) return <p className="text-xs text-[#888]">Loading lease terms…</p>
+  if (!loaded) return <p className="text-xs text-[var(--neutral-cool-600)]">Loading lease terms…</p>
 
   return (
     <div className="flex flex-col gap-4">
-      {saving && <p className="text-[10px] italic text-[#888] -mt-1">Saving…</p>}
+      {saving && <p className="text-[10px] italic text-[var(--neutral-cool-600)] -mt-1">Saving…</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Asking Rent (moved from intake card, stored on candidate) */}
@@ -1122,7 +1122,7 @@ function LeaseTermsSection({
         {/* Rent per Month — auto-fills from Asking Rent */}
         <FieldGroup
           label={
-            <span className="flex items-center gap-1 text-xs font-medium text-[#888]">
+            <span className="flex items-center gap-1 text-xs font-medium text-[var(--neutral-cool-600)]">
               Rent per Month (Your Budget)
               {rentLinked && (
                 <span className="text-[10px] text-[var(--teal)] font-normal normal-case">
@@ -1175,7 +1175,7 @@ function LeaseTermsSection({
             value={terms.term_months}
             onChange={(e) => update('term_months', e.target.value)}
             placeholder="24"
-            className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50"
+            className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50"
           />
         </FieldGroup>
       </div>
@@ -1187,7 +1187,7 @@ function LeaseTermsSection({
             onChange={(e) => update('options_text', e.target.value)}
             placeholder="e.g. Two 5-year renewal options at market rate…"
             rows={2}
-            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50 resize-y"
+            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50 resize-y"
           />
         </FieldGroup>
 
@@ -1205,7 +1205,7 @@ function LeaseTermsSection({
             onChange={(e) => update('personal_guarantee', e.target.value)}
             placeholder="e.g. 12-month personal guarantee…"
             rows={2}
-            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50 resize-y"
+            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50 resize-y"
           />
         </FieldGroup>
 
@@ -1223,7 +1223,7 @@ function LeaseTermsSection({
             onChange={(e) => update('exit_clauses', e.target.value)}
             placeholder="e.g. 90-day notice, co-tenancy clause…"
             rows={2}
-            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50 resize-y"
+            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50 resize-y"
           />
         </FieldGroup>
       </div>
@@ -1235,7 +1235,7 @@ function FieldGroup({ label, children }: { label: React.ReactNode; children: Rea
   return (
     <div className="flex flex-col gap-1">
       {typeof label === 'string' ? (
-        <label className="text-xs font-medium text-[#888]">{label}</label>
+        <label className="text-xs font-medium text-[var(--neutral-cool-600)]">{label}</label>
       ) : (
         label
       )}
@@ -1257,7 +1257,7 @@ function CurrencyInput({
 }) {
   return (
     <div className="relative flex items-center">
-      <span className="pointer-events-none absolute left-3 text-sm text-[#888]">$</span>
+      <span className="pointer-events-none absolute left-3 text-sm text-[var(--neutral-cool-600)]">$</span>
       <input
         type="text"
         inputMode="decimal"
@@ -1265,7 +1265,7 @@ function CurrencyInput({
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50"
+        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50"
       />
     </div>
   )
@@ -1288,9 +1288,9 @@ function PctInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50"
+        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50"
       />
-      <span className="pointer-events-none absolute right-3 text-sm text-[#888]">%</span>
+      <span className="pointer-events-none absolute right-3 text-sm text-[var(--neutral-cool-600)]">%</span>
     </div>
   )
 }
@@ -1392,7 +1392,7 @@ export function LocationCard({
               'shrink-0 rounded-lg p-1 transition-colors',
               selected
                 ? 'text-[var(--teal)] hover:bg-[var(--teal)]/10'
-                : 'text-[#888] hover:bg-[var(--surface-warm-50)] hover:text-[var(--teal)]'
+                : 'text-[var(--neutral-cool-600)] hover:bg-[var(--surface-warm-50)] hover:text-[var(--teal)]'
             )}
           >
             {selected ? (
@@ -1412,7 +1412,7 @@ export function LocationCard({
             'shrink-0 rounded-lg p-1 transition-colors',
             isShortlisted
               ? 'text-amber-500 hover:bg-amber-50'
-              : 'text-[#888] hover:bg-[var(--surface-warm-50)] hover:text-amber-500',
+              : 'text-[var(--neutral-cool-600)] hover:bg-[var(--surface-warm-50)] hover:text-amber-500',
             selectMode && 'opacity-60 cursor-not-allowed'
           )}
         >
@@ -1432,13 +1432,13 @@ export function LocationCard({
           onChange={(s) => onPatch(candidate.id, { status: s })}
         />
 
-        {saving && <span className="shrink-0 text-[10px] italic text-[#888]">saving…</span>}
+        {saving && <span className="shrink-0 text-[10px] italic text-[var(--neutral-cool-600)]">saving…</span>}
 
         <button
           type="button"
           onClick={() => setOpen((p) => !p)}
           aria-label={open ? 'Collapse details' : 'Expand details'}
-          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[var(--surface-warm-50)] hover:text-[var(--foreground)]"
+          className="shrink-0 rounded-lg p-1 text-[var(--neutral-cool-600)] transition-colors hover:bg-[var(--surface-warm-50)] hover:text-[var(--foreground)]"
         >
           {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
         </button>
@@ -1448,7 +1448,7 @@ export function LocationCard({
           onClick={() => onArchive(candidate.id)}
           aria-label="Archive candidate"
           title="Archive this location"
-          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-red-600/10 hover:text-red-600"
+          className="shrink-0 rounded-lg p-1 text-[var(--neutral-cool-600)] transition-colors hover:bg-red-600/10 hover:text-red-600"
         >
           <Archive className="size-4" />
         </button>
@@ -1506,7 +1506,7 @@ export function LocationCard({
                       href={candidate.listing_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 p-1 text-[#888] hover:text-[var(--foreground)] transition-colors"
+                      className="shrink-0 p-1 text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] transition-colors"
                       aria-label="Open listing"
                     >
                       <ExternalLink className="size-3.5" />

@@ -34,7 +34,7 @@ const MD_COMPONENTS: Components = {
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
   del: ({ children }) => (
-    <del className="line-through text-[#888]">{children}</del>
+    <del className="line-through text-[var(--neutral-cool-600)]">{children}</del>
   ),
   // Block code: multi-line or has a language class. Inline: single-line + no class.
   code: ({ children, className }) => {
@@ -65,7 +65,7 @@ const MD_COMPONENTS: Components = {
   ),
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-[var(--teal)]/50 pl-3 text-[#555] italic mb-2 last:mb-0">
+    <blockquote className="border-l-2 border-[var(--teal)]/50 pl-3 text-[var(--gray-1150)] italic mb-2 last:mb-0">
       {children}
     </blockquote>
   ),

@@ -175,7 +175,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
           <p className={`text-sm font-semibold ${overall.text}`}>
             Overall: {overall.label}
           </p>
-          <p className="text-xs text-[#555] mt-0.5">
+          <p className="text-xs text-[var(--gray-1150)] mt-0.5">
             {result.overall === "green"
               ? "All workspaces are on track."
               : result.overall === "yellow"
@@ -187,7 +187,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
 
       {/* Per-workspace breakdown */}
       <div>
-        <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
+        <p className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wide mb-2">
           Workspace Breakdown
         </p>
         <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] overflow-hidden">
@@ -207,7 +207,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
                 {ws.blockers.length > 0 && (
                   <ul className="ml-4 mt-1 space-y-0.5">
                     {ws.blockers.map((b, i) => (
-                      <li key={i} className="text-[11px] text-[#555]">
+                      <li key={i} className="text-[11px] text-[var(--gray-1150)]">
                         ⚠ {b}
                       </li>
                     ))}
@@ -231,7 +231,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
       {/* Critical path */}
       {result.criticalPath.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
+          <p className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wide mb-2">
             Critical Path
           </p>
           <ol className="space-y-2">
@@ -242,7 +242,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
                 </span>
                 <div>
                   <p className="text-[var(--foreground)] font-medium">{item.action}</p>
-                  <p className="text-[#888] mt-0.5">
+                  <p className="text-[var(--neutral-cool-600)] mt-0.5">
                     {item.owner}
                     {item.dueBy ? ` · by ${item.dueBy}` : ""}
                   </p>

@@ -139,7 +139,7 @@ export function CoPilotDrawer({
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
             <p className="text-sm font-semibold text-foreground">Co-Pilot</p>
-            <p className="text-xs text-[#888]">Location &amp; Lease workspace</p>
+            <p className="text-xs text-[var(--neutral-cool-600)]">Location &amp; Lease workspace</p>
           </div>
           <div className="flex items-center gap-3">
             {subscriptionTier === 'pro' ? (
@@ -150,7 +150,7 @@ export function CoPilotDrawer({
                   'text-xs font-medium',
                   aiCreditsRemaining <= 10 && aiCreditsRemaining > 0
                     ? 'text-amber-500'
-                    : 'text-[#888]'
+                    : 'text-[var(--neutral-cool-600)]'
                 )}
               >
                 {aiCreditsRemaining} credits
@@ -201,7 +201,7 @@ export function CoPilotDrawer({
                 </svg>
               </div>
               <p className="text-sm font-medium text-foreground mb-1">Your co-pilot is ready</p>
-              <p className="text-xs text-[#888] leading-relaxed">
+              <p className="text-xs text-[var(--neutral-cool-600)] leading-relaxed">
                 Ask about any of your shortlisted locations, lease terms, or site selection strategy.
               </p>
             </div>
@@ -237,7 +237,7 @@ export function CoPilotDrawer({
                   {[0, 150, 300].map((delay) => (
                     <div
                       key={delay}
-                      className="size-2 rounded-full bg-[#888]/60 animate-bounce"
+                      className="size-2 rounded-full bg-[var(--neutral-cool-600)]/60 animate-bounce"
                       style={{ animationDelay: `${delay}ms` }}
                     />
                   ))}
@@ -253,14 +253,14 @@ export function CoPilotDrawer({
 
         <div className="border-t border-[var(--border)] px-4 py-4">
           {subscriptionTier === 'free' ? (
-            <p className="text-center text-xs text-[#888]">
+            <p className="text-center text-xs text-[var(--neutral-cool-600)]">
               AI co-pilot requires a paid plan.{' '}
               <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade →
               </a>
             </p>
           ) : aiCreditsRemaining === 0 ? (
-            <p className="text-center text-xs text-[#888]">
+            <p className="text-center text-xs text-[var(--neutral-cool-600)]">
               You&apos;re out of credits for this month.{' '}
               <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade for more messages →
@@ -279,7 +279,7 @@ export function CoPilotDrawer({
                 }}
                 rows={2}
                 placeholder="Ask about your shortlisted locations…"
-                className="flex-1 resize-none rounded-xl border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/50 outline-none focus-visible:border-[var(--teal)] focus-visible:ring-2 focus-visible:ring-[var(--teal)]/30"
+                className="flex-1 resize-none rounded-xl border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[var(--neutral-cool-600)]/50 outline-none focus-visible:border-[var(--teal)] focus-visible:ring-2 focus-visible:ring-[var(--teal)]/30"
               />
               <button
                 type="button"

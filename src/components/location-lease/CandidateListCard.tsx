@@ -281,11 +281,11 @@ export function CandidateListCard({
                   'inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors',
                   view === 'all'
                     ? 'bg-white shadow-sm text-foreground'
-                    : 'text-[#888] hover:text-foreground'
+                    : 'text-[var(--neutral-cool-600)] hover:text-foreground'
                 )}
               >
                 All
-                <span className="text-[10px] text-[#888]">{candidates.length}</span>
+                <span className="text-[10px] text-[var(--neutral-cool-600)]">{candidates.length}</span>
               </button>
               <button
                 type="button"
@@ -296,12 +296,12 @@ export function CandidateListCard({
                   'inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors',
                   view === 'shortlist'
                     ? 'bg-white shadow-sm text-foreground'
-                    : 'text-[#888] hover:text-foreground'
+                    : 'text-[var(--neutral-cool-600)] hover:text-foreground'
                 )}
               >
                 <Star className={cn('size-3', view === 'shortlist' && 'fill-amber-400 text-amber-500')} />
                 Shortlist
-                <span className="text-[10px] text-[#888]">{shortlisted.length}</span>
+                <span className="text-[10px] text-[var(--neutral-cool-600)]">{shortlisted.length}</span>
               </button>
             </div>
 
@@ -333,7 +333,7 @@ export function CandidateListCard({
               <div className="flex items-center gap-2 text-xs text-foreground">
                 <span className="font-semibold">{selectionSummary.total} selected</span>
                 {selectionSummary.total === 0 && (
-                  <span className="text-[#888]">Tap a card to select it.</span>
+                  <span className="text-[var(--neutral-cool-600)]">Tap a card to select it.</span>
                 )}
                 {visible.length > 0 && selectionSummary.total < visible.length && (
                   <button
@@ -348,7 +348,7 @@ export function CandidateListCard({
                   <button
                     type="button"
                     onClick={clearSelection}
-                    className="text-[#888] underline-offset-2 hover:underline"
+                    className="text-[var(--neutral-cool-600)] underline-offset-2 hover:underline"
                   >
                     Clear
                   </button>
@@ -382,7 +382,7 @@ export function CandidateListCard({
                   </span>
                 </Button>
                 {bulkSaving && (
-                  <span className="text-[10px] italic text-[#888]">Saving…</span>
+                  <span className="text-[10px] italic text-[var(--neutral-cool-600)]">Saving…</span>
                 )}
               </div>
             </div>
@@ -392,7 +392,7 @@ export function CandidateListCard({
           {visible.length === 0 ? (
             view === 'shortlist' ? (
               <div className="py-10 text-center">
-                <p className="text-sm text-[#888] mb-3">
+                <p className="text-sm text-[var(--neutral-cool-600)] mb-3">
                   No shortlisted locations yet. Tap the star on a location to add it to your shortlist.
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setView('all')}>
@@ -401,7 +401,7 @@ export function CandidateListCard({
               </div>
             ) : (
               <div className="py-10 text-center">
-                <p className="text-sm text-[#888] mb-3">No locations yet.</p>
+                <p className="text-sm text-[var(--neutral-cool-600)] mb-3">No locations yet.</p>
                 <Button size="sm" onClick={handleAdd} disabled={adding}>
                   <Plus className="size-3.5 mr-1" />
                   Add your first location

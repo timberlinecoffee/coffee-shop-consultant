@@ -142,7 +142,7 @@ export function InventoryWorkspace({
         {/* v2 backlog notice */}
         <div className="mb-5 rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50)] px-4 py-3">
           <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Roadmap note</p>
-          <p className="text-xs text-[#888] leading-relaxed">
+          <p className="text-xs text-[var(--neutral-cool-600)] leading-relaxed">
             v2 will add inventory tracking (counts, reorder thresholds, depletion logic) — do not build in v1.
           </p>
         </div>

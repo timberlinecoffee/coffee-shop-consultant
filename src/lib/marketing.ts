@@ -34,7 +34,7 @@ export interface DigitalPresenceRow {
 }
 
 export const PRESENCE_STATUS_CONFIG: Record<PresenceStatus, { label: string; className: string }> = {
-  not_started: { label: "Not Started", className: "bg-[var(--neutral-cool-100)] text-[#888] border-[var(--border-medium)]" },
+  not_started: { label: "Not Started", className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" },
   in_progress: { label: "In Progress", className: "bg-amber-50 text-amber-700 border-amber-200" },
   live:        { label: "Live",        className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
@@ -73,7 +73,7 @@ export interface ContentPost {
 export const POST_FORMAT_OPTIONS: PostFormat[] = ["photo", "reel", "story", "video", "graphic", "other"];
 
 export const POST_STATUS_CONFIG: Record<PostStatus, { label: string; className: string }> = {
-  planned:   { label: "Planned",   className: "bg-[var(--neutral-cool-100)] text-[#888] border-[var(--border-medium)]" },
+  planned:   { label: "Planned",   className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" },
   scheduled: { label: "Scheduled", className: "bg-blue-50 text-blue-700 border-blue-200" },
   posted:    { label: "Posted",    className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
@@ -134,7 +134,7 @@ export const CAMPAIGN_OBJECTIVE_LABELS: Record<CampaignObjective, string> = {
 };
 
 export const CAMPAIGN_STATUS_CONFIG: Record<CampaignStatus, { label: string; className: string }> = {
-  planned:   { label: "Planned",   className: "bg-[var(--neutral-cool-100)] text-[#888] border-[var(--border-medium)]" },
+  planned:   { label: "Planned",   className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" },
   running:   { label: "Running",   className: "bg-blue-50 text-blue-700 border-blue-200" },
   completed: { label: "Completed", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };

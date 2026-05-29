@@ -1660,7 +1660,7 @@ function ProjectionsTab({
                   <p className="text-sm text-[var(--foreground)] leading-relaxed">{b.text}</p>
                   {b.type !== "strength" && b.recommendation && (
                     <p className="text-sm text-[var(--foreground)] leading-relaxed">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--neutral-cool-600)] mr-2">
                         Recommendation
                       </span>
                       {b.recommendation}
@@ -1668,7 +1668,7 @@ function ProjectionsTab({
                   )}
                   {b.type !== "strength" && b.next_step && (
                     <p className="text-sm text-[var(--teal)] leading-relaxed">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--neutral-cool-600)] mr-2">
                         Next Step
                       </span>
                       {b.next_step}
@@ -1676,7 +1676,7 @@ function ProjectionsTab({
                   )}
                   {b.type !== "strength" && b.why && (
                     <p className="text-xs text-[var(--muted-foreground)] leading-relaxed italic">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2 not-italic">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--neutral-cool-600)] mr-2 not-italic">
                         Why
                       </span>
                       {b.why}

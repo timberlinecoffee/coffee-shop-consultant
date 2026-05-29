@@ -435,7 +435,7 @@ function IngredientTableRow({
               onClick={onDelete}
               title="Delete ingredient"
               aria-label="Delete ingredient"
-              className="p-1 rounded-md text-[var(--gray-800)] hover:text-[#c44] hover:bg-[var(--error-bg-6)] transition-colors"
+              className="p-1 rounded-md text-[var(--gray-800)] hover:text-[var(--error-accent)] hover:bg-[var(--error-bg-6)] transition-colors"
             >
               <Trash2 size={13} />
             </button>
@@ -1007,7 +1007,7 @@ function ItemEditorPanel({
                 </p>
               )}
               {recipeError && (
-                <p className="text-[11px] text-[#c44] mt-1.5">{recipeError}</p>
+                <p className="text-[11px] text-[var(--error-accent)] mt-1.5">{recipeError}</p>
               )}
               <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
                 AI fills in a standard build as a starting point. Edit or remove any line.
@@ -1120,7 +1120,7 @@ function ItemEditorPanel({
                     {(priceSuggestion.margin_pct * 100).toFixed(1)}%
                   </span>
                 </p>
-                <p className="text-xs text-[#555] italic leading-relaxed">
+                <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
                   {priceSuggestion.commentary}
                 </p>
                 <button
@@ -1206,7 +1206,7 @@ function RecipeLineRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-[var(--neutral-cool-350)] hover:text-[#c44] transition-colors shrink-0"
+          className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors shrink-0"
         >
           <X size={12} />
         </button>
@@ -1286,7 +1286,7 @@ function SortableMenuItemRow({
       {canEdit && (
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[#888] transition-colors shrink-0"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[var(--neutral-cool-600)] transition-colors shrink-0"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -1374,7 +1374,7 @@ function SortableMenuItemRow({
               e.stopPropagation();
               onDelete();
             }}
-            className="text-[var(--neutral-cool-350)] hover:text-[#c44] transition-colors"
+            className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors"
           >
             <Trash2 size={12} />
           </button>
@@ -1526,7 +1526,7 @@ function DefaultLineRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-[var(--neutral-cool-350)] hover:text-[#c44] transition-colors shrink-0"
+          className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors shrink-0"
         >
           <X size={12} />
         </button>

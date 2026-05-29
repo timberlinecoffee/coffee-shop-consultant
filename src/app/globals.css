@@ -175,6 +175,7 @@
   --warning-amber-bg-13: #fde8e8;
 
   /* Error / red family */
+  --error-accent: #cc4444;
   --error-dark: #7a2d2d;
   --error-darker: #8a3030;
   --error-medium: #b54b4b;
@@ -240,13 +241,16 @@
   --gray-700: #d4d4d4;
   --gray-750: #d8d8d8;
   --gray-800: #cccccc;
+  --gray-825: #bbbbbb;
   --gray-850: #cfcfcf;
   --gray-900: #c4c4c4;
   --gray-950: #c5c5c5;
+  --gray-975: #aaaaaa;
   --gray-1000: #a0a0a0;
   --gray-1050: #7a7a7a;
   --gray-1100: #666666;
   --gray-1150: #555555;
+  --gray-1175: #444444;
   --gray-1200: #4a4a4a;
   --gray-1250: #3d3d3d;
   --gray-1300: #3a3a3a;

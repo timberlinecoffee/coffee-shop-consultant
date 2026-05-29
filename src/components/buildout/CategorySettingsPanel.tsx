@@ -115,7 +115,7 @@ function StationRow({
       {canEdit && (
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing text-[var(--neutral-cool-350)] hover:text-[#888] transition-colors shrink-0 touch-none"
+          className="cursor-grab active:cursor-grabbing text-[var(--neutral-cool-350)] hover:text-[var(--neutral-cool-600)] transition-colors shrink-0 touch-none"
           aria-label="Drag to reorder"
           {...attributes}
           {...listeners}

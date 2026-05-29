@@ -110,7 +110,7 @@ function EmptyState({
           </svg>
         </div>
       )}
-      <p className="text-sm text-[#888] mb-4">{message}</p>
+      <p className="text-sm text-[var(--neutral-cool-600)] mb-4">{message}</p>
       {action}
     </div>
   );
@@ -349,7 +349,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
       });
       if (!res) return; // 402 handled by guardedFetch / PaywallModal
       if (!res.ok) {
-        showToast("error", "Save failed — check your connection and try again.");
+        showToast("error", "Save failed: check your connection and try again.");
       } else {
         showToast("success", "Saved");
       }
@@ -379,7 +379,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
       const res = await guardedFetch("/api/pdf/financials_full_report");
       if (!res) return; // 402 handled by paywall guard
       if (!res.ok) {
-        showToast("error", "Export failed — try again in a moment.");
+        showToast("error", "Export failed: try again in a moment.");
         return;
       }
       const blob = await res.blob();
@@ -400,7 +400,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
       URL.revokeObjectURL(url);
       showToast("success", "Downloaded");
     } catch {
-      showToast("error", "Export failed — try again in a moment.");
+      showToast("error", "Export failed: try again in a moment.");
     } finally {
       setExporting(false);
     }
@@ -888,7 +888,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
             >
               {financials.funding.length === 0 ? (
                 <EmptyState
-                  message="No funding sources yet — add how you plan to fund the business."
+                  message="No funding sources yet. Add how you plan to fund the business."
                   action={
                     <AddButton
                       label="Add funding source"
@@ -1439,7 +1439,7 @@ function BreakEvenSummary({
       />
       <MetricRow
         label="Break-even revenue"
-        value={breakEvenRevenue > 0 ? `$${fmtMoney(breakEvenRevenue)}/mo` : "—"}
+        value={breakEvenRevenue > 0 ? `$${fmtMoney(breakEvenRevenue)}/mo` : "N/A"}
         hint="Revenue needed to cover all costs"
       />
       {revenueGap !== 0 && breakEvenRevenue > 0 && (
