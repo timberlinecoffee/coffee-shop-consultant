@@ -18,7 +18,7 @@ interface Props {
 
 export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
   const [disclosureOpen, setDisclosureOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const priceLabel =
     rec.estimated_price_cents > 0
