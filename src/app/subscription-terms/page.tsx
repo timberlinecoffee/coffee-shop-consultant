@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Subscription Terms | Timberline Coffee School",
-  description: "Subscription Terms for Timberline Coffee School covering billing, renewal, and cancellation.",
+  title: "Subscription Terms | Groundwork",
+  description: "Subscription Terms for Groundwork covering billing, renewal, and cancellation.",
 };
 
 const EFFECTIVE_DATE = "May 22, 2026";
@@ -14,9 +14,9 @@ export default function SubscriptionTermsPage() {
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">TCS</span>
+              <span className="text-white text-xs font-bold">GW</span>
             </div>
-            <span className="font-semibold text-[var(--teal)]">Timberline Coffee School</span>
+            <span className="font-semibold text-[var(--teal)]">Groundwork</span>
           </Link>
           <Link href="/" className="text-sm text-[var(--teal)] hover:underline">
             Back to home
@@ -30,20 +30,20 @@ export default function SubscriptionTermsPage() {
 
         <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
-            These Subscription Terms supplement the Timberline Coffee School{" "}
+            These Subscription Terms supplement the Groundwork{" "}
             <Link href="/terms" className="text-[var(--teal)] underline">
               Terms of Service
             </Link>{" "}
             and govern the billing, renewal, and cancellation of your paid subscription. By starting a
-            subscription, you agree to these terms.
+            subscription, you agree to these terms. Groundwork is a product of Timberline Coffee School.
           </p>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Subscription Plans</h2>
             <p>
-              Timberline offers monthly and annual subscription plans. Current pricing is listed at{" "}
+              Groundwork offers monthly and annual subscription plans. Current pricing is listed at{" "}
               <Link href="/pricing" className="text-[var(--teal)] underline">
-                timberlinecoffeeschool.com/pricing
+                groundwork.coffee/pricing
               </Link>
               . We may add or change plans at any time; existing subscribers will be notified before
               price changes take effect.
@@ -67,11 +67,21 @@ export default function SubscriptionTermsPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">3. Free Trials</h2>
+            <h2 className="text-xl font-semibold mb-3">3. Free Preview</h2>
             <p>
-              If you start a free trial, you will not be charged until the trial ends. You may cancel
-              during the trial period without charge. If you do not cancel before the trial ends, your
-              subscription will begin and you will be billed at the applicable rate.
+              New accounts receive a free preview of the planning framework, including 5 free AI
+              planning messages with the co-pilot. The free preview does not require a credit card
+              and does not auto-convert to a paid subscription.
+            </p>
+            <p className="mt-3">
+              Continued access to AI planning messages beyond the preview, and to the full set of
+              paid planning modules, requires you to start a paid subscription by entering payment
+              details at{" "}
+              <Link href="/pricing" className="text-[var(--teal)] underline">
+                groundwork.coffee/pricing
+              </Link>
+              . Your account will not be charged unless and until you explicitly start a paid
+              subscription.
             </p>
           </section>
 
@@ -171,7 +181,7 @@ export default function SubscriptionTermsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">11. Contact</h2>
             <p>
-              Timberline Coffee School
+              Groundwork, a product of Timberline Coffee School
               <br />
               Email:{" "}
               <a href="mailto:billing@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
@@ -184,7 +194,7 @@ export default function SubscriptionTermsPage() {
 
       <footer className="bg-[var(--foreground)] text-[var(--dark-grey)] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
+          <span>&copy; {new Date().getFullYear()} Timberline Coffee School. Groundwork is a product of Timberline Coffee School.</span>
           <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>

@@ -265,9 +265,9 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.28, ease: EASE }}
           >
-            Open a coffee shop without a business background. Groundwork shows
-            you what to plan next, checks it against real shops, and points to
-            your next move.
+            Build your coffee shop plan, even without a business background.
+            Groundwork shows you what to plan next, checks it against real
+            shops, and points to your next move.
           </motion.p>
 
           <motion.div
@@ -277,7 +277,7 @@ export default function HomepageHero() {
             transition={{ duration: 0.48, delay: 0.38, ease: EASE }}
           >
             <Link
-              href="/login?plan=builder"
+              href="/signup"
               className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm transition-all"
               style={{
                 background: "white",

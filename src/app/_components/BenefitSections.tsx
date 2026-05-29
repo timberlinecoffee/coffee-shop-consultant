@@ -401,7 +401,7 @@ const BENEFITS: Benefit[] = [
     oneLiner:
       "Your P&L, daily sales, and cash position, updated automatically. No accountant required.",
     ctaLabel: "Explore Daily Financials",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4474033),
     photoAlt:
       "Coffee shop owner working across laptop and tablet to track daily business finances",
@@ -416,7 +416,7 @@ const BENEFITS: Benefit[] = [
     headline: "Find Out What Actually Pays the Bills",
     oneLiner: "See which drinks earn the most, and which to drop.",
     ctaLabel: "Explore Menu Analytics",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4349948),
     photoAlt:
       "Barista creating latte art by carefully pouring steamed milk into a takeaway cup",
@@ -432,7 +432,7 @@ const BENEFITS: Benefit[] = [
     oneLiner:
       "Build the schedule, track hours, and see labor cost before payroll.",
     ctaLabel: "Explore Scheduling",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4349746),
     photoAlt:
       "Two baristas in aprons laughing together during a shift in a bright modern coffee shop",
@@ -448,7 +448,7 @@ const BENEFITS: Benefit[] = [
     oneLiner:
       "A stamp program that runs itself. No app, no points. Just regulars who come back.",
     ctaLabel: "Explore Loyalty Tools",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4353585),
     photoAlt: "Barista handing a paper coffee cup across the counter to a customer",
     objectPosition: "center",
@@ -463,7 +463,7 @@ const BENEFITS: Benefit[] = [
     oneLiner:
       "Morning tasks, inventory alerts, and vendor contacts in one spot.",
     ctaLabel: "Explore Operations Tools",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4473398),
     photoAlt:
       "Cafe owner holding a wooden 'Welcome We Are Open' sign at her shop door",
@@ -479,7 +479,7 @@ const BENEFITS: Benefit[] = [
     oneLiner:
       "Real trends and simple projections to time your next hire, second location, or menu expansion.",
     ctaLabel: "Explore Growth Tools",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4350061),
     photoAlt:
       "Two cafe owners in aprons collaborating behind the counter of their coffee shop",
