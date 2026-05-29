@@ -68,7 +68,7 @@ const SUITE_ITEMS: AccordionItem[] = [
       "Compares your numbers against what working coffee shops actually look like.",
     bullets: [
       "Startup cost, rent ratios, COGS, labor and margin all flagged when they drift out of range",
-      "Benchmarks are built from real operators, not generic small-business templates",
+      "Modeled from coffee-shop industry research and operator-reported data, not generic small-business templates",
       "Updates live as you change your plan, so you can stress-test before you sign anything",
     ],
   },
@@ -101,7 +101,7 @@ const SUITE_ITEMS: AccordionItem[] = [
     bullets: [
       "Financial model, menu pricing, staffing, build-out and launch plan all share the same plan inputs",
       "Change one assumption and every downstream module updates",
-      "Export-ready outputs for landlords, lenders and partners",
+      "Exportable planning summaries for landlord/lender conversations — not a substitute for a CPA-prepared package",
     ],
   },
   {
