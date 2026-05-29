@@ -829,7 +829,7 @@ function ForecastTab({
 
           {splitOn && (
             <div className="mt-3 rounded-lg border border-[var(--teal-bg-e8f)] bg-[var(--teal-bg-muted)] px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
                 Average sales per day {avgCustomersPerDay > 0 ? `(at ~${avgCustomersPerDay} customers/day)` : ""}
               </p>
               {avgCustomersPerDay > 0 ? (
@@ -918,7 +918,7 @@ function ForecastTab({
               schedule without re-typing. Editing happens in the other workspace. */}
           {equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0).length > 0 && (
             <div className="mt-4 border-t border-[var(--border)] pt-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
                 Asset Purchases from Build-Out &amp; Equipment
               </p>
               <div className="space-y-1">

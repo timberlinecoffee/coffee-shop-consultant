@@ -340,3 +340,18 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Section header tokens (TIM-1353)
+   Use .section-eyebrow for uppercase teal category labels inside workspace cards.
+   The canonical Tailwind equivalent: text-xs font-semibold uppercase tracking-wider
+   text-[var(--teal)] — 12px base is the minimum for accessible all-caps labels. */
+@layer components {
+  .section-eyebrow {
+    font-size: 0.75rem; /* 12px — was 10px */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--teal);
+    margin-bottom: 1rem;
+  }
+}

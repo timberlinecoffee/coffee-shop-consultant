@@ -725,7 +725,7 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
     <div>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">{meta.label}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">{meta.label}</p>
           <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{meta.hint}</p>
         </div>
         {canEdit && (

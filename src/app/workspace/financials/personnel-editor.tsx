@@ -589,19 +589,19 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
         <div className="rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Total Headcount</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Total Headcount</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{totalHeadcount}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Loaded Payroll / Month</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Loaded Payroll / Month</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{fmt(totalLoaded, currencyCode)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Direct Labor (COGS)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Direct Labor (COGS)</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{fmt(cogsLoaded, currencyCode)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Overhead Labor</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Overhead Labor</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{fmt(overheadLoaded, currencyCode)}</p>
             </div>
           </div>

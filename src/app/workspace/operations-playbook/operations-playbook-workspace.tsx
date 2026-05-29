@@ -35,7 +35,7 @@ const inputCls =
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
+  "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
 const cardCls = "rounded-2xl border border-[var(--border)] bg-white";
 const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 

@@ -345,7 +345,7 @@ function CalendarView({ milestones, targetLaunchDate, onMilestoneClick }: Calend
       {months.map((month) => (
         <div key={`${month.year}-${month.month}`} className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--neutral-cool-100)]">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">
+            <h3 className="text-base font-semibold text-[var(--foreground)]">
               {MONTH_NAMES[month.month]} {month.year}
             </h3>
           </div>
