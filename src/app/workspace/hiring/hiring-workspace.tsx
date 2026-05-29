@@ -15,6 +15,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   X,
   Check,
   ExternalLink,
@@ -24,7 +25,6 @@ import {
   ClipboardCheck,
   BookOpen,
   Globe,
-  ChevronRight,
   AlertTriangle,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
@@ -1490,6 +1490,13 @@ function InterviewTab({
 
 // ── Onboarding Planner tab ────────────────────────────────────────────────────
 
+function computeDueDateLabel(startDate: string | null, dueOffsetDays: number | null): string | null {
+  if (!startDate || dueOffsetDays === null) return null;
+  const d = new Date(`${startDate}T12:00:00`);
+  d.setDate(d.getDate() + dueOffsetDays);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function OnboardingTab({
   planId,
   canEdit,
@@ -1515,9 +1522,20 @@ function OnboardingTab({
   const [newRoleId, setNewRoleId] = useState<string>("");
   const [newStartDate, setNewStartDate] = useState<string>("");
   const [creating, setCreating] = useState(false);
+  const [collapsedPhases, setCollapsedPhases] = useState<Set<OnboardingPhase>>(new Set());
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   const selectedInstance = instances.find((i) => i.id === selectedId) ?? null;
   const instanceTasks = tasks.filter((t) => t.instance_id === selectedId);
+
+  function togglePhase(phase: OnboardingPhase) {
+    setCollapsedPhases((prev) => {
+      const next = new Set(prev);
+      if (next.has(phase)) next.delete(phase);
+      else next.add(phase);
+      return next;
+    });
+  }
 
   async function createPlan() {
     if (!newHireName.trim()) return;
@@ -1547,6 +1565,7 @@ function OnboardingTab({
         instance_id: created.id,
         phase: t.phase,
         task: t.task,
+        detail: t.detail,
         due_offset_days: t.due_offset_days,
         completed_at: null,
         notes: null,
@@ -1612,6 +1631,7 @@ function OnboardingTab({
       instance_id: selectedId!,
       phase,
       task: "",
+      detail: null,
       due_offset_days: null,
       completed_at: null,
       notes: null,
@@ -1630,6 +1650,7 @@ function OnboardingTab({
               instance_id: selectedId,
               phase,
               task: "",
+              detail: null,
               due_offset_days: null,
               completed_at: null,
               notes: null,
@@ -1770,7 +1791,9 @@ function OnboardingTab({
                     </p>
                     <p className="text-[10px] text-[#6b6b6b]">
                       {roles.find((r) => r.id === inst.role_id)?.role_title ?? "No role"}
-                      {inst.start_date ? ` · Starts ${inst.start_date}` : ""}
+                      {inst.start_date
+                        ? ` · Starts ${new Date(`${inst.start_date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                        : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1810,104 +1833,175 @@ function OnboardingTab({
             const phaseTasks = instanceTasks
               .filter((t) => t.phase === phase)
               .sort((a, b) => a.order_index - b.order_index);
+            const isCollapsed = collapsedPhases.has(phase);
+            const doneCount = phaseTasks.filter((t) => t.completed_at).length;
 
             return (
               <div
                 key={phase}
                 className="rounded-xl border border-[#efefef] bg-white overflow-hidden"
               >
-                <div className="px-5 py-3 border-b border-[#efefef] flex items-center justify-between bg-[#faf9f7]">
-                  <p className="text-xs font-semibold text-[#155e63]">
-                    {PHASE_LABELS[phase]}
-                  </p>
-                  <span className="text-[10px] text-[#afafaf]">
-                    {phaseTasks.filter((t) => t.completed_at).length}/{phaseTasks.length} done
-                  </span>
-                </div>
-
-                {phaseTasks.length === 0 ? (
-                  <div className="px-5 py-3">
-                    <p className="text-xs text-[#afafaf]">No tasks in this phase.</p>
+                {/* Phase header — clickable to collapse/expand */}
+                <button
+                  type="button"
+                  onClick={() => togglePhase(phase)}
+                  className="w-full px-5 py-3 border-b border-[#efefef] flex items-center justify-between bg-[#faf9f7] hover:bg-[#f4f4f2] transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {isCollapsed ? (
+                      <ChevronRight size={14} className="text-[#155e63]" />
+                    ) : (
+                      <ChevronDown size={14} className="text-[#155e63]" />
+                    )}
+                    <span className="text-xs font-semibold text-[#155e63]">
+                      {PHASE_LABELS[phase]}
+                    </span>
                   </div>
-                ) : (
-                  <div className="divide-y divide-[#f5f5f5]">
-                    {phaseTasks.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-start gap-3 px-5 py-3"
-                      >
+                  <span className="text-[10px] text-[#afafaf]">
+                    {doneCount}/{phaseTasks.length} done
+                  </span>
+                </button>
+
+                {!isCollapsed && (
+                  <>
+                    {phaseTasks.length === 0 ? (
+                      <div className="px-5 py-3">
+                        <p className="text-xs text-[#afafaf]">No tasks in this phase.</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-[#f5f5f5]">
+                        {phaseTasks.map((t) => {
+                          const isExpanded = expandedTaskId === t.id;
+                          const dueDate = computeDueDateLabel(selectedInstance.start_date, t.due_offset_days);
+
+                          return (
+                            <div key={t.id} className="px-5 py-3 space-y-2">
+                              {/* Task row */}
+                              <div className="flex items-start gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => canEdit && toggleTask(t)}
+                                  className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                    t.completed_at
+                                      ? "bg-[#155e63] border-[#155e63]"
+                                      : "border-[#d0d0d0] hover:border-[#155e63]"
+                                  } ${!canEdit ? "cursor-default" : "cursor-pointer"}`}
+                                  aria-label={t.completed_at ? "Mark incomplete" : "Mark complete"}
+                                >
+                                  {t.completed_at && (
+                                    <Check size={10} className="text-white" />
+                                  )}
+                                </button>
+
+                                <div className="flex-1 min-w-0">
+                                  <input
+                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[#e0e0e0] focus:border-[#155e63] focus:outline-none py-0.5 disabled:hover:border-transparent ${
+                                      t.completed_at
+                                        ? "line-through text-[#afafaf]"
+                                        : "text-[#1a1a1a]"
+                                    }`}
+                                    value={t.task}
+                                    onChange={(e) =>
+                                      updateTask(t.id, { task: e.target.value })
+                                    }
+                                    placeholder="Task description..."
+                                    disabled={!canEdit}
+                                  />
+                                </div>
+
+                                {/* Due day input + computed calendar date */}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <div className="flex items-center gap-1 text-xs text-[#6b6b6b]">
+                                    <span className="whitespace-nowrap">Due: Day</span>
+                                    <input
+                                      className="w-12 text-xs border border-[#e0e0e0] rounded px-1.5 py-0.5 text-[#1a1a1a] text-center focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7]"
+                                      type="number"
+                                      value={t.due_offset_days ?? ""}
+                                      onChange={(e) =>
+                                        updateTask(t.id, {
+                                          due_offset_days: e.target.value
+                                            ? parseInt(e.target.value, 10)
+                                            : null,
+                                        })
+                                      }
+                                      placeholder="—"
+                                      disabled={!canEdit}
+                                    />
+                                  </div>
+                                  {dueDate && (
+                                    <span className="text-[10px] text-[#afafaf] whitespace-nowrap">
+                                      {dueDate}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Expand/collapse detail + delete */}
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedTaskId(isExpanded ? null : t.id)
+                                    }
+                                    className="text-[#afafaf] hover:text-[#155e63] p-0.5"
+                                    title={isExpanded ? "Hide detail" : "Show detail"}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronUp size={13} />
+                                    ) : (
+                                      <ChevronDown size={13} />
+                                    )}
+                                  </button>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteTask(t.id)}
+                                      className="text-[#afafaf] hover:text-[#a13d3d] p-0.5"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Drill-down detail panel */}
+                              {isExpanded && (
+                                <div className="ml-7 rounded-lg bg-[#f7f8f6] border border-[#e8e8e8] p-3 space-y-2">
+                                  {canEdit ? (
+                                    <textarea
+                                      className="w-full text-xs text-[#1a1a1a] bg-transparent resize-none focus:outline-none placeholder-[#c0c0c0]"
+                                      rows={3}
+                                      value={t.detail ?? ""}
+                                      onChange={(e) =>
+                                        updateTask(t.id, { detail: e.target.value || null })
+                                      }
+                                      placeholder="Add detail, instructions, or context for this task..."
+                                    />
+                                  ) : t.detail ? (
+                                    <p className="text-xs text-[#555]">{t.detail}</p>
+                                  ) : (
+                                    <p className="text-xs text-[#afafaf] italic">No detail added.</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {canEdit && (
+                      <div className="px-5 py-2 border-t border-[#f5f5f5]">
                         <button
                           type="button"
-                          onClick={() => canEdit && toggleTask(t)}
-                          className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                            t.completed_at
-                              ? "bg-[#155e63] border-[#155e63]"
-                              : "border-[#d0d0d0] hover:border-[#155e63]"
-                          } ${!canEdit ? "cursor-default" : "cursor-pointer"}`}
-                          aria-label={t.completed_at ? "Mark incomplete" : "Mark complete"}
+                          onClick={() => addTask(phase)}
+                          className="flex items-center gap-1 text-xs text-[#155e63] hover:underline"
                         >
-                          {t.completed_at && (
-                            <Check size={10} className="text-white" />
-                          )}
+                          <Plus size={11} />
+                          Add task
                         </button>
-                        <div className="flex-1 min-w-0">
-                          <input
-                            className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[#e0e0e0] focus:border-[#155e63] focus:outline-none py-0.5 disabled:hover:border-transparent ${
-                              t.completed_at
-                                ? "line-through text-[#afafaf]"
-                                : "text-[#1a1a1a]"
-                            }`}
-                            value={t.task}
-                            onChange={(e) =>
-                              updateTask(t.id, { task: e.target.value })
-                            }
-                            placeholder="Task description..."
-                            disabled={!canEdit}
-                          />
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <input
-                            className="w-16 text-xs border border-[#e0e0e0] rounded px-1.5 py-0.5 text-[#1a1a1a] text-center focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7]"
-                            type="number"
-                            min={0}
-                            value={t.due_offset_days ?? ""}
-                            onChange={(e) =>
-                              updateTask(t.id, {
-                                due_offset_days: e.target.value
-                                  ? parseInt(e.target.value, 10)
-                                  : null,
-                              })
-                            }
-                            placeholder="Day"
-                            title="Due offset (days from start)"
-                            disabled={!canEdit}
-                          />
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => deleteTask(t.id)}
-                              className="text-[#afafaf] hover:text-[#a13d3d] p-0.5"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {canEdit && (
-                  <div className="px-5 py-2 border-t border-[#f5f5f5]">
-                    <button
-                      type="button"
-                      onClick={() => addTask(phase)}
-                      className="flex items-center gap-1 text-xs text-[#155e63] hover:underline"
-                    >
-                      <Plus size={11} />
-                      Add task
-                    </button>
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             );
