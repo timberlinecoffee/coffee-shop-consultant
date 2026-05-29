@@ -27,8 +27,47 @@ interface Props {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PRESET_SWATCHES = ["var(--warning-amber)", "var(--success)", "var(--blue)", "var(--destructive)", "var(--purple)"];
+const PRESET_SWATCHES = ["#E8C24A", "#1F7A80", "#2563EB", "#EF4444", "#7C3AED"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+
+// ── Color conversion helpers ───────────────────────────────────────────────────
+
+type ColorMode = "hex" | "rgb" | "cmyk";
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  if (!HEX_RE.test(hex)) return null;
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+function rgbToCmyk(r: number, g: number, b: number): { c: number; m: number; y: number; k: number } {
+  const rf = r / 255, gf = g / 255, bf = b / 255;
+  const k = 1 - Math.max(rf, gf, bf);
+  if (k >= 1) return { c: 0, m: 0, y: 0, k: 100 };
+  const d = 1 - k;
+  return {
+    c: Math.round(((1 - rf - k) / d) * 100),
+    m: Math.round(((1 - gf - k) / d) * 100),
+    y: Math.round(((1 - bf - k) / d) * 100),
+    k: Math.round(k * 100),
+  };
+}
+
+function cmykToRgb(c: number, m: number, y: number, k: number): { r: number; g: number; b: number } {
+  const kf = k / 100;
+  return {
+    r: Math.round(255 * (1 - c / 100) * (1 - kf)),
+    g: Math.round(255 * (1 - m / 100) * (1 - kf)),
+    b: Math.round(255 * (1 - y / 100) * (1 - kf)),
+  };
+}
 
 const BODY_FONTS = [
   { id: "inter", label: "Inter", description: "Clean and easy to read" },
@@ -55,9 +94,14 @@ function useDebounce<T>(value: T, delay: number): T {
 export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [template, setTemplate] = useState<CoverTemplateId>(initialSettings.template_id);
-  const [accentColor, setAccentColor] = useState(initialSettings.accent_color ?? "var(--warning-amber)");
-  const [hexInput, setHexInput] = useState(initialSettings.accent_color ?? "var(--warning-amber)");
+  const initialHex = initialSettings.accent_color ?? "#1F7A80";
+  const [accentColor, setAccentColor] = useState(initialHex);
+  const [hexInput, setHexInput] = useState(initialHex);
   const [hexError, setHexError] = useState(false);
+  const [colorMode, setColorMode] = useState<ColorMode>("hex");
+  const _initRgb = hexToRgb(initialHex) ?? { r: 31, g: 122, b: 128 };
+  const [rgbInputs, setRgbInputs] = useState(_initRgb);
+  const [cmykInputs, setCmykInputs] = useState(rgbToCmyk(_initRgb.r, _initRgb.g, _initRgb.b));
 
   const [bodyFont, setBodyFont] = useState(initialSettings.body_font ?? "inter");
   const [tagline, setTagline] = useState(initialSettings.tagline ?? "");
@@ -125,6 +169,11 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
 
   const syncDerivedInputs = useCallback((hex: string) => {
     setHexInput(hex);
+    const rgb = hexToRgb(hex);
+    if (rgb) {
+      setRgbInputs(rgb);
+      setCmykInputs(rgbToCmyk(rgb.r, rgb.g, rgb.b));
+    }
   }, []);
 
   const applyColor = useCallback(async (hex: string) => {
@@ -291,17 +340,19 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
           {/* Accent color */}
           <div>
             <p className="text-xs text-[var(--gray-medium)] mb-2">Accent color</p>
-            <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Preset swatches — de-emphasized */}
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               {PRESET_SWATCHES.map((hex) => (
                 <button
                   key={hex}
                   type="button"
                   onClick={() => handleSwatchClick(hex)}
                   style={{ backgroundColor: hex }}
-                  className={`w-8 h-8 rounded-md flex-shrink-0 transition-all ring-1 ring-[#efefef] ${
+                  className={`w-5 h-5 rounded flex-shrink-0 transition-all ring-1 ring-[#efefef] ${
                     accentColor.toLowerCase() === hex.toLowerCase()
                       ? "ring-2 ring-offset-1 ring-[var(--gray-slate-2)]"
-                      : ""
+                      : "opacity-70 hover:opacity-100"
                   }`}
                   aria-label={`Select color ${hex}`}
                 />
@@ -313,7 +364,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                   type="button"
                   onClick={() => colorPickerRef.current?.click()}
                   style={{ backgroundColor: accentColor }}
-                  className={`w-8 h-8 rounded-md border-2 border-dashed border-[#d0d0d0] flex-shrink-0 ring-1 ring-[#efefef] ${
+                  className={`w-5 h-5 rounded border border-dashed border-[#d0d0d0] flex-shrink-0 ring-1 ring-[#efefef] ${
                     !PRESET_SWATCHES.some((h) => h.toLowerCase() === accentColor.toLowerCase())
                       ? "ring-2 ring-offset-1 ring-[var(--gray-slate-2)]"
                       : ""
@@ -329,20 +380,101 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                   className="absolute opacity-0 w-0 h-0 pointer-events-none"
                 />
               </div>
+            </div>
 
-              {/* Hex input */}
+            {/* Mode tabs */}
+            <div className="flex gap-1 mb-2">
+              {(["hex", "rgb", "cmyk"] as ColorMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setColorMode(mode)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide transition-colors ${
+                    colorMode === mode
+                      ? "bg-[var(--teal)] text-white"
+                      : "text-[var(--gray-medium)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
+            {/* Hex entry */}
+            {colorMode === "hex" && (
               <input
                 type="text"
                 value={hexInput}
                 onChange={(e) => { setHexInput(e.target.value); setHexError(false); }}
                 onBlur={handleHexBlur}
                 maxLength={7}
-                className={`w-20 h-8 rounded-md border text-[12px] px-2 font-mono ${
+                className={`w-24 h-8 rounded-md border text-[12px] px-2 font-mono ${
                   hexError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-[var(--success)]"
                 } focus:outline-none focus:border-2`}
-                placeholder="var(--warning-amber)"
+                placeholder="#1F7A80"
               />
-            </div>
+            )}
+
+            {/* RGB entry */}
+            {colorMode === "rgb" && (
+              <div className="flex gap-1.5 items-end">
+                {(["r", "g", "b"] as const).map((ch) => (
+                  <div key={ch} className="flex flex-col items-center gap-0.5">
+                    <span className="text-[10px] text-[var(--gray-medium)] uppercase">{ch}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={255}
+                      value={rgbInputs[ch]}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0));
+                        const next = { ...rgbInputs, [ch]: val };
+                        setRgbInputs(next);
+                        const hex = rgbToHex(next.r, next.g, next.b);
+                        setHexInput(hex);
+                        setAccentColor(hex);
+                        setCmykInputs(rgbToCmyk(next.r, next.g, next.b));
+                      }}
+                      onBlur={() => applyColor(rgbToHex(rgbInputs.r, rgbInputs.g, rgbInputs.b))}
+                      className="w-14 h-8 rounded-md border border-gray-200 text-[11px] px-1 text-center focus:outline-none focus:border-2 focus:border-[var(--success)]"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* CMYK entry */}
+            {colorMode === "cmyk" && (
+              <div className="flex gap-1.5 items-end">
+                {(["c", "m", "y", "k"] as const).map((ch) => (
+                  <div key={ch} className="flex flex-col items-center gap-0.5">
+                    <span className="text-[10px] text-[var(--gray-medium)] uppercase">{ch}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={cmykInputs[ch]}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                        const next = { ...cmykInputs, [ch]: val };
+                        setCmykInputs(next);
+                        const rgb = cmykToRgb(next.c, next.m, next.y, next.k);
+                        const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+                        setHexInput(hex);
+                        setAccentColor(hex);
+                        setRgbInputs(rgb);
+                      }}
+                      onBlur={() => {
+                        const rgb = cmykToRgb(cmykInputs.c, cmykInputs.m, cmykInputs.y, cmykInputs.k);
+                        applyColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+                      }}
+                      className="w-12 h-8 rounded-md border border-gray-200 text-[11px] px-1 text-center focus:outline-none focus:border-2 focus:border-[var(--success)]"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {hexError && (
               <p className="text-[11px] text-[var(--error-secondary)] mt-1">Enter a valid hex color</p>
             )}

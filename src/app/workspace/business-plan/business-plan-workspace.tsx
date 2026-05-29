@@ -448,7 +448,7 @@ function SectionCard({
 
   return (
     <div
-      className={`rounded-2xl border bg-white transition-opacity ${
+      className={`rounded-xl border bg-white transition-opacity ${
         section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
@@ -465,7 +465,7 @@ function SectionCard({
             <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
           )}
           <div>
-            <h2 className="text-sm font-semibold text-[var(--foreground)]">{section.title}</h2>
+            <h2 className="text-xl font-semibold text-[var(--foreground)]">{section.title}</h2>
             <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
           </div>
           {hasUserOverride && (
@@ -487,7 +487,7 @@ function SectionCard({
                   Generate
                 </button>
               )}
-              {onImprove && !isPlaceholder && (
+              {onImprove && (
                 <button
                   onClick={onImprove}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
@@ -548,7 +548,7 @@ function SectionCard({
                 <textarea
                   value={section.editBuffer}
                   onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[var(--teal)] font-mono leading-relaxed"
+                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
                   placeholder="Add content for this section..."
                   disabled={section.isGenerating && !section.editBuffer}
                 />
@@ -571,15 +571,21 @@ function SectionCard({
             ) : (
               <div
                 onClick={canEdit && !isStreaming ? onEditStart : undefined}
-                className={`text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap ${
+                className={`${
                   canEdit && !isStreaming
                     ? "cursor-text rounded-lg hover:bg-[var(--neutral-cool-50)] -mx-1 px-1 py-0.5 transition-colors"
                     : ""
-                } ${isPlaceholder ? "text-[var(--dark-grey)] italic" : ""}`}
+                }`}
                 title={canEdit && !isPlaceholder ? "Click to edit" : undefined}
               >
-                {displayContent || (
-                  <span className="text-[var(--dark-grey)] italic">No content yet.</span>
+                {displayContent ? (
+                  isPlaceholder ? (
+                    <p className="text-sm text-[var(--dark-grey)] italic leading-relaxed">{displayContent}</p>
+                  ) : (
+                    <MarkdownContent content={displayContent} />
+                  )
+                ) : (
+                  <span className="text-[var(--dark-grey)] italic text-sm">No content yet.</span>
                 )}
               </div>
             )}
