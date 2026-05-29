@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Maximize2, Minimize2, Sparkles, X } from "lucide-react";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
+import { AiConsentModal, useAiConsentGiven } from "@/components/legal/AiConsentModal";
 import type { WorkspaceKey } from "@/types/supabase";
 import {
   COPILOT_AI_DISCLAIMER,
@@ -145,6 +146,9 @@ export function CoPilotDrawer({
   const [open, setOpen] = useState(false);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
+  const [aiConsentGiven, acceptAiConsent] = useAiConsentGiven();
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
+  const [pendingConsentPrompt, setPendingConsentPrompt] = useState<string | null>(null);
   // Track the prop separately so a parent-driven workspace switch resets the active
   // workspace without us calling setState inside an effect body.
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
@@ -329,6 +333,13 @@ export function CoPilotDrawer({
       const trimmed = prompt.trim();
       if (!trimmed || isStreaming) return;
 
+      // TIM-1359: AI consent gate — must be affirmative before first output.
+      if (!aiConsentGiven) {
+        setPendingConsentPrompt(trimmed);
+        setConsentModalOpen(true);
+        return;
+      }
+
       // TIM-819: Gate at attempt time if trial already exhausted (e.g. dismissed modal on msg 5).
       if (trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
         setTrialModalOpen(true);
@@ -375,6 +386,7 @@ export function CoPilotDrawer({
     [
       activeThreadId,
       activeScope,
+      aiConsentGiven,
       isStreaming,
       maybeRequestTitle,
       messages,
@@ -589,6 +601,18 @@ export function CoPilotDrawer({
 
   return (
     <>
+      <AiConsentModal
+        open={consentModalOpen}
+        onAccept={() => {
+          acceptAiConsent();
+          setConsentModalOpen(false);
+          if (pendingConsentPrompt) {
+            const prompt = pendingConsentPrompt;
+            setPendingConsentPrompt(null);
+            void performSend(prompt);
+          }
+        }}
+      />
       <PaywallModal
         open={trialModalOpen}
         onClose={() => setTrialModalOpen(false)}

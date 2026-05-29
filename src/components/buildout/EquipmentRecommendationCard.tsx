@@ -6,18 +6,18 @@
 
 import { useState } from "react";
 import { ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
+// TIM-1359: FTC 16 CFR Part 255 requires affiliate disclosure in the same visual field.
 import { formatCurrency } from "@/lib/financial-projection";
 import type { EquipmentRecommendation } from "@/types/referral";
 
 const AFFILIATE_DISCLOSURE =
-  "We may earn a commission from purchases made via this link. This does not affect our recommendation.";
+  "AI Recommendations — Affiliate Disclosure: Some product links are affiliate links — Groundwork may earn a commission if you purchase through them. This does not influence AI ranking criteria.";
 
 interface Props {
   recommendation: EquipmentRecommendation;
 }
 
 export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
-  const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
   const priceLabel =
@@ -59,30 +59,24 @@ export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
       </div>
 
       {rec.referral_url && (
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          <a
-            href={rec.referral_url}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="flex items-center gap-0.5 text-[var(--teal)] hover:underline font-medium"
-          >
-            <ExternalLink size={9} />
-            {rec.partner_name ? `Buy from ${rec.partner_name}` : "Shop this model"}
-          </a>
-          <button
-            type="button"
-            onClick={() => setDisclosureOpen((o) => !o)}
-            className="text-[8px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-            aria-expanded={disclosureOpen}
-            aria-label="Affiliate link disclosure"
-          >
-            affiliate link
-          </button>
-          {disclosureOpen && (
-            <p className="w-full text-[9px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">
-              {AFFILIATE_DISCLOSURE}
-            </p>
-          )}
+        <div className="flex flex-col gap-1 mt-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <a
+              href={rec.referral_url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="flex items-center gap-0.5 text-[var(--teal)] hover:underline font-medium"
+            >
+              <ExternalLink size={9} />
+              {rec.partner_name ? `Buy from ${rec.partner_name}` : "Shop this model"}
+            </a>
+            <span className="text-[8px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-slate-100 text-slate-500">
+              affiliate link
+            </span>
+          </div>
+          <p className="text-[9px] text-[var(--muted-foreground)] leading-relaxed">
+            {AFFILIATE_DISCLOSURE}
+          </p>
         </div>
       )}
     </div>

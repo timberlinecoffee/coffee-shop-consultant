@@ -1012,6 +1012,12 @@ function ItemEditorPanel({
               <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
                 AI fills in a standard build as a starting point. Edit or remove any line.
               </p>
+              <p className="text-[10px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
+                <span className="font-semibold">AI-Generated Recipe.</span>{" "}
+                Verify all ingredients, amounts, and allergen information before training staff or
+                serving customers. AI may contain errors or omit allergens. Consult food safety
+                guidelines and your local health department before implementing any recipe.
+              </p>
             </div>
           )}
 
