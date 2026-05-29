@@ -4,6 +4,7 @@ import Image from "next/image";
 import HomeNav from "./_components/HomeNav";
 import HomepageHero from "./_components/HomepageHero";
 import FeatureAccordion, { type AccordionItem } from "./_components/FeatureAccordion";
+import BenefitSections from "./_components/BenefitSections";
 import {
   FadeUp,
   ScaleIn,
@@ -574,6 +575,9 @@ export default function LandingPage() {
           </StaggerContainer>
         </div>
       </section>
+
+      {/* ── Photography-integrated benefit sections (additive, TIM-1320) ───────── */}
+      <BenefitSections />
 
       {/* ── Founder pull-quote + barista photo ────────────────────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>

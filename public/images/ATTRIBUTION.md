@@ -39,6 +39,25 @@ as a matter of professional practice.
 
 ---
 
+## Pexels Photography (Landing Benefit Sections)
+
+Photographs by [Ketut Subiyanto](https://www.pexels.com/@ketut-subiyanto) on
+[Pexels](https://www.pexels.com), used under the
+[Pexels License](https://www.pexels.com/license/) (free for commercial use;
+attribution encouraged, not legally required). Referenced by URL, not redistributed
+as files; a uniform warm overlay is applied at runtime so the originals stay editable.
+
+| Pexels ID | Placement | Subject |
+|-----------|-----------|---------|
+| 4474033 | Benefit: Daily Financials | Owner tracking finances across laptop and tablet |
+| 4349948 | Benefit: Menu Performance | Barista pouring latte art into a takeaway cup |
+| 4349746 | Benefit: Staff Management | Two baristas laughing together during a shift |
+| 4353585 | Benefit: Customer Loyalty | Barista handing a coffee cup across the counter |
+| 4473398 | Benefit: Daily Operations | Owner holding a wooden "Welcome We Are Open" sign at her door |
+| 4350061 | Benefit: Business Growth | Two cafe owners collaborating behind the counter |
+
+---
+
 ## License Summary
 
 - License: Unsplash License
