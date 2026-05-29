@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
+import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import {
   type OrgRole,
   type InterviewCandidate,
@@ -120,6 +122,12 @@ const sectionLabelCls =
   "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
 
 // ── Org Structure tab ─────────────────────────────────────────────────────────
+
+const PAY_BASIS_LABEL: Record<PersonnelPayBasis, string> = {
+  annual: "Annual Salary",
+  monthly: "Monthly Salary",
+  hourly: "Hourly",
+};
 
 type JdFields = {
   title: string;
@@ -350,6 +358,18 @@ function RoleRow({
   const [jdDirty, setJdDirty] = useState(false);
   const [improvingField, setImprovingField] = useState<keyof JdFields | null>(null);
 
+  // Comp framework state (TIM-1303)
+  const [compLine, setCompLine] = useState<PersonnelLine | null>(null);
+  const [compLoading, setCompLoading] = useState(false);
+  const [compDirty, setCompDirty] = useState(false);
+  const [compSaving, setCompSaving] = useState(false);
+
+  // Draft edits before save
+  const [compPayBasis, setCompPayBasis] = useState<PersonnelPayBasis>("monthly");
+  const [compPayAmount, setCompPayAmount] = useState<number | "">(0);
+  const [compHoursPerWeek, setCompHoursPerWeek] = useState<number | "">(30);
+  const [compBenefitsPct, setCompBenefitsPct] = useState<number | "">(0);
+
   async function loadJd() {
     setJdLoading(true);
     const defaults: JdFields = {
@@ -425,6 +445,69 @@ function RoleRow({
       setImprovingField(null);
     }
   }
+
+  // Load comp when edit section opens (TIM-1303)
+  useEffect(() => {
+    if (!isEditing || role.id.startsWith("local_")) return;
+    setCompLoading(true);
+    fetch(`/api/workspaces/financials/role-comp?org_role_id=${encodeURIComponent(role.id)}`)
+      .then((r) => r.ok ? r.json() : { line: null })
+      .then((data: { line: PersonnelLine | null }) => {
+        const l = data.line;
+        if (l) {
+          setCompLine(l);
+          setCompPayBasis(l.pay_basis);
+          setCompPayAmount(l.pay_amount_cents / 100);
+          setCompHoursPerWeek(l.hours_per_week ?? 30);
+          setCompBenefitsPct(l.benefits_pct);
+        }
+      })
+      .finally(() => setCompLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, role.id]);
+
+  async function saveComp() {
+    if (!canEdit) return;
+    setCompSaving(true);
+    try {
+      const res = await fetch("/api/workspaces/financials/role-comp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          org_role_id: role.id,
+          role_title: role.role_title,
+          headcount: role.headcount,
+          pay_basis: compPayBasis,
+          pay_amount_cents: Math.round((typeof compPayAmount === "number" ? compPayAmount : 0) * 100),
+          hours_per_week: compPayBasis === "hourly" ? (typeof compHoursPerWeek === "number" ? compHoursPerWeek : 30) : undefined,
+          benefits_pct: typeof compBenefitsPct === "number" ? compBenefitsPct : 0,
+        }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { line: PersonnelLine; monthly_cost_cents: number };
+        setCompLine(data.line);
+        onUpdate({ monthly_cost_cents: data.monthly_cost_cents });
+        setCompDirty(false);
+      }
+    } finally {
+      setCompSaving(false);
+    }
+  }
+
+  // Live loaded cost preview (from entered fields, not just saved line)
+  const compPreviewCents =
+    typeof compPayAmount === "number" && compPayAmount > 0
+      ? personnelLoadedMonthlyCents({
+          id: compLine?.id ?? "preview",
+          role: role.role_title,
+          headcount: role.headcount,
+          pay_basis: compPayBasis,
+          pay_amount_cents: Math.round(compPayAmount * 100),
+          hours_per_week: compPayBasis === "hourly" ? (typeof compHoursPerWeek === "number" ? compHoursPerWeek : 30) : undefined,
+          benefits_pct: typeof compBenefitsPct === "number" ? compBenefitsPct : 0,
+          cost_category: compLine?.cost_category ?? "overhead",
+        })
+      : null;
 
   const parentOptions = roles.filter((r) => r.id !== role.id);
 
@@ -614,27 +697,107 @@ function RoleRow({
                 disabled={!canEdit}
               />
             </div>
-            <div>
-              <label className={labelCls}>Monthly cost (USD)</label>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                value={
-                  role.monthly_cost_cents != null
-                    ? Math.round(role.monthly_cost_cents / 100)
-                    : ""
-                }
-                onChange={(e) =>
-                  onUpdate({
-                    monthly_cost_cents: e.target.value
-                      ? Math.round(parseFloat(e.target.value) * 100)
-                      : null,
-                  })
-                }
-                placeholder="e.g. 3200"
-                disabled={!canEdit}
-              />
+            {/* Compensation framework (TIM-1303) */}
+            <div className="sm:col-span-2 border border-[#e8e8e8] rounded-lg p-3 bg-white">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-[#155e63]">Compensation</p>
+                {compLoading && (
+                  <span className="text-[10px] text-[#afafaf]">Loading…</span>
+                )}
+                {!compLoading && compLine === null && !compDirty && (
+                  <span className="text-[10px] text-[#afafaf]">Not set — edit fields to link</span>
+                )}
+                {compPreviewCents !== null && (
+                  <span className="text-xs font-semibold text-[#155e63]">
+                    Loaded: ${(compPreviewCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="w-36">
+                  <label className={labelCls}>Pay basis</label>
+                  <select
+                    className={inputCls}
+                    value={compPayBasis}
+                    disabled={!canEdit || compLoading}
+                    onChange={(e) => {
+                      const v = e.target.value as PersonnelPayBasis;
+                      setCompPayBasis(v);
+                      if (v === "hourly" && typeof compHoursPerWeek !== "number") setCompHoursPerWeek(30);
+                      setCompDirty(true);
+                    }}
+                  >
+                    {(Object.keys(PAY_BASIS_LABEL) as PersonnelPayBasis[]).map((b) => (
+                      <option key={b} value={b}>{PAY_BASIS_LABEL[b]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-32">
+                  <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">$</span>
+                    <input
+                      className={inputCls + " pl-5"}
+                      type="number"
+                      min={0}
+                      step={compPayBasis === "hourly" ? 0.25 : 100}
+                      value={compPayAmount}
+                      disabled={!canEdit || compLoading}
+                      onChange={(e) => {
+                        setCompPayAmount(parseFloat(e.target.value) || "");
+                        setCompDirty(true);
+                      }}
+                    />
+                  </div>
+                </div>
+                {compPayBasis === "hourly" && (
+                  <div className="w-28">
+                    <label className={labelCls}>Hours / week</label>
+                    <input
+                      className={inputCls}
+                      type="number"
+                      min={0}
+                      max={168}
+                      step={1}
+                      value={compHoursPerWeek}
+                      disabled={!canEdit || compLoading}
+                      onChange={(e) => {
+                        setCompHoursPerWeek(parseFloat(e.target.value) || "");
+                        setCompDirty(true);
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="w-24">
+                  <label className={labelCls}>Benefits %</label>
+                  <div className="relative">
+                    <input
+                      className={inputCls + " pr-6"}
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={compBenefitsPct}
+                      disabled={!canEdit || compLoading}
+                      onChange={(e) => {
+                        setCompBenefitsPct(parseFloat(e.target.value) || "");
+                        setCompDirty(true);
+                      }}
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">%</span>
+                  </div>
+                </div>
+                {canEdit && compDirty && (
+                  <button
+                    type="button"
+                    onClick={saveComp}
+                    disabled={compSaving}
+                    className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+                  >
+                    {compSaving ? "Saving…" : "Save comp"}
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className={labelCls}>Reports to</label>
