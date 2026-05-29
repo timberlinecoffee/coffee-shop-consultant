@@ -1172,6 +1172,12 @@ function RecipeLineRow({
     onUpdate({ unit: e.target.value as IngredientUnit });
   }
 
+  // TIM-1409: A linked ingredient with no package cost yet shouldn't render as
+  // "$0.0000" — that reads as a free ingredient and hides the reason COGS is
+  // staying flat after the AI starter recipe drops in. Show a "Needs cost"
+  // chip pointing the owner to the Ingredients tab instead.
+  const needsCost = ingredient !== null && ingredient.package_cost_cents === 0;
+
   return (
     <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2">
       <span className="flex-1 text-xs font-medium text-[var(--foreground)] truncate">
@@ -1197,10 +1203,19 @@ function RecipeLineRow({
           <option key={u.value} value={u.value}>{u.label}</option>
         ))}
       </select>
-      {lineCost !== null && (
-        <span className="text-xs text-[var(--muted-foreground)] shrink-0 min-w-[3rem] text-right">
-          ${lineCost.toFixed(4)}
+      {needsCost ? (
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wider text-[var(--warning-text)] bg-[var(--warning-bg)] border border-[var(--warning-amber)] rounded px-1.5 py-0.5 shrink-0"
+          title="No package cost set yet. Add one in the Ingredients tab and this line's cost will flow into COGS."
+        >
+          Needs cost
         </span>
+      ) : (
+        lineCost !== null && (
+          <span className="text-xs text-[var(--muted-foreground)] shrink-0 min-w-[3rem] text-right">
+            ${lineCost.toFixed(4)}
+          </span>
+        )
       )}
       {canEdit && (
         <button
@@ -1314,7 +1329,10 @@ function SortableMenuItemRow({
           />
         ) : (
           <div onClick={onSelect}>
-            <span className="text-sm font-medium text-[var(--foreground)] truncate block">
+            {/* TIM-1409: sidebar shows the full item name. Long names wrap to
+                additional lines instead of being ellipsized — the owner needs
+                to recognize the item without hovering. */}
+            <span className="text-sm font-medium text-[var(--foreground)] break-words block">
               {item.name || (
                 <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>
               )}
