@@ -167,7 +167,7 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
 
     if (roleId) {
       const { data } = await supabase
-        .from("org_roles")
+        .from("hiring_plan_roles")
         .select("*")
         .eq("id", roleId)
         .eq("plan_id", planId)
@@ -178,7 +178,7 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
     if (!role) {
       // Fall back to first active role for the plan
       const { data } = await supabase
-        .from("org_roles")
+        .from("hiring_plan_roles")
         .select("*")
         .eq("plan_id", planId)
         .in("status", ["planned", "posted", "interviewing"])
@@ -191,7 +191,7 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
     if (!role) {
       // Last resort: any role
       const { data } = await supabase
-        .from("org_roles")
+        .from("hiring_plan_roles")
         .select("*")
         .eq("plan_id", planId)
         .limit(1)

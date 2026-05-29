@@ -354,7 +354,7 @@ export const scorecardBlankTemplate: PdfTemplate<ScorecardContent> = {
     let role: OrgRole | null = null
     if (scorecard.role_id) {
       const { data: roleData } = await supabase
-        .from("org_roles")
+        .from("hiring_plan_roles")
         .select("*")
         .eq("id", scorecard.role_id)
         .single()

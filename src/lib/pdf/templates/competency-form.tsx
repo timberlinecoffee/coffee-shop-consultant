@@ -523,7 +523,7 @@ export const competencyCompletedTemplate: PdfTemplate<CompletedContent> = {
     let role: OrgRole | null = null
     if (staffFile.role_id) {
       const { data: roleData } = await supabase
-        .from("org_roles")
+        .from("hiring_plan_roles")
         .select("*")
         .eq("id", staffFile.role_id)
         .single()
