@@ -33,6 +33,7 @@ export function registerFonts() {
     family: "Inter",
     fonts: [
       { src: path.join(fontsDir, "inter-regular.ttf"), fontWeight: 400 },
+      { src: path.join(fontsDir, "inter-italic.ttf"), fontWeight: 400, fontStyle: "italic" },
       { src: path.join(fontsDir, "inter-semibold.ttf"), fontWeight: 600 },
       { src: path.join(fontsDir, "inter-bold.ttf"), fontWeight: 700 },
     ],
