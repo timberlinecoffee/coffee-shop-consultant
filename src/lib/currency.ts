@@ -198,22 +198,33 @@ export function normalizeCurrencyCode(code: unknown): string {
 
 // Format a whole-unit amount in the selected currency. Mirrors the old
 // formatCurrency(n) signature but takes the currency code as a second
-// argument. Compact (K/M) bucketing kept so chart axes stay readable.
+// argument.
+//
+// TIM-1309: `compact` (K/M bucketing) is opt-in. Chart axes stay readable
+// with it on, but the financial statements show full exact figures so a
+// small change in the entered value is never rounded into a misleading "K".
 export function formatCurrencyAmount(
   n: number,
-  code: string = DEFAULT_CURRENCY_CODE
+  code: string = DEFAULT_CURRENCY_CODE,
+  opts: { compact?: boolean } = {}
 ): string {
   const meta = getCurrencyMeta(code);
-  const abs = Math.abs(n);
-  const sign = n < 0 ? "-" : "";
+  // Default to compact so existing callers (chart axes, buildout/equipment
+  // prices, summary banners) keep their K/M behavior. The statement tables
+  // opt out via fmt() to show full exact figures.
+  const compact = opts.compact ?? true;
 
-  // Compact short-forms (no fraction digits, currency symbol from formatter)
-  if (abs >= 1_000_000) {
-    return `${sign}${shortFormatWithSymbol(abs / 1_000_000, meta)}M`;
-  }
-  if (abs >= 1_000) {
-    const rounded = Math.round(abs / 100) / 10;
-    return `${sign}${shortFormatWithSymbol(rounded, meta)}K`;
+  if (compact) {
+    const abs = Math.abs(n);
+    const sign = n < 0 ? "-" : "";
+    // Compact short-forms (no fraction digits, currency symbol from formatter)
+    if (abs >= 1_000_000) {
+      return `${sign}${shortFormatWithSymbol(abs / 1_000_000, meta)}M`;
+    }
+    if (abs >= 1_000) {
+      const rounded = Math.round(abs / 100) / 10;
+      return `${sign}${shortFormatWithSymbol(rounded, meta)}K`;
+    }
   }
 
   return new Intl.NumberFormat(meta.locale, {

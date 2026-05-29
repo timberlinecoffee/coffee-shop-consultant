@@ -46,18 +46,29 @@ interface RowProps {
 
 function StatRow({ label, values, bold, negative, indent, highlight, pctValues, memo, currencyCode }: RowProps & { currencyCode: string }) {
   const isNeg = (v?: number) => (v !== undefined && v < 0) || negative;
+  // TIM-1309: the frozen first column must be fully opaque with a z-index above
+  // the scrolled value cells (some of which are positioned), so month numbers
+  // pass cleanly underneath instead of bleeding through.
+  const stickyBg = memo ? "bg-white" : highlight ? "bg-[#f7fafa]" : "bg-white";
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
-      <td className={`py-2 pr-4 text-sm sticky left-0 bg-white ${highlight ? "bg-[#f7fafa]" : ""} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""}`}>
+      <td className={`py-2.5 pr-4 text-sm sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""}`}>
         {label}
       </td>
       {values.map((v, i) => (
         <td
           key={i}
-          className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
+          className={`py-2.5 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
         >
-          {v !== undefined ? fmt(v, currencyCode) : "—"}
-          {pctValues?.[i] && <span className="text-xs text-[#afafaf] ml-1">({pctValues[i]})</span>}
+          {/* TIM-1309: stack the % beneath the absolute value, both right-aligned,
+              so the totals line up in a consistent column instead of being shoved
+              left by a trailing percentage. */}
+          <span className="flex flex-col items-end leading-tight">
+            <span>{v !== undefined ? fmt(v, currencyCode) : "—"}</span>
+            {pctValues?.[i] && (
+              <span className="text-[10px] font-normal text-[#afafaf]">{pctValues[i]}</span>
+            )}
+          </span>
         </td>
       ))}
     </tr>
@@ -134,7 +145,7 @@ function EditableLineRow({
   return (
     <tr className={`group/row ${manual ? "bg-[#fbf7ef]" : ""}`}>
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 ${manual ? "bg-[#fbf7ef]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
+        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${manual ? "bg-[#fbf7ef]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
       >
         <span className="inline-flex items-center gap-1.5">
           <span>{label}</span>
@@ -489,7 +500,7 @@ export function PLTab({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-[#efefef]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide sticky left-0 bg-white w-48">
+              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide sticky left-0 z-20 bg-white w-48">
                 Line Item
               </th>
               {columns.map((c) => (
