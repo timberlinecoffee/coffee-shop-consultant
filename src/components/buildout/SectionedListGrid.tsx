@@ -16,11 +16,13 @@
 //   (drag handle, name, actions) stay fixed. Arrow-key keyboard alternative.
 
 import {
+  Component,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -1023,6 +1025,35 @@ const crossSectionKeyboardCoordinates: KeyboardCoordinateGetter = (
   return { x: newRect.left, y: newRect.top };
 };
 
+// ── Drag error boundary ───────────────────────────────────────────────────────
+// Wraps the DndContext so a bug inside drag handling never takes the whole
+// workspace down. On error: reverts items via the onError callback, renders
+// nothing (the parent increments dragKey to remount this boundary clean).
+
+class DragErrorBoundary extends Component<
+  { children: ReactNode; onError: (err: unknown) => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onError: (err: unknown) => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("[SectionedListGrid] drag error caught by boundary:", error);
+    this.props.onError(error);
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export interface SectionedListGridProps {
@@ -1192,6 +1223,9 @@ export function SectionedListGrid({
 
   // Drag state
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [dragKey, setDragKey] = useState(0);
+  const [dragErrorMsg, setDragErrorMsg] = useState<string | null>(null);
+  const dragErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const itemsSnapshotRef = useRef<AnyItem[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1503,21 +1537,17 @@ export function SectionedListGrid({
     return undefined; // unresolvable
   }
 
-  function onDragOver({ active, over }: DragOverEvent) {
-    if (!over) return;
-    const activeItemId = active.id as string;
-    const overId = over.id as string;
-
-    const activeSectionId = findItemSectionId(activeItemId);
-    const targetSectionId = resolveSectionId(overId);
-    if (targetSectionId === undefined) return;
-    if (activeSectionId === targetSectionId) return; // same section — sortable handles it
-
-    // Optimistically move active item to target section
-    const updated = items.map((i) =>
-      i.id === activeItemId ? { ...i, section_id: targetSectionId } : i
-    );
-    onItemsChange(updated);
+  function onDragOver(_event: DragOverEvent) {
+    // Same-section live reordering is handled natively by dnd-kit's SortableContext
+    // (it applies CSS transforms without touching React state).
+    //
+    // Cross-section moves are NOT applied here. Moving the active drag item between
+    // SortableContexts mid-drag causes React to unmount its row from Section A and
+    // remount it in Section B in the same render cycle. During that remount window,
+    // dnd-kit reads getBoundingClientRect() on the now-null node ref and throws,
+    // bubbling up to the workspace error boundary. The section assignment is applied
+    // atomically in onDragEnd instead; section headers still highlight via
+    // useDroppable.isOver without any state update here.
   }
 
   function onDragEnd({ active, over }: DragEndEvent) {
@@ -1530,26 +1560,66 @@ export function SectionedListGrid({
     const activeItemId = active.id as string;
     const overId = over.id as string;
 
-    // Determine final section and index
     const targetSectionId = (() => {
       const resolved = resolveSectionId(overId);
       if (resolved !== undefined) return resolved;
       return findItemSectionId(activeItemId);
     })();
 
-    // Reorder within the target section
+    const currentSectionId = findItemSectionId(activeItemId);
+
+    if (currentSectionId !== targetSectionId) {
+      // Cross-section drop: active item is still in its original section in state
+      // (onDragOver no longer moves it). Apply the move atomically here.
+      const activeItemObj = items.find((i) => i.id === activeItemId);
+      if (!activeItemObj) return;
+
+      const targetSectionItems = items
+        .filter((i) => i.section_id === targetSectionId && !i.archived)
+        .sort((a, b) => a.position - b.position);
+
+      // Insert before the over item if it's in the target section, otherwise append.
+      const overInTargetIdx = targetSectionItems.findIndex((i) => i.id === overId);
+      const insertAt = overInTargetIdx >= 0 ? overInTargetIdx : targetSectionItems.length;
+
+      const reorderedTarget = [
+        ...targetSectionItems.slice(0, insertAt),
+        activeItemObj,
+        ...targetSectionItems.slice(insertAt),
+      ];
+
+      const updatedItems = items.map((i) => {
+        if (i.id === activeItemId) {
+          return { ...i, section_id: targetSectionId, position: reorderedTarget.findIndex((r) => r.id === i.id) };
+        }
+        if (i.section_id === targetSectionId && !i.archived) {
+          const newPos = reorderedTarget.findIndex((r) => r.id === i.id);
+          return newPos >= 0 ? { ...i, position: newPos } : i;
+        }
+        return i;
+      });
+
+      onItemsChange(updatedItems);
+
+      reorderedTarget.forEach((item, idx) => {
+        const patch: Record<string, unknown> = { position: idx };
+        if (item.id === activeItemId) patch.section_id = targetSectionId;
+        scheduleItemSave(item.id, patch);
+      });
+      return;
+    }
+
+    // Same-section reorder
     const sectionItems = items.filter((i) => i.section_id === targetSectionId && !i.archived);
     const activeIndex = sectionItems.findIndex((i) => i.id === activeItemId);
     const overIndex = sectionItems.findIndex((i) => i.id === overId);
 
     if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
-      // Still persist the section change (cross-section move with no reorder)
-      const patch: Record<string, unknown> = { section_id: targetSectionId };
-      scheduleItemSave(activeItemId, patch);
+      // Dropped on section header, empty zone, or same position — no state change needed.
       return;
     }
 
-    // Reorder
+    // Reorder within section
     const reordered = [...sectionItems];
     const [moved] = reordered.splice(activeIndex, 1);
     reordered.splice(overIndex, 0, moved);
@@ -1562,11 +1632,18 @@ export function SectionedListGrid({
 
     onItemsChange(updatedItems);
 
-    // Persist reorder
     reordered.forEach((item, idx) => {
-      const patch: Record<string, unknown> = { position: idx, section_id: targetSectionId };
-      scheduleItemSave(item.id, patch);
+      scheduleItemSave(item.id, { position: idx, section_id: targetSectionId });
     });
+  }
+
+  function handleDragError() {
+    onItemsChange(itemsSnapshotRef.current);
+    setActiveId(null);
+    if (dragErrorTimerRef.current) clearTimeout(dragErrorTimerRef.current);
+    setDragErrorMsg("Couldn't move that item. Your list was restored.");
+    dragErrorTimerRef.current = setTimeout(() => setDragErrorMsg(null), 5000);
+    setDragKey((k) => k + 1);
   }
 
   // ── Column resize ────────────────────────────────────────────────────────────
@@ -1775,9 +1852,29 @@ export function SectionedListGrid({
         </div>
       </div>
 
+      {/* Inline toast for drag errors */}
+      {dragErrorMsg && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700"
+        >
+          <span>{dragErrorMsg}</span>
+          <button
+            type="button"
+            onClick={() => setDragErrorMsg(null)}
+            aria-label="Dismiss"
+            className="opacity-60 hover:opacity-100 transition-opacity text-xs font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
+          <DragErrorBoundary key={dragKey} onError={handleDragError}>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
             <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: visibleCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}>
               <colgroup>
@@ -2025,6 +2122,7 @@ export function SectionedListGrid({
               )}
             </DragOverlay>
           </DndContext>
+          </DragErrorBoundary>
         </div>
       </div>
 
