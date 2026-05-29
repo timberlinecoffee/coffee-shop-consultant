@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   let content: unknown
 
   if (tmpl.dataLoader) {
-    content = await tmpl.dataLoader(plan.id, user.id, supabase)
+    content = await tmpl.dataLoader(plan.id, user.id, supabase, new URL(request.url).searchParams)
   } else {
     const wsKeys = [tmpl.workspace_key, ...(tmpl.also_load ?? [])]
 

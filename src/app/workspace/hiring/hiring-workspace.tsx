@@ -26,11 +26,13 @@ import {
   BookOpen,
   Globe,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
+import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import {
   type OrgRole,
   type InterviewCandidate,
@@ -79,6 +81,74 @@ interface Props {
 
 function makeLocalId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// ── Hiring PDF download button ─────────────────────────────────────────────────
+
+function HiringPdfButton({
+  templateId,
+  queryParams,
+  label,
+}: {
+  templateId: string;
+  queryParams: Record<string, string>;
+  label: string;
+}) {
+  const [exporting, setExporting] = useState(false);
+  const [paywalled, setPaywalled] = useState(false);
+  const { guardedFetch, paywallReason, dismissPaywall } = usePaywallGuard();
+
+  // Sync paywall state from hook
+  const handleClick = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams(queryParams).toString();
+      const url = `/api/pdf/${templateId}${qs ? `?${qs}` : ""}`;
+      const res = await guardedFetch(url);
+      if (!res) {
+        setPaywalled(true);
+        return;
+      }
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const disp = res.headers.get("Content-Disposition") ?? "";
+      const m = /filename="([^"]+)"/.exec(disp);
+      const filename = m?.[1] ?? `groundwork-${templateId}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.pdf`;
+      const urlObj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlObj;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(urlObj);
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, guardedFetch, templateId, queryParams]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={exporting}
+        title={label}
+        className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448] disabled:opacity-50 transition-colors"
+      >
+        <Download size={12} />
+        {label}
+      </button>
+      {paywalled && (
+        <PaywallModal
+          open={paywalled}
+          reason={paywallReason}
+          onClose={() => { setPaywalled(false); dismissPaywall(); }}
+        />
+      )}
+    </>
+  );
 }
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -622,8 +692,16 @@ function RoleRow({
                     </div>
                   ))}
                 </div>
-                {canEdit && (
-                  <div className="flex justify-end pt-1">
+                <div className="flex items-center justify-between pt-1">
+                  {jdFields && role.jd_template_id && (
+                    <HiringPdfButton
+                      templateId="hiring_job_description"
+                      queryParams={{ role_id: role.id }}
+                      label="Print JD"
+                    />
+                  )}
+                  {!jdFields || !role.jd_template_id ? <span /> : null}
+                  {canEdit && (
                     <button
                       type="button"
                       onClick={saveJd}
@@ -632,8 +710,8 @@ function RoleRow({
                     >
                       Save JD
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1035,6 +1113,17 @@ function RoleHubPanel({
                                 </button>
                                 <button
                                   type="button"
+                                  title="Print blank scorecard"
+                                  onClick={() => {
+                                    const qs = new URLSearchParams({ scorecard_id: sc.id }).toString();
+                                    window.open(`/api/pdf/hiring_scorecard_blank?${qs}`, "_blank");
+                                  }}
+                                  className="text-[#afafaf] hover:text-[#155e63] p-1"
+                                >
+                                  <Download size={12} />
+                                </button>
+                                <button
+                                  type="button"
                                   title="Delete"
                                   onClick={() => deleteScorecard(sc.id)}
                                   className="text-[#afafaf] hover:text-[#a13d3d] p-1"
@@ -1093,6 +1182,17 @@ function RoleHubPanel({
                         ) : (
                           <>
                             <span className="flex-1 text-sm text-[#1a1a1a] truncate">{cf.name}</span>
+                            <button
+                              type="button"
+                              title="Print blank form"
+                              onClick={() => {
+                                const qs = new URLSearchParams({ form_template_id: cf.id }).toString();
+                                window.open(`/api/pdf/hiring_competency_blank?${qs}`, "_blank");
+                              }}
+                              className="text-[#afafaf] hover:text-[#155e63] p-1"
+                            >
+                              <Download size={12} />
+                            </button>
                             {canEdit && (
                               <>
                                 <button
@@ -2523,32 +2623,49 @@ function CompetencyTab({
               </div>
             ) : (
               <div className="divide-y divide-[#f5f5f5]">
-                {staffFiles.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSelectedStaffId(s.id)}
-                    className={`w-full text-left px-4 py-3 flex items-center gap-2 transition-colors ${
-                      selectedStaffId === s.id
-                        ? "bg-[#f4f9f8]"
-                        : "hover:bg-[#faf9f7]"
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1a1a1a] truncate">
-                        {s.name || (
-                          <span className="text-[#afafaf] font-normal">
-                            New staff
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[10px] text-[#6b6b6b]">
-                        {roles.find((r) => r.id === s.role_id)?.role_title ?? "No role"}
-                        {s.hire_date ? ` · ${s.hire_date}` : ""}
-                      </p>
+                {staffFiles.map((s) => {
+                  const staffEvals = evaluations.filter((e) => e.staff_file_id === s.id);
+                  const isSelected = selectedStaffId === s.id;
+                  return (
+                    <div
+                      key={s.id}
+                      className={`flex items-center gap-1 transition-colors ${
+                        isSelected ? "bg-[#f4f9f8]" : "hover:bg-[#faf9f7]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStaffId(s.id)}
+                        className="flex-1 text-left px-4 py-3 min-w-0"
+                      >
+                        <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                          {s.name || (
+                            <span className="text-[#afafaf] font-normal">
+                              New staff
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-[#6b6b6b]">
+                          {roles.find((r) => r.id === s.role_id)?.role_title ?? "No role"}
+                          {s.hire_date ? ` · ${s.hire_date}` : ""}
+                        </p>
+                      </button>
+                      {isSelected && staffEvals.length > 0 && (
+                        <button
+                          type="button"
+                          title="Download completed evaluation PDF"
+                          onClick={() => {
+                            const qs = new URLSearchParams({ staff_file_id: s.id }).toString();
+                            window.open(`/api/pdf/hiring_competency_completed?${qs}`, "_blank");
+                          }}
+                          className="text-[#afafaf] hover:text-[#155e63] p-2 shrink-0"
+                        >
+                          <Download size={13} />
+                        </button>
+                      )}
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
