@@ -800,12 +800,15 @@ function SectionHeader({
     <tr
       ref={setNodeRef}
       className={`border-b border-[#e4eded] transition-colors ${
-        dropHighlight
-          ? "bg-[#d8eeef] ring-2 ring-inset ring-[#155e63]"
-          : "bg-[#f4f9f8]"
+        dropHighlight ? "ring-2 ring-inset ring-[#155e63]" : ""
       }`}
     >
-      <td colSpan={colCount} className="px-2 py-1.5">
+      <td
+        colSpan={colCount}
+        className={`px-2 py-1.5 sticky left-0 z-10 ${
+          dropHighlight ? "bg-[#d8eeef]" : "bg-[#f4f9f8]"
+        }`}
+      >
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -1649,7 +1652,10 @@ export function SectionedListGrid({
               <thead>
                 <tr className="border-b border-[#f0f0f0]">
                   {visibleCols.map((col) => (
-                    <th key={col.id} className={headerCellCls}>
+                    <th
+                      key={col.id}
+                      className={`${headerCellCls}${col.id === "name" ? " sticky left-0 z-20" : ""}`}
+                    >
                       <span>{col.label}</span>
                       {col.resizable && (
                         <span
@@ -1752,8 +1758,8 @@ export function SectionedListGrid({
                   strategy={verticalListSortingStrategy}
                 >
                   {unsectionedItems.length > 0 && (
-                    <tr className="bg-[#faf9f7] border-b border-[#e4eded]">
-                      <td colSpan={visibleCols.length} className="px-3 py-1.5">
+                    <tr className="border-b border-[#e4eded]">
+                      <td colSpan={visibleCols.length} className="px-3 py-1.5 sticky left-0 z-10 bg-[#faf9f7]">
                         <span className="text-xs font-semibold text-[#afafaf]">Unsectioned</span>
                       </td>
                     </tr>
