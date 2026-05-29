@@ -255,9 +255,9 @@ export default function HomepageHero() {
           <motion.p
             className="mb-9 text-white"
             style={{
-              fontSize: "1.125rem",
-              lineHeight: "1.65",
-              opacity: 0.78,
+              fontSize: "1.1875rem",
+              lineHeight: "1.6",
+              opacity: 0.82,
               fontWeight: 400,
               maxWidth: "460px",
             }}
@@ -265,9 +265,9 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.28, ease: EASE }}
           >
-            Run a successful coffee shop without a business background.
-            Groundwork guides every decision, benchmarks your plan, and turns
-            it into the next action you need to take.
+            Open a coffee shop without a business background. Groundwork shows
+            you what to plan next, checks it against real shops, and points to
+            your next move.
           </motion.p>
 
           <motion.div
@@ -304,8 +304,8 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.52, ease: "easeOut" }}
           >
             {[
-              "Guided suite from concept to grand opening",
-              "Benchmarks modeled from coffee-shop industry research and operator-reported data",
+              "Guided suite from concept to opening day",
+              "Benchmarks from real coffee shops, not generic templates",
               "AI co-pilot that fills the business-background gap",
             ].map((feature) => (
               <li key={feature} className="flex items-start gap-2.5">

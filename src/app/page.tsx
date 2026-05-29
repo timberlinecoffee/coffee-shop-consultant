@@ -49,11 +49,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "AI-Guided Planning",
     oneLiner:
-      "Walks you through every decision a coffee-shop owner has to make, in the right order.",
+      "Walks you through every owner decision in the right order.",
     bullets: [
-      "Concept, location, menu, financials, staffing, build-out, launch: eight planning modules in sequence",
-      "Prompts you for the inputs that matter and skips the ones that don't",
-      "Saves your answers and shows what's left so you always know what to work on next",
+      "Concept, location, menu, financials, staffing, build-out, launch: eight modules in sequence",
+      "Asks for the inputs that matter, skips the ones that don't",
+      "Saves your answers and shows what's left",
     ],
   },
   {
@@ -65,11 +65,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Real Benchmarking",
     oneLiner:
-      "Compares your numbers against what working coffee shops actually look like.",
+      "Holds your numbers up against what real coffee shops look like.",
     bullets: [
-      "Startup cost, rent ratios, COGS, labor and margin all flagged when they drift out of range",
-      "Modeled from coffee-shop industry research and operator-reported data, not generic small-business templates",
-      "Updates live as you change your plan, so you can stress-test before you sign anything",
+      "Startup cost, rent, COGS, labor and margin flagged when they drift",
+      "Modeled from coffee-shop research and operator-reported data, not generic templates",
+      "Updates live so you can stress-test before you sign anything",
     ],
   },
   {
@@ -81,11 +81,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Action at Every Step",
     oneLiner:
-      "Turns every planning module into a specific next thing to do this week.",
+      "Turns every module into a clear next thing to do this week.",
     bullets: [
-      "Generates a launch-plan milestone list tied to your open date",
-      "Surfaces the single 'next action' at every step so you don't stall in research mode",
-      "Tracks what you've completed and what's still outstanding",
+      "Milestone list tied to your open date",
+      "One next action at every step, so you don't stall in research mode",
+      "Tracks what's done and what's outstanding",
     ],
   },
   {
@@ -97,11 +97,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Complete Planning Suite",
     oneLiner:
-      "Everything you'd usually piece together from eight different tools, in one place.",
+      "What you'd piece together from eight tools, in one place.",
     bullets: [
-      "Financial model, menu pricing, staffing, build-out and launch plan all share the same plan inputs",
+      "Financial model, menu pricing, staffing, build-out and launch plan share the same inputs",
       "Change one assumption and every downstream module updates",
-      "Exportable planning summaries for landlord/lender conversations — not a substitute for a CPA-prepared package",
+      "Exportable summaries for landlord and lender conversations (not a CPA-prepared package)",
     ],
   },
   {
@@ -113,7 +113,7 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Operational Tools",
     oneLiner:
-      "Carries through to opening day, not just the pre-open paperwork.",
+      "Goes past pre-open paperwork through opening day.",
     bullets: [
       "Hiring, onboarding and shift planning ready for week one",
       "Menu pricing and recipe costing you can update as suppliers change",
@@ -128,11 +128,11 @@ const BENCHMARK_STEPS: AccordionItem[] = [
     accent: "teal",
     title: "Get Guided Through Every Decision",
     oneLiner:
-      "Stop wondering what you're supposed to be working on this week.",
+      "Stop wondering what you should be working on this week.",
     bullets: [
-      "Eight sequenced modules walk you through the full plan",
-      "Each module asks for the inputs that matter and shows what's still missing",
-      "The next-best action is always visible, so you don't sit staring at a blank page",
+      "Eight modules walk you through the full plan",
+      "Each module asks for what matters and shows what's missing",
+      "The next action stays visible so you don't sit staring at a blank page",
     ],
   },
   {
@@ -140,11 +140,11 @@ const BENCHMARK_STEPS: AccordionItem[] = [
     accent: "sage",
     title: "See How Your Plan Compares",
     oneLiner:
-      "Know whether your numbers are realistic before a landlord or lender does.",
+      "Know if your numbers are realistic before a landlord or lender does.",
     bullets: [
-      "Startup cost, rent ratio, COGS and labor benchmarked against real coffee shops",
-      "Drift-out-of-range flags tell you exactly which assumption is breaking the model",
-      "Re-run with new numbers as soon as you change a lease term or supplier price",
+      "Startup cost, rent, COGS and labor benchmarked against real shops",
+      "Drift flags tell you which assumption is breaking the model",
+      "Re-run as soon as a lease term or supplier price changes",
     ],
   },
   {
@@ -219,7 +219,7 @@ const PRICING: PricingPlan[] = [
     features: [
       "Full access to all planning modules",
       "Startup cost estimator",
-      "12-month financial model (planning estimate — consult a CPA before lender applications)",
+      "12-month financial model (planning estimate; consult a CPA before lender applications)",
       "Benchmarking against industry standards",
       "50 AI consultant sessions per month",
       "Email support",
@@ -303,17 +303,17 @@ export default function LandingPage() {
             {[
               {
                 title: "Guided Through Every Decision",
-                body: "Eight sequenced modules tell you what to plan next, so you never sit staring at a blank page.",
+                body: "Eight modules in order. You always know what to plan next.",
                 color: "teal" as const,
               },
               {
                 title: "Benchmarked Against Real Shops",
-                body: "Your numbers live next to what working coffee shops actually look like, not a generic business template.",
+                body: "Your numbers sit next to what real coffee shops actually look like.",
                 color: "sage" as const,
               },
               {
                 title: "An AI Co-Pilot in Your Corner",
-                body: "Ask coffee-specific questions about your lease, menu or equipment and get answers tied to your own plan.",
+                body: "Ask about your lease, menu, or equipment. Get answers tied to your plan.",
                 color: "teal" as const,
               },
             ].map((item) => (
@@ -322,14 +322,14 @@ export default function LandingPage() {
                   <p
                     className="font-semibold mb-2"
                     style={{
-                      fontSize: "16px",
+                      fontSize: "17px",
                       color: item.color === "sage" ? "var(--sage)" : "var(--teal)",
                       lineHeight: 1.3,
                     }}
                   >
                     {item.title}
                   </p>
-                  <p className="text-neutral-600" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  <p className="text-neutral-600" style={{ fontSize: "16px", lineHeight: 1.6 }}>
                     {item.body}
                   </p>
                 </div>
@@ -360,12 +360,6 @@ export default function LandingPage() {
             >
               A Guided Suite for the Whole Journey
             </h2>
-            <p
-              className="mx-auto mt-4 text-neutral-600"
-              style={{ fontSize: "15px", lineHeight: 1.6, maxWidth: "560px" }}
-            >
-              Tap any card to see what&apos;s inside.
-            </p>
           </FadeUp>
           <FeatureAccordion items={SUITE_ITEMS} layout="icon" columns={3} />
         </div>
@@ -399,10 +393,9 @@ export default function LandingPage() {
                 >
                   Your Coffee-Specific Co-Pilot, Always in Your Corner
                 </h2>
-                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
-                  Ask about your market, lease terms, or equipment choices and get coffee-specific
-                  answers tied to your own plan, not generic small-business advice. Built for the
-                  owner-operator who didn&apos;t come from a business background.
+                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
+                  Ask about your market, lease, or equipment. Get coffee-specific answers tied
+                  to your plan, not generic small-business advice.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {[
@@ -456,7 +449,7 @@ export default function LandingPage() {
             </h2>
             <p
               className="mx-auto mt-4 text-neutral-600"
-              style={{ fontSize: "15px", lineHeight: 1.6, maxWidth: "560px" }}
+              style={{ fontSize: "17px", lineHeight: 1.55, maxWidth: "560px" }}
             >
               Three habits the platform builds into your week.
             </p>
@@ -753,8 +746,8 @@ export default function LandingPage() {
             >
               Open a Coffee Shop Without a Business Background
             </h2>
-            <p style={{ color: "rgba(255,255,255,0.78)", fontSize: "1rem", lineHeight: 1.65, maxWidth: "520px" }}>
-              Groundwork fills the gaps so you can run your shop intentionally and thoughtfully.
+            <p style={{ color: "rgba(255,255,255,0.82)", fontSize: "1.0625rem", lineHeight: 1.6, maxWidth: "520px" }}>
+              Groundwork fills the gaps so you can run your shop intentionally.
             </p>
           </FadeUp>
           <FadeUp delay={0.15}>
