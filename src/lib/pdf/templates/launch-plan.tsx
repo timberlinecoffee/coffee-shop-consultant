@@ -816,7 +816,7 @@ async function loadLaunchPlanData(
     await Promise.all([
       supabase
         .from("coffee_shop_plans")
-        .select("plan_name, shop_name, latest_readiness_check, latest_readiness_check_at")
+        .select("plan_name, latest_readiness_check, latest_readiness_check_at")
         .eq("id", planId)
         .single(),
       supabase
@@ -848,7 +848,7 @@ async function loadLaunchPlanData(
 
   return {
     planName: planResult.data?.plan_name ?? "Launch Plan",
-    shopName: planResult.data?.shop_name ?? null,
+    shopName: planResult.data?.plan_name ?? null,
     ownerEmail: userResult.data?.email ?? null,
     targetOpeningDate: userResult.data?.target_opening_date ?? null,
     timeline: (timelineResult.data ?? []) as TimelineItem[],

@@ -55,7 +55,7 @@ export async function GET() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, shop_name")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -113,7 +113,7 @@ export async function GET() {
   const element = FinancialPlannerPdf({
     mp,
     equipment,
-    shopName: plan.shop_name,
+    shopName: plan.plan_name,
     generatedDate,
     charts,
   });
@@ -121,7 +121,7 @@ export async function GET() {
   const { renderToStream } = await import("@react-pdf/renderer");
   const stream = await renderToStream(element);
 
-  const slug = slugify(plan.shop_name);
+  const slug = slugify(plan.plan_name);
   const date = fmtYyyymmdd(new Date());
   const filename = `groundwork-financials-${slug}-${date}.pdf`;
 

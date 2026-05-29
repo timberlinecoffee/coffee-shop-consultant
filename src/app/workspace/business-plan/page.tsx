@@ -38,7 +38,7 @@ export default async function BusinessPlanWorkspacePage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, shop_name")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -194,7 +194,7 @@ export default async function BusinessPlanWorkspacePage() {
   return (
     <BusinessPlanWorkspace
       planId={planId}
-      shopName={plan.shop_name ?? ""}
+      shopName={plan.plan_name ?? ""}
       initialSections={sections}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
