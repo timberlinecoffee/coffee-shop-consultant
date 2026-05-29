@@ -121,16 +121,21 @@ const sectionLabelCls =
 
 // ── Org Structure tab ─────────────────────────────────────────────────────────
 
-interface JDPanel {
-  role: OrgRole;
-  jd: {
-    title: string;
-    summary: string;
-    responsibilities: string;
-    requirements: string;
-    comp: string;
-  };
-}
+type JdFields = {
+  title: string;
+  summary: string;
+  responsibilities: string;
+  requirements: string;
+  comp: string;
+};
+
+const JD_FIELD_DEFS: Array<{ key: keyof JdFields; label: string; multiline: boolean }> = [
+  { key: "title", label: "Title", multiline: false },
+  { key: "summary", label: "Summary", multiline: true },
+  { key: "responsibilities", label: "Responsibilities", multiline: true },
+  { key: "requirements", label: "Requirements", multiline: true },
+  { key: "comp", label: "Compensation & Benefits", multiline: true },
+];
 
 function OrgTab({
   planId,
@@ -144,14 +149,7 @@ function OrgTab({
   onRolesChange: (r: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [jdPanel, setJdPanel] = useState<JDPanel | null>(null);
-  const [jdLoading, setJdLoading] = useState(false);
-  const [jdError, setJdError] = useState<string | null>(null);
-  const [improvingField, setImprovingField] = useState<string | null>(null);
   const [hubRole, setHubRole] = useState<OrgRole | null>(null);
-
-  // Local JD state while panel is open
-  const [jdFields, setJdFields] = useState<JDPanel["jd"] | null>(null);
 
   async function addRole() {
     const optimistic: OrgRole = {
@@ -199,83 +197,6 @@ function OrgTab({
       method: "DELETE",
     });
     if (!res.ok) onRolesChange(snapshot);
-  }
-
-  async function openJd(role: OrgRole) {
-    setJdLoading(true);
-    setJdError(null);
-    const defaultJd = {
-      title: role.role_title || "",
-      summary: "",
-      responsibilities: "",
-      requirements: "",
-      comp: "",
-    };
-    setJdPanel({ role, jd: defaultJd });
-    setJdFields(defaultJd);
-
-    if (role.jd_template_id) {
-      try {
-        const res = await fetch(
-          `/api/workspaces/hiring/roles?planId=${planId}&jd_id=${role.jd_template_id}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const loaded = {
-            title: data.title ?? role.role_title,
-            summary: data.summary ?? "",
-            responsibilities: data.responsibilities ?? "",
-            requirements: data.requirements ?? "",
-            comp: data.comp ?? "",
-          };
-          setJdFields(loaded);
-          setJdPanel({ role, jd: loaded });
-        }
-      } catch {
-        setJdError("Could not load job description.");
-      }
-    }
-    setJdLoading(false);
-  }
-
-  async function saveJd() {
-    if (!jdPanel || !jdFields) return;
-    const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: jdPanel.role.id,
-        jd: jdFields,
-      }),
-    });
-    if (res.ok) {
-      const updated = (await res.json()) as OrgRole;
-      onRolesChange((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-    }
-    setJdPanel(null);
-    setJdFields(null);
-  }
-
-  async function improveJdField(field: keyof JDPanel["jd"]) {
-    if (!jdPanel || !jdFields) return;
-    setImprovingField(field);
-    try {
-      const res = await fetch("/api/workspaces/hiring/improve-jd", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          field,
-          content: jdFields[field],
-          roleTitle: jdPanel.role.role_title,
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { rewrite: string };
-        setJdFields((prev) => prev ? { ...prev, [field]: data.rewrite } : prev);
-      }
-    } finally {
-      setImprovingField(null);
-    }
   }
 
   // Org chart: build tree from parent_role_id
@@ -350,6 +271,7 @@ function OrgTab({
             {roles.map((role) => (
               <RoleRow
                 key={role.id}
+                planId={planId}
                 role={role}
                 roles={roles}
                 canEdit={canEdit}
@@ -359,7 +281,6 @@ function OrgTab({
                 }
                 onUpdate={(patch) => updateRole(role.id, patch)}
                 onDelete={() => deleteRole(role.id)}
-                onViewJd={() => openJd(role)}
                 onOpenHub={() => setHubRole(role)}
               />
             ))}
@@ -394,120 +315,16 @@ function OrgTab({
           planId={planId}
           canEdit={canEdit}
           role={hubRole}
-          onOpenJd={() => { openJd(hubRole); setHubRole(null); }}
           onClose={() => setHubRole(null)}
         />
       )}
 
-      {/* JD slide-over */}
-      {jdPanel && jdFields && (
-        <div className="fixed inset-0 z-40 flex">
-          <button
-            type="button"
-            aria-label="Close panel"
-            className="flex-1 bg-black/30"
-            onClick={() => { setJdPanel(null); setJdFields(null); }}
-          />
-          <div className="w-full max-w-lg bg-white shadow-xl flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#efefef] flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[#1a1a1a]">
-                  Job Description
-                </p>
-                <p className="text-xs text-[#6b6b6b]">{jdPanel.role.role_title || "Unnamed role"}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setJdPanel(null); setJdFields(null); }}
-                className="text-[#afafaf] hover:text-[#1a1a1a] p-1"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {jdLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-[#afafaf]">Loading...</p>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-                {jdError && (
-                  <p className="text-sm text-[#a13d3d]">{jdError}</p>
-                )}
-                {(
-                  [
-                    { key: "title", label: "Title", multiline: false },
-                    { key: "summary", label: "Summary", multiline: true },
-                    { key: "responsibilities", label: "Responsibilities", multiline: true },
-                    { key: "requirements", label: "Requirements", multiline: true },
-                    { key: "comp", label: "Compensation & Benefits", multiline: true },
-                  ] as Array<{ key: keyof JDPanel["jd"]; label: string; multiline: boolean }>
-                ).map(({ key, label, multiline }) => (
-                  <div key={key}>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className={labelCls}>{label}</label>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          disabled={improvingField === key}
-                          onClick={() => improveJdField(key)}
-                          className="text-[10px] font-semibold text-[#155e63] hover:underline disabled:opacity-50"
-                        >
-                          {improvingField === key ? "Improving..." : "AI Improve"}
-                        </button>
-                      )}
-                    </div>
-                    {multiline ? (
-                      <textarea
-                        rows={4}
-                        className={inputCls + " resize-none"}
-                        value={jdFields[key]}
-                        onChange={(e) =>
-                          setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev)
-                        }
-                        disabled={!canEdit}
-                      />
-                    ) : (
-                      <input
-                        className={inputCls}
-                        value={jdFields[key]}
-                        onChange={(e) =>
-                          setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev)
-                        }
-                        disabled={!canEdit}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {canEdit && (
-              <div className="px-6 py-4 border-t border-[#efefef] flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setJdPanel(null); setJdFields(null); }}
-                  className="text-sm text-[#6b6b6b] hover:text-[#1a1a1a]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={saveJd}
-                  className="text-sm font-semibold bg-[#155e63] text-white px-5 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
-                >
-                  Save JD
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 function RoleRow({
+  planId,
   role,
   roles,
   canEdit,
@@ -515,9 +332,9 @@ function RoleRow({
   onToggleEdit,
   onUpdate,
   onDelete,
-  onViewJd,
   onOpenHub,
 }: {
+  planId: string;
   role: OrgRole;
   roles: OrgRole[];
   canEdit: boolean;
@@ -525,13 +342,95 @@ function RoleRow({
   onToggleEdit: () => void;
   onUpdate: (patch: Partial<OrgRole>) => void;
   onDelete: () => void;
-  onViewJd: () => void;
   onOpenHub: () => void;
 }) {
+  const [jdOpen, setJdOpen] = useState(false);
+  const [jdFields, setJdFields] = useState<JdFields | null>(null);
+  const [jdLoading, setJdLoading] = useState(false);
+  const [jdDirty, setJdDirty] = useState(false);
+  const [improvingField, setImprovingField] = useState<keyof JdFields | null>(null);
+
+  async function loadJd() {
+    setJdLoading(true);
+    const defaults: JdFields = {
+      title: role.role_title || "",
+      summary: "",
+      responsibilities: "",
+      requirements: "",
+      comp: "",
+    };
+    setJdFields(defaults);
+    if (role.jd_template_id) {
+      try {
+        const res = await fetch(
+          `/api/workspaces/hiring/roles?planId=${planId}&jd_id=${role.jd_template_id}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setJdFields({
+            title: data.title ?? role.role_title ?? "",
+            summary: data.summary ?? "",
+            responsibilities: data.responsibilities ?? "",
+            requirements: data.requirements ?? "",
+            comp: data.comp ?? "",
+          });
+        }
+      } catch { /* silently use defaults */ }
+    }
+    setJdLoading(false);
+  }
+
+  function toggleJd() {
+    if (!jdOpen) {
+      if (!jdFields) loadJd();
+      setJdOpen(true);
+    } else {
+      setJdOpen(false);
+    }
+  }
+
+  async function saveJd() {
+    if (!jdFields) return;
+    const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: role.id, jd: jdFields }),
+    });
+    if (res.ok) {
+      const updated = (await res.json()) as OrgRole;
+      onUpdate({ jd_template_id: updated.jd_template_id });
+      setJdDirty(false);
+    }
+  }
+
+  async function improveJdField(field: keyof JdFields) {
+    if (!jdFields) return;
+    setImprovingField(field);
+    try {
+      const res = await fetch("/api/workspaces/hiring/improve-jd", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field,
+          content: jdFields[field],
+          roleTitle: role.role_title,
+        }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { rewrite: string };
+        setJdFields((prev) => prev ? { ...prev, [field]: data.rewrite } : prev);
+        setJdDirty(true);
+      }
+    } finally {
+      setImprovingField(null);
+    }
+  }
+
   const parentOptions = roles.filter((r) => r.id !== role.id);
 
   return (
     <div>
+      {/* Role header row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium text-[#1a1a1a] truncate block">
@@ -569,6 +468,92 @@ function RoleRow({
           >
             <Trash2 size={13} />
           </button>
+        )}
+      </div>
+
+      {/* JD inline accordion */}
+      <div className="border-t border-[#f5f5f5]">
+        <button
+          type="button"
+          onClick={toggleJd}
+          className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-[#faf9f7] transition-colors"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText size={12} className="text-[#155e63] shrink-0" />
+            <span className="text-xs font-semibold text-[#155e63]">Job Description</span>
+            {jdFields?.summary && !jdOpen && (
+              <span className="text-xs text-[#afafaf] truncate">
+                {"— "}{jdFields.summary.replace(/\n/g, " ").substring(0, 80)}
+              </span>
+            )}
+          </div>
+          {jdOpen
+            ? <ChevronUp size={12} className="text-[#afafaf] shrink-0" />
+            : <ChevronDown size={12} className="text-[#afafaf] shrink-0" />}
+        </button>
+
+        {jdOpen && (
+          <div className="px-4 pb-4 space-y-4 bg-[#faf9f7] border-t border-[#f0f0f0]">
+            {jdLoading ? (
+              <p className="text-sm text-[#afafaf] pt-3">Loading...</p>
+            ) : (
+              <>
+                <div className="pt-3 space-y-4">
+                  {JD_FIELD_DEFS.map(({ key, label, multiline }) => (
+                    <div key={key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className={labelCls}>{label}</label>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            disabled={improvingField === key}
+                            onClick={() => improveJdField(key)}
+                            className="text-[10px] font-semibold text-[#155e63] hover:underline disabled:opacity-50"
+                          >
+                            {improvingField === key ? "Improving..." : "AI Improve"}
+                          </button>
+                        )}
+                      </div>
+                      {multiline ? (
+                        <textarea
+                          rows={4}
+                          className={inputCls + " resize-none"}
+                          value={jdFields?.[key] ?? ""}
+                          onChange={(e) => {
+                            setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
+                            setJdDirty(true);
+                          }}
+                          disabled={!canEdit}
+                        />
+                      ) : (
+                        <input
+                          className={inputCls}
+                          value={jdFields?.[key] ?? ""}
+                          onChange={(e) => {
+                            setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
+                            setJdDirty(true);
+                          }}
+                          disabled={!canEdit}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {canEdit && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={saveJd}
+                      disabled={!jdDirty}
+                      className="text-sm font-semibold bg-[#155e63] text-white px-5 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+                    >
+                      Save JD
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -694,13 +679,11 @@ function RoleHubPanel({
   planId,
   canEdit,
   role,
-  onOpenJd,
   onClose,
 }: {
   planId: string;
   canEdit: boolean;
   role: OrgRole;
-  onOpenJd: () => void;
   onClose: () => void;
 }) {
   const [scorecards, setScorecards] = useState<InterviewScorecard[]>([]);
@@ -822,24 +805,6 @@ function RoleHubPanel({
             <p className="text-sm text-[#afafaf]">Loading…</p>
           ) : (
             <>
-              {/* ── Job Description ── */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText size={14} className="text-[#155e63]" />
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">Job Description</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onOpenJd}
-                  className="w-full flex items-center justify-between text-sm border border-[#efefef] rounded-lg px-4 py-3 hover:border-[#155e63] hover:bg-[#f5fafa] transition-colors"
-                >
-                  <span className="text-[#1a1a1a] font-medium">
-                    {role.role_title || "Unnamed role"} — JD
-                  </span>
-                  <ExternalLink size={13} className="text-[#155e63]" />
-                </button>
-              </section>
-
               {/* ── Scorecards ── */}
               <section>
                 <div className="flex items-center justify-between mb-3">
