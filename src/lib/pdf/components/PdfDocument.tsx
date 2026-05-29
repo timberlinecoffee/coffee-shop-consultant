@@ -1,5 +1,3 @@
-"use client"
-
 import React from "react"
 import { Document, StyleSheet } from "@react-pdf/renderer"
 import { registerFonts, BRAND } from "../brand"
