@@ -24,6 +24,8 @@ import {
   Tag,
   Settings,
   StickyNote,
+  LayoutGrid,
+  TrendingUp,
 } from "lucide-react";
 import {
   DndContext,
@@ -52,6 +54,14 @@ import {
   costPerUnit,
   aggregateMargins,
 } from "@/lib/menu";
+import {
+  type ExpectedPopularity,
+  type Quadrant,
+  POPULARITY_OPTIONS,
+  QUADRANT_META,
+  classifyMenu,
+  marginRanking,
+} from "@/lib/menu-engineering";
 
 interface ConceptContext {
   shop_identity?: string;
@@ -99,6 +109,53 @@ type PriceSuggestion = {
   margin_pct: number;
   commentary: string;
 };
+
+// ─── Expected-popularity selector (TIM-1322) ─────────────────────────────────
+// Segmented Low / Medium / High control. Clicking the active option clears it
+// back to "not set". Pre-launch there is no real sales data, so this is the
+// owner's estimate feeding the menu-engineering matrix.
+function PopularitySelector({
+  value,
+  disabled,
+  onChange,
+  size = "md",
+}: {
+  value: ExpectedPopularity | null;
+  disabled?: boolean;
+  onChange: (value: ExpectedPopularity | null) => void;
+  size?: "sm" | "md";
+}) {
+  const pad = size === "sm" ? "px-2 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
+  return (
+    <div
+      className="inline-flex rounded-lg border border-[#e0e0e0] overflow-hidden"
+      role="group"
+      aria-label="Expected popularity"
+    >
+      {POPULARITY_OPTIONS.map((opt, idx) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={disabled}
+            aria-pressed={active}
+            onClick={() => onChange(active ? null : opt.value)}
+            className={`${pad} font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              idx > 0 ? "border-l border-[#e0e0e0]" : ""
+            } ${
+              active
+                ? "bg-[#155e63] text-white"
+                : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ─── Searchable ingredient combobox (TIM-1020) ───────────────────────────────
 
@@ -868,6 +925,22 @@ function ItemEditorPanel({
                 </p>
               )}
             </div>
+          </div>
+
+          {/* TIM-1322: owner's popularity estimate (no POS history pre-launch).
+              Pairs with margin to place the item on the menu-engineering matrix
+              in the Insights tab. */}
+          <div className="mt-4">
+            <label className={labelCls}>Expected Popularity</label>
+            <PopularitySelector
+              value={item.expected_popularity}
+              disabled={!canEdit}
+              onChange={(v) => onUpdateItem({ expected_popularity: v })}
+            />
+            <p className="text-[11px] text-[#9a9a9a] mt-1.5 leading-relaxed">
+              Your best guess at how often this will sell. We pair it with your
+              margin in the Insights tab to suggest what to feature or rework.
+            </p>
           </div>
         </div>
 
@@ -1881,9 +1954,351 @@ function CategoryHeader({
   );
 }
 
+// ─── Insights tab: menu-engineering matrix + margin ranking (TIM-1322) ───────
+
+// Soft brand-aligned tints per quadrant. Star = primary teal (the goal),
+// Plowhorse = warm amber (watch the margin), Puzzle = muted teal (needs a push),
+// Dog = muted clay (reconsider). No hard reds.
+const QUADRANT_STYLES: Record<
+  Quadrant,
+  { cell: string; badge: string; dot: string }
+> = {
+  star: { cell: "border-[#bfe0d8] bg-[#f0f8f5]", badge: "bg-[#155e63] text-white", dot: "bg-[#155e63]" },
+  plowhorse: { cell: "border-[#f0dcb0] bg-[#fdf8ee]", badge: "bg-[#b9852a] text-white", dot: "bg-[#b9852a]" },
+  puzzle: { cell: "border-[#cfe0e1] bg-[#f4f9f8]", badge: "bg-[#3d7c84] text-white", dot: "bg-[#3d7c84]" },
+  dog: { cell: "border-[#e6d2cd] bg-[#fbf5f2]", badge: "bg-[#9a5a4d] text-white", dot: "bg-[#9a5a4d]" },
+};
+
+// Order matches the matrix layout: top row = more popular, bottom = less popular;
+// left column = higher margin, right column = lower margin.
+const MATRIX_ORDER: Quadrant[] = ["star", "plowhorse", "puzzle", "dog"];
+
+function PopularityInlineSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: ExpectedPopularity | null;
+  disabled?: boolean;
+  onChange: (value: ExpectedPopularity | null) => void;
+}) {
+  return (
+    <select
+      className="text-xs bg-white border border-[#e0e0e0] rounded-md px-1.5 py-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:opacity-50"
+      value={value ?? ""}
+      disabled={disabled}
+      aria-label="Expected popularity"
+      onChange={(e) =>
+        onChange(e.target.value === "" ? null : (e.target.value as ExpectedPopularity))
+      }
+    >
+      <option value="">Not set</option>
+      {POPULARITY_OPTIONS.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function InsightsTab({
+  items,
+  canEdit,
+  onUpdateItem,
+  onGoToMenu,
+}: {
+  items: MenuItemWithCogs[];
+  canEdit: boolean;
+  onUpdateItem: (id: string, patch: Partial<MenuItemWithCogs>) => Promise<void>;
+  onGoToMenu: () => void;
+}) {
+  const { classified, needsInfo, thresholds, counts } = useMemo(
+    () => classifyMenu(items),
+    [items]
+  );
+  const ranking = useMemo(() => marginRanking(items), [items]);
+  const quadrantById = useMemo(() => {
+    const m = new Map<string, Quadrant>();
+    for (const c of classified) m.set(c.id, c.quadrant);
+    return m;
+  }, [classified]);
+  const itemsByQuadrant = useMemo(() => {
+    const m: Record<Quadrant, typeof classified> = { star: [], plowhorse: [], puzzle: [], dog: [] };
+    for (const c of classified) m[c.quadrant].push(c);
+    return m;
+  }, [classified]);
+
+  const hasAnything = items.some((i) => !i.archived);
+
+  if (!hasAnything) {
+    return (
+      <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-6 py-10 text-center">
+        <LayoutGrid className="w-6 h-6 text-[#76b39d] mx-auto mb-3" />
+        <p className="text-sm font-semibold text-[#1a1a1a] mb-1">No items to analyze yet</p>
+        <p className="text-xs text-[#6b6b6b] max-w-md mx-auto leading-relaxed">
+          Add a few drinks or food items with a price, a cost, and an expected
+          popularity. We will sort them into what to feature, re-price, promote,
+          or rethink.
+        </p>
+        <button
+          type="button"
+          onClick={onGoToMenu}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#155e63] bg-[#f0f8f8] border border-[#cfe0e1] px-3 py-2 rounded-lg hover:bg-[#e4f1f1] transition-colors"
+        >
+          <Utensils size={13} /> Go to the menu
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Intro */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <LayoutGrid className="w-4 h-4 text-[#155e63]" />
+          <h2 className="text-base font-bold text-[#1a1a1a]">What To Serve</h2>
+        </div>
+        <p className="text-xs text-[#6b6b6b] leading-relaxed max-w-2xl">
+          Every item is sorted by two things: how profitable it is (your gross
+          margin) and how popular you expect it to be. We split each one at your
+          own menu average, so this is always relative to the rest of your menu.
+        </p>
+      </div>
+
+      {/* Quadrant matrix */}
+      {classified.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-5 py-4 text-xs text-[#6b6b6b] leading-relaxed">
+          None of your items have everything they need yet. Add a price, a cost,
+          and an expected popularity to an item and it will show up here.
+        </div>
+      ) : (
+        <div>
+          {/* Counts summary */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {MATRIX_ORDER.map((q) => (
+              <span
+                key={q}
+                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${QUADRANT_STYLES[q].cell}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${QUADRANT_STYLES[q].dot}`} />
+                {QUADRANT_META[q].label}
+                <span className="text-[#6b6b6b]">{counts[q]}</span>
+              </span>
+            ))}
+          </div>
+
+          {/* Axis-labeled 2x2 */}
+          <div className="grid grid-cols-[1.25rem_1fr_1fr] gap-2 items-stretch">
+            <div />
+            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-[#155e63] pb-0.5">
+              Higher Margin
+            </div>
+            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-[#155e63] pb-0.5">
+              Lower Margin
+            </div>
+
+            {/* Row 1: more popular */}
+            <div className="flex items-center justify-center">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63] [writing-mode:vertical-rl] rotate-180">
+                More Popular
+              </span>
+            </div>
+            <QuadrantCell quadrant="star" items={itemsByQuadrant.star} />
+            <QuadrantCell quadrant="plowhorse" items={itemsByQuadrant.plowhorse} />
+
+            {/* Row 2: less popular */}
+            <div className="flex items-center justify-center">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63] [writing-mode:vertical-rl] rotate-180">
+                Less Popular
+              </span>
+            </div>
+            <QuadrantCell quadrant="puzzle" items={itemsByQuadrant.puzzle} />
+            <QuadrantCell quadrant="dog" items={itemsByQuadrant.dog} />
+          </div>
+
+          {thresholds && (
+            <p className="text-[11px] text-[#9a9a9a] mt-3 leading-relaxed">
+              Split points: items above {thresholds.avgMarginPct.toFixed(0)}% gross
+              margin count as higher margin, and items you rated at or above your
+              average popularity count as more popular.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Margin ranking */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <TrendingUp className="w-4 h-4 text-[#155e63]" />
+          <h2 className="text-base font-bold text-[#1a1a1a]">Margin Ranking</h2>
+        </div>
+        <p className="text-xs text-[#6b6b6b] leading-relaxed mb-3">
+          Your items from most to least profitable. Set each item&rsquo;s expected
+          popularity here to place it on the grid above.
+        </p>
+
+        {ranking.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-5 py-4 text-xs text-[#6b6b6b]">
+            Add a price and a cost (recipe ingredients or a manual COGS) to an
+            item to rank it by profitability.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wider text-[#6b6b6b] bg-[#faf9f7] border-b border-[#efefef]">
+                    <th className="text-left font-semibold px-4 py-2 w-8">#</th>
+                    <th className="text-left font-semibold px-2 py-2">Item</th>
+                    <th className="text-right font-semibold px-2 py-2">Price</th>
+                    <th className="text-right font-semibold px-2 py-2">COGS</th>
+                    <th className="text-right font-semibold px-2 py-2">Profit</th>
+                    <th className="text-left font-semibold px-3 py-2 w-[34%]">Gross Margin</th>
+                    <th className="text-left font-semibold px-2 py-2">Popularity</th>
+                    <th className="text-left font-semibold px-2 py-2">Class</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ranking.map((r, idx) => {
+                    const item = items.find((i) => i.id === r.id);
+                    const q = quadrantById.get(r.id);
+                    return (
+                      <tr key={r.id} className="border-b border-[#f4f4f4] last:border-0 hover:bg-[#faf9f7] transition-colors">
+                        <td className="px-4 py-2 text-[#afafaf] tabular-nums">{idx + 1}</td>
+                        <td className="px-2 py-2 font-medium text-[#1a1a1a]">
+                          {r.name || <span className="text-[#afafaf] font-normal">Unnamed item</span>}
+                        </td>
+                        <td className="px-2 py-2 text-right tabular-nums text-[#155e63] font-semibold">{formatCents(r.priceCents)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-[#6b6b6b]">{formatCents(r.cogsCents)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-[#1a1a1a]">{formatCents(r.gpCents)}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-[#eef0ef] rounded-full overflow-hidden min-w-[40px]">
+                              <div
+                                className="h-full bg-[#155e63] rounded-full"
+                                style={{ width: `${Math.max(0, Math.min(100, r.marginPct))}%` }}
+                              />
+                            </div>
+                            <span className="tabular-nums text-[#1a1a1a] font-semibold w-10 text-right">
+                              {r.marginPct.toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">
+                          <PopularityInlineSelect
+                            value={item?.expected_popularity ?? null}
+                            disabled={!canEdit}
+                            onChange={(v) => onUpdateItem(r.id, { expected_popularity: v })}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          {q ? (
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${QUADRANT_STYLES[q].cell}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${QUADRANT_STYLES[q].dot}`} />
+                              {QUADRANT_META[q].label}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[#afafaf]">Set popularity</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Needs info */}
+      {needsInfo.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#6b6b6b] mb-2">
+            Not Enough Info Yet ({needsInfo.length})
+          </h3>
+          <div className="rounded-xl border border-[#efefef] bg-white divide-y divide-[#f4f4f4]">
+            {needsInfo.map((n) => {
+              const item = items.find((i) => i.id === n.id);
+              const onlyPopularity = n.missing.length === 1 && n.missing[0] === "popularity";
+              return (
+                <div key={n.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                      {n.name || <span className="text-[#afafaf] font-normal">Unnamed item</span>}
+                    </p>
+                    <p className="text-[11px] text-[#9a9a9a]">
+                      Add {n.missing.map((m) => (m === "cost" ? "a cost" : m === "price" ? "a price" : "an expected popularity")).join(", ")}.
+                    </p>
+                  </div>
+                  {onlyPopularity ? (
+                    <PopularityInlineSelect
+                      value={item?.expected_popularity ?? null}
+                      disabled={!canEdit}
+                      onChange={(v) => onUpdateItem(n.id, { expected_popularity: v })}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onGoToMenu}
+                      className="text-[11px] font-semibold text-[#155e63] hover:underline shrink-0"
+                    >
+                      Open menu
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuadrantCell({
+  quadrant,
+  items,
+}: {
+  quadrant: Quadrant;
+  items: { id: string; name: string }[];
+}) {
+  const meta = QUADRANT_META[quadrant];
+  const styles = QUADRANT_STYLES[quadrant];
+  return (
+    <div className={`rounded-xl border p-3 flex flex-col min-h-[8rem] ${styles.cell}`}>
+      <div className="flex items-center justify-between mb-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-full ${styles.dot}`} />
+          <span className="text-sm font-bold text-[#1a1a1a]">{meta.label}</span>
+        </div>
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${styles.badge}`}>
+          {items.length}
+        </span>
+      </div>
+      <p className="text-[10px] uppercase tracking-wider text-[#6b6b6b] font-semibold mb-1.5">
+        {meta.tagline}
+      </p>
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {items.map((it) => (
+            <span
+              key={it.id}
+              className="text-[11px] bg-white/70 border border-white text-[#1a1a1a] rounded-md px-1.5 py-0.5 truncate max-w-full"
+            >
+              {it.name || "Unnamed"}
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="text-[11px] text-[#4a4a4a] leading-relaxed mt-auto">{meta.recommendation}</p>
+    </div>
+  );
+}
+
 // ─── Top-level workspace ─────────────────────────────────────────────────────
 
-type Tab = "menu" | "ingredients";
+type Tab = "menu" | "ingredients" | "insights";
 
 export function MenuWorkspace({
   planId,
@@ -1913,6 +2328,7 @@ export function MenuWorkspace({
   const tabs: { id: Tab; label: string; Icon: typeof Utensils }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
     { id: "ingredients", label: "Ingredients", Icon: Package },
+    { id: "insights", label: "Insights", Icon: LayoutGrid },
   ];
 
   async function refetchItems() {
@@ -1934,6 +2350,7 @@ export function MenuWorkspace({
       price_cents: 0,
       cogs_cents: null,
       expected_mix_pct: 0,
+      expected_popularity: null,
       prep_time_seconds: null,
       notes: null,
       recipe: {},
@@ -2423,6 +2840,15 @@ export function MenuWorkspace({
             onAddIngredient={addIngredient}
             onUpdateIngredient={updateIngredient}
             onDeleteIngredient={deleteIngredient}
+          />
+        )}
+
+        {activeTab === "insights" && (
+          <InsightsTab
+            items={items}
+            canEdit={canEdit}
+            onUpdateItem={updateItem}
+            onGoToMenu={() => setActiveTab("menu")}
           />
         )}
       </div>

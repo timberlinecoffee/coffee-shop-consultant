@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       price_cents: (body.price_cents as number | undefined) ?? 0,
       cogs_cents: (body.cogs_cents as number | undefined) ?? null,
       expected_mix_pct: (body.expected_mix_pct as number | undefined) ?? 0,
+      expected_popularity: (body.expected_popularity as string | undefined) ?? null,
       prep_time_seconds: (body.prep_time_seconds as number | undefined) ?? null,
       notes: (body.notes as string | undefined) ?? null,
       recipe: (body.recipe as Record<string, unknown> | undefined) ?? {},
@@ -156,7 +157,7 @@ export async function PATCH(request: NextRequest) {
   const allowed: Record<string, unknown> = {}
   const fields = [
     "name", "category_id", "price_cents", "cogs_cents",
-    "expected_mix_pct", "prep_time_seconds", "notes", "recipe",
+    "expected_mix_pct", "expected_popularity", "prep_time_seconds", "notes", "recipe",
     "archived", "position",
   ]
   for (const f of fields) {
