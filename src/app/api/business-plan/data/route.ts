@@ -32,7 +32,7 @@ export async function GET() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, shop_name")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -138,7 +138,7 @@ export async function GET() {
 
   return Response.json({
     planId,
-    shopName: plan.shop_name,
+    shopName: plan.plan_name,
     sections,
   });
 }

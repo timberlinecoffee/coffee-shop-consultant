@@ -208,7 +208,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       { data: savedSections },
       { data: coverRow },
     ] = await Promise.all([
-      supabase.from("coffee_shop_plans").select("id, shop_name").eq("id", planId).single(),
+      supabase.from("coffee_shop_plans").select("id, plan_name").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
       supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes").eq("plan_id", planId).eq("archived", false).order("position"),
       supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
@@ -274,7 +274,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     };
 
     return {
-      shopName: plan?.shop_name ?? null,
+      shopName: plan?.plan_name ?? null,
       sections,
       cover,
     };
