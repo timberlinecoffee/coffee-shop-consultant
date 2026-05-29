@@ -188,6 +188,48 @@ export interface ManualOverride {
   amount_cents: number;
 }
 
+// TIM-1310: rapid apply-forward. After overriding one cell, propagate its value
+// to a range of later months in a single action (founder: a year-2 rent
+// increase should not take 12 manual entries). The source month is excluded
+// (it already holds the value). Returns absolute month indices (1..60).
+//   - "year":   the rest of the source month's projection year
+//               (e.g. override month 13 → fill 14..24, "continue for the year")
+//   - "next12": the next 12 months
+//   - "all":    every following month through month 60
+export type ApplyForwardRange = "year" | "next12" | "all";
+
+export function applyForwardMonthIndices(
+  fromMonthIndexAbs: number,
+  range: ApplyForwardRange
+): number[] {
+  const from = Math.round(fromMonthIndexAbs);
+  if (!Number.isFinite(from) || from < 1 || from >= 60) return [];
+  let end: number;
+  if (range === "year") end = Math.ceil(from / 12) * 12;
+  else if (range === "next12") end = from + 12;
+  else end = 60;
+  end = Math.min(60, end);
+  const out: number[] = [];
+  for (let m = from + 1; m <= end; m++) out.push(m);
+  return out;
+}
+
+// TIM-1310: per-line count of manual month overrides, keyed by line_id (incl.
+// BASE_REVENUE_LINE_ID). The input/assumptions page uses this to flag which
+// lines carry grid-level customizations so the relationship between assumptions
+// and the customized projection is never a mystery.
+export function manualOverrideCountsByLine(
+  overrides: ManualOverride[] | undefined
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const o of overrides ?? []) {
+    if (o && typeof o.line_id === "string" && o.line_id.length > 0) {
+      counts[o.line_id] = (counts[o.line_id] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
 // TIM-1244: One-time costs to open the doors. Previously these were hardcoded
 // placeholders inside deriveFinancialInputs (workspace) and shown read-only on
 // the Startup tab. They are now persisted so the guided interview can populate

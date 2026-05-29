@@ -15,6 +15,8 @@ import {
   computeBreakEvenModel,
   deriveFinancialInputs,
   BASE_REVENUE_LINE_ID,
+  applyForwardMonthIndices,
+  manualOverrideCountsByLine,
 } from "./financial-projection.ts";
 
 // TIM-1244: persisted startup costs (populated by the guided interview, editable
@@ -1617,4 +1619,80 @@ test("TIM-1257: a forecast cost edit surfaces in the derived inputs (no stale co
     before.rent_cents + 250000,
     "derived rent must follow the forecast-line edit"
   );
+});
+
+// ── TIM-1310: rapid apply-forward + input-page override reflection ────────────
+
+test("TIM-1310: apply-forward 'year' fills the rest of the source projection year", () => {
+  // Month 13 = Jan of year 2. Rest of year = 14..24 (founder's rent example).
+  assert.deepEqual(
+    applyForwardMonthIndices(13, "year"),
+    [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+  );
+  // Mid-year source (month 18) only fills 19..24.
+  assert.deepEqual(applyForwardMonthIndices(18, "year"), [19, 20, 21, 22, 23, 24]);
+  // Last month of a year has nothing left in that year.
+  assert.deepEqual(applyForwardMonthIndices(24, "year"), []);
+});
+
+test("TIM-1310: apply-forward 'next12' fills the next 12 months, clamped to 60", () => {
+  assert.deepEqual(
+    applyForwardMonthIndices(1, "next12"),
+    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+  );
+  // Near the end, clamp at month 60.
+  assert.deepEqual(applyForwardMonthIndices(55, "next12"), [56, 57, 58, 59, 60]);
+});
+
+test("TIM-1310: apply-forward 'all' fills every following month through 60", () => {
+  const all = applyForwardMonthIndices(57, "all");
+  assert.deepEqual(all, [58, 59, 60]);
+  assert.equal(applyForwardMonthIndices(1, "all").length, 59);
+});
+
+test("TIM-1310: apply-forward excludes the source month and rejects out-of-range", () => {
+  assert.ok(!applyForwardMonthIndices(13, "all").includes(13), "source month is never rewritten");
+  assert.deepEqual(applyForwardMonthIndices(60, "all"), [], "month 60 has no following months");
+  assert.deepEqual(applyForwardMonthIndices(0, "year"), [], "month 0 is invalid");
+  assert.deepEqual(applyForwardMonthIndices(99, "year"), [], "month 99 is out of range");
+});
+
+test("TIM-1310: apply-forward result, applied as overrides, propagates a year-2 rent increase in one action", () => {
+  const mp = singleOverheadModel(300000); // single overhead line, id "ovh"
+  // Founder raises this expense to $4,000 starting month 13, then applies it
+  // forward through the rest of year 2 in a single action.
+  const newAmt = 400000;
+  const targets = applyForwardMonthIndices(13, "year");
+  mp.manual_overrides = [
+    { line_id: "ovh", month_index: 13, amount_cents: newAmt },
+    ...targets.map((m) => ({ line_id: "ovh", month_index: m, amount_cents: newAmt })),
+  ];
+  const rows = computeMonthlyProjections(mp, { total_cost_cents: 0, financed_cost_cents: 0 });
+  // Every month of year 2 (13..24) reflects the new amount and is flagged.
+  for (let m = 13; m <= 24; m++) {
+    const ln = rows[m - 1].forecast_line_amounts.find((l) => l.id === "ovh");
+    assert.equal(ln.amount_cents, newAmt, `month ${m} should carry the increased amount`);
+    assert.equal(ln.overridden, true, `month ${m} should be flagged as customized`);
+  }
+  // Year 1 is untouched (assumption-driven).
+  const m12 = rows[11].forecast_line_amounts.find((l) => l.id === "ovh");
+  assert.equal(m12.amount_cents, 300000);
+  assert.equal(m12.overridden, false);
+});
+
+test("TIM-1310: manualOverrideCountsByLine tallies overrides per line", () => {
+  const counts = manualOverrideCountsByLine([
+    { line_id: "rent", month_index: 13, amount_cents: 1 },
+    { line_id: "rent", month_index: 14, amount_cents: 1 },
+    { line_id: BASE_REVENUE_LINE_ID, month_index: 1, amount_cents: 1 },
+    { line_id: "", month_index: 2, amount_cents: 1 }, // ignored: empty id
+  ]);
+  assert.equal(counts.rent, 2);
+  assert.equal(counts[BASE_REVENUE_LINE_ID], 1);
+  assert.equal(counts[""], undefined);
+});
+
+test("TIM-1310: manualOverrideCountsByLine handles empty/undefined input", () => {
+  assert.deepEqual(manualOverrideCountsByLine(undefined), {});
+  assert.deepEqual(manualOverrideCountsByLine([]), {});
 });

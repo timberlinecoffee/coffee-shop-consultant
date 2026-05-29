@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, RotateCcw } from "lucide-react";
+import { useRef, useState } from "react";
+import { Pencil, RotateCcw, ChevronsRight } from "lucide-react";
 import { NumericInput } from "@/components/ui/numeric-input";
 import {
   type MonthlySlice,
   type LineMonthlyAmount,
   type ForecastCategory,
+  type ApplyForwardRange,
   sumSlices,
   getQuarterSlices,
   aggregateLineAmounts,
@@ -112,10 +113,29 @@ interface EditableLineRowProps {
   onSet: (lineId: string, monthIndexAbs: number, cents: number) => void;
   onClear: (lineId: string, monthIndexAbs: number) => void;
   onToggleManual: (lineId: string, manual: boolean) => void;
+  // TIM-1310: propagate an overridden cell's value to a range of later months.
+  onApplyForward: (lineId: string, fromMonthIndexAbs: number, cents: number, range: ApplyForwardRange) => void;
 }
+
+// TIM-1310: an open apply-forward menu, anchored (fixed) to the clicked cell so
+// it is never clipped by the grid's horizontal scroll container.
+interface ApplyForwardMenu {
+  col: number;
+  cents: number;
+  monthIndexAbs: number;
+  left: number;
+  top: number;
+}
+
+const APPLY_FORWARD_RANGES: { range: ApplyForwardRange; label: string }[] = [
+  { range: "year", label: "Rest of this year" },
+  { range: "next12", label: "Next 12 months" },
+  { range: "all", label: "All following months" },
+];
 
 // TIM-1243: a revenue/expense line rendered across the monthly columns with
 // click-to-edit per-cell overrides and a per-line manual-entry toggle.
+// TIM-1310: an overridden cell also offers a rapid apply-forward menu.
 function EditableLineRow({
   label,
   lineId,
@@ -127,19 +147,39 @@ function EditableLineRow({
   onSet,
   onClear,
   onToggleManual,
+  onApplyForward,
 }: EditableLineRowProps) {
   const [editingCol, setEditingCol] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
+  const [menu, setMenu] = useState<ApplyForwardMenu | null>(null);
+  const cellRefs = useRef<Record<number, HTMLTableCellElement | null>>({});
+
+  const APPLY_FORWARD_WIDTH = 224; // matches w-56
+  const openMenuAtRect = (r: DOMRect, col: number, cents: number, monthIndexAbs: number) => {
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - APPLY_FORWARD_WIDTH - 8));
+    setMenu({ col, cents, monthIndexAbs, left, top: r.bottom + 4 });
+  };
 
   const startEdit = (i: number, current: number | undefined) => {
     if (!editable || cells[i].monthIndexAbs === undefined) return;
+    setMenu(null);
     setEditingCol(i);
     setDraft(centsToInput(current));
   };
   const commit = (i: number) => {
     const mi = cells[i].monthIndexAbs;
-    if (mi !== undefined) onSet(lineId, mi, inputToCents(draft));
+    const cents = inputToCents(draft);
+    if (mi !== undefined) onSet(lineId, mi, cents);
     setEditingCol(null);
+    // After customizing a cell, immediately offer to apply it forward (founder:
+    // a year-2 rent increase shouldn't take 12 manual entries). The menu anchors
+    // to the just-edited cell once it re-renders in display mode.
+    if (mi !== undefined && mi < 60 && cents > 0) {
+      requestAnimationFrame(() => {
+        const el = cellRefs.current[i];
+        if (el) openMenuAtRect(el.getBoundingClientRect(), i, cents, mi);
+      });
+    }
   };
 
   return (
@@ -173,6 +213,38 @@ function EditableLineRow({
               </button>
             ))}
         </span>
+        {/* TIM-1310: rapid apply-forward menu, fixed-positioned so the grid's
+            horizontal scroll container never clips it. */}
+        {menu && (
+          <>
+            <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMenu(null)} />
+            <div
+              role="menu"
+              className="fixed z-50 w-56 rounded-xl border border-[#e0e0e0] bg-white shadow-lg p-1.5 font-normal normal-case tracking-normal"
+              style={{ left: menu.left, top: menu.top }}
+            >
+              <p className="px-2 py-1 text-[11px] text-[#6b6b6b]">
+                Apply{" "}
+                <span className="font-semibold text-[#155e63]">{fmt(menu.cents, currencyCode)}</span>{" "}
+                forward:
+              </p>
+              {APPLY_FORWARD_RANGES.map(({ range, label: rangeLabel }) => (
+                <button
+                  key={range}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onApplyForward(lineId, menu.monthIndexAbs, menu.cents, range);
+                    setMenu(null);
+                  }}
+                  className="w-full text-left text-xs px-2 py-1.5 rounded-lg text-[#1a1a1a] hover:bg-[#f3faf9] transition-colors"
+                >
+                  {rangeLabel}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </td>
       {cells.map((cell, i) => {
         const isEditing = editingCol === i;
@@ -196,9 +268,14 @@ function EditableLineRow({
             </td>
           );
         }
+        const canApplyForward =
+          canEditCell && overridden && cell.monthIndexAbs !== undefined && cell.monthIndexAbs < 60;
         return (
           <td
             key={i}
+            ref={(el) => {
+              cellRefs.current[i] = el;
+            }}
             className={`py-2 px-3 text-right text-sm whitespace-nowrap relative ${
               overridden ? "bg-[#eef6f6]" : ""
             } ${canEditCell ? "cursor-pointer hover:bg-[#f3faf9] group" : ""}`}
@@ -210,6 +287,27 @@ function EditableLineRow({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] inline-block" aria-label="overridden" />
               )}
               {cell.amount !== undefined ? fmt(cell.amount, currencyCode) : "—"}
+              {canApplyForward && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (cell.monthIndexAbs !== undefined) {
+                      openMenuAtRect(
+                        e.currentTarget.getBoundingClientRect(),
+                        i,
+                        cell.amount ?? 0,
+                        cell.monthIndexAbs
+                      );
+                    }
+                  }}
+                  title="Apply this value to later months"
+                  aria-label="Apply this value to later months"
+                  className="opacity-0 group-hover:opacity-100 text-[#8a8a8a] hover:text-[#155e63] inline-flex items-center"
+                >
+                  <ChevronsRight size={12} />
+                </button>
+              )}
               {canEditCell && overridden && !manual && (
                 <button
                   type="button"
@@ -243,6 +341,7 @@ interface Props {
   onSetOverride?: (lineId: string, monthIndexAbs: number, cents: number) => void;
   onClearOverride?: (lineId: string, monthIndexAbs: number) => void;
   onToggleManual?: (lineId: string, manual: boolean) => void;
+  onApplyForward?: (lineId: string, fromMonthIndexAbs: number, cents: number, range: ApplyForwardRange) => void;
 }
 
 export function PLTab({
@@ -254,6 +353,7 @@ export function PLTab({
   onSetOverride,
   onClearOverride,
   onToggleManual,
+  onApplyForward,
 }: Props) {
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -328,7 +428,7 @@ export function PLTab({
   // TIM-1243: per-cell editing is only meaningful in the monthly view (each
   // column maps to a single absolute month). Quarterly/annual stay read-only.
   const monthlyEditable =
-    editable && period === "monthly" && !!onSetOverride && !!onClearOverride && !!onToggleManual;
+    editable && period === "monthly" && !!onSetOverride && !!onClearOverride && !!onToggleManual && !!onApplyForward;
   const manualSet = new Set(manualLines);
   const cellsForLine = (id: string): EditableCell[] =>
     columns.map((c) => {
@@ -350,6 +450,7 @@ export function PLTab({
     onSet: onSetOverride ?? (() => {}),
     onClear: onClearOverride ?? (() => {}),
     onToggleManual: onToggleManual ?? (() => {}),
+    onApplyForward: onApplyForward ?? (() => {}),
   };
 
   const vals = (key: keyof MonthlySlice) => columns.map((c) => c.data[key] as number | undefined);
@@ -634,8 +735,13 @@ export function PLTab({
           {period === "monthly" ? (
             <>
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#155e63] align-middle mr-1" />
-              Click any revenue or expense cell to type an override for that month — overridden cells are
-              flagged and survive recalculation. To enter every month by hand, hover a line and click the{" "}
+              Click any revenue or expense cell to type an override for that month. Overridden cells are
+              flagged with the dot and win over the assumption until you revert them. Once a cell is customized,
+              use the{" "}
+              <ChevronsRight size={12} className="inline align-text-bottom text-[#155e63]" /> apply-forward
+              control to copy that value to the rest of the year, the next 12 months, or all following months
+              in one step (a year-two rent increase takes one action, not twelve entries). To enter every month
+              by hand, hover a line and click the{" "}
               <Pencil size={11} className="inline align-text-bottom text-[#155e63]" /> pencil (LivePlan-style);
               the <span className="text-[#9a6b00] font-semibold">Manual</span> tag marks those lines and reverts
               them when clicked. Overrides flow into the P&amp;L, cash flow, balance sheet, break-even, and ratios.

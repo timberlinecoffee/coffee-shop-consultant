@@ -11,7 +11,7 @@
 // revenue stream, overall revenue, or kept as a fixed monthly amount.
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Info, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Info, AlertCircle, RotateCcw, ExternalLink } from "lucide-react";
 import type {
   ForecastLine,
   ForecastCategory,
@@ -83,9 +83,14 @@ interface LineRowProps {
   streamOptions: RevenueStreamOption[];
   menuBlendedCogsPct: number | null;
   menuCogsItems: MenuCogsItem[];
+  // TIM-1310: grid-level customizations for this line, reflected on the input page.
+  overrideCount?: number;
+  manualMode?: boolean;
+  onViewOverrides?: () => void;
+  onClearOverrides?: () => void;
 }
 
-function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems }: LineRowProps) {
+function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, overrideCount = 0, manualMode = false, onViewOverrides, onClearOverrides }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -150,6 +155,45 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
             title="You've entered this manually. Enable 'Link to menu' to auto-calculate from your menu."
           >
             manual
+          </span>
+        )}
+
+        {/* TIM-1310: grid-level customization badge — keeps the founder-loved dot
+            and surfaces overrides on the input page. Customized values win over
+            this assumption until cleared. */}
+        {(overrideCount > 0 || manualMode) && (
+          <span
+            className="shrink-0 inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eaf4f4] text-[#155e63] border border-[#b9dada]"
+            title={
+              manualMode
+                ? "This line is entered manually for every month on the projections grid. Those values win over this assumption until cleared."
+                : `This line has ${overrideCount} customized month${overrideCount === 1 ? "" : "s"} on the projections grid. Those values win over this assumption until cleared.`
+            }
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] inline-block" aria-hidden="true" />
+            {manualMode ? "manual entry" : `${overrideCount} customized`}
+            {onViewOverrides && (
+              <button
+                type="button"
+                onClick={onViewOverrides}
+                title="View on the projections grid"
+                aria-label="View customizations on the projections grid"
+                className="ml-0.5 inline-flex items-center hover:text-[#0e4448]"
+              >
+                <ExternalLink size={9} />
+              </button>
+            )}
+            {canEdit && onClearOverrides && (
+              <button
+                type="button"
+                onClick={onClearOverrides}
+                title="Clear customizations for this line (reverts to this assumption)"
+                aria-label="Clear customizations for this line"
+                className="inline-flex items-center hover:text-[#a13d3d]"
+              >
+                <RotateCcw size={9} />
+              </button>
+            )}
           </span>
         )}
 
@@ -619,9 +663,14 @@ interface SectionProps {
   // TIM-1245: one-tap starter streams for the revenue section (e.g. Retail
   // Sales, Events, Workshops, Wholesale). Already-present labels are hidden.
   starterLabels?: string[];
+  // TIM-1310: grid-level customizations reflected per line.
+  overrideCounts: Record<string, number>;
+  manualLines: string[];
+  onClearLineOverrides?: (lineId: string) => void;
+  onGoToProjections?: () => void;
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
   const hasMenuData = typeof menuBlendedCogsPct === "number";
@@ -739,6 +788,10 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
               streamOptions={streamOptions}
               menuBlendedCogsPct={menuBlendedCogsPct}
               menuCogsItems={menuCogsItems}
+              overrideCount={overrideCounts[line.id] ?? 0}
+              manualMode={manualLines.includes(line.id)}
+              onViewOverrides={onGoToProjections}
+              onClearOverrides={onClearLineOverrides ? () => onClearLineOverrides(line.id) : undefined}
             />
           ))
         )}
@@ -760,6 +813,11 @@ interface Props {
   categories?: ForecastCategory[];
   // Starter streams offered as one-tap chips on the revenue section.
   revenueStarterLabels?: string[];
+  // TIM-1310: grid-level customizations to reflect per line on the input page.
+  manualLines?: string[];
+  overrideCounts?: Record<string, number>;
+  onClearLineOverrides?: (lineId: string) => void;
+  onGoToProjections?: () => void;
 }
 
 // Build the revenue stream picker options from the current forecast lines.
@@ -787,6 +845,10 @@ export function ForecastLinesEditor({
   menuCogsItems = [],
   categories = ["revenue", "cogs", "overhead", "capex"],
   revenueStarterLabels,
+  manualLines = [],
+  overrideCounts = {},
+  onClearLineOverrides,
+  onGoToProjections,
 }: Props) {
   const streamOptions = streamOptionsFromLines(lines);
   const shared = {
@@ -797,6 +859,10 @@ export function ForecastLinesEditor({
     streamOptions,
     menuBlendedCogsPct,
     menuCogsItems,
+    overrideCounts,
+    manualLines,
+    onClearLineOverrides,
+    onGoToProjections,
   };
   return (
     <div className="space-y-6">

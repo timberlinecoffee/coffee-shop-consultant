@@ -30,6 +30,9 @@ import {
   fiscalYearMonthLabels,
   formatCurrency,
   BASE_REVENUE_LINE_ID,
+  applyForwardMonthIndices,
+  manualOverrideCountsByLine,
+  type ApplyForwardRange,
 } from "@/lib/financial-projection";
 import { CURRENCIES } from "@/lib/currency";
 import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
@@ -464,6 +467,10 @@ function ForecastTab({
   equipmentItems,
   onStartWizard,
   onGoToStartup,
+  manualLines,
+  overrideCounts,
+  onClearLineOverrides,
+  onGoToProjections,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
@@ -473,6 +480,12 @@ function ForecastTab({
   equipmentItems: EquipmentItem[];
   onStartWizard?: () => void;
   onGoToStartup?: () => void;
+  // TIM-1310: grid-level customizations surfaced on the input page so the
+  // relationship between assumptions and the customized projection is visible.
+  manualLines: string[];
+  overrideCounts: Record<string, number>;
+  onClearLineOverrides: (lineId: string) => void;
+  onGoToProjections?: () => void;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -531,6 +544,16 @@ function ForecastTab({
     "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
   const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
 
+  // TIM-1310: summarize grid-level customizations for this input page. A line is
+  // "customized" if it has any per-cell month override or is in full manual mode.
+  const customizedLineIds = new Set<string>([
+    ...Object.keys(overrideCounts),
+    ...(manualLines ?? []),
+  ]);
+  const totalOverrideCells = Object.values(overrideCounts).reduce((a, b) => a + b, 0);
+  const baseRevenueOverrides = overrideCounts[BASE_REVENUE_LINE_ID] ?? 0;
+  const baseRevenueManual = (manualLines ?? []).includes(BASE_REVENUE_LINE_ID);
+
   return (
     <div className="space-y-6">
       {onStartWizard && (
@@ -551,6 +574,41 @@ function ForecastTab({
           >
             Start guided setup
           </button>
+        </div>
+      )}
+
+      {/* TIM-1310: when lines carry grid-level customizations, surface them here
+          so the relationship between these assumptions and the customized
+          projection is never a mystery, and document the precedence. */}
+      {customizedLineIds.size > 0 && (
+        <div className="rounded-xl border border-[#b9dada] bg-[#eaf4f4] px-4 py-3 flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-[#155e63] inline-block mt-1.5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-[#155e63]">
+                {customizedLineIds.size} {customizedLineIds.size === 1 ? "line is" : "lines are"} customized on the projections grid
+                {totalOverrideCells > 0 && (
+                  <span className="font-normal text-[#2a4a4c]">
+                    {" "}({totalOverrideCells} month{totalOverrideCells === 1 ? "" : "s"})
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-[#2a4a4c] mt-0.5 max-w-prose">
+                These lines have manual month values that win over the assumptions below until you clear them.
+                Each customized line is tagged with a <span className="font-semibold text-[#155e63]">customized</span> badge,
+                and you can view it on the grid or clear it back to the assumption from there.
+              </p>
+            </div>
+          </div>
+          {onGoToProjections && (
+            <button
+              type="button"
+              onClick={onGoToProjections}
+              className="text-xs font-semibold text-[#155e63] border border-[#155e63]/30 bg-white rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors whitespace-nowrap"
+            >
+              View on grid
+            </button>
+          )}
         </div>
       )}
 
@@ -692,6 +750,40 @@ function ForecastTab({
             average sale is your primary revenue. Keep it as one number, or split it
             into beverage and food to plan each separately.
           </p>
+          {(baseRevenueOverrides > 0 || baseRevenueManual) && (
+            <div className="mb-4 rounded-lg border border-[#b9dada] bg-[#eaf4f4] px-3 py-2.5 flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] inline-block mt-1.5 shrink-0" aria-hidden="true" />
+                <p className="text-xs text-[#2a4a4c]">
+                  <span className="font-semibold text-[#155e63]">Foot-traffic revenue is customized on the grid</span>
+                  {baseRevenueManual
+                    ? " (entered manually for every month)"
+                    : ` (${baseRevenueOverrides} month${baseRevenueOverrides === 1 ? "" : "s"} overridden)`}
+                  . Those values win over this assumption until you clear them.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {onGoToProjections && (
+                  <button
+                    type="button"
+                    onClick={onGoToProjections}
+                    className="text-[11px] font-semibold text-[#155e63] hover:underline"
+                  >
+                    View on grid
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onClearLineOverrides(BASE_REVENUE_LINE_ID)}
+                    className="text-[11px] font-semibold text-[#a13d3d] hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {splitOn ? (
               <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -825,6 +917,10 @@ function ForecastTab({
             menuCogsItems={menuCogsItems}
             categories={["revenue"]}
             revenueStarterLabels={["Retail Sales", "Events", "Workshops", "Wholesale"]}
+            manualLines={manualLines}
+            overrideCounts={overrideCounts}
+            onClearLineOverrides={onClearLineOverrides}
+            onGoToProjections={onGoToProjections}
           />
         </div>
       </Section>
@@ -849,6 +945,10 @@ function ForecastTab({
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
             categories={["cogs", "overhead", "capex"]}
+            manualLines={manualLines}
+            overrideCounts={overrideCounts}
+            onClearLineOverrides={onClearLineOverrides}
+            onGoToProjections={onGoToProjections}
           />
           {/* TIM-1253: show equipment items from Build-Out & Equipment workspace
               as read-only capex entries so the user sees them in the capex
@@ -1384,6 +1484,7 @@ function ProjectionsTab({
   onSetOverride,
   onClearOverride,
   onToggleManual,
+  onApplyForward,
 }: {
   projections: FinancialProjections;
   slices: MonthlySlice[];
@@ -1396,6 +1497,7 @@ function ProjectionsTab({
   onSetOverride: (lineId: string, monthIndexAbs: number, cents: number) => void;
   onClearOverride: (lineId: string, monthIndexAbs: number) => void;
   onToggleManual: (lineId: string, manual: boolean) => void;
+  onApplyForward: (lineId: string, fromMonthIndexAbs: number, cents: number, range: ApplyForwardRange) => void;
 }) {
   const { year1: y1, year3: y3, year5: y5 } = projections;
   const [assessmentStatus, setAssessmentStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -1441,6 +1543,7 @@ function ProjectionsTab({
         onSetOverride={onSetOverride}
         onClearOverride={onClearOverride}
         onToggleManual={onToggleManual}
+        onApplyForward={onApplyForward}
       />
 
       {/* KPI summary tiles */}
@@ -1894,6 +1997,42 @@ export function FinancialsWorkspace({
     }
   }
 
+  // TIM-1310: apply an overridden cell's value to a range of later months in a
+  // single action. Writes per-cell overrides for the target months; it does not
+  // flip the line into full-manual mode (the rest of the line keeps computing).
+  function handleApplyForward(
+    lineId: string,
+    fromMonthIndexAbs: number,
+    cents: number,
+    range: ApplyForwardRange
+  ) {
+    const targets = applyForwardMonthIndices(fromMonthIndexAbs, range);
+    if (targets.length === 0) return;
+    const amt = Math.max(0, Math.round(cents));
+    const targetSet = new Set(targets);
+    const others = (mp.manual_overrides ?? []).filter(
+      (o) => !(o.line_id === lineId && targetSet.has(o.month_index))
+    );
+    handleMpUpdate({
+      ...mp,
+      manual_overrides: [
+        ...others,
+        ...targets.map((month_index) => ({ line_id: lineId, month_index, amount_cents: amt })),
+      ],
+    });
+  }
+
+  // TIM-1310: clear every manual override for a line and drop it from manual
+  // mode — the "manage/clear from the input page" affordance. The line reverts
+  // to assumption-driven values.
+  function handleClearLineOverrides(lineId: string) {
+    handleMpUpdate({
+      ...mp,
+      manual_overrides: (mp.manual_overrides ?? []).filter((o) => o.line_id !== lineId),
+      manual_lines: (mp.manual_lines ?? []).filter((id) => id !== lineId),
+    });
+  }
+
   function handleCritiqueUpdate(c: CritiqueResult | null) {
     setCritique(c);
     latestCritiqueRef.current = c;
@@ -2065,6 +2204,10 @@ export function FinancialsWorkspace({
             equipmentItems={initialEquipmentItems}
             onStartWizard={openWizard}
             onGoToStartup={() => setActiveTab("startup")}
+            manualLines={mp.manual_lines ?? []}
+            overrideCounts={manualOverrideCountsByLine(mp.manual_overrides)}
+            onClearLineOverrides={handleClearLineOverrides}
+            onGoToProjections={() => setActiveTab("projections")}
           />
         )}
         {activeTab === "personnel" && (
@@ -2107,6 +2250,7 @@ export function FinancialsWorkspace({
             onSetOverride={handleSetOverride}
             onClearOverride={handleClearOverride}
             onToggleManual={handleToggleManual}
+            onApplyForward={handleApplyForward}
           />
         )}
         {activeTab === "balance-sheet" && (
