@@ -2540,7 +2540,7 @@ function RequirementsTab({
               <p className="text-sm font-semibold text-[#1a1a1a]">Hiring Jurisdiction</p>
               <p className="text-xs text-[#6b6b6b] mt-0.5">
                 {settings.hiring_country
-                  ? "Override set — requirement set sourced from your selection."
+                  ? "Override set. Requirement set sourced from your selection."
                   : "Auto-detected from your signed or primary location candidate."}
               </p>
             </div>
