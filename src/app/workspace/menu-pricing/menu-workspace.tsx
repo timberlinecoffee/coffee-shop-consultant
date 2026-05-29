@@ -110,6 +110,14 @@ type PriceSuggestion = {
   commentary: string;
 };
 
+// TIM-1323: an AI-suggested candidate menu item the owner can add in one tap.
+type MenuSuggestion = {
+  name: string;
+  category_id: string;
+  category_name: string;
+  rationale: string | null;
+};
+
 // ─── Expected-popularity selector (TIM-1322) ─────────────────────────────────
 // Segmented Low / Medium / High control. Clicking the active option clears it
 // back to "not set". Pre-launch there is no real sales data, so this is the
@@ -1588,6 +1596,7 @@ interface MenuTabProps {
   onToggleDefaults: (catId: string) => void;
   onSelectItem: (id: string | null) => void;
   onAddItem: (categoryId: string) => Promise<void>;
+  onOpenSuggest: () => void;
   onUpdateItem: (id: string, patch: Partial<MenuItemWithCogs>) => Promise<void>;
   onDeleteItem: (id: string) => Promise<void>;
   onAddRecipeLine: (
@@ -1622,7 +1631,7 @@ function MenuTab(props: MenuTabProps) {
   const {
     canEdit, items, categories, ingredients, itemIngredients, categoryDefaults,
     selectedItemId, expandedDefaultsCatId, onToggleDefaults,
-    onSelectItem, onAddItem, onUpdateItem, onDeleteItem,
+    onSelectItem, onAddItem, onOpenSuggest, onUpdateItem, onDeleteItem,
     onAddRecipeLine, onUpdateRecipeLine, onDeleteRecipeLine,
     onSuggestRecipe, recipeLoading, recipeError,
     onSuggestPrice, priceLoading, priceSuggestion, onReorderItems,
@@ -1698,6 +1707,23 @@ function MenuTab(props: MenuTabProps) {
       }
     >
       <div className="space-y-4">
+        {canEdit && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#1a1a1a]">Not sure where to start?</p>
+              <p className="text-xs text-[#6b6b6b]">Get menu ideas that fit your concept and location.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenSuggest}
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#155e63] rounded-lg px-3.5 py-2 hover:bg-[#124e52] transition-colors whitespace-nowrap"
+            >
+              <Sparkles size={14} />
+              Suggest menu items
+            </button>
+          </div>
+        )}
+
         <MetricsBar items={items} />
 
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
@@ -2298,6 +2324,171 @@ function QuadrantCell({
 
 // ─── Top-level workspace ─────────────────────────────────────────────────────
 
+// TIM-1323: pick-list of AI-suggested menu items. Each candidate is added into
+// its resolved category in one tap (reusing the standard item-create flow, so
+// category-default ingredients and COGS math carry over) and AI recipe
+// suggestion is available per item once it lands.
+function SuggestItemsModal({
+  open,
+  loading,
+  error,
+  suggestions,
+  addedKeys,
+  addingKeys,
+  onAdd,
+  onClose,
+  onRetry,
+}: {
+  open: boolean;
+  loading: boolean;
+  error: string | null;
+  suggestions: MenuSuggestion[];
+  addedKeys: Set<string>;
+  addingKeys: Set<string>;
+  onAdd: (s: MenuSuggestion) => void;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  if (!open) return null;
+
+  // Group candidates under their resolved category, preserving first-seen order.
+  const groups: { category: string; items: MenuSuggestion[] }[] = [];
+  for (const s of suggestions) {
+    let g = groups.find((x) => x.category === s.category_name);
+    if (!g) {
+      g = { category: s.category_name, items: [] };
+      groups.push(g);
+    }
+    g.items.push(s);
+  }
+
+  const addedCount = suggestions.filter((s) => addedKeys.has(s.name.toLowerCase())).length;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Suggested menu items"
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[#efefef]">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#155e63]" aria-hidden="true" />
+            <div>
+              <h2 className="text-sm font-bold text-[#1a1a1a]">Suggested menu items</h2>
+              <p className="text-xs text-[#6b6b6b]">Tap to add any that fit. You can edit prices and recipes after.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-[#9a9a9a] hover:text-[#1a1a1a] transition-colors"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {loading && (
+            <div className="py-10 text-center">
+              <Sparkles className="w-5 h-5 text-[#155e63] mx-auto mb-2 animate-pulse" aria-hidden="true" />
+              <p className="text-sm text-[#6b6b6b]">Reading your concept and building suggestions…</p>
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="py-10 text-center">
+              <p className="text-sm text-[#b54b4b] mb-3">{error}</p>
+              <button
+                type="button"
+                onClick={onRetry}
+                className="text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-lg px-4 py-2 hover:bg-[#155e63]/5 transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && groups.length === 0 && (
+            <p className="py-10 text-center text-sm text-[#6b6b6b]">No suggestions yet.</p>
+          )}
+
+          {!loading && !error && groups.length > 0 && (
+            <div className="space-y-5">
+              {groups.map((g) => (
+                <div key={g.category}>
+                  <p className={sectionLabelCls}>{g.category}</p>
+                  <div className="space-y-2">
+                    {g.items.map((s) => {
+                      const key = s.name.toLowerCase();
+                      const added = addedKeys.has(key);
+                      const adding = addingKeys.has(key);
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-start justify-between gap-3 rounded-lg border border-[#efefef] px-3 py-2.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-[#1a1a1a]">{s.name}</p>
+                            {s.rationale && (
+                              <p className="text-xs text-[#6b6b6b] leading-snug mt-0.5">{s.rationale}</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onAdd(s)}
+                            disabled={added || adding}
+                            className={`flex items-center gap-1 text-xs font-semibold rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors ${
+                              added
+                                ? "text-[#155e63] bg-[#eef6f5] cursor-default"
+                                : "text-white bg-[#155e63] hover:bg-[#124e52] disabled:opacity-60"
+                            }`}
+                          >
+                            {added ? (
+                              <>Added</>
+                            ) : adding ? (
+                              <>Adding…</>
+                            ) : (
+                              <>
+                                <Plus size={13} /> Add
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!loading && !error && groups.length > 0 && (
+          <div className="px-5 py-3 border-t border-[#efefef] flex items-center justify-between">
+            <p className="text-xs text-[#6b6b6b]">
+              {addedCount} of {suggestions.length} added
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm font-medium text-[#155e63] hover:underline"
+            >
+              Done
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type Tab = "menu" | "ingredients" | "insights";
 
 export function MenuWorkspace({
@@ -2324,6 +2515,13 @@ export function MenuWorkspace({
   const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
+  // TIM-1323: AI menu-item suggestions (pick-list modal).
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<MenuSuggestion[]>([]);
+  const [addedSuggestionKeys, setAddedSuggestionKeys] = useState<Set<string>>(new Set());
+  const [addingSuggestionKeys, setAddingSuggestionKeys] = useState<Set<string>>(new Set());
 
   const tabs: { id: Tab; label: string; Icon: typeof Utensils }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
@@ -2756,6 +2954,90 @@ export function MenuWorkspace({
     }
   }
 
+  // ── AI menu-item suggestions (TIM-1323) ──────────────────────────────────
+  async function suggestMenuItems() {
+    setSuggestOpen(true);
+    setSuggestLoading(true);
+    setSuggestError(null);
+    setSuggestions([]);
+    setAddedSuggestionKeys(new Set());
+    setAddingSuggestionKeys(new Set());
+    try {
+      const res = await fetch("/api/workspaces/menu-pricing/suggest-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concept_context: conceptContext ?? {} }),
+      });
+      if (res.status === 402) {
+        setSuggestOpen(false);
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        setSuggestError("Couldn't suggest menu items. Try again in a moment.");
+        return;
+      }
+      const data = (await res.json()) as { suggestions: MenuSuggestion[] };
+      setSuggestions(data.suggestions ?? []);
+    } catch {
+      setSuggestError("Couldn't suggest menu items. Try again in a moment.");
+    } finally {
+      setSuggestLoading(false);
+    }
+  }
+
+  // One-tap add: create the item in its resolved category via the standard
+  // item-create flow, so category-default ingredients + COGS carry over.
+  async function addSuggestedItem(s: MenuSuggestion) {
+    const key = s.name.toLowerCase();
+    if (addedSuggestionKeys.has(key) || addingSuggestionKeys.has(key)) return;
+    setAddingSuggestionKeys((prev) => new Set(prev).add(key));
+    try {
+      const position = items.filter(
+        (i) => i.category_id === s.category_id && !i.archived
+      ).length;
+      const res = await fetch("/api/workspaces/menu-pricing/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: s.name,
+          category_id: s.category_id,
+          position,
+          price_cents: 0,
+        }),
+      });
+      if (res.status === 402) {
+        setSuggestOpen(false);
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        setSuggestError("Couldn't add that item. Try again in a moment.");
+        return;
+      }
+      const created = (await res.json()) as MenuItemWithCogs;
+      setItems((prev) => [...prev, created]);
+      // Server may have auto-attached category default ingredients.
+      const r = await fetch(
+        "/api/workspaces/menu-pricing/item-ingredients?item_id=" + created.id
+      );
+      if (r.ok) {
+        const lines = (await r.json()) as MenuItemIngredient[];
+        setItemIngredients((prev) => [
+          ...prev.filter((ii) => ii.menu_item_id !== created.id),
+          ...lines,
+        ]);
+      }
+      setAddedSuggestionKeys((prev) => new Set(prev).add(key));
+    } finally {
+      setAddingSuggestionKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
   const handleSelectItem = useCallback((id: string | null) => {
     setSelectedItemId(id);
     setPriceSuggestion(null);
@@ -2810,6 +3092,7 @@ export function MenuWorkspace({
             }
             onSelectItem={handleSelectItem}
             onAddItem={addItem}
+            onOpenSuggest={suggestMenuItems}
             onUpdateItem={updateItem}
             onDeleteItem={deleteItem}
             onAddRecipeLine={addRecipeLine}
@@ -2852,6 +3135,18 @@ export function MenuWorkspace({
           />
         )}
       </div>
+
+      <SuggestItemsModal
+        open={suggestOpen}
+        loading={suggestLoading}
+        error={suggestError}
+        suggestions={suggestions}
+        addedKeys={addedSuggestionKeys}
+        addingKeys={addingSuggestionKeys}
+        onAdd={addSuggestedItem}
+        onClose={() => setSuggestOpen(false)}
+        onRetry={suggestMenuItems}
+      />
 
       <PaywallModal
         open={paywallOpen}
