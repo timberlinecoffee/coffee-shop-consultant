@@ -37,6 +37,25 @@ interface CapexRow {
   lifeYears: number;
   fromWorkspace: boolean;
   legacy: boolean;
+  assetCategory?: string;
+}
+
+// Display labels for workspace asset categories (TIM-1246b)
+const ASSET_CATEGORY_LABELS: Record<string, string> = {
+  build_out: "Build-Out & Renovation",
+  equipment: "Equipment",
+  pos_tech: "POS & Technology",
+  furniture: "Furniture & Fixtures",
+  vehicle: "Vehicles",
+  other: "Other Capital Assets",
+};
+
+interface WorkspaceCategoryGroup {
+  cat: string;
+  label: string;
+  totalCents: number;
+  count: number;
+  avgLifeYears: number;
 }
 
 export function StartupTab({
@@ -84,6 +103,7 @@ export function StartupTab({
         lifeYears: l.useful_life_years ?? 7,
         fromWorkspace: true,
         legacy: false,
+        assetCategory: l.asset_category ?? "other",
       });
     }
   } else if (hasLegacyLumpSums) {
@@ -110,6 +130,30 @@ export function StartupTab({
   }
 
   const totalCapital = capexRows.reduce((sum, r) => sum + r.valueCents, 0);
+
+  // TIM-1246b: workspace items grouped into category summaries; standalone/legacy rows listed individually.
+  const standaloneCapexRows = capexRows.filter((r) => !r.fromWorkspace);
+  const workspaceCapexRows = capexRows.filter((r) => r.fromWorkspace);
+  const workspaceCategoryMap = new Map<string, WorkspaceCategoryGroup>();
+  for (const row of workspaceCapexRows) {
+    const cat = row.assetCategory ?? "other";
+    const existing = workspaceCategoryMap.get(cat);
+    if (existing) {
+      const newCount = existing.count + 1;
+      existing.totalCents += row.valueCents;
+      existing.avgLifeYears = Math.round((existing.avgLifeYears * existing.count + row.lifeYears) / newCount);
+      existing.count = newCount;
+    } else {
+      workspaceCategoryMap.set(cat, {
+        cat,
+        label: ASSET_CATEGORY_LABELS[cat] ?? "Other Capital Assets",
+        totalCents: row.valueCents,
+        count: 1,
+        avgLifeYears: row.lifeYears,
+      });
+    }
+  }
+  const workspaceCategoryGroups = Array.from(workspaceCategoryMap.values());
 
   // ── Editable one-time costs ─────────────────────────────────────────────────
   const editableTotal = EDITABLE_FIELDS.reduce(
@@ -217,13 +261,31 @@ export function StartupTab({
               </tr>
             )}
 
-            {capexRows.map((row) => (
+            {/* Workspace items — one summary row per asset category (TIM-1246b) */}
+            {workspaceCategoryGroups.map((group) => (
+              <tr key={`ws-cat:${group.cat}`} className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-8 pr-4">
+                  <span className="text-[var(--foreground)]">{group.label}</span>
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
+                    {group.count} {group.count === 1 ? "item" : "items"} · {group.avgLifeYears}yr avg life · straight-line ·{" "}
+                    <a href="/workspace/buildout-equipment" className="text-[var(--teal)] hover:underline">
+                      View in Build-Out &amp; Equipment
+                    </a>
+                  </p>
+                </td>
+                <td className="py-3 pr-5 text-right font-medium align-top text-[var(--foreground)]">
+                  {f(group.totalCents)}
+                </td>
+              </tr>
+            ))}
+
+            {/* Standalone capex rows (manually-entered in the planner, or legacy lump-sums) */}
+            {standaloneCapexRows.map((row) => (
               <tr key={row.key} className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-8 pr-4">
                   <span className="text-[var(--foreground)]">{row.label}</span>
                   <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                     {row.lifeYears}yr life · straight-line depreciation
-                    {row.fromWorkspace && " · from Build-Out & Equipment"}
                     {row.legacy && " · lump sum (add assets to switch to per-asset tracking)"}
                   </p>
                 </td>
