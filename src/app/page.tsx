@@ -17,11 +17,11 @@ import PricingCard, { type PricingPlan } from "./_components/PricingCard";
 export const metadata: Metadata = {
   title: "Groundwork: From Coffee Shop Idea to Open Sign.",
   description:
-    "Run a successful coffee shop without a business background. Groundwork guides every decision, benchmarks your plan, and turns it into action.",
+    "Open a coffee shop without a business background. Groundwork shows you what to plan next, checks it against real shops, and points to your next move.",
   openGraph: {
     title: "Groundwork: From Coffee Shop Idea to Open Sign.",
     description:
-      "Run a successful coffee shop without a business background. Groundwork fills the gaps.",
+      "Open a coffee shop without a business background. Groundwork fills the gaps.",
     siteName: "Groundwork",
   },
 };
