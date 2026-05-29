@@ -991,11 +991,47 @@ function InterviewTab({
   const [selectedId, setSelectedId] = useState<string | null>(
     candidates[0]?.id ?? null
   );
+  const [roleScorecards, setRoleScorecards] = useState<InterviewScorecard[]>([]);
+  const [selectedScorecardId, setSelectedScorecardId] = useState<string | null>(null);
 
   const selected = candidates.find((c) => c.id === selectedId) ?? null;
-  const roleQuestions = questions.filter(
-    (q) => q.role_id === selected?.role_id || q.role_id === null
-  );
+
+  // Fetch scorecards for the selected candidate's role, auto-select default.
+  useEffect(() => {
+    if (!selected?.role_id) {
+      setRoleScorecards([]);
+      setSelectedScorecardId(null);
+      return;
+    }
+    fetch(`/api/workspaces/hiring/scorecards?role_id=${selected.role_id}`)
+      .then((r) => r.json())
+      .then((sc: unknown) => {
+        const list = Array.isArray(sc) ? (sc as InterviewScorecard[]) : [];
+        setRoleScorecards(list);
+        const def = list.find((s) => s.is_default) ?? list[0] ?? null;
+        setSelectedScorecardId(def?.id ?? null);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.role_id]);
+
+  // Filter questions by active scorecard when one is selected.
+  const roleQuestions = questions.filter((q) => {
+    if (selectedScorecardId) return q.scorecard_id === selectedScorecardId;
+    return (q.role_id === selected?.role_id || q.role_id === null) && !q.scorecard_id;
+  });
+
+  // Compute weighted score across all scored questions for a candidate.
+  function candidateWeightedScore(candidateId: string): number | null {
+    let ws = 0, tw = 0;
+    for (const s of scores) {
+      if (s.candidate_id !== candidateId || s.score <= 0) continue;
+      const q = questions.find((q) => q.id === s.question_id);
+      if (!q) continue;
+      ws += s.score * q.weight;
+      tw += q.weight * 5;
+    }
+    return tw === 0 ? null : Math.round((ws / tw) * 100);
+  }
 
   async function addCandidate() {
     const optimistic: InterviewCandidate = {
@@ -1061,7 +1097,7 @@ function InterviewTab({
       id: makeLocalId(),
       plan_id: planId,
       role_id: selected?.role_id ?? null,
-      scorecard_id: null,
+      scorecard_id: selectedScorecardId,
       prompt: "",
       weight: 3,
       order_index: questions.length,
@@ -1076,6 +1112,7 @@ function InterviewTab({
         body: JSON.stringify({
           plan_id: planId,
           role_id: selected?.role_id ?? null,
+          scorecard_id: selectedScorecardId,
           prompt: "",
           weight: 3,
           order_index: questions.length,
@@ -1123,7 +1160,7 @@ function InterviewTab({
     );
     const updated: InterviewScore = existing
       ? { ...existing, score, notes }
-      : { id: makeLocalId(), candidate_id: candidateId, question_id: questionId, scorecard_id: null, score, notes };
+      : { id: makeLocalId(), candidate_id: candidateId, question_id: questionId, scorecard_id: selectedScorecardId, score, notes };
     onScoresChange(
       existing
         ? scores.map((s) =>
@@ -1136,7 +1173,7 @@ function InterviewTab({
     await fetch(`/api/workspaces/hiring/scores?planId=${planId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidate_id: candidateId, question_id: questionId, score, notes }),
+      body: JSON.stringify({ candidate_id: candidateId, question_id: questionId, scorecard_id: selectedScorecardId, score, notes }),
     });
   }
 
@@ -1212,7 +1249,15 @@ function InterviewTab({
                       {roles.find((r) => r.id === c.role_id)?.role_title ?? "No role"}
                     </p>
                   </div>
-                  <CandidatePill status={c.status} />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {(() => {
+                      const pct = candidateWeightedScore(c.id);
+                      return pct !== null ? (
+                        <span className="text-[10px] font-bold text-[#155e63]">{pct}%</span>
+                      ) : null;
+                    })()}
+                    <CandidatePill status={c.status} />
+                  </div>
                 </button>
               ))}
             </div>
@@ -1314,15 +1359,29 @@ function InterviewTab({
 
             {/* Questions + scores */}
             <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#1a1a1a]">
-                  Interview Scorecard
-                </p>
+              <div className="px-5 py-4 border-b border-[#efefef] flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#1a1a1a]">Interview Scorecard</p>
+                  {roleScorecards.length > 0 && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-[10px] text-[#6b6b6b]">Scoring with:</span>
+                      <select
+                        className="text-xs border border-[#e0e0e0] rounded px-1.5 py-0.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] bg-white"
+                        value={selectedScorecardId ?? ""}
+                        onChange={(e) => setSelectedScorecardId(e.target.value || null)}
+                      >
+                        {roleScorecards.map((sc) => (
+                          <option key={sc.id} value={sc.id}>{sc.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
                 {canEdit && (
                   <button
                     type="button"
                     onClick={addQuestion}
-                    className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448]"
+                    className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448] shrink-0"
                   >
                     <Plus size={13} />
                     Add question
@@ -1333,7 +1392,9 @@ function InterviewTab({
               {roleQuestions.length === 0 ? (
                 <div className="py-8 text-center px-5">
                   <p className="text-sm text-[#afafaf]">
-                    No questions yet. Add interview questions above.
+                    {selectedScorecardId
+                      ? "No questions in this scorecard yet. Add one above."
+                      : "No questions yet. Add interview questions above."}
                   </p>
                 </div>
               ) : (
