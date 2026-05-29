@@ -6,10 +6,11 @@ import { motion } from "framer-motion";
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 
-/* Ketut Subiyanto (Pexels License) — same photographer used in the lower benefit
-   sections. The "We Are Open" sign scene ties directly to the hero headline. */
+/* Ketut Subiyanto (Pexels License) — same photographer as the lower benefit
+   sections, but a distinct image used nowhere else on the page: a happy owner
+   standing at her open shop door, the picture of running a coffee shop well. */
 const HERO_PHOTO =
-  "https://images.pexels.com/photos/4473398/pexels-photo-4473398.jpeg?auto=compress&cs=tinysrgb&w=900";
+  "https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&cs=tinysrgb&w=900";
 
 function BrowserMockup() {
   const sidebarItems = [
@@ -355,8 +356,8 @@ export default function HomepageHero() {
               sections, with the screenshot as the anchor and the photo as the
               smaller floating element. */}
           <motion.div
-            className="absolute -bottom-10 -left-8 sm:-left-12 z-20"
-            style={{ width: "190px", transform: "rotate(-5deg)" }}
+            className="absolute -bottom-12 -left-10 sm:-left-16 z-20"
+            style={{ width: "248px", maxWidth: "55vw", transform: "rotate(-5deg)" }}
             initial={{ opacity: 0, y: 24, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
@@ -370,12 +371,12 @@ export default function HomepageHero() {
             >
               <Image
                 src={HERO_PHOTO}
-                alt="Cafe owner holding a wooden 'Welcome We Are Open' sign at her shop door"
+                alt="Smiling coffee shop owner in an apron standing at her open shop door"
                 fill
                 priority
                 className="object-cover"
-                style={{ objectPosition: "center 35%" }}
-                sizes="190px"
+                style={{ objectPosition: "center 30%" }}
+                sizes="248px"
               />
               {/* Warm overlay matches the lower benefit-section photos */}
               <div
