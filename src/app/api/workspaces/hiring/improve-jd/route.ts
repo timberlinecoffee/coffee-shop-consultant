@@ -10,6 +10,7 @@ export const maxDuration = 30;
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { normalizeAIOutput } from "@/lib/normalize";
 
 const anthropic = new Anthropic();
 
@@ -95,15 +96,15 @@ Rules:
       ? parsed.gaps.map((g: unknown) => {
           if (typeof g === "string") {
             // Older callers / responses may still emit flat strings.
-            return { gap: g, recommendation: null, next_step: null, why: null };
+            return { gap: normalizeAIOutput(g), recommendation: null, next_step: null, why: null };
           }
           if (g && typeof g === "object") {
             const r = g as Record<string, unknown>;
             return {
-              gap: String(r.gap ?? "").trim(),
-              recommendation: r.recommendation ? String(r.recommendation).trim() : null,
-              next_step: r.next_step ? String(r.next_step).trim() : null,
-              why: r.why ? String(r.why).trim() : null,
+              gap: normalizeAIOutput(String(r.gap ?? "").trim()),
+              recommendation: r.recommendation ? normalizeAIOutput(String(r.recommendation).trim()) : null,
+              next_step: r.next_step ? normalizeAIOutput(String(r.next_step).trim()) : null,
+              why: r.why ? normalizeAIOutput(String(r.why).trim()) : null,
             };
           }
           return null;
@@ -111,7 +112,7 @@ Rules:
       : [];
 
     return Response.json({
-      rewrite: parsed.rewrite ?? "",
+      rewrite: normalizeAIOutput(parsed.rewrite ?? ""),
       gaps,
       competitorNote: parsed.competitorNote ?? null,
     });

@@ -9,6 +9,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
 import { toTitleCase } from "@/lib/text"
+import { normalizeAIOutput } from "@/lib/normalize"
 
 const SCORECARD_FACTORS = [
   { key: "foot_traffic_weekday", label: "Weekday Foot Traffic" },
@@ -281,7 +282,7 @@ export async function POST(request: NextRequest) {
       id: r.id,
       name: nameById.get(r.id)!,
       position: typeof r.position === "number" ? r.position : 99,
-      reasoning: typeof r.reasoning === "string" ? r.reasoning.trim() : "",
+      reasoning: normalizeAIOutput(typeof r.reasoning === "string" ? r.reasoning.trim() : ""),
     }))
     .sort((a, b) => a.position - b.position)
 

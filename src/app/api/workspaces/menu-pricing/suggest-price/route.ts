@@ -3,6 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { normalizeAIOutput } from "@/lib/normalize"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -261,7 +262,7 @@ Return ONLY the JSON object, no other text.`
       low_cents: lowCents,
       high_cents: highCents,
       margin_pct: marginAtSuggested,
-      commentary: String(parsed.commentary ?? ""),
+      commentary: normalizeAIOutput(String(parsed.commentary ?? "")),
     })
   } catch (err) {
     console.error("suggest-price error:", err)

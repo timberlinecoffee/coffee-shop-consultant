@@ -18,6 +18,7 @@ import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { FinancialProjections } from "@/lib/financial-projection";
 import { formatCurrency } from "@/lib/financial-projection";
 import { getCurrencyMeta, normalizeCurrencyCode } from "@/lib/currency";
+import { normalizeAIOutput } from "@/lib/normalize";
 
 const anthropic = new Anthropic();
 
@@ -203,13 +204,13 @@ Return ONLY the JSON object, no other text.`;
       const type = (["strength", "weakness", "suggestion"].includes(b.type)
         ? b.type
         : "suggestion") as "strength" | "weakness" | "suggestion";
-      const base = { type, text: String(b.text ?? "") };
+      const base = { type, text: normalizeAIOutput(String(b.text ?? "")) };
       if (type === "strength") return base;
       return {
         ...base,
-        recommendation: String(b.recommendation ?? "").trim() || undefined,
-        next_step: String(b.next_step ?? "").trim() || undefined,
-        why: String(b.why ?? "").trim() || undefined,
+        recommendation: normalizeAIOutput(String(b.recommendation ?? "").trim()) || undefined,
+        next_step: normalizeAIOutput(String(b.next_step ?? "").trim()) || undefined,
+        why: normalizeAIOutput(String(b.why ?? "").trim()) || undefined,
       };
     });
 

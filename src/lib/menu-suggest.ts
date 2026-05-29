@@ -6,6 +6,7 @@
 // em-dash-free rationale (founder voice mandate — QA bounces em dashes).
 
 import { toTitleCase } from "./text.ts"
+import { normalizeAIOutput } from "./normalize.ts"
 
 export type SuggestedMenuItem = {
   name: string
@@ -25,7 +26,7 @@ export function sanitizeRationale(raw: unknown): string | undefined {
     .replace(/[—–]/g, "-")
     .replace(/\s+/g, " ")
     .trim()
-  return cleaned ? cleaned : undefined
+  return cleaned ? normalizeAIOutput(cleaned) : undefined
 }
 
 // Resolve a model-supplied category name to one of the plan's real categories.

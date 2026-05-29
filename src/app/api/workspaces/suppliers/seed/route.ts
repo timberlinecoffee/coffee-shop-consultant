@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
+import { normalizeAIOutput } from "@/lib/normalize";
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
@@ -101,7 +102,7 @@ Rules:
     price_per_unit: c.price_per_unit ?? undefined,
     minimum_order: c.minimum_order ?? undefined,
     lead_time: c.lead_time ?? undefined,
-    notes: c.notes ?? undefined,
+    notes: c.notes ? normalizeAIOutput(c.notes) : undefined,
   }));
 }
 

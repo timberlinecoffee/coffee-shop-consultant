@@ -7,6 +7,7 @@ export const maxDuration = 30
 import { NextResponse, type NextRequest } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { toTitleCase } from "@/lib/normalize"
 
 const TITLE_MODEL = "claude-haiku-4-5-20251001"
 const MAX_WORDS = 6
@@ -99,7 +100,7 @@ export async function POST(
     return NextResponse.json({ error: message }, { status: 502 })
   }
 
-  const title = clampToWords(rawTitle, MAX_WORDS)
+  const title = toTitleCase(clampToWords(rawTitle, MAX_WORDS))
   if (!title) return NextResponse.json({ error: "Empty title from model." }, { status: 502 })
 
   const { error: updateError } = await supabase

@@ -3,6 +3,8 @@
 //           specific next step the owner can take, and a one-sentence why.
 // POST body: { planId: string }
 // Streams SSE with delta/error/done events (same shape as copilot/stream).
+// TIM-1365 normalization: pure stream — tokens are sent as-is. Client normalizes the assembled
+// text via normalizeAIOutput() after SSE stream ends. *.delta.text is exempt from the ESLint gate.
 
 export const runtime = "nodejs"
 export const maxDuration = 60

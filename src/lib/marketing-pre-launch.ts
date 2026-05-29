@@ -2,6 +2,7 @@
 // Stored in workspace_documents.content as jsonb where workspace_key='marketing_pre_launch'.
 
 import { toTitleCase } from "@/lib/text";
+import { normalizeAIOutput } from "@/lib/normalize";
 
 // ── Waitlist ──────────────────────────────────────────────────────────────────
 
@@ -243,20 +244,26 @@ export function titleCaseAiPayload(input: MarketingPreLaunchDocument): Marketing
     waitlist: {
       ...input.waitlist,
       landing_headline: input.waitlist.landing_headline ? toTitleCase(input.waitlist.landing_headline) : "",
+      landing_copy: input.waitlist.landing_copy ? normalizeAIOutput(input.waitlist.landing_copy) : "",
       early_bird_offer: input.waitlist.early_bird_offer ? toTitleCase(input.waitlist.early_bird_offer) : "",
     },
-    gbp: input.gbp,
+    gbp: { ...input.gbp, notes: input.gbp.notes ? normalizeAIOutput(input.gbp.notes) : "" },
     social: {
       ...input.social,
+      bio_template: input.social.bio_template ? normalizeAIOutput(input.social.bio_template) : "",
       cadence: input.social.cadence ? toTitleCase(input.social.cadence) : "",
       first_12_posts: input.social.first_12_posts.map((p) => ({
         ...p,
         label: p.label ? toTitleCase(p.label) : "",
+        caption: p.caption ? normalizeAIOutput(p.caption) : "",
       })),
     },
     opening_promo: {
       ...input.opening_promo,
       promo_idea: input.opening_promo.promo_idea ? toTitleCase(input.opening_promo.promo_idea) : "",
+      mechanic: input.opening_promo.mechanic ? normalizeAIOutput(input.opening_promo.mechanic) : "",
+      target_reach: input.opening_promo.target_reach ? normalizeAIOutput(input.opening_promo.target_reach) : "",
+      partner_crosspromo: input.opening_promo.partner_crosspromo ? normalizeAIOutput(input.opening_promo.partner_crosspromo) : "",
     },
     press: {
       contacts: input.press.contacts.map((c) => ({
@@ -264,6 +271,7 @@ export function titleCaseAiPayload(input: MarketingPreLaunchDocument): Marketing
         name: c.name ? toTitleCase(c.name) : "",
         outlet: c.outlet ? toTitleCase(c.outlet) : "",
         role: c.role ? toTitleCase(c.role) : "",
+        angle: c.angle ? normalizeAIOutput(c.angle) : "",
       })),
     },
   };
