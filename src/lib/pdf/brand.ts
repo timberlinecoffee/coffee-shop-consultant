@@ -48,11 +48,11 @@ export function registerFonts() {
     family: "Source Serif Pro",
     fonts: [
       {
-        src: "https://fonts.gstatic.com/s/sourceserifpro/v21/neIQzD-0qpwxpaWvjeD0X88SAOeasashRBksDw.woff2",
+        src: "https://fonts.gstatic.com/s/sourceserifpro/v18/neIQzD-0qpwxpaWvjeD0X88SAOeauXQ-oA.woff2",
         fontWeight: 400,
       },
       {
-        src: "https://fonts.gstatic.com/s/sourceserifpro/v21/neIXzD-0qpwxpaWvjeD0X88SAOeauXEGYSGs9Tc.woff2",
+        src: "https://fonts.gstatic.com/s/sourceserifpro/v18/neIXzD-0qpwxpaWvjeD0X88SAOeasasatSyqxA.woff2",
         fontWeight: 600,
       },
     ],

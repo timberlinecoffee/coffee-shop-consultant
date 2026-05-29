@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   tableRowAlt: {
-    backgroundColor: "var(--warm-near-white)",
+    backgroundColor: "#f8f9f8",
   },
   cellText: {
     fontFamily: BRAND.fonts.sans,

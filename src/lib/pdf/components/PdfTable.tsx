@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 2,
     borderTopColor: BRAND.colors.ink,
-    backgroundColor: "var(--neutral-cool-f5)",
+    backgroundColor: "#F5F6F5",
   },
   headerCell: {
     fontFamily: BRAND.fonts.sans,
