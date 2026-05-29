@@ -30,6 +30,14 @@ interface Props {
 const PRESET_SWATCHES = ["#E8C24A", "#1F7A80", "#2563EB", "#EF4444", "#7C3AED"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
+const COLOR_PACKS = [
+  { id: "ocean",  label: "Ocean",  accent: "#1F7A80", description: "Teal, professional" },
+  { id: "slate",  label: "Slate",  accent: "#475569", description: "Neutral, refined" },
+  { id: "ember",  label: "Ember",  accent: "#C2410C", description: "Warm, energetic" },
+  { id: "forest", label: "Forest", accent: "#15803D", description: "Natural, grounded" },
+  { id: "berry",  label: "Berry",  accent: "#7C3AED", description: "Bold, creative" },
+] as const;
+
 // ── Color conversion helpers ───────────────────────────────────────────────────
 
 type ColorMode = "hex" | "rgb" | "cmyk";
@@ -323,6 +331,17 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                         className="object-cover"
                         unoptimized
                       />
+                      {/* Placeholder logo + title overlay */}
+                      <div className="absolute inset-0 flex flex-col justify-between p-[6px] pointer-events-none select-none">
+                        <div
+                          className="w-5 h-5 rounded-[3px] flex-shrink-0"
+                          style={{ backgroundColor: accentColor, opacity: 0.92 }}
+                        />
+                        <div>
+                          <p className="text-white text-[6.5px] font-bold leading-tight drop-shadow-sm">The Coffee Shop</p>
+                          <p className="text-white/75 text-[5.5px] leading-tight drop-shadow-sm">Business Plan</p>
+                        </div>
+                      </div>
                     </div>
                     <span
                       className={`text-[11px] py-1 ${
@@ -340,6 +359,36 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
           {/* Accent color */}
           <div>
             <p className="text-xs text-[var(--gray-medium)] mb-2">Accent color</p>
+
+            {/* Color packs */}
+            <div className="grid grid-cols-5 gap-1 mb-3">
+              {COLOR_PACKS.map((pack) => {
+                const packActive = accentColor.toLowerCase() === pack.accent.toLowerCase();
+                return (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    onClick={() => applyColor(pack.accent)}
+                    className={`flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg border transition-all ${
+                      packActive
+                        ? "border-[var(--success)] bg-[var(--teal-bg-faint)]"
+                        : "border-[var(--gray-slate-4)] hover:border-[var(--neutral-cool-350)]"
+                    }`}
+                    title={pack.description}
+                  >
+                    <span
+                      className="w-5 h-5 rounded-[3px] flex-shrink-0"
+                      style={{ backgroundColor: pack.accent }}
+                    />
+                    <span className={`text-[9px] leading-tight ${packActive ? "text-[var(--success)] font-semibold" : "text-[var(--gray-slate)]"}`}>
+                      {pack.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-[10px] text-[var(--gray-medium)] mb-2">Or enter a custom color</p>
 
             {/* Preset swatches — de-emphasized */}
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
