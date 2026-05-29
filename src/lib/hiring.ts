@@ -53,10 +53,32 @@ export interface InterviewCandidate {
   position: number
 }
 
+export interface InterviewScorecard {
+  id: string
+  plan_id: string
+  role_id: string | null
+  name: string
+  is_default: boolean
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CompetencyFormTemplate {
+  id: string
+  plan_id: string
+  role_id: string | null
+  name: string
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
 export interface InterviewQuestion {
   id: string
   plan_id: string
   role_id: string | null
+  scorecard_id: string | null
   prompt: string
   weight: number
   order_index: number
@@ -66,6 +88,7 @@ export interface InterviewScore {
   id: string
   candidate_id: string
   question_id: string
+  scorecard_id: string | null
   score: number
   notes: string | null
 }
@@ -96,6 +119,7 @@ export interface StaffCompetency {
   skill: string
   rubric: string
   required_for_role: string | null
+  form_template_id: string | null
   weight: number
   order_index: number
 }

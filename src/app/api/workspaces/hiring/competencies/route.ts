@@ -1,4 +1,5 @@
 // TIM-965: CRUD for staff_competencies (plan-level competency template).
+// TIM-1299: extended with form_template_id support.
 import { createClient } from "@/lib/supabase/server"
 import { isProvidedString } from "@/lib/hiring"
 import { toTitleCase } from "@/lib/text"
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       skill: toTitleCase(body.skill),
       rubric: (body.rubric as string | undefined) ?? "",
       required_for_role: (body.required_for_role as string | undefined) ?? null,
+      form_template_id: (body.form_template_id as string | undefined) ?? null,
       weight: (body.weight as number | undefined) ?? 1,
       order_index: (body.order_index as number | undefined) ?? 0,
     })

@@ -4,7 +4,7 @@
 // Backed by row-level DB tables; no autosave JSONB blob — all mutations hit
 // dedicated API routes directly with optimistic local state updates.
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Users,
   Network,
@@ -18,6 +18,11 @@ import {
   X,
   Check,
   ExternalLink,
+  Copy,
+  Pencil,
+  FileText,
+  ClipboardCheck,
+  BookOpen,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -26,6 +31,8 @@ import {
   type InterviewCandidate,
   type InterviewQuestion,
   type InterviewScore,
+  type InterviewScorecard,
+  type CompetencyFormTemplate,
   type OnboardingPlanInstance,
   type OnboardingTask,
   type StaffCompetency,
@@ -132,6 +139,7 @@ function OrgTab({
   const [jdLoading, setJdLoading] = useState(false);
   const [jdError, setJdError] = useState<string | null>(null);
   const [improvingField, setImprovingField] = useState<string | null>(null);
+  const [hubRole, setHubRole] = useState<OrgRole | null>(null);
 
   // Local JD state while panel is open
   const [jdFields, setJdFields] = useState<JDPanel["jd"] | null>(null);
@@ -343,6 +351,7 @@ function OrgTab({
                 onUpdate={(patch) => updateRole(role.id, patch)}
                 onDelete={() => deleteRole(role.id)}
                 onViewJd={() => openJd(role)}
+                onOpenHub={() => setHubRole(role)}
               />
             ))}
           </div>
@@ -368,6 +377,17 @@ function OrgTab({
             )}
           </div>
         </div>
+      )}
+
+      {/* Role Hub slide-over */}
+      {hubRole && (
+        <RoleHubPanel
+          planId={planId}
+          canEdit={canEdit}
+          role={hubRole}
+          onOpenJd={() => { openJd(hubRole); setHubRole(null); }}
+          onClose={() => setHubRole(null)}
+        />
       )}
 
       {/* JD slide-over */}
@@ -487,6 +507,7 @@ function RoleRow({
   onUpdate,
   onDelete,
   onViewJd,
+  onOpenHub,
 }: {
   role: OrgRole;
   roles: OrgRole[];
@@ -496,6 +517,7 @@ function RoleRow({
   onUpdate: (patch: Partial<OrgRole>) => void;
   onDelete: () => void;
   onViewJd: () => void;
+  onOpenHub: () => void;
 }) {
   const parentOptions = roles.filter((r) => r.id !== role.id);
 
@@ -518,10 +540,10 @@ function RoleRow({
         <RolePill status={role.status} />
         <button
           type="button"
-          onClick={onViewJd}
-          className="flex items-center gap-1 text-xs text-[#155e63] hover:underline shrink-0"
+          onClick={onOpenHub}
+          className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:underline shrink-0"
         >
-          JD <ExternalLink size={11} />
+          Hub <ExternalLink size={11} />
         </button>
         <button
           type="button"
@@ -655,6 +677,320 @@ function RoleRow({
   );
 }
 
+// ── Role Hub Panel ────────────────────────────────────────────────────────────
+// TIM-1299: slide-over showing JD placeholder, Scorecards, and Competency Form
+// for a selected role. Navigation backbone for W2/W3/W6.
+
+function RoleHubPanel({
+  planId,
+  canEdit,
+  role,
+  onOpenJd,
+  onClose,
+}: {
+  planId: string;
+  canEdit: boolean;
+  role: OrgRole;
+  onOpenJd: () => void;
+  onClose: () => void;
+}) {
+  const [scorecards, setScorecards] = useState<InterviewScorecard[]>([]);
+  const [compForms, setCompForms] = useState<CompetencyFormTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [renamingScorecard, setRenamingScorecard] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renamingForm, setRenamingForm] = useState<string | null>(null);
+  const [renameFormValue, setRenameFormValue] = useState("");
+
+  // Load on mount
+  useEffect(() => {
+    (async () => {
+      const [sc, cf] = await Promise.all([
+        fetch(`/api/workspaces/hiring/scorecards?role_id=${role.id}`).then((r) => r.json()),
+        fetch(`/api/workspaces/hiring/competency-forms?role_id=${role.id}`).then((r) => r.json()),
+      ]);
+      setScorecards(Array.isArray(sc) ? sc : []);
+      setCompForms(Array.isArray(cf) ? cf : []);
+      setLoading(false);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role.id]);
+
+  async function addScorecard() {
+    const res = await fetch("/api/workspaces/hiring/scorecards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId, role_id: role.id, name: "New Scorecard", order_index: scorecards.length }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as InterviewScorecard;
+      setScorecards((prev) => [...prev, created]);
+      setRenamingScorecard(created.id);
+      setRenameValue(created.name);
+    }
+  }
+
+  async function duplicateScorecard(id: string) {
+    const res = await fetch("/api/workspaces/hiring/scorecards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "duplicate", id }),
+    });
+    if (res.ok) {
+      const copy = (await res.json()) as InterviewScorecard;
+      setScorecards((prev) => [...prev, copy]);
+    }
+  }
+
+  async function saveRenameScorecard(id: string) {
+    const name = renameValue.trim() || "Scorecard";
+    setScorecards((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
+    setRenamingScorecard(null);
+    await fetch("/api/workspaces/hiring/scorecards", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name }),
+    });
+  }
+
+  async function deleteScorecard(id: string) {
+    setScorecards((prev) => prev.filter((s) => s.id !== id));
+    await fetch(`/api/workspaces/hiring/scorecards?id=${id}`, { method: "DELETE" });
+  }
+
+  async function addCompForm() {
+    const res = await fetch("/api/workspaces/hiring/competency-forms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId, role_id: role.id, name: "General", order_index: compForms.length }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as CompetencyFormTemplate;
+      setCompForms((prev) => [...prev, created]);
+      setRenamingForm(created.id);
+      setRenameFormValue(created.name);
+    }
+  }
+
+  async function saveRenameForm(id: string) {
+    const name = renameFormValue.trim() || "General";
+    setCompForms((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
+    setRenamingForm(null);
+    await fetch("/api/workspaces/hiring/competency-forms", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name }),
+    });
+  }
+
+  async function deleteCompForm(id: string) {
+    setCompForms((prev) => prev.filter((f) => f.id !== id));
+    await fetch(`/api/workspaces/hiring/competency-forms?id=${id}`, { method: "DELETE" });
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex">
+      <button
+        type="button"
+        aria-label="Close panel"
+        className="flex-1 bg-black/30"
+        onClick={onClose}
+      />
+      <div className="w-full max-w-lg bg-white shadow-xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[#efefef] flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#1a1a1a]">Role Hub</p>
+            <p className="text-xs text-[#6b6b6b]">{role.role_title || "Unnamed role"}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-[#afafaf] hover:text-[#1a1a1a] p-1">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
+          {loading ? (
+            <p className="text-sm text-[#afafaf]">Loading…</p>
+          ) : (
+            <>
+              {/* ── Job Description ── */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText size={14} className="text-[#155e63]" />
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">Job Description</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenJd}
+                  className="w-full flex items-center justify-between text-sm border border-[#efefef] rounded-lg px-4 py-3 hover:border-[#155e63] hover:bg-[#f5fafa] transition-colors"
+                >
+                  <span className="text-[#1a1a1a] font-medium">
+                    {role.role_title || "Unnamed role"} — JD
+                  </span>
+                  <ExternalLink size={13} className="text-[#155e63]" />
+                </button>
+              </section>
+
+              {/* ── Scorecards ── */}
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck size={14} className="text-[#155e63]" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">Scorecards</p>
+                  </div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={addScorecard}
+                      className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:underline"
+                    >
+                      <Plus size={12} /> New
+                    </button>
+                  )}
+                </div>
+                {scorecards.length === 0 ? (
+                  <p className="text-xs text-[#afafaf]">No scorecards yet. Create one above.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {scorecards.map((sc) => (
+                      <div key={sc.id} className="flex items-center gap-2 border border-[#efefef] rounded-lg px-3 py-2">
+                        {renamingScorecard === sc.id ? (
+                          <>
+                            <input
+                              autoFocus
+                              className="flex-1 text-sm border border-[#e0e0e0] rounded px-2 py-1 focus:outline-none focus:border-[#155e63]"
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveRenameScorecard(sc.id);
+                                if (e.key === "Escape") setRenamingScorecard(null);
+                              }}
+                            />
+                            <button type="button" onClick={() => saveRenameScorecard(sc.id)} className="text-[#155e63] p-1">
+                              <Check size={13} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-sm text-[#1a1a1a] truncate">
+                              {sc.name}
+                              {sc.is_default && (
+                                <span className="ml-2 text-[10px] font-semibold text-[#155e63] bg-[#f0fafa] px-1.5 py-0.5 rounded-full">Default</span>
+                              )}
+                            </span>
+                            {canEdit && (
+                              <>
+                                <button
+                                  type="button"
+                                  title="Rename"
+                                  onClick={() => { setRenamingScorecard(sc.id); setRenameValue(sc.name); }}
+                                  className="text-[#afafaf] hover:text-[#1a1a1a] p-1"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Duplicate"
+                                  onClick={() => duplicateScorecard(sc.id)}
+                                  className="text-[#afafaf] hover:text-[#155e63] p-1"
+                                >
+                                  <Copy size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Delete"
+                                  onClick={() => deleteScorecard(sc.id)}
+                                  className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* ── Competency Form ── */}
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={14} className="text-[#155e63]" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">Competency Form</p>
+                  </div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={addCompForm}
+                      className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:underline"
+                    >
+                      <Plus size={12} /> New
+                    </button>
+                  )}
+                </div>
+                {compForms.length === 0 ? (
+                  <p className="text-xs text-[#afafaf]">No competency form template yet. Create one above.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {compForms.map((cf) => (
+                      <div key={cf.id} className="flex items-center gap-2 border border-[#efefef] rounded-lg px-3 py-2">
+                        {renamingForm === cf.id ? (
+                          <>
+                            <input
+                              autoFocus
+                              className="flex-1 text-sm border border-[#e0e0e0] rounded px-2 py-1 focus:outline-none focus:border-[#155e63]"
+                              value={renameFormValue}
+                              onChange={(e) => setRenameFormValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveRenameForm(cf.id);
+                                if (e.key === "Escape") setRenamingForm(null);
+                              }}
+                            />
+                            <button type="button" onClick={() => saveRenameForm(cf.id)} className="text-[#155e63] p-1">
+                              <Check size={13} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-sm text-[#1a1a1a] truncate">{cf.name}</span>
+                            {canEdit && (
+                              <>
+                                <button
+                                  type="button"
+                                  title="Rename"
+                                  onClick={() => { setRenamingForm(cf.id); setRenameFormValue(cf.name); }}
+                                  className="text-[#afafaf] hover:text-[#1a1a1a] p-1"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Delete"
+                                  onClick={() => deleteCompForm(cf.id)}
+                                  className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Interview Scorecard tab ───────────────────────────────────────────────────
 
 function InterviewTab({
@@ -751,6 +1087,7 @@ function InterviewTab({
       id: makeLocalId(),
       plan_id: planId,
       role_id: selected?.role_id ?? null,
+      scorecard_id: null,
       prompt: "",
       weight: 3,
       order_index: questions.length,
@@ -812,7 +1149,7 @@ function InterviewTab({
     );
     const updated: InterviewScore = existing
       ? { ...existing, score, notes }
-      : { id: makeLocalId(), candidate_id: candidateId, question_id: questionId, score, notes };
+      : { id: makeLocalId(), candidate_id: candidateId, question_id: questionId, scorecard_id: null, score, notes };
     onScoresChange(
       existing
         ? scores.map((s) =>
@@ -1608,6 +1945,7 @@ function CompetencyTab({
       skill: "",
       rubric: "",
       required_for_role: null,
+      form_template_id: null,
       weight: 1,
       order_index: competencies.length,
     };

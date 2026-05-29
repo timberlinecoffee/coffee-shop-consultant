@@ -1,4 +1,5 @@
 // TIM-965: Upsert/delete for interview_scores.
+// TIM-1299: extended with scorecard_id (denormalized) support.
 // Upserts by (candidate_id, question_id) unique constraint.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
     .upsert({
       candidate_id: body.candidate_id as string,
       question_id: body.question_id as string,
+      scorecard_id: (body.scorecard_id as string | undefined) ?? null,
       score: body.score as number,
       notes: (body.notes as string | undefined) ?? null,
     }, { onConflict: "candidate_id,question_id" })
