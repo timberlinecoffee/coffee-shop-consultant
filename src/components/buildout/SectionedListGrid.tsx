@@ -11,6 +11,9 @@
 // TIM-1215: Section J — reorderable columns in Columns picker (up/down buttons +
 //   mouse drag with GripHorizontal, distinct from row GripVertical handles).
 //   Default order puts Cost closer to Name. Column order persisted server-side.
+// TIM-1328: Section O — drag column headers left/right to reorder in-place (raw
+//   pointer events, separate from row dnd-kit context). Non-toggleable columns
+//   (drag handle, name, actions) stay fixed. Arrow-key keyboard alternative.
 
 import {
   useCallback,
@@ -1043,6 +1046,79 @@ export function SectionedListGrid({
     saveColOrderServer(listType, order);
   }
 
+  // TIM-1328: in-grid column header drag state (raw pointer events, distinct from row dnd-kit)
+  type ColHeaderDrag = { draggingId: string; dropBeforeColId: string | null };
+  const colHeaderDragRef = useRef<ColHeaderDrag | null>(null);
+  const [colHeaderDragDisplay, setColHeaderDragDisplay] = useState<ColHeaderDrag | null>(null);
+  const headerCellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+
+  function startColHeaderDrag(e: React.PointerEvent, colId: string) {
+    if (!canEdit) return;
+    e.preventDefault();
+    const init: ColHeaderDrag = { draggingId: colId, dropBeforeColId: null };
+    colHeaderDragRef.current = init;
+    setColHeaderDragDisplay(init);
+    document.body.style.cursor = "grabbing";
+
+    // Capture cols visible at drag-start so mid-drag visibility changes don't shift hit-boxes
+    const snapCols = visibleCols;
+    const snapColOrder = colOrder;
+
+    function onMove(ev: PointerEvent) {
+      if (!colHeaderDragRef.current) return;
+      const { draggingId } = colHeaderDragRef.current;
+      let dropBeforeColId: string | null = null;
+      for (const c of snapCols) {
+        if (!c.toggleable || c.id === draggingId) continue;
+        const el = headerCellRefs.current.get(c.id);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (ev.clientX < r.left + r.width / 2) { dropBeforeColId = c.id; break; }
+      }
+      const next: ColHeaderDrag = { draggingId, dropBeforeColId };
+      colHeaderDragRef.current = next;
+      setColHeaderDragDisplay(next);
+    }
+
+    function onUp() {
+      const state = colHeaderDragRef.current;
+      colHeaderDragRef.current = null;
+      setColHeaderDragDisplay(null);
+      document.body.style.cursor = "";
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (!state) return;
+      const { draggingId, dropBeforeColId } = state;
+      const toggleableIds = snapColOrder.filter((id) => cols.find((c) => c.id === id)?.toggleable);
+      const fromIdx = toggleableIds.indexOf(draggingId);
+      if (fromIdx === -1) return;
+      const toIdx = dropBeforeColId === null ? toggleableIds.length : toggleableIds.indexOf(dropBeforeColId);
+      if (toIdx === -1 || toIdx === fromIdx || toIdx === fromIdx + 1) return;
+      const next = [...toggleableIds];
+      next.splice(fromIdx, 1);
+      const adjustedTo = toIdx > fromIdx ? toIdx - 1 : toIdx;
+      next.splice(adjustedTo, 0, draggingId);
+      const fixedIds = cols.filter((c) => !c.toggleable).map((c) => c.id);
+      const ni = fixedIds.indexOf("name");
+      applyColOrder([...fixedIds.slice(0, ni + 1), ...next, ...fixedIds.slice(ni + 1)]);
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  function moveColByKey(colId: string, direction: "left" | "right") {
+    const toggleableIds = colOrder.filter((id) => cols.find((c) => c.id === id)?.toggleable);
+    const ci = toggleableIds.indexOf(colId);
+    if (ci === -1) return;
+    if (direction === "left" && ci === 0) return;
+    if (direction === "right" && ci === toggleableIds.length - 1) return;
+    const next = arrayMove(toggleableIds, ci, direction === "left" ? ci - 1 : ci + 1);
+    const fixedIds = cols.filter((c) => !c.toggleable).map((c) => c.id);
+    const ni = fixedIds.indexOf("name");
+    applyColOrder([...fixedIds.slice(0, ni + 1), ...next, ...fixedIds.slice(ni + 1)]);
+  }
+
   // TIM-1215: Column picker drag state (for dragging column rows in the picker)
   const [colPickerDragId, setColPickerDragId] = useState<string | null>(null);
   const colPickerSensors = useSensors(
@@ -1651,20 +1727,60 @@ export function SectionedListGrid({
 
               <thead>
                 <tr className="border-b border-[#f0f0f0]">
-                  {visibleCols.map((col) => (
-                    <th
-                      key={col.id}
-                      className={`${headerCellCls}${col.id === "name" ? " sticky left-0 z-20" : ""}`}
-                    >
-                      <span>{col.label}</span>
-                      {col.resizable && (
-                        <span
-                          className="absolute right-0 top-0 h-full w-[10px] cursor-col-resize hover:bg-[#155e63]/30 transition-colors"
-                          onPointerDown={(e) => onResizeStart(e, col.id)}
-                        />
-                      )}
-                    </th>
-                  ))}
+                  {visibleCols.map((col) => {
+                    const isColDragging = colHeaderDragDisplay?.draggingId === col.id;
+                    const isDropBefore = col.toggleable
+                      && colHeaderDragDisplay !== null
+                      && colHeaderDragDisplay.dropBeforeColId === col.id
+                      && col.id !== colHeaderDragDisplay.draggingId;
+                    const lastToggleableId = visibleCols.filter((c) => c.toggleable).at(-1)?.id;
+                    const isDropAfterEnd = col.toggleable
+                      && colHeaderDragDisplay !== null
+                      && colHeaderDragDisplay.dropBeforeColId === null
+                      && col.id === lastToggleableId
+                      && col.id !== colHeaderDragDisplay.draggingId;
+
+                    return (
+                      <th
+                        key={col.id}
+                        ref={col.toggleable
+                          ? (el) => { if (el) headerCellRefs.current.set(col.id, el); else headerCellRefs.current.delete(col.id); }
+                          : undefined}
+                        className={`group ${headerCellCls}${col.id === "name" ? " sticky left-0 z-20" : ""} ${isColDragging ? "opacity-40" : ""}`}
+                        style={col.toggleable
+                          ? { cursor: colHeaderDragDisplay ? (isColDragging ? "grabbing" : "default") : "grab" }
+                          : undefined}
+                        onPointerDown={col.toggleable ? (e) => startColHeaderDrag(e, col.id) : undefined}
+                        tabIndex={col.toggleable ? 0 : undefined}
+                        aria-label={col.toggleable ? `${col.label}. Drag or use left/right arrow keys to reorder column.` : undefined}
+                        onKeyDown={col.toggleable ? (e) => {
+                          if (e.key === "ArrowLeft") { e.preventDefault(); moveColByKey(col.id, "left"); }
+                          else if (e.key === "ArrowRight") { e.preventDefault(); moveColByKey(col.id, "right"); }
+                        } : undefined}
+                      >
+                        {isDropBefore && (
+                          <span className="absolute left-0 top-0 h-full w-0.5 bg-[#155e63] z-20 pointer-events-none" aria-hidden />
+                        )}
+                        {isDropAfterEnd && (
+                          <span className="absolute right-0 top-0 h-full w-0.5 bg-[#155e63] z-20 pointer-events-none" aria-hidden />
+                        )}
+                        {col.toggleable && !colHeaderDragDisplay && (
+                          <GripHorizontal
+                            size={10}
+                            className="inline-block mr-1 text-[#d8d8d8] group-hover:text-[#a0a0a0] transition-colors"
+                            aria-hidden
+                          />
+                        )}
+                        <span>{col.label}</span>
+                        {col.resizable && (
+                          <span
+                            className="absolute right-0 top-0 h-full w-[10px] cursor-col-resize hover:bg-[#155e63]/30 transition-colors"
+                            onPointerDown={(e) => { e.stopPropagation(); onResizeStart(e, col.id); }}
+                          />
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
 
