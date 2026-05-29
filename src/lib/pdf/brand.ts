@@ -32,17 +32,17 @@ export function registerFonts() {
   Font.register({
     family: "Inter",
     fonts: [
-      { src: path.join(fontsDir, "inter-regular.woff2"), fontWeight: 400 },
-      { src: path.join(fontsDir, "inter-semibold.woff2"), fontWeight: 600 },
-      { src: path.join(fontsDir, "inter-bold.woff2"), fontWeight: 700 },
+      { src: path.join(fontsDir, "inter-regular.ttf"), fontWeight: 400 },
+      { src: path.join(fontsDir, "inter-semibold.ttf"), fontWeight: 600 },
+      { src: path.join(fontsDir, "inter-bold.ttf"), fontWeight: 700 },
     ],
   })
 
   Font.register({
     family: "Source Serif Pro",
     fonts: [
-      { src: path.join(fontsDir, "source-serif-pro-regular.woff2"), fontWeight: 400 },
-      { src: path.join(fontsDir, "source-serif-pro-semibold.woff2"), fontWeight: 600 },
+      { src: path.join(fontsDir, "source-serif-pro-regular.ttf"), fontWeight: 400 },
+      { src: path.join(fontsDir, "source-serif-pro-semibold.ttf"), fontWeight: 600 },
     ],
   })
 }
