@@ -9,6 +9,7 @@ import { COVER_TEMPLATES } from "@/lib/pdf/business-plan/covers";
 
 const VALID_TEMPLATE_IDS = new Set(COVER_TEMPLATES.map((t) => t.id));
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+const VALID_BODY_FONTS = new Set(["inter", "dm-sans", "lato", "source-serif-4", "libre-baskerville", "nunito"]);
 
 async function getAuthedPlan(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,7 +34,7 @@ export async function GET() {
 
   const { data: cover } = await supabase
     .from("business_plan_cover")
-    .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name")
+    .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name, body_font")
     .eq("plan_id", plan.id)
     .maybeSingle();
 
@@ -45,6 +46,7 @@ export async function GET() {
       tagline: null,
       prepared_for: null,
       author_name: null,
+      body_font: null,
     }
   );
 }
@@ -61,6 +63,7 @@ export async function PATCH(request: NextRequest) {
     tagline?: string | null;
     prepared_for?: string | null;
     author_name?: string | null;
+    body_font?: string | null;
   };
 
   if (body.template_id !== undefined && !VALID_TEMPLATE_IDS.has(body.template_id as never)) {
@@ -71,6 +74,10 @@ export async function PATCH(request: NextRequest) {
     return Response.json({ error: "accent_color must be #RRGGBB" }, { status: 422 });
   }
 
+  if (body.body_font !== undefined && body.body_font !== null && !VALID_BODY_FONTS.has(body.body_font)) {
+    return Response.json({ error: "Invalid body_font" }, { status: 422 });
+  }
+
   const payload: Record<string, unknown> = {
     plan_id: plan.id,
   };
@@ -79,6 +86,7 @@ export async function PATCH(request: NextRequest) {
   if (body.tagline !== undefined) payload.tagline = body.tagline ? toTitleCase(body.tagline) : body.tagline;
   if (body.prepared_for !== undefined) payload.prepared_for = body.prepared_for ? toTitleCase(body.prepared_for) : body.prepared_for;
   if (body.author_name !== undefined) payload.author_name = body.author_name ? toTitleCase(body.author_name) : body.author_name;
+  if (body.body_font !== undefined) payload.body_font = body.body_font;
 
   const { error } = await supabase
     .from("business_plan_cover")

@@ -115,7 +115,7 @@ export default async function BusinessPlanWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("business_plan_cover")
-      .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name")
+      .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name, body_font")
       .eq("plan_id", planId)
       .maybeSingle(),
   ]);
@@ -180,6 +180,7 @@ export default async function BusinessPlanWorkspacePage() {
     tagline: coverRow?.tagline ?? null,
     prepared_for: coverRow?.prepared_for ?? null,
     author_name: coverRow?.author_name ?? null,
+    body_font: (coverRow as { body_font?: string | null } | null)?.body_font ?? null,
   };
 
   // Get a signed URL for the logo preview (1 hour).

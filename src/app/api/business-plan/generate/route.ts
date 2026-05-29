@@ -77,6 +77,9 @@ export async function POST(request: NextRequest) {
 
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
 
+  const reqBody = await request.json().catch(() => ({})) as { sectionKey?: string };
+  const sectionKey = reqBody.sectionKey ?? "executive_summary";
+
   const planId = plan.id;
 
   const [
@@ -124,19 +127,30 @@ export async function POST(request: NextRequest) {
   const shopName = plan.plan_name ?? "this coffee shop";
   const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
 
-  const systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan. Write in the founder's plain voice — direct, confident, operational. Not corporate. Not AI-sounding.
+  const targetSection = sections.find((s) => s.key === sectionKey);
+  const sectionAutoContent = targetSection?.autoContent ?? "";
+  const sectionTitle = targetSection?.title ?? sectionKey;
 
-Rules:
-- 3–5 tight paragraphs covering: the concept, the market, the opportunity, a brief financial picture, and the ask (if applicable)
+  const sharedRules = `Rules:
 - Coffee-specific vocabulary (espresso, pour-over, daypart, CAM, barista, neighborhood traffic) — never generic restaurant language
 - No filler phrases, no AI jargon, no buzzwords
-- Write as if the founder is speaking to a bank or investor who has 90 seconds
 - Title case for headings only — body text is sentence case
+- No em dashes anywhere
 - Do NOT use the word "passionate" or "passionate about coffee"
-- Do NOT start with "I" — start with the shop name or a specific claim
-- Return only the executive summary text, no preamble, no labels`;
+- Return only the section text, no preamble, no labels`;
 
-  const userMessage = `Write the executive summary for ${shopName}.
+  let systemPrompt: string;
+  let userMessage: string;
+
+  if (sectionKey === "executive_summary") {
+    systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan. Write in the founder's plain voice — direct, confident, operational. Not corporate. Not AI-sounding.
+
+${sharedRules}
+- 3–5 tight paragraphs covering: the concept, the market, the opportunity, a brief financial picture, and the ask (if applicable)
+- Write as if the founder is speaking to a bank or investor who has 90 seconds
+- Do NOT start with "I" — start with the shop name or a specific claim`;
+
+    userMessage = `Write the executive summary for ${shopName}.
 
 Founder context:
 - Budget: ${String(onboarding?.budget ?? "not specified")}
@@ -145,6 +159,19 @@ Founder context:
 
 Plan data:
 ${planSnapshot || "The founder has not yet filled out the suites. Write a brief placeholder that says what should go here once the plan is filled in."}`;
+  } else {
+    systemPrompt = `You are an expert coffee shop business advisor writing the "${sectionTitle}" section of a founder's business plan. Write in the founder's plain voice — direct, confident, operational.
+
+${sharedRules}
+- 2–4 paragraphs appropriate for this section type
+- Use the assembled plan data provided; do not invent numbers or specifics
+- If the data is sparse, write a useful placeholder that explains what the founder should add`;
+
+    userMessage = `Write the "${sectionTitle}" section for ${shopName}.
+
+Assembled plan data for this section:
+${sectionAutoContent || "No data assembled yet. Write a useful placeholder explaining what should go in this section once the relevant workspace is filled in."}`;
+  }
 
   const client = new Anthropic();
 
@@ -152,7 +179,6 @@ ${planSnapshot || "The founder has not yet filled out the suites. Write a brief 
     async start(controller) {
       const enc = new TextEncoder();
       let heartbeat: ReturnType<typeof setInterval> | null = null;
-      let lastActivity = Date.now();
       let ttftTimer: ReturnType<typeof setTimeout> | null = null;
       let gapTimer: ReturnType<typeof setTimeout> | null = null;
       let done = false;
@@ -191,7 +217,6 @@ ${planSnapshot || "The founder has not yet filled out the suites. Write a brief 
         for await (const event of response) {
           if (done) break;
 
-          lastActivity = Date.now();
           if (gapTimer) { clearTimeout(gapTimer); gapTimer = null; }
 
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {

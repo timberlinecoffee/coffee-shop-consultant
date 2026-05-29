@@ -5,6 +5,9 @@
 
 import { useState, useRef, useCallback } from "react";
 import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 
@@ -207,8 +210,8 @@ export function BusinessPlanWorkspace({
     }
   }, [updateSection]);
 
-  const handleGenerateExecSummary = useCallback(async () => {
-    await runStream("/api/business-plan/generate", {}, "executive_summary");
+  const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
+    await runStream("/api/business-plan/generate", { sectionKey: key }, key);
   }, [runStream]);
 
   const handleImprove = useCallback(async (key: BusinessPlanSectionKey) => {
@@ -365,8 +368,8 @@ export function BusinessPlanWorkspace({
                 });
               }}
               onResetToAuto={() => saveSection(section.key, null)}
-              onGenerateExec={section.key === "executive_summary" ? handleGenerateExecSummary : undefined}
-              onImprove={section.key !== "executive_summary" ? () => handleImprove(section.key) : undefined}
+              onGenerateExec={() => handleGenerate(section.key)}
+              onImprove={() => handleImprove(section.key)}
             />
           ))}
         </div>
@@ -390,6 +393,30 @@ interface SectionCardProps {
   onResetToAuto: () => void;
   onGenerateExec?: () => void;
   onImprove?: () => void;
+}
+
+// ── MarkdownContent ───────────────────────────────────────────────────────────
+
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeSanitize]}
+      components={{
+        h1: ({ children }) => <h1 className="text-xl font-semibold text-[#1a1a1a] mb-2 mt-4 first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-base font-semibold text-[#1a1a1a] mb-1.5 mt-3 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-semibold text-[#1a1a1a] mb-1 mt-2 first:mt-0">{children}</h3>,
+        p: ({ children }) => <p className="text-sm text-[#1a1a1a] leading-relaxed mb-2 last:mb-0">{children}</p>,
+        ul: ({ children }) => <ul className="list-disc list-outside pl-4 mb-2 space-y-0.5">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal list-outside pl-4 mb-2 space-y-0.5">{children}</ol>,
+        li: ({ children }) => <li className="text-sm text-[#1a1a1a] leading-relaxed">{children}</li>,
+        strong: ({ children }) => <strong className="font-semibold text-[#1a1a1a]">{children}</strong>,
+        em: ({ children }) => <em className="italic">{children}</em>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 function SectionCard({
@@ -421,7 +448,7 @@ function SectionCard({
 
   return (
     <div
-      className={`rounded-2xl border bg-white transition-opacity ${
+      className={`rounded-xl border bg-white transition-opacity ${
         section.isVisible ? "border-[#efefef] opacity-100" : "border-[#e8e8e8] opacity-60"
       }`}
     >
@@ -438,7 +465,7 @@ function SectionCard({
             <ChevronDown className="w-4 h-4 text-[#888] flex-shrink-0" />
           )}
           <div>
-            <h2 className="text-sm font-semibold text-[#1a1a1a]">{section.title}</h2>
+            <h2 className="text-xl font-semibold text-[#1a1a1a]">{section.title}</h2>
             <p className="text-xs text-[#afafaf]">{section.sourceLabel}</p>
           </div>
           {hasUserOverride && (
@@ -472,6 +499,7 @@ function SectionCard({
             </>
           )}
 
+
           {canEdit && hasUserOverride && !section.isEditing && section.isExpanded && (
             <button
               onClick={onResetToAuto}
@@ -499,7 +527,7 @@ function SectionCard({
       {/* Body */}
       {section.isExpanded && (
         <div className="px-5 pb-5">
-          <div className="border-t border-[#f0f0f0] pt-4">
+          <div className="border-t border-[#efefef] pt-4">
             {(isStreaming || section.isGenerating) && !section.editBuffer && (
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex gap-1">
@@ -520,7 +548,7 @@ function SectionCard({
                 <textarea
                   value={section.editBuffer}
                   onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[#1a1a1a] border border-[#d8d8d8] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[#155e63] font-mono leading-relaxed"
+                  className="w-full min-h-[160px] text-sm text-[#1a1a1a] border border-[#d8d8d8] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[#155e63] font-sans leading-relaxed"
                   placeholder="Add content for this section..."
                   disabled={section.isGenerating && !section.editBuffer}
                 />
@@ -543,15 +571,21 @@ function SectionCard({
             ) : (
               <div
                 onClick={canEdit && !isStreaming ? onEditStart : undefined}
-                className={`text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap ${
+                className={`${
                   canEdit && !isStreaming
                     ? "cursor-text rounded-lg hover:bg-[#fafafa] -mx-1 px-1 py-0.5 transition-colors"
                     : ""
-                } ${isPlaceholder ? "text-[#afafaf] italic" : ""}`}
+                } ${isPlaceholder ? "text-[#afafaf] italic text-sm leading-relaxed" : ""}`}
                 title={canEdit && !isPlaceholder ? "Click to edit" : undefined}
               >
-                {displayContent || (
-                  <span className="text-[#afafaf] italic">No content yet.</span>
+                {displayContent ? (
+                  isPlaceholder ? (
+                    <span>{displayContent}</span>
+                  ) : (
+                    <MarkdownContent content={displayContent} />
+                  )
+                ) : (
+                  <span className="text-[#afafaf] italic text-sm">No content yet.</span>
                 )}
               </div>
             )}
