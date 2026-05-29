@@ -11,7 +11,7 @@ import { formatCurrency } from "@/lib/financial-projection";
 import type { EquipmentRecommendation } from "@/types/referral";
 
 const AFFILIATE_DISCLOSURE =
-  "AI Recommendations — Affiliate Disclosure: Some product links are affiliate links — Groundwork may earn a commission if you purchase through them. This does not influence AI ranking criteria.";
+  "AI Recommendations, Affiliate Disclosure: Some product links are affiliate links, and Groundwork may earn a commission if you purchase through them. This does not influence AI ranking criteria.";
 
 interface Props {
   recommendation: EquipmentRecommendation;

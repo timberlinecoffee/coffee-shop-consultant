@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
@@ -429,6 +431,7 @@ function RoleRow({
   const [jdLoading, setJdLoading] = useState(false);
   const [jdDirty, setJdDirty] = useState(false);
   const [improvingField, setImprovingField] = useState<keyof JdFields | null>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   // Comp framework state (TIM-1303)
   const [compLine, setCompLine] = useState<PersonnelLine | null>(null);
@@ -495,7 +498,13 @@ function RoleRow({
     }
   }
 
-  async function improveJdField(field: keyof JdFields) {
+  function improveJdField(field: keyof JdFields) {
+    if (!jdFields) return;
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => void runImproveJdField(field));
+  }
+
+  async function runImproveJdField(field: keyof JdFields) {
     if (!jdFields) return;
     setImprovingField(field);
     try {
@@ -694,6 +703,12 @@ function RoleRow({
                     </div>
                   ))}
                 </div>
+                {/* TIM-1359: Surface 16 point-of-output disclaimer */}
+                <AiDisclaimer
+                  className="border-t border-[var(--neutral-cool-150)] pt-3"
+                  lead="AI-Improved."
+                  body="Review with a local employment attorney or HR professional before posting. Requirements for salary disclosure, EEO language, classification, and non-compete restrictions vary by state and country. The AI may not reflect current local requirements."
+                />
                 <div className="flex items-center justify-between pt-1">
                   {jdFields && role.jd_template_id && (
                     <HiringPdfButton

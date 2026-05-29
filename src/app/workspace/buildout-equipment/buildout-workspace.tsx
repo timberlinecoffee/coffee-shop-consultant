@@ -15,6 +15,7 @@ import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
 import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
+import { hasAiConsent } from "@/components/legal/AiConsentModal";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
@@ -155,6 +156,10 @@ export function BuildoutEquipmentWorkspace({
 
   // Fetch AI recommendations for current equipment set (called after load/import/seed).
   const fetchRecommendations = useCallback(async (items: EquipmentItem[]) => {
+    // TIM-1359: Surface 15 is LLM-backed and auto-fetches. Never produce AI
+    // output before affirmative AI-specific consent (synchronous read so the
+    // mount path is gated despite provider-effect ordering).
+    if (!hasAiConsent()) return;
     const active = items.filter((i) => !i.archived && i.name.trim());
     if (active.length === 0) return;
     try {

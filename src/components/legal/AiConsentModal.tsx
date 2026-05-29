@@ -9,6 +9,13 @@ import { Sparkles } from "lucide-react";
 
 const CONSENT_KEY = "groundwork_ai_consent_v1";
 
+// Synchronous read for guarding AI work that runs on mount (e.g. auto-fetched
+// recommendations), where the React hook's localStorage effect has not run yet.
+export function hasAiConsent(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(CONSENT_KEY) === "true";
+}
+
 export function useAiConsentGiven(): [boolean, () => void] {
   const [given, setGiven] = useState(false);
 
@@ -72,7 +79,7 @@ export function AiConsentModal({ open, onAccept }: Props) {
           onClick={onAccept}
           className="w-full h-11 rounded-xl bg-[var(--teal)] text-white font-semibold text-sm hover:bg-[var(--teal-dark)] transition-colors"
         >
-          I understand — start planning
+          I understand, start planning
         </button>
       </div>
     </div>

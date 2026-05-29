@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Truck, Plus, Sparkles, X, Trash2 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   VENDOR_CATEGORY_KEYS,
@@ -67,6 +69,7 @@ export function SuppliersWorkspace({
     candidate: VendorCandidate;
     reason: string;
   } | null>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   const { promoteOnEdit } = useWorkspaceStatus();
 
@@ -214,36 +217,41 @@ export function SuppliersWorkspace({
   );
 
   const handleSeed = useCallback(
-    async (category: VendorCategoryKey) => {
+    (category: VendorCategoryKey) => {
       if (!canEdit) {
         setPaywallOpen(true);
         return;
       }
-      setSeedingCategory(category);
-      setSeedError(null);
-      try {
-        const res = await fetch("/api/workspaces/suppliers/seed", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ category }),
-        });
-        if (res.status === 402) {
-          setPaywallOpen(true);
-          return;
-        }
-        if (!res.ok) throw new Error(`seed failed (${res.status})`);
-        // Reload candidates for this category
-        const reload = await fetch("/api/workspaces/suppliers/candidates");
-        if (reload.ok) {
-          setCandidates((await reload.json()) as VendorCandidate[]);
-        }
-      } catch {
-        setSeedError("Could not generate suggestions. Try again.");
-      } finally {
-        setSeedingCategory(null);
-      }
+      // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+      requireAiConsent(() => {
+        void (async () => {
+          setSeedingCategory(category);
+          setSeedError(null);
+          try {
+            const res = await fetch("/api/workspaces/suppliers/seed", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ category }),
+            });
+            if (res.status === 402) {
+              setPaywallOpen(true);
+              return;
+            }
+            if (!res.ok) throw new Error(`seed failed (${res.status})`);
+            // Reload candidates for this category
+            const reload = await fetch("/api/workspaces/suppliers/candidates");
+            if (reload.ok) {
+              setCandidates((await reload.json()) as VendorCandidate[]);
+            }
+          } catch {
+            setSeedError("Could not generate suggestions. Try again.");
+          } finally {
+            setSeedingCategory(null);
+          }
+        })();
+      });
     },
-    [canEdit]
+    [canEdit, requireAiConsent]
   );
 
   const activeRows = candidatesByCategory.get(activeCategory) ?? [];
@@ -401,6 +409,14 @@ export function SuppliersWorkspace({
                     </tbody>
                   </table>
                 </div>
+              )}
+              {activeRows.some((r) => r.source === "ai_suggested") && (
+                /* TIM-1359: Surface 19 point-of-output disclaimer */
+                <AiDisclaimer
+                  className="px-5 pb-4 pt-3 border-t border-[var(--border)]"
+                  lead="AI-Suggested Vendors."
+                  body="Prices and lead times are AI-generated estimates, not verified quotes. Contact vendors directly to confirm pricing and terms before committing."
+                />
               )}
             </div>
           </section>

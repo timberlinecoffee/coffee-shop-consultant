@@ -13,6 +13,8 @@ import {
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { consumeSseFrames } from "@/components/copilot/sse";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -545,6 +547,7 @@ export function LaunchPlanWorkspace({
   const [stalesBannerDismissed, setStalesBannerDismissed] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   function showToast(type: "success" | "error", msg: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -582,9 +585,14 @@ export function LaunchPlanWorkspace({
   }
 
   // ── Generate milestones ───────────────────────────────────────────────────────
-  async function handleGenerate() {
+  function handleGenerate() {
     if (!canEdit) { setPaywallOpen(true); return; }
     if (!launchDateInput) return;
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => void runGenerate());
+  }
+
+  async function runGenerate() {
     setGenerating(true);
     setToast(null);
 
@@ -869,6 +877,15 @@ export function LaunchPlanWorkspace({
               targetLaunchDate={launchDateInput || null}
               onMilestoneClick={handleEdit}
               onDateDrop={() => {}}
+            />
+          )}
+
+          {milestones.length > 0 && (
+            /* TIM-1359: Surface 17 point-of-output disclaimer */
+            <AiDisclaimer
+              className="mt-4"
+              lead="AI-Generated Timeline."
+              body="Dates are estimates. Actual timelines vary by contractor availability, permit processing, and supplier lead times. Use as a planning guide, not a contract."
             />
           )}
         </div>

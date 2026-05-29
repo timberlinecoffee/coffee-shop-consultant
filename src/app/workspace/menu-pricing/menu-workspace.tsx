@@ -42,6 +42,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import {
   type MenuItemWithCogs,
   type MenuIngredient,
@@ -1143,6 +1145,12 @@ function ItemEditorPanel({
                 >
                   Use this price
                 </button>
+                {/* TIM-1359: Surface 11 point-of-output disclaimer */}
+                <AiDisclaimer
+                  className="border-t border-[var(--teal-bg-750)] pt-2"
+                  lead="AI-Suggested Price."
+                  body="Based on regional benchmarks. Local costs and competition vary. Treat as a starting point."
+                />
               </div>
             )}
           </div>
@@ -2489,17 +2497,24 @@ function SuggestItemsModal({
         </div>
 
         {!loading && !error && groups.length > 0 && (
-          <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between">
-            <p className="text-xs text-[var(--muted-foreground)]">
-              {addedCount} of {suggestions.length} added
-            </p>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-sm font-medium text-[var(--teal)] hover:underline"
-            >
-              Done
-            </button>
+          <div className="px-5 py-3 border-t border-[var(--border)] space-y-2">
+            {/* TIM-1359: point-of-output disclaimer for AI menu suggestions */}
+            <AiDisclaimer
+              lead="AI-Suggested Menu."
+              body="These items are AI-generated starting points based on your concept. Review pricing, recipes, and feasibility before adding to your menu."
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--muted-foreground)]">
+                {addedCount} of {suggestions.length} added
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm font-medium text-[var(--teal)] hover:underline"
+              >
+                Done
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -2520,6 +2535,7 @@ export function MenuWorkspace({
   initialCategoryDefaults,
   conceptContext,
 }: Props) {
+  const requireAiConsent = useRequireAiConsent();
   const [items, setItems] = useState<MenuItemWithCogs[]>(initialItems);
   const [ingredients, setIngredients] = useState<MenuIngredient[]>(initialIngredients);
   const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(initialItemIngredients);
@@ -2892,7 +2908,11 @@ export function MenuWorkspace({
   }
 
   // ── AI price suggestion ──────────────────────────────────────────────────
+  // TIM-1359: gate first AI output behind affirmative AI-specific consent.
   async function suggestPrice(item: MenuItemWithCogs) {
+    requireAiConsent(() => void runSuggestPrice(item));
+  }
+  async function runSuggestPrice(item: MenuItemWithCogs) {
     setPriceLoading(true);
     setPriceSuggestion(null);
 
@@ -2931,8 +2951,12 @@ export function MenuWorkspace({
   }
 
   // ── AI recipe starting point (TIM-1321) ──────────────────────────────────
+  // TIM-1359: gate first AI output behind affirmative AI-specific consent.
   async function suggestRecipe(item: MenuItemWithCogs) {
     if (!item.name.trim()) return;
+    requireAiConsent(() => void runSuggestRecipe(item));
+  }
+  async function runSuggestRecipe(item: MenuItemWithCogs) {
     setRecipeLoading(true);
     setRecipeError(null);
     try {
@@ -2973,7 +2997,11 @@ export function MenuWorkspace({
   }
 
   // ── AI menu-item suggestions (TIM-1323) ──────────────────────────────────
+  // TIM-1359: gate first AI output behind affirmative AI-specific consent.
   async function suggestMenuItems() {
+    requireAiConsent(() => void runSuggestMenuItems());
+  }
+  async function runSuggestMenuItems() {
     setSuggestOpen(true);
     setSuggestLoading(true);
     setSuggestError(null);

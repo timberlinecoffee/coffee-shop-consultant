@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -65,6 +67,7 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<SopCategoryKey | null>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);
@@ -117,8 +120,13 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
-  async function handleGenerate(section: SopCategoryKey) {
+  function handleGenerate(section: SopCategoryKey) {
     if (!canEdit || generating) return;
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => void runGenerate(section));
+  }
+
+  async function runGenerate(section: SopCategoryKey) {
     setGenerating(section);
     try {
       const res = await fetch("/api/workspaces/operations_playbook/generate", {
@@ -492,6 +500,15 @@ function CategoryEditor({
         Tip: Title each step so a brand-new barista could follow it without
         asking questions.
       </p>
+
+      {category.items.length > 0 && (
+        /* TIM-1359: Surface 20 point-of-output disclaimer */
+        <AiDisclaimer
+          className="mt-3 border-t border-[var(--border)] pt-3"
+          lead="AI-Generated SOP."
+          body="Not OSHA-reviewed, safety-certified, or local-regulation validated. These procedures are starting-point templates. Adapt every procedure to your local health codes, fire regulations, and equipment-specific instructions before training staff."
+        />
+      )}
     </section>
   );
 }

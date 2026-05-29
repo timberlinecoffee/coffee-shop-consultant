@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WORKSPACE_MANIFEST } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceStatusBootstrap } from "@/components/workspace/WorkspaceStatusBootstrap";
+import { AiConsentProvider } from "@/components/legal/AiConsentProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function WorkspaceLayout({
       <Suspense fallback={null}>
         <WorkspaceStatusBootstrap userId={user.id} />
       </Suspense>
-      {children}
+      <AiConsentProvider>{children}</AiConsentProvider>
     </WorkspaceProgressProvider>
   );
 }

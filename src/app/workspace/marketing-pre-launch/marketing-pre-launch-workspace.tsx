@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Megaphone, ExternalLink, Plus, Trash2, Sparkles, Check, Mail } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import {
   type MarketingPreLaunchDocument,
   type SocialPostIdea,
@@ -64,6 +66,7 @@ export function MarketingPreLaunchWorkspace({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [paywallReason, setPaywallReason] = useState<"no_subscription" | "paused" | "expired" | null>(null);
   const [generating, setGenerating] = useState<SectionKey | null>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);
@@ -114,8 +117,13 @@ export function MarketingPreLaunchWorkspace({
     [],
   );
 
-  async function handleGenerate(section: SectionKey) {
+  function handleGenerate(section: SectionKey) {
     if (!canEdit || generating) return;
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => void runGenerate(section));
+  }
+
+  async function runGenerate(section: SectionKey) {
     setGenerating(section);
     try {
       const res = await fetch("/api/workspaces/marketing_pre_launch/generate", {
@@ -213,6 +221,12 @@ export function MarketingPreLaunchWorkspace({
               generating={generating === "press"}
             />
           )}
+
+          {/* TIM-1359: Surface 18 point-of-output disclaimer */}
+          <AiDisclaimer
+            lead="AI-Generated Marketing Content."
+            body="Review before publishing. Press contacts are AI-generated and may be inaccurate, so verify before contacting. Sending unsolicited emails to AI-generated press contacts may violate CAN-SPAM or CASL."
+          />
         </div>
       </div>
 

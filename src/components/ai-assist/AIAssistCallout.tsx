@@ -14,6 +14,8 @@ import rehypeSanitize from "rehype-sanitize";
 import type { Components } from "react-markdown";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "@/components/copilot/sse";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 
 export interface AIAssistCalloutProps {
   open: boolean;
@@ -58,6 +60,7 @@ export function AIAssistCallout({
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(currentValue);
   const abortRef = useRef<AbortController | null>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   // Reset to draft state when modal opens with a new value.
   useEffect(() => {
@@ -302,7 +305,7 @@ export function AIAssistCallout({
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => void startStream("improve")}
+                  onClick={() => requireAiConsent(() => void startStream("improve"))}
                   disabled={!draft.trim()}
                   className="flex-1 bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -310,7 +313,7 @@ export function AIAssistCallout({
                 </button>
                 <button
                   type="button"
-                  onClick={() => void startStream("write")}
+                  onClick={() => requireAiConsent(() => void startStream("write"))}
                   className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
                   Write this for me
@@ -380,6 +383,12 @@ export function AIAssistCallout({
                   </div>
                 </div>
               </div>
+
+              {/* TIM-1359: Surface 3 point-of-output disclaimer */}
+              <AiDisclaimer
+                lead="AI Suggestion."
+                body="Review before saving. AI may not reflect your specific business."
+              />
 
               <div className="flex items-center gap-2 pt-1">
                 <button

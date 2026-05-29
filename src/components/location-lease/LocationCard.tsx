@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
 import { AddressAutocomplete, type PlacePick } from './AddressAutocomplete'
 import { AreaAnalysisPanel } from './AreaAnalysisPanel'
+import { useRequireAiConsent } from '@/components/legal/AiConsentProvider'
 import type { Candidate, CandidateStatus } from './CandidateListCard'
 
 // ── Status config (kept in sync with CandidateListCard) ──────────────────
@@ -610,6 +611,7 @@ function AiFeedbackPanel({
   const [finalText, setFinalText] = useState('')
   const [error, setError] = useState('')
   const abortRef = useRef<AbortController | null>(null)
+  const requireAiConsent = useRequireAiConsent()
 
   async function requestFeedback() {
     if (loading || !canUse) return
@@ -728,7 +730,7 @@ function AiFeedbackPanel({
             Fill in scores above, then run AI feedback for risk profile, strengths, concerns, and due-diligence questions.
           </p>
         </div>
-        <Button size="sm" onClick={requestFeedback} disabled={loading} className="shrink-0">
+        <Button size="sm" onClick={() => requireAiConsent(() => void requestFeedback())} disabled={loading} className="shrink-0">
           <Sparkles className="size-3.5 mr-1.5" />
           {loading ? 'Analyzing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
         </Button>

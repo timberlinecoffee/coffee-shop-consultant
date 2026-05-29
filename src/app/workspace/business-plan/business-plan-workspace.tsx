@@ -10,6 +10,8 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 
 interface Props {
   planId: string;
@@ -107,6 +109,7 @@ export function BusinessPlanWorkspace({
   initialCoverSettings,
   logoPublicUrl,
 }: Props) {
+  const requireAiConsent = useRequireAiConsent();
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
       ...s,
@@ -210,21 +213,27 @@ export function BusinessPlanWorkspace({
     }
   }, [updateSection]);
 
-  const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
-    await runStream("/api/business-plan/generate", { sectionKey: key }, key);
-  }, [runStream]);
+  const handleGenerate = useCallback((key: BusinessPlanSectionKey) => {
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => {
+      void runStream("/api/business-plan/generate", { sectionKey: key }, key);
+    });
+  }, [runStream, requireAiConsent]);
 
-  const handleImprove = useCallback(async (key: BusinessPlanSectionKey) => {
+  const handleImprove = useCallback((key: BusinessPlanSectionKey) => {
     const section = sections.find((s) => s.key === key);
     if (!section) return;
     const content = section.userContent ?? section.autoContent;
-    await runStream("/api/business-plan/improve", {
-      sectionKey: key,
-      sectionTitle: section.title,
-      currentContent: content,
-      shopName,
-    }, key);
-  }, [sections, runStream, shopName]);
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => {
+      void runStream("/api/business-plan/improve", {
+        sectionKey: key,
+        sectionTitle: section.title,
+        currentContent: content,
+        shopName,
+      }, key);
+    });
+  }, [sections, runStream, shopName, requireAiConsent]);
 
   // After AI finishes editing, auto-save the result
   const handleSaveAfterImprove = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
@@ -588,6 +597,16 @@ function SectionCard({
                   <span className="text-[var(--dark-grey)] italic text-sm">No content yet.</span>
                 )}
               </div>
+            )}
+
+            {/* TIM-1359: Surfaces 5 & 6 point-of-output disclaimer. Both Generate
+                and Improve render AI output into this section body. */}
+            {!section.isEditing && !isStreaming && !section.isGenerating && displayContent && !isPlaceholder && (
+              <AiDisclaimer
+                className="mt-3 border-t border-[var(--neutral-cool-150)] pt-3"
+                lead="AI-Generated Draft."
+                body="This business plan content was produced by AI from the information you entered. It is a starting-point draft, not a certified business plan, audited financial statement, or professional investment document. Before presenting this to a lender, investor, or landlord, review every claim for accuracy and have a qualified advisor verify any financial projections."
+              />
             )}
           </div>
         </div>

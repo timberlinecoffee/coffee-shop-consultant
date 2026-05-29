@@ -6,6 +6,8 @@
 import { useRef, useState } from "react";
 import { X, Upload, Trash2, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/financial-projection";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
@@ -60,6 +62,7 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   // Build station name list from existing sections + parsed rows
   const existingStationNames = sections.map((s) => s.name);
@@ -92,6 +95,11 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
       return;
     }
 
+    // TIM-1359: gate first AI output behind affirmative AI-specific consent.
+    requireAiConsent(() => void runParse(file));
+  }
+
+  async function runParse(file: File) {
     setError(null);
     setStep("parsing");
     setUploadProgress("Uploading file...");
@@ -280,6 +288,13 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
                   Edit any cell before committing. Uncheck rows to skip them.
                 </div>
               </div>
+
+              {/* TIM-1359: Surface 14 point-of-output disclaimer */}
+              <AiDisclaimer
+                className="mb-4"
+                lead="AI-Normalized Import."
+                body="The AI mapped your spreadsheet columns. Verify every row before purchasing."
+              />
 
               {rows.length === 0 ? (
                 <p className="text-sm text-[var(--muted-foreground)] text-center py-8">No rows were parsed from the file.</p>

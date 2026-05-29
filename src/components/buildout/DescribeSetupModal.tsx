@@ -7,6 +7,8 @@
 import { useRef, useState } from "react";
 import { X, Trash2, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/financial-projection";
+import { AiDisclaimer } from "@/components/legal/AiDisclaimer";
+import { useRequireAiConsent } from "@/components/legal/AiConsentProvider";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
@@ -51,6 +53,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const requireAiConsent = useRequireAiConsent();
 
   const existingStationNames = sections.map((s) => s.name);
   const parsedStationNames = [...new Set(rows.map((r) => r.section_name).filter(Boolean))];
@@ -294,6 +297,13 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                 </div>
               </div>
 
+              {/* TIM-1359: Surface 13 point-of-output disclaimer */}
+              <AiDisclaimer
+                className="mb-4"
+                lead="AI-Parsed."
+                body="Review every item before ordering. AI may misinterpret your description or suggest incorrect specifications."
+              />
+
               {rows.length === 0 ? (
                 <p className="text-sm text-[var(--muted-foreground)] text-center py-8">No items were generated. Try a more detailed description.</p>
               ) : (
@@ -369,7 +379,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
             </button>
             <button
               type="button"
-              onClick={handleGenerate}
+              onClick={() => requireAiConsent(() => void handleGenerate())}
               disabled={!description.trim()}
               className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
             >

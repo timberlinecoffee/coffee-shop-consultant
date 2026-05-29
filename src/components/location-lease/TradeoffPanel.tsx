@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils'
 import { X, Sparkles, Trophy, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Candidate } from './CandidateListCard'
+import { AiDisclaimer } from '@/components/legal/AiDisclaimer'
+import { useRequireAiConsent } from '@/components/legal/AiConsentProvider'
 
 // ── Factor set used for visual comparison ────────────────────────────────
 
@@ -164,6 +166,7 @@ export function TradeoffPanel({
   const [tradeoff, setTradeoff] = useState<TradeoffResponse | null>(null)
   const [tradeoffLoading, setTradeoffLoading] = useState(false)
   const [tradeoffError, setTradeoffError] = useState('')
+  const requireAiConsent = useRequireAiConsent()
 
   const canUseAI = subscriptionTier !== 'free' && aiCreditsRemaining > 0
 
@@ -351,7 +354,7 @@ export function TradeoffPanel({
                 </p>
               </div>
               {canUseAI ? (
-                <Button size="sm" onClick={runTradeoff} disabled={tradeoffLoading} className="shrink-0">
+                <Button size="sm" onClick={() => requireAiConsent(() => void runTradeoff())} disabled={tradeoffLoading} className="shrink-0">
                   <Sparkles className="size-3.5 mr-1.5" />
                   {tradeoffLoading ? 'Analyzing…' : tradeoff ? 'Refresh' : 'Generate Trade-Off'}
                 </Button>
@@ -471,6 +474,13 @@ export function TradeoffPanel({
                     })}
                   </div>
                 </div>
+
+                {/* TIM-1359: Surface 9 point-of-output disclaimer */}
+                <AiDisclaimer
+                  className="border-t border-[var(--border)] pt-3"
+                  lead="AI-Ranked."
+                  body="Rankings are based on scores and information you entered, not independent research. Different assumptions produce different results. This is a decision-support tool, not a professional recommendation."
+                />
               </div>
             )}
           </div>
