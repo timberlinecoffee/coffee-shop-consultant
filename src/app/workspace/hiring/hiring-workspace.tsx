@@ -705,7 +705,7 @@ function RoleRow({
                   <span className="text-[10px] text-[#afafaf]">Loading…</span>
                 )}
                 {!compLoading && compLine === null && !compDirty && (
-                  <span className="text-[10px] text-[#afafaf]">Not set — edit fields to link</span>
+                  <span className="text-[10px] text-[#afafaf]">Not set. Edit fields to link.</span>
                 )}
                 {compPreviewCents !== null && (
                   <span className="text-xs font-semibold text-[#155e63]">
