@@ -13,6 +13,9 @@ import type {
   StaffCompetency,
   StaffFile,
   CompetencyEvaluation,
+  PlanHiringSettings,
+  HiringRequirementSet,
+  HiringCountry,
 } from "@/lib/hiring";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +51,8 @@ export default async function HiringWorkspacePage() {
     { data: staffData },
     { data: evalsData },
     { data: profile },
+    { data: hiringSettingsData },
+    { data: locationCandidatesData },
   ] = await Promise.all([
     supabase
       .from("hiring_plan_roles")
@@ -90,7 +95,64 @@ export default async function HiringWorkspacePage() {
       .select("subscription_status, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
+    // TIM-1300: Plan hiring settings (country override)
+    supabase
+      .from("plan_hiring_settings")
+      .select("hiring_country")
+      .eq("plan_id", planId)
+      .maybeSingle(),
+    // TIM-1300: Location candidates for country auto-detect
+    supabase
+      .from("location_candidates")
+      .select("country, status, archived, position")
+      .eq("plan_id", planId)
+      .not("country", "is", null)
+      .order("position", { ascending: true }),
   ]);
+
+  // Derive effective country: override → signed candidate → first non-archived
+  function normalizeCountry(raw: string | null): HiringCountry | null {
+    if (!raw) return null;
+    const upper = raw.toUpperCase().trim() as HiringCountry;
+    const supported: HiringCountry[] = ["US", "GB", "CA", "AU"];
+    if (supported.includes(upper)) return upper;
+    const MAP: Record<string, HiringCountry> = {
+      "UNITED STATES": "US", "UNITED STATES OF AMERICA": "US", "USA": "US",
+      "UNITED KINGDOM": "GB", "UK": "GB", "GREAT BRITAIN": "GB",
+      "ENGLAND": "GB", "SCOTLAND": "GB", "WALES": "GB",
+      "CANADA": "CA", "AUSTRALIA": "AU",
+    };
+    return MAP[upper] ?? null;
+  }
+
+  const hiringCountryOverride = (hiringSettingsData?.hiring_country ?? null) as HiringCountry | null;
+  const candidates_for_country = locationCandidatesData ?? [];
+  let effectiveCountry: HiringCountry | null = hiringCountryOverride;
+  if (!effectiveCountry) {
+    const signed = candidates_for_country.find((c) => c.status === "signed");
+    effectiveCountry = normalizeCountry(signed?.country ?? null);
+    if (!effectiveCountry) {
+      const first = candidates_for_country.find((c) => !c.archived);
+      effectiveCountry = normalizeCountry(first?.country ?? null);
+    }
+  }
+
+  // Load requirement sets for the effective country (if any)
+  let initialRequirementSets: HiringRequirementSet[] = [];
+  if (effectiveCountry) {
+    const { data: reqSets } = await supabase
+      .from("hiring_requirement_sets")
+      .select("*")
+      .eq("country_code", effectiveCountry)
+      .eq("is_system", true)
+      .order("order_index", { ascending: true });
+    initialRequirementSets = (reqSets ?? []) as HiringRequirementSet[];
+  }
+
+  const initialHiringSettings: PlanHiringSettings = {
+    hiring_country: hiringCountryOverride,
+    effective_country: effectiveCountry,
+  };
 
   const canEdit = isSubscriptionActive(profile?.subscription_status);
   const initialTrialMessagesUsed =
@@ -112,6 +174,8 @@ export default async function HiringWorkspacePage() {
       initialCompetencies={(competenciesData ?? []) as StaffCompetency[]}
       initialStaffFiles={(staffData ?? []) as StaffFile[]}
       initialCompetencyEvals={(evalsData ?? []) as CompetencyEvaluation[]}
+      initialHiringSettings={initialHiringSettings}
+      initialRequirementSets={initialRequirementSets}
     />
   );
 }

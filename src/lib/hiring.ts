@@ -1,5 +1,6 @@
 // TIM-965: Hiring & Onboarding Suite — data types and config constants.
 // Row-level tables (not workspace_documents JSONB) back this workspace.
+// TIM-1300: Country-specific requirements types added.
 
 // TIM-1217: Every "add" button in this suite (roles, candidates, questions,
 // competencies, staff) inserts a BLANK row optimistically and lets the user
@@ -172,6 +173,33 @@ export const CANDIDATE_STATUS_ORDER: CandidateStatus[] = [
 
 export const PHASE_ORDER: OnboardingPhase[] = [
   'day_1', 'week_1', 'month_1', 'month_2', 'month_3',
+]
+
+// ── TIM-1300: Country requirements ───────────────────────────────────────────
+
+export type HiringCountry = 'US' | 'GB' | 'CA' | 'AU'
+
+export interface PlanHiringSettings {
+  hiring_country: HiringCountry | null
+  effective_country: HiringCountry | null
+}
+
+export interface HiringRequirementSet {
+  id: string
+  country_code: HiringCountry
+  category: string
+  title: string
+  body: string
+  citation_url: string | null
+  order_index: number
+  is_system: boolean
+}
+
+export const HIRING_COUNTRY_OPTIONS: Array<{ code: HiringCountry; label: string }> = [
+  { code: 'US', label: 'United States' },
+  { code: 'GB', label: 'United Kingdom' },
+  { code: 'CA', label: 'Canada' },
+  { code: 'AU', label: 'Australia' },
 ]
 
 // Default onboarding tasks seeded when a new onboarding plan instance is created.
