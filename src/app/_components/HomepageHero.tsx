@@ -6,8 +6,10 @@ import { motion } from "framer-motion";
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 
+/* Ketut Subiyanto (Pexels License) — same photographer used in the lower benefit
+   sections. The "We Are Open" sign scene ties directly to the hero headline. */
 const HERO_PHOTO =
-  "https://images.pexels.com/photos/1855214/pexels-photo-1855214.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&dpr=1";
+  "https://images.pexels.com/photos/4473398/pexels-photo-4473398.jpeg?auto=compress&cs=tinysrgb&w=900";
 
 function BrowserMockup() {
   const sidebarItems = [
@@ -223,25 +225,11 @@ export default function HomepageHero() {
   return (
     <section
       className="relative min-h-screen flex items-center overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(130deg, #0c3a3d 0%, #155e63 55%, #1a7880 100%)",
+      }}
     >
-      {/* Full-bleed hero photograph — empty coffee shop interior, morning light */}
-      <Image
-        src={HERO_PHOTO}
-        alt="Empty coffee shop interior with morning light streaming through windows"
-        fill
-        priority
-        className="object-cover object-center"
-        sizes="100vw"
-      />
-
-      {/* Dark overlay for text readability */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "linear-gradient(130deg, rgba(12,58,61,0.88) 0%, rgba(21,94,99,0.78) 55%, rgba(26,120,128,0.72) 100%)",
-        }}
-      />
-
       <div className="relative z-10 max-w-6xl mx-auto w-full px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
         {/* Left — headline + CTAs */}
         <div>
@@ -362,25 +350,39 @@ export default function HomepageHero() {
         >
           <BrowserMockup />
 
-          {/* Floating "AI coach" accent card — sage tinted */}
+          {/* Framed coffee-shop photo composed over the screenshot's lower-left
+              edge — same photo-mixed-with-UI language as the lower benefit
+              sections, with the screenshot as the anchor and the photo as the
+              smaller floating element. */}
           <motion.div
-            className="absolute -bottom-4 -left-6 rounded-xl px-4 py-3 hidden sm:block"
-            style={{
-              background: "rgba(118,179,157,0.18)",
-              backdropFilter: "blur(16px)",
-              border: "1px solid rgba(118,179,157,0.35)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.24)",
-            }}
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.7, ease: EASE }}
+            className="absolute -bottom-10 -left-8 sm:-left-12 z-20"
+            style={{ width: "190px", transform: "rotate(-5deg)" }}
+            initial={{ opacity: 0, y: 24, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
           >
-            <p className="font-semibold text-white" style={{ fontSize: "13px" }}>
-              AI Coffee Co-Pilot
-            </p>
-            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "11px", marginTop: "1px" }}>
-              Coffee-specific answers
-            </p>
+            <div
+              className="relative rounded-2xl overflow-hidden aspect-[4/3]"
+              style={{
+                border: "4px solid white",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.36)",
+              }}
+            >
+              <Image
+                src={HERO_PHOTO}
+                alt="Cafe owner holding a wooden 'Welcome We Are Open' sign at her shop door"
+                fill
+                priority
+                className="object-cover"
+                style={{ objectPosition: "center 35%" }}
+                sizes="190px"
+              />
+              {/* Warm overlay matches the lower benefit-section photos */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: "rgba(245,230,211,0.08)" }}
+              />
+            </div>
           </motion.div>
 
           {/* Floating benchmarking accent card */}
