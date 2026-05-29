@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { normalizeAIOutput } from "@/lib/normalize";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -154,7 +155,7 @@ ${currentContent}`;
             .eq("id", user.id);
         }
 
-        controller.enqueue(enc.encode(sse("done", { text: fullText })));
+        controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText) })));
         controller.close();
       } catch (err) {
         cleanup();

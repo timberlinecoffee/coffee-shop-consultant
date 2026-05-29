@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { buildPlanSnapshotForExecutiveSummary, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import {
   assembleCompanyConcept,
@@ -251,7 +252,7 @@ ${sectionAutoContent || "No data assembled yet. Write a useful placeholder expla
             .eq("id", user.id);
         }
 
-        controller.enqueue(enc.encode(sse("done", { text: fullText })));
+        controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText) })));
         controller.close();
       } catch (err) {
         cleanup();

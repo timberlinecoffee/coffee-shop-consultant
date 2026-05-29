@@ -138,6 +138,7 @@ export function AIAssistCallout({
       const decoder = new TextDecoder();
       let sseBuffer = "";
       let accumulated = "";
+      let doneText: string | null = null;
       let finalError: string | null = null;
       let quotaState: { reason?: string } | null = null;
 
@@ -157,6 +158,13 @@ export function AIAssistCallout({
                   accumulated += parsed.delta;
                   setPhase({ kind: "streaming", buffer: accumulated });
                 }
+              } catch {
+                /* ignore malformed frame */
+              }
+            } else if (evt.event === "done") {
+              try {
+                const parsed = JSON.parse(evt.data) as { text?: string };
+                if (parsed.text) doneText = parsed.text;
               } catch {
                 /* ignore malformed frame */
               }
@@ -195,7 +203,7 @@ export function AIAssistCallout({
         return;
       }
 
-      setPhase({ kind: "review", suggested: accumulated });
+      setPhase({ kind: "review", suggested: doneText ?? accumulated });
     },
     [planId, workspaceKey, fieldKey, draft, instruction],
   );

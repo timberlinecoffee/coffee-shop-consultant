@@ -11,8 +11,14 @@
  *   - Direct `return <rawAiText>`.
  *   - `<rawAiText>` passed straight into Response.json / NextResponse.json /
  *     new Response(...) — at top level or one level inside an object literal.
- * Streaming deltas (`event.delta.text`, `chunk.delta.text`) are NOT flagged —
- * token streams are normalized client-side after assembly, not in the handler.
+ * Streaming deltas (`event.delta.text`, `chunk.delta.text`) are NOT flagged.
+ * Normalization policy for streams (TIM-1382):
+ *   - Copilot chat (/api/copilot/stream): deliberately EXEMPT. Conversational
+ *     coaching dialogue — stripping jargon/emoji would degrade the coaching voice.
+ *   - All other streams (business-plan/generate, business-plan/improve,
+ *     copilot/improve, scorecard-feedback): NORMALIZED at the server done.text
+ *     boundary via normalizeAIOutput(). Clients must prefer done.text over
+ *     locally-accumulated deltas so the normalized form reaches the user.
  */
 
 const NORMALIZE_FNS = new Set([

@@ -1,8 +1,8 @@
 // TIM-881: Single-field AI improvement endpoint.
 // SSE stream — same event format as /api/copilot/stream (text, thinking, error, done).
 // Does NOT create a thread record. Quota spend: 1 message unit per call.
-// TIM-1365 normalization: pure stream — no server-side text assembly. Client normalizes the
-// assembled field value via normalizeAIOutput() after stream ends. *.delta.text is exempt from the ESLint gate.
+// TIM-1382 normalization: server assembles fullText, normalizes via normalizeAIOutput(), and
+// emits it as done.text. Client prefers done.text over locally-accumulated deltas.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,6 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
@@ -305,6 +306,7 @@ export async function POST(request: NextRequest) {
           const costUsd =
             (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000;
 
+          const normalizedText = normalizeAIOutput(fullText);
           if (isFree) {
             const newTrialCount = (profile.copilot_trial_messages_used ?? 0) + 1;
             await supabase
@@ -313,6 +315,7 @@ export async function POST(request: NextRequest) {
               .eq("id", user.id);
             send(
               sse("done", {
+                text: normalizedText,
                 modelUsed: "claude-sonnet-4-6",
                 trial_messages_used: newTrialCount,
                 cost_usd: costUsd,
@@ -340,7 +343,7 @@ export async function POST(request: NextRequest) {
               upstream_status: 200,
               details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
             }).then(() => {});
-            send(sse("done", { modelUsed: "claude-sonnet-4-6" }));
+            send(sse("done", { text: normalizedText, modelUsed: "claude-sonnet-4-6" }));
           }
           controller.close();
         }
