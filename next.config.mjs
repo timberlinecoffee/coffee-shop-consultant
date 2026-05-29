@@ -2,6 +2,9 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingIncludes: {
+    '/api/**': ['./public/fonts/**/*'],
+  },
   images: {
     remotePatterns: [
       {
