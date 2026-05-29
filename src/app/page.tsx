@@ -167,30 +167,21 @@ const FOUNDER_QUOTE = {
   role: "Founder, Timberline Coffee School",
 };
 
-const TESTIMONIALS = [
+const PROOF_TILES = [
   {
-    quote:
-      "I had a business plan from a consultant that cost me $8,000. Groundwork found three gaps that plan missed, and I hadn't paid a subscription yet.",
-    name: "Daniela Reyes",
-    city: "Portland, OR",
-    initial: "D",
-    disclaimer: undefined as string | undefined,
+    eyebrow: "Built by an Operator",
+    title: "Authored by a Working Coffee Shop Owner",
+    body: "Groundwork is built by Trent Rollings, founder of Timberline Coffee School, drawing on day-to-day specialty coffee operations rather than generic business templates.",
   },
   {
-    quote:
-      "Every time I adjusted a lease scenario, the numbers updated instantly. I went into negotiations with a clear picture of what the model suggested I could absorb.",
-    name: "James O.",
-    city: "Chicago, IL",
-    initial: "J",
-    disclaimer: "Financial outputs are planning estimates only. Consult a licensed accountant before signing lease or financing agreements.",
+    eyebrow: "Plan Coverage",
+    title: "Every Module a Lender Expects",
+    body: "Concept, market, location, menu, equipment, hiring, financials, and launch plan are all wired to the same source of truth, so updates in one module flow through the rest.",
   },
   {
-    quote:
-      "I've been in coffee for twelve years. I still learned things I didn't know I didn't know.",
-    name: "Sarah Kim",
-    city: "Seattle, WA",
-    initial: "S",
-    disclaimer: undefined as string | undefined,
+    eyebrow: "Financial Model",
+    title: "Stress-Test Lease and Pricing Scenarios",
+    body: "Adjust rent, opening date, ticket size, or daily transactions and the projection refreshes immediately. Outputs are planning estimates only; review with a licensed accountant before signing.",
   },
 ];
 
@@ -655,7 +646,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ──────────────────────────────────────────────────────── */}
+      {/* ── Why Groundwork ────────────────────────────────────────────────────── */}
       <section style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -663,7 +654,7 @@ export default function LandingPage() {
               className="font-semibold uppercase mb-3"
               style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
             >
-              From People Who Used It
+              Why Groundwork
             </p>
             <h2
               className="font-bold"
@@ -673,8 +664,8 @@ export default function LandingPage() {
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <StaggerItem key={t.name} className="h-full">
+            {PROOF_TILES.map((tile, i) => (
+              <StaggerItem key={tile.title} className="h-full">
                 <div
                   className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/30 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
                   style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
@@ -683,40 +674,32 @@ export default function LandingPage() {
                     className="w-8 h-0.5 mb-5"
                     style={{ background: i % 2 === 0 ? "var(--teal)" : "var(--sage)" }}
                   />
-                  <blockquote
-                    className="text-neutral-700 mb-3 flex-1"
+                  <p
+                    className="font-semibold uppercase mb-3"
+                    style={{
+                      fontSize: "11px",
+                      letterSpacing: "0.12em",
+                      color: i % 2 === 0 ? "var(--teal)" : "var(--sage)",
+                    }}
+                  >
+                    {tile.eyebrow}
+                  </p>
+                  <h3
+                    className="font-semibold mb-3 text-neutral-900"
+                    style={{ fontSize: "1.05rem", lineHeight: 1.35, fontWeight: 600 }}
+                  >
+                    {tile.title}
+                  </h3>
+                  <p
+                    className="text-neutral-700 flex-1"
                     style={{
                       fontSize: "0.95rem",
                       lineHeight: 1.6,
                       fontWeight: 400,
                     }}
                   >
-                    &ldquo;{t.quote}&rdquo;
-                  </blockquote>
-                  {t.disclaimer && (
-                    <p className="text-xs text-neutral-400 italic mb-4" style={{ lineHeight: 1.5 }}>
-                      {t.disclaimer}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 mt-auto">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0"
-                      style={{ background: i % 2 === 0 ? "var(--teal)" : "var(--sage)", fontSize: "13px" }}
-                    >
-                      {t.initial}
-                    </div>
-                    <div>
-                      <p
-                        className="font-semibold"
-                        style={{ fontSize: "13px", color: i % 2 === 0 ? "var(--teal)" : "var(--sage)" }}
-                      >
-                        {t.name}
-                      </p>
-                      <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
-                        {t.city}
-                      </p>
-                    </div>
-                  </div>
+                    {tile.body}
+                  </p>
                 </div>
               </StaggerItem>
             ))}
