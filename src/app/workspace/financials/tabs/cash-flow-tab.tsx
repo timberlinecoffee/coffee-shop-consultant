@@ -35,8 +35,9 @@ interface RowProps {
 function CFRow({ label, values, bold, indent, highlight, negative, currencyCode }: RowProps & { currencyCode: string }) {
   return (
     <tr className={highlight ? "bg-[#f7fafa]" : ""}>
+      {/* TIM-1309: opaque frozen column with z-index above scrolled cells. */}
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 bg-white ${highlight ? "bg-[#f7fafa]" : ""} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
+        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${highlight ? "bg-[#f7fafa]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
       >
         {label}
       </td>
@@ -277,7 +278,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-[#efefef]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide sticky left-0 bg-white w-56">
+              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
                 Line Item
               </th>
               {columns.map((c) => (

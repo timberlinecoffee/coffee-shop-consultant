@@ -2175,10 +2175,17 @@ export function computeBreakEvenModel(
 }
 
 // fmt: format a cents value (or minor-unit value for non-2dp currencies) as a
-// compact currency string. TIM-1101: accepts optional ISO 4217 code; defaults
-// to USD for legacy single-arg callers.
+// TIM-1101: accepts optional ISO 4217 code; defaults to USD for legacy
+// single-arg callers.
+//
+// TIM-1309: the financial statements (P&L, balance sheet, cash flow, …) render
+// cell values through fmt, and the board flagged that the compact "K" form hid
+// real precision — a few-hundred-dollar change rounded into the same "$12K".
+// fmt now shows the full exact figure (no K/M abbreviation) so the displayed
+// value always matches the user's entry. Chart axes use their own compact
+// formatter and are unaffected.
 export function fmt(cents: number, currencyCode: string = "USD"): string {
-  return formatCurrency(cents / 100, currencyCode);
+  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
 }
 
 // pct: express numerator / denominator as a percentage string with one decimal.
