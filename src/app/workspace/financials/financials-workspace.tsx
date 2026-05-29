@@ -544,13 +544,11 @@ function ForecastTab({
     "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
-  // TIM-1310: summarize grid-level customizations for this input page. A line is
-  // "customized" if it has any per-cell month override or is in full manual mode.
-  const customizedLineIds = new Set<string>([
-    ...Object.keys(overrideCounts),
-    ...(manualLines ?? []),
-  ]);
-  const totalOverrideCells = Object.values(overrideCounts).reduce((a, b) => a + b, 0);
+  // TIM-1352: the per-line "customized" pill is the single canonical indicator
+  // for grid-level customizations (founder: "the pill beside the line item is
+  // way more elegant"). The redundant top-of-page summary callout was removed.
+  // The base-revenue line has no line-row pill, so it keeps its own inline
+  // indicator inside the revenue section below.
   const baseRevenueOverrides = overrideCounts[BASE_REVENUE_LINE_ID] ?? 0;
   const baseRevenueManual = (manualLines ?? []).includes(BASE_REVENUE_LINE_ID);
 
@@ -574,41 +572,6 @@ function ForecastTab({
           >
             Start guided setup
           </button>
-        </div>
-      )}
-
-      {/* TIM-1310: when lines carry grid-level customizations, surface them here
-          so the relationship between these assumptions and the customized
-          projection is never a mystery, and document the precedence. */}
-      {customizedLineIds.size > 0 && (
-        <div className="rounded-xl border border-[var(--teal-bg-950)] bg-[var(--teal-bg-subtle)] px-4 py-3 flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-start gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-[var(--teal)] inline-block mt-1.5 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-semibold text-[var(--teal)]">
-                {customizedLineIds.size} {customizedLineIds.size === 1 ? "line is" : "lines are"} customized on the projections grid
-                {totalOverrideCells > 0 && (
-                  <span className="font-normal text-[var(--teal-deeper)]">
-                    {" "}({totalOverrideCells} month{totalOverrideCells === 1 ? "" : "s"})
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-[var(--teal-deeper)] mt-0.5 max-w-prose">
-                These lines have manual month values that win over the assumptions below until you clear them.
-                Each customized line is tagged with a <span className="font-semibold text-[var(--teal)]">customized</span> badge,
-                and you can view it on the grid or clear it back to the assumption from there.
-              </p>
-            </div>
-          </div>
-          {onGoToProjections && (
-            <button
-              type="button"
-              onClick={onGoToProjections}
-              className="text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 bg-white rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
-            >
-              View on grid
-            </button>
-          )}
         </div>
       )}
 
