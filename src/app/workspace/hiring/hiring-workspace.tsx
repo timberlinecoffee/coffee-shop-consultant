@@ -89,10 +89,12 @@ function HiringPdfButton({
   templateId,
   queryParams,
   label,
+  iconTitle,
 }: {
   templateId: string;
   queryParams: Record<string, string>;
   label: string;
+  iconTitle?: string;
 }) {
   const [exporting, setExporting] = useState(false);
   const [paywalled, setPaywalled] = useState(false);
@@ -134,7 +136,7 @@ function HiringPdfButton({
         type="button"
         onClick={handleClick}
         disabled={exporting}
-        title={label}
+        title={iconTitle ?? label}
         className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448] disabled:opacity-50 transition-colors"
       >
         <Download size={12} />
@@ -1111,17 +1113,12 @@ function RoleHubPanel({
                                 >
                                   <Copy size={12} />
                                 </button>
-                                <button
-                                  type="button"
-                                  title="Print blank scorecard"
-                                  onClick={() => {
-                                    const qs = new URLSearchParams({ scorecard_id: sc.id }).toString();
-                                    window.open(`/api/pdf/hiring_scorecard_blank?${qs}`, "_blank");
-                                  }}
-                                  className="text-[#afafaf] hover:text-[#155e63] p-1"
-                                >
-                                  <Download size={12} />
-                                </button>
+                                <HiringPdfButton
+                                  templateId="hiring_scorecard_blank"
+                                  queryParams={{ scorecard_id: sc.id }}
+                                  label=""
+                                  iconTitle="Print blank scorecard"
+                                />
                                 <button
                                   type="button"
                                   title="Delete"
@@ -1182,17 +1179,12 @@ function RoleHubPanel({
                         ) : (
                           <>
                             <span className="flex-1 text-sm text-[#1a1a1a] truncate">{cf.name}</span>
-                            <button
-                              type="button"
-                              title="Print blank form"
-                              onClick={() => {
-                                const qs = new URLSearchParams({ form_template_id: cf.id }).toString();
-                                window.open(`/api/pdf/hiring_competency_blank?${qs}`, "_blank");
-                              }}
-                              className="text-[#afafaf] hover:text-[#155e63] p-1"
-                            >
-                              <Download size={12} />
-                            </button>
+                            <HiringPdfButton
+                              templateId="hiring_competency_blank"
+                              queryParams={{ form_template_id: cf.id }}
+                              label=""
+                              iconTitle="Print blank form"
+                            />
                             {canEdit && (
                               <>
                                 <button
@@ -2651,17 +2643,12 @@ function CompetencyTab({
                         </p>
                       </button>
                       {isSelected && staffEvals.length > 0 && (
-                        <button
-                          type="button"
-                          title="Download completed evaluation PDF"
-                          onClick={() => {
-                            const qs = new URLSearchParams({ staff_file_id: s.id }).toString();
-                            window.open(`/api/pdf/hiring_competency_completed?${qs}`, "_blank");
-                          }}
-                          className="text-[#afafaf] hover:text-[#155e63] p-2 shrink-0"
-                        >
-                          <Download size={13} />
-                        </button>
+                        <HiringPdfButton
+                          templateId="hiring_competency_completed"
+                          queryParams={{ staff_file_id: s.id }}
+                          label=""
+                          iconTitle="Download completed evaluation PDF"
+                        />
                       )}
                     </div>
                   );
