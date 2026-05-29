@@ -6,7 +6,7 @@
 // TIM-1179: AI equipment recommendations + referral cards.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare } from "lucide-react";
+import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/financial-projection";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -140,6 +140,10 @@ export function BuildoutEquipmentWorkspace({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [describeOpen, setDescribeOpen] = useState(false);
+  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(true);
+  const [showAiMarkings, setShowAiMarkings] = useState(true);
+  const viewOptionsRef = useRef<HTMLDivElement>(null);
   const [recommendations, setRecommendations] = useState<Map<string, EquipmentRecommendation>>(new Map());
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,6 +181,59 @@ export function BuildoutEquipmentWorkspace({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load view prefs on mount.
+  useEffect(() => {
+    async function loadViewPrefs() {
+      try {
+        const [recRes, markRes] = await Promise.all([
+          fetch("/api/ui-prefs/buildout-show-recommendations"),
+          fetch("/api/ui-prefs/buildout-show-ai-markings"),
+        ]);
+        if (recRes.ok) {
+          const { data } = await recRes.json() as { data: boolean | null };
+          if (data !== null) setShowRecommendations(data);
+        }
+        if (markRes.ok) {
+          const { data } = await markRes.json() as { data: boolean | null };
+          if (data !== null) setShowAiMarkings(data);
+        }
+      } catch { /* non-blocking */ }
+    }
+    void loadViewPrefs();
+  }, []);
+
+  // Close view options dropdown on outside click.
+  useEffect(() => {
+    if (!viewOptionsOpen) return;
+    function handler(e: MouseEvent) {
+      if (viewOptionsRef.current && !viewOptionsRef.current.contains(e.target as Node)) {
+        setViewOptionsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [viewOptionsOpen]);
+
+  function toggleRecommendations() {
+    const next = !showRecommendations;
+    setShowRecommendations(next);
+    fetch("/api/ui-prefs/buildout-show-recommendations", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    }).catch(() => {});
+  }
+
+  function toggleAiMarkings() {
+    const next = !showAiMarkings;
+    setShowAiMarkings(next);
+    fetch("/api/ui-prefs/buildout-show-ai-markings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    }).catch(() => {});
+  }
 
   const showReviewBanner =
     !reviewDismissed &&
@@ -371,6 +428,45 @@ export function BuildoutEquipmentWorkspace({
               Import from spreadsheet
             </button>
           )}
+          {/* View options: toggle recommendations and AI markings */}
+          <div className="relative" ref={viewOptionsRef}>
+            <button
+              type="button"
+              onClick={() => setViewOptionsOpen((o) => !o)}
+              className={`flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 transition-colors ${
+                (!showRecommendations || !showAiMarkings)
+                  ? "text-[#155e63] border-[#155e63]/50 bg-[#155e63]/5"
+                  : "text-[#6b6b6b] border-[#e8e8e8] hover:bg-[#faf9f7]"
+              }`}
+              aria-label="View options"
+            >
+              <Eye size={12} aria-hidden="true" />
+              View
+            </button>
+            {viewOptionsOpen && (
+              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1.5 min-w-[210px]">
+                <p className="px-3 py-1 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Show in workspace</p>
+                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[#faf9f7] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-[#155e63] cursor-pointer shrink-0"
+                    checked={showRecommendations}
+                    onChange={toggleRecommendations}
+                  />
+                  <span className="text-xs text-[#1a1a1a]">Recommendations</span>
+                </label>
+                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[#faf9f7] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-[#155e63] cursor-pointer shrink-0"
+                    checked={showAiMarkings}
+                    onChange={toggleAiMarkings}
+                  />
+                  <span className="text-xs text-[#1a1a1a]">AI markings</span>
+                </label>
+              </div>
+            )}
+          </div>
           <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
             {saveLabel}
           </span>
@@ -402,6 +498,8 @@ export function BuildoutEquipmentWorkspace({
           onItemsChange={handleEquipmentChange}
           onSectionsChange={handleSectionsChange}
           recommendations={recommendations}
+          showRecommendations={showRecommendations}
+          showAiMarkings={showAiMarkings}
         />
       </div>
 

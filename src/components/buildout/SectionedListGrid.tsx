@@ -544,6 +544,8 @@ function SortableRow({
   colWidths,
   vendorCandidates,
   recommendations,
+  showRecommendations,
+  showAiMarkings,
   onUpdate,
   onDelete,
   isDragOverlay,
@@ -555,6 +557,8 @@ function SortableRow({
   colWidths: Map<string, number>;
   vendorCandidates: VendorCandidate[];
   recommendations?: Map<string, EquipmentRecommendation>;
+  showRecommendations?: boolean;
+  showAiMarkings?: boolean;
   onUpdate: (id: string, patch: Partial<AnyItem>) => void;
   onDelete: (id: string) => void;
   isDragOverlay?: boolean;
@@ -605,7 +609,7 @@ function SortableRow({
         return (
           <td key="name" className={`${cellCls} sticky left-[0px] z-10 bg-white`} style={{ width: colWidths.get("name") }}>
             <div className="flex items-center gap-1.5">
-              {item.source === "ai_suggested" && (
+              {item.source === "ai_suggested" && showAiMarkings !== false && (
                 <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-amber-50 text-amber-600">AI</span>
               )}
               <TextInput
@@ -615,7 +619,7 @@ function SortableRow({
                 onCommit={(v) => onUpdate(item.id, { name: v } as Partial<AnyItem>)}
               />
             </div>
-            {rec && !isDragOverlay && (
+            {rec && !isDragOverlay && showRecommendations !== false && (
               <EquipmentRecommendationCard recommendation={rec} />
             )}
           </td>
@@ -965,6 +969,8 @@ export interface SectionedListGridProps {
   onItemsChange: (items: AnyItem[]) => void;
   onSectionsChange: (sections: ListSection[]) => void;
   recommendations?: Map<string, EquipmentRecommendation>;
+  showRecommendations?: boolean;
+  showAiMarkings?: boolean;
 }
 
 const AUTOSAVE_MS = 400;
@@ -978,6 +984,8 @@ export function SectionedListGrid({
   onItemsChange,
   onSectionsChange,
   recommendations,
+  showRecommendations,
+  showAiMarkings,
 }: SectionedListGridProps) {
   const cols = listType === "equipment" ? EQUIPMENT_COLS : SUPPLIES_COLS;
   const defaultColOrder = useMemo(() => cols.map((c) => c.id), [cols]);
@@ -1707,6 +1715,8 @@ export function SectionedListGrid({
                               colWidths={colWidths}
                               vendorCandidates={vendorCandidates}
                               recommendations={recommendations}
+                              showRecommendations={showRecommendations}
+                              showAiMarkings={showAiMarkings}
                               onUpdate={updateItem}
                               onDelete={deleteItem}
                             />
@@ -1758,6 +1768,8 @@ export function SectionedListGrid({
                       colWidths={colWidths}
                       vendorCandidates={vendorCandidates}
                       recommendations={recommendations}
+                      showRecommendations={showRecommendations}
+                      showAiMarkings={showAiMarkings}
                       onUpdate={updateItem}
                       onDelete={deleteItem}
                     />
@@ -1817,6 +1829,8 @@ export function SectionedListGrid({
                       visibleCols={visibleCols}
                       colWidths={colWidths}
                       vendorCandidates={vendorCandidates}
+                      showRecommendations={showRecommendations}
+                      showAiMarkings={showAiMarkings}
                       onUpdate={() => {}}
                       onDelete={() => {}}
                       isDragOverlay
