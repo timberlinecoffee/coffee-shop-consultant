@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     fontWeight: 700,
   },
   metricValuePos: { color: BRAND.colors.primary },
-  metricValueNeg: { color: "#B23A1F" },
+  metricValueNeg: { color: "var(--rust)" },
   monthTable: {
     borderWidth: 1,
     borderColor: BRAND.colors.rule,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   monthHeaderRow: {
     flexDirection: "row",
-    backgroundColor: "#EEF2EE",
+    backgroundColor: "var(--surface-sage-light)",
   },
   monthRow: {
     flexDirection: "row",
@@ -213,10 +213,10 @@ const styles = StyleSheet.create({
     borderTopColor: BRAND.colors.rule,
   },
   monthRowAlt: {
-    backgroundColor: "#FBFBFA",
+    backgroundColor: "var(--neutral-near-white)",
   },
   monthRowBold: {
-    backgroundColor: "#F0F4F1",
+    backgroundColor: "var(--surface-sage-50)",
   },
   monthLabelCell: {
     padding: 4,
@@ -235,11 +235,11 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   monthValueCellNeg: {
-    color: "#B23A1F",
+    color: "var(--rust)",
   },
   totalsCell: {
     fontWeight: 700,
-    backgroundColor: "#EEF2EE",
+    backgroundColor: "var(--surface-sage-light)",
   },
   chartsRow: {
     flexDirection: "row",
@@ -424,7 +424,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function Header({ shopName, sub }: { shopName: string | null; sub: string }) {
   return (
     <View style={styles.header} fixed>
-      <Text style={styles.brandLine}>Groundwork — Financials Report</Text>
+      <Text style={styles.brandLine}>Groundwork: Financials Report</Text>
       <Text style={styles.headerMeta}>
         {(shopName ?? "Your Coffee Shop")}{"\n"}{sub}
       </Text>
@@ -521,7 +521,7 @@ function revenueChartConfig(
       responsive: false,
       plugins: {
         legend: { position: "bottom" },
-        title: { display: true, text: "Year 1 — revenue vs. costs by month" },
+        title: { display: true, text: "Year 1: revenue vs. costs by month" },
       },
       scales: {
         y: {
@@ -574,9 +574,9 @@ function expenseBreakdownConfig(
           backgroundColor: [
             BRAND.colors.accent,
             BRAND.colors.primary,
-            "#7BAE8A",
-            "#C18A1F",
-            "#8FA694",
+            "var(--sage-light)",
+            "var(--amber-gold)",
+            "var(--sage-pale)",
             BRAND.colors.muted,
           ],
         },
@@ -586,7 +586,7 @@ function expenseBreakdownConfig(
       responsive: false,
       plugins: {
         legend: { position: "right" },
-        title: { display: true, text: "Year 1 — expense breakdown" },
+        title: { display: true, text: "Year 1: expense breakdown" },
       },
     },
   };
@@ -631,7 +631,7 @@ function cashFlowChartConfig(
       responsive: false,
       plugins: {
         legend: { position: "bottom" },
-        title: { display: true, text: "Year 1 — cash flow" },
+        title: { display: true, text: "Year 1: cash flow" },
       },
       scales: {
         y: {
@@ -699,7 +699,7 @@ function breakEvenChartConfig(
       responsive: false,
       plugins: {
         legend: { position: "bottom" },
-        title: { display: true, text: "Break-even — annual revenue vs. total costs" },
+        title: { display: true, text: "Break-even: annual revenue vs. total costs" },
       },
       scales: {
         x: { title: { display: true, text: "Annual revenue" } },
@@ -939,7 +939,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
         <Text style={styles.coverMetaLabel}>Currency</Text>
         <Text style={styles.coverMetaValue}>
-          {meta.code} — {meta.name}
+          {meta.code}: {meta.name}
         </Text>
 
         <Text style={styles.coverMetaLabel}>Fiscal year starts</Text>
@@ -1013,7 +1013,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
             <Text style={styles.metricValue}>
               {breakEvenAnnual > 0
                 ? formatMinorUnits(breakEvenAnnual, code)
-                : "—"}
+                : "-"}
             </Text>
           </View>
           <View style={styles.metric}>
@@ -1035,8 +1035,8 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
       {/* Monthly P&L (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1 — Monthly P&L" />
-        <SectionHeading>Year 1 — monthly profit & loss</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: Monthly P&L" />
+        <SectionHeading>Year 1: monthly profit & loss</SectionHeading>
         <MonthTable
           headers={months}
           rows={plRows}
@@ -1048,8 +1048,8 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
       {/* Monthly Cash Flow (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1 — Monthly cash flow" />
-        <SectionHeading>Year 1 — monthly cash flow</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: Monthly cash flow" />
+        <SectionHeading>Year 1: monthly cash flow</SectionHeading>
         <MonthTable
           headers={months}
           rows={cfRows}
@@ -1061,8 +1061,8 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
       {/* Monthly Balance Sheet (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1 — Monthly balance sheet" />
-        <SectionHeading>Year 1 — monthly balance sheet (end of month)</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: Monthly balance sheet" />
+        <SectionHeading>Year 1: monthly balance sheet (end of month)</SectionHeading>
         <MonthTable
           headers={months}
           rows={bsRows}
@@ -1074,8 +1074,8 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
       {/* Charts (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1 — charts" />
-        <SectionHeading>Year 1 — visualizations</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: charts" />
+        <SectionHeading>Year 1: visualizations</SectionHeading>
         {charts.revenuePng && (
           <View style={styles.chartFull}>
             <Text style={styles.chartTitle}>Revenue vs. costs</Text>
@@ -1124,7 +1124,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
         <View style={styles.assumptionRow}>
           <Text style={styles.assumptionLabel}>Currency</Text>
           <Text style={styles.assumptionValue}>
-            {meta.code} — {meta.name}
+            {meta.code}: {meta.name}
           </Text>
         </View>
         <View style={styles.assumptionRow}>

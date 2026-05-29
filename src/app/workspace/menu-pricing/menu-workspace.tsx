@@ -87,17 +87,17 @@ function makeLocalId() {
 }
 
 const inputCls =
-  "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
+  "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
 
 // TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
 // so the ingredient grid stays flat and scannable.
 const cellInputCls =
-  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[#1a1a1a] placeholder-[#c5c5c5] hover:border-[#e6e6e6] focus:outline-none focus:border-[#155e63] focus:bg-white disabled:text-[#6b6b6b] disabled:hover:border-transparent transition-colors";
+  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
 const quickInputCls =
-  "w-full text-sm bg-white border border-[#cfe3e3] rounded-md px-2 py-1.5 text-[#1a1a1a] placeholder-[#9fb4b4] focus:outline-none focus:border-[#155e63] transition-colors";
+  "w-full text-sm bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus:outline-none focus:border-[var(--teal)] transition-colors";
 // Shared column template so the header, data rows, and quick-add row stay aligned.
 const ingGridCls =
   "grid grid-cols-[minmax(0,1fr)_5rem_5.5rem_6rem_6.5rem_3.5rem] gap-2 items-center";
@@ -136,7 +136,7 @@ function PopularitySelector({
   const pad = size === "sm" ? "px-2 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
   return (
     <div
-      className="inline-flex rounded-lg border border-[#e0e0e0] overflow-hidden"
+      className="inline-flex rounded-lg border border-[var(--border-medium)] overflow-hidden"
       role="group"
       aria-label="Expected popularity"
     >
@@ -150,11 +150,11 @@ function PopularitySelector({
             aria-pressed={active}
             onClick={() => onChange(active ? null : opt.value)}
             className={`${pad} font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              idx > 0 ? "border-l border-[#e0e0e0]" : ""
+              idx > 0 ? "border-l border-[var(--border-medium)]" : ""
             } ${
               active
-                ? "bg-[#155e63] text-white"
-                : "bg-white text-[#6b6b6b] hover:text-[#1a1a1a]"
+                ? "bg-[var(--teal)] text-white"
+                : "bg-white text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
           >
             {opt.label}
@@ -250,7 +250,7 @@ function IngredientCombobox({
       <div className="relative">
         <Search
           size={12}
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#afafaf] pointer-events-none"
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] pointer-events-none"
         />
         <input
           ref={inputRef}
@@ -271,7 +271,7 @@ function IngredientCombobox({
       {open && filtered.length > 0 && (
         <ul
           ref={listRef}
-          className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-[#e0e0e0] bg-white shadow-md text-sm"
+          className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-[var(--border-medium)] bg-white shadow-md text-sm"
           role="listbox"
         >
           {filtered.map((ing, idx) => (
@@ -281,8 +281,8 @@ function IngredientCombobox({
               aria-selected={idx === highlightIdx}
               className={`px-3 py-2 cursor-pointer transition-colors ${
                 idx === highlightIdx
-                  ? "bg-[#e8f4f5] text-[#155e63] font-medium"
-                  : "text-[#1a1a1a] hover:bg-[#faf9f7]"
+                  ? "bg-[var(--teal-tint-200)] text-[var(--teal)] font-medium"
+                  : "text-[var(--foreground)] hover:bg-[var(--background)]"
               }`}
               onMouseEnter={() => setHighlightIdx(idx)}
               onMouseDown={(e) => {
@@ -296,7 +296,7 @@ function IngredientCombobox({
         </ul>
       )}
       {open && filtered.length === 0 && query.trim() !== "" && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-[#e0e0e0] bg-white shadow-md px-3 py-2 text-xs text-[#afafaf]">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-[var(--border-medium)] bg-white shadow-md px-3 py-2 text-xs text-[var(--dark-grey)]">
           No ingredients match &ldquo;{query}&rdquo;
         </div>
       )}
@@ -362,7 +362,7 @@ function IngredientTableRow({
   }
 
   return (
-    <div className="hover:bg-[#faf9f7] transition-colors">
+    <div className="hover:bg-[var(--background)] transition-colors">
       <div className={ingGridCls + " px-5 py-1.5"}>
         <input
           className={cellInputCls + " font-medium"}
@@ -408,7 +408,7 @@ function IngredientTableRow({
           onBlur={handlePackageCostBlur}
         />
         <span
-          className="px-2 text-sm font-semibold text-[#155e63] tabular-nums truncate"
+          className="px-2 text-sm font-semibold text-[var(--teal)] tabular-nums truncate"
           title="Cost per unit"
         >
           {cpuDisplay}
@@ -422,8 +422,8 @@ function IngredientTableRow({
               aria-label="Toggle notes"
               className={`p-1 rounded-md transition-colors ${
                 hasNotes
-                  ? "text-[#155e63] hover:bg-[#e8f4f5]"
-                  : "text-[#cccccc] hover:text-[#6b6b6b] hover:bg-[#f2f2f2]"
+                  ? "text-[var(--teal)] hover:bg-[var(--teal-tint-200)]"
+                  : "text-[var(--gray-800)] hover:text-[var(--muted-foreground)] hover:bg-[var(--gray-350)]"
               }`}
             >
               <StickyNote size={13} />
@@ -435,7 +435,7 @@ function IngredientTableRow({
               onClick={onDelete}
               title="Delete ingredient"
               aria-label="Delete ingredient"
-              className="p-1 rounded-md text-[#cccccc] hover:text-[#c44] hover:bg-[#fbeaea] transition-colors"
+              className="p-1 rounded-md text-[var(--gray-800)] hover:text-[var(--error-accent)] hover:bg-[var(--error-bg-6)] transition-colors"
             >
               <Trash2 size={13} />
             </button>
@@ -517,7 +517,7 @@ function QuickAddRow({
 
   return (
     <div
-      className={ingGridCls + " px-5 py-2.5 bg-[#f3f8f8] border-t border-[#e0eeee]"}
+      className={ingGridCls + " px-5 py-2.5 bg-[var(--teal-bg-100)] border-t border-[var(--teal-bg-500)]"}
       onKeyDown={handleKeyDown}
     >
       <input
@@ -559,7 +559,7 @@ function QuickAddRow({
         aria-label="New ingredient package cost in dollars"
         onChange={(e) => setCost(e.target.value)}
       />
-      <span className="px-2 text-sm font-medium text-[#6b6b6b] tabular-nums truncate">
+      <span className="px-2 text-sm font-medium text-[var(--muted-foreground)] tabular-nums truncate">
         {cpuPreview}
       </span>
       <div className="flex items-center justify-end">
@@ -569,7 +569,7 @@ function QuickAddRow({
           disabled={!canCommit}
           title="Add ingredient (Enter)"
           aria-label="Add ingredient"
-          className="flex items-center justify-center w-8 h-8 rounded-md bg-[#155e63] text-white hover:bg-[#0e4448] disabled:bg-[#c8d6d6] disabled:cursor-not-allowed transition-colors"
+          className="flex items-center justify-center w-8 h-8 rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)] disabled:bg-[var(--teal-bg-soft)] disabled:cursor-not-allowed transition-colors"
         >
           <Plus size={15} />
         </button>
@@ -597,7 +597,7 @@ function IngredientSortHeader({
       type="button"
       onClick={() => onToggle(k)}
       className={`flex items-center gap-1 px-2 text-left uppercase tracking-wider transition-colors ${
-        active ? "text-[#155e63]" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+        active ? "text-[var(--teal)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
       }`}
     >
       {label}
@@ -665,23 +665,23 @@ function IngredientsTab({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef]">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[#1a1a1a]">Ingredients</p>
-              <p className="text-xs text-[#6b6b6b] mt-0.5">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Ingredients</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically.
               </p>
             </div>
-            <span className="text-xs text-[#afafaf] shrink-0 mt-0.5 whitespace-nowrap">
+            <span className="text-xs text-[var(--dark-grey)] shrink-0 mt-0.5 whitespace-nowrap">
               {ingredients.length} {ingredients.length === 1 ? "ingredient" : "ingredients"}
             </span>
           </div>
           <div className="relative mt-3 max-w-xs">
             <Search
               size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#afafaf] pointer-events-none"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] pointer-events-none"
             />
             <input
               type="text"
@@ -697,8 +697,8 @@ function IngredientsTab({
 
         {ingredients.length === 0 && !canEdit ? (
           <div className="py-10 text-center">
-            <Package size={28} className="text-[#d0d0d0] mx-auto mb-2" />
-            <p className="text-sm text-[#afafaf]">No ingredients yet.</p>
+            <Package size={28} className="text-[var(--neutral-cool-350)] mx-auto mb-2" />
+            <p className="text-sm text-[var(--dark-grey)]">No ingredients yet.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -706,25 +706,37 @@ function IngredientsTab({
               <div
                 className={
                   ingGridCls +
-                  " px-5 py-2.5 bg-[#faf9f7] border-b border-[#efefef] text-[10px] font-semibold"
+                  " px-5 py-2.5 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold"
                 }
               >
                 <IngredientSortHeader label="Ingredient" k="name" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                <span className="px-2 uppercase tracking-wider text-[#6b6b6b]">Size</span>
+                <span className="px-2 uppercase tracking-wider text-[var(--muted-foreground)]">Size</span>
                 <IngredientSortHeader label="Unit" k="unit" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                <span className="px-2 uppercase tracking-wider text-[#6b6b6b]">Pkg Cost</span>
+                <span className="px-2 uppercase tracking-wider text-[var(--muted-foreground)]">Pkg Cost</span>
                 <IngredientSortHeader label="Cost / Unit" k="cpu" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                 <span className="sr-only">Actions</span>
               </div>
 
               {visible.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-[#afafaf]">
-                  {ingredients.length === 0
-                    ? "No ingredients yet — add your first below."
-                    : `No ingredients match “${search.trim()}”.`}
+                <div className="px-5 py-6 text-center text-sm text-[var(--dark-grey)]">
+                  {ingredients.length === 0 ? (
+                    <div>
+                      <div className="relative w-full rounded-lg overflow-hidden mb-3" style={{ height: "100px" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="https://images.pexels.com/photos/4349948/pexels-photo-4349948.jpeg?auto=compress&cs=tinysrgb&w=800&h=200&dpr=1"
+                          alt="Coffee ingredients and supplies on a counter"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      No ingredients yet. Add your first below.
+                    </div>
+                  ) : (
+                    `No ingredients match "${search.trim()}".`
+                  )}
                 </div>
               ) : (
-                <div className="divide-y divide-[#f5f5f5]">
+                <div className="divide-y divide-[var(--neutral-cool-100)]">
                   {visible.map((ing) => (
                     <IngredientTableRow
                       key={ing.id}
@@ -859,12 +871,12 @@ function ItemEditorPanel({
   );
 
   return (
-    <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-[#efefef] flex items-start gap-3">
+    <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden flex flex-col h-full">
+      <div className="px-5 py-4 border-b border-[var(--border)] flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <input
             className={
-              "w-full text-base font-semibold border-0 border-b border-transparent focus:border-[#155e63] focus:outline-none text-[#1a1a1a] bg-transparent py-0.5 transition-colors disabled:text-[#afafaf]"
+              "w-full text-base font-semibold border-0 border-b border-transparent focus:border-[var(--teal)] focus:outline-none text-[var(--foreground)] bg-transparent py-0.5 transition-colors disabled:text-[var(--dark-grey)]"
             }
             value={name}
             disabled={!canEdit}
@@ -874,11 +886,11 @@ function ItemEditorPanel({
           />
           {/* TIM-1140: Category badge — "Category:" label + folder icon makes
               it unambiguous, then an inline <select> for fast reassignment. */}
-          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-[#6b6b6b] bg-[#f4f9f8] border border-[#cfe0e1] rounded-full pl-2 pr-1 py-0.5">
-            <Tag size={10} className="text-[#155e63]" />
+          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-[var(--muted-foreground)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint)] rounded-full pl-2 pr-1 py-0.5">
+            <Tag size={10} className="text-[var(--teal)]" />
             <span className="font-semibold uppercase tracking-wider">Category</span>
             <select
-              className="text-xs text-[#155e63] font-medium bg-transparent border-0 focus:outline-none cursor-pointer pr-1"
+              className="text-xs text-[var(--teal)] font-medium bg-transparent border-0 focus:outline-none cursor-pointer pr-1"
               value={item.category_id}
               disabled={!canEdit}
               onChange={handleCategoryChange}
@@ -895,7 +907,7 @@ function ItemEditorPanel({
         <button
           type="button"
           onClick={onClose}
-          className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors mt-0.5 shrink-0"
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors mt-0.5 shrink-0"
         >
           <X size={16} />
         </button>
@@ -921,13 +933,13 @@ function ItemEditorPanel({
             </div>
             <div>
               <label className={labelCls}>Cost of Goods</label>
-              <p className="text-sm font-semibold text-[#1a1a1a] py-2">
+              <p className="text-sm font-semibold text-[var(--foreground)] py-2">
                 {cogsDisplay}
               </p>
               {marginPct !== null && (
-                <p className="text-xs text-[#6b6b6b]">
+                <p className="text-xs text-[var(--muted-foreground)]">
                   Gross margin:{" "}
-                  <span className="font-semibold text-[#155e63]">
+                  <span className="font-semibold text-[var(--teal)]">
                     {marginPct}%
                   </span>
                 </p>
@@ -945,7 +957,7 @@ function ItemEditorPanel({
               disabled={!canEdit}
               onChange={(v) => onUpdateItem({ expected_popularity: v })}
             />
-            <p className="text-[11px] text-[#9a9a9a] mt-1.5 leading-relaxed">
+            <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
               Your best guess at how often this will sell. We pair it with your
               margin in the Insights tab to suggest what to feature or rework.
             </p>
@@ -966,7 +978,7 @@ function ItemEditorPanel({
                     ? "Name the item first"
                     : "Suggest a starting recipe with AI"
                 }
-                className="flex items-center gap-2 text-xs font-semibold text-[#155e63] bg-[#f0f8f8] border border-[#cfe0e1] px-3 py-2 rounded-lg hover:bg-[#e4f1f1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {recipeLoading ? (
                   <svg
@@ -990,14 +1002,14 @@ function ItemEditorPanel({
                 {recipeLoading ? "Building recipe…" : "Suggest recipe with AI"}
               </button>
               {name.trim().length === 0 && (
-                <p className="text-[11px] text-[#afafaf] mt-1.5">
+                <p className="text-[11px] text-[var(--dark-grey)] mt-1.5">
                   Add an item name above to get a recipe suggestion.
                 </p>
               )}
               {recipeError && (
-                <p className="text-[11px] text-[#c44] mt-1.5">{recipeError}</p>
+                <p className="text-[11px] text-[var(--error-accent)] mt-1.5">{recipeError}</p>
               )}
-              <p className="text-[11px] text-[#9a9a9a] mt-1.5 leading-relaxed">
+              <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
                 AI fills in a standard build as a starting point. Edit or remove any line.
               </p>
             </div>
@@ -1023,7 +1035,7 @@ function ItemEditorPanel({
               })}
             </div>
           ) : (
-            <p className="text-xs text-[#afafaf] mb-3">
+            <p className="text-xs text-[var(--dark-grey)] mb-3">
               No recipe lines yet. Add an ingredient below to build the recipe and compute COGS automatically.
             </p>
           )}
@@ -1036,7 +1048,7 @@ function ItemEditorPanel({
           )}
 
           {canEdit && availableIngredients.length === 0 && ingredients.length === 0 && (
-            <p className="text-xs text-[#afafaf]">
+            <p className="text-xs text-[var(--dark-grey)]">
               Add ingredients in the Ingredients tab first.
             </p>
           )}
@@ -1062,7 +1074,7 @@ function ItemEditorPanel({
               type="button"
               onClick={onSuggestPrice}
               disabled={priceLoading}
-              className="flex items-center gap-2 text-xs font-semibold text-white bg-[#155e63] px-3 py-2 rounded-lg hover:bg-[#0e4448] disabled:opacity-60 transition-colors"
+              className="flex items-center gap-2 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] disabled:opacity-60 transition-colors"
             >
               {priceLoading ? (
                 <svg
@@ -1087,28 +1099,28 @@ function ItemEditorPanel({
             </button>
 
             {priceSuggestion && (
-              <div className="mt-3 rounded-lg border border-[#d4e8e9] bg-[#f0f8f8] p-4 space-y-2">
+              <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
                 <div className="flex items-baseline gap-2">
                   <div>
-                    <p className="text-xs text-[#6b6b6b]">Recommended</p>
-                    <p className="text-2xl font-bold text-[#155e63]">
+                    <p className="text-xs text-[var(--muted-foreground)]">Recommended</p>
+                    <p className="text-2xl font-bold text-[var(--teal)]">
                       ${(priceSuggestion.suggested_price_cents / 100).toFixed(2)}
                     </p>
                   </div>
                 </div>
-                <p className="text-xs text-[#6b6b6b]">
+                <p className="text-xs text-[var(--muted-foreground)]">
                   Market range:{" "}
-                  <span className="font-medium text-[#1a1a1a]">
+                  <span className="font-medium text-[var(--foreground)]">
                     ${(priceSuggestion.low_cents / 100).toFixed(2)} – ${(priceSuggestion.high_cents / 100).toFixed(2)}
                   </span>
                 </p>
-                <p className="text-xs text-[#6b6b6b]">
+                <p className="text-xs text-[var(--muted-foreground)]">
                   Margin at recommended price:{" "}
-                  <span className="font-semibold text-[#155e63]">
+                  <span className="font-semibold text-[var(--teal)]">
                     {(priceSuggestion.margin_pct * 100).toFixed(1)}%
                   </span>
                 </p>
-                <p className="text-xs text-[#555] italic leading-relaxed">
+                <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
                   {priceSuggestion.commentary}
                 </p>
                 <button
@@ -1121,7 +1133,7 @@ function ItemEditorPanel({
                       price_cents: priceSuggestion.suggested_price_cents,
                     });
                   }}
-                  className="text-xs font-semibold text-[#155e63] hover:text-[#0e4448] transition-colors"
+                  className="text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
                 >
                   Use this price
                 </button>
@@ -1161,13 +1173,13 @@ function RecipeLineRow({
   }
 
   return (
-    <div className="flex items-center gap-2 bg-[#faf9f7] border border-[#efefef] rounded-lg px-3 py-2">
-      <span className="flex-1 text-xs font-medium text-[#1a1a1a] truncate">
+    <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2">
+      <span className="flex-1 text-xs font-medium text-[var(--foreground)] truncate">
         {ingredient?.name ?? "Unknown"}
       </span>
       <input
         type="number"
-        className="w-16 text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-transparent transition-colors"
+        className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={amount}
         disabled={!canEdit}
         onChange={(e) => setAmount(e.target.value)}
@@ -1176,7 +1188,7 @@ function RecipeLineRow({
         step="any"
       />
       <select
-        className="text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#6b6b6b] focus:outline-none focus:border-[#155e63] disabled:bg-transparent transition-colors"
+        className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={line.unit}
         disabled={!canEdit}
         onChange={handleUnitChange}
@@ -1186,7 +1198,7 @@ function RecipeLineRow({
         ))}
       </select>
       {lineCost !== null && (
-        <span className="text-xs text-[#6b6b6b] shrink-0 min-w-[3rem] text-right">
+        <span className="text-xs text-[var(--muted-foreground)] shrink-0 min-w-[3rem] text-right">
           ${lineCost.toFixed(4)}
         </span>
       )}
@@ -1194,7 +1206,7 @@ function RecipeLineRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-[#d0d0d0] hover:text-[#c44] transition-colors shrink-0"
+          className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors shrink-0"
         >
           <X size={12} />
         </button>
@@ -1264,9 +1276,9 @@ function SortableMenuItemRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-5 py-3 transition-colors cursor-pointer hover:bg-[#faf9f7] ${
+      className={`flex items-center gap-3 px-5 py-3 transition-colors cursor-pointer hover:bg-[var(--background)] ${
         isSelected
-          ? "border-l-2 border-[#155e63] bg-[#f0f8f8]"
+          ? "border-l-2 border-[var(--teal)] bg-[var(--teal-bg-f0f8)]"
           : "border-l-2 border-transparent"
       }`}
       onClick={onSelect}
@@ -1274,7 +1286,7 @@ function SortableMenuItemRow({
       {canEdit && (
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[#c0c0c0] hover:text-[#888] transition-colors shrink-0"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[var(--neutral-cool-600)] transition-colors shrink-0"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -1288,7 +1300,7 @@ function SortableMenuItemRow({
         {editingName ? (
           <input
             autoFocus
-            className="text-sm font-medium text-[#1a1a1a] border-0 border-b border-[#155e63] focus:outline-none bg-transparent w-full"
+            className="text-sm font-medium text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus:outline-none bg-transparent w-full"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={handleNameBlur}
@@ -1302,17 +1314,17 @@ function SortableMenuItemRow({
           />
         ) : (
           <div onClick={onSelect}>
-            <span className="text-sm font-medium text-[#1a1a1a] truncate block">
+            <span className="text-sm font-medium text-[var(--foreground)] truncate block">
               {item.name || (
-                <span className="text-[#afafaf] font-normal">Unnamed item</span>
+                <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>
               )}
             </span>
             {/* TIM-1140: explicit "Category:" tag on the row so it isn't
                 mistakable for a subtitle. */}
-            <span className="text-[10px] text-[#afafaf] uppercase tracking-wider mt-0.5 inline-flex items-center gap-1">
+            <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 inline-flex items-center gap-1">
               <Tag size={9} />
               <span>Category:</span>
-              <span className="text-[#6b6b6b] font-medium normal-case tracking-normal">
+              <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal">
                 {category?.name ?? "—"}
               </span>
             </span>
@@ -1322,21 +1334,21 @@ function SortableMenuItemRow({
 
       <div className="text-right shrink-0">
         {item.price_cents > 0 ? (
-          <p className="text-sm font-semibold text-[#155e63]">
+          <p className="text-sm font-semibold text-[var(--teal)]">
             {formatCents(item.price_cents)}
           </p>
         ) : (
-          <p className="text-sm text-[#d0d0d0]">—</p>
+          <p className="text-sm text-[var(--neutral-cool-350)]">—</p>
         )}
         {(cogs > 0 || gpCents !== null) && (
-          <p className="text-[10px] text-[#6b6b6b] mt-0.5 whitespace-nowrap">
+          <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5 whitespace-nowrap">
             {cogs > 0 && <span>COGS {formatCents(cogs)}</span>}
             {gpCents !== null && cogs > 0 && <span className="mx-1">·</span>}
             {gpCents !== null && (
               <span>
                 GP {formatCents(gpCents)}
                 {gpPct !== null && (
-                  <span className="text-[#afafaf]"> ({gpPct}%)</span>
+                  <span className="text-[var(--dark-grey)]"> ({gpPct}%)</span>
                 )}
               </span>
             )}
@@ -1352,7 +1364,7 @@ function SortableMenuItemRow({
               e.stopPropagation();
               setEditingName(true);
             }}
-            className="text-[#d0d0d0] hover:text-[#155e63] transition-colors"
+            className="text-[var(--neutral-cool-350)] hover:text-[var(--teal)] transition-colors"
           >
             <Edit2 size={12} />
           </button>
@@ -1362,7 +1374,7 @@ function SortableMenuItemRow({
               e.stopPropagation();
               onDelete();
             }}
-            className="text-[#d0d0d0] hover:text-[#c44] transition-colors"
+            className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors"
           >
             <Trash2 size={12} />
           </button>
@@ -1410,9 +1422,9 @@ function CategoryDefaultsEditor({
   }
 
   return (
-    <div className="px-5 py-4 bg-[#fafaf7] border-t border-[#f0f0f0] space-y-3">
+    <div className="px-5 py-4 bg-[var(--gray-50)] border-t border-[var(--neutral-cool-150)] space-y-3">
       <div>
-        <p className="text-[11px] text-[#6b6b6b] leading-relaxed">
+        <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
           Default ingredients are auto-added to every <strong>new</strong> item in <strong>{category.name}</strong> — handy for amortizing
           cups, lids, sleeves, and napkins across beverages (try 0.7 cups to represent 70% to-go).
           Editing or removing a default on an existing item won&apos;t change the category default.
@@ -1436,7 +1448,7 @@ function CategoryDefaultsEditor({
           })}
         </div>
       ) : (
-        <p className="text-xs text-[#afafaf]">No default ingredients yet.</p>
+        <p className="text-xs text-[var(--dark-grey)]">No default ingredients yet.</p>
       )}
 
       {canEdit && available.length > 0 && (
@@ -1452,12 +1464,12 @@ function CategoryDefaultsEditor({
             type="button"
             onClick={handleApply}
             disabled={applying}
-            className="text-[11px] font-medium text-[#155e63] hover:text-[#0e4448] disabled:opacity-50 transition-colors"
+            className="text-[11px] font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] disabled:opacity-50 transition-colors"
           >
             {applying ? "Applying…" : "Apply to existing items in this category"}
           </button>
           {applied !== null && (
-            <span className="text-[11px] text-[#6b6b6b]">Done</span>
+            <span className="text-[11px] text-[var(--muted-foreground)]">Done</span>
           )}
         </div>
       )}
@@ -1486,13 +1498,13 @@ function DefaultLineRow({
   }
 
   return (
-    <div className="flex items-center gap-2 bg-white border border-[#efefef] rounded-lg px-3 py-2">
-      <span className="flex-1 text-xs font-medium text-[#1a1a1a] truncate">
+    <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2">
+      <span className="flex-1 text-xs font-medium text-[var(--foreground)] truncate">
         {ingredient?.name ?? "Unknown ingredient"}
       </span>
       <input
         type="number"
-        className="w-16 text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-transparent transition-colors"
+        className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={amount}
         disabled={!canEdit}
         onChange={(e) => setAmount(e.target.value)}
@@ -1501,7 +1513,7 @@ function DefaultLineRow({
         step="any"
       />
       <select
-        className="text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#6b6b6b] focus:outline-none focus:border-[#155e63] disabled:bg-transparent transition-colors"
+        className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={def.unit}
         disabled={!canEdit}
         onChange={(e) => onUpdate({ unit: e.target.value as IngredientUnit })}
@@ -1514,7 +1526,7 @@ function DefaultLineRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-[#d0d0d0] hover:text-[#c44] transition-colors shrink-0"
+          className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors shrink-0"
         >
           <X size={12} />
         </button>
@@ -1548,22 +1560,22 @@ function MetricsBar({ items }: { items: MenuItemWithCogs[] }) {
   const agg = aggregateMargins(items);
   if (agg.count === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-5 py-3 text-xs text-[#6b6b6b]">
+      <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-5 py-3 text-xs text-[var(--muted-foreground)]">
         Add an item with a price and recipe ingredients (or a manual COGS) to see workspace-level margin metrics.
       </div>
     );
   }
   return (
-    <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-1.5">
+    <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-5 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-1.5">
       <div>
-        <span className="text-[10px] uppercase tracking-wider text-[#155e63] font-semibold">Avg COGS</span>{" "}
-        <span className="text-base font-bold text-[#1a1a1a] ml-1">{agg.avgCogsPct?.toFixed(1)}%</span>
+        <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg COGS</span>{" "}
+        <span className="text-base font-bold text-[var(--foreground)] ml-1">{agg.avgCogsPct?.toFixed(1)}%</span>
       </div>
       <div>
-        <span className="text-[10px] uppercase tracking-wider text-[#155e63] font-semibold">Avg Gross Profit</span>{" "}
-        <span className="text-base font-bold text-[#155e63] ml-1">{agg.avgGpPct?.toFixed(1)}%</span>
+        <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg Gross Profit</span>{" "}
+        <span className="text-base font-bold text-[var(--teal)] ml-1">{agg.avgGpPct?.toFixed(1)}%</span>
       </div>
-      <div className="text-[11px] text-[#6b6b6b]">
+      <div className="text-[11px] text-[var(--muted-foreground)]">
         Unweighted simple mean across {agg.count} priced item{agg.count !== 1 ? "s" : ""} with COGS.
       </div>
     </div>
@@ -1574,10 +1586,10 @@ function CategoryMetrics({ items }: { items: MenuItemWithCogs[] }) {
   const agg = aggregateMargins(items);
   if (agg.count === 0) return null;
   return (
-    <span className="text-[10px] text-[#6b6b6b]">
-      Avg COGS <span className="font-semibold text-[#1a1a1a]">{agg.avgCogsPct?.toFixed(0)}%</span>
-      <span className="mx-1.5 text-[#d0d0d0]">·</span>
-      GP <span className="font-semibold text-[#155e63]">{agg.avgGpPct?.toFixed(0)}%</span>
+    <span className="text-[10px] text-[var(--muted-foreground)]">
+      Avg COGS <span className="font-semibold text-[var(--foreground)]">{agg.avgCogsPct?.toFixed(0)}%</span>
+      <span className="mx-1.5 text-[var(--neutral-cool-350)]">·</span>
+      GP <span className="font-semibold text-[var(--teal)]">{agg.avgGpPct?.toFixed(0)}%</span>
     </span>
   );
 }
@@ -1708,15 +1720,15 @@ function MenuTab(props: MenuTabProps) {
     >
       <div className="space-y-4">
         {canEdit && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#1a1a1a]">Not sure where to start?</p>
-              <p className="text-xs text-[#6b6b6b]">Get menu ideas that fit your concept and location.</p>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Not sure where to start?</p>
+              <p className="text-xs text-[var(--muted-foreground)]">Get menu ideas that fit your concept and location.</p>
             </div>
             <button
               type="button"
               onClick={onOpenSuggest}
-              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#155e63] rounded-lg px-3.5 py-2 hover:bg-[#124e52] transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[var(--teal)] rounded-lg px-3.5 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
             >
               <Sparkles size={14} />
               Suggest menu items
@@ -1738,7 +1750,7 @@ function MenuTab(props: MenuTabProps) {
             return (
               <div
                 key={cat.id}
-                className="rounded-xl border border-[#efefef] bg-white overflow-hidden"
+                className="rounded-xl border border-[var(--border)] bg-white overflow-hidden"
               >
                 <CategoryHeader
                   category={cat}
@@ -1775,7 +1787,7 @@ function MenuTab(props: MenuTabProps) {
                   {catItems.length === 0 ? (
                     <EmptyCategoryDropZone categoryId={cat.id} canEdit={canEdit} />
                   ) : (
-                    <div className="divide-y divide-[#f5f5f5]">
+                    <div className="divide-y divide-[var(--neutral-cool-100)]">
                       {catItems.map((item) => (
                         <SortableMenuItemRow
                           key={item.id}
@@ -1802,7 +1814,7 @@ function MenuTab(props: MenuTabProps) {
           <button
             type="button"
             onClick={onAddCategory}
-            className="flex items-center gap-2 text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors"
           >
             <Plus size={14} />
             Add category
@@ -1855,10 +1867,10 @@ function EmptyCategoryDropZone({
     <div
       ref={setNodeRef}
       className={`py-6 text-center transition-colors ${
-        isOver ? "bg-[#f4f9f8]" : ""
+        isOver ? "bg-[var(--teal-tint-500)]" : ""
       }`}
     >
-      <p className="text-xs text-[#d0d0d0]">No items yet</p>
+      <p className="text-xs text-[var(--neutral-cool-350)]">No items yet</p>
     </div>
   );
 }
@@ -1906,13 +1918,13 @@ function CategoryHeader({
   }
 
   return (
-    <div className="px-5 py-3 border-b border-[#efefef] flex items-center justify-between gap-3">
+    <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <FolderOpen size={14} className="text-[#155e63] shrink-0" />
+        <FolderOpen size={14} className="text-[var(--teal)] shrink-0" />
         {editing ? (
           <input
             autoFocus
-            className="text-sm font-semibold text-[#1a1a1a] border-0 border-b border-[#155e63] focus:outline-none bg-transparent min-w-[140px]"
+            className="text-sm font-semibold text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus:outline-none bg-transparent min-w-[140px]"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
@@ -1925,13 +1937,13 @@ function CategoryHeader({
           <button
             type="button"
             onClick={() => canEdit && startEdit()}
-            className="text-sm font-semibold text-[#1a1a1a] hover:underline decoration-dotted truncate"
+            className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted truncate"
             title={canEdit ? "Click to rename" : undefined}
           >
             {category.name}
           </button>
         )}
-        <span className="text-xs text-[#afafaf]">{itemCount}</span>
+        <span className="text-xs text-[var(--dark-grey)]">{itemCount}</span>
         <CategoryMetrics items={catItems} />
       </div>
       <div className="flex items-center gap-3 shrink-0">
@@ -1940,14 +1952,14 @@ function CategoryHeader({
             type="button"
             onClick={onToggleDefaults}
             className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-              defaultsOpen ? "text-[#155e63]" : "text-[#6b6b6b] hover:text-[#155e63]"
+              defaultsOpen ? "text-[var(--teal)]" : "text-[var(--muted-foreground)] hover:text-[var(--teal)]"
             }`}
             title="Edit default ingredients for this category"
           >
             <Settings size={11} />
             Defaults
             {defaultsCount > 0 && (
-              <span className="text-[10px] bg-[#e8f4f5] text-[#155e63] rounded-full px-1.5 py-0.5 font-semibold">
+              <span className="text-[10px] bg-[var(--teal-tint-200)] text-[var(--teal)] rounded-full px-1.5 py-0.5 font-semibold">
                 {defaultsCount}
               </span>
             )}
@@ -1958,7 +1970,7 @@ function CategoryHeader({
           <button
             type="button"
             onClick={onAddItem}
-            className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:text-[#0e4448] transition-colors"
+            className="flex items-center gap-1 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
           >
             <Plus size={12} />
             Add
@@ -1968,7 +1980,7 @@ function CategoryHeader({
           <button
             type="button"
             onClick={onDelete}
-            className="text-[#c0c0c0] hover:text-[#a13d3d] transition-colors"
+            className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
             aria-label="Delete category"
             title="Delete category"
           >
@@ -1989,10 +2001,10 @@ const QUADRANT_STYLES: Record<
   Quadrant,
   { cell: string; badge: string; dot: string }
 > = {
-  star: { cell: "border-[#bfe0d8] bg-[#f0f8f5]", badge: "bg-[#155e63] text-white", dot: "bg-[#155e63]" },
-  plowhorse: { cell: "border-[#f0dcb0] bg-[#fdf8ee]", badge: "bg-[#b9852a] text-white", dot: "bg-[#b9852a]" },
-  puzzle: { cell: "border-[#cfe0e1] bg-[#f4f9f8]", badge: "bg-[#3d7c84] text-white", dot: "bg-[#3d7c84]" },
-  dog: { cell: "border-[#e6d2cd] bg-[#fbf5f2]", badge: "bg-[#9a5a4d] text-white", dot: "bg-[#9a5a4d]" },
+  star: { cell: "border-[var(--teal-bg-lightest)] bg-[var(--sage-success-bg)]", badge: "bg-[var(--teal)] text-white", dot: "bg-[var(--teal)]" },
+  plowhorse: { cell: "border-[var(--amber-bg-f0d)] bg-[var(--warning-bg-5)]", badge: "bg-[var(--warning-text-8)] text-white", dot: "bg-[var(--warning-text-8)]" },
+  puzzle: { cell: "border-[var(--teal-tint)] bg-[var(--teal-tint-500)]", badge: "bg-[var(--teal-750)] text-white", dot: "bg-[var(--teal-750)]" },
+  dog: { cell: "border-[var(--error-bg-14)] bg-[var(--warning-bg-15)]", badge: "bg-[var(--error-text)] text-white", dot: "bg-[var(--error-text)]" },
 };
 
 // Order matches the matrix layout: top row = more popular, bottom = less popular;
@@ -2010,7 +2022,7 @@ function PopularityInlineSelect({
 }) {
   return (
     <select
-      className="text-xs bg-white border border-[#e0e0e0] rounded-md px-1.5 py-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:opacity-50"
+      className="text-xs bg-white border border-[var(--border-medium)] rounded-md px-1.5 py-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:opacity-50"
       value={value ?? ""}
       disabled={disabled}
       aria-label="Expected popularity"
@@ -2057,10 +2069,10 @@ function InsightsTab({
 
   if (!hasAnything) {
     return (
-      <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-6 py-10 text-center">
-        <LayoutGrid className="w-6 h-6 text-[#76b39d] mx-auto mb-3" />
-        <p className="text-sm font-semibold text-[#1a1a1a] mb-1">No items to analyze yet</p>
-        <p className="text-xs text-[#6b6b6b] max-w-md mx-auto leading-relaxed">
+      <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-6 py-10 text-center">
+        <LayoutGrid className="w-6 h-6 text-[var(--sage)] mx-auto mb-3" />
+        <p className="text-sm font-semibold text-[var(--foreground)] mb-1">No items to analyze yet</p>
+        <p className="text-xs text-[var(--muted-foreground)] max-w-md mx-auto leading-relaxed">
           Add a few drinks or food items with a price, a cost, and an expected
           popularity. We will sort them into what to feature, re-price, promote,
           or rethink.
@@ -2068,7 +2080,7 @@ function InsightsTab({
         <button
           type="button"
           onClick={onGoToMenu}
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#155e63] bg-[#f0f8f8] border border-[#cfe0e1] px-3 py-2 rounded-lg hover:bg-[#e4f1f1] transition-colors"
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] transition-colors"
         >
           <Utensils size={13} /> Go to the menu
         </button>
@@ -2081,10 +2093,10 @@ function InsightsTab({
       {/* Intro */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <LayoutGrid className="w-4 h-4 text-[#155e63]" />
-          <h2 className="text-base font-bold text-[#1a1a1a]">What To Serve</h2>
+          <LayoutGrid className="w-4 h-4 text-[var(--teal)]" />
+          <h2 className="text-base font-bold text-[var(--foreground)]">What To Serve</h2>
         </div>
-        <p className="text-xs text-[#6b6b6b] leading-relaxed max-w-2xl">
+        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed max-w-2xl">
           Every item is sorted by two things: how profitable it is (your gross
           margin) and how popular you expect it to be. We split each one at your
           own menu average, so this is always relative to the rest of your menu.
@@ -2093,7 +2105,7 @@ function InsightsTab({
 
       {/* Quadrant matrix */}
       {classified.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-5 py-4 text-xs text-[#6b6b6b] leading-relaxed">
+        <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-5 py-4 text-xs text-[var(--muted-foreground)] leading-relaxed">
           None of your items have everything they need yet. Add a price, a cost,
           and an expected popularity to an item and it will show up here.
         </div>
@@ -2108,7 +2120,7 @@ function InsightsTab({
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${QUADRANT_STYLES[q].dot}`} />
                 {QUADRANT_META[q].label}
-                <span className="text-[#6b6b6b]">{counts[q]}</span>
+                <span className="text-[var(--muted-foreground)]">{counts[q]}</span>
               </span>
             ))}
           </div>
@@ -2116,16 +2128,16 @@ function InsightsTab({
           {/* Axis-labeled 2x2 */}
           <div className="grid grid-cols-[1.25rem_1fr_1fr] gap-2 items-stretch">
             <div />
-            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-[#155e63] pb-0.5">
+            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] pb-0.5">
               Higher Margin
             </div>
-            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-[#155e63] pb-0.5">
+            <div className="text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] pb-0.5">
               Lower Margin
             </div>
 
             {/* Row 1: more popular */}
             <div className="flex items-center justify-center">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63] [writing-mode:vertical-rl] rotate-180">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] [writing-mode:vertical-rl] rotate-180">
                 More Popular
               </span>
             </div>
@@ -2134,7 +2146,7 @@ function InsightsTab({
 
             {/* Row 2: less popular */}
             <div className="flex items-center justify-center">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63] [writing-mode:vertical-rl] rotate-180">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] [writing-mode:vertical-rl] rotate-180">
                 Less Popular
               </span>
             </div>
@@ -2143,7 +2155,7 @@ function InsightsTab({
           </div>
 
           {thresholds && (
-            <p className="text-[11px] text-[#9a9a9a] mt-3 leading-relaxed">
+            <p className="text-[11px] text-[var(--neutral-cool-650)] mt-3 leading-relaxed">
               Split points: items above {thresholds.avgMarginPct.toFixed(0)}% gross
               margin count as higher margin, and items you rated at or above your
               average popularity count as more popular.
@@ -2155,25 +2167,25 @@ function InsightsTab({
       {/* Margin ranking */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <TrendingUp className="w-4 h-4 text-[#155e63]" />
-          <h2 className="text-base font-bold text-[#1a1a1a]">Margin Ranking</h2>
+          <TrendingUp className="w-4 h-4 text-[var(--teal)]" />
+          <h2 className="text-base font-bold text-[var(--foreground)]">Margin Ranking</h2>
         </div>
-        <p className="text-xs text-[#6b6b6b] leading-relaxed mb-3">
+        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-3">
           Your items from most to least profitable. Set each item&rsquo;s expected
           popularity here to place it on the grid above.
         </p>
 
         {ranking.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[#d4e8e9] bg-[#f9fcfc] px-5 py-4 text-xs text-[#6b6b6b]">
+          <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-5 py-4 text-xs text-[var(--muted-foreground)]">
             Add a price and a cost (recipe ingredients or a manual COGS) to an
             item to rank it by profitability.
           </div>
         ) : (
-          <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-[#6b6b6b] bg-[#faf9f7] border-b border-[#efefef]">
+                  <tr className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--background)] border-b border-[var(--border)]">
                     <th className="text-left font-semibold px-4 py-2 w-8">#</th>
                     <th className="text-left font-semibold px-2 py-2">Item</th>
                     <th className="text-right font-semibold px-2 py-2">Price</th>
@@ -2189,23 +2201,23 @@ function InsightsTab({
                     const item = items.find((i) => i.id === r.id);
                     const q = quadrantById.get(r.id);
                     return (
-                      <tr key={r.id} className="border-b border-[#f4f4f4] last:border-0 hover:bg-[#faf9f7] transition-colors">
-                        <td className="px-4 py-2 text-[#afafaf] tabular-nums">{idx + 1}</td>
-                        <td className="px-2 py-2 font-medium text-[#1a1a1a]">
-                          {r.name || <span className="text-[#afafaf] font-normal">Unnamed item</span>}
+                      <tr key={r.id} className="border-b border-[var(--gray-200)] last:border-0 hover:bg-[var(--background)] transition-colors">
+                        <td className="px-4 py-2 text-[var(--dark-grey)] tabular-nums">{idx + 1}</td>
+                        <td className="px-2 py-2 font-medium text-[var(--foreground)]">
+                          {r.name || <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>}
                         </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-[#155e63] font-semibold">{formatCents(r.priceCents)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums text-[#6b6b6b]">{formatCents(r.cogsCents)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums text-[#1a1a1a]">{formatCents(r.gpCents)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-[var(--teal)] font-semibold">{formatCents(r.priceCents)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-[var(--muted-foreground)]">{formatCents(r.cogsCents)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-[var(--foreground)]">{formatCents(r.gpCents)}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-[#eef0ef] rounded-full overflow-hidden min-w-[40px]">
+                            <div className="flex-1 h-1.5 bg-[var(--teal-bg-deep)] rounded-full overflow-hidden min-w-[40px]">
                               <div
-                                className="h-full bg-[#155e63] rounded-full"
+                                className="h-full bg-[var(--teal)] rounded-full"
                                 style={{ width: `${Math.max(0, Math.min(100, r.marginPct))}%` }}
                               />
                             </div>
-                            <span className="tabular-nums text-[#1a1a1a] font-semibold w-10 text-right">
+                            <span className="tabular-nums text-[var(--foreground)] font-semibold w-10 text-right">
                               {r.marginPct.toFixed(0)}%
                             </span>
                           </div>
@@ -2224,7 +2236,7 @@ function InsightsTab({
                               {QUADRANT_META[q].label}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-[#afafaf]">Set popularity</span>
+                            <span className="text-[10px] text-[var(--dark-grey)]">Set popularity</span>
                           )}
                         </td>
                       </tr>
@@ -2240,20 +2252,20 @@ function InsightsTab({
       {/* Needs info */}
       {needsInfo.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#6b6b6b] mb-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
             Not Enough Info Yet ({needsInfo.length})
           </h3>
-          <div className="rounded-xl border border-[#efefef] bg-white divide-y divide-[#f4f4f4]">
+          <div className="rounded-xl border border-[var(--border)] bg-white divide-y divide-[var(--gray-200)]">
             {needsInfo.map((n) => {
               const item = items.find((i) => i.id === n.id);
               const onlyPopularity = n.missing.length === 1 && n.missing[0] === "popularity";
               return (
                 <div key={n.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#1a1a1a] truncate">
-                      {n.name || <span className="text-[#afafaf] font-normal">Unnamed item</span>}
+                    <p className="text-sm font-medium text-[var(--foreground)] truncate">
+                      {n.name || <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>}
                     </p>
-                    <p className="text-[11px] text-[#9a9a9a]">
+                    <p className="text-[11px] text-[var(--neutral-cool-650)]">
                       Add {n.missing.map((m) => (m === "cost" ? "a cost" : m === "price" ? "a price" : "an expected popularity")).join(", ")}.
                     </p>
                   </div>
@@ -2267,7 +2279,7 @@ function InsightsTab({
                     <button
                       type="button"
                       onClick={onGoToMenu}
-                      className="text-[11px] font-semibold text-[#155e63] hover:underline shrink-0"
+                      className="text-[11px] font-semibold text-[var(--teal)] hover:underline shrink-0"
                     >
                       Open menu
                     </button>
@@ -2296,13 +2308,13 @@ function QuadrantCell({
       <div className="flex items-center justify-between mb-0.5">
         <div className="flex items-center gap-1.5">
           <span className={`w-2 h-2 rounded-full ${styles.dot}`} />
-          <span className="text-sm font-bold text-[#1a1a1a]">{meta.label}</span>
+          <span className="text-sm font-bold text-[var(--foreground)]">{meta.label}</span>
         </div>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${styles.badge}`}>
           {items.length}
         </span>
       </div>
-      <p className="text-[10px] uppercase tracking-wider text-[#6b6b6b] font-semibold mb-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] font-semibold mb-1.5">
         {meta.tagline}
       </p>
       {items.length > 0 && (
@@ -2310,14 +2322,14 @@ function QuadrantCell({
           {items.map((it) => (
             <span
               key={it.id}
-              className="text-[11px] bg-white/70 border border-white text-[#1a1a1a] rounded-md px-1.5 py-0.5 truncate max-w-full"
+              className="text-[11px] bg-white/70 border border-white text-[var(--foreground)] rounded-md px-1.5 py-0.5 truncate max-w-full"
             >
               {it.name || "Unnamed"}
             </span>
           ))}
         </div>
       )}
-      <p className="text-[11px] text-[#4a4a4a] leading-relaxed mt-auto">{meta.recommendation}</p>
+      <p className="text-[11px] text-[var(--gray-1200)] leading-relaxed mt-auto">{meta.recommendation}</p>
     </div>
   );
 }
@@ -2376,18 +2388,18 @@ function SuggestItemsModal({
         className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[#efefef]">
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#155e63]" aria-hidden="true" />
+            <Sparkles className="w-4 h-4 text-[var(--teal)]" aria-hidden="true" />
             <div>
-              <h2 className="text-sm font-bold text-[#1a1a1a]">Suggested menu items</h2>
-              <p className="text-xs text-[#6b6b6b]">Tap to add any that fit. You can edit prices and recipes after.</p>
+              <h2 className="text-sm font-bold text-[var(--foreground)]">Suggested menu items</h2>
+              <p className="text-xs text-[var(--muted-foreground)]">Tap to add any that fit. You can edit prices and recipes after.</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#9a9a9a] hover:text-[#1a1a1a] transition-colors"
+            className="text-[var(--neutral-cool-650)] hover:text-[var(--foreground)] transition-colors"
             aria-label="Close"
           >
             <X size={18} />
@@ -2397,18 +2409,18 @@ function SuggestItemsModal({
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading && (
             <div className="py-10 text-center">
-              <Sparkles className="w-5 h-5 text-[#155e63] mx-auto mb-2 animate-pulse" aria-hidden="true" />
-              <p className="text-sm text-[#6b6b6b]">Reading your concept and building suggestions…</p>
+              <Sparkles className="w-5 h-5 text-[var(--teal)] mx-auto mb-2 animate-pulse" aria-hidden="true" />
+              <p className="text-sm text-[var(--muted-foreground)]">Reading your concept and building suggestions…</p>
             </div>
           )}
 
           {!loading && error && (
             <div className="py-10 text-center">
-              <p className="text-sm text-[#b54b4b] mb-3">{error}</p>
+              <p className="text-sm text-[var(--error-medium)] mb-3">{error}</p>
               <button
                 type="button"
                 onClick={onRetry}
-                className="text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-lg px-4 py-2 hover:bg-[#155e63]/5 transition-colors"
+                className="text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-lg px-4 py-2 hover:bg-[var(--teal)]/5 transition-colors"
               >
                 Try again
               </button>
@@ -2416,7 +2428,7 @@ function SuggestItemsModal({
           )}
 
           {!loading && !error && groups.length === 0 && (
-            <p className="py-10 text-center text-sm text-[#6b6b6b]">No suggestions yet.</p>
+            <p className="py-10 text-center text-sm text-[var(--muted-foreground)]">No suggestions yet.</p>
           )}
 
           {!loading && !error && groups.length > 0 && (
@@ -2432,12 +2444,12 @@ function SuggestItemsModal({
                       return (
                         <div
                           key={key}
-                          className="flex items-start justify-between gap-3 rounded-lg border border-[#efefef] px-3 py-2.5"
+                          className="flex items-start justify-between gap-3 rounded-lg border border-[var(--border)] px-3 py-2.5"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-[#1a1a1a]">{s.name}</p>
+                            <p className="text-sm font-medium text-[var(--foreground)]">{s.name}</p>
                             {s.rationale && (
-                              <p className="text-xs text-[#6b6b6b] leading-snug mt-0.5">{s.rationale}</p>
+                              <p className="text-xs text-[var(--muted-foreground)] leading-snug mt-0.5">{s.rationale}</p>
                             )}
                           </div>
                           <button
@@ -2446,8 +2458,8 @@ function SuggestItemsModal({
                             disabled={added || adding}
                             className={`flex items-center gap-1 text-xs font-semibold rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors ${
                               added
-                                ? "text-[#155e63] bg-[#eef6f5] cursor-default"
-                                : "text-white bg-[#155e63] hover:bg-[#124e52] disabled:opacity-60"
+                                ? "text-[var(--teal)] bg-[var(--teal-bg-350)] cursor-default"
+                                : "text-white bg-[var(--teal)] hover:bg-[var(--teal-deep)] disabled:opacity-60"
                             }`}
                           >
                             {added ? (
@@ -2471,14 +2483,14 @@ function SuggestItemsModal({
         </div>
 
         {!loading && !error && groups.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#efefef] flex items-center justify-between">
-            <p className="text-xs text-[#6b6b6b]">
+          <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between">
+            <p className="text-xs text-[var(--muted-foreground)]">
               {addedCount} of {suggestions.length} added
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="text-sm font-medium text-[#155e63] hover:underline"
+              className="text-sm font-medium text-[var(--teal)] hover:underline"
             >
               Done
             </button>
@@ -3045,21 +3057,21 @@ export function MenuWorkspace({
   }, []);
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Utensils className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Utensils className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Menu &amp; Pricing
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices.
           </p>
         </header>
 
-        <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1 mb-6 overflow-x-auto">
+        <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 mb-6 overflow-x-auto">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -3067,8 +3079,8 @@ export function MenuWorkspace({
               onClick={() => setActiveTab(t.id)}
               className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === t.id
-                  ? "bg-[#155e63] text-white"
-                  : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                  ? "bg-[var(--teal)] text-white"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
               <t.Icon size={13} />

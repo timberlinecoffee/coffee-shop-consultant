@@ -215,7 +215,7 @@ export function diagnoseBalanceSheet({
       candidates.push({
         id: "working_capital_unfunded",
         label: "Working capital is not funded",
-        explanation: `You are carrying ${formatCentsRough(netWorkingCapital)} in inventory and receivables but only ${formatCentsRough(apCents)} in payables. Until you set aside cash to cover that difference, the model has to plug the gap somewhere — that is what you are seeing here.`,
+        explanation: `You are carrying ${formatCentsRough(netWorkingCapital)} in inventory and receivables but only ${formatCentsRough(apCents)} in payables. Until you set aside cash to cover that difference, the model has to plug the gap somewhere. That is what you are seeing here.`,
         contribution_cents: Math.min(absGap, netWorkingCapital - workingCapitalReserve),
       });
     }
@@ -246,7 +246,7 @@ export function diagnoseBalanceSheet({
       id: "unknown",
       label: "Imbalance source not pinned down",
       explanation:
-        "We could not tie the gap to a specific input. Try re-saving the forecast — most small drifts come from inputs that were edited but not recomputed.",
+        "We could not tie the gap to a specific input. Try re-saving the forecast. Most small drifts come from inputs that were edited but not recomputed.",
       contribution_cents: absGap,
     });
   }
@@ -261,7 +261,7 @@ export function diagnoseBalanceSheet({
     suggested_fix = {
       label: `Add ${gapStr} to owner capital or loan`,
       rationale:
-        "Every dollar of startup cost has to come from somewhere — either money you put in or money you borrow. This closes the funding gap shown above.",
+        "Every dollar of startup cost has to come from somewhere: either money you put in or money you borrow. This closes the funding gap shown above.",
       location: "funding_sources",
       adjustment: {
         field: "owner_capital_cents",

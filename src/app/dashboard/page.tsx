@@ -138,20 +138,20 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] pb-16 lg:pb-0">
+    <div className="min-h-screen bg-[var(--background)] pb-16 lg:pb-0">
       {/* Top bar */}
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4">
+      <nav className="bg-white border-b border-[var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center">
+            <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
-            <span className="font-semibold text-[#155e63] text-sm hidden sm:block">My Coffee Shop Consultant</span>
+            <span className="font-semibold text-[var(--teal)] text-sm hidden sm:block">My Coffee Shop Consultant</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/account" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Account</Link>
+            <Link href="/account" className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors">Account</Link>
             <form action="/auth/signout" method="POST">
-              <button type="submit" className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors">Sign Out</button>
+              <button type="submit" className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors">Sign Out</button>
             </form>
           </div>
         </div>
@@ -199,7 +199,7 @@ export default async function DashboardPage() {
         />
 
         {/* Quick links */}
-        <h2 className="font-semibold text-lg text-[#1a1a1a] mb-4">Quick Links</h2>
+        <h2 className="font-semibold text-lg text-[var(--foreground)] mb-4">Quick Links</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           {[
             {
@@ -242,10 +242,10 @@ export default async function DashboardPage() {
             <Link
               key={tool.label}
               href={tool.href}
-              className="bg-white rounded-xl border border-[#efefef] p-4 text-center hover:border-[#155e63]/30 transition-colors"
+              className="bg-white rounded-xl border border-[var(--border)] p-4 text-center hover:border-[var(--teal)]/30 transition-colors"
             >
-              <div className="flex justify-center mb-2 text-[#155e63]">{tool.icon}</div>
-              <span className="text-xs font-medium text-[#1a1a1a]">{tool.label}</span>
+              <div className="flex justify-center mb-2 text-[var(--teal)]">{tool.icon}</div>
+              <span className="text-xs font-medium text-[var(--foreground)]">{tool.label}</span>
             </Link>
           ))}
         </div>
@@ -254,10 +254,10 @@ export default async function DashboardPage() {
         <Link
           href="/workspace/business-plan/print"
           target="_blank"
-          className="block bg-white rounded-xl border border-[#155e63]/30 p-4 mb-4 hover:border-[#155e63] transition-colors"
+          className="block bg-white rounded-xl border border-[var(--teal)]/30 p-4 mb-4 hover:border-[var(--teal)] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#155e63]/10 text-[#155e63] flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-[var(--teal)]/10 text-[var(--teal)] flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
@@ -266,32 +266,32 @@ export default async function DashboardPage() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#1a1a1a]">Export Business Plan</p>
-              <p className="text-xs text-[#afafaf]">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Export Business Plan</p>
+              <p className="text-xs text-[var(--dark-grey)]">
                 One printable document: concept, team, menu, equipment, financials, and more.
               </p>
             </div>
-            <ArrowRight size={16} className="text-[#155e63] flex-shrink-0" />
+            <ArrowRight size={16} className="text-[var(--teal)] flex-shrink-0" />
           </div>
         </Link>
 
         {/* AI coaching — low-visual-weight line in quick links area */}
-        <div className="bg-white rounded-xl border border-[#efefef] px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">AI coaching</span>
+        <div className="bg-white rounded-xl border border-[var(--border)] px-4 py-3 flex items-center justify-between">
+          <span className="text-xs text-[var(--dark-grey)]">AI coaching</span>
           {isTrial ? (
             trialMessagesUsed < FREE_TRIAL_COPILOT_LIMIT ? (
-              <span className={`text-xs font-medium ${FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed <= 1 ? "text-amber-500" : "text-[#155e63]"}`}>
+              <span className={`text-xs font-medium ${FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed <= 1 ? "text-amber-500" : "text-[var(--teal)]"}`}>
                 {FREE_TRIAL_COPILOT_LIMIT - trialMessagesUsed} of {FREE_TRIAL_COPILOT_LIMIT} trial messages left
               </span>
             ) : (
-              <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Trial used — upgrade to continue</Link>
+              <Link href="/pricing" className="text-xs text-[var(--teal)] hover:underline">Trial used — upgrade to continue</Link>
             )
           ) : isPaid && creditsRemaining > 0 ? (
-            <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[#155e63]"}`}>
+            <span className={`text-xs font-medium ${creditsRemaining <= 10 ? "text-amber-500" : "text-[var(--teal)]"}`}>
               {creditsRemaining} messages left this month
             </span>
           ) : (
-            <Link href="/pricing" className="text-xs text-[#155e63] hover:underline">Upgrade to get AI coaching</Link>
+            <Link href="/pricing" className="text-xs text-[var(--teal)] hover:underline">Upgrade to get AI coaching</Link>
           )}
         </div>
       </div>

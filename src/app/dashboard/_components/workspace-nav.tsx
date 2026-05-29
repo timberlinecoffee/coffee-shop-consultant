@@ -42,11 +42,11 @@ const LOCKED_COPY: Record<WorkspaceCategory, string> = {
 function statusDotClass(status: WorkspaceStatus): string {
   switch (status) {
     case "complete":
-      return "bg-[#155e63]";
+      return "bg-[var(--teal)]";
     case "in_progress":
       return "bg-amber-400";
     case "not_started":
-      return "bg-[#d6d3cd]";
+      return "bg-[var(--warm-1000)]";
   }
 }
 
@@ -70,12 +70,12 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
         title={lockedCopy}
         className="flex items-center gap-4 px-4 py-3.5 select-none"
       >
-        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#f5f4f0] text-[#c0c0c0]">
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--surface-warm-100)] text-[var(--neutral-cool-400)]">
           <LockIcon />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium text-[#afafaf]">{item.label}</span>
-          <span className="mt-0.5 block text-[13px] leading-snug text-[#c4c4c4]">{lockedCopy}</span>
+          <span className="block text-sm font-medium text-[var(--dark-grey)]">{item.label}</span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-[var(--gray-900)]">{lockedCopy}</span>
         </span>
       </div>
     );
@@ -84,17 +84,17 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
   return (
     <Link
       href={item.href}
-      className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-[#155e63]/[0.035]"
+      className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-[var(--teal)]/[0.035]"
     >
-      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#155e63]/[0.07] text-[#155e63] transition-colors group-hover:bg-[#155e63]/10">
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--teal)]/[0.07] text-[var(--teal)] transition-colors group-hover:bg-[var(--teal)]/10">
         {Icon ? <Icon width={18} height={18} strokeWidth={1.75} aria-hidden="true" /> : null}
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium text-[#1a1a1a] transition-colors group-hover:text-[#155e63]">
+        <span className="block text-sm font-medium text-[var(--foreground)] transition-colors group-hover:text-[var(--teal)]">
           {item.label}
         </span>
-        <span className="mt-0.5 block text-[13px] leading-snug text-[#6b6b6b]">
+        <span className="mt-0.5 block text-[13px] leading-snug text-[var(--muted-foreground)]">
           {item.blurb}
         </span>
       </span>
@@ -107,7 +107,7 @@ function WorkspaceRow({ item }: { item: WorkspaceNavItem }) {
 
       <ChevronRight
         size={18}
-        className="flex-shrink-0 text-[#cfcdc7] transition-all group-hover:translate-x-0.5 group-hover:text-[#155e63]"
+        className="flex-shrink-0 text-[var(--warm-850)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--teal)]"
         aria-hidden="true"
       />
     </Link>
@@ -124,12 +124,12 @@ export function WorkspaceNav({ items }: { items: WorkspaceNavItem[] }) {
           return (
             <section key={category}>
               <div className="mb-2.5 px-1">
-                <h2 className="text-sm font-semibold text-[#1a1a1a]">
+                <h2 className="text-sm font-semibold text-[var(--foreground)]">
                   {WORKSPACE_CATEGORY_LABEL[category]}
                 </h2>
-                <p className="text-xs text-[#9a9a9a]">{CATEGORY_BLURB[category]}</p>
+                <p className="text-xs text-[var(--neutral-cool-650)]">{CATEGORY_BLURB[category]}</p>
               </div>
-              <div className="divide-y divide-[#f0eee9] overflow-hidden rounded-xl border border-[#ebe9e4] bg-white">
+              <div className="divide-y divide-[var(--warm-500)] overflow-hidden rounded-xl border border-[var(--warm-550)] bg-white">
                 {groupItems.map((item) => (
                   <WorkspaceRow key={item.moduleNumber} item={item} />
                 ))}

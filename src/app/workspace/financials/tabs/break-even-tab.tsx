@@ -60,7 +60,7 @@ function SensitivityRow({
 }) {
   return (
     <tr>
-      <td className="py-2.5 pl-4 pr-4 text-sm text-[#1a1a1a]">{label}</td>
+      <td className="py-2.5 pl-4 pr-4 text-sm text-[var(--foreground)]">{label}</td>
       <td className="py-2.5 px-3 text-right text-sm font-semibold">{baseValue.toLocaleString()}</td>
       {scenarios.map((s, i) => (
         <td
@@ -79,7 +79,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
 
   if (!result) {
     return (
-      <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-8 text-center text-sm text-[#afafaf]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-8 text-center text-sm text-[var(--dark-grey)]">
         Enter your revenue assumptions in the Inputs tab to see break-even analysis.
       </div>
     );
@@ -115,17 +115,17 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
     <div className="space-y-4">
       {/* Primary metrics */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-4">
-          <p className="text-xs text-[#6b6b6b] uppercase tracking-wide mb-1">Break-Even Transactions / Month</p>
-          <p className="text-3xl font-bold text-[#1a1a1a]">{isFinite(breakEvenTransactions) ? breakEvenTransactions.toLocaleString() : "N/A"}</p>
-          <p className="text-xs text-[#afafaf] mt-1">
+        <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-4">
+          <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Break-Even Transactions / Month</p>
+          <p className="text-3xl font-bold text-[var(--foreground)]">{isFinite(breakEvenTransactions) ? breakEvenTransactions.toLocaleString() : "N/A"}</p>
+          <p className="text-xs text-[var(--dark-grey)] mt-1">
             {isFinite(daysToBreakEven) ? `${daysToBreakEven.toFixed(1)} days of foot traffic` : ""}
           </p>
         </div>
-        <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-4">
-          <p className="text-xs text-[#6b6b6b] uppercase tracking-wide mb-1">Break-Even Revenue / Month</p>
-          <p className="text-3xl font-bold text-[#1a1a1a]">{isFinite(breakEvenRevenue) ? fmt(breakEvenRevenue, currencyCode) : "N/A"}</p>
-          <p className="text-xs text-[#afafaf] mt-1">Contribution margin {(contributionMarginPct * 100).toFixed(1)}%</p>
+        <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-4">
+          <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Break-Even Revenue / Month</p>
+          <p className="text-3xl font-bold text-[var(--foreground)]">{isFinite(breakEvenRevenue) ? fmt(breakEvenRevenue, currencyCode) : "N/A"}</p>
+          <p className="text-xs text-[var(--dark-grey)] mt-1">Contribution margin {(contributionMarginPct * 100).toFixed(1)}%</p>
         </div>
         <div className={`rounded-2xl border px-5 py-4 col-span-2 sm:col-span-1 ${transactionSurplus >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
           <p className={`text-xs uppercase tracking-wide mb-1 ${transactionSurplus >= 0 ? "text-green-700" : "text-red-700"}`}>
@@ -141,57 +141,57 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
       </div>
 
       {/* Visual bar */}
-      <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-5">
-        <p className="text-sm font-semibold text-[#1a1a1a] mb-4">Monthly Transactions vs. Break-Even</p>
+      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-5">
+        <p className="text-sm font-semibold text-[var(--foreground)] mb-4">Monthly Transactions vs. Break-Even</p>
         <div className="space-y-3">
           <div>
-            <div className="flex justify-between text-xs text-[#6b6b6b] mb-1">
+            <div className="flex justify-between text-xs text-[var(--muted-foreground)] mb-1">
               <span>Break-Even Threshold</span>
               <span>{isFinite(breakEvenTransactions) ? breakEvenTransactions.toLocaleString() : "N/A"} transactions</span>
             </div>
-            <div className="h-4 rounded-full bg-[#f0f0f0] overflow-hidden">
+            <div className="h-4 rounded-full bg-[var(--neutral-cool-150)] overflow-hidden">
               <div
-                className="h-full rounded-full bg-[#e0b96a]"
+                className="h-full rounded-full bg-[var(--coffee-orange)]"
                 style={{ width: `${breakEvenWidth}%` }}
               />
             </div>
           </div>
           <div>
-            <div className="flex justify-between text-xs text-[#6b6b6b] mb-1">
+            <div className="flex justify-between text-xs text-[var(--muted-foreground)] mb-1">
               <span>Projected Transactions</span>
               <span>{Math.round(projectedCustomers).toLocaleString()} transactions</span>
             </div>
-            <div className="h-4 rounded-full bg-[#f0f0f0] overflow-hidden">
+            <div className="h-4 rounded-full bg-[var(--neutral-cool-150)] overflow-hidden">
               <div
-                className={`h-full rounded-full ${transactionSurplus >= 0 ? "bg-[#155e63]" : "bg-red-500"}`}
+                className={`h-full rounded-full ${transactionSurplus >= 0 ? "bg-[var(--teal)]" : "bg-red-500"}`}
                 style={{ width: `${projectedWidth}%` }}
               />
             </div>
           </div>
         </div>
-        <p className="text-xs text-[#afafaf] mt-3">
+        <p className="text-xs text-[var(--dark-grey)] mt-3">
           Based on {inputs.customers_per_day} customers/day, {inputs.days_per_week} days/week, {currencySymbol(currencyCode)}{avgTicket.toFixed(2)} avg ticket.
         </p>
       </div>
 
       {/* Sensitivity table */}
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-x-auto">
         <div className="px-5 pt-5 pb-2">
-          <p className="text-sm font-semibold text-[#1a1a1a]">Sensitivity Analysis</p>
-          <p className="text-xs text-[#afafaf] mt-0.5">How does break-even shift if key variables change?</p>
+          <p className="text-sm font-semibold text-[var(--foreground)]">Sensitivity Analysis</p>
+          <p className="text-xs text-[var(--dark-grey)] mt-0.5">How does break-even shift if key variables change?</p>
         </div>
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-[#efefef]">
-              <th className="py-2.5 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Scenario</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Base</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">-10%</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">-5%</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">+5%</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">+10%</th>
+            <tr className="border-b border-[var(--border)]">
+              <th className="py-2.5 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Scenario</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Base</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">-10%</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">-5%</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">+5%</th>
+              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">+10%</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#f0f0f0]">
+          <tbody className="divide-y divide-[var(--neutral-cool-150)]">
             <SensitivityRow
               label="Avg Ticket"
               baseValue={sensitivityBase}
@@ -214,12 +214,12 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
             />
           </tbody>
         </table>
-        <p className="px-5 py-3 text-xs text-[#afafaf]">Break-even transactions per month required to cover fixed costs.</p>
+        <p className="px-5 py-3 text-xs text-[var(--dark-grey)]">Break-even transactions per month required to cover fixed costs.</p>
       </div>
 
       {/* Critique */}
-      <div className="rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
+      <div className="rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <BreakEvenCritique
           breakEvenTransactions={breakEvenTransactions}
           projectedTransactions={Math.round(projectedCustomers)}
@@ -261,7 +261,7 @@ function BreakEvenCritique({
   return (
     <div className="space-y-2">
       {lines.map((line, i) => (
-        <p key={i} className="text-sm text-[#2a4a4c] leading-relaxed">{line}</p>
+        <p key={i} className="text-sm text-[var(--teal-deeper)] leading-relaxed">{line}</p>
       ))}
     </div>
   );

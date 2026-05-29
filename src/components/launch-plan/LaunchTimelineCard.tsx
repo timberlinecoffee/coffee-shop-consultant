@@ -43,10 +43,10 @@ const STATUS_LABELS: Record<LaunchItemStatus, string> = {
 };
 
 const STATUS_PILL: Record<LaunchItemStatus, string> = {
-  pending: "bg-[#f0f0f0] text-[#6b6b6b]",
-  in_progress: "bg-[#e8f4f5] text-[#155e63]",
-  done: "bg-[#e6f4e6] text-[#2d6a2d]",
-  at_risk: "bg-[#fde8e8] text-[#b1454a]",
+  pending: "bg-[var(--neutral-cool-150)] text-[var(--muted-foreground)]",
+  in_progress: "bg-[var(--teal-tint-200)] text-[var(--teal)]",
+  done: "bg-[var(--success-bg-2)] text-[var(--success-medium)]",
+  at_risk: "bg-[var(--error-bg-8)] text-[var(--error-light)]",
 };
 
 const GANTT_ANCHORS = [
@@ -93,8 +93,8 @@ function GanttStrip({
 }) {
   if (!launchDate) {
     return (
-      <div className="mb-4 px-1 py-3 bg-[#faf9f7] rounded-xl border border-[#efefef] text-center">
-        <p className="text-xs text-[#afafaf]">
+      <div className="mb-4 px-1 py-3 bg-[var(--background)] rounded-xl border border-[var(--border)] text-center">
+        <p className="text-xs text-[var(--dark-grey)]">
           Set a target opening date in your profile to see the milestone timeline.
         </p>
       </div>
@@ -105,14 +105,14 @@ function GanttStrip({
 
   return (
     <div className="mb-5">
-      <div className="relative h-2 bg-[#efefef] rounded-full mb-1">
+      <div className="relative h-2 bg-[var(--border)] rounded-full mb-1">
         {/* Anchor markers */}
         {GANTT_ANCHORS.map((a) => {
           const pct = ((a.offset + 90) / 120) * 100;
           return (
             <div
               key={a.label}
-              className="absolute top-0 bottom-0 w-px bg-[#d0d0d0]"
+              className="absolute top-0 bottom-0 w-px bg-[var(--neutral-cool-350)]"
               style={{ left: `${pct}%` }}
             />
           );
@@ -126,12 +126,12 @@ function GanttStrip({
               title={`${item.milestone} — ${formatDate(item.target_date!)}`}
               className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow-sm cursor-default transition-all ${
                 item.status === "done"
-                  ? "bg-[#2d6a2d]"
+                  ? "bg-[var(--success-medium)]"
                   : item.status === "at_risk"
-                  ? "bg-[#b1454a]"
+                  ? "bg-[var(--error-light)]"
                   : item.status === "in_progress"
-                  ? "bg-[#155e63]"
-                  : "bg-[#afafaf]"
+                  ? "bg-[var(--teal)]"
+                  : "bg-[var(--dark-grey)]"
               }`}
               style={{ left: `calc(${pct}% - 6px)` }}
             />
@@ -145,7 +145,7 @@ function GanttStrip({
           return (
             <span
               key={a.label}
-              className="absolute text-[9px] text-[#afafaf] -translate-x-1/2 leading-none"
+              className="absolute text-[9px] text-[var(--dark-grey)] -translate-x-1/2 leading-none"
               style={{ left: `${pct}%` }}
             >
               {a.label}
@@ -187,12 +187,12 @@ function TimelineRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={`flex items-start gap-2 rounded-lg border p-3 bg-white transition-opacity ${
-        dragging ? "opacity-40 border-dashed border-[#155e63]" : "border-[#efefef]"
+        dragging ? "opacity-40 border-dashed border-[var(--teal)]" : "border-[var(--border)]"
       }`}
     >
       {/* Drag handle */}
       <span
-        className="mt-0.5 cursor-grab active:cursor-grabbing shrink-0 text-[#d0d0d0] hover:text-[#afafaf]"
+        className="mt-0.5 cursor-grab active:cursor-grabbing shrink-0 text-[var(--neutral-cool-350)] hover:text-[var(--dark-grey)]"
         aria-label="Drag to reorder"
       >
         <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true">
@@ -207,21 +207,21 @@ function TimelineRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-[#1a1a1a] truncate">{item.milestone}</span>
+          <span className="text-sm font-medium text-[var(--foreground)] truncate">{item.milestone}</span>
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_PILL[item.status]}`}>
             {STATUS_LABELS[item.status]}
           </span>
           {item.target_date && (
-            <span className="text-xs text-[#6b6b6b] shrink-0">{formatDate(item.target_date)}</span>
+            <span className="text-xs text-[var(--muted-foreground)] shrink-0">{formatDate(item.target_date)}</span>
           )}
         </div>
         {dep && (
-          <p className="text-[10px] text-[#afafaf] mt-0.5">
+          <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
             Depends on: {dep.milestone}
           </p>
         )}
         {item.notes && (
-          <p className="text-xs text-[#6b6b6b] mt-0.5 truncate">{item.notes}</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">{item.notes}</p>
         )}
       </div>
 
@@ -229,7 +229,7 @@ function TimelineRow({
         <button
           type="button"
           onClick={onEdit}
-          className="p-1.5 rounded text-[#afafaf] hover:text-[#155e63] hover:bg-[#e8f4f5] transition-colors"
+          className="p-1.5 rounded text-[var(--dark-grey)] hover:text-[var(--teal)] hover:bg-[var(--teal-tint-200)] transition-colors"
           aria-label={`Edit ${item.milestone}`}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -240,7 +240,7 @@ function TimelineRow({
         <button
           type="button"
           onClick={onRemove}
-          className="p-1.5 rounded text-[#afafaf] hover:text-red-500 hover:bg-red-50 transition-colors"
+          className="p-1.5 rounded text-[var(--dark-grey)] hover:text-red-500 hover:bg-red-50 transition-colors"
           aria-label={`Remove ${item.milestone}`}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -326,14 +326,14 @@ function RowDrawer({
 
       {/* Drawer panel */}
       <div className="relative ml-auto w-full max-w-md bg-white h-full shadow-xl overflow-y-auto flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#efefef]">
-          <h2 className="font-semibold text-[#1a1a1a]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+          <h2 className="font-semibold text-[var(--foreground)]">
             {mode.kind === "add" ? "Add milestone" : "Edit milestone"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#afafaf] hover:text-[#1a1a1a]"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)]"
             aria-label="Close"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -346,45 +346,45 @@ function RowDrawer({
         <form onSubmit={handleSubmit(onValid)} className="flex-1 px-6 py-5 space-y-5">
           {/* Milestone name */}
           <div>
-            <label htmlFor="rdf-milestone" className="block text-xs font-medium text-[#6b6b6b] mb-1">
+            <label htmlFor="rdf-milestone" className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
               Milestone *
             </label>
             <input
               id="rdf-milestone"
               type="text"
               placeholder="e.g. Permits submitted"
-              className="block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63]"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)]"
               {...register("milestone", { required: true })}
             />
             {errors.milestone && (
-              <p className="mt-1 text-xs text-[#b1454a]">Milestone is required.</p>
+              <p className="mt-1 text-xs text-[var(--error-light)]">Milestone is required.</p>
             )}
           </div>
 
           {/* Target date */}
           <div>
-            <label htmlFor="rdf-target-date" className="block text-xs font-medium text-[#6b6b6b] mb-1">
+            <label htmlFor="rdf-target-date" className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
               Target date *
             </label>
             <input
               id="rdf-target-date"
               type="date"
-              className="block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63]"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)]"
               {...register("target_date", { required: true })}
             />
             {errors.target_date && (
-              <p className="mt-1 text-xs text-[#b1454a]">Target date is required.</p>
+              <p className="mt-1 text-xs text-[var(--error-light)]">Target date is required.</p>
             )}
           </div>
 
           {/* Status */}
           <div>
-            <label htmlFor="rdf-status" className="block text-xs font-medium text-[#6b6b6b] mb-1">
+            <label htmlFor="rdf-status" className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
               Status
             </label>
             <select
               id="rdf-status"
-              className="block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63] appearance-none"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none"
               {...register("status")}
             >
               {STATUS_OPTIONS.map((s) => (
@@ -395,12 +395,12 @@ function RowDrawer({
 
           {/* Depends on */}
           <div>
-            <label htmlFor="rdf-depends-on" className="block text-xs font-medium text-[#6b6b6b] mb-1">
+            <label htmlFor="rdf-depends-on" className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
               Depends on
             </label>
             <select
               id="rdf-depends-on"
-              className="block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63] appearance-none"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none"
               {...register("depends_on")}
             >
               <option value="">None</option>
@@ -419,20 +419,20 @@ function RowDrawer({
 
           {/* Notes */}
           <div>
-            <label htmlFor="rdf-notes" className="block text-xs font-medium text-[#6b6b6b] mb-1">
+            <label htmlFor="rdf-notes" className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
               Notes
             </label>
             <textarea
               id="rdf-notes"
               rows={3}
               placeholder="Optional context or next steps"
-              className="block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63] resize-none"
+              className="block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] resize-none"
               {...register("notes")}
             />
           </div>
 
           {submitError && (
-            <p className="text-xs text-[#b1454a] rounded-lg bg-red-50 px-3 py-2" role="alert">
+            <p className="text-xs text-[var(--error-light)] rounded-lg bg-red-50 px-3 py-2" role="alert">
               {submitError}
             </p>
           )}
@@ -441,14 +441,14 @@ function RowDrawer({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 rounded-lg bg-[#155e63] text-white text-sm font-medium py-2.5 hover:bg-[#0f4a4e] disabled:opacity-50 transition-colors"
+              className="flex-1 rounded-lg bg-[var(--teal)] text-white text-sm font-medium py-2.5 hover:bg-[var(--teal-darker)] disabled:opacity-50 transition-colors"
             >
               {isSubmitting ? "Saving…" : mode.kind === "add" ? "Add milestone" : "Save changes"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 rounded-lg border border-[#efefef] text-sm text-[#6b6b6b] hover:bg-[#faf9f7] transition-colors"
+              className="px-4 rounded-lg border border-[var(--border)] text-sm text-[var(--muted-foreground)] hover:bg-[var(--background)] transition-colors"
             >
               Cancel
             </button>
@@ -475,20 +475,20 @@ function FooterSummary({ items }: { items: TimelineItem[] }) {
   const daysLeft = earliest ? daysUntil(earliest.target_date!) : null;
 
   return (
-    <div className="mt-4 pt-4 border-t border-[#efefef] flex flex-wrap items-center gap-3 text-xs text-[#6b6b6b]">
+    <div className="mt-4 pt-4 border-t border-[var(--border)] flex flex-wrap items-center gap-3 text-xs text-[var(--muted-foreground)]">
       {STATUS_OPTIONS.map((s) => (
         <span key={s} className="flex items-center gap-1">
           <span className={`inline-block w-2 h-2 rounded-full ${
-            s === "done" ? "bg-[#2d6a2d]" :
-            s === "in_progress" ? "bg-[#155e63]" :
-            s === "at_risk" ? "bg-[#b1454a]" :
-            "bg-[#afafaf]"
+            s === "done" ? "bg-[var(--success-medium)]" :
+            s === "in_progress" ? "bg-[var(--teal)]" :
+            s === "at_risk" ? "bg-[var(--error-light)]" :
+            "bg-[var(--dark-grey)]"
           }`} />
           {counts[s]} {STATUS_LABELS[s].toLowerCase()}
         </span>
       ))}
       {daysLeft !== null && (
-        <span className="ml-auto font-medium text-[#1a1a1a]">
+        <span className="ml-auto font-medium text-[var(--foreground)]">
           {daysLeft >= 0
             ? `${daysLeft}d until next pending milestone`
             : `${Math.abs(daysLeft)}d past next pending milestone`}
@@ -598,11 +598,11 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
 
   return (
     <>
-      <section className="bg-white rounded-2xl border border-[#efefef] p-6">
+      <section className="bg-white rounded-2xl border border-[var(--border)] p-6">
         <header className="flex items-center justify-between mb-2">
           <div>
-            <h2 className="font-semibold text-lg text-[#1a1a1a]">Launch Timeline</h2>
-            <p className="text-xs text-[#6b6b6b]">
+            <h2 className="font-semibold text-lg text-[var(--foreground)]">Launch Timeline</h2>
+            <p className="text-xs text-[var(--muted-foreground)]">
               Milestone sequence from T-90 through Day+30 opening.
             </p>
           </div>
@@ -610,7 +610,7 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
             type="button"
             onClick={() => setDrawer({ kind: "add" })}
             disabled={loading}
-            className="px-3 py-1.5 text-sm rounded-md bg-[#155e63] text-white hover:bg-[#0f4a4e] disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-darker)] disabled:opacity-50 transition-colors"
           >
             + Add milestone
           </button>
@@ -619,9 +619,9 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
         <GanttStrip items={sorted} launchDate={launchDate} />
 
         {loading ? (
-          <p className="text-sm text-[#6b6b6b] py-4">Loading…</p>
+          <p className="text-sm text-[var(--muted-foreground)] py-4">Loading…</p>
         ) : sorted.length === 0 ? (
-          <p className="text-sm text-[#6b6b6b] italic py-4">
+          <p className="text-sm text-[var(--muted-foreground)] italic py-4">
             No milestones yet — add your first to start sequencing.
           </p>
         ) : (
@@ -647,9 +647,9 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
         {(error || paywall) && (
           <div className="mt-3 text-xs">
             {paywall ? (
-              <a href="/pricing" className="text-[#155e63] underline">Upgrade to save</a>
+              <a href="/pricing" className="text-[var(--teal)] underline">Upgrade to save</a>
             ) : (
-              <span className="text-[#b1454a] flex items-center gap-2" role="alert">
+              <span className="text-[var(--error-light)] flex items-center gap-2" role="alert">
                 {error}
                 <button type="button" onClick={clearError} className="underline">Dismiss</button>
               </span>

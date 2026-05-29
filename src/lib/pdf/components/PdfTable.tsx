@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 2,
     borderTopColor: BRAND.colors.ink,
-    backgroundColor: "#F5F6F5",
+    backgroundColor: "var(--neutral-cool-f5)",
   },
   headerCell: {
     fontFamily: BRAND.fonts.sans,
@@ -62,9 +62,9 @@ const styles = StyleSheet.create({
 })
 
 function formatCents(value: number | string | null | undefined): string {
-  if (value == null || value === "") return "—"
+  if (value == null || value === "") return "-"
   const cents = typeof value === "string" ? parseFloat(value) : value
-  if (isNaN(cents)) return "—"
+  if (isNaN(cents)) return "-"
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -74,7 +74,7 @@ function formatCents(value: number | string | null | undefined): string {
 }
 
 function formatValue(col: ColumnDef, val: string | number | null | undefined): string {
-  if (val == null || val === "") return "—"
+  if (val == null || val === "") return "-"
   if (col.currency) return formatCents(val)
   if (col.numeric && typeof val === "number") {
     return val.toLocaleString("en-US")

@@ -12,17 +12,17 @@ const TICK_MS = 16;
 
 const MD_COMPONENTS: Components = {
   h1: ({ children }) => (
-    <h1 className="text-base font-bold text-[#1a1a1a] mt-3 mb-1 first:mt-0 leading-snug">
+    <h1 className="text-base font-bold text-[var(--foreground)] mt-3 mb-1 first:mt-0 leading-snug">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="text-sm font-bold text-[#1a1a1a] mt-2.5 mb-1 first:mt-0 leading-snug">
+    <h2 className="text-sm font-bold text-[var(--foreground)] mt-2.5 mb-1 first:mt-0 leading-snug">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="text-sm font-semibold text-[#1a1a1a] mt-2 mb-0.5 first:mt-0 leading-snug">
+    <h3 className="text-sm font-semibold text-[var(--foreground)] mt-2 mb-0.5 first:mt-0 leading-snug">
       {children}
     </h3>
   ),
@@ -30,11 +30,11 @@ const MD_COMPONENTS: Components = {
     <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
   ),
   strong: ({ children }) => (
-    <strong className="font-semibold text-[#1a1a1a]">{children}</strong>
+    <strong className="font-semibold text-[var(--foreground)]">{children}</strong>
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
   del: ({ children }) => (
-    <del className="line-through text-[#888]">{children}</del>
+    <del className="line-through text-[var(--neutral-cool-600)]">{children}</del>
   ),
   // Block code: multi-line or has a language class. Inline: single-line + no class.
   code: ({ children, className }) => {
@@ -42,13 +42,13 @@ const MD_COMPONENTS: Components = {
     const isBlock = !!className || text.includes("\n");
     if (isBlock) {
       return (
-        <code className="block bg-[#1a1a1a] text-[#e8e4df] rounded-lg p-3 text-xs font-mono whitespace-pre overflow-x-auto leading-relaxed">
+        <code className="block bg-[var(--foreground)] text-[var(--warm-600)] rounded-lg p-3 text-xs font-mono whitespace-pre overflow-x-auto leading-relaxed">
           {text}
         </code>
       );
     }
     return (
-      <code className="bg-[#f0ede8] text-[#b45309] rounded px-1 py-0.5 text-[0.85em] font-mono">
+      <code className="bg-[var(--warm-450)] text-[var(--warning-dark)] rounded px-1 py-0.5 text-[0.85em] font-mono">
         {children}
       </code>
     );
@@ -65,7 +65,7 @@ const MD_COMPONENTS: Components = {
   ),
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-[#155e63]/50 pl-3 text-[#555] italic mb-2 last:mb-0">
+    <blockquote className="border-l-2 border-[var(--teal)]/50 pl-3 text-[var(--gray-1150)] italic mb-2 last:mb-0">
       {children}
     </blockquote>
   ),
@@ -74,28 +74,28 @@ const MD_COMPONENTS: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#155e63] underline underline-offset-2 hover:text-[#0d4044] transition-colors"
+      className="text-[var(--teal)] underline underline-offset-2 hover:text-[var(--teal-900)] transition-colors"
     >
       {children}
     </a>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto mb-2 last:mb-0 rounded-lg border border-[#efefef]">
+    <div className="overflow-x-auto mb-2 last:mb-0 rounded-lg border border-[var(--border)]">
       <table className="text-xs border-collapse w-full">{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead>{children}</thead>,
   th: ({ children }) => (
-    <th className="border-b border-[#efefef] bg-[#f5f4f1] px-2.5 py-1.5 text-left font-semibold text-[#1a1a1a]">
+    <th className="border-b border-[var(--border)] bg-[var(--warm-350)] px-2.5 py-1.5 text-left font-semibold text-[var(--foreground)]">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border-b border-[#efefef] px-2.5 py-1.5 last:border-b-0">
+    <td className="border-b border-[var(--border)] px-2.5 py-1.5 last:border-b-0">
       {children}
     </td>
   ),
-  hr: () => <hr className="my-3 border-[#efefef]" />,
+  hr: () => <hr className="my-3 border-[var(--border)]" />,
 };
 
 interface MarkdownMessageProps {
@@ -155,7 +155,7 @@ export function MarkdownMessage({ content, streaming }: MarkdownMessageProps) {
       {showCursor && (
         <span
           aria-hidden
-          className="ml-0.5 inline-block w-0.5 h-[1em] align-text-bottom bg-[#155e63] animate-pulse"
+          className="ml-0.5 inline-block w-0.5 h-[1em] align-text-bottom bg-[var(--teal)] animate-pulse"
         />
       )}
     </div>

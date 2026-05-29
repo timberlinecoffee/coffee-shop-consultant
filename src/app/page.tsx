@@ -11,6 +11,8 @@ import {
   StaggerContainer,
   StaggerItem,
 } from "./_components/AnimatedElements";
+import ModuleCard from "./_components/ModuleCard";
+import PricingCard, { type PricingPlan } from "./_components/PricingCard";
 
 export const metadata: Metadata = {
   title: "Groundwork: From Coffee Shop Idea to Open Sign.",
@@ -189,7 +191,7 @@ const TESTIMONIALS = [
   },
 ];
 
-const PRICING = [
+const PRICING: PricingPlan[] = [
   {
     name: "Free",
     price: "$0",
@@ -335,7 +337,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Groundwork Suite — accordion of platform capabilities ──────────────── */}
-      <section id="how-it-works" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
+      <section id="how-it-works" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
             <p
@@ -488,7 +490,7 @@ export default function LandingPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <div
                     className="w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ background: "#76b39d" }}
+                    style={{ background: "var(--sage)" }}
                   >
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                       <polyline points="20 6 9 17 4 12"/>
@@ -556,6 +558,8 @@ export default function LandingPage() {
                 title="Financials"
                 description="Startup costs and 12-month projections, benchmarked live."
                 mockup={<FinancialsMockup />}
+                thumbnailSrc="https://images.pexels.com/photos/4350048/pexels-photo-4350048.jpeg?auto=compress&cs=tinysrgb&w=600&h=280&dpr=1"
+                thumbnailAlt="Coffee shop owner reviewing financial spreadsheets"
               />
             </StaggerItem>
             <StaggerItem className="h-full">
@@ -563,6 +567,8 @@ export default function LandingPage() {
                 title="Menu Pricing"
                 description="Cost-per-cup analysis with margin targets and industry benchmarks."
                 mockup={<MenuMockup />}
+                thumbnailSrc="https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=600&h=280&dpr=1"
+                thumbnailAlt="Barista preparing espresso drinks at a coffee bar"
               />
             </StaggerItem>
             <StaggerItem className="h-full">
@@ -570,6 +576,8 @@ export default function LandingPage() {
                 title="Launch Plan"
                 description="Milestone-based plan tied to your open date, with next actions always visible."
                 mockup={<LaunchMockup />}
+                thumbnailSrc="https://images.pexels.com/photos/4350093/pexels-photo-4350093.jpeg?auto=compress&cs=tinysrgb&w=600&h=280&dpr=1"
+                thumbnailAlt="Coffee shop team reviewing their launch plan together"
               />
             </StaggerItem>
           </StaggerContainer>
@@ -644,7 +652,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Testimonials ──────────────────────────────────────────────────────── */}
-      <section style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
+      <section style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
             <p
@@ -711,7 +719,7 @@ export default function LandingPage() {
       <section
         className="relative overflow-hidden"
         style={{
-          background: "linear-gradient(130deg, #0c3a3d 0%, #155e63 55%, #1a7880 100%)",
+          background: "linear-gradient(130deg, var(--teal-darkest) 0%, var(--teal) 55%, var(--teal-bright) 100%)",
           padding: "88px 24px",
         }}
       >
@@ -747,7 +755,7 @@ export default function LandingPage() {
               className="flex-shrink-0 inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm transition-all"
               style={{
                 background: "white",
-                color: "#155e63",
+                color: "var(--teal)",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
               }}
             >
@@ -758,7 +766,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ───────────────────────────────────────────────────────────── */}
-      <section id="pricing" style={{ background: "var(--neutral-50, #FAFAF8)", padding: "96px 24px" }}>
+      <section id="pricing" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-14">
             <p
@@ -892,7 +900,7 @@ function AIChatMockup() {
           className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: "rgba(21,94,99,0.1)" }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
         </div>
@@ -900,15 +908,15 @@ function AIChatMockup() {
           <p className="font-semibold" style={{ fontSize: "13px", color: "var(--teal)" }}>
             AI Coffee Consultant
           </p>
-          <p style={{ color: "#8F8F85", fontSize: "11px" }}>
+          <p style={{ color: "var(--neutral-500)", fontSize: "11px" }}>
             Specialty-specific guidance, benchmarked
           </p>
         </div>
-        <div className="ml-auto w-2 h-2 rounded-full" style={{ background: "#2A6B4A", flexShrink: 0 }} />
+        <div className="ml-auto w-2 h-2 rounded-full" style={{ background: "var(--success-text)", flexShrink: 0 }} />
       </div>
 
       {/* Messages */}
-      <div className="p-4 space-y-3" style={{ background: "#FAFAF8" }}>
+      <div className="p-4 space-y-3" style={{ background: "var(--neutral-50)" }}>
         {messages.map((msg, i) => (
           <div key={i}>
             {msg.role === "benchmark" ? (
@@ -921,13 +929,13 @@ function AIChatMockup() {
               >
                 <div
                   className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "#76b39d" }}
+                  style={{ background: "var(--sage)" }}
                 >
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: "11px", color: "#155e63", fontWeight: 500 }}>{msg.text}</p>
+                <p style={{ fontSize: "11px", color: "var(--teal)", fontWeight: 500 }}>{msg.text}</p>
               </div>
             ) : (
               <div
@@ -938,7 +946,7 @@ function AIChatMockup() {
                     className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mr-2 mt-0.5"
                     style={{ background: "rgba(21,94,99,0.1)" }}
                   >
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2.5">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
                   </div>
@@ -949,14 +957,14 @@ function AIChatMockup() {
                     background: msg.role === "user" ? "var(--teal)" : "white",
                     borderRadius:
                       msg.role === "user" ? "14px 14px 2px 14px" : "2px 14px 14px 14px",
-                    border: msg.role === "assistant" ? "1px solid #E5E5E0" : "none",
+                    border: msg.role === "assistant" ? "1px solid var(--border-subtle)" : "none",
                   }}
                 >
                   {msg.text && (
                     <p
                       style={{
                         fontSize: "12px",
-                        color: msg.role === "user" ? "rgba(255,255,255,0.92)" : "#2E2E28",
+                        color: msg.role === "user" ? "rgba(255,255,255,0.92)" : "var(--neutral-800)",
                         lineHeight: 1.5,
                       }}
                     >
@@ -970,7 +978,7 @@ function AIChatMockup() {
                           <span style={{ color: "var(--sage)", fontSize: "11px", flexShrink: 0 }}>
                             &#10003;
                           </span>
-                          <span style={{ fontSize: "12px", color: "#2E2E28", lineHeight: 1.4 }}>
+                          <span style={{ fontSize: "12px", color: "var(--neutral-800)", lineHeight: 1.4 }}>
                             {item}
                           </span>
                         </li>
@@ -985,21 +993,21 @@ function AIChatMockup() {
         {/* Typing indicator */}
         <div className="flex justify-start">
           <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mr-2" style={{ background: "rgba(21,94,99,0.1)" }}>
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#155e63" strokeWidth="2.5">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
           </div>
-          <div className="rounded-xl px-3 py-2.5 flex items-center gap-1" style={{ background: "white", border: "1px solid #E5E5E0", borderRadius: "2px 14px 14px 14px" }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B8B8B0" }} />
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B8B8B0" }} />
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B8B8B0" }} />
+          <div className="rounded-xl px-3 py-2.5 flex items-center gap-1" style={{ background: "white", border: "1px solid var(--border-subtle)", borderRadius: "2px 14px 14px 14px" }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--neutral-400)" }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--neutral-400)" }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--neutral-400)" }} />
           </div>
         </div>
       </div>
 
       {/* Input */}
       <div className="flex items-center gap-2 px-4 py-3 border-t border-neutral-200" style={{ background: "white" }}>
-        <div className="flex-1 rounded-lg px-3 py-2" style={{ background: "#F7F7F5", fontSize: "12px", color: "#B8B8B0" }}>
+        <div className="flex-1 rounded-lg px-3 py-2" style={{ background: "var(--neutral-100)", fontSize: "12px", color: "var(--neutral-400)" }}>
           Ask about your plan...
         </div>
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--teal)" }}>
@@ -1013,36 +1021,14 @@ function AIChatMockup() {
   );
 }
 
-/* ── ModuleCard ───────────────────────────────────────────────────────────── */
-
-function ModuleCard({ title, description, mockup }: { title: string; description: string; mockup: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-2xl overflow-hidden border border-neutral-200 bg-white hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
-      style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
-    >
-      <div className="flex items-center gap-1.5 px-3" style={{ height: "28px", background: "#F0F0EE", borderBottom: "1px solid #E5E5E0" }}>
-        <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
-        <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
-        <span className="w-2 h-2 rounded-full" style={{ background: "#E0E0DC" }} />
-      </div>
-      <div className="flex-1" style={{ minHeight: "200px" }}>{mockup}</div>
-      <div className="px-5 py-4 border-t border-neutral-100">
-        <p className="font-semibold mb-1" style={{ fontSize: "14px", color: "var(--teal)" }}>{title}</p>
-        <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>{description}</p>
-      </div>
-    </div>
-  );
-}
-
 /* ── FinancialsMockup ─────────────────────────────────────────────────────── */
 
 function FinancialsMockup() {
   return (
-    <div className="p-4" style={{ background: "#FAFAF8" }}>
+    <div className="p-4" style={{ background: "var(--neutral-50)" }}>
       <div className="flex items-center justify-between mb-3">
         <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>Financials</p>
-        <span style={{ color: "#76b39d", fontSize: "10px", fontWeight: 600 }}>67%</span>
+        <span style={{ color: "var(--sage)", fontSize: "10px", fontWeight: 600 }}>67%</span>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-3">
         {[
@@ -1051,24 +1037,24 @@ function FinancialsMockup() {
           { label: "Break-even", value: "Month 14" },
           { label: "Year 1 revenue", value: "$328k" },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg p-2.5 border" style={{ background: "white", borderColor: "#E5E5E0" }}>
-            <p style={{ color: "#8F8F85", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>{s.label}</p>
+          <div key={s.label} className="rounded-lg p-2.5 border" style={{ background: "white", borderColor: "var(--border-subtle)" }}>
+            <p style={{ color: "var(--neutral-500)", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>{s.label}</p>
             <p style={{ color: "var(--teal)", fontSize: "14px", fontWeight: 700, lineHeight: 1 }}>{s.value}</p>
           </div>
         ))}
       </div>
       {/* Benchmark */}
       <div className="rounded-lg px-3 py-2 mb-2 flex items-center gap-2" style={{ background: "rgba(118,179,157,0.1)", border: "1px solid rgba(118,179,157,0.2)" }}>
-        <div className="w-3 h-3 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#76b39d" }}>
+        <div className="w-3 h-3 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--sage)" }}>
           <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <p style={{ color: "#155e63", fontSize: "10px", fontWeight: 500 }}>Startup cost within healthy range</p>
+        <p style={{ color: "var(--teal)", fontSize: "10px", fontWeight: 500 }}>Startup cost within healthy range</p>
       </div>
-      <div className="rounded-lg p-3" style={{ background: "white", border: "1px solid #E5E5E0" }}>
-        <p style={{ color: "#8F8F85", fontSize: "9px", marginBottom: "6px" }}>12-month projection</p>
+      <div className="rounded-lg p-3" style={{ background: "white", border: "1px solid var(--border-subtle)" }}>
+        <p style={{ color: "var(--neutral-500)", fontSize: "9px", marginBottom: "6px" }}>12-month projection</p>
         <div className="flex items-end gap-1 h-8">
           {[20, 35, 45, 55, 60, 68, 75, 82, 88, 90, 95, 100].map((h, i) => (
-            <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i < 6 ? "#E5E5E0" : "#76b39d", opacity: i < 6 ? 0.6 : 1 }} />
+            <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i < 6 ? "var(--border-subtle)" : "var(--sage)", opacity: i < 6 ? 0.6 : 1 }} />
           ))}
         </div>
       </div>
@@ -1086,23 +1072,23 @@ function MenuMockup() {
     { name: "Matcha Latte", cost: "$1.45", price: "$6.50", margin: "78%" },
   ];
   return (
-    <div className="p-4" style={{ background: "#FAFAF8" }}>
+    <div className="p-4" style={{ background: "var(--neutral-50)" }}>
       <div className="flex items-center justify-between mb-3">
         <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>Menu Pricing</p>
         <span className="rounded px-2 py-0.5" style={{ background: "rgba(118,179,157,0.12)", color: "var(--sage)", fontSize: "10px", fontWeight: 600 }}>4 items</span>
       </div>
-      <div className="rounded-lg overflow-hidden border" style={{ borderColor: "#E5E5E0" }}>
-        <div className="grid grid-cols-4 px-3 py-1.5" style={{ background: "#F0F0EE" }}>
+      <div className="rounded-lg overflow-hidden border" style={{ borderColor: "var(--border-subtle)" }}>
+        <div className="grid grid-cols-4 px-3 py-1.5" style={{ background: "var(--warm-surface)" }}>
           {["Item", "Cost", "Price", "Margin"].map((h) => (
-            <p key={h} style={{ fontSize: "9px", color: "#8F8F85", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</p>
+            <p key={h} style={{ fontSize: "9px", color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</p>
           ))}
         </div>
         {items.map((item, i) => (
-          <div key={item.name} className="grid grid-cols-4 px-3 py-2" style={{ background: "white", borderTop: i > 0 ? "1px solid #F0F0EE" : "none" }}>
+          <div key={item.name} className="grid grid-cols-4 px-3 py-2" style={{ background: "white", borderTop: i > 0 ? "1px solid var(--warm-surface)" : "none" }}>
             <p style={{ fontSize: "11px", color: "var(--teal)", fontWeight: 500 }}>{item.name}</p>
-            <p style={{ fontSize: "11px", color: "#8F8F85" }}>{item.cost}</p>
-            <p style={{ fontSize: "11px", color: "#4A4A42" }}>{item.price}</p>
-            <p style={{ fontSize: "11px", color: "#76b39d", fontWeight: 600 }}>{item.margin}</p>
+            <p style={{ fontSize: "11px", color: "var(--neutral-500)" }}>{item.cost}</p>
+            <p style={{ fontSize: "11px", color: "var(--neutral-700)" }}>{item.price}</p>
+            <p style={{ fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>{item.margin}</p>
           </div>
         ))}
       </div>
@@ -1122,10 +1108,10 @@ function LaunchMockup() {
     { label: "Grand opening", done: false, date: "Jun 15" },
   ];
   return (
-    <div className="p-4" style={{ background: "#FAFAF8" }}>
+    <div className="p-4" style={{ background: "var(--neutral-50)" }}>
       <div className="flex items-center justify-between mb-3">
         <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>Launch Plan</p>
-        <span style={{ color: "#76b39d", fontSize: "10px", fontWeight: 600 }}>3 of 6 done</span>
+        <span style={{ color: "var(--sage)", fontSize: "10px", fontWeight: 600 }}>3 of 6 done</span>
       </div>
       <div className="space-y-1.5">
         {milestones.map((m) => (
@@ -1134,19 +1120,19 @@ function LaunchMockup() {
             className="flex items-center gap-2.5 rounded-lg px-3 py-2"
             style={{
               background: m.next ? "rgba(118,179,157,0.08)" : "white",
-              border: m.next ? "1px solid rgba(118,179,157,0.25)" : "1px solid #F0F0EE",
+              border: m.next ? "1px solid rgba(118,179,157,0.25)" : "1px solid var(--warm-surface)",
             }}
           >
-            <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: m.done ? "#76b39d" : "#E5E5E0" }}>
+            <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: m.done ? "var(--sage)" : "var(--border-subtle)" }}>
               {m.done && (
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
               )}
             </div>
-            <p style={{ fontSize: "11px", color: m.done ? "#8F8F85" : m.next ? "var(--teal)" : "#4A4A42", textDecoration: m.done ? "line-through" : "none", flex: 1, fontWeight: m.next ? 600 : 400 }}>
+            <p style={{ fontSize: "11px", color: m.done ? "var(--neutral-500)" : m.next ? "var(--teal)" : "var(--neutral-700)", textDecoration: m.done ? "line-through" : "none", flex: 1, fontWeight: m.next ? 600 : 400 }}>
               {m.label}
               {m.next && <span style={{ color: "var(--sage)", fontSize: "10px", fontWeight: 500, marginLeft: "4px" }}>← next</span>}
             </p>
-            <p style={{ fontSize: "10px", color: "#B8B8B0", flexShrink: 0 }}>{m.date}</p>
+            <p style={{ fontSize: "10px", color: "var(--neutral-400)", flexShrink: 0 }}>{m.date}</p>
           </div>
         ))}
       </div>
@@ -1154,66 +1140,3 @@ function LaunchMockup() {
   );
 }
 
-/* ── PricingCard ──────────────────────────────────────────────────────────── */
-
-type PlanData = {
-  name: string; price: string; period: string; note: string;
-  features: string[]; cta: string; href: string; recommended: boolean; accent: boolean;
-};
-
-function PricingCard({ plan }: { plan: PlanData }) {
-  return (
-    <div
-      className="flex flex-col rounded-2xl p-6 border transition-all duration-200 hover:-translate-y-1 h-full"
-      style={{
-        background: plan.accent ? "var(--teal)" : "white",
-        borderColor: plan.accent ? "var(--teal)" : "#E5E5E0",
-        boxShadow: plan.recommended
-          ? "0 12px 40px rgba(21,94,99,0.22), 0 2px 8px rgba(21,94,99,0.12)"
-          : "0 1px 4px rgba(0,0,0,0.04)",
-      }}
-    >
-      {plan.recommended && (
-        <p className="font-semibold uppercase mb-4" style={{ fontSize: "10px", letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)" }}>
-          Most Popular
-        </p>
-      )}
-      <p className="font-semibold mb-3" style={{ fontSize: "18px", color: plan.accent ? "white" : "var(--teal)", fontWeight: 600 }}>
-        {plan.name}
-      </p>
-      <div className="flex items-baseline gap-1 mb-1">
-        <span style={{ fontSize: "38px", fontWeight: 700, lineHeight: 1, color: plan.accent ? "white" : "var(--teal)", letterSpacing: "-0.02em" }}>
-          {plan.price}
-        </span>
-        {plan.period && (
-          <span style={{ fontSize: "14px", color: plan.accent ? "rgba(255,255,255,0.7)" : "#8F8F85" }}>
-            {plan.period}
-          </span>
-        )}
-      </div>
-      <p className="mb-6" style={{ fontSize: "12px", color: plan.accent ? "rgba(255,255,255,0.6)" : "#8F8F85", fontWeight: 300 }}>
-        {plan.note}
-      </p>
-      <ul className="space-y-2.5 mb-8 flex-1">
-        {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5">
-            <span style={{ color: plan.accent ? "rgba(255,255,255,0.8)" : "var(--sage)", fontSize: "14px", flexShrink: 0, marginTop: "1px" }}>&#10003;</span>
-            <span style={{ fontSize: "13px", color: plan.accent ? "rgba(255,255,255,0.85)" : "#4A4A42", lineHeight: 1.5 }}>{f}</span>
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={plan.href}
-        className="w-full text-center py-3 px-5 rounded-lg font-semibold text-sm transition-all hover:-translate-y-0.5"
-        style={{
-          background: plan.accent ? "white" : "var(--teal)",
-          color: plan.accent ? "var(--teal)" : "white",
-          boxShadow: plan.accent ? "0 4px 16px rgba(0,0,0,0.15)" : "0 2px 8px rgba(21,94,99,0.2)",
-          display: "block",
-        }}
-      >
-        {plan.cta}
-      </Link>
-    </div>
-  );
-}

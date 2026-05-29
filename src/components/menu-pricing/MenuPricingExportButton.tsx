@@ -50,7 +50,7 @@ export function MenuPricingExportButton() {
       <button
         onClick={exportPdf}
         disabled={exporting}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#155e63] text-[#155e63] text-xs font-medium hover:bg-[#155e63] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-xs font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Export menu as PDF"
       >
         <svg
@@ -76,7 +76,7 @@ export function MenuPricingExportButton() {
           role="status"
           aria-live="polite"
           className={`fixed bottom-6 right-6 z-50 px-4 py-2 rounded-lg text-sm font-medium shadow-lg text-white ${
-            toast.type === "success" ? "bg-[#155e63]" : "bg-red-600"
+            toast.type === "success" ? "bg-[var(--teal)]" : "bg-red-600"
           }`}
         >
           {toast.msg}

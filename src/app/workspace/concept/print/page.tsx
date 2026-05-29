@@ -111,10 +111,10 @@ export default async function ConceptPrintPage() {
       />
 
       {/* Action bar — hidden when printing */}
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-[#efefef] px-6 py-3.5 flex items-center justify-between">
+      <div className="no-print sticky top-0 z-10 bg-white border-b border-[var(--border)] px-6 py-3.5 flex items-center justify-between">
         <Link
           href="/workspace/concept"
-          className="text-sm text-[#155e63] font-medium hover:underline flex items-center gap-1.5"
+          className="text-sm text-[var(--teal)] font-medium hover:underline flex items-center gap-1.5"
         >
           <span aria-hidden="true">←</span> Back to editing
         </Link>
@@ -127,25 +127,25 @@ export default async function ConceptPrintPage() {
         {/* ── Cover header ─────────────────────────────── */}
         <header className="mb-12">
           {/* Teal rule */}
-          <div className="h-[3px] bg-[#155e63] mb-8 rounded-full" />
+          <div className="h-[3px] bg-[var(--teal)] mb-8 rounded-full" />
 
           {/* Document type label */}
           <p
-            className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#155e63] mb-3"
+            className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--teal)] mb-3"
           >
             Concept Brief
           </p>
 
           {/* Shop name */}
           <h1
-            className="font-bold text-[#1a1a1a] leading-tight mb-4"
+            className="font-bold text-[var(--foreground)] leading-tight mb-4"
             style={{ fontSize: "38px", letterSpacing: "-0.01em" }}
           >
             {shopName}
           </h1>
 
           {/* Meta row */}
-          <p className="text-xs text-[#afafaf] tracking-wide">
+          <p className="text-xs text-[var(--dark-grey)] tracking-wide">
             {printDate}
             {sectionCount > 0 && (
               <>
@@ -158,18 +158,18 @@ export default async function ConceptPrintPage() {
           </p>
 
           {/* Divider below header */}
-          <div className="mt-8 border-t border-[#efefef]" />
+          <div className="mt-8 border-t border-[var(--border)]" />
         </header>
 
         {/* ── Body sections ────────────────────────────── */}
         {bodySections.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#d4d4d4] px-6 py-10 text-center">
-            <p className="text-sm text-[#afafaf] mb-3">
+          <div className="rounded-2xl border border-dashed border-[var(--gray-700)] px-6 py-10 text-center">
+            <p className="text-sm text-[var(--dark-grey)] mb-3">
               No sections are filled in yet.
             </p>
             <Link
               href="/workspace/concept"
-              className="text-sm font-medium text-[#155e63] hover:underline"
+              className="text-sm font-medium text-[var(--teal)] hover:underline"
             >
               Go back to add content
             </Link>
@@ -194,15 +194,15 @@ export default async function ConceptPrintPage() {
                 return (
                   <div
                     key={meta.id}
-                    className="section-card rounded-2xl bg-[#f4f9f8] border border-[#d5eae8] px-7 py-6"
+                    className="section-card rounded-2xl bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] px-7 py-6"
                   >
                     <p
-                      className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-3"
+                      className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3"
                     >
                       {meta.label}
                     </p>
                     <p
-                      className="text-[#1a1a1a] font-medium leading-[1.8]"
+                      className="text-[var(--foreground)] font-medium leading-[1.8]"
                       style={{ fontSize: "16px" }}
                     >
                       {comp.content.trim()}
@@ -214,19 +214,19 @@ export default async function ConceptPrintPage() {
               return (
                 <div
                   key={meta.id}
-                  className="section-card bg-white border border-[#efefef] rounded-2xl overflow-hidden flex"
+                  className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex"
                 >
                   {/* Left teal accent bar */}
-                  <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                  <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
 
                   <div className="px-6 py-5 flex-1 min-w-0">
                     <p
-                      className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-2.5"
+                      className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5"
                     >
                       {meta.label}
                     </p>
                     <p
-                      className="text-[#1a1a1a] leading-[1.75]"
+                      className="text-[var(--foreground)] leading-[1.75]"
                       style={{ fontSize: "14.5px" }}
                     >
                       {comp.content.trim()}
@@ -240,10 +240,10 @@ export default async function ConceptPrintPage() {
 
         {/* ── Suppliers locked in ──────────────────────── */}
         {supplierDecisions.length > 0 && (
-          <div className="section-card mt-5 bg-white border border-[#efefef] rounded-2xl overflow-hidden flex">
-            <div className="w-1 bg-[#155e63] flex-shrink-0" />
+          <div className="section-card mt-5 bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
+            <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
             <div className="px-6 py-5 flex-1 min-w-0">
-              <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-3">
+              <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3">
                 Suppliers Locked In
               </p>
               <ul className="space-y-2.5">
@@ -251,10 +251,10 @@ export default async function ConceptPrintPage() {
                   const decision = decisionsByCategory.get(key);
                   if (!decision) return null;
                   return (
-                    <li key={key} className="text-[#1a1a1a]" style={{ fontSize: "14.5px", lineHeight: 1.6 }}>
+                    <li key={key} className="text-[var(--foreground)]" style={{ fontSize: "14.5px", lineHeight: 1.6 }}>
                       <span className="font-semibold">{VENDOR_CATEGORY_LABELS[key]}:</span>{" "}
                       {decision.vendor_name}
-                      <span className="text-[#afafaf] text-xs">
+                      <span className="text-[var(--dark-grey)] text-xs">
                         {" "}
                         · {new Date(decision.decided_on).toLocaleDateString("en-US", {
                           month: "short",
@@ -263,7 +263,7 @@ export default async function ConceptPrintPage() {
                         })}
                       </span>
                       {decision.reason && (
-                        <p className="text-xs text-[#6b6b6b] mt-0.5 leading-relaxed">
+                        <p className="text-xs text-[var(--muted-foreground)] mt-0.5 leading-relaxed">
                           {decision.reason}
                         </p>
                       )}
@@ -276,11 +276,11 @@ export default async function ConceptPrintPage() {
         )}
 
         {/* ── Footer ───────────────────────────────────── */}
-        <footer className="mt-16 pt-6 border-t border-[#efefef] flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">
+        <footer className="mt-16 pt-6 border-t border-[var(--border)] flex items-center justify-between">
+          <span className="text-xs text-[var(--dark-grey)]">
             {shopName} &middot; Concept Brief &middot; {year}
           </span>
-          <span className="text-xs text-[#afafaf]">Timberline Coffee School</span>
+          <span className="text-xs text-[var(--dark-grey)]">Timberline Coffee School</span>
         </footer>
       </div>
     </div>
@@ -310,20 +310,20 @@ function PersonasPrintBlock({
       .join(". ");
 
     return (
-      <div className="section-card bg-white border border-[#efefef] rounded-2xl overflow-hidden flex">
-        <div className="w-1 bg-[#155e63] flex-shrink-0" />
+      <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
+        <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
         <div className="px-6 py-5 flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-2.5">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
             {label}
           </p>
-          <p className="text-sm font-semibold text-[#1a1a1a] mb-1">{p.name}</p>
+          <p className="text-sm font-semibold text-[var(--foreground)] mb-1">{p.name}</p>
           {body && (
-            <p className="text-[#1a1a1a] leading-[1.75]" style={{ fontSize: "14.5px" }}>
+            <p className="text-[var(--foreground)] leading-[1.75]" style={{ fontSize: "14.5px" }}>
               {body}
             </p>
           )}
           {p.values && p.values.length > 0 && (
-            <p className="mt-1.5 text-xs text-[#6b6b6b]">
+            <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
               Values: {p.values.map((v) => PERSONA_VALUE_LABELS[v]).join(", ")}
             </p>
           )}
@@ -334,11 +334,11 @@ function PersonasPrintBlock({
 
   // Multiple personas — block layout
   return (
-    <div className="section-card bg-white border border-[#efefef] rounded-2xl overflow-hidden">
+    <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden">
       <div className="flex">
-        <div className="w-1 bg-[#155e63] flex-shrink-0" />
+        <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
         <div className="px-6 pt-5 pb-1 flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-4">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-4">
             {label}
           </p>
           <div className="space-y-4 pb-5">
@@ -348,22 +348,22 @@ function PersonasPrintBlock({
                 p.spendPerVisit ? PERSONA_SPEND_LABELS[p.spendPerVisit] + " per visit" : null,
               ].filter(Boolean);
               return (
-                <div key={p.id} className="border-t border-[#efefef] pt-4 first:border-t-0 first:pt-0">
+                <div key={p.id} className="border-t border-[var(--border)] pt-4 first:border-t-0 first:pt-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-semibold text-[#1a1a1a]">{p.name}</p>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">{p.name}</p>
                     {p.isPrimary && (
-                      <span className="text-[9px] font-semibold uppercase tracking-wide text-[#155e63] border border-[#cfe0e1] rounded-full px-1.5 py-0.5 leading-none">
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-1.5 py-0.5 leading-none">
                         Primary
                       </span>
                     )}
                   </div>
                   {p.whyTheyVisit.trim() && (
-                    <p className="text-sm text-[#1a1a1a] leading-relaxed mb-1">
+                    <p className="text-sm text-[var(--foreground)] leading-relaxed mb-1">
                       {p.whyTheyVisit.trim()}
                     </p>
                   )}
                   {(habitParts.length > 0 || (p.values && p.values.length > 0)) && (
-                    <p className="text-xs text-[#6b6b6b]">
+                    <p className="text-xs text-[var(--muted-foreground)]">
                       {[
                         habitParts.length > 0 ? habitParts.join(", ") : null,
                         p.values && p.values.length > 0

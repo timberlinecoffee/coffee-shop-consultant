@@ -90,13 +90,13 @@ export function PaywallModal({
 
       {/* Card */}
       <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8 text-center">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[#155e63]/10 flex items-center justify-center">
+        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--teal)]/10 flex items-center justify-center">
           <svg
             width="22"
             height="22"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#155e63"
+            stroke="var(--teal)"
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -109,25 +109,25 @@ export function PaywallModal({
 
         <h2
           id="paywall-modal-title"
-          className="text-lg font-bold text-[#1a1a1a] mb-2"
+          className="text-lg font-bold text-[var(--foreground)] mb-2"
         >
           {content.title}
         </h2>
-        <p className="text-sm text-[#6b6b6b] leading-relaxed mb-6">
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed mb-6">
           {content.body}
         </p>
 
         <div className="flex flex-col gap-3">
           <Link
             href={content.href}
-            className="block bg-[#155e63] text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+            className="block bg-[var(--teal)] text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
           >
             {content.cta}
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors py-1"
+            className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors py-1"
           >
             {content.dismiss}
           </button>

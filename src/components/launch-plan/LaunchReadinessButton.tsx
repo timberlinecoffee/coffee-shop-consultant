@@ -110,11 +110,11 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
   }, [planId, state]);
 
   return (
-    <div className="bg-white rounded-xl border border-[#efefef] p-6">
+    <div className="bg-white rounded-xl border border-[var(--border)] p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-semibold text-sm text-[#1a1a1a] mb-1">Launch Readiness Check</h3>
-          <p className="text-xs text-[#6b6b6b]">
+          <h3 className="font-semibold text-sm text-[var(--foreground)] mb-1">Launch Readiness Check</h3>
+          <p className="text-xs text-[var(--muted-foreground)]">
             AI grades all 6 workspaces against a launch rubric and surfaces critical blockers.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
           type="button"
           onClick={() => void runCheck()}
           disabled={state === "thinking"}
-          className="flex-shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 disabled:opacity-50 px-4 py-2 rounded-lg transition-colors"
+          className="flex-shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-white bg-[var(--teal)] hover:bg-[var(--teal)]/90 disabled:opacity-50 px-4 py-2 rounded-lg transition-colors"
         >
           {state === "thinking" ? (
             <>
@@ -139,8 +139,8 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
       </div>
 
       {state === "thinking" && (
-        <div className="mt-4 flex items-center gap-2 text-xs text-[#155e63] font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] animate-pulse" />
+        <div className="mt-4 flex items-center gap-2 text-xs text-[var(--teal)] font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] animate-pulse" />
           Thinking across all 6 workspaces…
         </div>
       )}
@@ -175,7 +175,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
           <p className={`text-sm font-semibold ${overall.text}`}>
             Overall: {overall.label}
           </p>
-          <p className="text-xs text-[#555] mt-0.5">
+          <p className="text-xs text-[var(--gray-1150)] mt-0.5">
             {result.overall === "green"
               ? "All workspaces are on track."
               : result.overall === "yellow"
@@ -187,17 +187,17 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
 
       {/* Per-workspace breakdown */}
       <div>
-        <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
+        <p className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wide mb-2">
           Workspace Breakdown
         </p>
-        <div className="divide-y divide-[#efefef] rounded-lg border border-[#efefef] overflow-hidden">
+        <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] overflow-hidden">
           {result.perWorkspace.map((ws) => {
             const colors = STATUS_COLORS[ws.status];
             return (
               <div key={ws.key} className="px-4 py-3 bg-white">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
-                  <span className="text-xs font-semibold text-[#1a1a1a]">
+                  <span className="text-xs font-semibold text-[var(--foreground)]">
                     {WORKSPACE_LABELS[ws.key] ?? ws.key}
                   </span>
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${colors.bg} ${colors.text} ml-auto`}>
@@ -207,7 +207,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
                 {ws.blockers.length > 0 && (
                   <ul className="ml-4 mt-1 space-y-0.5">
                     {ws.blockers.map((b, i) => (
-                      <li key={i} className="text-[11px] text-[#555]">
+                      <li key={i} className="text-[11px] text-[var(--gray-1150)]">
                         ⚠ {b}
                       </li>
                     ))}
@@ -216,7 +216,7 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
                 {ws.topNextActions.length > 0 && (
                   <ul className="ml-4 mt-1 space-y-0.5">
                     {ws.topNextActions.map((a, i) => (
-                      <li key={i} className="text-[11px] text-[#155e63]">
+                      <li key={i} className="text-[11px] text-[var(--teal)]">
                         → {a}
                       </li>
                     ))}
@@ -231,18 +231,18 @@ function ReadinessResultView({ result }: { result: ReadinessResult }) {
       {/* Critical path */}
       {result.criticalPath.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
+          <p className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wide mb-2">
             Critical Path
           </p>
           <ol className="space-y-2">
             {result.criticalPath.map((item, i) => (
               <li key={i} className="flex gap-3 text-xs">
-                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#155e63] text-white flex items-center justify-center text-[10px] font-bold">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-[10px] font-bold">
                   {i + 1}
                 </span>
                 <div>
-                  <p className="text-[#1a1a1a] font-medium">{item.action}</p>
-                  <p className="text-[#888] mt-0.5">
+                  <p className="text-[var(--foreground)] font-medium">{item.action}</p>
+                  <p className="text-[var(--neutral-cool-600)] mt-0.5">
                     {item.owner}
                     {item.dueBy ? ` · by ${item.dueBy}` : ""}
                   </p>

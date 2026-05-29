@@ -50,16 +50,16 @@ function StatRow({ label, values, bold, negative, indent, highlight, pctValues, 
   // TIM-1309: the frozen first column must be fully opaque with a z-index above
   // the scrolled value cells (some of which are positioned), so month numbers
   // pass cleanly underneath instead of bleeding through.
-  const stickyBg = memo ? "bg-white" : highlight ? "bg-[#f7fafa]" : "bg-white";
+  const stickyBg = memo ? "bg-white" : highlight ? "bg-[var(--teal-tint-50)]" : "bg-white";
   return (
-    <tr className={highlight ? "bg-[#f7fafa]" : ""}>
-      <td className={`py-2.5 pr-4 text-sm sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""}`}>
+    <tr className={highlight ? "bg-[var(--teal-tint-50)]" : ""}>
+      <td className={`py-2.5 pr-4 text-sm sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""}`}>
         {label}
       </td>
       {values.map((v, i) => (
         <td
           key={i}
-          className={`py-2.5 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[#8a8a8a]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
+          className={`py-2.5 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
         >
           {/* TIM-1309: stack the % beneath the absolute value, both right-aligned,
               so the totals line up in a consistent column instead of being shoved
@@ -67,7 +67,7 @@ function StatRow({ label, values, bold, negative, indent, highlight, pctValues, 
           <span className="flex flex-col items-end leading-tight">
             <span>{v !== undefined ? fmt(v, currencyCode) : "—"}</span>
             {pctValues?.[i] && (
-              <span className="text-[10px] font-normal text-[#afafaf]">{pctValues[i]}</span>
+              <span className="text-[10px] font-normal text-[var(--dark-grey)]">{pctValues[i]}</span>
             )}
           </span>
         </td>
@@ -80,7 +80,7 @@ function DividerRow({ cols }: { cols: number }) {
   return (
     <tr>
       <td colSpan={cols + 1} className="py-0">
-        <div className="h-px bg-[#efefef]" />
+        <div className="h-px bg-[var(--border)]" />
       </td>
     </tr>
   );
@@ -183,9 +183,9 @@ function EditableLineRow({
   };
 
   return (
-    <tr className={`group/row ${manual ? "bg-[#fbf7ef]" : ""}`}>
+    <tr className={`group/row ${manual ? "bg-[var(--warning-bg-7)]" : ""}`}>
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${manual ? "bg-[#fbf7ef]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
+        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${manual ? "bg-[var(--warning-bg-7)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
       >
         <span className="inline-flex items-center gap-1.5">
           <span>{label}</span>
@@ -196,7 +196,7 @@ function EditableLineRow({
                 onClick={() => onToggleManual(lineId, false)}
                 title="Entering all months by hand — click to switch back to assumptions"
                 aria-label="Switch back to assumption-driven entry"
-                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[#9a6b00] bg-[#f3e6c4] hover:bg-[#ecdaa8] rounded px-1.5 py-0.5 transition-colors"
+                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--warning-text-5)] bg-[var(--warning-amber-bg-7)] hover:bg-[var(--warning-amber-bg-4)] rounded px-1.5 py-0.5 transition-colors"
               >
                 Manual
                 <RotateCcw size={9} className="opacity-60" />
@@ -207,7 +207,7 @@ function EditableLineRow({
                 onClick={() => onToggleManual(lineId, true)}
                 title="Enter every month by hand (seeds from current values)"
                 aria-label="Enter all months manually"
-                className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 text-[#c4c4c4] hover:text-[#155e63] transition-opacity"
+                className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 text-[var(--gray-900)] hover:text-[var(--teal)] transition-opacity"
               >
                 <Pencil size={11} />
               </button>
@@ -220,12 +220,12 @@ function EditableLineRow({
             <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMenu(null)} />
             <div
               role="menu"
-              className="fixed z-50 w-56 rounded-xl border border-[#e0e0e0] bg-white shadow-lg p-1.5 font-normal normal-case tracking-normal"
+              className="fixed z-50 w-56 rounded-xl border border-[var(--border-medium)] bg-white shadow-lg p-1.5 font-normal normal-case tracking-normal"
               style={{ left: menu.left, top: menu.top }}
             >
-              <p className="px-2 py-1 text-[11px] text-[#6b6b6b]">
+              <p className="px-2 py-1 text-[11px] text-[var(--muted-foreground)]">
                 Apply{" "}
-                <span className="font-semibold text-[#155e63]">{fmt(menu.cents, currencyCode)}</span>{" "}
+                <span className="font-semibold text-[var(--teal)]">{fmt(menu.cents, currencyCode)}</span>{" "}
                 forward:
               </p>
               {APPLY_FORWARD_RANGES.map(({ range, label: rangeLabel }) => (
@@ -237,7 +237,7 @@ function EditableLineRow({
                     onApplyForward(lineId, menu.monthIndexAbs, menu.cents, range);
                     setMenu(null);
                   }}
-                  className="w-full text-left text-xs px-2 py-1.5 rounded-lg text-[#1a1a1a] hover:bg-[#f3faf9] transition-colors"
+                  className="w-full text-left text-xs px-2 py-1.5 rounded-lg text-[var(--foreground)] hover:bg-[var(--teal-bg-200)] transition-colors"
                 >
                   {rangeLabel}
                 </button>
@@ -263,7 +263,7 @@ function EditableLineRow({
                   if (e.key === "Enter") commit(i);
                   else if (e.key === "Escape") setEditingCol(null);
                 }}
-                className="w-24 text-right text-sm border border-[#155e63] rounded px-1.5 py-1 focus:outline-none"
+                className="w-24 text-right text-sm border border-[var(--teal)] rounded px-1.5 py-1 focus:outline-none"
               />
             </td>
           );
@@ -277,14 +277,14 @@ function EditableLineRow({
               cellRefs.current[i] = el;
             }}
             className={`py-2 px-3 text-right text-sm whitespace-nowrap relative ${
-              overridden ? "bg-[#eef6f6]" : ""
-            } ${canEditCell ? "cursor-pointer hover:bg-[#f3faf9] group" : ""}`}
+              overridden ? "bg-[var(--teal-bg-300)]" : ""
+            } ${canEditCell ? "cursor-pointer hover:bg-[var(--teal-bg-200)] group" : ""}`}
             onClick={() => canEditCell && startEdit(i, cell.amount)}
             title={canEditCell ? (overridden ? "Manual override — click to edit" : "Click to override this month") : undefined}
           >
             <span className="inline-flex items-center justify-end gap-1">
               {overridden && (
-                <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] inline-block" aria-label="overridden" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] inline-block" aria-label="overridden" />
               )}
               {cell.amount !== undefined ? fmt(cell.amount, currencyCode) : "—"}
               {canApplyForward && (
@@ -303,7 +303,7 @@ function EditableLineRow({
                   }}
                   title="Apply this value to later months"
                   aria-label="Apply this value to later months"
-                  className="opacity-0 group-hover:opacity-100 text-[#8a8a8a] hover:text-[#155e63] inline-flex items-center"
+                  className="opacity-0 group-hover:opacity-100 text-[var(--neutral-cool-500)] hover:text-[var(--teal)] inline-flex items-center"
                 >
                   <ChevronsRight size={12} />
                 </button>
@@ -317,7 +317,7 @@ function EditableLineRow({
                   }}
                   title="Revert to calculated"
                   aria-label="Revert to calculated"
-                  className="opacity-0 group-hover:opacity-100 text-[#8a8a8a] hover:text-[#155e63] inline-flex items-center"
+                  className="opacity-0 group-hover:opacity-100 text-[var(--neutral-cool-500)] hover:text-[var(--teal)] inline-flex items-center"
                 >
                   <RotateCcw size={11} />
                 </button>
@@ -523,7 +523,7 @@ export function PLTab({
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <ViewModeToggle mode={view} onChange={setView} />
-        <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
+        <div className="flex rounded-lg border border-[var(--border-medium)] overflow-hidden text-sm">
           {(["monthly", "quarterly", "annual"] as Period[]).map((p) => (
             <button
               key={p}
@@ -531,19 +531,19 @@ export function PLTab({
                 setPeriod(p);
                 if (p === "annual") setYear(1);
               }}
-              className={`px-3 py-1.5 capitalize ${period === p ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:bg-[#f5f5f5]"}`}
+              className={`px-3 py-1.5 capitalize ${period === p ? "bg-[var(--teal)] text-white" : "bg-white text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)]"}`}
             >
               {p}
             </button>
           ))}
         </div>
         {period !== "annual" && (
-          <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
+          <div className="flex rounded-lg border border-[var(--border-medium)] overflow-hidden text-sm">
             {([1, 2, 3, 4, 5] as const).map((y) => (
               <button
                 key={y}
                 onClick={() => setYear(y)}
-                className={`px-3 py-1.5 ${year === y ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:bg-[#f5f5f5]"}`}
+                className={`px-3 py-1.5 ${year === y ? "bg-[var(--teal)] text-white" : "bg-white text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)]"}`}
               >
                 Year {y}
               </button>
@@ -597,15 +597,15 @@ export function PLTab({
           </ChartCard>
         </div>
       ) : (
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-[#efefef]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide sticky left-0 z-20 bg-white w-48">
+            <tr className="border-b border-[var(--border)]">
+              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-48">
                 Line Item
               </th>
               {columns.map((c) => (
-                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide whitespace-nowrap">
+                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
                   {c.label}
                 </th>
               ))}
@@ -616,7 +616,7 @@ export function PLTab({
               <td colSpan={colCount + 1} className="px-4 py-1.5">
                 <button
                   onClick={() => setShowRevenue(!showRevenue)}
-                  className="text-xs font-semibold text-[#155e63] uppercase tracking-wide"
+                  className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide"
                 >
                   {showRevenue ? "▼" : "▶"} Revenue
                 </button>
@@ -646,7 +646,7 @@ export function PLTab({
               <td colSpan={colCount + 1} className="px-4 py-1.5">
                 <button
                   onClick={() => setShowCogs(!showCogs)}
-                  className="text-xs font-semibold text-[#155e63] uppercase tracking-wide"
+                  className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide"
                 >
                   {showCogs ? "▼" : "▶"} Cost Of Goods Sold
                 </button>
@@ -681,7 +681,7 @@ export function PLTab({
               <td colSpan={colCount + 1} className="px-4 py-1.5">
                 <button
                   onClick={() => setShowOpex(!showOpex)}
-                  className="text-xs font-semibold text-[#155e63] uppercase tracking-wide"
+                  className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide"
                 >
                   {showOpex ? "▼" : "▶"} Operating Expenses
                 </button>
@@ -721,7 +721,7 @@ export function PLTab({
                 expense. Shown as a memo so it never affects the P&L lines above. */}
             <StatRow currencyCode={currencyCode} label="Sales Tax Collected & Remitted (Pass-Through)" values={vals("sales_tax_collected_cents")} indent memo />
             <tr>
-              <td colSpan={colCount + 1} className="pl-8 pr-4 pb-2 text-[10px] text-[#afafaf] italic">
+              <td colSpan={colCount + 1} className="pl-8 pr-4 pb-2 text-[10px] text-[var(--dark-grey)] italic">
                 Collected from customers and remitted to the state — not part of revenue or net income.
               </td>
             </tr>
@@ -731,19 +731,19 @@ export function PLTab({
       )}
 
       {editable && view === "table" && (
-        <p className="mt-2 text-xs text-[#8a8a8a] leading-relaxed">
+        <p className="mt-2 text-xs text-[var(--neutral-cool-500)] leading-relaxed">
           {period === "monthly" ? (
             <>
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#155e63] align-middle mr-1" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--teal)] align-middle mr-1" />
               Click any revenue or expense cell to type an override for that month. Overridden cells are
               flagged with the dot and win over the assumption until you revert them. Once a cell is customized,
               use the{" "}
-              <ChevronsRight size={12} className="inline align-text-bottom text-[#155e63]" /> apply-forward
+              <ChevronsRight size={12} className="inline align-text-bottom text-[var(--teal)]" /> apply-forward
               control to copy that value to the rest of the year, the next 12 months, or all following months
               in one step (a year-two rent increase takes one action, not twelve entries). To enter every month
               by hand, hover a line and click the{" "}
-              <Pencil size={11} className="inline align-text-bottom text-[#155e63]" /> pencil (LivePlan-style);
-              the <span className="text-[#9a6b00] font-semibold">Manual</span> tag marks those lines and reverts
+              <Pencil size={11} className="inline align-text-bottom text-[var(--teal)]" /> pencil (LivePlan-style);
+              the <span className="text-[var(--warning-text-5)] font-semibold">Manual</span> tag marks those lines and reverts
               them when clicked. Overrides flow into the P&amp;L, cash flow, balance sheet, break-even, and ratios.
             </>
           ) : (
@@ -752,8 +752,8 @@ export function PLTab({
         </p>
       )}
 
-      <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
+      <div className="mt-4 rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <PLCritique slices={slices} year={year} />
       </div>
     </div>
@@ -814,7 +814,7 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
   return (
     <div className="space-y-2">
       {lines.map((line, i) => (
-        <p key={i} className="text-sm text-[#2a4a4c] leading-relaxed">{line}</p>
+        <p key={i} className="text-sm text-[var(--teal-deeper)] leading-relaxed">{line}</p>
       ))}
     </div>
   );

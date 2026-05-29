@@ -25,10 +25,10 @@ const STATUS_LABELS: Record<LaunchItemStatus, string> = {
 };
 
 const STATUS_PILL: Record<LaunchItemStatus, string> = {
-  pending: "bg-[#f0f0f0] text-[#6b6b6b]",
-  in_progress: "bg-[#e8f4f5] text-[#155e63]",
-  done: "bg-[#e6f4e6] text-[#2d6a2d]",
-  at_risk: "bg-[#fde8e8] text-[#b1454a]",
+  pending: "bg-[var(--neutral-cool-150)] text-[var(--muted-foreground)]",
+  in_progress: "bg-[var(--teal-tint-200)] text-[var(--teal)]",
+  done: "bg-[var(--success-bg-2)] text-[var(--success-medium)]",
+  at_risk: "bg-[var(--error-bg-8)] text-[var(--error-light)]",
 };
 
 type Bucket = { label: string; min: number; max: number };
@@ -74,11 +74,11 @@ export function SoftOpenPlanCard() {
   };
 
   return (
-    <section className="bg-white rounded-2xl border border-[#efefef] p-6">
+    <section className="bg-white rounded-2xl border border-[var(--border)] p-6">
       <header className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="font-semibold text-lg text-[#1a1a1a]">Soft Open Plan</h2>
-          <p className="text-xs text-[#6b6b6b]">
+          <h2 className="font-semibold text-lg text-[var(--foreground)]">Soft Open Plan</h2>
+          <p className="text-xs text-[var(--muted-foreground)]">
             Task checklist grouped by day — from pre-open prep through the first month.
           </p>
         </div>
@@ -86,28 +86,28 @@ export function SoftOpenPlanCard() {
           type="button"
           onClick={handleAdd}
           disabled={loading}
-          className="px-3 py-1.5 text-sm rounded-md bg-[#155e63] text-white hover:bg-[#0f4a4e] disabled:opacity-50"
+          className="px-3 py-1.5 text-sm rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-darker)] disabled:opacity-50"
         >
           + Add task
         </button>
       </header>
 
       {loading ? (
-        <p className="text-sm text-[#6b6b6b]">Loading…</p>
+        <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-[#6b6b6b] italic">No tasks yet. Add one to start planning.</p>
+        <p className="text-sm text-[var(--muted-foreground)] italic">No tasks yet. Add one to start planning.</p>
       ) : (
         <div className="space-y-5">
           {grouped.map(({ label, rows }) =>
             rows.length === 0 ? null : (
               <div key={label}>
-                <h3 className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-2">
+                <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-2">
                   {label}
                 </h3>
                 <ul className="space-y-2">
                   {rows.map((row) => (
-                    <li key={row.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 rounded-lg border border-[#efefef] p-3">
-                      <label className="text-xs text-[#6b6b6b] md:col-span-1">
+                    <li key={row.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 rounded-lg border border-[var(--border)] p-3">
+                      <label className="text-xs text-[var(--muted-foreground)] md:col-span-1">
                         <span className="block mb-1">Day</span>
                         <input
                           type="number"
@@ -117,10 +117,10 @@ export function SoftOpenPlanCard() {
                           onBlur={(e) =>
                             updateItem(row.id, { day_offset: parseOffset(e.target.value) })
                           }
-                          className="w-full border border-[#dcdcdc] rounded px-2 py-1 text-sm text-[#1a1a1a] text-center"
+                          className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)] text-center"
                         />
                       </label>
-                      <label className="text-xs text-[#6b6b6b] md:col-span-4">
+                      <label className="text-xs text-[var(--muted-foreground)] md:col-span-4">
                         <span className="block mb-1">Task</span>
                         <input
                           type="text"
@@ -129,10 +129,10 @@ export function SoftOpenPlanCard() {
                             e.target.value !== row.task &&
                             updateItem(row.id, { task: e.target.value })
                           }
-                          className="w-full border border-[#dcdcdc] rounded px-2 py-1 text-sm text-[#1a1a1a]"
+                          className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)]"
                         />
                       </label>
-                      <label className="text-xs text-[#6b6b6b] md:col-span-2">
+                      <label className="text-xs text-[var(--muted-foreground)] md:col-span-2">
                         <span className="block mb-1">Owner</span>
                         <input
                           type="text"
@@ -140,25 +140,25 @@ export function SoftOpenPlanCard() {
                           onBlur={(e) =>
                             updateItem(row.id, { owner: e.target.value || null })
                           }
-                          className="w-full border border-[#dcdcdc] rounded px-2 py-1 text-sm text-[#1a1a1a]"
+                          className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)]"
                           placeholder="Name"
                         />
                       </label>
-                      <label className="text-xs text-[#6b6b6b] md:col-span-2">
+                      <label className="text-xs text-[var(--muted-foreground)] md:col-span-2">
                         <span className="block mb-1">Status</span>
                         <select
                           value={row.status}
                           onChange={(e) =>
                             updateItem(row.id, { status: e.target.value as LaunchItemStatus })
                           }
-                          className="w-full border border-[#dcdcdc] rounded px-2 py-1 text-sm text-[#1a1a1a]"
+                          className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)]"
                         >
                           {STATUS_OPTIONS.map((s) => (
                             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                           ))}
                         </select>
                       </label>
-                      <label className="text-xs text-[#6b6b6b] md:col-span-2">
+                      <label className="text-xs text-[var(--muted-foreground)] md:col-span-2">
                         <span className="block mb-1">Notes</span>
                         <input
                           type="text"
@@ -166,7 +166,7 @@ export function SoftOpenPlanCard() {
                           onBlur={(e) =>
                             updateItem(row.id, { notes: e.target.value || null })
                           }
-                          className="w-full border border-[#dcdcdc] rounded px-2 py-1 text-sm text-[#1a1a1a]"
+                          className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)]"
                         />
                       </label>
                       <div className="md:col-span-1 flex items-center gap-2">
@@ -178,7 +178,7 @@ export function SoftOpenPlanCard() {
                         <button
                           type="button"
                           onClick={() => removeItem(row.id)}
-                          className="text-xs text-[#b1454a] hover:underline ml-auto"
+                          className="text-xs text-[var(--error-light)] hover:underline ml-auto"
                         >
                           Remove
                         </button>
@@ -195,9 +195,9 @@ export function SoftOpenPlanCard() {
       {(error || paywall) && (
         <div className="mt-3 text-xs">
           {paywall ? (
-            <a href="/pricing" className="text-[#155e63] underline">Upgrade to save</a>
+            <a href="/pricing" className="text-[var(--teal)] underline">Upgrade to save</a>
           ) : (
-            <span className="text-[#b1454a]" role="alert">{error}</span>
+            <span className="text-[var(--error-light)]" role="alert">{error}</span>
           )}
         </div>
       )}

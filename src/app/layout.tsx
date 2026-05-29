@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${poppins.className} min-h-full flex flex-col bg-[#faf9f7] text-[#1a1a1a]`}>
+      <body className={`${poppins.className} min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]`}>
         {children}
         <Analytics />
       </body>

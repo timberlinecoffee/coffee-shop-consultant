@@ -53,31 +53,31 @@ export function PersonaCard({
   }
 
   return (
-    <div className="relative rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+    <div className="relative rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
       {/* Top bar */}
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-3">
           {/* Avatar + name */}
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-9 h-9 rounded-full bg-[#155e63] text-white flex items-center justify-center text-sm font-bold flex-shrink-0"
+              className="w-9 h-9 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-sm font-bold flex-shrink-0"
               aria-hidden="true"
             >
               {initial}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-semibold text-[#1a1a1a] truncate">
+                <span className="text-sm font-semibold text-[var(--foreground)] truncate">
                   {persona.name}
                 </span>
                 {persona.isPrimary && (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63] border border-[#cfe0e1] rounded-full px-2 py-0.5 leading-none flex-shrink-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-2 py-0.5 leading-none flex-shrink-0">
                     Primary
                   </span>
                 )}
               </div>
               {hasBio && (
-                <p className="text-xs text-[#afafaf] mt-0.5 truncate">
+                <p className="text-xs text-[var(--dark-grey)] mt-0.5 truncate">
                   {[persona.occupation, persona.ageRange].filter(Boolean).join(" · ")}
                 </p>
               )}
@@ -90,7 +90,7 @@ export function PersonaCard({
               <button
                 type="button"
                 onClick={() => onEdit(persona)}
-                className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors"
+                className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors"
               >
                 Edit
               </button>
@@ -102,7 +102,7 @@ export function PersonaCard({
                     setConfirmDelete(false);
                   }}
                   aria-label="More options"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f4f3f1] transition-colors focus:outline-none"
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
                 >
                   <span aria-hidden="true" className="text-base leading-none tracking-tighter">
                     ...
@@ -114,12 +114,12 @@ export function PersonaCard({
                       className="fixed inset-0 z-10"
                       onClick={() => { setMenuOpen(false); setConfirmDelete(false); }}
                     />
-                    <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[#efefef] bg-white shadow-lg overflow-hidden">
+                    <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[var(--border)] bg-white shadow-lg overflow-hidden">
                       {!persona.isPrimary && (
                         <button
                           type="button"
                           onClick={handleSetPrimary}
-                          className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-[#faf9f7] transition-colors"
+                          className="w-full text-left px-4 py-3 text-sm text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
                         >
                           Set as primary
                         </button>
@@ -128,7 +128,7 @@ export function PersonaCard({
                         <button
                           type="button"
                           onClick={handleDelete}
-                          className="w-full text-left px-4 py-3 text-sm text-[#a13d3d] font-semibold hover:bg-[#fff5f5] transition-colors"
+                          className="w-full text-left px-4 py-3 text-sm text-[var(--error)] font-semibold hover:bg-[var(--error-bg)] transition-colors"
                         >
                           Confirm delete
                         </button>
@@ -136,7 +136,7 @@ export function PersonaCard({
                         <button
                           type="button"
                           onClick={handleDelete}
-                          className="w-full text-left px-4 py-3 text-sm text-[#a13d3d] hover:bg-[#fff5f5] transition-colors"
+                          className="w-full text-left px-4 py-3 text-sm text-[var(--error)] hover:bg-[var(--error-bg)] transition-colors"
                         >
                           Delete persona
                         </button>
@@ -155,20 +155,20 @@ export function PersonaCard({
             {shownValues.map((v) => (
               <span
                 key={v}
-                className="text-[10px] font-medium text-[#155e63] bg-[#f4f9f8] border border-[#d5eae8] rounded-full px-2 py-0.5 leading-none"
+                className="text-[10px] font-medium text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] rounded-full px-2 py-0.5 leading-none"
               >
                 {PERSONA_VALUE_LABELS[v]}
               </span>
             ))}
             {extraValues > 0 && (
-              <span className="text-[10px] text-[#afafaf]">+{extraValues} more</span>
+              <span className="text-[10px] text-[var(--dark-grey)]">+{extraValues} more</span>
             )}
           </div>
         )}
 
         {/* Habits line */}
         {hasHabit && (
-          <p className="text-xs text-[#6b6b6b]">
+          <p className="text-xs text-[var(--muted-foreground)]">
             {[
               persona.visitFrequency ? PERSONA_VISIT_FREQUENCY_LABELS[persona.visitFrequency] : null,
               persona.spendPerVisit ? PERSONA_SPEND_LABELS[persona.spendPerVisit] + " per visit" : null,
@@ -180,7 +180,7 @@ export function PersonaCard({
 
         {/* Why they visit snippet */}
         {persona.whyTheyVisit.trim() && (
-          <p className="mt-2 text-xs text-[#6b6b6b] leading-relaxed line-clamp-2 italic">
+          <p className="mt-2 text-xs text-[var(--muted-foreground)] leading-relaxed line-clamp-2 italic">
             {persona.whyTheyVisit.trim()}
           </p>
         )}

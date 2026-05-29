@@ -25,14 +25,14 @@ export function WorkspaceStatusControl({
   return (
     <div className="inline-flex items-center gap-1.5">
       {label && (
-        <span className="hidden sm:inline text-[11px] text-[#6b6b6b] font-medium">
+        <span className="hidden sm:inline text-[11px] text-[var(--muted-foreground)] font-medium">
           {label}:
         </span>
       )}
       <div
         role="group"
         aria-label={label ? `${label} status` : "Component status"}
-        className="inline-flex rounded-full border border-[#e6e3dd] bg-white p-0.5"
+        className="inline-flex rounded-full border border-[var(--warm-700)] bg-white p-0.5"
       >
         {WORKSPACE_STATUS_VALUES.map((value) => (
           <StatusButton
@@ -59,7 +59,7 @@ function StatusButton({
   onSelect: () => void;
 }) {
   const active = value === current;
-  const styles = active ? activeStyleFor(value) : "text-[#6b6b6b] hover:bg-[#f5f4f0]";
+  const styles = active ? activeStyleFor(value) : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)]";
   return (
     <button
       type="button"
@@ -75,10 +75,10 @@ function StatusButton({
 function activeStyleFor(value: WorkspaceStatus): string {
   switch (value) {
     case "not_started":
-      return "bg-[#efefef] text-[#1a1a1a]";
+      return "bg-[var(--border)] text-[var(--foreground)]";
     case "in_progress":
       return "bg-amber-100 text-amber-800";
     case "complete":
-      return "bg-[#155e63]/10 text-[#155e63]";
+      return "bg-[var(--teal)]/10 text-[var(--teal)]";
   }
 }

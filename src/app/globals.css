@@ -30,11 +30,289 @@
   --neutral-900: #1C1C18;
   --neutral-950: #0D0D0B;
 
-  /* Business Plan v2 accent palette (TIM-1314) */
-  --bp-accent: #1F7A80;
-  --bp-accent-light: #7EC8CC;
-  --bp-accent-sage: #6B9E7E;
-  --bp-cover-canvas: #EAF4F4;
+  /* Extended neutral palette (cool-tinted workspace grays) */
+  --neutral-cool-50:  #fafafa;
+  --neutral-cool-100: #f5f5f5;
+  --neutral-cool-150: #f0f0f0;
+  --neutral-cool-200: #e8e8e8;
+  --neutral-cool-300: #dcdcdc;
+  --neutral-cool-350: #d0d0d0;
+  --neutral-cool-400: #c0c0c0;
+  --neutral-cool-500: #8a8a8a;
+  --neutral-cool-600: #888888;
+  --neutral-cool-650: #9a9a9a;
+
+  /* Warm surface tones */
+  --surface-warm-50:  #f7f6f3;
+  --surface-warm-100: #f5f4f0;
+  --surface-warm-200: #f4f3f1;
+  --surface-warm-300: #f4f9f8;
+
+  /* Teal scale (dark hover states, deep backgrounds) */
+  --teal-dark:    #0e4448;
+  --teal-darker:  #0f4a4e;
+  --teal-deep:    #124e52;
+  --teal-deeper:  #2a4a4c;
+  --teal-tint:    #cfe0e1;
+  --teal-tint-50: #f7fafa;
+  --teal-tint-100: #f0f9f9;
+  --teal-tint-200: #e8f4f5;
+  --teal-tint-300: #d5eae8;
+  --teal-tint-400: #e5eef0;
+  --teal-tint-500: #f4f9f8;
+
+  /* Status colors */
+  --error:       #a13d3d;
+  --error-light: #b1454a;
+  --success:     #1A6E3B;
+
+  /* Neutral border variants */
+  --border-subtle: #E5E5E0;
+  --border-medium: #e0e0e0;
+
+  /* Brand medium gray */
+  --gray-medium:  #6B7280;
+
+  /* Extended color tokens — mapped from workspace component hex values */
+  /* Teal family (dark hover / deep backgrounds) */
+  --teal-900: #0d4044;
+  --teal-850: #0e4a4e;
+  --teal-820: #0e4a4f;
+  --teal-800: #0f4548;
+  --teal-700: #114b50;
+  --teal-750: #3d7c84;
+  --teal-medium: #3a8a8f;
+  --teal-accent: #8ab4b7;
+  --teal-accent-2: #9fb4b4;
+  --teal-bg-50: #f0fafa;
+  --teal-bg-100: #f3f8f8;
+  --teal-bg-200: #f3faf9;
+  --teal-bg-300: #eef6f6;
+  --teal-bg-350: #eef6f5;
+  --teal-bg-400: #e4eded;
+  --teal-bg-450: #e4f1f1;
+  --teal-bg-500: #e0eeee;
+  --teal-bg-550: #e0eded;
+  --teal-bg-600: #e0f0f0;
+  --teal-bg-650: #d8e8e8;
+  --teal-bg-700: #d8eeef;
+  --teal-bg-750: #d4e8e9;
+  --teal-bg-800: #d4edea;
+  --teal-bg-850: #d4f0e8;
+  --teal-bg-900: #cce3e5;
+  --teal-bg-950: #b9dada;
+  --teal-bg-light: #b0c8c8;
+  --teal-bg-lighter: #c5dfe0;
+  --teal-bg-lightest: #bfe0d8;
+  --teal-bg-soft: #c8d6d6;
+  --teal-bg-subtle: #eaf4f4;
+  --teal-bg-faint: #f9fcfc;
+  --teal-bg-muted: #f5fbfb;
+  --teal-bg-pale: #f0f7f7;
+  --teal-bg-palest: #e6f4f4;
+  --teal-bg-ultra: #e8f0f0;
+  --teal-bg-deep: #eef0ef;
+
+  /* Sage family */
+  --sage-tint: #8DB79D;
+  --sage-tint-2: #a8c4bb;
+  --sage-bg: #D4E8DF;
+  --sage-bg-2: #CDE3D9;
+  --sage-success-bg: #f0f8f5;
+
+  /* Success / green family */
+  --success-dark: #166534;
+  --success-medium: #2d6a2d;
+  --success-bg: #bbf7d0;
+  --success-bg-2: #e6f4e6;
+  --success-bg-3: #f0fdf4;
+  --success-text: #2A6B4A;
+
+  /* Warning / amber family */
+  --warning: #f59e0b;
+  --warning-dark: #b45309;
+  --warning-darker: #92400e;
+  --warning-amber: #E8C24A;
+  --warning-amber-2: #fcd34d;
+  --warning-amber-3: #f0b429;
+  --warning-text: #7a5a13;
+  --warning-text-2: #7a5f00;
+  --warning-text-3: #8a6200;
+  --warning-text-4: #9a6500;
+  --warning-text-5: #9a6b00;
+  --warning-text-6: #9a7800;
+  --warning-text-7: #b08a00;
+  --warning-text-8: #b9852a;
+  --warning-text-9: #7a5a17;
+  --warning-text-10: #9a6b1e;
+  --warning-text-11: #d4a017;
+  --warning-bg: #fffbeb;
+  --warning-bg-2: #fff8e6;
+  --warning-bg-3: #fff8eb;
+  --warning-bg-4: #fef9ec;
+  --warning-bg-5: #fdf8ee;
+  --warning-bg-6: #fdf8f2;
+  --warning-bg-7: #fbf7ef;
+  --warning-bg-8: #fbf3df;
+  --warning-bg-9: #fbf2f2;
+  --warning-bg-10: #fdf5f5;
+  --warning-bg-11: #fdf6ec;
+  --warning-bg-12: #fdf4f4;
+  --warning-bg-14: #faf6ee;
+  --warning-bg-15: #fbf5f2;
+  --warning-amber-bg: #e8d49a;
+  --warning-amber-bg-2: #e8d7b0;
+  --warning-amber-bg-3: #e8ddc8;
+  --warning-amber-bg-4: #ecdaa8;
+  --warning-amber-bg-5: #f3e0b0;
+  --warning-amber-bg-6: #f3e3a8;
+  --warning-amber-bg-7: #f3e6c4;
+  --warning-amber-bg-8: #f5dfa0;
+  --warning-amber-bg-9: #f5eddc;
+  --warning-amber-bg-10: #fbeeee;
+  --warning-amber-bg-11: #fbeded;
+  --warning-amber-bg-12: #fbeaea;
+  --warning-amber-bg-13: #fde8e8;
+
+  /* Error / red family */
+  --error-accent: #cc4444;
+  --error-dark: #7a2d2d;
+  --error-darker: #8a3030;
+  --error-medium: #b54b4b;
+  --error-text: #9a5a4d;
+  --error-bg: #fff5f5;
+  --error-bg-2: #fdf4f4;
+  --error-bg-3: #fdf5f5;
+  --error-bg-4: #fbf2f2;
+  --error-bg-5: #f9eaea;
+  --error-bg-6: #fbeaea;
+  --error-bg-7: #fbeded;
+  --error-bg-8: #fde8e8;
+  --error-bg-9: #f0d0d0;
+  --error-bg-10: #f0d4d4;
+  --error-bg-11: #f5c4c4;
+  --error-bg-12: #e7c3c3;
+  --error-bg-13: #ebd1d1;
+  --error-bg-14: #e6d2cd;
+  --error-destructive: #DC2626;
+  --error-secondary: #EF4444;
+
+  /* Coffee / warm brown */
+  --coffee-100: #FDF5EC;
+  --coffee-200: #FFFDF8;
+  --coffee-brown-1: #c97a3c;
+  --coffee-brown-2: #c98a5e;
+  --coffee-brown-3: #c0723d;
+  --coffee-brown-4: #b4622f;
+  --coffee-brown-5: #6b5c3e;
+  --coffee-orange: #e0b96a;
+
+  /* UI chrome (macOS traffic lights, browser mockup) */
+  --ui-red: #FF5F57;
+  --ui-yellow: #FFBD2E;
+  --ui-green: #28C840;
+  --ui-dark-1: #1C1C1E;
+  --ui-dark-2: #2C2C2E;
+
+  /* Google brand colors */
+  --google-blue:   #4285F4;
+  --google-green:  #34A853;
+  --google-red:    #EA4335;
+  --google-yellow: #FBBC05;
+
+  /* Other brand / accent */
+  --purple: #7C3AED;
+  --blue: #2563EB;
+
+  /* Misc grays */
+  --gray-50:  #fafaf7;
+  --gray-100: #f7f7f7;
+  --gray-150: #f6f6f6;
+  --gray-200: #f4f4f4;
+  --gray-250: #f4f4f2;
+  --gray-300: #f3f3f1;
+  --gray-350: #f2f2f2;
+  --gray-400: #f0f0f0;
+  --gray-450: #eeeeee;
+  --gray-500: #e6e6e6;
+  --gray-550: #e5e5e5;
+  --gray-600: #e5e3df;
+  --gray-650: #e5e3de;
+  --gray-700: #d4d4d4;
+  --gray-750: #d8d8d8;
+  --gray-800: #cccccc;
+  --gray-825: #bbbbbb;
+  --gray-850: #cfcfcf;
+  --gray-900: #c4c4c4;
+  --gray-950: #c5c5c5;
+  --gray-975: #aaaaaa;
+  --gray-1000: #a0a0a0;
+  --gray-1050: #7a7a7a;
+  --gray-1100: #666666;
+  --gray-1150: #555555;
+  --gray-1175: #444444;
+  --gray-1200: #4a4a4a;
+  --gray-1250: #3d3d3d;
+  --gray-1300: #3a3a3a;
+  --gray-1350: #333333;
+  --gray-1400: #2a2a2a;
+  --gray-slate: #374151;
+  --gray-slate-2: #111827;
+  --gray-slate-3: #9CA3AF;
+  --gray-slate-4: #E5E7EB;
+  --gray-slate-5: #F3F4F6;
+  --gray-slate-6: #6B7280;
+
+  /* Misc warm surfaces */
+  --warm-50: #FFFDF8;
+  --warm-100: #fafaf7;
+  --warm-200: #f8f6f2;
+  --warm-250: #f5f3ef;
+  --warm-300: #f5f5f3;
+  --warm-350: #f5f4f1;
+  --warm-400: #f3f3f1;
+  --warm-450: #f0ede8;
+  --warm-500: #f0eee9;
+  --warm-550: #ebe9e4;
+  --warm-600: #e8e4df;
+  --warm-650: #e7e5e0;
+  --warm-700: #e6e3dd;
+  --warm-750: #e0ded9;
+  --warm-800: #e0ddd8;
+  --warm-850: #cfcdc7;
+  --warm-900: #c8c5be;
+  --warm-950: #c5c0b8;
+  --warm-1000: #d6d3cd;
+  --warm-1050: #f7f8f6;
+  --warm-1100: #fafaf7;
+  --warm-surface: #F0F0EE;
+  --warm-surface-2: #E0E0DC;
+  --warm-surface-3: #f9fcfc;
+
+  /* Misc additional tokens */
+  --teal-darkest: #0c3a3d;
+  --teal-bright: #1a7880;
+  --forest-dark: #0F1B11;
+  --gray-mid: #5a5a5a;
+  --sage-medium: #5d8c7e;
+  --sage-muted: #6B7B70;
+  --sage-light: #7BAE8A;
+  --sage-pale: #8FA694;
+  --rust: #B23A1F;
+  --amber-gold: #C18A1F;
+  --neutral-cool-d9: #D9DEDA;
+  --surface-sage-light: #EEF2EE;
+  --warm-gray-ef: #EFEFEA;
+  --surface-sage-50: #F0F4F1;
+  --warm-gray-f2: #F2F2EE;
+  --neutral-cool-f5: #F5F6F5;
+  --neutral-near-white: #FBFBFA;
+  --teal-tint-cfe: #cfe3e3;
+  --teal-bg-d0: #d0e4e5;
+  --teal-bg-e8f: #e8f4f4;
+  --amber-bg-f0d: #f0dcb0;
+  --teal-bg-f0f8: #f0f8f8;
+  --warm-near-white: #f8f9f8;
 }
 
 @theme inline {

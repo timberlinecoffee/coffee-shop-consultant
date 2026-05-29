@@ -160,25 +160,25 @@ function PricingPageInner() {
   const backHref = returnPath ?? "/dashboard";
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
-      <nav className="bg-white border-b border-[#efefef] px-6 py-4">
+    <div className="min-h-screen bg-[var(--background)]">
+      <nav className="bg-white border-b border-[var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#155e63] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
-            <span className="font-semibold text-[#155e63] text-sm hidden sm:block">Timberline Coffee School</span>
+            <span className="font-semibold text-[var(--teal)] text-sm hidden sm:block">Timberline Coffee School</span>
           </Link>
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
               <Link
                 href={backHref}
-                className="text-sm text-[#155e63] font-medium hover:underline"
+                className="text-sm text-[var(--teal)] font-medium hover:underline"
               >
                 Back to Dashboard
               </Link>
             ) : (
-              <Link href="/login" className="text-sm text-[#155e63] font-medium hover:underline">
+              <Link href="/login" className="text-sm text-[var(--teal)] font-medium hover:underline">
                 Sign In
               </Link>
             )}
@@ -189,21 +189,21 @@ function PricingPageInner() {
       <div className="max-w-5xl mx-auto px-6 pt-12 pb-16">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-[#1a1a1a] mb-4">
+          <h1 className="text-4xl font-bold text-[var(--foreground)] mb-4">
             {isLoggedIn ? "Choose Your Plan" : "Groundwork Pricing"}
           </h1>
-          <p className="text-[#6b6b6b] text-lg">
+          <p className="text-[var(--muted-foreground)] text-lg">
             Three tiers. Two intervals. One goal: open doors with a plan that works.
           </p>
         </div>
 
         {/* Billing toggle — sticky on mobile so it stays visible while scrolling cards */}
-        <div className="sticky sm:static top-0 z-10 bg-[#faf9f7]/95 backdrop-blur-sm sm:bg-transparent py-4 sm:py-0 -mx-6 px-6 sm:mx-0 sm:px-0 mb-8 text-center">
-          <div className="inline-flex items-center bg-white border border-[#efefef] rounded-xl p-1 gap-1">
+        <div className="sticky sm:static top-0 z-10 bg-[var(--background)]/95 backdrop-blur-sm sm:bg-transparent py-4 sm:py-0 -mx-6 px-6 sm:mx-0 sm:px-0 mb-8 text-center">
+          <div className="inline-flex items-center bg-white border border-[var(--border)] rounded-xl p-1 gap-1">
             <button
               onClick={() => setInterval("monthly")}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                interval === "monthly" ? "bg-[#155e63] text-white" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                interval === "monthly" ? "bg-[var(--teal)] text-white" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
               Monthly
@@ -211,11 +211,11 @@ function PricingPageInner() {
             <button
               onClick={() => setInterval("annual")}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                interval === "annual" ? "bg-[#155e63] text-white" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                interval === "annual" ? "bg-[var(--teal)] text-white" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
               Annual
-              <span className="ml-2 text-xs bg-[#d4f0e8] text-[#155e63] px-1.5 py-0.5 rounded-full font-semibold">
+              <span className="ml-2 text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
                 ~2 months free
               </span>
             </button>
@@ -231,20 +231,20 @@ function PricingPageInner() {
                 key={tier.key}
                 className={`rounded-2xl p-8 border flex flex-col relative ${
                   tier.highlight
-                    ? "bg-[#155e63] text-white border-[#155e63] shadow-lg"
-                    : "bg-white text-[#1a1a1a] border-[#efefef]"
+                    ? "bg-[var(--teal)] text-white border-[var(--teal)] shadow-lg"
+                    : "bg-white text-[var(--foreground)] border-[var(--border)]"
                 }`}
               >
                 {tier.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#f0b429] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                    <span className="bg-[var(--warning-amber-3)] text-[var(--foreground)] text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
                       Most Popular
                     </span>
                   </div>
                 )}
 
                 <div className="mb-6">
-                  <h2 className={`font-bold text-xl mb-1 ${tier.highlight ? "text-white" : "text-[#1a1a1a]"}`}>
+                  <h2 className={`font-bold text-xl mb-1 ${tier.highlight ? "text-white" : "text-[var(--foreground)]"}`}>
                     {tier.name}
                   </h2>
 
@@ -252,21 +252,21 @@ function PricingPageInner() {
                     <span className="text-4xl font-bold">
                       {interval === "annual" ? tier.annualPrice : tier.monthlyPrice}
                     </span>
-                    <span className={`text-sm ${tier.highlight ? "text-[#76b39d]" : "text-[#6b6b6b]"}`}>/month</span>
+                    <span className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>/month</span>
                   </div>
 
                   {interval === "annual" && (
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs ${tier.highlight ? "text-[#76b39d]" : "text-[#6b6b6b]"}`}>
+                      <span className={`text-xs ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>
                         {tier.annualBilled}
                       </span>
-                      <span className="text-xs bg-[#d4f0e8] text-[#155e63] px-1.5 py-0.5 rounded-full font-semibold">
+                      <span className="text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
                         {tier.annualSavings}
                       </span>
                     </div>
                   )}
 
-                  <p className={`text-sm ${tier.highlight ? "text-[#76b39d]" : "text-[#6b6b6b]"}`}>
+                  <p className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>
                     {tier.description}
                   </p>
                 </div>
@@ -274,33 +274,33 @@ function PricingPageInner() {
                 <ul className="space-y-2.5 mb-8 flex-1">
                   {tier.features.map((f) => (
                     <li key={f} className="flex gap-2 text-sm items-start">
-                      <span className={`flex-shrink-0 mt-0.5 ${tier.highlight ? "text-[#76b39d]" : "text-[#155e63]"}`}>
+                      <span className={`flex-shrink-0 mt-0.5 ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--teal)]"}`}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12"/>
                         </svg>
                       </span>
-                      <span className={tier.highlight ? "text-white/90" : "text-[#1a1a1a]"}>{f}</span>
+                      <span className={tier.highlight ? "text-white/90" : "text-[var(--foreground)]"}>{f}</span>
                     </li>
                   ))}
                   {tier.notIncluded.map((f) => (
                     <li key={f} className="flex gap-2 text-sm items-start">
-                      <span className="flex-shrink-0 mt-0.5 text-[#d0d0d0]">
+                      <span className="flex-shrink-0 mt-0.5 text-[var(--neutral-cool-350)]">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                         </svg>
                       </span>
-                      <span className="text-[#c0c0c0]">{f}</span>
+                      <span className="text-[var(--neutral-cool-400)]">{f}</span>
                     </li>
                   ))}
                 </ul>
 
-                <p className={`text-xs text-center mb-3 ${tier.highlight ? "text-[#76b39d]" : "text-[#afafaf]"}`}>
+                <p className={`text-xs text-center mb-3 ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--dark-grey)]"}`}>
                   By subscribing you agree to our{" "}
-                  <a href="/terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Terms</a>
+                  <a href="/terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[var(--teal)]"}`}>Terms</a>
                   {", "}
-                  <a href="/privacy" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Privacy Policy</a>
+                  <a href="/privacy" className={`underline ${tier.highlight ? "text-white/70" : "text-[var(--teal)]"}`}>Privacy Policy</a>
                   {", and "}
-                  <a href="/subscription-terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[#155e63]"}`}>Subscription Terms</a>
+                  <a href="/subscription-terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[var(--teal)]"}`}>Subscription Terms</a>
                   .
                 </p>
                 <button
@@ -308,8 +308,8 @@ function PricingPageInner() {
                   disabled={loading === loadingKey}
                   className={`text-center py-3 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60 ${
                     tier.highlight
-                      ? "bg-white text-[#155e63] hover:bg-[#faf9f7]"
-                      : "bg-[#155e63] text-white hover:bg-[#0e4448]"
+                      ? "bg-white text-[var(--teal)] hover:bg-[var(--background)]"
+                      : "bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)]"
                   }`}
                 >
                   {loading === loadingKey ? "Loading..." : ((interval === "annual" && tier.ctaAnnual) || tier.cta)}
@@ -321,13 +321,13 @@ function PricingPageInner() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto mb-16">
-          <h2 className="text-2xl font-bold text-[#1a1a1a] text-center mb-8">Frequently Asked Questions</h2>
+          <h2 className="text-2xl font-bold text-[var(--foreground)] text-center mb-8">Frequently Asked Questions</h2>
           <div className="space-y-2">
             {FAQ.map((item, i) => (
-              <div key={i} className="bg-white border border-[#efefef] rounded-xl overflow-hidden">
+              <div key={i} className="bg-white border border-[var(--border)] rounded-xl overflow-hidden">
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full text-left px-6 py-4 flex items-center justify-between gap-4 font-medium text-[#1a1a1a] text-sm hover:bg-[#faf9f7] transition-colors"
+                  className="w-full text-left px-6 py-4 flex items-center justify-between gap-4 font-medium text-[var(--foreground)] text-sm hover:bg-[var(--background)] transition-colors"
                 >
                   <span>{item.q}</span>
                   <svg
@@ -339,7 +339,7 @@ function PricingPageInner() {
                   </svg>
                 </button>
                 {openFaq === i && (
-                  <div className="px-6 pb-4 text-sm text-[#6b6b6b] leading-relaxed border-t border-[#efefef]">
+                  <div className="px-6 pb-4 text-sm text-[var(--muted-foreground)] leading-relaxed border-t border-[var(--border)]">
                     <p className="pt-3">{item.a}</p>
                   </div>
                 )}
@@ -349,19 +349,19 @@ function PricingPageInner() {
         </div>
 
         {/* Footer links */}
-        <div className="text-center text-sm text-[#6b6b6b]">
+        <div className="text-center text-sm text-[var(--muted-foreground)]">
           <p>
             Questions? Email{" "}
-            <a href="mailto:hello@timberline.coffee" className="text-[#155e63] hover:underline">
+            <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] hover:underline">
               hello@timberline.coffee
             </a>
           </p>
         </div>
 
-        <div className="mt-8 flex justify-center gap-6 text-xs text-[#afafaf]">
-          <Link href="/terms" className="hover:text-[#155e63] transition-colors">Terms of Service</Link>
-          <Link href="/privacy" className="hover:text-[#155e63] transition-colors">Privacy Policy</Link>
-          <Link href="/subscription-terms" className="hover:text-[#155e63] transition-colors">Subscription Terms</Link>
+        <div className="mt-8 flex justify-center gap-6 text-xs text-[var(--dark-grey)]">
+          <Link href="/terms" className="hover:text-[var(--teal)] transition-colors">Terms of Service</Link>
+          <Link href="/privacy" className="hover:text-[var(--teal)] transition-colors">Privacy Policy</Link>
+          <Link href="/subscription-terms" className="hover:text-[var(--teal)] transition-colors">Subscription Terms</Link>
         </div>
       </div>
     </div>

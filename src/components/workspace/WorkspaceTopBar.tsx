@@ -47,15 +47,15 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
   }
 
   return (
-    <div className="sticky top-0 z-20 h-12 bg-white border-b border-[#efefef] flex items-center px-4 gap-3">
+    <div className="sticky top-0 z-20 h-12 bg-white border-b border-[var(--border)] flex items-center px-4 gap-3">
       <button
         onClick={openSidebar}
-        className="lg:hidden text-[#1a1a1a] hover:text-[#155e63] transition-colors flex-shrink-0"
+        className="lg:hidden text-[var(--foreground)] hover:text-[var(--teal)] transition-colors flex-shrink-0"
         aria-label="Open navigation"
       >
         <HamburgerIcon />
       </button>
-      <span className="text-sm font-medium text-[#1a1a1a] flex-1 truncate">
+      <span className="text-sm font-medium text-[var(--foreground)] flex-1 truncate">
         {currentName}
       </span>
       {isWorkspacePage && (
@@ -67,7 +67,7 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
           />
           <button
             onClick={openCopilot}
-            className="text-xs text-[#155e63] font-medium border border-[#155e63]/30 px-3 py-1 rounded-full hover:bg-[#155e63]/5 transition-colors flex-shrink-0"
+            className="text-xs text-[var(--teal)] font-medium border border-[var(--teal)]/30 px-3 py-1 rounded-full hover:bg-[var(--teal)]/5 transition-colors flex-shrink-0"
           >
             Co-pilot
           </button>

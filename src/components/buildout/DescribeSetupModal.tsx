@@ -177,10 +177,10 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#efefef]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-base font-bold text-[#1a1a1a]">Describe Your Setup</h2>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+            <h2 className="text-base font-bold text-[var(--foreground)]">Describe Your Setup</h2>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               {mergeMode
                 ? "Refine your description to add or adjust items."
                 : "Describe your equipment in plain English. AI builds the structured list."}
@@ -189,7 +189,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
           <button
             type="button"
             onClick={onClose}
-            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
             aria-label="Close"
           >
             <X size={18} />
@@ -208,7 +208,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
               )}
 
               <div>
-                <label htmlFor="setup-description" className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">
+                <label htmlFor="setup-description" className="block text-xs font-semibold text-[var(--foreground)] mb-1.5">
                   What equipment does your setup include?
                 </label>
                 <textarea
@@ -219,10 +219,10 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                   placeholder="e.g. Two-group La Marzocco, two EK43 grinders, a Modbar pour-over for the slow bar, a small pastry case, POS on two iPads…"
                   rows={6}
                   maxLength={4000}
-                  className="w-full text-sm text-[#1a1a1a] border border-[#d0d0d0] rounded-xl px-4 py-3 focus:border-[#155e63] focus:outline-none resize-none leading-relaxed placeholder:text-[#c0c0c0]"
+                  className="w-full text-sm text-[var(--foreground)] border border-[var(--neutral-cool-350)] rounded-xl px-4 py-3 focus:border-[var(--teal)] focus:outline-none resize-none leading-relaxed placeholder:text-[var(--neutral-cool-400)]"
                 />
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px] text-[#afafaf]">
+                  <span className="text-[10px] text-[var(--dark-grey)]">
                     {description.length}/4000 characters
                   </span>
                   {description.length === 0 && (
@@ -232,7 +232,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                         const example = EXAMPLE_DESCRIPTIONS[Math.floor(Math.random() * EXAMPLE_DESCRIPTIONS.length)];
                         setDescription(example);
                       }}
-                      className="text-[10px] text-[#155e63] hover:underline"
+                      className="text-[10px] text-[var(--teal)] hover:underline"
                     >
                       Try an example
                     </button>
@@ -245,15 +245,15 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                   type="checkbox"
                   checked={includeConceptContext}
                   onChange={(e) => setIncludeConceptContext(e.target.checked)}
-                  className="accent-[#155e63] w-3.5 h-3.5"
+                  className="accent-[var(--teal)] w-3.5 h-3.5"
                 />
-                <span className="text-xs text-[#6b6b6b]">
+                <span className="text-xs text-[var(--muted-foreground)]">
                   Include concept context (service model, capacity, style)
                 </span>
               </label>
 
               {error && (
-                <p className="text-sm text-[#a13d3d]">{error}</p>
+                <p className="text-sm text-[var(--error)]">{error}</p>
               )}
             </div>
           )}
@@ -261,9 +261,9 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
           {/* ── Step: generating ── */}
           {step === "generating" && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-8 h-8 border-2 border-[#155e63] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-semibold text-[#1a1a1a]">Building equipment list...</p>
-              <p className="text-xs text-[#6b6b6b] mt-1">This usually takes 10–15 seconds.</p>
+              <div className="w-8 h-8 border-2 border-[var(--teal)] border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm font-semibold text-[var(--foreground)]">Building equipment list...</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">This usually takes 10–15 seconds.</p>
             </div>
           )}
 
@@ -271,43 +271,43 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
           {step === "preview" && (
             <div>
               {error && (
-                <p className="mb-3 text-sm text-[#a13d3d]">{error}</p>
+                <p className="mb-3 text-sm text-[var(--error)]">{error}</p>
               )}
 
               {/* Summary bar */}
-              <div className="flex items-center gap-6 mb-4 px-4 py-3 bg-[#f4f9f8] rounded-xl border border-[#d0e4e5]">
+              <div className="flex items-center gap-6 mb-4 px-4 py-3 bg-[var(--teal-tint-500)] rounded-xl border border-[var(--teal-bg-d0)]">
                 <div>
-                  <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Items</p>
-                  <p className="text-sm font-bold text-[#155e63]">{activeRows.length}</p>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Items</p>
+                  <p className="text-sm font-bold text-[var(--teal)]">{activeRows.length}</p>
                 </div>
                 {totalCents > 0 && (
                   <>
-                    <div className="h-8 w-px bg-[#efefef]" />
+                    <div className="h-8 w-px bg-[var(--border)]" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Est. Total</p>
-                      <p className="text-sm font-bold text-[#1a1a1a]">{formatCurrency(totalCents / 100)}</p>
+                      <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Est. Total</p>
+                      <p className="text-sm font-bold text-[var(--foreground)]">{formatCurrency(totalCents / 100)}</p>
                     </div>
                   </>
                 )}
-                <div className="ml-auto text-xs text-[#6b6b6b]">
+                <div className="ml-auto text-xs text-[var(--muted-foreground)]">
                   Edit any cell before committing. Uncheck rows to skip them.
                 </div>
               </div>
 
               {rows.length === 0 ? (
-                <p className="text-sm text-[#6b6b6b] text-center py-8">No items were generated. Try a more detailed description.</p>
+                <p className="text-sm text-[var(--muted-foreground)] text-center py-8">No items were generated. Try a more detailed description.</p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-[#efefef]">
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
                   <table className="w-full text-xs min-w-[800px]">
                     <thead>
-                      <tr className="bg-[#f7f7f7] border-b border-[#efefef]">
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] w-8"></th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[180px]">Name</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[150px]">Station</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[110px]">Brand</th>
-                        <th className="text-right px-3 py-2 font-semibold text-[#6b6b6b] w-20">Cost</th>
-                        <th className="text-right px-3 py-2 font-semibold text-[#6b6b6b] w-16">Qty</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[140px]">Notes</th>
+                      <tr className="bg-[var(--gray-100)] border-b border-[var(--border)]">
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] w-8"></th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[180px]">Name</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[150px]">Station</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[110px]">Brand</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[var(--muted-foreground)] w-20">Cost</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[var(--muted-foreground)] w-16">Qty</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[140px]">Notes</th>
                         <th className="w-8"></th>
                       </tr>
                     </thead>
@@ -331,25 +331,25 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
           {/* ── Step: committing ── */}
           {step === "committing" && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-8 h-8 border-2 border-[#155e63] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-semibold text-[#1a1a1a]">Adding items to your equipment list...</p>
+              <div className="w-8 h-8 border-2 border-[var(--teal)] border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm font-semibold text-[var(--foreground)]">Adding items to your equipment list...</p>
             </div>
           )}
 
           {/* ── Step: done ── */}
           {step === "done" && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full bg-[#d4edea] flex items-center justify-center mb-4">
+              <div className="w-10 h-10 rounded-full bg-[var(--teal-bg-800)] flex items-center justify-center mb-4">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                  <path d="M3.5 9L7.5 13L14.5 5" stroke="#155e63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3.5 9L7.5 13L14.5 5" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <p className="text-sm font-bold text-[#1a1a1a]">Equipment list updated</p>
-              <p className="text-xs text-[#6b6b6b] mt-1">Review the items and adjust costs or quantities.</p>
+              <p className="text-sm font-bold text-[var(--foreground)]">Equipment list updated</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">Review the items and adjust costs or quantities.</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-5 text-sm font-semibold bg-[#155e63] text-white px-5 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+                className="mt-5 text-sm font-semibold bg-[var(--teal)] text-white px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
               >
                 Done
               </button>
@@ -359,11 +359,11 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
 
         {/* Footer */}
         {step === "input" && (
-          <div className="px-6 py-4 border-t border-[#efefef] flex items-center justify-end gap-3">
+          <div className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="text-sm text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
             >
               Cancel
             </button>
@@ -371,7 +371,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
               type="button"
               onClick={handleGenerate}
               disabled={!description.trim()}
-              className="text-sm font-semibold bg-[#155e63] text-white px-6 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+              className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
             >
               Generate list
             </button>
@@ -379,17 +379,17 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
         )}
 
         {step === "preview" && (
-          <div className="px-6 py-4 border-t border-[#efefef] flex items-center justify-between gap-3">
+          <div className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleRefine}
-                className="text-sm text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
               >
                 Refine description
               </button>
               {hasExistingItems && !mergeMode && (
-                <span className="text-xs text-[#afafaf]">
+                <span className="text-xs text-[var(--dark-grey)]">
                   Items will be added to your existing list
                 </span>
               )}
@@ -398,7 +398,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
               type="button"
               onClick={handleCommit}
               disabled={activeRows.length === 0}
-              className="text-sm font-semibold bg-[#155e63] text-white px-6 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+              className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
             >
               Add {activeRows.length} {activeRows.length === 1 ? "item" : "items"}
             </button>
@@ -425,14 +425,14 @@ function PreviewRow({
   const skipped = row.skip;
 
   return (
-    <tr className={`border-b border-[#f0f0f0] ${skipped ? "opacity-40" : "hover:bg-[#fafafa]"}`}>
+    <tr className={`border-b border-[var(--neutral-cool-150)] ${skipped ? "opacity-40" : "hover:bg-[var(--neutral-cool-50)]"}`}>
       {/* Skip toggle */}
       <td className="px-3 py-1.5">
         <input
           type="checkbox"
           checked={!skipped}
           onChange={(e) => onChange({ skip: !e.target.checked })}
-          className="accent-[#155e63] w-3.5 h-3.5"
+          className="accent-[var(--teal)] w-3.5 h-3.5"
           aria-label="Include item"
         />
       </td>
@@ -444,7 +444,7 @@ function PreviewRow({
           value={row.name}
           onChange={(e) => onChange({ name: e.target.value })}
           disabled={skipped}
-          className="w-full min-w-[160px] text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full min-w-[160px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -455,7 +455,7 @@ function PreviewRow({
             value={row.section_name}
             onChange={(e) => onChange({ section_name: e.target.value })}
             disabled={skipped}
-            className="w-full min-w-[130px] text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none appearance-none pr-5 transition-colors disabled:pointer-events-none"
+            className="w-full min-w-[130px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none appearance-none pr-5 transition-colors disabled:pointer-events-none"
           >
             {stationOptions.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -464,7 +464,7 @@ function PreviewRow({
               <option value={row.section_name}>{row.section_name}</option>
             )}
           </select>
-          <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 text-[#afafaf] pointer-events-none" />
+          <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] pointer-events-none" />
         </div>
       </td>
 
@@ -476,7 +476,7 @@ function PreviewRow({
           onChange={(e) => onChange({ vendor: e.target.value })}
           disabled={skipped}
           placeholder="Brand"
-          className="w-full text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[#c0c0c0]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -487,7 +487,7 @@ function PreviewRow({
           value={centsToDollarString(row.unit_cost_cents)}
           onChange={(e) => onChange({ unit_cost_cents: dollarStringToCents(e.target.value) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -499,7 +499,7 @@ function PreviewRow({
           value={row.quantity}
           onChange={(e) => onChange({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -511,7 +511,7 @@ function PreviewRow({
           onChange={(e) => onChange({ notes: e.target.value })}
           disabled={skipped}
           placeholder="Notes"
-          className="w-full text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[#c0c0c0]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -520,7 +520,7 @@ function PreviewRow({
         <button
           type="button"
           onClick={onRemove}
-          className="text-[#afafaf] hover:text-[#a13d3d] transition-colors"
+          className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors"
           aria-label="Remove item"
         >
           <Trash2 size={12} />

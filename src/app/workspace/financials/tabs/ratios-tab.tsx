@@ -260,8 +260,8 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
     <div className={`rounded-2xl border px-5 py-4 ${styles.wrap}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#1a1a1a]">{ratio.label}</p>
-          <p className="text-xs text-[#5a5a5a] mt-1 leading-snug">
+          <p className="text-sm font-semibold text-[var(--foreground)]">{ratio.label}</p>
+          <p className="text-xs text-[var(--gray-mid)] mt-1 leading-snug">
             {ratio.plainEnglish}
           </p>
         </div>
@@ -275,27 +275,27 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-[#7a7a7a]">
+          <p className="text-[11px] uppercase tracking-wide text-[var(--gray-1050)]">
             Your value
           </p>
-          <p className="text-2xl font-bold text-[#1a1a1a] mt-0.5">
+          <p className="text-2xl font-bold text-[var(--foreground)] mt-0.5">
             {v.toFixed(1)}%
           </p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-[#7a7a7a]">
+          <p className="text-[11px] uppercase tracking-wide text-[var(--gray-1050)]">
             Healthy range
           </p>
-          <p className="text-sm font-medium text-[#1a1a1a] mt-1">
+          <p className="text-sm font-medium text-[var(--foreground)] mt-1">
             {ratio.benchmarkLabel}
           </p>
-          <p className="text-[10px] text-[#9a9a9a] mt-0.5 leading-tight">
+          <p className="text-[10px] text-[var(--neutral-cool-650)] mt-0.5 leading-tight">
             Source: {ratio.benchmarkSource}
           </p>
         </div>
       </div>
 
-      <p className="text-xs text-[#2a2a2a] mt-3 leading-relaxed">
+      <p className="text-xs text-[var(--gray-1400)] mt-3 leading-relaxed">
         {ratio.takeaway}
       </p>
     </div>
@@ -308,7 +308,7 @@ export function RatiosTab({ slices }: Props) {
 
   if (ratios.length === 0) {
     return (
-      <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-8 text-center text-sm text-[#afafaf]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-8 text-center text-sm text-[var(--dark-grey)]">
         Enter your inputs to see ratio analysis.
       </div>
     );
@@ -351,17 +351,17 @@ export function RatiosTab({ slices }: Props) {
       <div className={`rounded-2xl border px-5 py-4 ${summaryStyles.wrap}`}>
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${summaryStyles.dot}`} />
-          <p className="text-sm font-semibold text-[#1a1a1a]">{summary.title}</p>
+          <p className="text-sm font-semibold text-[var(--foreground)]">{summary.title}</p>
         </div>
-        <p className="text-xs text-[#3a3a3a] mt-1 leading-relaxed">{summary.body}</p>
+        <p className="text-xs text-[var(--gray-1300)] mt-1 leading-relaxed">{summary.body}</p>
       </div>
 
       {/* How to read this */}
-      <div className="rounded-2xl border border-[#efefef] bg-white px-5 py-3">
-        <p className="text-[11px] uppercase tracking-wide text-[#7a7a7a] font-semibold">
+      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3">
+        <p className="text-[11px] uppercase tracking-wide text-[var(--gray-1050)] font-semibold">
           How to read this
         </p>
-        <p className="text-xs text-[#5a5a5a] mt-1 leading-relaxed">
+        <p className="text-xs text-[var(--gray-mid)] mt-1 leading-relaxed">
           Each card shows what the ratio means in plain English, your Year 1
           value, and the healthy range for an indie coffee shop with the source
           we used. Green = on track, amber = watch, red = needs attention.
@@ -381,7 +381,7 @@ export function RatiosTab({ slices }: Props) {
           <button
             type="button"
             onClick={() => setShowAdvanced((s) => !s)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-medium text-[#3a3a3a] hover:bg-[#f5f5f5] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gray-550)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--gray-1300)] hover:bg-[var(--neutral-cool-100)] transition-colors"
             aria-expanded={showAdvanced}
             aria-controls="ratios-advanced-section"
           >

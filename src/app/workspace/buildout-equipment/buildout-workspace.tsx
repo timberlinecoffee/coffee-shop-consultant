@@ -80,15 +80,15 @@ function SeedBanner({
   }
 
   return (
-    <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4 mb-5">
+    <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-5 py-4 mb-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#155e63] mb-1">
+          <p className="text-sm font-semibold text-[var(--teal)] mb-1">
             {listType === "equipment"
               ? "Generate a starter equipment list"
               : "Generate a starter supplies list"}
           </p>
-          <p className="text-xs text-[#6b6b6b] leading-relaxed">
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
             {listType === "equipment"
               ? "We will populate workstation sections with typical equipment for a specialty coffee shop. Edit or remove anything after."
               : "We will create standard supply categories with typical consumables for a coffee shop. Adjust quantities and costs after."}
@@ -97,7 +97,7 @@ function SeedBanner({
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0 mt-0.5"
           aria-label="Dismiss"
         >
           <X size={14} />
@@ -108,12 +108,12 @@ function SeedBanner({
           type="button"
           onClick={handleSeed}
           disabled={status === "loading"}
-          className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
+          className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60"
         >
           {status === "loading" ? "Generating..." : "Generate list"}
         </button>
         {status === "error" && (
-          <span className="text-xs text-[#a13d3d]">Could not generate. Try again.</span>
+          <span className="text-xs text-[var(--error)]">Could not generate. Try again.</span>
         )}
       </div>
     </div>
@@ -336,30 +336,30 @@ export function BuildoutEquipmentWorkspace({
   const itemCount = activeEquipment.length;
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       {/* Sticky grand total summary — appears once items exist */}
       {grandTotalCents > 0 && (
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[#e8f0f0] shadow-sm">
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[var(--teal-bg-ultra)] shadow-sm">
           <div className="px-6 py-3 flex items-center gap-6">
             <div>
-              <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Grand Total</p>
-              <p className="text-xl font-bold text-[#155e63]">{formatCurrencyAmount(grandTotalCents / 100, initialCurrencyCode)}</p>
+              <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Grand Total</p>
+              <p className="text-xl font-bold text-[var(--teal)]">{formatCurrencyAmount(grandTotalCents / 100, initialCurrencyCode)}</p>
             </div>
             {stationCount > 0 && (
               <>
-                <div className="h-9 w-px bg-[#efefef]" aria-hidden="true" />
+                <div className="h-9 w-px bg-[var(--border)]" aria-hidden="true" />
                 <div>
-                  <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Stations</p>
-                  <p className="text-sm font-semibold text-[#1a1a1a]">{stationCount}</p>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Stations</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{stationCount}</p>
                 </div>
               </>
             )}
             {itemCount > 0 && (
               <>
-                <div className="h-9 w-px bg-[#efefef]" aria-hidden="true" />
+                <div className="h-9 w-px bg-[var(--border)]" aria-hidden="true" />
                 <div>
-                  <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Items</p>
-                  <p className="text-sm font-semibold text-[#1a1a1a]">{itemCount}</p>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Items</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{itemCount}</p>
                 </div>
               </>
             )}
@@ -369,12 +369,12 @@ export function BuildoutEquipmentWorkspace({
       <div className="px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Wrench className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Wrench className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Build Out &amp; Equipment
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Track hard assets — espresso machines, grinders, fridges, furniture, and fixtures. Consumables and supplies live in the Inventory workspace.
           </p>
         </header>
@@ -404,7 +404,7 @@ export function BuildoutEquipmentWorkspace({
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
             >
               <Settings2 size={12} aria-hidden="true" />
               Manage Stations
@@ -414,7 +414,7 @@ export function BuildoutEquipmentWorkspace({
             <button
               type="button"
               onClick={() => setDescribeOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
             >
               <MessageSquare size={12} aria-hidden="true" />
               Describe your setup
@@ -424,7 +424,7 @@ export function BuildoutEquipmentWorkspace({
             <button
               type="button"
               onClick={() => setImportOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
             >
               <FileSpreadsheet size={12} aria-hidden="true" />
               Import from spreadsheet
@@ -437,8 +437,8 @@ export function BuildoutEquipmentWorkspace({
               onClick={() => setViewOptionsOpen((o) => !o)}
               className={`flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 transition-colors ${
                 (!showRecommendations || !showAiMarkings)
-                  ? "text-[#155e63] border-[#155e63]/50 bg-[#155e63]/5"
-                  : "text-[#6b6b6b] border-[#e8e8e8] hover:bg-[#faf9f7]"
+                  ? "text-[var(--teal)] border-[var(--teal)]/50 bg-[var(--teal)]/5"
+                  : "text-[var(--muted-foreground)] border-[var(--neutral-cool-200)] hover:bg-[var(--background)]"
               }`}
               aria-label="View options"
             >
@@ -446,30 +446,30 @@ export function BuildoutEquipmentWorkspace({
               View
             </button>
             {viewOptionsOpen && (
-              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1.5 min-w-[210px]">
-                <p className="px-3 py-1 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Show in workspace</p>
-                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[#faf9f7] cursor-pointer">
+              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
+                <p className="px-3 py-1 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Show in workspace</p>
+                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[var(--background)] cursor-pointer">
                   <input
                     type="checkbox"
-                    className="accent-[#155e63] cursor-pointer shrink-0"
+                    className="accent-[var(--teal)] cursor-pointer shrink-0"
                     checked={showRecommendations}
                     onChange={toggleRecommendations}
                   />
-                  <span className="text-xs text-[#1a1a1a]">Recommendations</span>
+                  <span className="text-xs text-[var(--foreground)]">Recommendations</span>
                 </label>
-                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[#faf9f7] cursor-pointer">
+                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[var(--background)] cursor-pointer">
                   <input
                     type="checkbox"
-                    className="accent-[#155e63] cursor-pointer shrink-0"
+                    className="accent-[var(--teal)] cursor-pointer shrink-0"
                     checked={showAiMarkings}
                     onChange={toggleAiMarkings}
                   />
-                  <span className="text-xs text-[#1a1a1a]">AI markings</span>
+                  <span className="text-xs text-[var(--foreground)]">AI markings</span>
                 </label>
               </div>
             )}
           </div>
-          <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}>
+          <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[var(--error)]" : "text-[var(--dark-grey)]"}`}>
             {saveLabel}
           </span>
           {canEdit && (
@@ -477,7 +477,7 @@ export function BuildoutEquipmentWorkspace({
               type="button"
               onClick={handleManualSave}
               disabled={saveState.kind === "saving"}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
             >
               <Save size={12} aria-hidden="true" />
               Save

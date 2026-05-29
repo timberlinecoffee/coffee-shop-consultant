@@ -44,10 +44,10 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
         aria-expanded={open}
         aria-label="See a sample answer from a fictional coffee shop"
         title="See a sample answer"
-        className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[#155e63] ${
+        className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${
           open
-            ? "text-[#155e63]"
-            : "text-[#c8c5be] hover:text-[#155e63]"
+            ? "text-[var(--teal)]"
+            : "text-[var(--warm-900)] hover:text-[var(--teal)]"
         }`}
       >
         <Lightbulb size={13} strokeWidth={2} aria-hidden="true" />
@@ -55,16 +55,16 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
 
       {open && (
         <div
-          className="mt-1 max-w-72 bg-[#f5f3ef] border border-[#e0ddd8] rounded-xl p-4"
+          className="mt-1 max-w-72 bg-[var(--warm-250)] border border-[var(--warm-800)] rounded-xl p-4"
           role="region"
           aria-label="Sample answer from a fictional coffee shop"
         >
           <div className="flex items-start justify-between mb-2">
             <div>
-              <p className="text-[10px] font-semibold text-[#155e63] uppercase tracking-wider leading-none">
+              <p className="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-wider leading-none">
                 {ex.shopName}
               </p>
-              <p className="text-[10px] text-[#6b6b6b] italic mt-0.5">
+              <p className="text-[10px] text-[var(--muted-foreground)] italic mt-0.5">
                 {ex.shopType}
               </p>
             </div>
@@ -72,13 +72,13 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close example"
-              className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors focus:outline-none focus:text-[#1a1a1a] ml-2 shrink-0"
+              className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus:outline-none focus:text-[var(--foreground)] ml-2 shrink-0"
             >
               <X size={13} aria-hidden="true" />
             </button>
           </div>
 
-          <p className="text-sm text-[#4a4a4a] leading-relaxed italic border-l-2 border-[#c5c0b8] pl-3">
+          <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">
             {ex.answer}
           </p>
 
@@ -87,7 +87,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
               <button
                 type="button"
                 onClick={nextExample}
-                className="text-xs text-[#155e63] hover:underline focus:outline-none focus:text-[#0e4448]"
+                className="text-xs text-[var(--teal)] hover:underline focus:outline-none focus:text-[var(--teal-dark)]"
               >
                 See another shop
               </button>
@@ -97,7 +97,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-xs font-medium text-[#1a1a1a] hover:text-[#155e63] transition-colors focus:outline-none"
+              className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus:outline-none"
             >
               Got it
             </button>

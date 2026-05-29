@@ -14,6 +14,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+import { ReadinessRing } from "@/components/workspace/ReadinessRing";
 import {
   CONCEPT_COMPONENTS_V2,
   buildFieldPrompt,
@@ -247,55 +248,56 @@ export function ConceptWorkspace({
   }, []);
 
   let saveStatusCopy = formatTimestamp(lastSavedAt);
-  let saveStatusTone = "text-[#afafaf]";
+  let saveStatusTone = "text-[var(--dark-grey)]";
   if (saveState.kind === "saving") {
     saveStatusCopy = "Saving...";
-    saveStatusTone = "text-[#155e63]";
+    saveStatusTone = "text-[var(--teal)]";
   } else if (saveState.kind === "dirty") {
     saveStatusCopy = "Unsaved";
-    saveStatusTone = "text-[#6b6b6b]";
+    saveStatusTone = "text-[var(--muted-foreground)]";
   } else if (saveState.kind === "error") {
     saveStatusCopy = saveState.message;
-    saveStatusTone = "text-[#a13d3d]";
+    saveStatusTone = "text-[var(--error)]";
   }
 
   const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
   return (
-    <div className="bg-[#faf9f7]">
+    <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* Page header */}
         <header className="mb-8">
           {/* TIM-1099: icon matches the sidebar entry for this workspace. */}
           <div className="flex items-center gap-2 mb-1">
-            <Lightbulb className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Lightbulb className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               {shopName ? (
                 shopName
               ) : (
-                <span className="italic text-[#afafaf]">Your shop name</span>
+                <span className="italic text-[var(--dark-grey)]">Your shop name</span>
               )}
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Shape the identity of your shop. Every other workspace builds on this.
           </p>
 
           {/* Progress row */}
           <div className="mt-5 flex items-center gap-3 flex-wrap">
-            <div className="flex-1 min-w-[120px] h-1 bg-[#efefef] rounded-full overflow-hidden">
+            <ReadinessRing pct={pct} size={36} complete={complete} />
+            <div className="flex-1 min-w-[80px] h-1 bg-[var(--border)] rounded-full overflow-hidden">
               <div
-                className="h-1 bg-[#155e63] rounded-full transition-all duration-500"
+                className="h-1 bg-[var(--teal)] rounded-full transition-all duration-500"
                 style={{ width: `${pct}%` }}
               />
             </div>
             {complete ? (
-              <span className="text-xs font-semibold text-[#155e63] shrink-0">
+              <span className="text-xs font-semibold text-[var(--teal)] shrink-0">
                 Ready to print
               </span>
             ) : (
-              <span className="text-xs text-[#afafaf] shrink-0">
+              <span className="text-xs text-[var(--dark-grey)] shrink-0">
                 {progress.filled} of {progress.total} sections filled
               </span>
             )}
@@ -313,12 +315,12 @@ export function ConceptWorkspace({
         {!canEdit && (
           <div
             role="alert"
-            className="mb-6 rounded-2xl border border-[#e8d7b0] bg-[#fbf3df] px-4 py-3 text-sm text-[#7a5a17]"
+            className="mb-6 rounded-2xl border border-[var(--warning-amber-bg-2)] bg-[var(--warning-bg-8)] px-4 py-3 text-sm text-[var(--warning-text-9)]"
           >
             <p className="font-medium mb-1">Read-only preview</p>
             <p className="leading-relaxed">
               Your subscription is paused so we&apos;ve locked editing.{" "}
-              <Link href={UPGRADE_PATH} className="underline font-medium text-[#7a5a17]">
+              <Link href={UPGRADE_PATH} className="underline font-medium text-[var(--warning-text-9)]">
                 Reactivate to keep editing
               </Link>
               .
@@ -328,11 +330,11 @@ export function ConceptWorkspace({
 
         {/* Trial limit notice */}
         {showTrialWarning && (
-          <div className="mb-6 rounded-2xl border border-[#efefef] bg-white px-4 py-3 text-sm text-[#6b6b6b]">
+          <div className="mb-6 rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted-foreground)]">
             {trialRemaining <= 0 ? (
               <>
                 You&apos;ve used all 5 free AI sessions.{" "}
-                <Link href="/pricing" className="text-[#155e63] font-medium underline">
+                <Link href="/pricing" className="text-[var(--teal)] font-medium underline">
                   Upgrade to keep improving
                 </Link>
                 .
@@ -357,8 +359,8 @@ export function ConceptWorkspace({
                 key={meta.id}
                 className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
                   isExcluded
-                    ? "border-dashed border-[#d4d4d4] bg-white"
-                    : "border-[#efefef] bg-white"
+                    ? "border-dashed border-[var(--gray-700)] bg-white"
+                    : "border-[var(--border)] bg-white"
                 }`}
                 style={isExcluded ? { opacity: 0.55 } : undefined}
               >
@@ -367,11 +369,11 @@ export function ConceptWorkspace({
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-[#1a1a1a]">
+                        <span className="text-sm font-semibold text-[var(--foreground)]">
                           {meta.label}
                         </span>
                         {meta.deferrable && (
-                          <span className="text-[10px] font-medium text-[#afafaf] border border-[#e0e0e0] rounded-full px-2 py-0.5 leading-none">
+                          <span className="text-[10px] font-medium text-[var(--dark-grey)] border border-[var(--border-medium)] rounded-full px-2 py-0.5 leading-none">
                             Optional
                           </span>
                         )}
@@ -388,16 +390,16 @@ export function ConceptWorkspace({
                           aria-expanded={openExampleId === meta.id}
                           aria-label={`See a sample answer for ${meta.label}`}
                           title="See a sample answer"
-                          className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[#155e63] ${
+                          className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${
                             openExampleId === meta.id
-                              ? "text-[#155e63]"
-                              : "text-[#c8c5be] hover:text-[#155e63]"
+                              ? "text-[var(--teal)]"
+                              : "text-[var(--warm-900)] hover:text-[var(--teal)]"
                           }`}
                         >
                           <Lightbulb size={13} strokeWidth={2} aria-hidden="true" />
                         </button>
                       </div>
-                      <p className="text-xs text-[#afafaf]">{meta.hint}</p>
+                      <p className="text-xs text-[var(--dark-grey)]">{meta.hint}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {/* TIM-881: Improve with AI opens AIAssistCallout modal — multiline fields only */}
@@ -412,7 +414,7 @@ export function ConceptWorkspace({
                             })
                           }
                           disabled={!canEdit}
-                          className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                           Improve with AI
                         </button>
@@ -423,7 +425,7 @@ export function ConceptWorkspace({
                         onClick={() => askCopilot(meta.id, meta.label)}
                         disabled={!canEdit || isExcluded}
                         aria-label={`Ask the co-pilot about ${meta.label}`}
-                        className="text-xs font-medium text-white bg-[#155e63] rounded-full px-3 py-1 hover:bg-[#0e4448] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                        className="text-xs font-medium text-white bg-[var(--teal)] rounded-full px-3 py-1 hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         Ask Co-pilot
                       </button>
@@ -435,8 +437,8 @@ export function ConceptWorkspace({
                           disabled={!canEdit}
                           className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed whitespace-nowrap ${
                             comp.included
-                              ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20 hover:bg-[#155e63]/15"
-                              : "bg-[#f4f3f1] text-[#6b6b6b] border-[#e0e0e0] hover:bg-[#efefef]"
+                              ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20 hover:bg-[var(--teal)]/15"
+                              : "bg-[var(--surface-warm-200)] text-[var(--muted-foreground)] border-[var(--border-medium)] hover:bg-[var(--border)]"
                           }`}
                         >
                           {comp.included ? "In doc" : "Skip"}
@@ -452,16 +454,16 @@ export function ConceptWorkspace({
                     if (!ex) return null;
                     return (
                       <div
-                        className="mt-2 mb-1 bg-[#f5f3ef] border border-[#e0ddd8] rounded-xl p-4"
+                        className="mt-2 mb-1 bg-[var(--warm-250)] border border-[var(--warm-800)] rounded-xl p-4"
                         role="region"
                         aria-label="Sample answer from a fictional coffee shop"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <p className="text-[10px] font-semibold text-[#155e63] uppercase tracking-wider leading-none">
+                            <p className="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-wider leading-none">
                               {ex.shopName}
                             </p>
-                            <p className="text-[10px] text-[#6b6b6b] italic mt-0.5">
+                            <p className="text-[10px] text-[var(--muted-foreground)] italic mt-0.5">
                               {ex.shopType}
                             </p>
                           </div>
@@ -469,12 +471,12 @@ export function ConceptWorkspace({
                             type="button"
                             onClick={() => setOpenExampleId(null)}
                             aria-label="Close example"
-                            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors focus:outline-none ml-2 shrink-0"
+                            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus:outline-none ml-2 shrink-0"
                           >
                             <X size={13} aria-hidden="true" />
                           </button>
                         </div>
-                        <p className="text-sm text-[#4a4a4a] leading-relaxed italic border-l-2 border-[#c5c0b8] pl-3">
+                        <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">
                           {ex.answer}
                         </p>
                         <div className="flex items-center justify-between mt-3">
@@ -482,7 +484,7 @@ export function ConceptWorkspace({
                             <button
                               type="button"
                               onClick={() => setExampleIdx((i) => (i + 1) % examples.length)}
-                              className="text-xs text-[#155e63] hover:underline focus:outline-none focus:text-[#0e4448]"
+                              className="text-xs text-[var(--teal)] hover:underline focus:outline-none focus:text-[var(--teal-dark)]"
                             >
                               See another shop
                             </button>
@@ -490,7 +492,7 @@ export function ConceptWorkspace({
                           <button
                             type="button"
                             onClick={() => setOpenExampleId(null)}
-                            className="text-xs font-medium text-[#1a1a1a] hover:text-[#155e63] transition-colors focus:outline-none ml-auto"
+                            className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus:outline-none ml-auto"
                           >
                             Got it
                           </button>
@@ -501,7 +503,7 @@ export function ConceptWorkspace({
 
                   {/* Card body */}
                   {isExcluded ? (
-                    <p className="mt-2 text-sm text-[#afafaf] italic">
+                    <p className="mt-2 text-sm text-[var(--dark-grey)] italic">
                       Not included in your document. Toggle on when you&apos;re ready to add {meta.label}.
                     </p>
                   ) : meta.id === "target_customer" ? (
@@ -519,7 +521,7 @@ export function ConceptWorkspace({
                         rows={meta.rows ?? 3}
                         disabled={!canEdit}
                         autoFocus={isEmpty && isActivated}
-                        className="mt-2 w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                       />
                     ) : (
                       <input
@@ -529,13 +531,13 @@ export function ConceptWorkspace({
                         onChange={(e) => updateContent(meta.id, e.target.value)}
                         disabled={!canEdit}
                         autoFocus={isEmpty && isActivated}
-                        className="mt-2 w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                       />
                     )
                   ) : (
                     /* Empty state: show prompt text, clicking activates the field */
                     <p
-                      className="mt-2 text-sm text-[#afafaf] italic leading-relaxed cursor-text"
+                      className="mt-2 text-sm text-[var(--dark-grey)] italic leading-relaxed cursor-text"
                       onClick={() => {
                         if (canEdit) activateCard(meta.id);
                       }}
@@ -556,22 +558,22 @@ export function ConceptWorkspace({
         )}
 
         {/* Document footer CTA */}
-        <div className="mt-8 border-t border-[#efefef] pt-6 text-center">
+        <div className="mt-8 border-t border-[var(--border)] pt-6 text-center">
           <Link
             href="/workspace/concept/print"
-            className="inline-block bg-[#155e63] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+            className="inline-block bg-[var(--teal)] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
           >
             Print document
           </Link>
           {!complete && progress.total - progress.filled > 0 && (
-            <p className="text-xs text-[#afafaf] mt-2">
+            <p className="text-xs text-[var(--dark-grey)] mt-2">
               {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
             </p>
           )}
           {complete && (saveState.kind === "saved" || saveState.kind === "idle") ? (
             <ConceptUnlockBanner />
           ) : (
-            <p className="text-xs text-[#afafaf] mt-3">Autosaves as you type.</p>
+            <p className="text-xs text-[var(--dark-grey)] mt-3">Autosaves as you type.</p>
           )}
         </div>
       </div>
@@ -615,7 +617,7 @@ export function ConceptWorkspace({
 function ConceptUnlockBanner() {
   return (
     <div
-      className="mt-4 bg-[#155e63]/[0.08] border border-[#155e63]/20 rounded-2xl px-5 py-4 transition-opacity duration-300"
+      className="mt-4 bg-[var(--teal)]/[0.08] border border-[var(--teal)]/20 rounded-2xl px-5 py-4 transition-opacity duration-300"
       role="status"
     >
       <div className="flex items-start gap-3">
@@ -624,7 +626,7 @@ function ConceptUnlockBanner() {
           height="16"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#155e63"
+          stroke="var(--teal)"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -634,11 +636,11 @@ function ConceptUnlockBanner() {
           <polyline points="20 6 9 17 4 12" />
         </svg>
         <div>
-          <p className="text-sm font-semibold text-[#155e63]">Your concept is set.</p>
-          <p className="text-xs text-[#155e63]/80 mt-0.5">Every other workspace is now open.</p>
+          <p className="text-sm font-semibold text-[var(--teal)]">Your concept is set.</p>
+          <p className="text-xs text-[var(--teal)]/80 mt-0.5">Every other workspace is now open.</p>
           <Link
             href="/dashboard"
-            className="text-xs font-medium text-[#155e63] hover:underline mt-1.5 inline-block"
+            className="text-xs font-medium text-[var(--teal)] hover:underline mt-1.5 inline-block"
           >
             See all modules
           </Link>
@@ -678,24 +680,24 @@ function ConceptBriefInline({
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-0.5">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-0.5">
             Section 5
           </p>
-          <h2 className="text-base font-semibold text-[#1a1a1a]">
+          <h2 className="text-base font-semibold text-[var(--foreground)]">
             Concept Brief
           </h2>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/workspace/concept/print"
-            className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1 hover:bg-[#155e63]/5 transition-colors"
+            className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors"
           >
             Print
           </Link>
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-xs text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            className="text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
             aria-expanded={expanded}
           >
             {expanded ? "Collapse" : "Expand"}
@@ -704,23 +706,23 @@ function ConceptBriefInline({
       </div>
 
       {expanded && (
-        <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+        <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
           {/* Document header */}
-          <div className="px-7 pt-7 pb-5 border-b border-[#efefef]">
-            <div className="h-[3px] bg-[#155e63] rounded-full mb-5 w-12" />
+          <div className="px-7 pt-7 pb-5 border-b border-[var(--border)]">
+            <div className="h-[3px] bg-[var(--teal)] rounded-full mb-5 w-12" />
             <h3
-              className="font-bold text-[#1a1a1a] leading-tight mb-1"
+              className="font-bold text-[var(--foreground)] leading-tight mb-1"
               style={{ fontSize: "24px", letterSpacing: "-0.01em" }}
             >
-              {shopName || <span className="italic text-[#afafaf]">Your shop name</span>}
+              {shopName || <span className="italic text-[var(--dark-grey)]">Your shop name</span>}
             </h3>
-            <p className="text-xs text-[#afafaf]">
+            <p className="text-xs text-[var(--dark-grey)]">
               {briefSections.length} section{briefSections.length !== 1 ? "s" : ""} included
             </p>
           </div>
 
           {/* Section cards */}
-          <div className="divide-y divide-[#efefef]">
+          <div className="divide-y divide-[var(--border)]">
             {briefSections.map((meta) => {
               const comp = doc.components[meta.id];
               const isFeatured = BRIEF_FEATURED_IDS.has(meta.id);
@@ -728,20 +730,20 @@ function ConceptBriefInline({
               if (meta.id === "target_customer" && doc.personas && doc.personas.length > 0) {
                 return (
                   <div key={meta.id} className="flex">
-                    <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                    <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
                     <div className="px-6 py-5 flex-1 min-w-0">
-                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[var(--teal)] mb-2">
                         {meta.label}
                       </p>
                       <div className="space-y-1.5">
                         {doc.personas.map((p) => (
-                          <p key={p.id} className="text-sm text-[#1a1a1a]">
+                          <p key={p.id} className="text-sm text-[var(--foreground)]">
                             <span className="font-medium">{p.name}</span>
                             {p.isPrimary && (
-                              <span className="ml-1.5 text-[10px] text-[#155e63]">(primary)</span>
+                              <span className="ml-1.5 text-[10px] text-[var(--teal)]">(primary)</span>
                             )}
                             {p.whyTheyVisit.trim() && (
-                              <span className="text-[#6b6b6b]">
+                              <span className="text-[var(--muted-foreground)]">
                                 {": "}
                                 {p.whyTheyVisit.trim().length > 70
                                   ? p.whyTheyVisit.trim().slice(0, 70) + "..."
@@ -758,12 +760,12 @@ function ConceptBriefInline({
 
               if (isFeatured) {
                 return (
-                  <div key={meta.id} className="px-7 py-5 bg-[#f4f9f8]">
-                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                  <div key={meta.id} className="px-7 py-5 bg-[var(--teal-tint-500)]">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[var(--teal)] mb-2">
                       {meta.label}
                     </p>
                     <p
-                      className="text-[#1a1a1a] font-medium leading-[1.75]"
+                      className="text-[var(--foreground)] font-medium leading-[1.75]"
                       style={{ fontSize: "15px" }}
                     >
                       {comp.content.trim()}
@@ -774,13 +776,13 @@ function ConceptBriefInline({
 
               return (
                 <div key={meta.id} className="flex">
-                  <div className="w-1 bg-[#155e63] flex-shrink-0" />
+                  <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
                   <div className="px-6 py-5 flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-2">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[var(--teal)] mb-2">
                       {meta.label}
                     </p>
                     <p
-                      className="text-[#1a1a1a] leading-[1.7]"
+                      className="text-[var(--foreground)] leading-[1.7]"
                       style={{ fontSize: "14px" }}
                     >
                       {comp.content.trim()}
@@ -792,13 +794,13 @@ function ConceptBriefInline({
           </div>
 
           {/* Document footer */}
-          <div className="px-7 py-4 border-t border-[#efefef] flex items-center justify-between">
-            <span className="text-xs text-[#afafaf]">
+          <div className="px-7 py-4 border-t border-[var(--border)] flex items-center justify-between">
+            <span className="text-xs text-[var(--dark-grey)]">
               Timberline Coffee School
             </span>
             <Link
               href="/workspace/concept/print"
-              className="text-xs font-medium text-[#155e63] hover:underline"
+              className="text-xs font-medium text-[var(--teal)] hover:underline"
             >
               Open full document
             </Link>

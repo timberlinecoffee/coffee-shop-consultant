@@ -341,14 +341,14 @@ const styles = StyleSheet.create({
     color: BRAND.colors.primary,
   },
   metricValueBad: {
-    color: "#B23A1F",
+    color: "var(--rust)",
   },
   emptyNote: {
     fontSize: 10,
     fontStyle: "italic",
     color: BRAND.colors.muted,
     padding: 8,
-    backgroundColor: "#F5F6F5",
+    backgroundColor: "var(--neutral-cool-f5)",
     borderRadius: 4,
     marginBottom: 8,
   },

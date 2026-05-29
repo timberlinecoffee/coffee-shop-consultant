@@ -9,26 +9,26 @@ const EFFECTIVE_DATE = "May 22, 2026";
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col">
-      <header className="border-b border-[#efefef] bg-white">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col">
+      <header className="border-b border-[var(--border)] bg-white">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#155e63] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
-            <span className="font-semibold text-[#155e63]">Timberline Coffee School</span>
+            <span className="font-semibold text-[var(--teal)]">Timberline Coffee School</span>
           </Link>
-          <Link href="/" className="text-sm text-[#155e63] hover:underline">
+          <Link href="/" className="text-sm text-[var(--teal)] hover:underline">
             Back to home
           </Link>
         </div>
       </header>
 
       <main className="flex-1 max-w-3xl mx-auto px-6 py-12 w-full">
-        <h1 className="text-3xl font-bold text-[#1a1a1a] mb-2">Privacy Policy</h1>
-        <p className="text-sm text-[#afafaf] mb-10">Effective {EFFECTIVE_DATE}</p>
+        <h1 className="text-3xl font-bold text-[var(--foreground)] mb-2">Privacy Policy</h1>
+        <p className="text-sm text-[var(--dark-grey)] mb-10">Effective {EFFECTIVE_DATE}</p>
 
-        <div className="prose prose-sm max-w-none text-[#1a1a1a] space-y-8">
+        <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
             Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) is committed
             to protecting your privacy. This Privacy Policy explains what information we collect, how we
@@ -130,7 +130,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3">
               To exercise any of these rights, email{" "}
-              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
                 privacy@timberlinecoffeeschool.com
               </a>
               . We will respond within 30 days.
@@ -181,7 +181,7 @@ export default function PrivacyPage() {
               Timberline Coffee School
               <br />
               Email:{" "}
-              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[#155e63] underline">
+              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
                 privacy@timberlinecoffeeschool.com
               </a>
             </p>
@@ -189,7 +189,7 @@ export default function PrivacyPage() {
         </div>
       </main>
 
-      <footer className="bg-[#1a1a1a] text-[#afafaf] px-6 py-6 text-sm">
+      <footer className="bg-[var(--foreground)] text-[var(--dark-grey)] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
           <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
           <div className="flex gap-6 flex-wrap justify-center">

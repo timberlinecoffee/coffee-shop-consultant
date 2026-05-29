@@ -208,7 +208,7 @@ export async function DELETE(request: NextRequest) {
   if ((itemCount ?? 0) > 0) {
     if (!moveToId) {
       return Response.json(
-        { error: "Category has items — supply moveToId to reparent before delete", itemCount },
+        { error: "Category has items: supply moveToId to reparent before delete", itemCount },
         { status: 409 },
       )
     }

@@ -20,8 +20,8 @@ function ScoreCircles({ score, max = 5 }: { score: number; max?: number }) {
           key={i}
           className={`inline-block w-3 h-3 rounded-full border ${
             i < score
-              ? "bg-[#155e63] border-[#155e63]"
-              : "bg-white border-[#d0d0d0]"
+              ? "bg-[var(--teal)] border-[var(--teal)]"
+              : "bg-white border-[var(--neutral-cool-350)]"
           }`}
         />
       ))}
@@ -130,10 +130,10 @@ export default async function HiringReportPrintPage() {
       />
 
       {/* Action bar */}
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-[#efefef] px-6 py-3.5 flex items-center justify-between">
+      <div className="no-print sticky top-0 z-10 bg-white border-b border-[var(--border)] px-6 py-3.5 flex items-center justify-between">
         <Link
           href="/workspace/hiring"
-          className="text-sm text-[#155e63] font-medium hover:underline flex items-center gap-1.5"
+          className="text-sm text-[var(--teal)] font-medium hover:underline flex items-center gap-1.5"
         >
           <span aria-hidden="true">←</span> Back to hiring
         </Link>
@@ -143,17 +143,17 @@ export default async function HiringReportPrintPage() {
       <div className="max-w-[680px] mx-auto px-8 pt-14 pb-20">
         {/* Cover header */}
         <header className="mb-12">
-          <div className="h-[3px] bg-[#155e63] mb-8 rounded-full" />
-          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#155e63] mb-3">
+          <div className="h-[3px] bg-[var(--teal)] mb-8 rounded-full" />
+          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--teal)] mb-3">
             Competency Evaluation Report
           </p>
           <h1
-            className="font-bold text-[#1a1a1a] leading-tight mb-4"
+            className="font-bold text-[var(--foreground)] leading-tight mb-4"
             style={{ fontSize: "34px", letterSpacing: "-0.01em" }}
           >
             {planName}
           </h1>
-          <p className="text-xs text-[#afafaf] tracking-wide">
+          <p className="text-xs text-[var(--dark-grey)] tracking-wide">
             {printDate}
             {staffFiles.length > 0 && (
               <>
@@ -164,16 +164,16 @@ export default async function HiringReportPrintPage() {
             {" · "}
             Prepared with Timberline Coffee School
           </p>
-          <div className="mt-8 border-t border-[#efefef]" />
+          <div className="mt-8 border-t border-[var(--border)]" />
         </header>
 
         {/* Staff reports */}
         {staffFiles.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#d4d4d4] px-6 py-10 text-center">
-            <p className="text-sm text-[#afafaf] mb-3">No staff files found.</p>
+          <div className="rounded-2xl border border-dashed border-[var(--gray-700)] px-6 py-10 text-center">
+            <p className="text-sm text-[var(--dark-grey)] mb-3">No staff files found.</p>
             <Link
               href="/workspace/hiring"
-              className="text-sm font-medium text-[#155e63] hover:underline"
+              className="text-sm font-medium text-[var(--teal)] hover:underline"
             >
               Go back to add staff
             </Link>
@@ -193,18 +193,18 @@ export default async function HiringReportPrintPage() {
                   <div className="mb-4">
                     <div className="flex items-baseline justify-between gap-3">
                       <h2
-                        className="font-bold text-[#1a1a1a]"
+                        className="font-bold text-[var(--foreground)]"
                         style={{ fontSize: "20px" }}
                       >
                         {staff.name || "Unnamed staff"}
                       </h2>
                       {avg !== null && (
-                        <span className="text-sm font-semibold text-[#155e63]">
+                        <span className="text-sm font-semibold text-[var(--teal)]">
                           {avg.toFixed(0)}% overall
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#6b6b6b] mt-1">
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
                       {role?.role_title ?? "No role assigned"}
                       {staff.hire_date
                         ? ` · Hired ${new Date(staff.hire_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
@@ -214,29 +214,29 @@ export default async function HiringReportPrintPage() {
 
                   {/* Competency table */}
                   {competencies.length === 0 ? (
-                    <p className="text-sm text-[#afafaf] italic">
+                    <p className="text-sm text-[var(--dark-grey)] italic">
                       No competencies defined.
                     </p>
                   ) : (
-                    <div className="rounded-xl border border-[#efefef] overflow-hidden">
+                    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-[#faf9f7] border-b border-[#efefef]">
-                            <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                          <tr className="bg-[var(--background)] border-b border-[var(--border)]">
+                            <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)]">
                               Skill
                             </th>
-                            <th className="py-2.5 px-3 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                            <th className="py-2.5 px-3 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)]">
                               Rubric
                             </th>
-                            <th className="py-2.5 px-3 text-center text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                            <th className="py-2.5 px-3 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)]">
                               Score
                             </th>
-                            <th className="py-2.5 pr-4 pl-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf]">
+                            <th className="py-2.5 pr-4 pl-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)]">
                               Weighted
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#f5f5f5]">
+                        <tbody className="divide-y divide-[var(--neutral-cool-100)]">
                           {competencies
                             .sort((a, b) => a.order_index - b.order_index)
                             .map((comp) => {
@@ -251,20 +251,20 @@ export default async function HiringReportPrintPage() {
 
                               return (
                                 <tr key={comp.id}>
-                                  <td className="py-3 pl-4 pr-2 text-sm font-medium text-[#1a1a1a]">
+                                  <td className="py-3 pl-4 pr-2 text-sm font-medium text-[var(--foreground)]">
                                     {comp.skill || "—"}
                                   </td>
-                                  <td className="py-3 px-3 text-xs text-[#6b6b6b] max-w-[180px]">
+                                  <td className="py-3 px-3 text-xs text-[var(--muted-foreground)] max-w-[180px]">
                                     {comp.rubric || "—"}
                                   </td>
                                   <td className="py-3 px-3 text-center">
                                     {score > 0 ? (
                                       <ScoreCircles score={score} />
                                     ) : (
-                                      <span className="text-xs text-[#afafaf]">—</span>
+                                      <span className="text-xs text-[var(--dark-grey)]">—</span>
                                     )}
                                   </td>
-                                  <td className="py-3 pr-4 pl-2 text-right text-xs text-[#6b6b6b] tabular-nums">
+                                  <td className="py-3 pr-4 pl-2 text-right text-xs text-[var(--muted-foreground)] tabular-nums">
                                     {contribution}
                                   </td>
                                 </tr>
@@ -275,13 +275,13 @@ export default async function HiringReportPrintPage() {
 
                       {/* Weighted average bar */}
                       {avg !== null && (
-                        <div className="px-4 py-3 border-t border-[#efefef] bg-[#f4f9f8] flex items-center gap-4">
-                          <span className="text-xs font-semibold text-[#155e63] shrink-0">
+                        <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--teal-tint-500)] flex items-center gap-4">
+                          <span className="text-xs font-semibold text-[var(--teal)] shrink-0">
                             Weighted average: {avg.toFixed(0)}%
                           </span>
-                          <div className="flex-1 h-2 bg-[#e0eded] rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-[var(--teal-bg-550)] rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-[#155e63] rounded-full"
+                              className="h-full bg-[var(--teal)] rounded-full"
                               style={{ width: `${avg}%` }}
                             />
                           </div>
@@ -291,7 +291,7 @@ export default async function HiringReportPrintPage() {
                   )}
 
                   {/* Divider between staff members */}
-                  <div className="mt-8 border-t border-[#efefef]" />
+                  <div className="mt-8 border-t border-[var(--border)]" />
                 </div>
               );
             })}
@@ -299,11 +299,11 @@ export default async function HiringReportPrintPage() {
         )}
 
         {/* Footer */}
-        <footer className="mt-12 pt-6 border-t border-[#efefef] flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">
+        <footer className="mt-12 pt-6 border-t border-[var(--border)] flex items-center justify-between">
+          <span className="text-xs text-[var(--dark-grey)]">
             {planName} &middot; Competency Report &middot; {year}
           </span>
-          <span className="text-xs text-[#afafaf]">Timberline Coffee School</span>
+          <span className="text-xs text-[var(--dark-grey)]">Timberline Coffee School</span>
         </footer>
       </div>
     </div>

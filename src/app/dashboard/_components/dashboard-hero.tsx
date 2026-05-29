@@ -83,10 +83,10 @@ export function DashboardHero({ firstName }: { firstName: string }) {
 
   return (
     <div className="mb-10">
-      <h1 className="text-3xl font-bold text-[#1a1a1a] tracking-tight">
+      <h1 className="text-3xl font-bold text-[var(--foreground)] tracking-tight">
         {content ? `${content.greeting}, ${firstName}.` : `Welcome back, ${firstName}.`}
       </h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[#6b6b6b]">
+      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--muted-foreground)]">
         {content?.fact ?? COFFEE_FACTS[0]}
       </p>
     </div>

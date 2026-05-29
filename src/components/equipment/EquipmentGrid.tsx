@@ -209,7 +209,7 @@ function TextCell({
   }, [value]);
 
   const cls =
-    "w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none resize-none border-0 p-0 placeholder-[#c0c0c0]";
+    "w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none resize-none border-0 p-0 placeholder-[var(--neutral-cool-400)]";
 
   if (multiline) {
     return (
@@ -267,7 +267,7 @@ function CostCell({
       type="number"
       min={0}
       step={50}
-      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
       value={draft}
       placeholder="0"
       disabled={disabled}
@@ -300,7 +300,7 @@ function UsefulLifeCell({
       min={1}
       max={50}
       step={1}
-      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0"
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0"
       value={draft}
       disabled={disabled}
       onChange={(e) => setDraft(e.target.value)}
@@ -328,7 +328,7 @@ function SelectCell({
   return (
     <select
       ref={inputRef}
-      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 cursor-pointer"
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 cursor-pointer"
       value={value}
       disabled={disabled}
       onChange={(e) => onCommit(e.target.value)}
@@ -363,8 +363,8 @@ function MobileEquipmentList({
   return (
     <div className="space-y-2">
       {items.length === 0 && (
-        <div className="rounded-xl border border-dashed border-[#e0e0e0] py-10 text-center">
-          <p className="text-sm text-[#afafaf]">No equipment added yet.</p>
+        <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-10 text-center">
+          <p className="text-sm text-[var(--dark-grey)]">No equipment added yet.</p>
         </div>
       )}
 
@@ -377,7 +377,7 @@ function MobileEquipmentList({
           <div
             key={item.id}
             className={`border rounded-xl bg-white overflow-hidden ${
-              fund ? "border-[#cfe0e1] bg-[#f4f9f8]/30" : "border-[#efefef]"
+              fund ? "border-[var(--teal-tint)] bg-[var(--teal-tint-500)]/30" : "border-[var(--border)]"
             }`}
           >
             <div
@@ -385,21 +385,21 @@ function MobileEquipmentList({
               onClick={() => setExpandedId(open ? null : item.id)}
             >
               {fund && (
-                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#cfe0e1] text-[#155e63] shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--teal-tint)] text-[var(--teal)] shrink-0">
                   Fund
                 </span>
               )}
-              <span className="text-sm text-[#1a1a1a] flex-1 truncate font-medium">
-                {item.name || <span className="text-[#afafaf] font-normal">Unnamed</span>}
+              <span className="text-sm text-[var(--foreground)] flex-1 truncate font-medium">
+                {item.name || <span className="text-[var(--dark-grey)] font-normal">Unnamed</span>}
               </span>
-              <span className="text-xs font-semibold text-[#1a1a1a] shrink-0">
+              <span className="text-xs font-semibold text-[var(--foreground)] shrink-0">
                 {total > 0 ? formatCurrency(total / 100) : "$0"}
               </span>
               {canEdit && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
-                  className="text-[#afafaf] hover:text-[#a13d3d] p-1 shrink-0"
+                  className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 shrink-0"
                   aria-label="Delete"
                 >
                   <Trash2 size={13} />
@@ -408,7 +408,7 @@ function MobileEquipmentList({
             </div>
 
             {open && (
-              <div className="border-t border-[#efefef] px-3 py-3 space-y-2 bg-[#faf9f7]">
+              <div className="border-t border-[var(--border)] px-3 py-3 space-y-2 bg-[var(--background)]">
                 {[
                   { label: "Name", key: "name" as const, type: "text", placeholder: "Item name" },
                   ...(!fund ? [
@@ -420,12 +420,12 @@ function MobileEquipmentList({
                   { label: "Notes", key: "notes" as const, type: "text", placeholder: "Notes" },
                 ].map(({ label, key, type, placeholder }) => (
                   <div key={key}>
-                    <label className="block text-[10px] font-medium text-[#6b6b6b] mb-0.5">{label}</label>
+                    <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">{label}</label>
                     {type === "cost" ? (
                       <input
                         type="number"
                         min={0}
-                        className="w-full text-xs border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#155e63]"
+                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--teal)]"
                         value={item.unit_cost_cents > 0 ? item.unit_cost_cents / 100 : ""}
                         placeholder={placeholder}
                         disabled={!canEdit}
@@ -436,7 +436,7 @@ function MobileEquipmentList({
                     ) : (
                       <input
                         type="text"
-                        className="w-full text-xs border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#155e63]"
+                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--teal)]"
                         value={(item[key] as string | null) ?? ""}
                         placeholder={placeholder}
                         disabled={!canEdit}
@@ -449,9 +449,9 @@ function MobileEquipmentList({
                 ))}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-medium text-[#6b6b6b] mb-0.5">Category</label>
+                    <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Category</label>
                     <select
-                      className="w-full text-xs border border-[#e0e0e0] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#155e63]"
+                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[var(--teal)]"
                       value={item.category}
                       disabled={!canEdit}
                       onChange={(e) => onUpdate(item.id, { category: e.target.value as EquipmentCategory })}
@@ -462,9 +462,9 @@ function MobileEquipmentList({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-medium text-[#6b6b6b] mb-0.5">Financing</label>
+                    <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Financing</label>
                     <select
-                      className="w-full text-xs border border-[#e0e0e0] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#155e63]"
+                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[var(--teal)]"
                       value={item.financing_method}
                       disabled={!canEdit}
                       onChange={(e) => onUpdate(item.id, { financing_method: e.target.value as FinancingMethod })}
@@ -485,7 +485,7 @@ function MobileEquipmentList({
         <button
           type="button"
           onClick={onAdd}
-          className="flex items-center gap-2 text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors w-full justify-center"
+          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
         >
           <Plus size={14} aria-hidden="true" />
           Add item
@@ -798,7 +798,7 @@ export function EquipmentGrid({
         header: ({ table: t }) => (
           <input
             type="checkbox"
-            className="accent-[#155e63] cursor-pointer"
+            className="accent-[var(--teal)] cursor-pointer"
             checked={t.getIsAllPageRowsSelected()}
             onChange={t.getToggleAllPageRowsSelectedHandler()}
             aria-label="Select all"
@@ -807,7 +807,7 @@ export function EquipmentGrid({
         cell: ({ row }) => (
           <input
             type="checkbox"
-            className="accent-[#155e63] cursor-pointer"
+            className="accent-[var(--teal)] cursor-pointer"
             checked={row.getIsSelected()}
             onChange={row.getToggleSelectedHandler()}
             aria-label="Select row"
@@ -841,10 +841,10 @@ export function EquipmentGrid({
                   />
                 ) : (
                   <span
-                    className="block truncate text-xs text-[#1a1a1a] cursor-text"
+                    className="block truncate text-xs text-[var(--foreground)] cursor-text"
                     onClick={() => canEdit && focusCell(item.id, "name")}
                   >
-                    {item.name || <span className="text-[#c0c0c0]">Name</span>}
+                    {item.name || <span className="text-[var(--neutral-cool-400)]">Name</span>}
                   </span>
                 )}
               </div>
@@ -873,10 +873,10 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text"
               onClick={() => canEdit && focusCell(item.id, "vendor")}
             >
-              {item.vendor || <span className="text-[#c0c0c0]">Brand</span>}
+              {item.vendor || <span className="text-[var(--neutral-cool-400)]">Brand</span>}
             </span>
           );
         },
@@ -902,10 +902,10 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text"
               onClick={() => canEdit && focusCell(item.id, "model")}
             >
-              {item.model || <span className="text-[#c0c0c0]">Model</span>}
+              {item.model || <span className="text-[var(--neutral-cool-400)]">Model</span>}
             </span>
           );
         },
@@ -931,10 +931,10 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text"
               onClick={() => canEdit && focusCell(item.id, "supplier")}
             >
-              {item.supplier || <span className="text-[#c0c0c0]">Supplier</span>}
+              {item.supplier || <span className="text-[var(--neutral-cool-400)]">Supplier</span>}
             </span>
           );
         },
@@ -957,12 +957,12 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text font-medium"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text font-medium"
               onClick={() => canEdit && focusCell(item.id, "unit_cost_cents")}
             >
               {item.unit_cost_cents > 0
                 ? formatCurrency(item.unit_cost_cents / 100)
-                : <span className="text-[#c0c0c0] font-normal">$0</span>
+                : <span className="text-[var(--neutral-cool-400)] font-normal">$0</span>
               }
             </span>
           );
@@ -987,7 +987,7 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text"
               onClick={() => canEdit && focusCell(item.id, "financing_method")}
             >
               {FINANCING_LABELS[item.financing_method] ?? item.financing_method}
@@ -1007,7 +1007,7 @@ export function EquipmentGrid({
           return (
             <div className="flex items-center gap-1.5 w-full">
               {fund && (
-                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-[#cfe0e1] text-[#155e63]">
+                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-[var(--teal-tint)] text-[var(--teal)]">
                   Fund
                 </span>
               )}
@@ -1023,7 +1023,7 @@ export function EquipmentGrid({
                   />
                 ) : (
                   <span
-                    className="block truncate text-xs text-[#1a1a1a] cursor-text"
+                    className="block truncate text-xs text-[var(--foreground)] cursor-text"
                     onClick={() => canEdit && focusCell(item.id, "category")}
                   >
                     {CATEGORY_LABELS[item.category] ?? item.category}
@@ -1052,7 +1052,7 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text"
               onClick={() => canEdit && focusCell(item.id, "useful_life_years")}
             >
               {item.useful_life_years ?? 7}yr
@@ -1081,10 +1081,10 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[#6b6b6b] cursor-text"
+              className="block truncate text-xs text-[var(--muted-foreground)] cursor-text"
               onClick={() => canEdit && focusCell(item.id, "notes")}
             >
-              {item.notes || <span className="text-[#c0c0c0]">Notes</span>}
+              {item.notes || <span className="text-[var(--neutral-cool-400)]">Notes</span>}
             </span>
           );
         },
@@ -1100,7 +1100,7 @@ export function EquipmentGrid({
             <button
               type="button"
               onClick={() => deleteSingleRow(row.original.id)}
-              className="text-[#c0c0c0] hover:text-[#a13d3d] transition-colors p-0.5"
+              className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors p-0.5"
               aria-label="Delete row"
             >
               <Trash2 size={13} />
@@ -1157,29 +1157,29 @@ export function EquipmentGrid({
   // ── Spreadsheet ───────────────────────────────────────────────────────────────
 
   const cellCls =
-    "px-2.5 py-2 text-xs border-r border-[#f0f0f0] last:border-r-0 align-top";
+    "px-2.5 py-2 text-xs border-r border-[var(--neutral-cool-150)] last:border-r-0 align-top";
   const headerCellCls =
-    "px-2.5 py-2 text-left text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide border-r border-[#f0f0f0] last:border-r-0 bg-[#faf9f7] select-none";
+    "px-2.5 py-2 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none";
 
   return (
     <div className="space-y-3">
       {/* Stats bar */}
       <div className="flex items-center justify-between gap-4 px-1">
-        <div className="flex items-center gap-4 text-xs text-[#6b6b6b]">
+        <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
           {items.length > 0 && (
             <>
               <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
-              <span className="text-[#efefef]">|</span>
-              <span className="font-semibold text-[#1a1a1a]">
+              <span className="text-[var(--border)]">|</span>
+              <span className="font-semibold text-[var(--foreground)]">
                 Total: {formatCurrency(totalCents / 100)}
               </span>
               {selectedCount > 0 && (
                 <>
-                  <span className="text-[#efefef]">|</span>
+                  <span className="text-[var(--border)]">|</span>
                   <button
                     type="button"
                     onClick={deleteSelected}
-                    className="flex items-center gap-1 text-xs font-medium text-[#a13d3d] hover:text-[#7a2d2d] transition-colors"
+                    className="flex items-center gap-1 text-xs font-medium text-[var(--error)] hover:text-[var(--error-dark)] transition-colors"
                   >
                     <Trash2 size={12} />
                     Delete {selectedCount} selected
@@ -1197,14 +1197,14 @@ export function EquipmentGrid({
             onClick={() => setColPickerOpen((o) => !o)}
             title="Column settings"
             aria-label="Column settings"
-            className="flex items-center gap-1.5 text-xs text-[#6b6b6b] hover:text-[#1a1a1a] border border-[#e8e8e8] rounded-lg px-2 py-1.5 hover:bg-[#f5f4f0] transition-colors"
+            className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--neutral-cool-200)] rounded-lg px-2 py-1.5 hover:bg-[var(--surface-warm-100)] transition-colors"
           >
             <Settings2 size={12} />
             Columns
           </button>
           {colPickerOpen && (
-            <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1 min-w-[160px]">
-              <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">
+            <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
+              <p className="px-3 py-1.5 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">
                 Show / hide columns
               </p>
               {TOGGLEABLE_COLS.map((col) => {
@@ -1214,11 +1214,11 @@ export function EquipmentGrid({
                 return (
                   <label
                     key={col.id}
-                    className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#faf9f7] cursor-pointer"
+                    className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--background)] cursor-pointer"
                   >
                     <input
                       type="checkbox"
-                      className="accent-[#155e63] cursor-pointer"
+                      className="accent-[var(--teal)] cursor-pointer"
                       checked={visible}
                       onChange={() => column.toggleVisibility(!visible)}
                     />
@@ -1232,7 +1232,7 @@ export function EquipmentGrid({
       </div>
 
       {/* Spreadsheet table */}
-      <div className="border border-[#efefef] rounded-xl overflow-hidden">
+      <div className="border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse min-w-[900px]" style={{ tableLayout: "fixed" }}>
             <colgroup>
@@ -1243,20 +1243,20 @@ export function EquipmentGrid({
 
             {/* Filter row */}
             <thead>
-              <tr className="border-b border-[#f0f0f0]">
+              <tr className="border-b border-[var(--neutral-cool-150)]">
                 {table.getHeaderGroups()[0].headers.map((header) => {
                   const col = header.column;
                   const canSort = col.getCanSort();
                   const sortDir = col.getIsSorted();
                   return (
-                    <th key={header.id} className={`${headerCellCls} ${getStickyColCls(header.id, "bg-[#faf9f7]")}`}>
+                    <th key={header.id} className={`${headerCellCls} ${getStickyColCls(header.id, "bg-[var(--background)]")}`}>
                       <div
-                        className={`flex items-center gap-1 ${canSort ? "cursor-pointer hover:text-[#1a1a1a]" : ""}`}
+                        className={`flex items-center gap-1 ${canSort ? "cursor-pointer hover:text-[var(--foreground)]" : ""}`}
                         onClick={canSort ? col.getToggleSortingHandler() : undefined}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {canSort && (
-                          <span className="text-[#c0c0c0]">
+                          <span className="text-[var(--neutral-cool-400)]">
                             {sortDir === "asc" ? (
                               <ArrowUp size={10} />
                             ) : sortDir === "desc" ? (
@@ -1272,17 +1272,17 @@ export function EquipmentGrid({
                 })}
               </tr>
               {/* Filter inputs row */}
-              <tr className="border-b border-[#e8e8e8]">
+              <tr className="border-b border-[var(--neutral-cool-200)]">
                 {table.getHeaderGroups()[0].headers.map((header) => {
                   const col = header.column;
                   if (!col.getCanFilter()) {
-                    return <td key={header.id} className={`px-2 py-1 bg-[#faf9f7] ${getStickyColCls(header.id, "bg-[#faf9f7]")}`} />;
+                    return <td key={header.id} className={`px-2 py-1 bg-[var(--background)] ${getStickyColCls(header.id, "bg-[var(--background)]")}`} />;
                   }
                   return (
-                    <td key={header.id} className={`px-2 py-1 bg-[#faf9f7] ${getStickyColCls(header.id, "bg-[#faf9f7]")}`}>
+                    <td key={header.id} className={`px-2 py-1 bg-[var(--background)] ${getStickyColCls(header.id, "bg-[var(--background)]")}`}>
                       <input
                         type="text"
-                        className="w-full text-[10px] bg-white border border-[#e8e8e8] rounded px-2 py-1 text-[#1a1a1a] placeholder-[#d0d0d0] focus:outline-none focus:border-[#155e63]"
+                        className="w-full text-[10px] bg-white border border-[var(--neutral-cool-200)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-350)] focus:outline-none focus:border-[var(--teal)]"
                         placeholder="Filter…"
                         value={(col.getFilterValue() as string) ?? ""}
                         onChange={(e) => col.setFilterValue(e.target.value || undefined)}
@@ -1298,7 +1298,7 @@ export function EquipmentGrid({
                 <tr>
                   <td
                     colSpan={columns.length}
-                    className="text-center py-10 text-sm text-[#afafaf]"
+                    className="text-center py-10 text-sm text-[var(--dark-grey)]"
                   >
                     No equipment added yet.
                   </td>
@@ -1311,12 +1311,12 @@ export function EquipmentGrid({
                 return (
                   <tr
                     key={row.id}
-                    className={`border-b border-[#f5f5f5] last:border-b-0 transition-colors ${
+                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors ${
                       selected
-                        ? "bg-[#f0f7f7]"
+                        ? "bg-[var(--teal-bg-pale)]"
                         : fund
-                        ? "bg-[#f4f9f8]/60"
-                        : "bg-white hover:bg-[#faf9f7]"
+                        ? "bg-[var(--teal-tint-500)]/60"
+                        : "bg-white hover:bg-[var(--background)]"
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -1324,7 +1324,7 @@ export function EquipmentGrid({
                         key={cell.id}
                         className={`${cellCls} ${getStickyColCls(
                           cell.column.id,
-                          selected ? "bg-[#f0f7f7]" : fund ? "bg-[#f4f9f8]" : "bg-white"
+                          selected ? "bg-[var(--teal-bg-pale)]" : fund ? "bg-[var(--teal-tint-500)]" : "bg-white"
                         )}`}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1343,7 +1343,7 @@ export function EquipmentGrid({
         <button
           type="button"
           onClick={addRow}
-          className="flex items-center gap-2 text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors w-full justify-center"
+          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
         >
           <Plus size={14} aria-hidden="true" />
           Add row

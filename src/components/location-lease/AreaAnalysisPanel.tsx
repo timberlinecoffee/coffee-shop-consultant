@@ -55,9 +55,9 @@ export function AreaAnalysisPanel({
 
   if (!hasCoords) {
     return (
-      <div className="rounded-xl border border-dashed border-[#efefef] bg-[#faf9f7]/40 px-3 py-3 text-center">
-        <MapPin className="mx-auto mb-1 size-4 text-[#888]/60" aria-hidden="true" />
-        <p className="text-xs text-[#888]">
+      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)]/40 px-3 py-3 text-center">
+        <MapPin className="mx-auto mb-1 size-4 text-[var(--neutral-cool-600)]/60" aria-hidden="true" />
+        <p className="text-xs text-[var(--neutral-cool-600)]">
           Pick an address from the autocomplete above. Then we can pull what is
           actually around this block and have the AI read the neighborhood for you.
         </p>
@@ -67,19 +67,19 @@ export function AreaAnalysisPanel({
 
   if (!canUse) {
     return (
-      <div className="rounded-xl border border-[#efefef] px-3 py-3 text-center">
-        <p className="text-xs text-[#888]">
+      <div className="rounded-xl border border-[var(--border)] px-3 py-3 text-center">
+        <p className="text-xs text-[var(--neutral-cool-600)]">
           {subscriptionTier === 'free' ? (
             <>
               Area analysis requires a paid plan.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade →
               </a>
             </>
           ) : aiCreditsRemaining === 0 ? (
             <>
               You&apos;re out of credits.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade for more →
               </a>
             </>
@@ -98,7 +98,7 @@ export function AreaAnalysisPanel({
           <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">
             Area Analysis
           </h4>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-[#888]">
+          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--neutral-cool-600)]">
             We pull nearby businesses, transit stops, and parking from OpenStreetMap,
             then ask the AI to read the block for your concept.
           </p>
@@ -117,10 +117,10 @@ export function AreaAnalysisPanel({
       )}
 
       {text && (
-        <div className="rounded-xl border border-[#efefef] bg-[#f7f6f3]/40 px-4 py-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-warm-50)]/40 px-4 py-4">
           <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{text}</div>
           {generatedAt && (
-            <p className="mt-3 text-[10px] italic text-[#888]">
+            <p className="mt-3 text-[10px] italic text-[var(--neutral-cool-600)]">
               Generated {formatWhen(generatedAt)}
             </p>
           )}

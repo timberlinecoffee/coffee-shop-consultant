@@ -9,33 +9,33 @@ export const metadata = {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center px-4 py-12">
       <Link href="/" className="flex items-center gap-2 mb-10">
-        <div className="w-8 h-8 bg-[#155e63] rounded-lg flex items-center justify-center">
+        <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
           <span className="text-white text-xs font-bold">TCS</span>
         </div>
-        <span className="font-semibold text-[#155e63]">Timberline Coffee School</span>
+        <span className="font-semibold text-[var(--teal)]">Timberline Coffee School</span>
       </Link>
 
-      <div className="bg-white rounded-2xl border border-[#efefef] p-8 w-full max-w-sm shadow-sm">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">Create Your Account</h1>
-        <p className="text-[#afafaf] text-sm text-center mb-8">Start your coffee shop journey for free</p>
+      <div className="bg-white rounded-2xl border border-[var(--border)] p-8 w-full max-w-sm shadow-sm">
+        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2 text-center">Create Your Account</h1>
+        <p className="text-[var(--dark-grey)] text-sm text-center mb-8">Start your coffee shop journey for free</p>
         <LoginForm initialMode="signup" />
-        <p className="text-center text-sm text-[#afafaf] mt-6">
+        <p className="text-center text-sm text-[var(--dark-grey)] mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-[#155e63] font-medium hover:underline">
+          <Link href="/login" className="text-[var(--teal)] font-medium hover:underline">
             Sign In
           </Link>
         </p>
       </div>
 
-      <p className="text-xs text-[#afafaf] mt-8 text-center max-w-xs">
+      <p className="text-xs text-[var(--dark-grey)] mt-8 text-center max-w-xs">
         By continuing, you agree to our{" "}
-        <Link href="/terms" className="underline hover:text-[#155e63]">
+        <Link href="/terms" className="underline hover:text-[var(--teal)]">
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="underline hover:text-[#155e63]">
+        <Link href="/privacy" className="underline hover:text-[var(--teal)]">
           Privacy Policy
         </Link>
         .

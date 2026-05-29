@@ -31,13 +31,13 @@ import {
 // ── Shared styles — match Concept / Marketing tokens ────────────────────────
 
 const inputCls =
-  "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
-const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
+const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
-const cardCls = "rounded-2xl border border-[#efefef] bg-white";
-const helperCls = "text-[10px] text-[#afafaf] mt-1";
+  "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
+const cardCls = "rounded-2xl border border-[var(--border)] bg-white";
+const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
 function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
@@ -143,17 +143,17 @@ export function OperationsPlaybookWorkspace({
   const activeLabel = SOP_CATEGORY_LABELS[active];
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         <header className="mb-6">
           <div className="flex items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
               <ClipboardList
-                className="w-5 h-5 text-[#155e63] flex-shrink-0"
+                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
                 aria-hidden="true"
               />
               <h1
-                className="font-bold text-[#1a1a1a]"
+                className="font-bold text-[var(--foreground)]"
                 style={{ fontSize: "28px" }}
               >
                 Operations Playbook
@@ -161,18 +161,18 @@ export function OperationsPlaybookWorkspace({
             </div>
             <Link
               href="/workspace/operations-playbook/print"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[#155e63] hover:underline"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
               <Printer className="w-3.5 h-3.5" /> Print view
             </Link>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             The standard operating procedures your team runs every day. Edit
             anything. These are templates, not rules from on high.
           </p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-[#afafaf]">
+          <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
             <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
           </div>
         </header>
@@ -229,7 +229,7 @@ function SaveStatus({
     const mm = ts.getMinutes().toString().padStart(2, "0");
     return (
       <span className="flex items-center gap-1">
-        <Check className="w-3 h-3 text-[#155e63]" />
+        <Check className="w-3 h-3 text-[var(--teal)]" />
         Saved {hh}:{mm}
       </span>
     );
@@ -275,13 +275,13 @@ function SectionTabs({
               onClick={() => onChange(key)}
               className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl transition-colors ${
                 isActive
-                  ? "bg-[#155e63] text-white"
-                  : "text-[#6b6b6b] hover:bg-[#faf9f7]"
+                  ? "bg-[var(--teal)] text-white"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--background)]"
               }`}
             >
               {filled && (
                 <Check
-                  className={`w-3 h-3 ${isActive ? "text-white" : "text-[#155e63]"}`}
+                  className={`w-3 h-3 ${isActive ? "text-white" : "text-[var(--teal)]"}`}
                 />
               )}
               {SOP_CATEGORY_LABELS[key]}
@@ -386,13 +386,13 @@ function CategoryEditor({
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
           <h2 className={sectionLabelCls}>{label}</h2>
-          <p className="text-xs text-[#6b6b6b] leading-relaxed">{tagline}</p>
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{tagline}</p>
         </div>
         <button
           type="button"
           onClick={onGenerate}
           disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 disabled:text-[#afafaf] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[#155e63]/30 transition-colors flex-shrink-0"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
         >
           <Sparkles className="w-3.5 h-3.5" />
           {generating ? "Improving…" : "Improve with AI"}
@@ -412,11 +412,11 @@ function CategoryEditor({
       </div>
 
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium text-[#6b6b6b]">
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
           {category.items.length} {category.items.length === 1 ? "step" : "steps"}
         </span>
         {category.last_generated_at && (
-          <span className="text-[10px] text-[#afafaf]">
+          <span className="text-[10px] text-[var(--dark-grey)]">
             AI improved{" "}
             {new Date(category.last_generated_at).toLocaleDateString("en-US", {
               month: "short",
@@ -430,7 +430,7 @@ function CategoryEditor({
         <div className="space-y-5">
           {grouped.map(([station, indexes]) => (
             <div key={station}>
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#155e63] mb-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
                 {station}
               </h3>
               <ol className="space-y-2">
@@ -472,7 +472,7 @@ function CategoryEditor({
       )}
 
       {category.items.length === 0 && (
-        <p className="text-xs text-[#afafaf] italic py-4 text-center">
+        <p className="text-xs text-[var(--dark-grey)] italic py-4 text-center">
           No steps yet. Add your first step below or have AI draft a starter
           checklist for you.
         </p>
@@ -482,7 +482,7 @@ function CategoryEditor({
         <button
           type="button"
           onClick={addItem}
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-3 py-1.5 rounded-lg transition-colors"
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg transition-colors"
         >
           <Plus className="w-3.5 h-3.5" /> Add step
         </button>
@@ -527,7 +527,7 @@ function ChecklistItemRow({
           onClick={() => onMove(idx, -1)}
           disabled={!canEdit || idx === 0}
           aria-label="Move step up"
-          className="text-[#afafaf] hover:text-[#155e63] disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ArrowUp className="w-3 h-3" />
         </button>
@@ -536,7 +536,7 @@ function ChecklistItemRow({
           onClick={() => onMove(idx, 1)}
           disabled={!canEdit || idx === total - 1}
           aria-label="Move step down"
-          className="text-[#afafaf] hover:text-[#155e63] disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ArrowDown className="w-3 h-3" />
         </button>
@@ -555,7 +555,7 @@ function ChecklistItemRow({
             {useStation && (
               <>
                 <select
-                  className="text-[11px] border border-[#e0e0e0] rounded-md px-2 py-1 text-[#6b6b6b] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                  className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                   value={item.station ?? "Bar"}
                   onChange={(e) => onPatch(idx, { station: e.target.value })}
                   disabled={!canEdit}
@@ -568,7 +568,7 @@ function ChecklistItemRow({
                   )}
                 </select>
                 <select
-                  className="text-[11px] border border-[#e0e0e0] rounded-md px-2 py-1 text-[#6b6b6b] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                  className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                   value={item.cadence ?? "daily"}
                   onChange={(e) =>
                     onPatch(idx, { cadence: e.target.value as SopCadence })
@@ -583,12 +583,12 @@ function ChecklistItemRow({
               </>
             )}
             {useDuration && !useStation && (
-              <div className="inline-flex items-center gap-1 text-[11px] text-[#6b6b6b]">
+              <div className="inline-flex items-center gap-1 text-[11px] text-[var(--muted-foreground)]">
                 <input
                   type="number"
                   min={0}
                   max={120}
-                  className="w-14 border border-[#e0e0e0] rounded-md px-2 py-1 text-[#1a1a1a] text-right focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                  className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--foreground)] text-right focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                   value={item.duration_min ?? ""}
                   onChange={(e) =>
                     onPatch(idx, {
@@ -611,7 +611,7 @@ function ChecklistItemRow({
         onClick={() => onRemove(idx)}
         disabled={!canEdit}
         aria-label="Remove step"
-        className="text-[#afafaf] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 mt-1"
+        className="text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 mt-1"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>

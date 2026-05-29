@@ -135,11 +135,11 @@ export function CoPilotDrawer({
     <>
       <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={onClose} />
 
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 bg-white shadow-2xl flex flex-col border-l border-[#efefef]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 bg-white shadow-2xl flex flex-col border-l border-[var(--border)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
             <p className="text-sm font-semibold text-foreground">Co-Pilot</p>
-            <p className="text-xs text-[#888]">Location &amp; Lease workspace</p>
+            <p className="text-xs text-[var(--neutral-cool-600)]">Location &amp; Lease workspace</p>
           </div>
           <div className="flex items-center gap-3">
             {subscriptionTier === 'pro' ? (
@@ -150,7 +150,7 @@ export function CoPilotDrawer({
                   'text-xs font-medium',
                   aiCreditsRemaining <= 10 && aiCreditsRemaining > 0
                     ? 'text-amber-500'
-                    : 'text-[#888]'
+                    : 'text-[var(--neutral-cool-600)]'
                 )}
               >
                 {aiCreditsRemaining} credits
@@ -159,7 +159,7 @@ export function CoPilotDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-lg bg-[#f7f6f3] hover:bg-[#f7f6f3]/80 transition-colors"
+              className="flex size-7 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] hover:bg-[var(--surface-warm-50)]/80 transition-colors"
               aria-label="Close co-pilot"
             >
               <svg
@@ -182,13 +182,13 @@ export function CoPilotDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           {messages.length === 0 && !loading && (
             <div className="text-center py-8">
-              <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#155e63]/10">
+              <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-[var(--teal)]/10">
                 <svg
                   width="22"
                   height="22"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#155e63"
+                  stroke="var(--teal)"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -201,7 +201,7 @@ export function CoPilotDrawer({
                 </svg>
               </div>
               <p className="text-sm font-medium text-foreground mb-1">Your co-pilot is ready</p>
-              <p className="text-xs text-[#888] leading-relaxed">
+              <p className="text-xs text-[var(--neutral-cool-600)] leading-relaxed">
                 Ask about any of your shortlisted locations, lease terms, or site selection strategy.
               </p>
             </div>
@@ -213,8 +213,8 @@ export function CoPilotDrawer({
                 className={cn(
                   'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                   msg.role === 'user'
-                    ? 'bg-[#155e63] text-white rounded-br-sm'
-                    : 'bg-[#f7f6f3] text-foreground rounded-bl-sm'
+                    ? 'bg-[var(--teal)] text-white rounded-br-sm'
+                    : 'bg-[var(--surface-warm-50)] text-foreground rounded-bl-sm'
                 )}
               >
                 {msg.content}
@@ -224,7 +224,7 @@ export function CoPilotDrawer({
 
           {loading && streamText && (
             <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3 text-sm leading-relaxed text-foreground">
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-[var(--surface-warm-50)] px-4 py-3 text-sm leading-relaxed text-foreground">
                 {streamText}
               </div>
             </div>
@@ -232,12 +232,12 @@ export function CoPilotDrawer({
 
           {loading && !streamText && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-[#f7f6f3] px-4 py-3">
+              <div className="rounded-2xl rounded-bl-sm bg-[var(--surface-warm-50)] px-4 py-3">
                 <div className="flex gap-1">
                   {[0, 150, 300].map((delay) => (
                     <div
                       key={delay}
-                      className="size-2 rounded-full bg-[#888]/60 animate-bounce"
+                      className="size-2 rounded-full bg-[var(--neutral-cool-600)]/60 animate-bounce"
                       style={{ animationDelay: `${delay}ms` }}
                     />
                   ))}
@@ -251,18 +251,18 @@ export function CoPilotDrawer({
           <div ref={bottomRef} />
         </div>
 
-        <div className="border-t border-[#efefef] px-4 py-4">
+        <div className="border-t border-[var(--border)] px-4 py-4">
           {subscriptionTier === 'free' ? (
-            <p className="text-center text-xs text-[#888]">
+            <p className="text-center text-xs text-[var(--neutral-cool-600)]">
               AI co-pilot requires a paid plan.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade →
               </a>
             </p>
           ) : aiCreditsRemaining === 0 ? (
-            <p className="text-center text-xs text-[#888]">
+            <p className="text-center text-xs text-[var(--neutral-cool-600)]">
               You&apos;re out of credits for this month.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade for more messages →
               </a>
             </p>
@@ -279,13 +279,13 @@ export function CoPilotDrawer({
                 }}
                 rows={2}
                 placeholder="Ask about your shortlisted locations…"
-                className="flex-1 resize-none rounded-xl border border-[#efefef] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/50 outline-none focus-visible:border-[#155e63] focus-visible:ring-2 focus-visible:ring-[#155e63]/30"
+                className="flex-1 resize-none rounded-xl border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[var(--neutral-cool-600)]/50 outline-none focus-visible:border-[var(--teal)] focus-visible:ring-2 focus-visible:ring-[var(--teal)]/30"
               />
               <button
                 type="button"
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
-                className="shrink-0 rounded-xl bg-[#155e63] px-3 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                className="shrink-0 rounded-xl bg-[var(--teal)] px-3 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
                 aria-label="Send message"
               >
                 ↑
