@@ -160,7 +160,7 @@ interface SheetCtx {
 }
 
 function writeHeader(ws: ExcelJS.Worksheet, title: string, ctx: SheetCtx) {
-  ws.getCell("A1").value = "Groundwork — Financial Planner";
+  ws.getCell("A1").value = "Groundwork: Financial Planner";
   ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
   ws.getCell("A2").value = `${ctx.shopName ?? "Your coffee shop"} · ${title}`;
   ws.getCell("A2").font = { bold: true, size: 12 };
@@ -634,7 +634,7 @@ function buildAssetSchedule(
   }
 ) {
   const { capexLines, moneyFormat, shopName, generatedDate, meta, code } = opts;
-  ws.getCell("A1").value = "Groundwork — Financial Planner";
+  ws.getCell("A1").value = "Groundwork: Financial Planner";
   ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
   ws.getCell("A2").value = `${shopName ?? "Your coffee shop"} · Asset Schedule`;
   ws.getCell("A2").font = { bold: true, size: 12 };
@@ -709,7 +709,7 @@ function buildAssumptions(
   }
 ) {
   const { mp, moneyFormat, shopName, generatedDate, meta, code } = opts;
-  ws.getCell("A1").value = "Groundwork — Financial Planner";
+  ws.getCell("A1").value = "Groundwork: Financial Planner";
   ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
   ws.getCell("A2").value = `${shopName ?? "Your coffee shop"} · Assumptions`;
   ws.getCell("A2").font = { bold: true, size: 12 };
@@ -727,12 +727,12 @@ function buildAssumptions(
 
   const months = fiscalYearMonthLabels(mp.fiscal_year_start_month ?? 1);
   const settings: { label: string; value: string | number; money?: boolean; pct?: boolean }[] = [
-    { label: "Currency", value: `${meta.code} — ${meta.name}` },
+    { label: "Currency", value: `${meta.code}: ${meta.name}` },
     { label: "Fiscal year starts", value: months[0] },
     { label: "Average ticket", value: mp.avg_ticket_cents / Math.pow(10, meta.fractionDigits), money: true },
     { label: "Base COGS rate (%)", value: mp.cogs_pct, pct: true },
     { label: "Income tax rate (%)", value: mp.income_tax_pct, pct: true },
-    { label: "Sales tax rate — pass-through (%)", value: mp.sales_tax_pct, pct: true },
+    { label: "Sales tax rate: pass-through (%)", value: mp.sales_tax_pct, pct: true },
     { label: "Revenue ramp (months)", value: mp.ramp_months },
     {
       label: "Growth mode",
@@ -804,10 +804,10 @@ function buildAssumptions(
     }
     ws.getCell(`E${row}`).value = line.ramp?.enabled
       ? `${line.ramp.ramp_months} mo from ${line.ramp.start_pct}%`
-      : "—";
+      : "-";
     ws.getCell(`F${row}`).value = line.growth?.enabled
       ? `${line.growth.monthly_pct}%/mo`
-      : "—";
+      : "-";
     row++;
   }
   void code;

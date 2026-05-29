@@ -491,16 +491,16 @@ export function OnboardingFlow({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] sm:bg-[#e0ded9] sm:flex sm:items-start sm:justify-center sm:py-12 sm:px-4">
-      <div className="flex flex-col w-full sm:max-w-[680px] bg-[#faf9f7] min-h-screen sm:min-h-0 sm:rounded-2xl sm:shadow-lg sm:overflow-hidden">
+    <div className="min-h-screen bg-[var(--background)] sm:bg-[var(--warm-750)] sm:flex sm:items-start sm:justify-center sm:py-12 sm:px-4">
+      <div className="flex flex-col w-full sm:max-w-[680px] bg-[var(--background)] min-h-screen sm:min-h-0 sm:rounded-2xl sm:shadow-lg sm:overflow-hidden">
       <header className="px-6 pt-6 pb-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center">
+            <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
           </Link>
-          <span className="text-xs text-[#afafaf]">
+          <span className="text-xs text-[var(--dark-grey)]">
             Step {step + 1} of {totalSteps}
           </span>
         </div>
@@ -516,17 +516,17 @@ export function OnboardingFlow({
                 key={i}
                 className={`h-1 flex-1 rounded-full ${
                   status === "done" || status === "current"
-                    ? "bg-[#155e63]"
+                    ? "bg-[var(--teal)]"
                     : status === "deferred"
-                    ? "bg-[#f59e0b]"
-                    : "bg-[#e7e5e0]"
+                    ? "bg-[var(--warning)]"
+                    : "bg-[var(--warm-650)]"
                 }`}
               />
             );
           })}
         </div>
         {diffState.deferred && (
-          <p className="text-xs text-[#92400e] bg-[#fffbeb] border border-[#fcd34d] rounded-lg px-3 py-1.5">
+          <p className="text-xs text-[var(--warning-darker)] bg-[var(--warning-bg)] border border-[var(--warning-amber-2)] rounded-lg px-3 py-1.5">
             One question deferred: How will you stand out? You can finish onboarding and come back.
           </p>
         )}
@@ -535,11 +535,20 @@ export function OnboardingFlow({
       <main className="flex-1 px-6 py-8 flex flex-col">
         {currentStep.type === "welcome" && (
           <div className="flex-1 flex flex-col justify-center">
-            <h1 className="text-3xl font-bold text-[#1a1a1a] mb-4">
+            <div className="relative w-full rounded-2xl overflow-hidden mb-6" style={{ height: "180px" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://images.pexels.com/photos/4350061/pexels-photo-4350061.jpeg?auto=compress&cs=tinysrgb&w=900&h=360&dpr=1"
+                alt="Cozy coffee shop interior with warm morning light"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 rounded-2xl" style={{ background: "linear-gradient(to bottom, transparent 40%, rgba(12,58,61,0.6) 100%)" }} />
+            </div>
+            <h1 className="text-3xl font-bold text-[var(--foreground)] mb-4">
               Hi {firstName}, welcome.
             </h1>
-            <p className="text-[#6b6b6b] text-base leading-relaxed">
-              A few questions and we&apos;ll seed your Concept workspace — the
+            <p className="text-[var(--muted-foreground)] text-base leading-relaxed">
+              A few questions and we&apos;ll seed your Concept workspace, the
               home of your mission, your target customer, and your brand voice.
               The co-pilot reads it across every workspace from this point on.
             </p>
@@ -590,10 +599,10 @@ export function OnboardingFlow({
           currentStep.type !== "guided-target-customer" &&
           currentStep.type !== "guided-differentiation" && (
             <div>
-              <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+              <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
                 {(currentStep as { question: string }).question}
               </h1>
-              <p className="text-[#afafaf] text-sm mb-8">
+              <p className="text-[var(--dark-grey)] text-sm mb-8">
                 {(currentStep as { hint: string }).hint}
               </p>
 
@@ -612,20 +621,20 @@ export function OnboardingFlow({
                           onClick={() => handleSelect(opt)}
                           className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
                             isSelected
-                              ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                              : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
+                              ? "border-[var(--teal)] bg-[var(--teal)]/5 text-[var(--teal)] font-medium"
+                              : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--dark-grey)]"
                           }`}
                         >
                           {currentStep.type === "radio" && (
                             <span
                               className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                                 isSelected
-                                  ? "border-[#155e63]"
-                                  : "border-[#afafaf]"
+                                  ? "border-[var(--teal)]"
+                                  : "border-[var(--dark-grey)]"
                               }`}
                             >
                               {isSelected && (
-                                <span className="w-2 h-2 rounded-full bg-[#155e63] block" />
+                                <span className="w-2 h-2 rounded-full bg-[var(--teal)] block" />
                               )}
                             </span>
                           )}
@@ -649,7 +658,7 @@ export function OnboardingFlow({
                     }
                     onChange={(e) => handleSelect(e.target.value)}
                     placeholder={(currentStep as { placeholder: string }).placeholder}
-                    className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white"
+                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white"
                   />
                 </>
               )}
@@ -679,10 +688,10 @@ export function OnboardingFlow({
                     onChange={(e) => handleSelect(e.target.value)}
                     placeholder={(currentStep as { placeholder: string }).placeholder}
                     rows={4}
-                    className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
                   />
                   {(currentStep as { minChars?: number }).minChars ? (
-                    <p className="text-xs text-[#afafaf] mt-2">
+                    <p className="text-xs text-[var(--dark-grey)] mt-2">
                       {Math.min(
                         (
                           typeof currentAnswer === "string"
@@ -714,15 +723,15 @@ export function OnboardingFlow({
                         onClick={() => handleMultiSelect(opt)}
                         className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
                           selected
-                            ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                            : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
+                            ? "border-[var(--teal)] bg-[var(--teal)]/5 text-[var(--teal)] font-medium"
+                            : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--dark-grey)]"
                         }`}
                       >
                         <div
                           className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
                             selected
-                              ? "bg-[#155e63] border-[#155e63]"
-                              : "border-[#afafaf]"
+                              ? "bg-[var(--teal)] border-[var(--teal)]"
+                              : "border-[var(--dark-grey)]"
                           }`}
                         >
                           {selected && (
@@ -742,10 +751,10 @@ export function OnboardingFlow({
 
         {currentStep.type === "review" && (
           <div>
-            <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+            <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
               {currentStep.question}
             </h1>
-            <p className="text-[#afafaf] text-sm mb-6">{currentStep.hint}</p>
+            <p className="text-[var(--dark-grey)] text-sm mb-6">{currentStep.hint}</p>
             <ReviewSummary wizardState={wizardState} firstName={firstName} />
           </div>
         )}
@@ -753,19 +762,19 @@ export function OnboardingFlow({
         {error && (
           <p
             role="alert"
-            className="text-sm text-[#a13d3d] mt-4 bg-[#fbeeee] border border-[#f0d0d0] rounded-xl px-3 py-2"
+            className="text-sm text-[var(--error)] mt-4 bg-[var(--warning-amber-bg-10)] border border-[var(--error-bg-9)] rounded-xl px-3 py-2"
           >
             {error}
           </p>
         )}
       </main>
 
-      <div className="sticky bottom-0 sm:static bg-[#faf9f7] border-t border-[#efefef] px-6 py-4 flex gap-3">
+      <div className="sticky bottom-0 sm:static bg-[var(--background)] border-t border-[var(--border)] px-6 py-4 flex gap-3">
         {step > 0 && (
           <button
             type="button"
             onClick={() => setStep((s) => s - 1)}
-            className="px-6 py-3 border border-[#efefef] rounded-xl text-sm text-[#afafaf] hover:border-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            className="px-6 py-3 border border-[var(--border)] rounded-xl text-sm text-[var(--dark-grey)] hover:border-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
           >
             Back
           </button>
@@ -774,7 +783,7 @@ export function OnboardingFlow({
           type="button"
           onClick={handleNext}
           disabled={!canAdvance() || saving}
-          className="flex-1 bg-[#155e63] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#0e4448] transition-colors disabled:opacity-40"
+          className="flex-1 bg-[var(--teal)] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40"
         >
           {saving
             ? "Saving your Concept..."
@@ -904,11 +913,11 @@ function CityAutocompleteInput({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Type a city name..."
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white pr-10"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white pr-10"
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            <div className="w-4 h-4 border-2 border-[#155e63] border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-[var(--teal)] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
         {!loading && value && (
@@ -916,7 +925,7 @@ function CityAutocompleteInput({
             type="button"
             onClick={handleClear}
             aria-label="Clear city selection"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#afafaf] hover:text-[#1a1a1a] transition-colors text-xl leading-none"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors text-xl leading-none"
           >
             &#215;
           </button>
@@ -927,7 +936,7 @@ function CityAutocompleteInput({
         <ul
           id="city-listbox"
           role="listbox"
-          className="absolute z-50 w-full mt-1 bg-white border border-[#efefef] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+          className="absolute z-50 w-full mt-1 bg-white border border-[var(--border)] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
         >
           {results.map((item, i) => (
             <li
@@ -941,13 +950,13 @@ function CityAutocompleteInput({
               }}
               className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
                 i === activeIndex
-                  ? "bg-[#155e63]/10 text-[#155e63]"
-                  : "text-[#1a1a1a] hover:bg-[#f5f5f3]"
+                  ? "bg-[var(--teal)]/10 text-[var(--teal)]"
+                  : "text-[var(--foreground)] hover:bg-[var(--warm-300)]"
               }`}
             >
               <span className="font-medium">{item.city}</span>
               {(item.region || item.countryCode) && (
-                <span className="text-[#afafaf] ml-1.5">
+                <span className="text-[var(--dark-grey)] ml-1.5">
                   {[item.region, item.countryCode].filter(Boolean).join(", ")}
                 </span>
               )}
@@ -984,23 +993,23 @@ function ReviewSummary({
   ];
 
   return (
-    <div className="bg-white border border-[#efefef] rounded-2xl divide-y divide-[#efefef]">
+    <div className="bg-white border border-[var(--border)] rounded-2xl divide-y divide-[var(--border)]">
       {rows.map((row) => (
         <div key={row.label} className="px-4 py-3">
-          <p className="text-xs text-[#afafaf] uppercase tracking-wide">
+          <p className="text-xs text-[var(--dark-grey)] uppercase tracking-wide">
             {row.label}
           </p>
           {row.deferred ? (
-            <p className="text-sm text-[#92400e] mt-1 flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b]" />
+            <p className="text-sm text-[var(--warning-darker)] mt-1 flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-[var(--warning)]" />
               Deferred: come back after your shop visits
             </p>
           ) : (
-            <p className="text-sm text-[#1a1a1a] mt-1 whitespace-pre-wrap">
+            <p className="text-sm text-[var(--foreground)] mt-1 whitespace-pre-wrap">
               {row.value ? (
                 row.value
               ) : (
-                <span className="text-[#afafaf]">—</span>
+                <span className="text-[var(--dark-grey)]">—</span>
               )}
             </p>
           )}

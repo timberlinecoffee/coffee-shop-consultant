@@ -121,19 +121,19 @@ export function OrgSyncPanel({
   const diff = enabled && roles ? computeOrgSyncDiff(personnel, roles) : null;
 
   return (
-    <div className="rounded-xl border border-[#efefef] bg-white p-4 mb-4">
+    <div className="rounded-xl border border-[var(--border)] bg-white p-4 mb-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           {enabled ? (
-            <Link2 size={15} className="text-[#155e63] mt-0.5 shrink-0" aria-hidden="true" />
+            <Link2 size={15} className="text-[var(--teal)] mt-0.5 shrink-0" aria-hidden="true" />
           ) : (
-            <Link2Off size={15} className="text-[#afafaf] mt-0.5 shrink-0" aria-hidden="true" />
+            <Link2Off size={15} className="text-[var(--dark-grey)] mt-0.5 shrink-0" aria-hidden="true" />
           )}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
               Org Structure Link
             </p>
-            <p className="text-[10px] text-[#afafaf] mt-0.5 max-w-md">
+            <p className="text-[10px] text-[var(--dark-grey)] mt-0.5 max-w-md">
               Connect Salaries with the roles in your Hiring &amp; Onboarding suite. When on, you can
               pull role and headcount changes from the org chart into Salaries, and push salary
               figures back. Changes are reviewed first, never applied silently.
@@ -141,13 +141,13 @@ export function OrgSyncPanel({
           </div>
         </div>
         <label className="flex items-center gap-2 cursor-pointer shrink-0">
-          <span className="text-xs font-medium text-[#1a1a1a]">{enabled ? "Linked" : "Off"}</span>
+          <span className="text-xs font-medium text-[var(--foreground)]">{enabled ? "Linked" : "Off"}</span>
           <input
             type="checkbox"
             checked={enabled}
             disabled={!canEdit}
             onChange={(e) => onToggle(e.target.checked)}
-            className="w-4 h-4 accent-[#155e63]"
+            className="w-4 h-4 accent-[var(--teal)]"
             aria-label="Link Salaries with the Hiring and Onboarding org structure"
           />
         </label>
@@ -156,17 +156,17 @@ export function OrgSyncPanel({
       {enabled && (
         <div className="mt-4">
           {loading && (
-            <p className="text-xs text-[#afafaf] py-2">Loading org structure…</p>
+            <p className="text-xs text-[var(--dark-grey)] py-2">Loading org structure…</p>
           )}
           {error && (
-            <div className="flex items-center justify-between gap-2 text-xs text-[#a13d3d] bg-[#fbf2f2] rounded-lg px-3 py-2">
+            <div className="flex items-center justify-between gap-2 text-xs text-[var(--error)] bg-[var(--error-bg-4)] rounded-lg px-3 py-2">
               <span className="flex items-center gap-1.5">
                 <AlertTriangle size={13} /> Could not load the org structure.
               </span>
               <button
                 type="button"
                 onClick={retry}
-                className="flex items-center gap-1 font-medium text-[#155e63]"
+                className="flex items-center gap-1 font-medium text-[var(--teal)]"
               >
                 <RefreshCw size={12} /> Retry
               </button>
@@ -176,14 +176,14 @@ export function OrgSyncPanel({
           {roles && diff && (
             <>
               {diff.rows.length === 0 ? (
-                <p className="text-xs text-[#afafaf] italic py-2">
+                <p className="text-xs text-[var(--dark-grey)] italic py-2">
                   No roles in either module yet. Add roles in Salaries or in the Hiring &amp;
                   Onboarding suite, then sync them here.
                 </p>
               ) : (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <p className="text-[10px] text-[#6b6b6b]">
+                    <p className="text-[10px] text-[var(--muted-foreground)]">
                       {diff.counts.linked} linked ({diff.counts.diff} differ), {diff.counts.orgOnly} org
                       only, {diff.counts.salariesOnly} salaries only.
                     </p>
@@ -193,7 +193,7 @@ export function OrgSyncPanel({
                           type="button"
                           onClick={() => pull()}
                           disabled={busy}
-                          className="text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md disabled:opacity-50"
+                          className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md disabled:opacity-50"
                           title="Apply every org role to Salaries (name and headcount)"
                         >
                           Pull All From Org
@@ -202,7 +202,7 @@ export function OrgSyncPanel({
                           type="button"
                           onClick={() => void push()}
                           disabled={busy}
-                          className="text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md disabled:opacity-50"
+                          className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md disabled:opacity-50"
                           title="Write every salary line back to the org chart (headcount and loaded cost)"
                         >
                           Push All To Org
@@ -214,7 +214,7 @@ export function OrgSyncPanel({
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="text-[10px] uppercase tracking-wide text-[#afafaf] text-left">
+                        <tr className="text-[10px] uppercase tracking-wide text-[var(--dark-grey)] text-left">
                           <th className="py-1.5 pr-2 font-semibold">Status</th>
                           <th className="py-1.5 pr-2 font-semibold">Org Role</th>
                           <th className="py-1.5 pr-2 font-semibold">Salaries Role</th>
@@ -227,15 +227,15 @@ export function OrgSyncPanel({
                       </thead>
                       <tbody>
                         {diff.rows.map((row) => (
-                          <tr key={row.key} className="border-t border-[#f5f5f5] align-middle">
+                          <tr key={row.key} className="border-t border-[var(--neutral-cool-100)] align-middle">
                             <td className="py-1.5 pr-2">
                               <span
                                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                   row.status === "linked_in_sync"
-                                    ? "bg-[#f0f9f9] text-[#155e63]"
+                                    ? "bg-[var(--teal-tint-100)] text-[var(--teal)]"
                                     : row.status === "linked_diff"
-                                    ? "bg-[#fdf6ec] text-[#9a6b1e]"
-                                    : "bg-[#f5f5f5] text-[#6b6b6b]"
+                                    ? "bg-[var(--warning-bg-11)] text-[var(--warning-text-10)]"
+                                    : "bg-[var(--neutral-cool-100)] text-[var(--muted-foreground)]"
                                 }`}
                               >
                                 {row.status === "linked_in_sync" && <Check size={10} />}
@@ -243,31 +243,31 @@ export function OrgSyncPanel({
                               </span>
                             </td>
                             <td className={`py-1.5 pr-2 ${row.nameDiffers ? "font-semibold" : ""}`}>
-                              {row.orgName ?? <span className="text-[#cfcfcf]">-</span>}
+                              {row.orgName ?? <span className="text-[var(--gray-850)]">-</span>}
                             </td>
                             <td className={`py-1.5 pr-2 ${row.nameDiffers ? "font-semibold" : ""}`}>
-                              {row.salariesName ?? <span className="text-[#cfcfcf]">-</span>}
+                              {row.salariesName ?? <span className="text-[var(--gray-850)]">-</span>}
                             </td>
                             <td
                               className={`py-1.5 pr-2 text-right ${
-                                row.headcountDiffers ? "font-semibold text-[#9a6b1e]" : ""
+                                row.headcountDiffers ? "font-semibold text-[var(--warning-text-10)]" : ""
                               }`}
                             >
                               {row.orgHeadcount ?? "-"}
                             </td>
                             <td
                               className={`py-1.5 pr-2 text-right ${
-                                row.headcountDiffers ? "font-semibold text-[#9a6b1e]" : ""
+                                row.headcountDiffers ? "font-semibold text-[var(--warning-text-10)]" : ""
                               }`}
                             >
                               {row.salariesHeadcount ?? "-"}
                             </td>
-                            <td className="py-1.5 pr-2 text-right text-[#6b6b6b]">
+                            <td className="py-1.5 pr-2 text-right text-[var(--muted-foreground)]">
                               {row.orgMonthlyCostCents != null
                                 ? fmt(row.orgMonthlyCostCents, currencyCode)
                                 : "-"}
                             </td>
-                            <td className="py-1.5 pr-2 text-right text-[#6b6b6b]">
+                            <td className="py-1.5 pr-2 text-right text-[var(--muted-foreground)]">
                               {row.salariesLoadedMonthlyCents != null
                                 ? fmt(row.salariesLoadedMonthlyCents, currencyCode)
                                 : "-"}
@@ -281,7 +281,7 @@ export function OrgSyncPanel({
                                         type="button"
                                         onClick={() => pull([row.roleId as string])}
                                         disabled={busy}
-                                        className="px-1.5 py-0.5 rounded text-[#155e63] hover:bg-[#155e63]/5 disabled:opacity-50"
+                                        className="px-1.5 py-0.5 rounded text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:opacity-50"
                                         title="Pull this role into Salaries"
                                       >
                                         Pull
@@ -293,19 +293,19 @@ export function OrgSyncPanel({
                                         type="button"
                                         onClick={() => void push([row.personnelId as string])}
                                         disabled={busy}
-                                        className="px-1.5 py-0.5 rounded text-[#155e63] hover:bg-[#155e63]/5 disabled:opacity-50"
+                                        className="px-1.5 py-0.5 rounded text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:opacity-50"
                                         title="Push this salary line to the org chart"
                                       >
                                         Push
                                       </button>
                                     )}
                                   {row.status === "linked_diff" && (
-                                    <ArrowLeftRight size={11} className="text-[#cfcfcf]" aria-hidden="true" />
+                                    <ArrowLeftRight size={11} className="text-[var(--gray-850)]" aria-hidden="true" />
                                   )}
                                 </span>
                               )}
                               {row.status === "linked_in_sync" && (
-                                <span className="text-[#cfcfcf]">-</span>
+                                <span className="text-[var(--gray-850)]">-</span>
                               )}
                             </td>
                           </tr>
@@ -315,8 +315,8 @@ export function OrgSyncPanel({
                   </div>
                 </>
               )}
-              {message && <p className="text-[10px] text-[#155e63] mt-2">{message}</p>}
-              <p className="text-[10px] text-[#afafaf] mt-2">
+              {message && <p className="text-[10px] text-[var(--teal)] mt-2">{message}</p>}
+              <p className="text-[10px] text-[var(--dark-grey)] mt-2">
                 Pulling updates role name and headcount in Salaries (and seeds pay only when a line
                 has none). It never changes your benefits, hire month, or pay basis. Pushing writes
                 the loaded monthly cost and headcount back to the org chart.

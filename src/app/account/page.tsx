@@ -25,34 +25,34 @@ export default async function AccountPage() {
   const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
 
   return (
-    <div className="bg-[#faf9f7]">
+    <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
-        <h1 className="text-2xl font-bold text-[#1a1a1a]">Account Settings</h1>
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">Account Settings</h1>
 
-        <div className="bg-white rounded-xl border border-[#efefef] p-6">
-          <h2 className="font-semibold text-[#1a1a1a] mb-4">Profile</h2>
+        <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+          <h2 className="font-semibold text-[var(--foreground)] mb-4">Profile</h2>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">Name</span>
-              <span className="text-[#1a1a1a]">{profile?.full_name ?? "—"}</span>
+              <span className="text-[var(--dark-grey)]">Name</span>
+              <span className="text-[var(--foreground)]">{profile?.full_name ?? "—"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">Email</span>
-              <span className="text-[#1a1a1a]">{user.email}</span>
+              <span className="text-[var(--dark-grey)]">Email</span>
+              <span className="text-[var(--foreground)]">{user.email}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#efefef] p-6">
-          <h2 className="font-semibold text-[#1a1a1a] mb-4">Subscription</h2>
+        <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+          <h2 className="font-semibold text-[var(--foreground)] mb-4">Subscription</h2>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">Plan</span>
-              <span className="text-[#1a1a1a]">{tierDisplayName}</span>
+              <span className="text-[var(--dark-grey)]">Plan</span>
+              <span className="text-[var(--foreground)]">{tierDisplayName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#afafaf]">AI coaching</span>
-              <span className="text-[#1a1a1a]">
+              <span className="text-[var(--dark-grey)]">AI coaching</span>
+              <span className="text-[var(--foreground)]">
                 {isTrial
                   ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
                   : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
@@ -61,15 +61,15 @@ export default async function AccountPage() {
           </div>
           <Link
             href="/account/billing"
-            className="mt-4 inline-block text-sm text-[#155e63] font-medium hover:underline"
+            className="mt-4 inline-block text-sm text-[var(--teal)] font-medium hover:underline"
           >
             Manage Billing →
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#efefef] p-6">
-          <h2 className="font-semibold text-[#1a1a1a] mb-4">Delete Account</h2>
-          <p className="text-sm text-[#afafaf] mb-4">
+        <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+          <h2 className="font-semibold text-[var(--foreground)] mb-4">Delete Account</h2>
+          <p className="text-sm text-[var(--dark-grey)] mb-4">
             Permanently delete your account and all plan data. This cannot be undone.
           </p>
           <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">
@@ -80,7 +80,7 @@ export default async function AccountPage() {
         <form action="/auth/signout" method="POST">
           <button
             type="submit"
-            className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
           >
             Sign Out
           </button>

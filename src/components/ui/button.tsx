@@ -5,12 +5,12 @@ type Variant = "default" | "outline" | "ghost" | "destructive" | "link" | "secon
 type Size = "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg"
 
 const variantClasses: Record<Variant, string> = {
-  default: "bg-[#155e63] text-white hover:bg-[#0f4a4e] border-transparent",
-  outline: "border border-[#efefef] bg-white text-[#1a1a1a] hover:bg-[#f5f4f0]",
-  ghost: "text-[#1a1a1a] hover:bg-[#f5f4f0] border-transparent",
+  default: "bg-[var(--teal)] text-white hover:bg-[var(--teal-darker)] border-transparent",
+  outline: "border border-[var(--border)] bg-white text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]",
+  ghost: "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] border-transparent",
   destructive: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
-  link: "text-[#155e63] underline-offset-4 hover:underline border-transparent",
-  secondary: "bg-[#f5f4f0] text-[#1a1a1a] hover:bg-[#efefef] border-transparent",
+  link: "text-[var(--teal)] underline-offset-4 hover:underline border-transparent",
+  secondary: "bg-[var(--surface-warm-100)] text-[var(--foreground)] hover:bg-[var(--border)] border-transparent",
 }
 
 const sizeClasses: Record<Size, string> = {
@@ -40,7 +40,7 @@ function Button({
       className={cn(
         "inline-flex items-center justify-center rounded-lg border font-medium transition-colors",
         "disabled:opacity-50 disabled:pointer-events-none",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#155e63]/50",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50",
         variantClasses[variant],
         sizeClasses[size],
         className

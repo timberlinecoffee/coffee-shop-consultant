@@ -40,15 +40,15 @@ export default async function CopilotDemoPage({
 
   if (!plan) {
     return (
-      <main className="min-h-screen bg-[#faf9f7] px-6 py-12">
-        <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-[#efefef] p-8">
-          <h1 className="text-xl font-semibold text-[#1a1a1a]">Co-Pilot Demo</h1>
+      <main className="min-h-screen bg-[var(--background)] px-6 py-12">
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-[var(--border)] p-8">
+          <h1 className="text-xl font-semibold text-[var(--foreground)]">Co-Pilot Demo</h1>
           <p className="mt-2 text-sm text-[#666]">
             You don&apos;t have a coffee shop plan yet. Finish onboarding to start using the co-pilot.
           </p>
           <Link
             href="/onboarding"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#155e63] hover:underline"
+            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--teal)] hover:underline"
           >
             Go to onboarding →
           </Link>
@@ -61,13 +61,13 @@ export default async function CopilotDemoPage({
   const workspaceKey: WorkspaceKey = WORKSPACE_KEYS.includes(requested) ? requested : "concept";
 
   return (
-    <main className="min-h-screen bg-[#faf9f7] pb-32">
+    <main className="min-h-screen bg-[var(--background)] pb-32">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold text-[#1a1a1a]">CoPilotDrawer Demo</h1>
+        <h1 className="text-2xl font-semibold text-[var(--foreground)]">CoPilotDrawer Demo</h1>
         <p className="mt-2 text-sm text-[#666]">
           Test page for [TIM-633] — streaming, thinking pill, and thread switching.
           Use the workspace selector below to mount the drawer with a different
-          <code className="px-1 mx-1 rounded bg-white border border-[#efefef] text-xs">workspaceKey</code>
+          <code className="px-1 mx-1 rounded bg-white border border-[var(--border)] text-xs">workspaceKey</code>
           prop.
         </p>
 
@@ -78,8 +78,8 @@ export default async function CopilotDemoPage({
               href={`/copilot-demo?workspace=${key}`}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 key === workspaceKey
-                  ? "bg-[#155e63] text-white border-[#155e63]"
-                  : "bg-white text-[#1a1a1a] border-[#e5e3df] hover:border-[#155e63]"
+                  ? "bg-[var(--teal)] text-white border-[var(--teal)]"
+                  : "bg-white text-[var(--foreground)] border-[var(--gray-600)] hover:border-[var(--teal)]"
               }`}
             >
               {key.replace(/_/g, " ")}
@@ -87,7 +87,7 @@ export default async function CopilotDemoPage({
           ))}
         </div>
 
-        <div className="mt-8 bg-white rounded-2xl border border-[#efefef] p-6 text-sm text-[#444] space-y-2">
+        <div className="mt-8 bg-white rounded-2xl border border-[var(--border)] p-6 text-sm text-[#444] space-y-2">
           <p>
             <span className="font-semibold">Plan id:</span>{" "}
             <code className="text-xs">{plan.id}</code>

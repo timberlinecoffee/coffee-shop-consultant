@@ -151,10 +151,10 @@ export function AddressAutocomplete({
 
   return (
     <div ref={wrapRef} className="relative">
-      <div className="flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[#efefef] focus-within:border-[#155e63] focus-within:ring-2 focus-within:ring-[#155e63]/30">
+      <div className="flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[var(--border)] focus-within:border-[var(--teal)] focus-within:ring-2 focus-within:ring-[var(--teal)]/30">
         {hasCoords ? (
           <MapPin
-            className="shrink-0 size-3.5 text-[#155e63]"
+            className="shrink-0 size-3.5 text-[var(--teal)]"
             aria-label="Address verified on map"
           />
         ) : (
@@ -178,7 +178,7 @@ export function AddressAutocomplete({
       {open && suggestions.length > 0 && (
         <ul
           role="listbox"
-          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-auto rounded-xl border border-[#efefef] bg-white shadow-lg py-1"
+          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-auto rounded-xl border border-[var(--border)] bg-white shadow-lg py-1"
         >
           {suggestions.map((s, i) => (
             <li
@@ -195,10 +195,10 @@ export function AddressAutocomplete({
                 onMouseEnter={() => setActiveIdx(i)}
                 className={cn(
                   'flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors',
-                  i === activeIdx ? 'bg-[#f7f6f3]' : 'hover:bg-[#f7f6f3]/60',
+                  i === activeIdx ? 'bg-[var(--surface-warm-50)]' : 'hover:bg-[var(--surface-warm-50)]/60',
                 )}
               >
-                <MapPin className="mt-0.5 size-3.5 shrink-0 text-[#155e63]" aria-hidden="true" />
+                <MapPin className="mt-0.5 size-3.5 shrink-0 text-[var(--teal)]" aria-hidden="true" />
                 <span className="flex-1 min-w-0">
                   <span className="block font-medium text-foreground truncate">{s.shortLabel}</span>
                   <span className="block text-[11px] text-[#888] truncate">{s.displayName}</span>
@@ -210,7 +210,7 @@ export function AddressAutocomplete({
       )}
 
       {open && !loading && suggestions.length === 0 && text.trim().length >= 3 && (
-        <div className="absolute left-0 right-0 top-full z-40 mt-1 rounded-xl border border-[#efefef] bg-white px-3 py-2 text-xs text-[#888] shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs text-[#888] shadow-lg">
           No matches. Keep typing or finish the address by hand.
         </div>
       )}

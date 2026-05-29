@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: BRAND.colors.muted,
     padding: 8,
-    backgroundColor: "#F5F6F5",
+    backgroundColor: "var(--neutral-cool-f5)",
     borderRadius: 4,
     marginBottom: 8,
   },

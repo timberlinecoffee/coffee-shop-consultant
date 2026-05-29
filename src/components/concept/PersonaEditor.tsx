@@ -141,15 +141,15 @@ export function PersonaEditor({
         aria-label={isNew ? "Add persona" : "Edit persona"}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
-          <h2 className="text-sm font-semibold text-[#1a1a1a]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">
             {isNew ? "Add persona" : "Edit persona"}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f4f3f1] transition-colors focus:outline-none"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
           >
             <X size={14} aria-hidden="true" />
           </button>
@@ -159,8 +159,8 @@ export function PersonaEditor({
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5" htmlFor="persona-name">
-              Name <span className="text-[#a13d3d]">*</span>
+            <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-name">
+              Name <span className="text-[var(--error)]">*</span>
             </label>
             <input
               id="persona-name"
@@ -173,24 +173,24 @@ export function PersonaEditor({
               disabled={!canEdit}
               maxLength={40}
               placeholder="e.g. The Morning Regular"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none transition-colors bg-[#faf9f7] disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b] ${
-                nameError ? "border-[#a13d3d]" : "border-[#efefef] focus:border-[#155e63]"
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
+                nameError ? "border-[var(--error)]" : "border-[var(--border)] focus:border-[var(--teal)]"
               }`}
             />
-            {nameError && <p className="mt-1 text-xs text-[#a13d3d]">{nameError}</p>}
+            {nameError && <p className="mt-1 text-xs text-[var(--error)]">{nameError}</p>}
           </div>
 
           {/* Why they visit */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[#1a1a1a]" htmlFor="persona-why">
-                Why they visit <span className="text-[#a13d3d]">*</span>
+              <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-why">
+                Why they visit <span className="text-[var(--error)]">*</span>
               </label>
               {canEdit && (
                 <button
                   type="button"
                   onClick={() => triggerAI("whyTheyVisit")}
-                  className="text-[10px] font-medium text-[#155e63] hover:underline"
+                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
                   Ask AI
                 </button>
@@ -203,24 +203,24 @@ export function PersonaEditor({
               disabled={!canEdit}
               rows={3}
               placeholder="What brings this person in? What are they hoping for?"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b] ${
-                whyError ? "border-[#a13d3d]" : "border-[#efefef] focus:border-[#155e63]"
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
+                whyError ? "border-[var(--error)]" : "border-[var(--border)] focus:border-[var(--teal)]"
               }`}
             />
-            {whyError && <p className="mt-1 text-xs text-[#a13d3d]">{whyError}</p>}
+            {whyError && <p className="mt-1 text-xs text-[var(--error)]">{whyError}</p>}
           </div>
 
           {/* Pain points */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[#1a1a1a]" htmlFor="persona-pain">
+              <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-pain">
                 Pain points
               </label>
               {canEdit && (
                 <button
                   type="button"
                   onClick={() => triggerAI("painPoints")}
-                  className="text-[10px] font-medium text-[#155e63] hover:underline"
+                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
                   Ask AI
                 </button>
@@ -233,13 +233,13 @@ export function PersonaEditor({
               disabled={!canEdit}
               rows={3}
               placeholder="What frustrates them about existing coffee shops?"
-              className="w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
             />
           </div>
 
           {/* Values chips */}
           <div>
-            <p className="text-xs font-semibold text-[#1a1a1a] mb-2">What They Value</p>
+            <p className="text-xs font-semibold text-[var(--foreground)] mb-2">What They Value</p>
             <div className="flex flex-wrap gap-2">
               {PERSONA_VALUE_OPTIONS.map((v) => {
                 const selected = (draft.values ?? []).includes(v);
@@ -251,8 +251,8 @@ export function PersonaEditor({
                     onClick={() => toggleValue(v)}
                     className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed ${
                       selected
-                        ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20"
-                        : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63] hover:text-[#155e63]"
+                        ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20"
+                        : "bg-white text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)] hover:text-[var(--teal)]"
                     }`}
                   >
                     {PERSONA_VALUE_LABELS[v]}
@@ -267,7 +267,7 @@ export function PersonaEditor({
             <button
               type="button"
               onClick={() => setAboutOpen((v) => !v)}
-              className="flex items-center gap-2 text-xs font-semibold text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors focus:outline-none"
+              className="flex items-center gap-2 text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors focus:outline-none"
               aria-expanded={aboutOpen}
             >
               <span className="text-[10px] leading-none">{aboutOpen ? "▾" : "▸"}</span>
@@ -275,10 +275,10 @@ export function PersonaEditor({
             </button>
 
             {aboutOpen && (
-              <div className="mt-3 space-y-4 pl-3 border-l border-[#efefef]">
+              <div className="mt-3 space-y-4 pl-3 border-l border-[var(--border)]">
                 {/* Age range */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">Age Range</label>
+                  <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5">Age Range</label>
                   <div className="flex flex-wrap gap-2">
                     {(Object.keys(PERSONA_AGE_RANGE_LABELS) as PersonaAgeRange[]).map((ar) => (
                       <button
@@ -288,8 +288,8 @@ export function PersonaEditor({
                         onClick={() => setField("ageRange", draft.ageRange === ar ? undefined : ar)}
                         className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed ${
                           draft.ageRange === ar
-                            ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20"
-                            : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63]"
+                            ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20"
+                            : "bg-white text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                         }`}
                       >
                         {PERSONA_AGE_RANGE_LABELS[ar]}
@@ -300,7 +300,7 @@ export function PersonaEditor({
 
                 {/* Occupation */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5" htmlFor="persona-occ">
+                  <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-occ">
                     Occupation
                   </label>
                   <input
@@ -310,13 +310,13 @@ export function PersonaEditor({
                     onChange={(e) => setField("occupation", e.target.value || undefined)}
                     disabled={!canEdit}
                     placeholder="e.g. Nurse, designer, student..."
-                    className="w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                   />
                 </div>
 
                 {/* Income range */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5">Income Range</label>
+                  <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5">Income Range</label>
                   <div className="flex flex-wrap gap-2">
                     {(Object.keys(PERSONA_INCOME_RANGE_LABELS) as PersonaIncomeRange[]).map((ir) => (
                       <button
@@ -326,8 +326,8 @@ export function PersonaEditor({
                         onClick={() => setField("incomeRange", draft.incomeRange === ir ? undefined : ir)}
                         className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed ${
                           draft.incomeRange === ir
-                            ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20"
-                            : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63]"
+                            ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20"
+                            : "bg-white text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                         }`}
                       >
                         {PERSONA_INCOME_RANGE_LABELS[ir]}
@@ -338,7 +338,7 @@ export function PersonaEditor({
 
                 {/* Daily context */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5" htmlFor="persona-daily">
+                  <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-daily">
                     Daily Context
                   </label>
                   <textarea
@@ -348,7 +348,7 @@ export function PersonaEditor({
                     disabled={!canEdit}
                     rows={2}
                     placeholder="What does their day look like? Where are they going before or after?"
-                    className="w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                   />
                 </div>
               </div>
@@ -357,10 +357,10 @@ export function PersonaEditor({
 
           {/* Habits */}
           <div className="space-y-4">
-            <p className="text-xs font-semibold text-[#1a1a1a]">Habits</p>
+            <p className="text-xs font-semibold text-[var(--foreground)]">Habits</p>
 
             <div>
-              <label className="block text-xs text-[#6b6b6b] mb-1.5">Visit Frequency</label>
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1.5">Visit Frequency</label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(PERSONA_VISIT_FREQUENCY_LABELS) as PersonaVisitFrequency[]).map((vf) => (
                   <button
@@ -372,8 +372,8 @@ export function PersonaEditor({
                     }
                     className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed ${
                       draft.visitFrequency === vf
-                        ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20"
-                        : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63]"
+                        ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20"
+                        : "bg-white text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                     }`}
                   >
                     {PERSONA_VISIT_FREQUENCY_LABELS[vf]}
@@ -383,7 +383,7 @@ export function PersonaEditor({
             </div>
 
             <div>
-              <label className="block text-xs text-[#6b6b6b] mb-1.5">Spend per Visit</label>
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1.5">Spend per Visit</label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(PERSONA_SPEND_LABELS) as PersonaSpendPerVisit[]).map((sp) => (
                   <button
@@ -395,8 +395,8 @@ export function PersonaEditor({
                     }
                     className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed ${
                       draft.spendPerVisit === sp
-                        ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20"
-                        : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63]"
+                        ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20"
+                        : "bg-white text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                     }`}
                   >
                     {PERSONA_SPEND_LABELS[sp]}
@@ -408,11 +408,11 @@ export function PersonaEditor({
 
           {/* Notes (with migration notice if migrated) */}
           <div>
-            <label className="block text-xs font-semibold text-[#1a1a1a] mb-1.5" htmlFor="persona-notes">
+            <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-notes">
               Notes
             </label>
             {draft.notes && !persona.whyTheyVisit.trim() && (
-              <p className="text-xs text-[#6b6b6b] bg-[#faf9f7] border border-[#efefef] rounded-lg px-3 py-2 mb-2 leading-relaxed">
+              <p className="text-xs text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2 mb-2 leading-relaxed">
                 Your previous target customer description was moved here. Flesh out the fields above and clear this when you are ready.
               </p>
             )}
@@ -423,22 +423,22 @@ export function PersonaEditor({
               disabled={!canEdit}
               rows={3}
               placeholder="Any other notes about this customer..."
-              className="w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed disabled:bg-[#f4f3f1] disabled:text-[#6b6b6b]"
+              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
             />
           </div>
 
           {/* Primary toggle */}
           {canEdit && (
-            <div className="flex items-center justify-between py-3 border-t border-[#efefef]">
-              <span className="text-xs text-[#6b6b6b]">Set as primary persona</span>
+            <div className="flex items-center justify-between py-3 border-t border-[var(--border)]">
+              <span className="text-xs text-[var(--muted-foreground)]">Set as primary persona</span>
               <button
                 type="button"
                 onClick={() => setField("isPrimary", !draft.isPrimary)}
                 disabled={draft.isPrimary}
                 className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-default ${
                   draft.isPrimary
-                    ? "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20"
-                    : "text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63] hover:text-[#155e63]"
+                    ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20"
+                    : "text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)] hover:text-[var(--teal)]"
                 }`}
               >
                 {draft.isPrimary ? "Primary" : "Make primary"}
@@ -448,15 +448,15 @@ export function PersonaEditor({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-[#efefef] flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
           {canEdit && !isNew ? (
             <button
               type="button"
               onClick={handleDelete}
               className={`text-xs font-medium transition-colors ${
                 confirmDelete
-                  ? "text-white bg-[#a13d3d] px-3 py-1.5 rounded-lg"
-                  : "text-[#a13d3d] hover:underline"
+                  ? "text-white bg-[var(--error)] px-3 py-1.5 rounded-lg"
+                  : "text-[var(--error)] hover:underline"
               }`}
             >
               {confirmDelete ? "Confirm delete" : "Delete"}
@@ -468,7 +468,7 @@ export function PersonaEditor({
             <button
               type="button"
               onClick={onClose}
-              className="text-xs font-medium text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+              className="text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
             >
               Cancel
             </button>
@@ -476,7 +476,7 @@ export function PersonaEditor({
               <button
                 type="button"
                 onClick={handleSave}
-                className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+                className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
               >
                 {isNew ? "Add persona" : "Save"}
               </button>

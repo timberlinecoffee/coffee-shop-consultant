@@ -61,22 +61,22 @@ export default async function LocationLeaseWorkspacePage() {
   }));
 
   return (
-    <div className="bg-[#faf9f7]">
+    <div className="bg-[var(--background)]">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-12">
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <MapPin
-              className="w-5 h-5 text-[#155e63] flex-shrink-0"
+              className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
               aria-hidden="true"
             />
             <h1
-              className="font-bold text-[#1a1a1a]"
+              className="font-bold text-[var(--foreground)]"
               style={{ fontSize: "28px" }}
             >
               Location &amp; Lease
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Each card holds everything for one location — intake, scorecard,
             lease terms, and AI feedback. Shortlist the top contenders and
             run a trade-off when you&apos;re ready to compare.

@@ -60,7 +60,7 @@ export function FeatureAccordionCard({
         boxShadow: open
           ? "0 8px 28px rgba(21,94,99,0.10), 0 2px 6px rgba(0,0,0,0.05)"
           : "0 1px 4px rgba(0,0,0,0.04)",
-        borderColor: open ? accentBorder : "#E5E5E0",
+        borderColor: open ? accentBorder : "var(--border-subtle)",
         borderLeftWidth: "3px",
         borderLeftColor: accentColor,
       }}

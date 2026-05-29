@@ -5,7 +5,7 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="inline-block bg-[#155e63] text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+      className="inline-block bg-[var(--teal)] text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
     >
       Print report
     </button>

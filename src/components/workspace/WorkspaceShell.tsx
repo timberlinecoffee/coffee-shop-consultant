@@ -24,39 +24,39 @@ export function WorkspaceShell({
   trialMessagesUsed,
 }: WorkspaceShellProps) {
   return (
-    <div className="bg-[#faf9f7]">
+    <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* Page header — matches Concept page header pattern */}
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <Icon
-              className="w-5 h-5 text-[#155e63] flex-shrink-0"
+              className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
               aria-hidden="true"
             />
             <h1
-              className="font-bold text-[#1a1a1a]"
+              className="font-bold text-[var(--foreground)]"
               style={{ fontSize: "28px" }}
             >
               {title}
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             {description}
           </p>
         </header>
 
         {/* Placeholder content card — matches Concept card design */}
-        <div className="rounded-2xl border border-[#efefef] bg-white">
+        <div className="rounded-2xl border border-[var(--border)] bg-white">
           <div className="px-5 pt-5 pb-4">
             <div className="mb-2">
-              <span className="text-sm font-semibold text-[#1a1a1a]">
+              <span className="text-sm font-semibold text-[var(--foreground)]">
                 This workspace is being built
               </span>
-              <p className="text-xs text-[#afafaf] mt-0.5">
+              <p className="text-xs text-[var(--dark-grey)] mt-0.5">
                 Full tools are on the way.
               </p>
             </div>
-            <p className="mt-2 text-sm text-[#afafaf] italic leading-relaxed">
+            <p className="mt-2 text-sm text-[var(--dark-grey)] italic leading-relaxed">
               The Co-pilot can answer questions and help you plan right now. Tap
               the Co-pilot button to get started.
             </p>

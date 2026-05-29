@@ -30,7 +30,7 @@ export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
       <button
         type="button"
         onClick={() => setCollapsed(false)}
-        className="flex items-center gap-1 text-[9px] text-[#8ab4b7] hover:text-[#155e63] transition-colors mt-0.5"
+        className="flex items-center gap-1 text-[9px] text-[var(--teal-accent)] hover:text-[var(--teal)] transition-colors mt-0.5"
         aria-label="Show recommendation"
       >
         <ChevronRight size={9} />
@@ -40,18 +40,18 @@ export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
   }
 
   return (
-    <div className="mt-1 rounded-md border border-[#cfe0e1] bg-[#f4f9f8] px-2 py-1.5 text-[10px] leading-snug">
+    <div className="mt-1 rounded-md border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-2 py-1.5 text-[10px] leading-snug">
       <div className="flex items-start justify-between gap-1">
         <div className="flex-1 min-w-0">
-          <span className="text-[#6b6b6b]">Recommended: </span>
-          <span className="font-semibold text-[#155e63] truncate">
+          <span className="text-[var(--muted-foreground)]">Recommended: </span>
+          <span className="font-semibold text-[var(--teal)] truncate">
             {rec.recommended_brand} {rec.recommended_model}{priceLabel}
           </span>
         </div>
         <button
           type="button"
           onClick={() => setCollapsed(true)}
-          className="text-[#c0c0c0] hover:text-[#6b6b6b] transition-colors shrink-0 mt-px"
+          className="text-[var(--neutral-cool-400)] hover:text-[var(--muted-foreground)] transition-colors shrink-0 mt-px"
           aria-label="Hide recommendation"
         >
           <ChevronDown size={9} />
@@ -64,7 +64,7 @@ export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
             href={rec.referral_url}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="flex items-center gap-0.5 text-[#155e63] hover:underline font-medium"
+            className="flex items-center gap-0.5 text-[var(--teal)] hover:underline font-medium"
           >
             <ExternalLink size={9} />
             {rec.partner_name ? `Buy from ${rec.partner_name}` : "Shop this model"}
@@ -79,7 +79,7 @@ export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
             affiliate link
           </button>
           {disclosureOpen && (
-            <p className="w-full text-[9px] text-[#6b6b6b] mt-0.5 leading-relaxed">
+            <p className="w-full text-[9px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">
               {AFFILIATE_DISCLOSURE}
             </p>
           )}

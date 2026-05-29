@@ -1,7 +1,7 @@
 "use client";
 
 // TIM-1120: Shared chart components for numeric financial tabs.
-// Uses Recharts with the Groundwork palette (teal #155e63 + accents).
+// Uses Recharts with the Groundwork palette (teal var(--teal) + accents).
 
 import {
   Area,
@@ -25,17 +25,17 @@ import { fmt } from "@/lib/financial-projection";
 // muted greys for grid + axes). Categorical accents pulled from the same family
 // so multiple series read as one chart.
 export const CHART_COLORS = {
-  primary: "#155e63",
-  primarySoft: "#3a8a8f",
-  positive: "#155e63",
-  negative: "#a13d3d",
-  warning: "#c97a3c",
-  accent: "#5d8c7e",
-  accentSoft: "#a8c4bb",
-  muted: "#6b6b6b",
-  grid: "#efefef",
-  axis: "#afafaf",
-  highlight: "#f0f9f9",
+  primary: "var(--teal)",
+  primarySoft: "var(--teal-medium)",
+  positive: "var(--teal)",
+  negative: "var(--error)",
+  warning: "var(--coffee-brown-1)",
+  accent: "var(--sage-medium)",
+  accentSoft: "var(--sage-tint-2)",
+  muted: "var(--muted-foreground)",
+  grid: "var(--border)",
+  axis: "var(--dark-grey)",
+  highlight: "var(--teal-tint-100)",
 } as const;
 
 const AXIS_STYLE = { fill: CHART_COLORS.muted, fontSize: 11 } as const;
@@ -100,16 +100,16 @@ function ChartTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-lg border border-[#efefef] bg-white px-3 py-2 shadow-sm">
-      <p className="text-[11px] font-semibold text-[#1a1a1a] mb-1">{label}</p>
+    <div className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 shadow-sm">
+      <p className="text-[11px] font-semibold text-[var(--foreground)] mb-1">{label}</p>
       {payload.map((entry, i) => (
         <div key={i} className="flex items-center gap-2 text-[11px]">
           <span
             className="inline-block w-2 h-2 rounded-sm shrink-0"
             style={{ background: entry.color ?? CHART_COLORS.primary }}
           />
-          <span className="text-[#6b6b6b]">{entry.name}</span>
-          <span className="ml-auto font-semibold text-[#1a1a1a] tabular-nums">
+          <span className="text-[var(--muted-foreground)]">{entry.name}</span>
+          <span className="ml-auto font-semibold text-[var(--foreground)] tabular-nums">
             {typeof entry.value === "number" ? fmt(entry.value, currencyCode) : "—"}
           </span>
         </div>
@@ -391,7 +391,7 @@ export function ViewModeToggle({
   onChange: (m: ViewMode) => void;
 }) {
   return (
-    <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
+    <div className="flex rounded-lg border border-[var(--border-medium)] overflow-hidden text-sm">
       {(["table", "chart"] as ViewMode[]).map((m) => (
         <button
           key={m}
@@ -399,8 +399,8 @@ export function ViewModeToggle({
           onClick={() => onChange(m)}
           className={`px-3 py-1.5 capitalize ${
             mode === m
-              ? "bg-[#155e63] text-white"
-              : "bg-white text-[#6b6b6b] hover:bg-[#f5f5f5]"
+              ? "bg-[var(--teal)] text-white"
+              : "bg-white text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)]"
           }`}
           aria-pressed={mode === m}
         >
@@ -421,10 +421,10 @@ export function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-[#efefef] bg-white p-5">
+    <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
       <div className="mb-3">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide">{title}</p>
-        {description && <p className="text-xs text-[#6b6b6b] mt-1">{description}</p>}
+        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide">{title}</p>
+        {description && <p className="text-xs text-[var(--muted-foreground)] mt-1">{description}</p>}
       </div>
       {children}
     </div>

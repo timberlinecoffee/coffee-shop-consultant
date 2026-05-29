@@ -45,7 +45,7 @@ export default async function OperationsPlaybookPrintPage() {
   const updatedAt = doc?.updated_at ?? null;
 
   return (
-    <div className="bg-white min-h-screen text-[#1a1a1a]">
+    <div className="bg-white min-h-screen text-[var(--foreground)]">
       <div className="max-w-3xl mx-auto px-8 py-10 print:py-0 print:px-0">
         <div className="flex items-center justify-between mb-8 print:hidden">
           <h1 className="text-2xl font-bold">Operations Playbook</h1>
@@ -57,7 +57,7 @@ export default async function OperationsPlaybookPrintPage() {
             Operations Playbook
           </h1>
           {updatedAt && (
-            <p className="text-xs text-[#6b6b6b]">
+            <p className="text-xs text-[var(--muted-foreground)]">
               Last updated{" "}
               {new Date(updatedAt).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -76,14 +76,14 @@ export default async function OperationsPlaybookPrintPage() {
                 key={key}
                 className="break-inside-avoid-page print:break-after-page"
               >
-                <h2 className="text-xl font-bold mb-1 border-b-2 border-[#155e63] pb-1">
+                <h2 className="text-xl font-bold mb-1 border-b-2 border-[var(--teal)] pb-1">
                   {SOP_CATEGORY_LABELS[key]}
                 </h2>
-                <p className="text-xs text-[#6b6b6b] mb-2 italic">
+                <p className="text-xs text-[var(--muted-foreground)] mb-2 italic">
                   {SOP_CATEGORY_TAGLINES[key]}
                 </p>
                 {cat.intro && (
-                  <p className="text-sm text-[#1a1a1a] leading-relaxed mb-4">
+                  <p className="text-sm text-[var(--foreground)] leading-relaxed mb-4">
                     {cat.intro}
                   </p>
                 )}
@@ -113,7 +113,7 @@ function CategoryItems({
 }) {
   if (items.length === 0) {
     return (
-      <p className="text-sm text-[#afafaf] italic">No steps yet.</p>
+      <p className="text-sm text-[var(--dark-grey)] italic">No steps yet.</p>
     );
   }
 
@@ -122,10 +122,10 @@ function CategoryItems({
       <ol className="space-y-1.5 pl-5 list-decimal text-sm">
         {items.map((item) => (
           <li key={item.id} className="leading-snug">
-            <span className="inline-block align-top w-3 h-3 border border-[#1a1a1a] rounded-sm mr-2 print:mr-2" />
+            <span className="inline-block align-top w-3 h-3 border border-[var(--foreground)] rounded-sm mr-2 print:mr-2" />
             {item.text}
             {item.duration_min != null && (
-              <span className="text-xs text-[#6b6b6b] ml-2">
+              <span className="text-xs text-[var(--muted-foreground)] ml-2">
                 ({item.duration_min} min)
               </span>
             )}
@@ -154,19 +154,19 @@ function CategoryItems({
         }
         return (
           <div key={station}>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-[#155e63] mb-1.5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
               {station}
             </h3>
             {(["daily", "weekly", "monthly"] as const).map((cad) =>
               grouped[cad].length === 0 ? null : (
                 <div key={cad} className="mb-2 ml-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-[#6b6b6b] mb-1">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
                     {cad}
                   </p>
                   <ul className="space-y-1 pl-1 text-sm">
                     {grouped[cad].map((item) => (
                       <li key={item.id} className="leading-snug flex gap-2">
-                        <span className="inline-block w-3 h-3 border border-[#1a1a1a] rounded-sm flex-shrink-0 mt-1" />
+                        <span className="inline-block w-3 h-3 border border-[var(--foreground)] rounded-sm flex-shrink-0 mt-1" />
                         <span>{item.text}</span>
                       </li>
                     ))}

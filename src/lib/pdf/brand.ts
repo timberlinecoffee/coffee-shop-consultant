@@ -2,12 +2,12 @@ import { Font } from "@react-pdf/renderer"
 
 export const BRAND = {
   colors: {
-    ink: "#0F1B11",
-    paper: "#FFFFFF",
-    primary: "#1A6E3B",
-    accent: "#E8C24A",
-    muted: "#6B7B70",
-    rule: "#D9DEDA",
+    ink: "var(--forest-dark)",
+    paper: "var(--card)",
+    primary: "var(--success)",
+    accent: "var(--warning-amber)",
+    muted: "var(--sage-muted)",
+    rule: "var(--neutral-cool-d9)",
   },
   fonts: {
     sans: "Inter",

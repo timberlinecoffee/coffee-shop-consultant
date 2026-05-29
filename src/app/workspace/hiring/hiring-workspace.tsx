@@ -137,7 +137,7 @@ function HiringPdfButton({
         onClick={handleClick}
         disabled={exporting}
         title={iconTitle ?? label}
-        className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448] disabled:opacity-50 transition-colors"
+        className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] disabled:opacity-50 transition-colors"
       >
         <Download size={12} />
         {label}
@@ -188,10 +188,10 @@ function RolePill({ status }: { status: HiringRoleStatus }) {
 // ── Shared input styles ───────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
+  "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
 
 // ── Org Structure tab ─────────────────────────────────────────────────────────
 
@@ -299,14 +299,14 @@ function OrgTab({
       <div style={{ marginLeft: depth * 24 }}>
         <div className="flex items-center gap-2 py-1.5">
           {depth > 0 && (
-            <span className="text-[#d0d0d0] text-sm select-none">└</span>
+            <span className="text-[var(--neutral-cool-350)] text-sm select-none">└</span>
           )}
-          <div className="flex items-center gap-2 bg-white border border-[#efefef] rounded-lg px-3 py-2 min-w-0">
-            <Users size={14} className="text-[#155e63] shrink-0" />
-            <span className="text-sm font-medium text-[#1a1a1a] truncate">
-              {role.role_title || <span className="text-[#afafaf] font-normal">Unnamed role</span>}
+          <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2 min-w-0">
+            <Users size={14} className="text-[var(--teal)] shrink-0" />
+            <span className="text-sm font-medium text-[var(--foreground)] truncate">
+              {role.role_title || <span className="text-[var(--dark-grey)] font-normal">Unnamed role</span>}
             </span>
-            <span className="text-xs text-[#6b6b6b] shrink-0">
+            <span className="text-xs text-[var(--muted-foreground)] shrink-0">
               ×{role.headcount}
             </span>
             <RolePill status={role.status} />
@@ -322,11 +322,11 @@ function OrgTab({
   return (
     <div className="space-y-6">
       {/* Role table */}
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">Roles</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Roles</p>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Define every role you plan to hire for.
             </p>
           </div>
@@ -334,7 +334,7 @@ function OrgTab({
             <button
               type="button"
               onClick={addRole}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#155e63] px-3 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
             >
               <Plus size={13} />
               Add role
@@ -344,10 +344,10 @@ function OrgTab({
 
         {roles.length === 0 ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-[#afafaf]">No roles yet. Add your first role above.</p>
+            <p className="text-sm text-[var(--dark-grey)]">No roles yet. Add your first role above.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#f5f5f5]">
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
             {roles.map((role) => (
               <RoleRow
                 key={role.id}
@@ -370,16 +370,16 @@ function OrgTab({
 
       {/* Org chart */}
       {roles.length > 0 && (
-        <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#efefef]">
-            <p className="text-sm font-semibold text-[#1a1a1a]">Org Chart</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--border)]">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Org Chart</p>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Set "Reports to" on each role to build the hierarchy.
             </p>
           </div>
           <div className="px-5 py-4">
             {rootRoles.length === 0 ? (
-              <p className="text-sm text-[#afafaf]">
+              <p className="text-sm text-[var(--dark-grey)]">
                 No top-level roles. Set "Reports to" on roles to build the chart.
               </p>
             ) : (
@@ -588,12 +588,12 @@ function RoleRow({
       {/* Role header row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-[#1a1a1a] truncate block">
+          <span className="text-sm font-medium text-[var(--foreground)] truncate block">
             {role.role_title || (
-              <span className="text-[#afafaf] font-normal">Unnamed role</span>
+              <span className="text-[var(--dark-grey)] font-normal">Unnamed role</span>
             )}
           </span>
-          <span className="text-xs text-[#6b6b6b]">
+          <span className="text-xs text-[var(--muted-foreground)]">
             {role.headcount} headcount
             {role.monthly_cost_cents
               ? ` · $${Math.round(role.monthly_cost_cents / 100)}/mo`
@@ -604,14 +604,14 @@ function RoleRow({
         <button
           type="button"
           onClick={onOpenHub}
-          className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:underline shrink-0"
+          className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline shrink-0"
         >
           Hub <ExternalLink size={11} />
         </button>
         <button
           type="button"
           onClick={onToggleEdit}
-          className="text-[#afafaf] hover:text-[#1a1a1a] p-1 shrink-0"
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1 shrink-0"
         >
           {isEditing ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </button>
@@ -619,7 +619,7 @@ function RoleRow({
           <button
             type="button"
             onClick={onDelete}
-            className="text-[#afafaf] hover:text-[#a13d3d] p-1 shrink-0"
+            className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 shrink-0"
           >
             <Trash2 size={13} />
           </button>
@@ -627,30 +627,30 @@ function RoleRow({
       </div>
 
       {/* JD inline accordion */}
-      <div className="border-t border-[#f5f5f5]">
+      <div className="border-t border-[var(--neutral-cool-100)]">
         <button
           type="button"
           onClick={toggleJd}
-          className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-[#faf9f7] transition-colors"
+          className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-[var(--background)] transition-colors"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <FileText size={12} className="text-[#155e63] shrink-0" />
-            <span className="text-xs font-semibold text-[#155e63]">Job Description</span>
+            <FileText size={12} className="text-[var(--teal)] shrink-0" />
+            <span className="text-xs font-semibold text-[var(--teal)]">Job Description</span>
             {jdFields?.summary && !jdOpen && (
-              <span className="text-xs text-[#afafaf] truncate">
+              <span className="text-xs text-[var(--dark-grey)] truncate">
                 {jdFields.summary.replace(/\n/g, " ").substring(0, 80)}
               </span>
             )}
           </div>
           {jdOpen
-            ? <ChevronUp size={12} className="text-[#afafaf] shrink-0" />
-            : <ChevronDown size={12} className="text-[#afafaf] shrink-0" />}
+            ? <ChevronUp size={12} className="text-[var(--dark-grey)] shrink-0" />
+            : <ChevronDown size={12} className="text-[var(--dark-grey)] shrink-0" />}
         </button>
 
         {jdOpen && (
-          <div className="px-4 pb-4 space-y-4 bg-[#faf9f7] border-t border-[#f0f0f0]">
+          <div className="px-4 pb-4 space-y-4 bg-[var(--background)] border-t border-[var(--neutral-cool-150)]">
             {jdLoading ? (
-              <p className="text-sm text-[#afafaf] pt-3">Loading...</p>
+              <p className="text-sm text-[var(--dark-grey)] pt-3">Loading...</p>
             ) : (
               <>
                 <div className="pt-3 space-y-4">
@@ -663,7 +663,7 @@ function RoleRow({
                             type="button"
                             disabled={improvingField === key}
                             onClick={() => improveJdField(key)}
-                            className="text-[10px] font-semibold text-[#155e63] hover:underline disabled:opacity-50"
+                            className="text-[10px] font-semibold text-[var(--teal)] hover:underline disabled:opacity-50"
                           >
                             {improvingField === key ? "Improving..." : "AI Improve"}
                           </button>
@@ -708,7 +708,7 @@ function RoleRow({
                       type="button"
                       onClick={saveJd}
                       disabled={!jdDirty}
-                      className="text-sm font-semibold bg-[#155e63] text-white px-5 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+                      className="text-sm font-semibold bg-[var(--teal)] text-white px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
                     >
                       Save JD
                     </button>
@@ -721,7 +721,7 @@ function RoleRow({
       </div>
 
       {isEditing && (
-        <div className="px-4 pb-4 bg-[#faf9f7] border-t border-[#f0f0f0]">
+        <div className="px-4 pb-4 bg-[var(--background)] border-t border-[var(--neutral-cool-150)]">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
             <div>
               <label className={labelCls}>Role title</label>
@@ -778,17 +778,17 @@ function RoleRow({
               />
             </div>
             {/* Compensation framework (TIM-1303) */}
-            <div className="sm:col-span-2 border border-[#e8e8e8] rounded-lg p-3 bg-white">
+            <div className="sm:col-span-2 border border-[var(--neutral-cool-200)] rounded-lg p-3 bg-white">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-[#155e63]">Compensation</p>
+                <p className="text-xs font-semibold text-[var(--teal)]">Compensation</p>
                 {compLoading && (
-                  <span className="text-[10px] text-[#afafaf]">Loading…</span>
+                  <span className="text-[10px] text-[var(--dark-grey)]">Loading…</span>
                 )}
                 {!compLoading && compLine === null && !compDirty && (
-                  <span className="text-[10px] text-[#afafaf]">Not set. Edit fields to link.</span>
+                  <span className="text-[10px] text-[var(--dark-grey)]">Not set. Edit fields to link.</span>
                 )}
                 {compPreviewCents !== null && (
-                  <span className="text-xs font-semibold text-[#155e63]">
+                  <span className="text-xs font-semibold text-[var(--teal)]">
                     Loaded: ${(compPreviewCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
                   </span>
                 )}
@@ -815,7 +815,7 @@ function RoleRow({
                 <div className="w-32">
                   <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">$</span>
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
                     <input
                       className={inputCls + " pl-5"}
                       type="number"
@@ -864,7 +864,7 @@ function RoleRow({
                         setCompDirty(true);
                       }}
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">%</span>
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">%</span>
                   </div>
                 </div>
                 {canEdit && compDirty && (
@@ -872,7 +872,7 @@ function RoleRow({
                     type="button"
                     onClick={saveComp}
                     disabled={compSaving}
-                    className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+                    className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
                   >
                     {compSaving ? "Saving…" : "Save comp"}
                   </button>
@@ -1033,49 +1033,49 @@ function RoleHubPanel({
       />
       <div className="w-full max-w-lg bg-white shadow-xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#efefef] flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">Role Hub</p>
-            <p className="text-xs text-[#6b6b6b]">{role.role_title || "Unnamed role"}</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">Role Hub</p>
+            <p className="text-xs text-[var(--muted-foreground)]">{role.role_title || "Unnamed role"}</p>
           </div>
-          <button type="button" onClick={onClose} className="text-[#afafaf] hover:text-[#1a1a1a] p-1">
+          <button type="button" onClick={onClose} className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1">
             <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
           {loading ? (
-            <p className="text-sm text-[#afafaf]">Loading…</p>
+            <p className="text-sm text-[var(--dark-grey)]">Loading…</p>
           ) : (
             <>
               {/* ── Scorecards ── */}
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <ClipboardCheck size={14} className="text-[#155e63]" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">Scorecards</p>
+                    <ClipboardCheck size={14} className="text-[var(--teal)]" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Scorecards</p>
                   </div>
                   {canEdit && (
                     <button
                       type="button"
                       onClick={addScorecard}
-                      className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:underline"
+                      className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline"
                     >
                       <Plus size={12} /> New
                     </button>
                   )}
                 </div>
                 {scorecards.length === 0 ? (
-                  <p className="text-xs text-[#afafaf]">No scorecards yet. Create one above.</p>
+                  <p className="text-xs text-[var(--dark-grey)]">No scorecards yet. Create one above.</p>
                 ) : (
                   <div className="space-y-2">
                     {scorecards.map((sc) => (
-                      <div key={sc.id} className="flex items-center gap-2 border border-[#efefef] rounded-lg px-3 py-2">
+                      <div key={sc.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2">
                         {renamingScorecard === sc.id ? (
                           <>
                             <input
                               autoFocus
-                              className="flex-1 text-sm border border-[#e0e0e0] rounded px-2 py-1 focus:outline-none focus:border-[#155e63]"
+                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -1083,16 +1083,16 @@ function RoleHubPanel({
                                 if (e.key === "Escape") setRenamingScorecard(null);
                               }}
                             />
-                            <button type="button" onClick={() => saveRenameScorecard(sc.id)} className="text-[#155e63] p-1">
+                            <button type="button" onClick={() => saveRenameScorecard(sc.id)} className="text-[var(--teal)] p-1">
                               <Check size={13} />
                             </button>
                           </>
                         ) : (
                           <>
-                            <span className="flex-1 text-sm text-[#1a1a1a] truncate">
+                            <span className="flex-1 text-sm text-[var(--foreground)] truncate">
                               {sc.name}
                               {sc.is_default && (
-                                <span className="ml-2 text-[10px] font-semibold text-[#155e63] bg-[#f0fafa] px-1.5 py-0.5 rounded-full">Default</span>
+                                <span className="ml-2 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-bg-50)] px-1.5 py-0.5 rounded-full">Default</span>
                               )}
                             </span>
                             {canEdit && (
@@ -1101,7 +1101,7 @@ function RoleHubPanel({
                                   type="button"
                                   title="Rename"
                                   onClick={() => { setRenamingScorecard(sc.id); setRenameValue(sc.name); }}
-                                  className="text-[#afafaf] hover:text-[#1a1a1a] p-1"
+                                  className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1"
                                 >
                                   <Pencil size={12} />
                                 </button>
@@ -1109,7 +1109,7 @@ function RoleHubPanel({
                                   type="button"
                                   title="Duplicate"
                                   onClick={() => duplicateScorecard(sc.id)}
-                                  className="text-[#afafaf] hover:text-[#155e63] p-1"
+                                  className="text-[var(--dark-grey)] hover:text-[var(--teal)] p-1"
                                 >
                                   <Copy size={12} />
                                 </button>
@@ -1123,7 +1123,7 @@ function RoleHubPanel({
                                   type="button"
                                   title="Delete"
                                   onClick={() => deleteScorecard(sc.id)}
-                                  className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                                  className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -1141,30 +1141,30 @@ function RoleHubPanel({
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <BookOpen size={14} className="text-[#155e63]" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[#155e63]">Competency Form</p>
+                    <BookOpen size={14} className="text-[var(--teal)]" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Competency Form</p>
                   </div>
                   {canEdit && (
                     <button
                       type="button"
                       onClick={addCompForm}
-                      className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:underline"
+                      className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline"
                     >
                       <Plus size={12} /> New
                     </button>
                   )}
                 </div>
                 {compForms.length === 0 ? (
-                  <p className="text-xs text-[#afafaf]">No competency form template yet. Create one above.</p>
+                  <p className="text-xs text-[var(--dark-grey)]">No competency form template yet. Create one above.</p>
                 ) : (
                   <div className="space-y-2">
                     {compForms.map((cf) => (
-                      <div key={cf.id} className="flex items-center gap-2 border border-[#efefef] rounded-lg px-3 py-2">
+                      <div key={cf.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2">
                         {renamingForm === cf.id ? (
                           <>
                             <input
                               autoFocus
-                              className="flex-1 text-sm border border-[#e0e0e0] rounded px-2 py-1 focus:outline-none focus:border-[#155e63]"
+                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
                               value={renameFormValue}
                               onChange={(e) => setRenameFormValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -1172,13 +1172,13 @@ function RoleHubPanel({
                                 if (e.key === "Escape") setRenamingForm(null);
                               }}
                             />
-                            <button type="button" onClick={() => saveRenameForm(cf.id)} className="text-[#155e63] p-1">
+                            <button type="button" onClick={() => saveRenameForm(cf.id)} className="text-[var(--teal)] p-1">
                               <Check size={13} />
                             </button>
                           </>
                         ) : (
                           <>
-                            <span className="flex-1 text-sm text-[#1a1a1a] truncate">{cf.name}</span>
+                            <span className="flex-1 text-sm text-[var(--foreground)] truncate">{cf.name}</span>
                             <HiringPdfButton
                               templateId="hiring_competency_blank"
                               queryParams={{ form_template_id: cf.id }}
@@ -1191,7 +1191,7 @@ function RoleHubPanel({
                                   type="button"
                                   title="Rename"
                                   onClick={() => { setRenamingForm(cf.id); setRenameFormValue(cf.name); }}
-                                  className="text-[#afafaf] hover:text-[#1a1a1a] p-1"
+                                  className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1"
                                 >
                                   <Pencil size={12} />
                                 </button>
@@ -1199,7 +1199,7 @@ function RoleHubPanel({
                                   type="button"
                                   title="Delete"
                                   onClick={() => deleteCompForm(cf.id)}
-                                  className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                                  className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -1461,14 +1461,14 @@ function InterviewTab({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Left: candidate list */}
       <div className="lg:col-span-1 space-y-3">
-        <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#efefef] flex items-center justify-between">
-            <p className="text-sm font-semibold text-[#1a1a1a]">Candidates</p>
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Candidates</p>
             {canEdit && (
               <button
                 type="button"
                 onClick={addCandidate}
-                className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448]"
+                className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
               >
                 <Plus size={13} />
                 Add
@@ -1477,10 +1477,10 @@ function InterviewTab({
           </div>
           {candidates.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-[#afafaf]">No candidates yet.</p>
+              <p className="text-sm text-[var(--dark-grey)]">No candidates yet.</p>
             </div>
           ) : (
-            <div className="divide-y divide-[#f5f5f5]">
+            <div className="divide-y divide-[var(--neutral-cool-100)]">
               {candidates.map((c) => (
                 <button
                   key={c.id}
@@ -1488,19 +1488,19 @@ function InterviewTab({
                   onClick={() => setSelectedId(c.id)}
                   className={`w-full text-left px-4 py-3 flex items-center gap-2 transition-colors ${
                     selectedId === c.id
-                      ? "bg-[#f4f9f8]"
-                      : "hover:bg-[#faf9f7]"
+                      ? "bg-[var(--teal-tint-500)]"
+                      : "hover:bg-[var(--background)]"
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                    <p className="text-sm font-medium text-[var(--foreground)] truncate">
                       {c.name || (
-                        <span className="text-[#afafaf] font-normal">
+                        <span className="text-[var(--dark-grey)] font-normal">
                           New candidate
                         </span>
                       )}
                     </p>
-                    <p className="text-[10px] text-[#6b6b6b] truncate">
+                    <p className="text-[10px] text-[var(--muted-foreground)] truncate">
                       {roles.find((r) => r.id === c.role_id)?.role_title ?? "No role"}
                     </p>
                   </div>
@@ -1508,7 +1508,7 @@ function InterviewTab({
                     {(() => {
                       const pct = candidateWeightedScore(c.id);
                       return pct !== null ? (
-                        <span className="text-[10px] font-bold text-[#155e63]">{pct}%</span>
+                        <span className="text-[10px] font-bold text-[var(--teal)]">{pct}%</span>
                       ) : null;
                     })()}
                     <CandidatePill status={c.status} />
@@ -1523,13 +1523,13 @@ function InterviewTab({
       {/* Right: scorecard */}
       <div className="lg:col-span-2 space-y-4">
         {!selected ? (
-          <div className="rounded-xl border border-dashed border-[#e0e0e0] py-16 text-center">
-            <p className="text-sm text-[#afafaf]">Select a candidate to view their scorecard.</p>
+          <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-16 text-center">
+            <p className="text-sm text-[var(--dark-grey)]">Select a candidate to view their scorecard.</p>
           </div>
         ) : (
           <>
             {/* Candidate detail */}
-            <div className="rounded-xl border border-[#efefef] bg-white px-5 py-4 space-y-3">
+            <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <p className={sectionLabelCls}>Candidate details</p>
                 <div className="flex items-center gap-2">
@@ -1541,7 +1541,7 @@ function InterviewTab({
                     <button
                       type="button"
                       onClick={() => deleteCandidate(selected.id)}
-                      className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                      className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -1613,15 +1613,15 @@ function InterviewTab({
             </div>
 
             {/* Questions + scores */}
-            <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#efefef] flex items-center gap-3">
+            <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1a1a1a]">Interview Scorecard</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Interview Scorecard</p>
                   {roleScorecards.length > 0 && (
                     <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[10px] text-[#6b6b6b]">Scoring with:</span>
+                      <span className="text-[10px] text-[var(--muted-foreground)]">Scoring with:</span>
                       <select
-                        className="text-xs border border-[#e0e0e0] rounded px-1.5 py-0.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] bg-white"
+                        className="text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] bg-white"
                         value={selectedScorecardId ?? ""}
                         onChange={(e) => setSelectedScorecardId(e.target.value || null)}
                       >
@@ -1636,7 +1636,7 @@ function InterviewTab({
                   <button
                     type="button"
                     onClick={addQuestion}
-                    className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448] shrink-0"
+                    className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] shrink-0"
                   >
                     <Plus size={13} />
                     Add question
@@ -1646,14 +1646,14 @@ function InterviewTab({
 
               {roleQuestions.length === 0 ? (
                 <div className="py-8 text-center px-5">
-                  <p className="text-sm text-[#afafaf]">
+                  <p className="text-sm text-[var(--dark-grey)]">
                     {selectedScorecardId
                       ? "No questions in this scorecard yet. Add one above."
                       : "No questions yet. Add interview questions above."}
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#f5f5f5]">
+                <div className="divide-y divide-[var(--neutral-cool-100)]">
                   {roleQuestions.map((q) => {
                     const scoreEntry = scores.find(
                       (s) =>
@@ -1665,7 +1665,7 @@ function InterviewTab({
                         <div className="flex items-start gap-2">
                           <div className="flex-1 min-w-0">
                             <input
-                              className="w-full text-sm text-[#1a1a1a] bg-transparent border-b border-transparent hover:border-[#e0e0e0] focus:border-[#155e63] focus:outline-none py-0.5 disabled:hover:border-transparent"
+                              className="w-full text-sm text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus:outline-none py-0.5 disabled:hover:border-transparent"
                               value={q.prompt}
                               onChange={(e) =>
                                 updateQuestion(q.id, { prompt: e.target.value })
@@ -1675,11 +1675,11 @@ function InterviewTab({
                             />
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            <span className="text-[10px] text-[#6b6b6b]">
+                            <span className="text-[10px] text-[var(--muted-foreground)]">
                               Weight
                             </span>
                             <select
-                              className="text-xs border border-[#e0e0e0] rounded px-1 py-0.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63]"
+                              className="text-xs border border-[var(--border-medium)] rounded px-1 py-0.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)]"
                               value={q.weight}
                               onChange={(e) =>
                                 updateQuestion(q.id, {
@@ -1698,7 +1698,7 @@ function InterviewTab({
                               <button
                                 type="button"
                                 onClick={() => deleteQuestion(q.id)}
-                                className="text-[#afafaf] hover:text-[#a13d3d] p-0.5"
+                                className="text-[var(--dark-grey)] hover:text-[var(--error)] p-0.5"
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -1722,8 +1722,8 @@ function InterviewTab({
                                 }
                                 className={`w-7 h-7 rounded-full text-xs font-semibold border transition-colors ${
                                   scoreEntry && scoreEntry.score >= n
-                                    ? "bg-[#155e63] text-white border-[#155e63]"
-                                    : "bg-white text-[#afafaf] border-[#e0e0e0] hover:border-[#155e63]"
+                                    ? "bg-[var(--teal)] text-white border-[var(--teal)]"
+                                    : "bg-white text-[var(--dark-grey)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                                 } disabled:opacity-50`}
                               >
                                 {n}
@@ -1731,7 +1731,7 @@ function InterviewTab({
                             ))}
                           </div>
                           <input
-                            className="flex-1 text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7]"
+                            className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                             value={scoreEntry?.notes ?? ""}
                             onChange={(e) =>
                               upsertScore(
@@ -1752,10 +1752,10 @@ function InterviewTab({
               )}
 
               {weightedTotal !== null && (
-                <div className="px-5 py-3 border-t border-[#efefef] bg-[#f4f9f8]">
-                  <span className="text-xs text-[#6b6b6b]">
+                <div className="px-5 py-3 border-t border-[var(--border)] bg-[var(--teal-tint-500)]">
+                  <span className="text-xs text-[var(--muted-foreground)]">
                     Weighted score:{" "}
-                    <span className="font-bold text-[#155e63]">
+                    <span className="font-bold text-[var(--teal)]">
                       {weightedTotal}%
                     </span>
                   </span>
@@ -1969,14 +1969,14 @@ function OnboardingTab({
   return (
     <div className="space-y-5">
       {/* Instance list */}
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between">
-          <p className="text-sm font-semibold text-[#1a1a1a]">Onboarding Plans</p>
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Onboarding Plans</p>
           {canEdit && (
             <button
               type="button"
               onClick={() => setShowNewForm(true)}
-              className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448]"
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
             >
               <Plus size={13} />
               New plan
@@ -1985,7 +1985,7 @@ function OnboardingTab({
         </div>
 
         {showNewForm && (
-          <div className="px-5 py-4 border-b border-[#efefef] bg-[#faf9f7] space-y-3">
+          <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--background)] space-y-3">
             <p className={sectionLabelCls}>New onboarding plan</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -2028,14 +2028,14 @@ function OnboardingTab({
                 type="button"
                 disabled={creating || !newHireName.trim()}
                 onClick={createPlan}
-                className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] disabled:opacity-60"
+                className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] disabled:opacity-60"
               >
                 {creating ? "Creating..." : "Create plan"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowNewForm(false)}
-                className="text-xs text-[#6b6b6b] hover:text-[#1a1a1a]"
+                className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               >
                 Cancel
               </button>
@@ -2045,12 +2045,12 @@ function OnboardingTab({
 
         {instances.length === 0 && !showNewForm ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-[#afafaf]">
+            <p className="text-sm text-[var(--dark-grey)]">
               No onboarding plans yet. Create one above.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-[#f5f5f5]">
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
             {instances.map((inst) => {
               const instTasks = tasks.filter((t) => t.instance_id === inst.id);
               const completed = instTasks.filter((t) => t.completed_at).length;
@@ -2063,14 +2063,14 @@ function OnboardingTab({
                   type="button"
                   onClick={() => setSelectedId(inst.id)}
                   className={`w-full text-left px-5 py-3 flex items-center gap-4 transition-colors ${
-                    selectedId === inst.id ? "bg-[#f4f9f8]" : "hover:bg-[#faf9f7]"
+                    selectedId === inst.id ? "bg-[var(--teal-tint-500)]" : "hover:bg-[var(--background)]"
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1a1a1a]">
+                    <p className="text-sm font-medium text-[var(--foreground)]">
                       {inst.hire_name}
                     </p>
-                    <p className="text-[10px] text-[#6b6b6b]">
+                    <p className="text-[10px] text-[var(--muted-foreground)]">
                       {roles.find((r) => r.id === inst.role_id)?.role_title ?? "No role"}
                       {inst.start_date
                         ? ` · Starts ${new Date(`${inst.start_date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
@@ -2078,13 +2078,13 @@ function OnboardingTab({
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-20 h-1.5 bg-[#e8e8e8] rounded-full overflow-hidden">
+                    <div className="w-20 h-1.5 bg-[var(--neutral-cool-200)] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#155e63] rounded-full transition-all"
+                        className="h-full bg-[var(--teal)] rounded-full transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-[#6b6b6b]">
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
                       {completed}/{total}
                     </span>
                   </div>
@@ -2095,7 +2095,7 @@ function OnboardingTab({
                         e.stopPropagation();
                         deleteInstance(inst.id);
                       }}
-                      className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                      className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -2120,25 +2120,25 @@ function OnboardingTab({
             return (
               <div
                 key={phase}
-                className="rounded-xl border border-[#efefef] bg-white overflow-hidden"
+                className="rounded-xl border border-[var(--border)] bg-white overflow-hidden"
               >
                 {/* Phase header — clickable to collapse/expand */}
                 <button
                   type="button"
                   onClick={() => togglePhase(phase)}
-                  className="w-full px-5 py-3 border-b border-[#efefef] flex items-center justify-between bg-[#faf9f7] hover:bg-[#f4f4f2] transition-colors"
+                  className="w-full px-5 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--background)] hover:bg-[var(--gray-250)] transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     {isCollapsed ? (
-                      <ChevronRight size={14} className="text-[#155e63]" />
+                      <ChevronRight size={14} className="text-[var(--teal)]" />
                     ) : (
-                      <ChevronDown size={14} className="text-[#155e63]" />
+                      <ChevronDown size={14} className="text-[var(--teal)]" />
                     )}
-                    <span className="text-xs font-semibold text-[#155e63]">
+                    <span className="text-xs font-semibold text-[var(--teal)]">
                       {PHASE_LABELS[phase]}
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#afafaf]">
+                  <span className="text-[10px] text-[var(--dark-grey)]">
                     {doneCount}/{phaseTasks.length} done
                   </span>
                 </button>
@@ -2147,10 +2147,10 @@ function OnboardingTab({
                   <>
                     {phaseTasks.length === 0 ? (
                       <div className="px-5 py-3">
-                        <p className="text-xs text-[#afafaf]">No tasks in this phase.</p>
+                        <p className="text-xs text-[var(--dark-grey)]">No tasks in this phase.</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-[#f5f5f5]">
+                      <div className="divide-y divide-[var(--neutral-cool-100)]">
                         {phaseTasks.map((t) => {
                           const isExpanded = expandedTaskId === t.id;
                           const dueDate = computeDueDateLabel(selectedInstance.start_date, t.due_offset_days);
@@ -2164,8 +2164,8 @@ function OnboardingTab({
                                   onClick={() => canEdit && toggleTask(t)}
                                   className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
                                     t.completed_at
-                                      ? "bg-[#155e63] border-[#155e63]"
-                                      : "border-[#d0d0d0] hover:border-[#155e63]"
+                                      ? "bg-[var(--teal)] border-[var(--teal)]"
+                                      : "border-[var(--neutral-cool-350)] hover:border-[var(--teal)]"
                                   } ${!canEdit ? "cursor-default" : "cursor-pointer"}`}
                                   aria-label={t.completed_at ? "Mark incomplete" : "Mark complete"}
                                 >
@@ -2176,10 +2176,10 @@ function OnboardingTab({
 
                                 <div className="flex-1 min-w-0">
                                   <input
-                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[#e0e0e0] focus:border-[#155e63] focus:outline-none py-0.5 disabled:hover:border-transparent ${
+                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus:outline-none py-0.5 disabled:hover:border-transparent ${
                                       t.completed_at
-                                        ? "line-through text-[#afafaf]"
-                                        : "text-[#1a1a1a]"
+                                        ? "line-through text-[var(--dark-grey)]"
+                                        : "text-[var(--foreground)]"
                                     }`}
                                     value={t.task}
                                     onChange={(e) =>
@@ -2192,10 +2192,10 @@ function OnboardingTab({
 
                                 {/* Due day input + computed calendar date */}
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <div className="flex items-center gap-1 text-xs text-[#6b6b6b]">
+                                  <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                     <span className="whitespace-nowrap">Due: Day</span>
                                     <input
-                                      className="w-12 text-xs border border-[#e0e0e0] rounded px-1.5 py-0.5 text-[#1a1a1a] text-center focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7]"
+                                      className="w-12 text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] text-center focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                                       type="number"
                                       value={t.due_offset_days ?? ""}
                                       onChange={(e) =>
@@ -2210,7 +2210,7 @@ function OnboardingTab({
                                     />
                                   </div>
                                   {dueDate && (
-                                    <span className="text-[10px] text-[#afafaf] whitespace-nowrap">
+                                    <span className="text-[10px] text-[var(--dark-grey)] whitespace-nowrap">
                                       {dueDate}
                                     </span>
                                   )}
@@ -2223,7 +2223,7 @@ function OnboardingTab({
                                     onClick={() =>
                                       setExpandedTaskId(isExpanded ? null : t.id)
                                     }
-                                    className="text-[#afafaf] hover:text-[#155e63] p-0.5"
+                                    className="text-[var(--dark-grey)] hover:text-[var(--teal)] p-0.5"
                                     title={isExpanded ? "Hide detail" : "Show detail"}
                                   >
                                     {isExpanded ? (
@@ -2236,7 +2236,7 @@ function OnboardingTab({
                                     <button
                                       type="button"
                                       onClick={() => deleteTask(t.id)}
-                                      className="text-[#afafaf] hover:text-[#a13d3d] p-0.5"
+                                      className="text-[var(--dark-grey)] hover:text-[var(--error)] p-0.5"
                                     >
                                       <Trash2 size={12} />
                                     </button>
@@ -2246,10 +2246,10 @@ function OnboardingTab({
 
                               {/* Drill-down detail panel */}
                               {isExpanded && (
-                                <div className="ml-7 rounded-lg bg-[#f7f8f6] border border-[#e8e8e8] p-3 space-y-2">
+                                <div className="ml-7 rounded-lg bg-[var(--warm-1050)] border border-[var(--neutral-cool-200)] p-3 space-y-2">
                                   {canEdit ? (
                                     <textarea
-                                      className="w-full text-xs text-[#1a1a1a] bg-transparent resize-none focus:outline-none placeholder-[#c0c0c0]"
+                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus:outline-none placeholder-[var(--neutral-cool-400)]"
                                       rows={3}
                                       value={t.detail ?? ""}
                                       onChange={(e) =>
@@ -2260,7 +2260,7 @@ function OnboardingTab({
                                   ) : t.detail ? (
                                     <p className="text-xs text-[#555]">{t.detail}</p>
                                   ) : (
-                                    <p className="text-xs text-[#afafaf] italic">No detail added.</p>
+                                    <p className="text-xs text-[var(--dark-grey)] italic">No detail added.</p>
                                   )}
                                 </div>
                               )}
@@ -2271,11 +2271,11 @@ function OnboardingTab({
                     )}
 
                     {canEdit && (
-                      <div className="px-5 py-2 border-t border-[#f5f5f5]">
+                      <div className="px-5 py-2 border-t border-[var(--neutral-cool-100)]">
                         <button
                           type="button"
                           onClick={() => addTask(phase)}
-                          className="flex items-center gap-1 text-xs text-[#155e63] hover:underline"
+                          className="flex items-center gap-1 text-xs text-[var(--teal)] hover:underline"
                         >
                           <Plus size={11} />
                           Add task
@@ -2490,13 +2490,13 @@ function CompetencyTab({
   return (
     <div className="space-y-5">
       {/* Competency template */}
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">
+            <p className="text-sm font-semibold text-[var(--foreground)]">
               Competency Framework
             </p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Shared skills and rubric for all staff evaluations.
             </p>
           </div>
@@ -2504,7 +2504,7 @@ function CompetencyTab({
             <button
               type="button"
               onClick={addCompetency}
-              className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448]"
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
             >
               <Plus size={13} />
               Add skill
@@ -2514,12 +2514,12 @@ function CompetencyTab({
 
         {competencies.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-[#afafaf]">
+            <p className="text-sm text-[var(--dark-grey)]">
               No competencies defined. Add skills above.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-[#f5f5f5]">
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
             {competencies
               .sort((a, b) => a.order_index - b.order_index)
               .map((comp) => (
@@ -2556,9 +2556,9 @@ function CompetencyTab({
                         disabled={!canEdit}
                       />
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-[#6b6b6b]">Wt</span>
+                        <span className="text-[10px] text-[var(--muted-foreground)]">Wt</span>
                         <select
-                          className="text-xs border border-[#e0e0e0] rounded px-1 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63]"
+                          className="text-xs border border-[var(--border-medium)] rounded px-1 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)]"
                           value={comp.weight}
                           onChange={(e) =>
                             updateCompetency(comp.id, {
@@ -2580,7 +2580,7 @@ function CompetencyTab({
                     <button
                       type="button"
                       onClick={() => deleteCompetency(comp.id)}
-                      className="text-[#afafaf] hover:text-[#a13d3d] p-1 mt-1 shrink-0"
+                      className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 mt-1 shrink-0"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -2595,14 +2595,14 @@ function CompetencyTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left: staff list */}
         <div className="lg:col-span-1">
-          <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#efefef] flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#1a1a1a]">Staff</p>
+          <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Staff</p>
               {canEdit && (
                 <button
                   type="button"
                   onClick={addStaffFile}
-                  className="flex items-center gap-1 text-xs font-semibold text-[#155e63] hover:text-[#0e4448]"
+                  className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
                 >
                   <Plus size={13} />
                   Add
@@ -2611,10 +2611,10 @@ function CompetencyTab({
             </div>
             {staffFiles.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-[#afafaf]">No staff files yet.</p>
+                <p className="text-sm text-[var(--dark-grey)]">No staff files yet.</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#f5f5f5]">
+              <div className="divide-y divide-[var(--neutral-cool-100)]">
                 {staffFiles.map((s) => {
                   const staffEvals = evaluations.filter((e) => e.staff_file_id === s.id);
                   const isSelected = selectedStaffId === s.id;
@@ -2622,7 +2622,7 @@ function CompetencyTab({
                     <div
                       key={s.id}
                       className={`flex items-center gap-1 transition-colors ${
-                        isSelected ? "bg-[#f4f9f8]" : "hover:bg-[#faf9f7]"
+                        isSelected ? "bg-[var(--teal-tint-500)]" : "hover:bg-[var(--background)]"
                       }`}
                     >
                       <button
@@ -2630,14 +2630,14 @@ function CompetencyTab({
                         onClick={() => setSelectedStaffId(s.id)}
                         className="flex-1 text-left px-4 py-3 min-w-0"
                       >
-                        <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                        <p className="text-sm font-medium text-[var(--foreground)] truncate">
                           {s.name || (
-                            <span className="text-[#afafaf] font-normal">
+                            <span className="text-[var(--dark-grey)] font-normal">
                               New staff
                             </span>
                           )}
                         </p>
-                        <p className="text-[10px] text-[#6b6b6b]">
+                        <p className="text-[10px] text-[var(--muted-foreground)]">
                           {roles.find((r) => r.id === s.role_id)?.role_title ?? "No role"}
                           {s.hire_date ? ` · ${s.hire_date}` : ""}
                         </p>
@@ -2661,15 +2661,15 @@ function CompetencyTab({
         {/* Right: evaluation scorecard */}
         <div className="lg:col-span-2">
           {!selectedStaff ? (
-            <div className="rounded-xl border border-dashed border-[#e0e0e0] py-16 text-center">
-              <p className="text-sm text-[#afafaf]">
+            <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-16 text-center">
+              <p className="text-sm text-[var(--dark-grey)]">
                 Select a staff member to view their evaluation.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Staff detail */}
-              <div className="rounded-xl border border-[#efefef] bg-white px-5 py-4 space-y-3">
+              <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className={sectionLabelCls}>Staff file</p>
                   <div className="flex items-center gap-2">
@@ -2677,7 +2677,7 @@ function CompetencyTab({
                       href="/workspace/hiring/report/print"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-[#155e63] hover:underline"
+                      className="flex items-center gap-1 text-xs text-[var(--teal)] hover:underline"
                     >
                       Print Report <ExternalLink size={11} />
                     </a>
@@ -2685,7 +2685,7 @@ function CompetencyTab({
                       <button
                         type="button"
                         onClick={() => deleteStaffFile(selectedStaff.id)}
-                        className="text-[#afafaf] hover:text-[#a13d3d] p-1"
+                        className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -2743,20 +2743,20 @@ function CompetencyTab({
               </div>
 
               {/* Competency scores */}
-              <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#efefef]">
-                  <p className="text-sm font-semibold text-[#1a1a1a]">
+              <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--border)]">
+                  <p className="text-sm font-semibold text-[var(--foreground)]">
                     Competency Scores
                   </p>
                 </div>
                 {competencies.length === 0 ? (
                   <div className="py-8 text-center px-5">
-                    <p className="text-sm text-[#afafaf]">
+                    <p className="text-sm text-[var(--dark-grey)]">
                       No competencies defined in the framework above.
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-[#f5f5f5]">
+                  <div className="divide-y divide-[var(--neutral-cool-100)]">
                     {competencies
                       .sort((a, b) => a.order_index - b.order_index)
                       .map((comp) => {
@@ -2769,18 +2769,18 @@ function CompetencyTab({
                           <div key={comp.id} className="px-5 py-4 space-y-2">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <p className="text-sm font-medium text-[#1a1a1a]">
+                                <p className="text-sm font-medium text-[var(--foreground)]">
                                   {comp.skill || (
-                                    <span className="text-[#afafaf]">Unnamed skill</span>
+                                    <span className="text-[var(--dark-grey)]">Unnamed skill</span>
                                   )}
                                 </p>
                                 {comp.rubric && (
-                                  <p className="text-xs text-[#6b6b6b] mt-0.5">
+                                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                                     {comp.rubric}
                                   </p>
                                 )}
                               </div>
-                              <span className="text-[10px] text-[#afafaf] shrink-0">
+                              <span className="text-[10px] text-[var(--dark-grey)] shrink-0">
                                 Weight: {comp.weight}
                               </span>
                             </div>
@@ -2801,8 +2801,8 @@ function CompetencyTab({
                                     }
                                     className={`w-7 h-7 rounded-full text-xs font-semibold border transition-colors ${
                                       ev && ev.score >= n
-                                        ? "bg-[#155e63] text-white border-[#155e63]"
-                                        : "bg-white text-[#afafaf] border-[#e0e0e0] hover:border-[#155e63]"
+                                        ? "bg-[var(--teal)] text-white border-[var(--teal)]"
+                                        : "bg-white text-[var(--dark-grey)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                                     } disabled:opacity-50`}
                                   >
                                     {n}
@@ -2810,7 +2810,7 @@ function CompetencyTab({
                                 ))}
                               </div>
                               <input
-                                className="flex-1 text-xs border border-[#e0e0e0] rounded px-2 py-1 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7]"
+                                className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                                 value={ev?.notes ?? ""}
                                 onChange={(e) =>
                                   upsertEvaluation(
@@ -2831,17 +2831,17 @@ function CompetencyTab({
                 )}
 
                 {weightedAvg !== null && (
-                  <div className="px-5 py-4 border-t border-[#efefef] bg-[#f4f9f8]">
+                  <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--teal-tint-500)]">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-[#6b6b6b]">
+                      <span className="text-xs text-[var(--muted-foreground)]">
                         Weighted average:{" "}
-                        <span className="font-bold text-[#155e63]">
+                        <span className="font-bold text-[var(--teal)]">
                           {weightedAvg.toFixed(0)}%
                         </span>
                       </span>
-                      <div className="flex-1 h-2 bg-[#e8e8e8] rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-[var(--neutral-cool-200)] rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-[#155e63] rounded-full transition-all"
+                          className="h-full bg-[var(--teal)] rounded-full transition-all"
                           style={{ width: `${weightedAvg}%` }}
                         />
                       </div>
@@ -2920,24 +2920,24 @@ function RequirementsTab({
   return (
     <div className="space-y-5">
       {/* Country selector */}
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef]">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className="text-sm font-semibold text-[#1a1a1a]">Hiring Jurisdiction</p>
-              <p className="text-xs text-[#6b6b6b] mt-0.5">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 {settings.hiring_country
                   ? "Override set. Requirement set sourced from your selection."
                   : "Auto-detected from your signed or primary location candidate."}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Globe size={14} className="text-[#6b6b6b]" />
+              <Globe size={14} className="text-[var(--muted-foreground)]" />
               <select
                 value={settings.hiring_country ?? ""}
                 onChange={(e) => changeCountry(e.target.value as HiringCountry | "")}
                 disabled={saving}
-                className="text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] bg-white disabled:opacity-60"
+                className="text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60"
               >
                 <option value="">Auto-detect</option>
                 {HIRING_COUNTRY_OPTIONS.map((o) => (
@@ -2949,14 +2949,14 @@ function RequirementsTab({
         </div>
 
         {effectiveCountry ? (
-          <div className="px-5 py-3 bg-[#f4f9f8]">
-            <p className="text-xs text-[#155e63] font-medium">
+          <div className="px-5 py-3 bg-[var(--teal-tint-500)]">
+            <p className="text-xs text-[var(--teal)] font-medium">
               Showing requirements for: {countryLabel} ({effectiveCountry})
             </p>
           </div>
         ) : (
-          <div className="px-5 py-3 bg-[#fdf8f2] border-t border-[#efefef]">
-            <p className="text-xs text-[#b45309] font-medium flex items-center gap-1.5">
+          <div className="px-5 py-3 bg-[var(--warning-bg-6)] border-t border-[var(--border)]">
+            <p className="text-xs text-[var(--warning-dark)] font-medium flex items-center gap-1.5">
               <AlertTriangle size={12} />
               No country detected. Add a location candidate or select a jurisdiction above to see requirements.
             </p>
@@ -2975,48 +2975,48 @@ function RequirementsTab({
       {/* Requirement sets */}
       {loadingReqs ? (
         <div className="py-10 text-center">
-          <p className="text-sm text-[#afafaf]">Loading requirements...</p>
+          <p className="text-sm text-[var(--dark-grey)]">Loading requirements...</p>
         </div>
       ) : requirementSets.length === 0 && effectiveCountry ? (
         <div className="py-10 text-center">
-          <p className="text-sm text-[#afafaf]">No requirements found for {countryLabel}.</p>
+          <p className="text-sm text-[var(--dark-grey)]">No requirements found for {countryLabel}.</p>
         </div>
       ) : (
         Object.entries(grouped).map(([category, items]) => {
           const expanded = expandedCategories[category] !== false; // default open
           return (
-            <div key={category} className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+            <div key={category} className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
               <button
                 type="button"
                 onClick={() => toggleCategory(category)}
-                className="w-full px-5 py-4 border-b border-[#efefef] flex items-center justify-between hover:bg-[#faf9f7] transition-colors"
+                className="w-full px-5 py-4 border-b border-[var(--border)] flex items-center justify-between hover:bg-[var(--background)] transition-colors"
               >
                 <div className="text-left">
-                  <p className="text-sm font-semibold text-[#1a1a1a]">{category}</p>
-                  <p className="text-xs text-[#6b6b6b] mt-0.5">{items.length} requirement{items.length !== 1 ? "s" : ""}</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{category}</p>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{items.length} requirement{items.length !== 1 ? "s" : ""}</p>
                 </div>
-                {expanded ? <ChevronDown size={14} className="text-[#6b6b6b]" /> : <ChevronRight size={14} className="text-[#6b6b6b]" />}
+                {expanded ? <ChevronDown size={14} className="text-[var(--muted-foreground)]" /> : <ChevronRight size={14} className="text-[var(--muted-foreground)]" />}
               </button>
 
               {expanded && (
-                <div className="divide-y divide-[#f5f5f5]">
+                <div className="divide-y divide-[var(--neutral-cool-100)]">
                   {items.map((req) => (
                     <div key={req.id} className="px-5 py-4">
                       <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <p className="text-sm font-medium text-[#1a1a1a]">{req.title}</p>
+                        <p className="text-sm font-medium text-[var(--foreground)]">{req.title}</p>
                         {req.citation_url && (
                           <a
                             href={req.citation_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[10px] text-[#155e63] hover:underline shrink-0"
+                            className="flex items-center gap-1 text-[10px] text-[var(--teal)] hover:underline shrink-0"
                           >
                             <ExternalLink size={10} />
                             Source
                           </a>
                         )}
                       </div>
-                      <p className="text-xs text-[#6b6b6b] leading-relaxed">{req.body}</p>
+                      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{req.body}</p>
                     </div>
                   ))}
                 </div>
@@ -3082,23 +3082,23 @@ export function HiringWorkspace({
   const handleEvaluationsChange = useCallback((v: CompetencyEvaluation[]) => setEvaluations(v), []);
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
         {/* Page header */}
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Users className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Users className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Hiring &amp; Onboarding
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Build your org structure, run scored interviews, plan onboarding, and evaluate staff competencies.
           </p>
         </header>
 
         {/* Tab nav */}
-        <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1 mb-6 overflow-x-auto">
+        <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 mb-6 overflow-x-auto">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -3106,8 +3106,8 @@ export function HiringWorkspace({
               onClick={() => setActiveTab(t.id)}
               className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === t.id
-                  ? "bg-[#155e63] text-white"
-                  : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                  ? "bg-[var(--teal)] text-white"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
               <t.Icon size={13} />

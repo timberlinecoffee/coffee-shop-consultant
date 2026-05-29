@@ -19,11 +19,11 @@ import {
 // ── Shared styles — match Marketing Suite / Concept tokens ──────────────────
 
 const inputCls =
-  "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
-const sectionLabelCls = "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
-const cardCls = "rounded-2xl border border-[#efefef] bg-white";
-const helperCls = "text-[10px] text-[#afafaf] mt-1";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
+const sectionLabelCls = "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
+const cardCls = "rounded-2xl border border-[var(--border)] bg-white";
+const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
 function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
@@ -138,20 +138,20 @@ export function MarketingPreLaunchWorkspace({
   }
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Megaphone className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Megaphone className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Marketing & Pre-Launch
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Build demand before opening day. Waitlist, Google Business Profile, social setup,
             opening-day promo, and your press list. All in one place.
           </p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-[#afafaf]">
+          <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
             <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
             {targetOpeningDate && (
               <span>Target opening: {targetOpeningDate}</span>
@@ -243,7 +243,7 @@ function SaveStatus({ saving, savedAt, canEdit }: { saving: boolean; savedAt: st
     const mm = ts.getMinutes().toString().padStart(2, "0");
     return (
       <span className="flex items-center gap-1">
-        <Check className="w-3 h-3 text-[#155e63]" />
+        <Check className="w-3 h-3 text-[var(--teal)]" />
         Saved {hh}:{mm}
       </span>
     );
@@ -300,13 +300,13 @@ function SectionTabs({
               onClick={() => onChange(s.key)}
               className={`relative text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
                 isActive
-                  ? "bg-[#155e63] text-white"
-                  : "text-[#6b6b6b] hover:bg-[#faf9f7] hover:text-[#1a1a1a]"
+                  ? "bg-[var(--teal)] text-white"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
               }`}
             >
               {s.label}
               {filled && !isActive && (
-                <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-[#155e63]" aria-hidden="true" />
+                <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-[var(--teal)]" aria-hidden="true" />
               )}
             </button>
           );
@@ -334,7 +334,7 @@ function GenerateButton({
       type="button"
       onClick={onClick}
       disabled={disabled || generating}
-      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#155e63] border border-[#155e63]/30 px-3 py-1.5 rounded-full hover:bg-[#155e63]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal)]/30 px-3 py-1.5 rounded-full hover:bg-[var(--teal)]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       <Sparkles className="w-3 h-3" />
       {generating ? "Generating…" : label}
@@ -369,7 +369,7 @@ function WaitlistSectionView({
           <span className={sectionLabelCls}>Waitlist Strategy</span>
           <GenerateButton onClick={onGenerate} generating={generating} disabled={!canEdit} />
         </div>
-        <p className="text-xs text-[#6b6b6b] leading-relaxed mb-4">
+        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-4">
           Capture local emails before opening day. The waitlist is the warm list you launch to.
         </p>
         <div className="space-y-4">
@@ -469,14 +469,14 @@ function FormFieldsEditor({
         {fields.map((f, i) => (
           <span
             key={`${f}_${i}`}
-            className="inline-flex items-center gap-1 text-xs bg-[#faf9f7] border border-[#e0e0e0] rounded-full px-2.5 py-1 text-[#1a1a1a]"
+            className="inline-flex items-center gap-1 text-xs bg-[var(--background)] border border-[var(--border-medium)] rounded-full px-2.5 py-1 text-[var(--foreground)]"
           >
             {f}
             {canEdit && (
               <button
                 type="button"
                 onClick={() => onChange(fields.filter((_, idx) => idx !== i))}
-                className="text-[#afafaf] hover:text-[#b1454a]"
+                className="text-[var(--dark-grey)] hover:text-[var(--error-light)]"
                 aria-label={`Remove ${f}`}
               >
                 <Trash2 className="w-3 h-3" />
@@ -488,7 +488,7 @@ function FormFieldsEditor({
           <span className="inline-flex items-center gap-1">
             <input
               type="text"
-              className="text-xs border border-[#e0e0e0] rounded-md px-2 py-1 w-32 focus:outline-none focus:border-[#155e63]"
+              className="text-xs border border-[var(--border-medium)] rounded-md px-2 py-1 w-32 focus:outline-none focus:border-[var(--teal)]"
               placeholder="Add field…"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -545,20 +545,20 @@ function GbpSectionView({
           <span className={sectionLabelCls}>Google Business Profile</span>
           <GenerateButton onClick={onGenerate} generating={generating} disabled={!canEdit} label="Suggest copy" />
         </div>
-        <p className="text-xs text-[#6b6b6b] leading-relaxed mb-3">
+        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-3">
           Claim your listing before signage installs — Google flags new businesses with conflicting signage data
           and verification can stall for weeks.
         </p>
 
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-[#6b6b6b]">Setup progress</span>
-            <span className="text-[#155e63] font-medium">
+            <span className="text-[var(--muted-foreground)]">Setup progress</span>
+            <span className="text-[var(--teal)] font-medium">
               {completed} of {total} ({pct}%)
             </span>
           </div>
-          <div className="h-1.5 bg-[#f0f0f0] rounded-full overflow-hidden">
-            <div className="h-full bg-[#155e63] transition-all" style={{ width: `${pct}%` }} />
+          <div className="h-1.5 bg-[var(--neutral-cool-150)] rounded-full overflow-hidden">
+            <div className="h-full bg-[var(--teal)] transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
 
@@ -568,7 +568,7 @@ function GbpSectionView({
             return (
               <li
                 key={item.key}
-                className="flex items-start gap-3 text-sm border border-[#f5f5f5] rounded-lg px-3 py-2"
+                className="flex items-start gap-3 text-sm border border-[var(--neutral-cool-100)] rounded-lg px-3 py-2"
               >
                 <button
                   type="button"
@@ -576,8 +576,8 @@ function GbpSectionView({
                   disabled={!canEdit}
                   className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
                     checked
-                      ? "bg-[#155e63] border-[#155e63] text-white"
-                      : "border-[#e0e0e0] hover:border-[#155e63]"
+                      ? "bg-[var(--teal)] border-[var(--teal)] text-white"
+                      : "border-[var(--border-medium)] hover:border-[var(--teal)]"
                   } ${!canEdit ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
                   aria-pressed={checked}
                   aria-label={item.label}
@@ -585,10 +585,10 @@ function GbpSectionView({
                   {checked && <Check className="w-3 h-3" />}
                 </button>
                 <div className="flex-1">
-                  <div className={`font-medium ${checked ? "text-[#afafaf] line-through" : "text-[#1a1a1a]"}`}>
+                  <div className={`font-medium ${checked ? "text-[var(--dark-grey)] line-through" : "text-[var(--foreground)]"}`}>
                     {item.label}
                   </div>
-                  <div className="text-xs text-[#6b6b6b]">{item.hint}</div>
+                  <div className="text-xs text-[var(--muted-foreground)]">{item.hint}</div>
                 </div>
               </li>
             );
@@ -692,7 +692,7 @@ function SocialSectionView({
         <div className={`${cardCls} p-5`}>
           <div className="flex items-center justify-between mb-3">
             <span className={sectionLabelCls}>From Your Concept</span>
-            <a href="/workspace/concept" className="flex items-center gap-1 text-xs text-[#155e63] hover:underline">
+            <a href="/workspace/concept" className="flex items-center gap-1 text-xs text-[var(--teal)] hover:underline">
               Edit in Concept <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -700,13 +700,13 @@ function SocialSectionView({
             {conceptShopIdentity && (
               <div>
                 <span className={labelCls}>Shop identity</span>
-                <p className="text-sm text-[#1a1a1a] leading-relaxed">{conceptShopIdentity}</p>
+                <p className="text-sm text-[var(--foreground)] leading-relaxed">{conceptShopIdentity}</p>
               </div>
             )}
             {conceptBrandVoice && (
               <div>
                 <span className={labelCls}>Brand voice</span>
-                <p className="text-sm text-[#1a1a1a] leading-relaxed">{conceptBrandVoice}</p>
+                <p className="text-sm text-[var(--foreground)] leading-relaxed">{conceptBrandVoice}</p>
               </div>
             )}
           </div>
@@ -776,7 +776,7 @@ function SocialSectionView({
               type="button"
               onClick={addPost}
               disabled={s.first_12_posts.length >= 12}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#155e63] border border-[#155e63]/30 px-3 py-1.5 rounded-full hover:bg-[#155e63]/5 disabled:opacity-50"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal)]/30 px-3 py-1.5 rounded-full hover:bg-[var(--teal)]/5 disabled:opacity-50"
             >
               <Plus className="w-3 h-3" />
               Add post
@@ -784,20 +784,20 @@ function SocialSectionView({
           )}
         </div>
         {s.first_12_posts.length === 0 ? (
-          <p className="text-xs text-[#afafaf] italic">
+          <p className="text-xs text-[var(--dark-grey)] italic">
             Plan your first dozen posts. Use AI to seed from your Concept, then edit each one to sound like you.
           </p>
         ) : (
           <ol className="space-y-3">
             {s.first_12_posts.map((post, i) => (
-              <li key={i} className="border border-[#f5f5f5] rounded-lg p-3">
+              <li key={i} className="border border-[var(--neutral-cool-100)] rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
                     Post {i + 1}
                   </span>
                   <div className="flex items-center gap-2">
                     <select
-                      className="text-xs border border-[#e0e0e0] rounded-md px-2 py-1 focus:outline-none focus:border-[#155e63]"
+                      className="text-xs border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
                       disabled={!canEdit}
                       value={post.format}
                       onChange={(e) => updatePost(i, (p) => ({ ...p, format: e.target.value as SocialPostIdea["format"] }))}
@@ -812,7 +812,7 @@ function SocialSectionView({
                       <button
                         type="button"
                         onClick={() => removePost(i)}
-                        className="text-[#afafaf] hover:text-[#b1454a]"
+                        className="text-[var(--dark-grey)] hover:text-[var(--error-light)]"
                         aria-label={`Remove post ${i + 1}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -822,7 +822,7 @@ function SocialSectionView({
                 </div>
                 <input
                   type="text"
-                  className="text-sm font-medium border-0 border-b border-transparent focus:border-[#155e63] focus:outline-none w-full mb-2 bg-transparent"
+                  className="text-sm font-medium border-0 border-b border-transparent focus:border-[var(--teal)] focus:outline-none w-full mb-2 bg-transparent"
                   placeholder="Post label, e.g. Founder Intro"
                   disabled={!canEdit}
                   value={post.label}
@@ -871,7 +871,7 @@ function OpeningPromoSectionView({
         <span className={sectionLabelCls}>Opening-Day Promo</span>
         <GenerateButton onClick={onGenerate} generating={generating} disabled={!canEdit} />
       </div>
-      <p className="text-xs text-[#6b6b6b] leading-relaxed mb-4">
+      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-4">
         One promo that creates a reason to show up on day one. Specific beats clever.
       </p>
       <div className="space-y-4">
@@ -977,7 +977,7 @@ function PressSectionView({
             <button
               type="button"
               onClick={addContact}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#155e63] border border-[#155e63]/30 px-3 py-1.5 rounded-full hover:bg-[#155e63]/5"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal)]/30 px-3 py-1.5 rounded-full hover:bg-[var(--teal)]/5"
             >
               <Plus className="w-3 h-3" />
               Add contact
@@ -985,22 +985,22 @@ function PressSectionView({
           )}
         </div>
       </div>
-      <p className="text-xs text-[#6b6b6b] leading-relaxed mb-3">
+      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-3">
         Local journalists, bloggers, and podcasters who cover your neighborhood. Specificity wins —
         a tight 8-contact list beats a 50-name spray.
       </p>
       {contacts.length > 0 && (
-        <p className="text-[10px] uppercase tracking-wider text-[#155e63] font-semibold mb-3">
+        <p className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold mb-3">
           {contacted} of {contacts.length} pitched
         </p>
       )}
 
       {contacts.length === 0 ? (
-        <p className="text-xs text-[#afafaf] italic">No contacts yet. Add one or have AI seed a starter list.</p>
+        <p className="text-xs text-[var(--dark-grey)] italic">No contacts yet. Add one or have AI seed a starter list.</p>
       ) : (
         <ol className="space-y-3">
           {contacts.map((c) => (
-            <li key={c.id} className="border border-[#f5f5f5] rounded-lg p-3 space-y-2">
+            <li key={c.id} className="border border-[var(--neutral-cool-100)] rounded-lg p-3 space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   type="text"
@@ -1053,11 +1053,11 @@ function PressSectionView({
                 onChange={(e) => updateContact(c.id, (x) => ({ ...x, angle: e.target.value }))}
               />
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-xs text-[#6b6b6b] cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] cursor-pointer">
                   <input
                     type="checkbox"
                     disabled={!canEdit}
-                    className="rounded border-[#e0e0e0] text-[#155e63] focus:ring-[#155e63]"
+                    className="rounded border-[var(--border-medium)] text-[var(--teal)] focus:ring-[var(--teal)]"
                     checked={c.contacted}
                     onChange={(e) => updateContact(c.id, (x) => ({ ...x, contacted: e.target.checked }))}
                   />
@@ -1068,7 +1068,7 @@ function PressSectionView({
                   <button
                     type="button"
                     onClick={() => removeContact(c.id)}
-                    className="text-xs text-[#afafaf] hover:text-[#b1454a] inline-flex items-center gap-1"
+                    className="text-xs text-[var(--dark-grey)] hover:text-[var(--error-light)] inline-flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
                     Remove

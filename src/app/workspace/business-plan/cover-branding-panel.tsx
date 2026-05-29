@@ -26,7 +26,7 @@ interface Props {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PRESET_SWATCHES = ["#E8C24A", "#1A6E3B", "#2563EB", "#DC2626", "#7C3AED"];
+const PRESET_SWATCHES = ["var(--warning-amber)", "var(--success)", "var(--blue)", "var(--destructive)", "var(--purple)"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -45,8 +45,8 @@ function useDebounce<T>(value: T, delay: number): T {
 export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [template, setTemplate] = useState<CoverTemplateId>(initialSettings.template_id);
-  const [accentColor, setAccentColor] = useState(initialSettings.accent_color ?? "#E8C24A");
-  const [hexInput, setHexInput] = useState(initialSettings.accent_color ?? "#E8C24A");
+  const [accentColor, setAccentColor] = useState(initialSettings.accent_color ?? "var(--warning-amber)");
+  const [hexInput, setHexInput] = useState(initialSettings.accent_color ?? "var(--warning-amber)");
   const [hexError, setHexError] = useState(false);
   const [tagline, setTagline] = useState(initialSettings.tagline ?? "");
   const [preparedFor, setPreparedFor] = useState(initialSettings.prepared_for ?? "");
@@ -209,26 +209,26 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
         className="w-full flex items-center justify-between px-5 h-12 hover:bg-gray-50 transition-colors rounded-2xl"
       >
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-[#111827]">Cover &amp; Branding</span>
+          <span className="text-sm font-semibold text-[var(--gray-slate-2)]">Cover &amp; Branding</span>
           {saveStatus === "saved" && (
-            <span className="text-[11px] text-[#1A6E3B]">Saved</span>
+            <span className="text-[11px] text-[var(--success)]">Saved</span>
           )}
           {saveStatus === "error" && (
             <span className="text-[11px] text-red-500">Changes could not be saved</span>
           )}
         </div>
         {expanded ? (
-          <ChevronDown className="w-4 h-4 text-[#6B7280]" />
+          <ChevronDown className="w-4 h-4 text-[var(--gray-medium)]" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-[#6B7280]" />
+          <ChevronRight className="w-4 h-4 text-[var(--gray-medium)]" />
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-[#F3F4F6] px-5 py-4 space-y-5">
+        <div className="border-t border-[var(--gray-slate-5)] px-5 py-4 space-y-5">
           {/* Template picker */}
           <div>
-            <p className="text-xs text-[#6B7280] mb-2">Template</p>
+            <p className="text-xs text-[var(--gray-medium)] mb-2">Template</p>
             <div className="grid grid-cols-3 gap-2">
               {COVER_TEMPLATES.map((t) => {
                 const active = template === t.id;
@@ -239,8 +239,8 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                     onClick={() => handleTemplateSelect(t.id as CoverTemplateId)}
                     className={`flex flex-col items-center rounded-lg overflow-hidden transition-all ${
                       active
-                        ? "border-2 border-[#1A6E3B]"
-                        : "border border-[#E5E7EB] hover:border-[#8DB79D] hover:shadow-sm"
+                        ? "border-2 border-[var(--success)]"
+                        : "border border-[var(--gray-slate-4)] hover:border-[var(--sage-tint)] hover:shadow-sm"
                     }`}
                   >
                     <div className="w-full" style={{ aspectRatio: "3/4", position: "relative" }}>
@@ -254,7 +254,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                     </div>
                     <span
                       className={`text-[11px] py-1 ${
-                        active ? "text-[#1A6E3B] font-semibold" : "text-[#374151]"
+                        active ? "text-[var(--success)] font-semibold" : "text-[var(--gray-slate)]"
                       }`}
                     >
                       {t.label}
@@ -267,7 +267,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
 
           {/* Accent color */}
           <div>
-            <p className="text-xs text-[#6B7280] mb-2">Accent color</p>
+            <p className="text-xs text-[var(--gray-medium)] mb-2">Accent color</p>
             <div className="flex items-center gap-2 flex-wrap">
               {PRESET_SWATCHES.map((hex) => (
                 <button
@@ -277,7 +277,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                   style={{ backgroundColor: hex }}
                   className={`w-7 h-7 rounded-full flex-shrink-0 transition-all ${
                     accentColor.toLowerCase() === hex.toLowerCase()
-                      ? "ring-2 ring-offset-1 ring-[#111827]"
+                      ? "ring-2 ring-offset-1 ring-[var(--gray-slate-2)]"
                       : ""
                   }`}
                   aria-label={`Select color ${hex}`}
@@ -292,7 +292,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                   style={{ backgroundColor: accentColor }}
                   className={`w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex-shrink-0 ${
                     !PRESET_SWATCHES.some((h) => h.toLowerCase() === accentColor.toLowerCase())
-                      ? "ring-2 ring-offset-1 ring-[#111827]"
+                      ? "ring-2 ring-offset-1 ring-[var(--gray-slate-2)]"
                       : ""
                   }`}
                   title="Custom color"
@@ -315,24 +315,24 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                 onBlur={handleHexBlur}
                 maxLength={7}
                 className={`w-20 h-8 rounded-md border text-[12px] px-2 font-mono ${
-                  hexError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-[#1A6E3B]"
+                  hexError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-[var(--success)]"
                 } focus:outline-none focus:border-2`}
-                placeholder="#E8C24A"
+                placeholder="var(--warning-amber)"
               />
             </div>
             {hexError && (
-              <p className="text-[11px] text-[#EF4444] mt-1">Enter a valid hex color</p>
+              <p className="text-[11px] text-[var(--error-secondary)] mt-1">Enter a valid hex color</p>
             )}
           </div>
 
           {/* Logo upload */}
           <div>
-            <p className="text-xs text-[#6B7280] mb-2">Logo</p>
+            <p className="text-xs text-[var(--gray-medium)] mb-2">Logo</p>
 
             {logoState === "uploading" ? (
               <div className="w-full h-20 rounded-lg bg-gray-50 flex items-center justify-center relative overflow-hidden border border-dashed border-gray-300">
-                <span className="text-[12px] text-[#6B7280]">Uploading...</span>
-                <div className="absolute bottom-0 left-0 h-1 bg-[#1A6E3B] animate-pulse w-full" />
+                <span className="text-[12px] text-[var(--gray-medium)]">Uploading...</span>
+                <div className="absolute bottom-0 left-0 h-1 bg-[var(--success)] animate-pulse w-full" />
               </div>
             ) : logoUrl ? (
               <>
@@ -345,13 +345,13 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                   <img src={logoUrl} alt="Logo preview" className="max-h-[60px] object-contain" />
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-[11px] text-[#6B7280] truncate max-w-[80%]">
+                  <span className="text-[11px] text-[var(--gray-medium)] truncate max-w-[80%]">
                     {logoFileName ?? "logo"}
                   </span>
                   <button
                     type="button"
                     onClick={handleLogoRemove}
-                    className="text-[11px] text-[#EF4444] hover:underline ml-2"
+                    className="text-[11px] text-[var(--error-secondary)] hover:underline ml-2"
                   >
                     Remove
                   </button>
@@ -364,21 +364,21 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                 className={`w-full h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-colors ${
                   logoState === "error"
                     ? "border-red-300"
-                    : "border-gray-300 hover:border-[#1A6E3B] hover:bg-gray-50"
+                    : "border-gray-300 hover:border-[var(--success)] hover:bg-gray-50"
                 }`}
               >
-                <span className="text-[12px] text-[#9CA3AF]">Upload logo</span>
-                <span className="text-[10px] text-[#9CA3AF]">PNG, JPEG, SVG — max 2 MB</span>
+                <span className="text-[12px] text-[var(--gray-slate-3)]">Upload logo</span>
+                <span className="text-[10px] text-[var(--gray-slate-3)]">PNG, JPEG, SVG — max 2 MB</span>
               </button>
             )}
 
             {logoError && (
-              <p className="text-[11px] text-[#EF4444] mt-1">{logoError}</p>
+              <p className="text-[11px] text-[var(--error-secondary)] mt-1">{logoError}</p>
             )}
 
             {showEditorialWarning && (
               <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2 px-3">
-                <p className="text-[11px] text-[#92400E]">
+                <p className="text-[11px] text-[var(--warning-darker)]">
                   This template places your logo on a dark background. For best results, use a PNG with a transparent background.
                 </p>
               </div>
@@ -403,13 +403,13 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
               ] as { label: string; placeholder: string; value: string; onChange: (v: string) => void }[]
             ).map((field) => (
               <div key={field.label}>
-                <label className="block text-xs text-[#6B7280] mb-1">{field.label}</label>
+                <label className="block text-xs text-[var(--gray-medium)] mb-1">{field.label}</label>
                 <input
                   type="text"
                   value={field.value}
                   onChange={(e) => field.onChange(e.target.value)}
                   placeholder={field.placeholder}
-                  className="w-full h-9 rounded-lg border border-gray-200 px-3 text-[12px] text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-2 focus:border-[#1A6E3B]"
+                  className="w-full h-9 rounded-lg border border-gray-200 px-3 text-[12px] text-[var(--gray-slate-2)] placeholder:text-[var(--gray-slate-3)] focus:outline-none focus:border-2 focus:border-[var(--success)]"
                 />
               </div>
             ))}

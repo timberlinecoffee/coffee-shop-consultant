@@ -21,7 +21,7 @@ export function ExampleDrawer({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-sm text-[#155e63] hover:underline focus:outline-none"
+        className="flex items-center gap-1.5 text-sm text-[var(--teal)] hover:underline focus:outline-none"
         aria-expanded={open}
       >
         <span
@@ -38,7 +38,7 @@ export function ExampleDrawer({
           {examples.map((ex, i) => (
             <p
               key={i}
-              className="text-sm text-[#4a4a4a] leading-relaxed italic border-l-2 border-[#e0ddd8] pl-3"
+              className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-800)] pl-3"
             >
               {ex}
             </p>

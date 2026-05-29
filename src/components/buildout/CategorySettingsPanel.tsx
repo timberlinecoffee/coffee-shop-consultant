@@ -78,9 +78,9 @@ function StationRow({
       <div
         ref={setNodeRef}
         style={style}
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[#f5c4c4] bg-[#fdf5f5]"
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[var(--error-bg-11)] bg-[var(--error-bg-3)]"
       >
-        <p className="text-xs text-[#a13d3d] flex-1 min-w-0 leading-snug">
+        <p className="text-xs text-[var(--error)] flex-1 min-w-0 leading-snug">
           Delete &ldquo;{section.name}&rdquo;
           {itemCount > 0 && (
             <> and move {itemCount} item{itemCount !== 1 ? "s" : ""} to unsectioned?</>
@@ -90,14 +90,14 @@ function StationRow({
           <button
             type="button"
             onClick={() => setDeleting(false)}
-            className="text-[10px] font-semibold text-[#6b6b6b] border border-[#e8e8e8] rounded px-2 py-1 hover:bg-[#f5f4f0] transition-colors"
+            className="text-[10px] font-semibold text-[var(--muted-foreground)] border border-[var(--neutral-cool-200)] rounded px-2 py-1 hover:bg-[var(--surface-warm-100)] transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="text-[10px] font-semibold text-white bg-[#a13d3d] border border-[#a13d3d] rounded px-2 py-1 hover:bg-[#8a3030] transition-colors"
+            className="text-[10px] font-semibold text-white bg-[var(--error)] border border-[var(--error)] rounded px-2 py-1 hover:bg-[var(--error-darker)] transition-colors"
           >
             Delete
           </button>
@@ -110,12 +110,12 @@ function StationRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[#f0f0f0] bg-white hover:border-[#e0e0e0] transition-colors group"
+      className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[var(--neutral-cool-150)] bg-white hover:border-[var(--border-medium)] transition-colors group"
     >
       {canEdit && (
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing text-[#d0d0d0] hover:text-[#888] transition-colors shrink-0 touch-none"
+          className="cursor-grab active:cursor-grabbing text-[var(--neutral-cool-350)] hover:text-[#888] transition-colors shrink-0 touch-none"
           aria-label="Drag to reorder"
           {...attributes}
           {...listeners}
@@ -130,7 +130,7 @@ function StationRow({
             ref={inputRef}
             type="text"
             value={draft}
-            className="w-full text-sm font-medium text-[#1a1a1a] bg-white border border-[#cfe0e1] rounded px-2 py-0.5 outline-none focus:border-[#155e63]"
+            className="w-full text-sm font-medium text-[var(--foreground)] bg-white border border-[var(--teal-tint)] rounded px-2 py-0.5 outline-none focus:border-[var(--teal)]"
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
@@ -141,7 +141,7 @@ function StationRow({
         ) : (
           <button
             type="button"
-            className="text-sm font-medium text-[#1a1a1a] text-left w-full truncate hover:text-[#155e63] transition-colors"
+            className="text-sm font-medium text-[var(--foreground)] text-left w-full truncate hover:text-[var(--teal)] transition-colors"
             onClick={() => canEdit && setEditing(true)}
             title={canEdit ? "Click to rename" : section.name}
             disabled={!canEdit}
@@ -152,7 +152,7 @@ function StationRow({
       </div>
 
       {itemCount > 0 && (
-        <span className="text-[10px] text-[#afafaf] shrink-0">
+        <span className="text-[10px] text-[var(--dark-grey)] shrink-0">
           {itemCount} {itemCount === 1 ? "item" : "items"}
         </span>
       )}
@@ -161,7 +161,7 @@ function StationRow({
         <button
           type="button"
           onClick={() => setDeleting(true)}
-          className="text-[#d0d0d0] hover:text-[#a13d3d] transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+          className="text-[var(--neutral-cool-350)] hover:text-[var(--error)] transition-colors shrink-0 opacity-0 group-hover:opacity-100"
           aria-label={`Delete ${section.name}`}
         >
           <Trash2 size={13} />
@@ -297,17 +297,17 @@ export function CategorySettingsPanel({
       {/* Panel */}
       <div className="fixed right-0 top-0 z-40 h-full w-[360px] max-w-full bg-white shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#efefef]">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)]">
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-bold text-[#1a1a1a]">Manage Stations</h2>
-            <p className="text-[11px] text-[#afafaf] mt-0.5 leading-snug">
+            <h2 className="text-sm font-bold text-[var(--foreground)]">Manage Stations</h2>
+            <p className="text-[11px] text-[var(--dark-grey)] mt-0.5 leading-snug">
               Drag to reorder. Click a name to rename.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0"
             aria-label="Close panel"
           >
             <X size={16} />
@@ -317,7 +317,7 @@ export function CategorySettingsPanel({
         {/* Station list */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
           {sections.length === 0 ? (
-            <p className="text-xs text-[#afafaf] text-center py-8">
+            <p className="text-xs text-[var(--dark-grey)] text-center py-8">
               No stations yet. Add one below.
             </p>
           ) : (
@@ -340,12 +340,12 @@ export function CategorySettingsPanel({
 
         {/* Footer */}
         {canEdit && (
-          <div className="px-4 py-4 border-t border-[#efefef]">
+          <div className="px-4 py-4 border-t border-[var(--border)]">
             <button
               type="button"
               onClick={addSection}
               disabled={adding}
-              className="flex items-center gap-2 w-full justify-center text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 w-full justify-center text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
             >
               <Plus size={14} aria-hidden="true" />
               Add station

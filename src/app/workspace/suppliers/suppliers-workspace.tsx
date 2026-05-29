@@ -36,10 +36,10 @@ const STATUS_LABELS: Record<VendorStatus, string> = {
 };
 
 const STATUS_BADGE: Record<VendorStatus, string> = {
-  researching: "bg-[#f4f4f4] text-[#6b6b6b] border-[#e8e8e8]",
-  shortlisted: "bg-[#fff8e6] text-[#9a6b00] border-[#f3e3a8]",
-  chosen: "bg-[#e6f4f4] text-[#155e63] border-[#cfe0e1]",
-  rejected: "bg-[#f9eaea] text-[#a13d3d] border-[#ebd1d1]",
+  researching: "bg-[var(--gray-200)] text-[var(--muted-foreground)] border-[var(--neutral-cool-200)]",
+  shortlisted: "bg-[var(--warning-bg-2)] text-[var(--warning-text-5)] border-[var(--warning-amber-bg-6)]",
+  chosen: "bg-[var(--teal-bg-palest)] text-[var(--teal)] border-[var(--teal-tint)]",
+  rejected: "bg-[var(--error-bg-5)] text-[var(--error)] border-[var(--error-bg-13)]",
 };
 
 function debounce<T extends (...args: never[]) => void>(fn: T, ms: number) {
@@ -253,24 +253,24 @@ export function SuppliersWorkspace({
     (!activeRows.some((r) => r.source === "ai_suggested") && activeRows.length < 5);
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Truck className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Truck className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Suppliers &amp; Vendors
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief.
           </p>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
           {/* Category nav */}
-          <nav className="rounded-2xl border border-[#efefef] bg-white overflow-hidden self-start">
-            <ul className="divide-y divide-[#efefef]">
+          <nav className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden self-start">
+            <ul className="divide-y divide-[var(--border)]">
               {VENDOR_CATEGORY_KEYS.map((key) => {
                 const decision = decisionsByCategory.get(key);
                 const rows = candidatesByCategory.get(key) ?? [];
@@ -282,47 +282,47 @@ export function SuppliersWorkspace({
                       onClick={() => setActiveCategory(key)}
                       className={`w-full text-left px-4 py-3 flex items-start justify-between gap-2 transition-colors ${
                         isActive
-                          ? "bg-[#f4f9f8] border-l-2 border-l-[#155e63]"
-                          : "border-l-2 border-l-transparent hover:bg-[#fafafa]"
+                          ? "bg-[var(--teal-tint-500)] border-l-2 border-l-[var(--teal)]"
+                          : "border-l-2 border-l-transparent hover:bg-[var(--neutral-cool-50)]"
                       }`}
                     >
                       <div className="min-w-0 flex-1">
                         <p
                           className={`text-sm font-semibold ${
-                            isActive ? "text-[#155e63]" : "text-[#1a1a1a]"
+                            isActive ? "text-[var(--teal)]" : "text-[var(--foreground)]"
                           }`}
                         >
                           {VENDOR_CATEGORY_LABELS[key]}
                         </p>
-                        <p className="text-[11px] text-[#afafaf] mt-0.5 truncate">
+                        <p className="text-[11px] text-[var(--dark-grey)] mt-0.5 truncate">
                           {decision
                             ? `Chosen: ${decision.vendor_name}`
                             : `${rows.length} candidate${rows.length === 1 ? "" : "s"}`}
                         </p>
                       </div>
                       {decision && (
-                        <span className="mt-0.5 w-2 h-2 rounded-full bg-[#155e63] flex-shrink-0" aria-hidden="true" />
+                        <span className="mt-0.5 w-2 h-2 rounded-full bg-[var(--teal)] flex-shrink-0" aria-hidden="true" />
                       )}
                     </button>
                   </li>
                 );
               })}
             </ul>
-            <div className="px-4 py-3 bg-[#fafafa] text-[11px] text-[#6b6b6b] border-t border-[#efefef]">
+            <div className="px-4 py-3 bg-[var(--neutral-cool-50)] text-[11px] text-[var(--muted-foreground)] border-t border-[var(--border)]">
               {chosenCount}/{totalCategories} categories decided
             </div>
           </nav>
 
           {/* Active category panel */}
           <section>
-            <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
-              <div className="px-5 pt-5 pb-4 border-b border-[#efefef]">
+            <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+              <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-base font-semibold text-[#1a1a1a]">
+                    <h2 className="text-base font-semibold text-[var(--foreground)]">
                       {VENDOR_CATEGORY_LABELS[activeCategory]}
                     </h2>
-                    <p className="text-xs text-[#afafaf] mt-0.5">
+                    <p className="text-xs text-[var(--dark-grey)] mt-0.5">
                       {VENDOR_CATEGORY_SUBTITLES[activeCategory]}
                     </p>
                   </div>
@@ -330,25 +330,25 @@ export function SuppliersWorkspace({
                     type="button"
                     onClick={() => handleAddRow(activeCategory)}
                     disabled={!canEdit || activeRows.length >= 5}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={12} aria-hidden="true" />
                     Add vendor
                   </button>
                 </div>
                 {activeDecision && (
-                  <div className="mt-3 rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-4 py-3">
+                  <div className="mt-3 rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide">
+                        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide">
                           Decision logged
                         </p>
-                        <p className="text-sm text-[#1a1a1a] mt-1">
+                        <p className="text-sm text-[var(--foreground)] mt-1">
                           <span className="font-semibold">{activeDecision.vendor_name}</span>
-                          <span className="text-[#6b6b6b]"> · {new Date(activeDecision.decided_on).toLocaleDateString()}</span>
+                          <span className="text-[var(--muted-foreground)]"> · {new Date(activeDecision.decided_on).toLocaleDateString()}</span>
                         </p>
                         {activeDecision.reason && (
-                          <p className="text-xs text-[#6b6b6b] mt-1 leading-relaxed">{activeDecision.reason}</p>
+                          <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">{activeDecision.reason}</p>
                         )}
                       </div>
                     </div>
@@ -369,14 +369,14 @@ export function SuppliersWorkspace({
               )}
 
               {activeRows.length === 0 ? (
-                <div className="px-5 py-10 text-center text-sm text-[#afafaf]">
+                <div className="px-5 py-10 text-center text-sm text-[var(--dark-grey)]">
                   No candidates yet. Add a vendor or generate suggestions.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-[#fafafa] text-[11px] uppercase tracking-wide text-[#afafaf]">
+                      <tr className="bg-[var(--neutral-cool-50)] text-[11px] uppercase tracking-wide text-[var(--dark-grey)]">
                         <th className="text-left font-semibold px-4 py-2.5 min-w-[160px]">Name</th>
                         <th className="text-left font-semibold px-4 py-2.5 min-w-[160px]">Contact</th>
                         <th className="text-left font-semibold px-4 py-2.5 min-w-[140px]">Price / Unit</th>
@@ -387,7 +387,7 @@ export function SuppliersWorkspace({
                         <th className="font-semibold px-2 py-2.5 w-10"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#efefef]">
+                    <tbody className="divide-y divide-[var(--border)]">
                       {activeRows.map((row) => (
                         <CandidateRow
                           key={row.id}
@@ -446,7 +446,7 @@ function CandidateRow({
   // change (e.g. AI seed) overrides the canonical value.
   const v = row.updated_at;
   return (
-    <tr className="hover:bg-[#fafafa]">
+    <tr className="hover:bg-[var(--neutral-cool-50)]">
       <Cell>
         <Input key={`name:${v}`} value={row.name} placeholder="Vendor name" disabled={!canEdit} onChange={(v) => onField(row.id, "name", v)} />
       </Cell>
@@ -470,7 +470,7 @@ function CandidateRow({
           value={row.status}
           disabled={!canEdit}
           onChange={(e) => onStatus(row, e.target.value as VendorStatus)}
-          className={`text-xs font-semibold rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#155e63] ${STATUS_BADGE[row.status]} disabled:opacity-50`}
+          className={`text-xs font-semibold rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${STATUS_BADGE[row.status]} disabled:opacity-50`}
         >
           {(["researching", "shortlisted", "chosen", "rejected"] as VendorStatus[]).map((s) => (
             <option key={s} value={s}>
@@ -484,7 +484,7 @@ function CandidateRow({
           <button
             type="button"
             onClick={() => onDelete(row.id)}
-            className="text-[#afafaf] hover:text-[#a13d3d] transition-colors p-1"
+            className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors p-1"
             aria-label="Delete vendor"
           >
             <Trash2 size={14} />
@@ -523,7 +523,7 @@ function Input({
         const next = e.target.value;
         if (next !== value) onChange(next);
       }}
-      className="w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[#e8e8e8] focus:border-[#155e63] focus:outline-none focus:bg-white disabled:opacity-50"
+      className="w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus:outline-none focus:bg-white disabled:opacity-50"
     />
   );
 }
@@ -545,20 +545,20 @@ function SeedBanner({
   if (dismissed || !canEdit) return null;
 
   return (
-    <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-4 py-3 mb-4">
+    <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3 mb-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#155e63] mb-1">
+          <p className="text-sm font-semibold text-[var(--teal)] mb-1">
             Suggest candidate {label} vendors
           </p>
-          <p className="text-xs text-[#6b6b6b] leading-relaxed">
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
             Reads your concept (city, vibe, menu) and drafts three vendors to research. Edit or remove anything after.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0 mt-0.5"
           aria-label="Dismiss"
         >
           <X size={14} />
@@ -569,12 +569,12 @@ function SeedBanner({
           type="button"
           onClick={onSeed}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60"
         >
           <Sparkles size={12} aria-hidden="true" />
           {loading ? "Generating..." : "Generate suggestions"}
         </button>
-        {error && <span className="text-xs text-[#a13d3d]">{error}</span>}
+        {error && <span className="text-xs text-[var(--error)]">{error}</span>}
       </div>
     </div>
   );
@@ -596,32 +596,32 @@ function ChooseReasonModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-base font-semibold text-[#1a1a1a]">Choose {vendorName}?</h2>
-        <p className="text-xs text-[#6b6b6b] mt-1 leading-relaxed">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">Choose {vendorName}?</h2>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
           We&apos;ll log this decision with today&apos;s date and surface it in your concept brief. Add a short reason so future-you remembers.
         </p>
         <label className="block mt-4">
-          <span className="text-xs font-medium text-[#1a1a1a]">Why this vendor (optional)</span>
+          <span className="text-xs font-medium text-[var(--foreground)]">Why this vendor (optional)</span>
           <textarea
             value={reason}
             onChange={(e) => onChange(e.target.value)}
             placeholder="Best price, local relationship, fits the brand..."
             rows={4}
-            className="mt-1 w-full text-sm border border-[#e8e8e8] rounded-lg px-3 py-2 focus:border-[#155e63] focus:outline-none"
+            className="mt-1 w-full text-sm border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 focus:border-[var(--teal)] focus:outline-none"
           />
         </label>
         <div className="mt-5 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="text-xs font-semibold text-[#6b6b6b] px-3 py-2 hover:text-[#1a1a1a] transition-colors"
+            className="text-xs font-semibold text-[var(--muted-foreground)] px-3 py-2 hover:text-[var(--foreground)] transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onSubmit}
-            className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+            className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
           >
             Log decision
           </button>

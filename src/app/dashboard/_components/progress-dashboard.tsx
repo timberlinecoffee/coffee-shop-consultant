@@ -54,17 +54,17 @@ export function ProgressDashboard({
 function NextStepCard({ step }: { step: NextStepSuggestion }) {
   return (
     <div className="mb-4">
-      <p className="text-xs font-semibold text-[#155e63] uppercase tracking-widest mb-3">
+      <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-widest mb-3">
         Your Next Step
       </p>
-      <div className="bg-white rounded-xl border border-[#155e63]/30 p-6 flex flex-col sm:flex-row gap-4 sm:items-center">
+      <div className="bg-white rounded-xl border border-[var(--teal)]/30 p-6 flex flex-col sm:flex-row gap-4 sm:items-center">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-base text-[#1a1a1a] mb-1">{step.headline}</h3>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">{step.body}</p>
+          <h3 className="font-semibold text-base text-[var(--foreground)] mb-1">{step.headline}</h3>
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{step.body}</p>
         </div>
         <Link
           href={step.href}
-          className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-white bg-[#155e63] hover:bg-[#155e63]/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+          className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-white bg-[var(--teal)] hover:bg-[var(--teal)]/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
         >
           {step.ctaLabel} {step.label}
           <ArrowRight size={14} aria-hidden="true" />
@@ -86,10 +86,10 @@ function StaleNudgeList({ nudges }: { nudges: StaleNudge[] }) {
         {nudges.map((nudge) => (
           <li key={nudge.moduleNumber} className="p-4 flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" aria-hidden="true" />
-            <p className="text-sm text-[#1a1a1a] flex-1 min-w-0">{nudge.message}</p>
+            <p className="text-sm text-[var(--foreground)] flex-1 min-w-0">{nudge.message}</p>
             <Link
               href={nudge.href}
-              className="text-xs font-semibold text-[#155e63] hover:underline flex-shrink-0 inline-flex items-center gap-1"
+              className="text-xs font-semibold text-[var(--teal)] hover:underline flex-shrink-0 inline-flex items-center gap-1"
             >
               Open <ArrowRight size={12} aria-hidden="true" />
             </Link>
@@ -104,25 +104,25 @@ function StaleNudgeList({ nudges }: { nudges: StaleNudge[] }) {
 
 function RecentActivityCard({ entries, now }: { entries: ActivityEntry[]; now: Date }) {
   return (
-    <div className="bg-white rounded-xl border border-[#efefef] p-4 h-full">
-      <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mb-3">
+    <div className="bg-white rounded-xl border border-[var(--border)] p-4 h-full">
+      <p className="text-xs font-semibold text-[var(--dark-grey)] uppercase tracking-widest mb-3">
         Recent Activity
       </p>
       {entries.length === 0 ? (
-        <p className="text-sm text-[#afafaf]">
+        <p className="text-sm text-[var(--dark-grey)]">
           Nothing yet. Open a workspace and the latest edits will show up here.
         </p>
       ) : (
-        <ul className="divide-y divide-[#efefef]">
+        <ul className="divide-y divide-[var(--border)]">
           {entries.map((entry) => (
             <li key={`${entry.moduleNumber}-${entry.at}`} className="py-2.5 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#1a1a1a] truncate">{entry.summary}</p>
-                <p className="text-xs text-[#afafaf]">{formatRelative(entry.at, now)}</p>
+                <p className="text-sm text-[var(--foreground)] truncate">{entry.summary}</p>
+                <p className="text-xs text-[var(--dark-grey)]">{formatRelative(entry.at, now)}</p>
               </div>
               <Link
                 href={entry.href}
-                className="text-xs text-[#155e63] font-medium hover:underline flex-shrink-0"
+                className="text-xs text-[var(--teal)] font-medium hover:underline flex-shrink-0"
               >
                 Open
               </Link>
@@ -138,27 +138,27 @@ function RecentActivityCard({ entries, now }: { entries: ActivityEntry[]; now: D
 
 function QuickActionsCard({ weakest }: { weakest: WorkspaceProgressSnapshot | null }) {
   return (
-    <div className="bg-white rounded-xl border border-[#efefef] p-4 h-full">
-      <p className="text-xs font-semibold text-[#afafaf] uppercase tracking-widest mb-3">
+    <div className="bg-white rounded-xl border border-[var(--border)] p-4 h-full">
+      <p className="text-xs font-semibold text-[var(--dark-grey)] uppercase tracking-widest mb-3">
         Quick Actions
       </p>
       <div className="flex flex-col gap-2">
         <Link
           href="/workspace/business-plan"
-          className="flex items-center justify-between gap-3 rounded-lg border border-[#efefef] px-3 py-2.5 hover:border-[#155e63]/30 transition-colors"
+          className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] px-3 py-2.5 hover:border-[var(--teal)]/30 transition-colors"
         >
-          <span className="text-sm font-medium text-[#1a1a1a]">Export Business Plan</span>
-          <ArrowRight size={14} className="text-[#afafaf]" aria-hidden="true" />
+          <span className="text-sm font-medium text-[var(--foreground)]">Export Business Plan</span>
+          <ArrowRight size={14} className="text-[var(--dark-grey)]" aria-hidden="true" />
         </Link>
         {weakest && (
           <Link
             href={weakest.href}
-            className="flex items-center justify-between gap-3 rounded-lg border border-[#efefef] px-3 py-2.5 hover:border-[#155e63]/30 transition-colors"
+            className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] px-3 py-2.5 hover:border-[var(--teal)]/30 transition-colors"
           >
-            <span className="text-sm font-medium text-[#1a1a1a]">
+            <span className="text-sm font-medium text-[var(--foreground)]">
               Improve {weakest.label} with AI
             </span>
-            <ArrowRight size={14} className="text-[#afafaf]" aria-hidden="true" />
+            <ArrowRight size={14} className="text-[var(--dark-grey)]" aria-hidden="true" />
           </Link>
         )}
       </div>

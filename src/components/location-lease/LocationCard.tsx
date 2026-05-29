@@ -243,7 +243,7 @@ function InlineInput({
     'w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[#888]/50 focus-visible:ring-0'
 
   const wrapCls =
-    'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[#efefef] focus-within:border-[#155e63] focus-within:ring-2 focus-within:ring-[#155e63]/30'
+    'flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-[var(--border)] focus-within:border-[var(--teal)] focus-within:ring-2 focus-within:ring-[var(--teal)]/30'
 
   if (multiline) {
     return (
@@ -324,7 +324,7 @@ function StatusPillSelector({
                 setOpen(false)
               }}
               className={cn(
-                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#f7f6f3] transition-colors',
+                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[var(--surface-warm-50)] transition-colors',
                 s === status && 'font-semibold'
               )}
             >
@@ -357,14 +357,14 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="rounded-lg border border-[#efefef] bg-[#faf9f7]/40">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--background)]/40">
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[#f7f6f3]/60"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[var(--surface-warm-50)]/60"
       >
-        <Icon className="size-3.5 text-[#155e63]" />
+        <Icon className="size-3.5 text-[var(--teal)]" />
         <span className="text-xs font-semibold uppercase tracking-wide text-foreground">{title}</span>
         {badge}
         <ChevronDown
@@ -374,7 +374,7 @@ function Section({
           )}
         />
       </button>
-      {open && <div className="border-t border-[#efefef] px-3 py-3">{children}</div>}
+      {open && <div className="border-t border-[var(--border)] px-3 py-3">{children}</div>}
     </div>
   )
 }
@@ -427,8 +427,8 @@ function RatingPicker({
           className={cn(
             'size-7 rounded text-xs font-semibold transition-colors border',
             value === n
-              ? 'bg-[#155e63] text-white border-[#155e63]'
-              : 'bg-background text-[#888] border-[#efefef] hover:border-[#155e63]/60 hover:text-[#155e63]'
+              ? 'bg-[var(--teal)] text-white border-[var(--teal)]'
+              : 'bg-background text-[#888] border-[var(--border)] hover:border-[var(--teal)]/60 hover:text-[var(--teal)]'
           )}
         >
           {n}
@@ -535,7 +535,7 @@ function ScorecardSection({
           {filledCount > 0 && (
             <>
               {' · '}
-              <span className="font-semibold text-[#155e63]">{overallScore} avg</span>
+              <span className="font-semibold text-[var(--teal)]">{overallScore} avg</span>
             </>
           )}
         </span>
@@ -572,13 +572,13 @@ function ScorecardSection({
                   : 'Observation or notes (optional)…'
               }
               rows={factor.key === 'gut_feel' ? 3 : 2}
-              className="w-full resize-none rounded-xl border border-[#efefef] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/40 outline-none focus-visible:border-[#155e63] focus-visible:ring-2 focus-visible:ring-[#155e63]/30"
+              className="w-full resize-none rounded-xl border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground placeholder:text-[#888]/40 outline-none focus-visible:border-[var(--teal)] focus-visible:ring-2 focus-visible:ring-[var(--teal)]/30"
             />
           </div>
         ))}
       </div>
 
-      <div className="border-t border-[#efefef] pt-4">
+      <div className="border-t border-[var(--border)] pt-4">
         <AiFeedbackPanel
           candidateId={candidateId}
           candidateName={candidateName}
@@ -695,19 +695,19 @@ function AiFeedbackPanel({
 
   if (!canUse) {
     return (
-      <div className="rounded-xl border border-[#efefef] p-3 text-center">
+      <div className="rounded-xl border border-[var(--border)] p-3 text-center">
         <p className="text-xs text-[#888]">
           {subscriptionTier === 'free' ? (
             <>
               AI feedback requires a paid plan.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade →
               </a>
             </>
           ) : aiCreditsRemaining === 0 ? (
             <>
               You&apos;re out of credits.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade for more →
               </a>
             </>
@@ -742,7 +742,7 @@ function AiFeedbackPanel({
       )}
 
       {displayText && (
-        <div className="rounded-xl border border-[#efefef] bg-[#f7f6f3]/40 px-4 py-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-warm-50)]/40 px-4 py-4">
           <FeedbackRenderer text={displayText} streaming={!!streamText && !finalText} />
         </div>
       )}
@@ -919,8 +919,8 @@ function RecommendationCallout({
             }
           : {
               label: 'Recommendation',
-              wrap: 'border-[#efefef] bg-[#f7f6f3]/60',
-              chip: 'bg-[#155e63] text-white',
+              wrap: 'border-[var(--border)] bg-[var(--surface-warm-50)]/60',
+              chip: 'bg-[var(--teal)] text-white',
               title: 'text-foreground',
             }
 
@@ -1125,7 +1125,7 @@ function LeaseTermsSection({
             <span className="flex items-center gap-1 text-xs font-medium text-[#888]">
               Rent per Month (Your Budget)
               {rentLinked && (
-                <span className="text-[10px] text-[#155e63] font-normal normal-case">
+                <span className="text-[10px] text-[var(--teal)] font-normal normal-case">
                   · auto-filled from Asking Rent
                 </span>
               )}
@@ -1175,7 +1175,7 @@ function LeaseTermsSection({
             value={terms.term_months}
             onChange={(e) => update('term_months', e.target.value)}
             placeholder="24"
-            className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
+            className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50"
           />
         </FieldGroup>
       </div>
@@ -1187,7 +1187,7 @@ function LeaseTermsSection({
             onChange={(e) => update('options_text', e.target.value)}
             placeholder="e.g. Two 5-year renewal options at market rate…"
             rows={2}
-            className="w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y"
+            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50 resize-y"
           />
         </FieldGroup>
 
@@ -1205,7 +1205,7 @@ function LeaseTermsSection({
             onChange={(e) => update('personal_guarantee', e.target.value)}
             placeholder="e.g. 12-month personal guarantee…"
             rows={2}
-            className="w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y"
+            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50 resize-y"
           />
         </FieldGroup>
 
@@ -1223,7 +1223,7 @@ function LeaseTermsSection({
             onChange={(e) => update('exit_clauses', e.target.value)}
             placeholder="e.g. 90-day notice, co-tenancy clause…"
             rows={2}
-            className="w-full rounded-lg border border-[#efefef] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50 resize-y"
+            className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50 resize-y"
           />
         </FieldGroup>
       </div>
@@ -1265,7 +1265,7 @@ function CurrencyInput({
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
+        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50"
       />
     </div>
   )
@@ -1288,7 +1288,7 @@ function PctInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-[#efefef] bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-[#155e63] focus-visible:ring-3 focus-visible:ring-[#155e63]/50 placeholder:text-[#888]/50"
+        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 pr-7 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[#888]/50"
       />
       <span className="pointer-events-none absolute right-3 text-sm text-[#888]">%</span>
     </div>
@@ -1376,8 +1376,8 @@ export function LocationCard({
       className={cn(
         'rounded-xl border bg-white transition-colors',
         selectMode && selected
-          ? 'border-[#155e63] ring-2 ring-[#155e63]/30'
-          : 'border-[#efefef]'
+          ? 'border-[var(--teal)] ring-2 ring-[var(--teal)]/30'
+          : 'border-[var(--border)]'
       )}
     >
       {/* ── Summary row ── */}
@@ -1391,8 +1391,8 @@ export function LocationCard({
             className={cn(
               'shrink-0 rounded-lg p-1 transition-colors',
               selected
-                ? 'text-[#155e63] hover:bg-[#155e63]/10'
-                : 'text-[#888] hover:bg-[#f7f6f3] hover:text-[#155e63]'
+                ? 'text-[var(--teal)] hover:bg-[var(--teal)]/10'
+                : 'text-[#888] hover:bg-[var(--surface-warm-50)] hover:text-[var(--teal)]'
             )}
           >
             {selected ? (
@@ -1412,7 +1412,7 @@ export function LocationCard({
             'shrink-0 rounded-lg p-1 transition-colors',
             isShortlisted
               ? 'text-amber-500 hover:bg-amber-50'
-              : 'text-[#888] hover:bg-[#f7f6f3] hover:text-amber-500',
+              : 'text-[#888] hover:bg-[var(--surface-warm-50)] hover:text-amber-500',
             selectMode && 'opacity-60 cursor-not-allowed'
           )}
         >
@@ -1438,7 +1438,7 @@ export function LocationCard({
           type="button"
           onClick={() => setOpen((p) => !p)}
           aria-label={open ? 'Collapse details' : 'Expand details'}
-          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[#f7f6f3] hover:text-[#1a1a1a]"
+          className="shrink-0 rounded-lg p-1 text-[#888] transition-colors hover:bg-[var(--surface-warm-50)] hover:text-[var(--foreground)]"
         >
           {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
         </button>
@@ -1456,7 +1456,7 @@ export function LocationCard({
 
       {/* ── Expanded — all info for this location lives here ── */}
       {open && (
-        <div className="border-t border-[#efefef] px-4 py-4 flex flex-col gap-4">
+        <div className="border-t border-[var(--border)] px-4 py-4 flex flex-col gap-4">
           {/* Intake fields */}
           <Section icon={ClipboardList} title="Identity & Intake" defaultOpen>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1506,7 +1506,7 @@ export function LocationCard({
                       href={candidate.listing_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 p-1 text-[#888] hover:text-[#1a1a1a] transition-colors"
+                      className="shrink-0 p-1 text-[#888] hover:text-[var(--foreground)] transition-colors"
                       aria-label="Open listing"
                     >
                       <ExternalLink className="size-3.5" />

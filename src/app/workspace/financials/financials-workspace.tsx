@@ -279,7 +279,7 @@ function Sparkline({ values }: { values: number[] }) {
     <svg width={w} height={h} aria-hidden="true" className="shrink-0">
       <polyline
         fill="none"
-        stroke={allPositive ? "#155e63" : "#a13d3d"}
+        stroke={allPositive ? "var(--teal)" : "var(--error)"}
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -303,7 +303,7 @@ function OwnerContributionsEditor({
   onChange: (next: { month_index: number; amount_cents: number }[]) => void;
 }) {
   const rowCls =
-    "text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]";
+    "text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]";
   function update(idx: number, patch: Partial<{ month_index: number; amount_cents: number }>) {
     const next = contributions.map((c, i) => (i === idx ? { ...c, ...patch } : c));
     onChange(next);
@@ -317,13 +317,13 @@ function OwnerContributionsEditor({
   return (
     <div className="space-y-2">
       {contributions.length === 0 && (
-        <p className="text-[10px] text-[#afafaf]">
+        <p className="text-[10px] text-[var(--dark-grey)]">
           None — add one if you plan to inject more cash later (e.g. month 6, $5,000).
         </p>
       )}
       {contributions.map((c, idx) => (
         <div key={idx} className="flex items-center gap-2">
-          <span className="text-[10px] text-[#6b6b6b] w-12">Month</span>
+          <span className="text-[10px] text-[var(--muted-foreground)] w-12">Month</span>
           <NumericInput
             type="number"
             min={1}
@@ -339,7 +339,7 @@ function OwnerContributionsEditor({
             className={rowCls + " w-16 text-right"}
             aria-label="Contribution month"
           />
-          <span className="text-[10px] text-[#6b6b6b]">{currencyCode}</span>
+          <span className="text-[10px] text-[var(--muted-foreground)]">{currencyCode}</span>
           <NumericInput
             type="number"
             min={0}
@@ -362,7 +362,7 @@ function OwnerContributionsEditor({
             <button
               type="button"
               onClick={() => remove(idx)}
-              className="text-[#afafaf] hover:text-[#a13d3d] text-xs"
+              className="text-[var(--dark-grey)] hover:text-[var(--error)] text-xs"
               aria-label="Remove contribution"
             >
               ×
@@ -374,12 +374,12 @@ function OwnerContributionsEditor({
         <button
           type="button"
           onClick={add}
-          className="text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md"
+          className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md"
         >
           + Add contribution
         </button>
       )}
-      <p className="text-[10px] text-[#afafaf] mt-1">
+      <p className="text-[10px] text-[var(--dark-grey)] mt-1">
         Cash you put into the business at a future month. Shows up on the cash flow as a financing inflow.
       </p>
     </div>
@@ -436,18 +436,18 @@ function Section({
         className="w-full flex items-center justify-between mb-3 group"
       >
         <span className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
             {title}
           </span>
           {advanced && (
-            <span className="text-[9px] font-medium uppercase tracking-wide text-[#afafaf] bg-[#f3f3f1] rounded px-1.5 py-0.5">
+            <span className="text-[9px] font-medium uppercase tracking-wide text-[var(--dark-grey)] bg-[var(--gray-300)] rounded px-1.5 py-0.5">
               Advanced
             </span>
           )}
         </span>
         <ChevronDown
           size={15}
-          className={`text-[#afafaf] group-hover:text-[#6b6b6b] transition-transform ${
+          className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
             open ? "rotate-180" : ""
           }`}
           aria-hidden="true"
@@ -541,8 +541,8 @@ function ForecastTab({
   }
 
   const inputCls =
-    "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-  const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
+    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
   // TIM-1310: summarize grid-level customizations for this input page. A line is
   // "customized" if it has any per-cell month override or is in full manual mode.
@@ -557,12 +557,12 @@ function ForecastTab({
   return (
     <div className="space-y-6">
       {onStartWizard && (
-        <div className="rounded-xl border border-[#155e63]/20 bg-[#155e63]/5 px-4 py-3.5 flex items-center justify-between gap-3 flex-wrap">
+        <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-4 py-3.5 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-2.5">
-            <Compass size={18} className="text-[#155e63] shrink-0 mt-0.5" aria-hidden="true" />
+            <Compass size={18} className="text-[var(--teal)] shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold text-[#1a1a1a]">New here? Let us walk you through this page.</p>
-              <p className="text-xs text-[#6b6b6b] mt-0.5">
+              <p className="text-sm font-semibold text-[var(--foreground)]">New here? Let us walk you through this page.</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 We&apos;ll highlight each field and explain it as you fill it in.
               </p>
             </div>
@@ -570,7 +570,7 @@ function ForecastTab({
           <button
             type="button"
             onClick={onStartWizard}
-            className="text-xs font-semibold text-white bg-[#155e63] rounded-lg px-4 py-2 hover:bg-[#124e52] transition-colors whitespace-nowrap"
+            className="text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
           >
             Start guided setup
           </button>
@@ -581,21 +581,21 @@ function ForecastTab({
           so the relationship between these assumptions and the customized
           projection is never a mystery, and document the precedence. */}
       {customizedLineIds.size > 0 && (
-        <div className="rounded-xl border border-[#b9dada] bg-[#eaf4f4] px-4 py-3 flex items-start justify-between gap-3 flex-wrap">
+        <div className="rounded-xl border border-[var(--teal-bg-950)] bg-[var(--teal-bg-subtle)] px-4 py-3 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-[#155e63] inline-block mt-1.5 shrink-0" aria-hidden="true" />
+            <span className="w-2 h-2 rounded-full bg-[var(--teal)] inline-block mt-1.5 shrink-0" aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold text-[#155e63]">
+              <p className="text-sm font-semibold text-[var(--teal)]">
                 {customizedLineIds.size} {customizedLineIds.size === 1 ? "line is" : "lines are"} customized on the projections grid
                 {totalOverrideCells > 0 && (
-                  <span className="font-normal text-[#2a4a4c]">
+                  <span className="font-normal text-[var(--teal-deeper)]">
                     {" "}({totalOverrideCells} month{totalOverrideCells === 1 ? "" : "s"})
                   </span>
                 )}
               </p>
-              <p className="text-xs text-[#2a4a4c] mt-0.5 max-w-prose">
+              <p className="text-xs text-[var(--teal-deeper)] mt-0.5 max-w-prose">
                 These lines have manual month values that win over the assumptions below until you clear them.
-                Each customized line is tagged with a <span className="font-semibold text-[#155e63]">customized</span> badge,
+                Each customized line is tagged with a <span className="font-semibold text-[var(--teal)]">customized</span> badge,
                 and you can view it on the grid or clear it back to the assumption from there.
               </p>
             </div>
@@ -604,7 +604,7 @@ function ForecastTab({
             <button
               type="button"
               onClick={onGoToProjections}
-              className="text-xs font-semibold text-[#155e63] border border-[#155e63]/30 bg-white rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors whitespace-nowrap"
+              className="text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 bg-white rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
             >
               View on grid
             </button>
@@ -614,8 +614,8 @@ function ForecastTab({
 
       {/* Customer Flow */}
       <Section id="section-customer-flow" title="Customer Flow by Day" defaultOpen>
-        <div id="tour-customer-flow" className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Estimated customers per open day. Closed days are excluded from revenue calculations.
           </p>
           <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
@@ -630,10 +630,10 @@ function ForecastTab({
               const barPct = (val / maxVal) * 100;
               return (
                 <div key={day} className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-medium text-[#6b6b6b]">{DAY_LABELS[day]}</span>
-                  <div className="relative w-full h-16 bg-[#f0f0f0] rounded-md overflow-hidden">
+                  <span className="text-[10px] font-medium text-[var(--muted-foreground)]">{DAY_LABELS[day]}</span>
+                  <div className="relative w-full h-16 bg-[var(--neutral-cool-150)] rounded-md overflow-hidden">
                     <div
-                      className="absolute bottom-0 left-0 right-0 bg-[#155e63]/20 transition-all duration-200"
+                      className="absolute bottom-0 left-0 right-0 bg-[var(--teal)]/20 transition-all duration-200"
                       style={{ height: `${barPct}%` }}
                     />
                   </div>
@@ -641,7 +641,7 @@ function ForecastTab({
                     type="number"
                     min={0}
                     max={999}
-                    className="w-full text-center text-xs border border-[#e0e0e0] rounded-md py-1 px-0 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                    className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1 px-0 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                     value={val || ""}
                     onChange={(e) => updateFlow(day, parseInt(e.target.value, 10) || 0)}
                     placeholder="0"
@@ -653,9 +653,9 @@ function ForecastTab({
             })}
           </div>
           {openDays.length === 0 && (
-            <p className="text-xs text-[#afafaf] text-center py-4">No open days selected.</p>
+            <p className="text-xs text-[var(--dark-grey)] text-center py-4">No open days selected.</p>
           )}
-          <p className="text-xs text-[#afafaf] mt-3">
+          <p className="text-xs text-[var(--dark-grey)] mt-3">
             Weekly total: {totalWeeklyCustomers.toLocaleString()} customers across {openDays.length} open day{openDays.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -663,25 +663,25 @@ function ForecastTab({
 
       {/* Operating Schedule */}
       <Section title="Operating Schedule" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px]">
               <thead>
-                <tr className="border-b border-[#efefef] bg-[#faf9f7]">
-                  <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Day</th>
-                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Open</th>
-                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-36">Opens</th>
-                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-36">Closes</th>
-                  <th className="py-2.5 pl-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] w-16">Hrs</th>
+                <tr className="border-b border-[var(--border)] bg-[var(--background)]">
+                  <th className="py-2.5 pl-4 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] w-16">Day</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] w-16">Open</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] w-36">Opens</th>
+                  <th className="py-2.5 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] w-36">Closes</th>
+                  <th className="py-2.5 pl-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] w-16">Hrs</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f5f5f5]">
+              <tbody className="divide-y divide-[var(--neutral-cool-100)]">
                 {DAY_KEYS.map((day) => {
                   const sched = mp.weekly_schedule[day];
                   const hours = computeDayHours(sched);
                   return (
-                    <tr key={day} className={!sched.open ? "bg-[#faf9f7]" : ""}>
-                      <td className="py-2.5 pl-4 pr-2 text-sm font-medium text-[#1a1a1a]">
+                    <tr key={day} className={!sched.open ? "bg-[var(--background)]" : ""}>
+                      <td className="py-2.5 pl-4 pr-2 text-sm font-medium text-[var(--foreground)]">
                         {DAY_LABELS[day]}
                       </td>
                       <td className="py-2.5 px-2">
@@ -690,7 +690,7 @@ function ForecastTab({
                           checked={sched.open}
                           onChange={(e) => updateScheduleDay(day, { open: e.target.checked })}
                           disabled={!canEdit}
-                          className="w-4 h-4 accent-[#155e63] cursor-pointer disabled:cursor-default"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer disabled:cursor-default"
                           aria-label={`${DAY_FULL_LABELS[day]} open`}
                         />
                       </td>
@@ -701,10 +701,10 @@ function ForecastTab({
                             value={sched.open_time}
                             onChange={(e) => updateScheduleDay(day, { open_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-32 sm:w-36"
+                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
-                          <span className="text-sm text-[#c0c0c0]">Closed</span>
+                          <span className="text-sm text-[var(--neutral-cool-400)]">Closed</span>
                         )}
                       </td>
                       <td className="py-2 px-2">
@@ -714,13 +714,13 @@ function ForecastTab({
                             value={sched.close_time}
                             onChange={(e) => updateScheduleDay(day, { close_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[#e0e0e0] rounded-lg px-2 py-1.5 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors w-32 sm:w-36"
+                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
-                          <span className="text-sm text-[#c0c0c0]"></span>
+                          <span className="text-sm text-[var(--neutral-cool-400)]"></span>
                         )}
                       </td>
-                      <td className="py-2.5 pl-2 pr-4 text-right text-sm text-[#6b6b6b]">
+                      <td className="py-2.5 pl-2 pr-4 text-right text-sm text-[var(--muted-foreground)]">
                         {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : ""}
                       </td>
                     </tr>
@@ -728,11 +728,11 @@ function ForecastTab({
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t border-[#e0e0e0] bg-[#faf9f7]">
-                  <td colSpan={4} className="py-2.5 pl-4 pr-2 text-xs font-semibold text-[#6b6b6b]">
+                <tr className="border-t border-[var(--border-medium)] bg-[var(--background)]">
+                  <td colSpan={4} className="py-2.5 pl-4 pr-2 text-xs font-semibold text-[var(--muted-foreground)]">
                     Weekly total
                   </td>
-                  <td className="py-2.5 pl-2 pr-4 text-right text-sm font-semibold text-[#1a1a1a]">
+                  <td className="py-2.5 pl-2 pr-4 text-right text-sm font-semibold text-[var(--foreground)]">
                     {weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h
                   </td>
                 </tr>
@@ -744,18 +744,18 @@ function ForecastTab({
 
       {/* Primary Revenue Streams (TIM-1245) — was "Revenue Drivers" */}
       <Section id="section-revenue" title="Primary Revenue Streams" defaultOpen>
-        <div id="tour-revenue" className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div id="tour-revenue" className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Your day-to-day food &amp; beverage sales. Customers per day (above) ×
             average sale is your primary revenue. Keep it as one number, or split it
             into beverage and food to plan each separately.
           </p>
           {(baseRevenueOverrides > 0 || baseRevenueManual) && (
-            <div className="mb-4 rounded-lg border border-[#b9dada] bg-[#eaf4f4] px-3 py-2.5 flex items-start justify-between gap-3 flex-wrap">
+            <div className="mb-4 rounded-lg border border-[var(--teal-bg-950)] bg-[var(--teal-bg-subtle)] px-3 py-2.5 flex items-start justify-between gap-3 flex-wrap">
               <div className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#155e63] inline-block mt-1.5 shrink-0" aria-hidden="true" />
-                <p className="text-xs text-[#2a4a4c]">
-                  <span className="font-semibold text-[#155e63]">Foot-traffic revenue is customized on the grid</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] inline-block mt-1.5 shrink-0" aria-hidden="true" />
+                <p className="text-xs text-[var(--teal-deeper)]">
+                  <span className="font-semibold text-[var(--teal)]">Foot-traffic revenue is customized on the grid</span>
                   {baseRevenueManual
                     ? " (entered manually for every month)"
                     : ` (${baseRevenueOverrides} month${baseRevenueOverrides === 1 ? "" : "s"} overridden)`}
@@ -767,7 +767,7 @@ function ForecastTab({
                   <button
                     type="button"
                     onClick={onGoToProjections}
-                    className="text-[11px] font-semibold text-[#155e63] hover:underline"
+                    className="text-[11px] font-semibold text-[var(--teal)] hover:underline"
                   >
                     View on grid
                   </button>
@@ -776,7 +776,7 @@ function ForecastTab({
                   <button
                     type="button"
                     onClick={() => onClearLineOverrides(BASE_REVENUE_LINE_ID)}
-                    className="text-[11px] font-semibold text-[#a13d3d] hover:underline"
+                    className="text-[11px] font-semibold text-[var(--error)] hover:underline"
                   >
                     Clear
                   </button>
@@ -799,7 +799,7 @@ function ForecastTab({
                     placeholder="5.50"
                     disabled={!canEdit}
                   />
-                  <p className="text-[10px] text-[#afafaf] mt-1">Espresso, drip, tea, etc.</p>
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">Espresso, drip, tea, etc.</p>
                 </div>
                 <div>
                   <label className={labelCls}>Food — average per sale ({mp.currency_code ?? "USD"})</label>
@@ -813,7 +813,7 @@ function ForecastTab({
                     placeholder="2.00"
                     disabled={!canEdit}
                   />
-                  <p className="text-[10px] text-[#afafaf] mt-1">Pastries, sandwiches, snacks</p>
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">Pastries, sandwiches, snacks</p>
                 </div>
               </div>
             ) : (
@@ -831,7 +831,7 @@ function ForecastTab({
                   placeholder="7.50"
                   disabled={!canEdit}
                 />
-                <p className="text-[10px] text-[#afafaf] mt-1">Typical espresso bar: $6–$10</p>
+                <p className="text-[10px] text-[var(--dark-grey)] mt-1">Typical espresso bar: $6–$10</p>
               </div>
             )}
             <div id="tour-cogs">
@@ -846,7 +846,7 @@ function ForecastTab({
                 placeholder="30"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">Typical coffee shop: 28–35%</p>
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">Typical coffee shop: 28–35%</p>
             </div>
           </div>
 
@@ -857,41 +857,41 @@ function ForecastTab({
               checked={splitOn}
               onChange={(e) => toggleSplit(e.target.checked)}
               disabled={!canEdit}
-              className="w-3.5 h-3.5 accent-[#155e63] disabled:opacity-50"
+              className="w-3.5 h-3.5 accent-[var(--teal)] disabled:opacity-50"
             />
-            <span className="text-xs font-medium text-[#1a1a1a]">
+            <span className="text-xs font-medium text-[var(--foreground)]">
               Split into beverage &amp; food sales
             </span>
           </label>
 
           {splitOn && (
-            <div className="mt-3 rounded-lg border border-[#e8f4f4] bg-[#f5fbfb] px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63] mb-1.5">
+            <div className="mt-3 rounded-lg border border-[var(--teal-bg-e8f)] bg-[var(--teal-bg-muted)] px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
                 Average sales per day {avgCustomersPerDay > 0 ? `(at ~${avgCustomersPerDay} customers/day)` : ""}
               </p>
               {avgCustomersPerDay > 0 ? (
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div>
-                    <span className="text-[#6b6b6b]">Beverage</span>
-                    <p className="font-semibold text-[#1a1a1a]">
+                    <span className="text-[var(--muted-foreground)]">Beverage</span>
+                    <p className="font-semibold text-[var(--foreground)]">
                       {formatCurrency((bevTicketCents * avgCustomersPerDay) / 100, mp.currency_code ?? "USD")}/day
                     </p>
                   </div>
                   <div>
-                    <span className="text-[#6b6b6b]">Food</span>
-                    <p className="font-semibold text-[#1a1a1a]">
+                    <span className="text-[var(--muted-foreground)]">Food</span>
+                    <p className="font-semibold text-[var(--foreground)]">
                       {formatCurrency((foodTicketCents * avgCustomersPerDay) / 100, mp.currency_code ?? "USD")}/day
                     </p>
                   </div>
                   <div>
-                    <span className="text-[#6b6b6b]">Total</span>
-                    <p className="font-semibold text-[#155e63]">
+                    <span className="text-[var(--muted-foreground)]">Total</span>
+                    <p className="font-semibold text-[var(--teal)]">
                       {formatCurrency((mp.avg_ticket_cents * avgCustomersPerDay) / 100, mp.currency_code ?? "USD")}/day
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-[10px] text-[#afafaf]">
+                <p className="text-[10px] text-[var(--dark-grey)]">
                   Add customers per day above to see beverage and food sales per day.
                 </p>
               )}
@@ -902,8 +902,8 @@ function ForecastTab({
 
       {/* Additional Revenue Streams (TIM-1245) — promoted to a first-class section */}
       <Section title="Additional Revenue Streams" defaultOpen>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Income beyond your primary food &amp; beverage sales. Use the quick-add
             chips to start a common stream, or add your own. Each line can be a fixed
             monthly amount; click the arrow to expand a line and ramp it up or grow it over time.
@@ -927,8 +927,8 @@ function ForecastTab({
 
       {/* Costs & Expenses — COGS / Overhead / Capex */}
       <Section id="section-costs" title="Costs & Expenses" defaultOpen>
-        <div id="tour-costs" className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div id="tour-costs" className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Add, rename, or remove any line. For COGS lines, toggle{" "}
             <span className="font-semibold">$</span> (static monthly amount) or{" "}
             <span className="font-semibold">%</span> (percent of revenue). For operating
@@ -954,8 +954,8 @@ function ForecastTab({
               as read-only capex entries so the user sees them in the capex
               schedule without re-typing. Editing happens in the other workspace. */}
           {equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0).length > 0 && (
-            <div className="mt-4 border-t border-[#efefef] pt-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63] mb-2">
+            <div className="mt-4 border-t border-[var(--border)] pt-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
                 Asset Purchases from Build-Out &amp; Equipment
               </p>
               <div className="space-y-1">
@@ -964,15 +964,15 @@ function ForecastTab({
                   .map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-[#f4f9f8] text-xs"
+                      className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-[var(--teal-tint-500)] text-xs"
                     >
-                      <span className="font-medium text-[#1a1a1a] truncate min-w-0 flex-1">
+                      <span className="font-medium text-[var(--foreground)] truncate min-w-0 flex-1">
                         {item.name || "Unnamed asset"}
                       </span>
-                      <span className="text-[#6b6b6b] shrink-0">
+                      <span className="text-[var(--muted-foreground)] shrink-0">
                         {formatCurrency((item.unit_cost_cents * item.quantity) / 100)}
                       </span>
-                      <span className="text-[#afafaf] shrink-0 hidden sm:inline">
+                      <span className="text-[var(--dark-grey)] shrink-0 hidden sm:inline">
                         {item.useful_life_years ?? 7}yr life
                       </span>
                     </div>
@@ -980,7 +980,7 @@ function ForecastTab({
               </div>
               <a
                 href="/workspace/buildout-equipment"
-                className="mt-2 inline-block text-xs font-medium text-[#155e63] hover:underline"
+                className="mt-2 inline-block text-xs font-medium text-[var(--teal)] hover:underline"
               >
                 Edit in Build-Out &amp; Equipment →
               </a>
@@ -991,8 +991,8 @@ function ForecastTab({
 
       {/* Other Operating Costs — TIM-1180 */}
       <Section title="Other Operating Costs" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Costs that scale with sales but aren&apos;t line items above. These flow into your
             P&amp;L, break-even, and ratios.
           </p>
@@ -1012,7 +1012,7 @@ function ForecastTab({
                 placeholder="2.5"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">% of gross revenue. Card fees: 2.5–3.0%</p>
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">% of gross revenue. Card fees: 2.5–3.0%</p>
             </div>
             <div>
               <label className={labelCls}>Spoilage %</label>
@@ -1029,7 +1029,7 @@ function ForecastTab({
                 placeholder="2"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">% of goods COGS lost to waste; typically 2–5%</p>
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">% of goods COGS lost to waste; typically 2–5%</p>
             </div>
             <div>
               <label className={labelCls}>Loyalty discount %</label>
@@ -1046,7 +1046,7 @@ function ForecastTab({
                 placeholder="1"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">% of revenue redeemed; 0 if no program</p>
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">% of revenue redeemed; 0 if no program</p>
             </div>
           </div>
         </div>
@@ -1054,8 +1054,8 @@ function ForecastTab({
 
       {/* Owner Activity — TIM-1169 */}
       <Section title="Owner Activity" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Money you (the owner) take out of the business each month, plus any extra cash you put back in
             later on. These move equity and cash without touching net income.
           </p>
@@ -1083,7 +1083,7 @@ function ForecastTab({
                 placeholder="0"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
                 What you pay yourself from the business each month. Shows up on the cash flow as a financing outflow.
               </p>
             </div>
@@ -1103,14 +1103,14 @@ function ForecastTab({
       {/* Startup & opening costs — TIM-1258: entry moved to the Startup Costs tab
           so owners find it where they expect it, led by equipment. */}
       <Section id="section-startup" title="Startup & Opening Costs" advanced>
-        <div className="rounded-xl border border-[#155e63]/20 bg-[#155e63]/5 p-4 flex items-start justify-between gap-3 flex-wrap">
+        <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 p-4 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-2.5 min-w-0">
-            <Compass size={18} className="text-[#155e63] shrink-0 mt-0.5" aria-hidden="true" />
+            <Compass size={18} className="text-[var(--teal)] shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#1a1a1a]">
+              <p className="text-sm font-semibold text-[var(--foreground)]">
                 One-time costs to open the doors live on the Startup Costs tab.
               </p>
-              <p className="text-xs text-[#6b6b6b] mt-0.5">
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 Start with your equipment, then add build-out and supplies — the total
                 builds up from what you actually need, and flows into your balance sheet
                 and funding gap.
@@ -1121,7 +1121,7 @@ function ForecastTab({
             <button
               type="button"
               onClick={onGoToStartup}
-              className="text-xs font-semibold text-white bg-[#155e63] rounded-lg px-4 py-2 hover:bg-[#124e52] transition-colors whitespace-nowrap"
+              className="text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
             >
               Go to Startup Costs →
             </button>
@@ -1134,7 +1134,7 @@ function ForecastTab({
           clearly labeled rates are visible without hunting — founder feedback
           that the single rate wasn't reaching the user. */}
       <Section id="section-taxes" title="Taxes" defaultOpen>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4 space-y-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div id="tour-taxes">
               <label className={labelCls}>Income Tax Rate %</label>
@@ -1149,7 +1149,7 @@ function ForecastTab({
                 placeholder="25"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
                 Tax on your profit. Applied to pre-tax profit (only when positive)
                 and subtracted to reach Net Income on the P&amp;L.
               </p>
@@ -1167,14 +1167,14 @@ function ForecastTab({
                 placeholder="0"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
                 Tax you collect from customers and pass through to the state. It
                 does not change revenue or profit. Your revenue figures here are
                 shown without sales tax. Set your local rate (0% if none).
               </p>
             </div>
           </div>
-          <p className="text-[10px] text-[#8a8a8a]">
+          <p className="text-[10px] text-[var(--neutral-cool-500)]">
             Two different taxes. <strong>Income tax</strong> is your cost and
             reduces net income. <strong>Sales tax</strong> is collected on sales
             and remitted to the state: money that passes through you, not income.
@@ -1184,7 +1184,7 @@ function ForecastTab({
 
       {/* Fiscal Year Start — TIM-1100 / Currency — TIM-1101 */}
       <Section title="Fiscal Year & Currency" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Starting month</label>
@@ -1201,7 +1201,7 @@ function ForecastTab({
                   <option key={i + 1} value={i + 1}>{name}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-[#afafaf] mt-1">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
                 Month-to-month columns, projections, and exports re-index from this month.
               </p>
             </div>
@@ -1219,7 +1219,7 @@ function ForecastTab({
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-[#afafaf] mt-1">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
                 Drives symbol + formatting across the planner, AI assessment, and exports.
               </p>
             </div>
@@ -1229,8 +1229,8 @@ function ForecastTab({
 
       {/* Ramp Period */}
       <Section title="Ramp Period" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <p className="text-xs text-[#6b6b6b] mb-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Reduced revenue assumptions while you build awareness in the first months.
           </p>
           <div className="mb-4">
@@ -1254,12 +1254,12 @@ function ForecastTab({
               placeholder="0"
               disabled={!canEdit}
             />
-            <p className="text-[10px] text-[#afafaf] mt-1">0 = no ramp; 1–12 months</p>
+            <p className="text-[10px] text-[var(--dark-grey)] mt-1">0 = no ramp; 1–12 months</p>
           </div>
           {(mp.ramp_months ?? 0) > 0 && (
             <div>
-              <p className="text-xs font-medium text-[#6b6b6b] mb-1">Revenue multiplier per ramp month (%)</p>
-              <p className="text-[10px] text-[#afafaf] mb-2">
+              <p className="text-xs font-medium text-[var(--muted-foreground)] mb-1">Revenue multiplier per ramp month (%)</p>
+              <p className="text-[10px] text-[var(--dark-grey)] mb-2">
                 Each value is applied to your <strong>base monthly revenue</strong> (the revenue you&apos;d earn at full capacity). 50% means you earn half your projected revenue that month. Example: if your projected revenue is $10,000/month and Month 1 is set to 30%, Month 1 revenue projects to $3,000.
               </p>
               <div
@@ -1270,7 +1270,7 @@ function ForecastTab({
                   const val = (mp.ramp_multipliers ?? [])[i] ?? 100;
                   return (
                     <div key={i} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-[#afafaf]">Month {i + 1}</span>
+                      <span className="text-[10px] text-[var(--dark-grey)]">Month {i + 1}</span>
                       <NumericInput
                         type="number"
                         min={0}
@@ -1284,9 +1284,9 @@ function ForecastTab({
                           next[i] = v;
                           update({ ramp_multipliers: next });
                         }}
-                        className="w-full text-center text-xs border border-[#e0e0e0] rounded-md py-1.5 px-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                        className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1.5 px-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                       />
-                      <span className="text-[10px] text-[#c0c0c0]">%</span>
+                      <span className="text-[10px] text-[var(--neutral-cool-400)]">%</span>
                     </div>
                   );
                 })}
@@ -1298,8 +1298,8 @@ function ForecastTab({
 
       {/* Monthly Growth Rate */}
       <Section title="Monthly Growth Rate" advanced>
-        <div className="rounded-xl border border-[#efefef] bg-white p-4">
-          <div className="flex items-center gap-1 mb-4 bg-[#faf9f7] border border-[#e0e0e0] rounded-lg p-1 w-fit">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+          <div className="flex items-center gap-1 mb-4 bg-[var(--background)] border border-[var(--border-medium)] rounded-lg p-1 w-fit">
             {(["simple", "custom"] as const).map((mode) => (
               <button
                 key={mode}
@@ -1308,8 +1308,8 @@ function ForecastTab({
                 onClick={() => update({ growth_mode: mode })}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors capitalize disabled:opacity-50 ${
                   (mp.growth_mode ?? "simple") === mode
-                    ? "bg-[#155e63] text-white"
-                    : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                    ? "bg-[var(--teal)] text-white"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                 }`}
               >
                 {mode}
@@ -1331,13 +1331,13 @@ function ForecastTab({
                 placeholder="2"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[#afafaf] mt-1">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
                 Compounded monthly after ramp period ends. 2% / month ≈ 27% annually.
               </p>
             </div>
           ) : (
             <div>
-              <p className="text-xs text-[#6b6b6b] mb-3">
+              <p className="text-xs text-[var(--muted-foreground)] mb-3">
                 Per-month growth % after ramp ends. Month 1 is the first post-ramp month.
               </p>
               <div className="grid grid-cols-6 gap-2">
@@ -1345,7 +1345,7 @@ function ForecastTab({
                   const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
                   return (
                     <div key={i} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-[#afafaf]">Month {i + 1}</span>
+                      <span className="text-[10px] text-[var(--dark-grey)]">Month {i + 1}</span>
                       <NumericInput
                         type="number"
                         min={-100}
@@ -1361,14 +1361,14 @@ function ForecastTab({
                           );
                           update({ growth_custom_monthly: next });
                         }}
-                        className="w-full text-center text-xs border border-[#e0e0e0] rounded-md py-1.5 px-1 text-[#1a1a1a] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf]"
+                        className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1.5 px-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                       />
-                      <span className="text-[10px] text-[#c0c0c0]">%</span>
+                      <span className="text-[10px] text-[var(--neutral-cool-400)]">%</span>
                     </div>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-[#afafaf] mt-3">
+              <p className="text-[10px] text-[var(--dark-grey)] mt-3">
                 Months 13+ use the last entered rate. Switch to Simple for uniform growth.
               </p>
             </div>
@@ -1405,21 +1405,21 @@ function MetricRow({
   currencyCode?: string;
 }) {
   const cls = `py-2 px-3 text-right text-sm tabular-nums ${bold ? "font-semibold" : ""} ${
-    highlight ? "text-[#155e63]" : negative ? "text-[#a13d3d]" : "text-[#1a1a1a]"
+    highlight ? "text-[var(--teal)]" : negative ? "text-[var(--error)]" : "text-[var(--foreground)]"
   }`;
   return (
     <>
       {separator && (
         <tr>
           <td colSpan={5} className="py-0">
-            <div className="border-t border-[#e0e0e0] mx-4" />
+            <div className="border-t border-[var(--border-medium)] mx-4" />
           </td>
         </tr>
       )}
       <tr>
         <td
           className={`py-2 pr-2 text-sm ${indent ? "pl-8" : "pl-4"} ${
-            bold ? "font-semibold text-[#1a1a1a]" : "text-[#6b6b6b]"
+            bold ? "font-semibold text-[var(--foreground)]" : "text-[var(--muted-foreground)]"
           }`}
         >
           {label}
@@ -1562,9 +1562,9 @@ function ProjectionsTab({
 
   const bulletIcon = { strength: "✓", weakness: "!", suggestion: "→" } as const;
   const bulletColor = {
-    strength: "text-[#155e63]",
-    weakness: "text-[#a13d3d]",
-    suggestion: "text-[#6b6b6b]",
+    strength: "text-[var(--teal)]",
+    weakness: "text-[var(--error)]",
+    suggestion: "text-[var(--muted-foreground)]",
   } as const;
 
   return (
@@ -1610,24 +1610,24 @@ function ProjectionsTab({
           <div
             key={kpi.label}
             className={`rounded-xl border p-4 text-center ${
-              kpi.ok ? "border-[#cfe0e1] bg-[#f4f9f8]" : "border-[#f0d4d4] bg-[#fdf5f5]"
+              kpi.ok ? "border-[var(--teal-tint)] bg-[var(--teal-tint-500)]" : "border-[var(--error-bg-10)] bg-[var(--error-bg-3)]"
             }`}
           >
-            <p className="text-[10px] font-medium text-[#6b6b6b] mb-1">{kpi.label}</p>
-            <p className={`text-lg font-bold ${kpi.ok ? "text-[#155e63]" : "text-[#a13d3d]"}`}>
+            <p className="text-[10px] font-medium text-[var(--muted-foreground)] mb-1">{kpi.label}</p>
+            <p className={`text-lg font-bold ${kpi.ok ? "text-[var(--teal)]" : "text-[var(--error)]"}`}>
               {kpi.value}
             </p>
-            <p className="text-[10px] text-[#afafaf] mt-0.5">{kpi.sub}</p>
+            <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{kpi.sub}</p>
           </div>
         ))}
       </div>
 
       {/* AI Assessment */}
-      <div className="rounded-xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#efefef] flex items-center justify-between gap-3">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a]">AI Assessment</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+            <p className="text-sm font-semibold text-[var(--foreground)]">AI Assessment</p>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Benchmarked against comparable independent coffee shops.
             </p>
           </div>
@@ -1636,7 +1636,7 @@ function ProjectionsTab({
               type="button"
               onClick={generateAssessment}
               disabled={assessmentStatus === "loading"}
-              className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60 shrink-0"
+              className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60 shrink-0"
             >
               {assessmentStatus === "loading"
                 ? "Analyzing..."
@@ -1647,19 +1647,19 @@ function ProjectionsTab({
           )}
         </div>
         {assessmentStatus === "error" && (
-          <p className="px-5 py-4 text-sm text-[#a13d3d]">Could not generate. Try again.</p>
+          <p className="px-5 py-4 text-sm text-[var(--error)]">Could not generate. Try again.</p>
         )}
         {localAssessment ? (
-          <ul className="divide-y divide-[#f5f5f5]">
+          <ul className="divide-y divide-[var(--neutral-cool-100)]">
             {localAssessment.bullets.map((b, i) => (
               <li key={i} className="px-5 py-3 flex items-start gap-3">
                 <span className={`text-sm font-bold shrink-0 mt-0.5 ${bulletColor[b.type]}`}>
                   {bulletIcon[b.type]}
                 </span>
                 <div className="flex-1 space-y-2">
-                  <p className="text-sm text-[#1a1a1a] leading-relaxed">{b.text}</p>
+                  <p className="text-sm text-[var(--foreground)] leading-relaxed">{b.text}</p>
                   {b.type !== "strength" && b.recommendation && (
-                    <p className="text-sm text-[#1a1a1a] leading-relaxed">
+                    <p className="text-sm text-[var(--foreground)] leading-relaxed">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2">
                         Recommendation
                       </span>
@@ -1667,7 +1667,7 @@ function ProjectionsTab({
                     </p>
                   )}
                   {b.type !== "strength" && b.next_step && (
-                    <p className="text-sm text-[#155e63] leading-relaxed">
+                    <p className="text-sm text-[var(--teal)] leading-relaxed">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2">
                         Next Step
                       </span>
@@ -1675,7 +1675,7 @@ function ProjectionsTab({
                     </p>
                   )}
                   {b.type !== "strength" && b.why && (
-                    <p className="text-xs text-[#6b6b6b] leading-relaxed italic">
+                    <p className="text-xs text-[var(--muted-foreground)] leading-relaxed italic">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-[#888] mr-2 not-italic">
                         Why
                       </span>
@@ -1687,12 +1687,12 @@ function ProjectionsTab({
             ))}
           </ul>
         ) : !canEdit ? null : (
-          <p className="px-5 py-4 text-sm text-[#afafaf]">
+          <p className="px-5 py-4 text-sm text-[var(--dark-grey)]">
             Run an assessment to get benchmarked feedback on your projections.
           </p>
         )}
         {localAssessment?.generated_at && (
-          <p className="px-5 py-3 border-t border-[#f5f5f5] text-[10px] text-[#afafaf]">
+          <p className="px-5 py-3 border-t border-[var(--neutral-cool-100)] text-[10px] text-[var(--dark-grey)]">
             Generated{" "}
             {new Date(localAssessment.generated_at).toLocaleDateString("en-US", {
               month: "short",
@@ -2127,16 +2127,16 @@ export function FinancialsWorkspace({
   const currencyCode = mp.currency_code ?? "USD";
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <BarChart2 className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <BarChart2 className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Financials
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Plan your startup costs, forecast revenue, and project Year 1–5 performance.
           </p>
         </header>
@@ -2164,7 +2164,7 @@ export function FinancialsWorkspace({
         )}
 
         <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
-          <nav className="flex items-center gap-1 bg-white border border-[#efefef] rounded-xl p-1 overflow-x-auto max-w-full">
+          <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full">
             {tabs.map((t) => (
               <button
                 key={t.id}
@@ -2172,8 +2172,8 @@ export function FinancialsWorkspace({
                 onClick={() => setActiveTab(t.id)}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
                   activeTab === t.id
-                    ? "bg-[#155e63] text-white"
-                    : "text-[#6b6b6b] hover:text-[#1a1a1a]"
+                    ? "bg-[var(--teal)] text-white"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                 }`}
               >
                 {t.label}
@@ -2182,7 +2182,7 @@ export function FinancialsWorkspace({
           </nav>
           <div className="flex items-center gap-3">
             <span
-              className={`text-xs ${saveState.kind === "error" ? "text-[#a13d3d]" : "text-[#afafaf]"}`}
+              className={`text-xs ${saveState.kind === "error" ? "text-[var(--error)]" : "text-[var(--dark-grey)]"}`}
             >
               {saveLabel}
             </span>
@@ -2190,7 +2190,7 @@ export function FinancialsWorkspace({
               <button
                 type="button"
                 onClick={openWizard}
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#155e63] rounded-lg px-3 py-1.5 hover:bg-[#124e52] transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-3 py-1.5 hover:bg-[var(--teal-deep)] transition-colors"
                 title="Walk through your forecast inputs step by step, with a hint on each field"
               >
                 <Compass size={12} aria-hidden="true" />
@@ -2202,7 +2202,7 @@ export function FinancialsWorkspace({
               onClick={() =>
                 window.location.assign("/api/workspaces/financials/export/pdf")
               }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
               title="Download financials as PDF (landscape monthly views)"
             >
               <FileDown size={12} aria-hidden="true" />
@@ -2213,7 +2213,7 @@ export function FinancialsWorkspace({
               onClick={() =>
                 window.location.assign("/api/workspaces/financials/export/xlsx")
               }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
               title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
             >
               <Sheet size={12} aria-hidden="true" />
@@ -2224,7 +2224,7 @@ export function FinancialsWorkspace({
                 type="button"
                 onClick={handleManualSave}
                 disabled={saveState.kind === "saving"}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-[#155e63]/30 rounded-lg px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
               >
                 <Save size={12} aria-hidden="true" />
                 Save

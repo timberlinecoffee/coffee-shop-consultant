@@ -271,17 +271,17 @@ export function BusinessPlanWorkspace({
   const visibleCount = sections.filter((s) => s.isVisible).length;
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-20">
         {/* Page header */}
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <FileText className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Business Plan
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI.
           </p>
         </header>
@@ -297,7 +297,7 @@ export function BusinessPlanWorkspace({
               href="/workspace/business-plan/print"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#155e63] text-[#155e63] text-sm font-medium hover:bg-[#155e63] hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors"
             >
               <FileText className="w-3.5 h-3.5" />
               Print full plan
@@ -305,7 +305,7 @@ export function BusinessPlanWorkspace({
             <button
               onClick={handleExportPdf}
               disabled={isExportingPdf || !canEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#155e63] text-[#155e63] text-sm font-medium hover:bg-[#155e63] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download className="w-3.5 h-3.5" />
               {isExportingPdf ? "Exporting..." : "Export PDF"}
@@ -422,7 +422,7 @@ function SectionCard({
   return (
     <div
       className={`rounded-2xl border bg-white transition-opacity ${
-        section.isVisible ? "border-[#efefef] opacity-100" : "border-[#e8e8e8] opacity-60"
+        section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
       {/* Header */}
@@ -438,11 +438,11 @@ function SectionCard({
             <ChevronDown className="w-4 h-4 text-[#888] flex-shrink-0" />
           )}
           <div>
-            <h2 className="text-sm font-semibold text-[#1a1a1a]">{section.title}</h2>
-            <p className="text-xs text-[#afafaf]">{section.sourceLabel}</p>
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">{section.title}</h2>
+            <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
           </div>
           {hasUserOverride && (
-            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]">
+            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
               Edited
             </span>
           )}
@@ -454,7 +454,7 @@ function SectionCard({
               {onGenerateExec && (
                 <button
                   onClick={onGenerateExec}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[#155e63] border border-[#155e63] hover:bg-[#155e63] hover:text-white transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
                 >
                   <Wand2 className="w-3 h-3" />
                   Generate
@@ -463,7 +463,7 @@ function SectionCard({
               {onImprove && !isPlaceholder && (
                 <button
                   onClick={onImprove}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[#155e63] border border-[#155e63] hover:bg-[#155e63] hover:text-white transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
                 >
                   <Wand2 className="w-3 h-3" />
                   Improve
@@ -476,7 +476,7 @@ function SectionCard({
             <button
               onClick={onResetToAuto}
               title="Reset to auto-generated content"
-              className="p-1.5 rounded-lg text-[#888] hover:text-[#1a1a1a] hover:bg-[#f5f5f5] transition-colors"
+              className="p-1.5 rounded-lg text-[#888] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -485,7 +485,7 @@ function SectionCard({
           <button
             onClick={onToggleVisible}
             title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-            className="p-1.5 rounded-lg text-[#888] hover:text-[#1a1a1a] hover:bg-[#f5f5f5] transition-colors"
+            className="p-1.5 rounded-lg text-[#888] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
           >
             {section.isVisible ? (
               <Eye className="w-3.5 h-3.5" />
@@ -499,19 +499,19 @@ function SectionCard({
       {/* Body */}
       {section.isExpanded && (
         <div className="px-5 pb-5">
-          <div className="border-t border-[#f0f0f0] pt-4">
+          <div className="border-t border-[var(--neutral-cool-150)] pt-4">
             {(isStreaming || section.isGenerating) && !section.editBuffer && (
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex gap-1">
                   {[0, 1, 2].map((i) => (
                     <span
                       key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-[#155e63] animate-bounce"
+                      className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] animate-bounce"
                       style={{ animationDelay: `${i * 0.15}s` }}
                     />
                   ))}
                 </div>
-                <span className="text-xs text-[#6b6b6b]">Writing...</span>
+                <span className="text-xs text-[var(--muted-foreground)]">Writing...</span>
               </div>
             )}
 
@@ -520,7 +520,7 @@ function SectionCard({
                 <textarea
                   value={section.editBuffer}
                   onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[#1a1a1a] border border-[#d8d8d8] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[#155e63] font-mono leading-relaxed"
+                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[var(--teal)] font-mono leading-relaxed"
                   placeholder="Add content for this section..."
                   disabled={section.isGenerating && !section.editBuffer}
                 />
@@ -528,13 +528,13 @@ function SectionCard({
                   <button
                     onClick={onEditSave}
                     disabled={section.isSaving}
-                    className="px-3 py-1.5 rounded-lg bg-[#155e63] text-white text-xs font-medium hover:bg-[#0e4a4e] transition-colors disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-medium hover:bg-[var(--teal-850)] transition-colors disabled:opacity-50"
                   >
                     {section.isSaving ? "Saving..." : "Save"}
                   </button>
                   <button
                     onClick={onEditCancel}
-                    className="px-3 py-1.5 rounded-lg border border-[#d8d8d8] text-[#555] text-xs font-medium hover:bg-[#f5f5f5] transition-colors"
+                    className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[#555] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
                   >
                     {section.isGenerating ? "Stop" : "Cancel"}
                   </button>
@@ -543,15 +543,15 @@ function SectionCard({
             ) : (
               <div
                 onClick={canEdit && !isStreaming ? onEditStart : undefined}
-                className={`text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap ${
+                className={`text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap ${
                   canEdit && !isStreaming
-                    ? "cursor-text rounded-lg hover:bg-[#fafafa] -mx-1 px-1 py-0.5 transition-colors"
+                    ? "cursor-text rounded-lg hover:bg-[var(--neutral-cool-50)] -mx-1 px-1 py-0.5 transition-colors"
                     : ""
-                } ${isPlaceholder ? "text-[#afafaf] italic" : ""}`}
+                } ${isPlaceholder ? "text-[var(--dark-grey)] italic" : ""}`}
                 title={canEdit && !isPlaceholder ? "Click to edit" : undefined}
               >
                 {displayContent || (
-                  <span className="text-[#afafaf] italic">No content yet.</span>
+                  <span className="text-[var(--dark-grey)] italic">No content yet.</span>
                 )}
               </div>
             )}

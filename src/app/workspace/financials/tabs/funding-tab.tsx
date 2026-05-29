@@ -83,13 +83,13 @@ interface LineRowProps {
 function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const inputCls =
-    "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
-    <div className="border border-[#efefef] rounded-xl bg-white p-3">
+    <div className="border border-[var(--border)] rounded-xl bg-white p-3">
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[140px]">
-          <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Label</label>
+          <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Label</label>
           <input
             className={`${inputCls} w-full`}
             type="text"
@@ -101,7 +101,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
         </div>
 
         <div className="w-[160px]">
-          <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">
+          <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">
             Amount ({sym})
           </label>
           <NumericInput
@@ -121,7 +121,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
         {line.kind === "loan" && (
           <>
             <div className="w-[120px]">
-              <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Term (months)</label>
+              <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Term (months)</label>
               <NumericInput
                 className={`${inputCls} w-full`}
                 type="number"
@@ -136,7 +136,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
               />
             </div>
             <div className="w-[120px]">
-              <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Rate (% APR)</label>
+              <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Rate (% APR)</label>
               <NumericInput
                 className={`${inputCls} w-full`}
                 type="number"
@@ -150,16 +150,16 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
                 }
               />
             </div>
-            <div className="text-xs text-[#6b6b6b] pb-1.5">
-              <span className="block text-[10px] uppercase tracking-wider text-[#afafaf]">Monthly Payment</span>
-              <span className="font-semibold text-[#155e63]">{fmt(loanMonthlyPaymentCents(line), currencyCode)}</span>
+            <div className="text-xs text-[var(--muted-foreground)] pb-1.5">
+              <span className="block text-[10px] uppercase tracking-wider text-[var(--dark-grey)]">Monthly Payment</span>
+              <span className="font-semibold text-[var(--teal)]">{fmt(loanMonthlyPaymentCents(line), currencyCode)}</span>
             </div>
           </>
         )}
 
         {line.kind === "investor_equity" && (
           <div className="w-[140px]">
-            <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Ownership %</label>
+            <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Ownership %</label>
             <NumericInput
               className={`${inputCls} w-full`}
               type="number"
@@ -177,7 +177,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
 
         {(line.kind === "grant" || line.kind === "founder_equity") && (
           <div className="flex-1 min-w-[160px]">
-            <label className="block text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1">Notes (optional)</label>
+            <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Notes (optional)</label>
             <input
               className={`${inputCls} w-full`}
               type="text"
@@ -193,7 +193,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
           <button
             type="button"
             onClick={onDelete}
-            className="text-[#a13d3d] hover:text-[#7a2d2d] p-2 rounded-md hover:bg-[#fdf5f5] transition-colors"
+            className="text-[var(--error)] hover:text-[var(--error-dark)] p-2 rounded-md hover:bg-[var(--error-bg-3)] transition-colors"
             aria-label="Remove line"
           >
             <Trash2 size={14} />
@@ -231,12 +231,12 @@ function CategorySection({
   }
 
   return (
-    <div className="rounded-2xl border border-[#efefef] bg-[#faf9f7] p-4">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
       <div className="flex items-baseline justify-between mb-1">
-        <h3 className="text-sm font-semibold text-[#1a1a1a]">{meta.label}</h3>
-        <span className="text-sm font-semibold text-[#155e63] tabular-nums">{fmt(subtotal, currencyCode)}</span>
+        <h3 className="text-sm font-semibold text-[var(--foreground)]">{meta.label}</h3>
+        <span className="text-sm font-semibold text-[var(--teal)] tabular-nums">{fmt(subtotal, currencyCode)}</span>
       </div>
-      <p className="text-xs text-[#6b6b6b] mb-3">{meta.hint}</p>
+      <p className="text-xs text-[var(--muted-foreground)] mb-3">{meta.hint}</p>
       <div className="space-y-2">
         {lines.map((l) => (
           <LineRow
@@ -249,13 +249,13 @@ function CategorySection({
           />
         ))}
         {lines.length === 0 && (
-          <p className="text-xs text-[#afafaf] italic px-2 py-2">No {meta.label.toLowerCase()} added yet.</p>
+          <p className="text-xs text-[var(--dark-grey)] italic px-2 py-2">No {meta.label.toLowerCase()} added yet.</p>
         )}
         {canEdit && (
           <button
             type="button"
             onClick={addLine}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#155e63] border border-dashed border-[#155e63]/40 rounded-lg px-3 py-2 hover:bg-[#155e63]/5 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-dashed border-[var(--teal)]/40 rounded-lg px-3 py-2 hover:bg-[var(--teal)]/5 transition-colors"
           >
             <Plus size={12} />
             Add {meta.label.replace(/s$/, "").replace(/ \/ Other$/, "")}
@@ -311,9 +311,9 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
 
   return (
     <div className="space-y-4" id="tour-funding">
-      <div className="rounded-2xl border border-[#efefef] bg-white p-5">
-        <p className="text-sm font-semibold text-[#1a1a1a]">Where The Money Comes From</p>
-        <p className="text-xs text-[#6b6b6b] mt-1 leading-relaxed">
+      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
+        <p className="text-sm font-semibold text-[var(--foreground)]">Where The Money Comes From</p>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
           Add every dollar funding the launch — your own cash, loans, investor checks, and grants. Loans
           generate monthly principal payments on Cash Flow; equity sources land on the Equity side of the
           Balance Sheet.
@@ -350,26 +350,26 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
       />
 
       {/* Reconciliation: Sources vs. Uses */}
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
-          <p className="text-sm font-semibold text-[#1a1a1a]">Sources Vs. Uses</p>
-          <p className="text-xs text-[#afafaf] mt-0.5">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Sources Vs. Uses</p>
+          <p className="text-xs text-[var(--dark-grey)] mt-0.5">
             Total funding should cover total startup costs. Surplus becomes additional opening cash.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#efefef]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6b6b6b] mb-2">Sources</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Sources</p>
             <ul className="space-y-1.5 text-sm">
               <li className="flex justify-between"><span>Founder Equity</span><span className="tabular-nums">{fmt(byKind.founder_equity.reduce((s, l) => s + l.amount_cents, 0), currencyCode)}</span></li>
               <li className="flex justify-between"><span>Loans</span><span className="tabular-nums">{fmt(loanTotal, currencyCode)}</span></li>
               <li className="flex justify-between"><span>Investor Equity</span><span className="tabular-nums">{fmt(byKind.investor_equity.reduce((s, l) => s + l.amount_cents, 0), currencyCode)}</span></li>
               <li className="flex justify-between"><span>Grants / Other</span><span className="tabular-nums">{fmt(byKind.grant.reduce((s, l) => s + l.amount_cents, 0), currencyCode)}</span></li>
-              <li className="flex justify-between border-t border-[#efefef] pt-1.5 mt-1.5 font-semibold"><span>Total Sources</span><span className="tabular-nums">{fmt(sourcesTotal, currencyCode)}</span></li>
+              <li className="flex justify-between border-t border-[var(--border)] pt-1.5 mt-1.5 font-semibold"><span>Total Sources</span><span className="tabular-nums">{fmt(sourcesTotal, currencyCode)}</span></li>
             </ul>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6b6b6b] mb-2">Uses</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Uses</p>
             <ul className="space-y-1.5 text-sm">
               <li className="flex justify-between"><span>Build-Out</span><span className="tabular-nums">{fmt(inputs.buildout_cost_cents, currencyCode)}</span></li>
               <li className="flex justify-between"><span>Equipment</span><span className="tabular-nums">{fmt(inputs.equipment_cost_cents, currencyCode)}</span></li>
@@ -379,7 +379,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
               <li className="flex justify-between"><span>Initial Inventory</span><span className="tabular-nums">{fmt(inputs.initial_inventory_cents, currencyCode)}</span></li>
               <li className="flex justify-between"><span>Working Capital Reserve</span><span className="tabular-nums">{fmt(inputs.working_capital_reserve_cents, currencyCode)}</span></li>
               <li className="flex justify-between"><span>Opening Cash Buffer</span><span className="tabular-nums">{fmt(inputs.opening_cash_buffer_cents, currencyCode)}</span></li>
-              <li className="flex justify-between border-t border-[#efefef] pt-1.5 mt-1.5 font-semibold"><span>Total Uses</span><span className="tabular-nums">{fmt(totalUses, currencyCode)}</span></li>
+              <li className="flex justify-between border-t border-[var(--border)] pt-1.5 mt-1.5 font-semibold"><span>Total Uses</span><span className="tabular-nums">{fmt(totalUses, currencyCode)}</span></li>
             </ul>
           </div>
         </div>
@@ -403,9 +403,9 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
       </div>
 
       {/* Capital structure context */}
-      <div className="rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
-        <div className="space-y-2 text-sm text-[#2a4a4c] leading-relaxed">
+      <div className="rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
+        <div className="space-y-2 text-sm text-[var(--teal-deeper)] leading-relaxed">
           {loanTotal > 0 && (
             <p>
               Total monthly loan payments add up to <strong>{fmt(totalMonthlyLoanPayment, currencyCode)}</strong>.

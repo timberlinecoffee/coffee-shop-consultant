@@ -159,7 +159,7 @@ export function WorkspaceProgressProvider({
 
   return (
     <WorkspaceStatusContext.Provider value={contextValue}>
-      <div className="flex min-h-screen bg-[#faf9f7]">
+      <div className="flex min-h-screen bg-[var(--background)]">
         <AppSidebar
           items={navItems}
           collapsed={sidebarCollapsed}

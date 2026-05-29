@@ -15,14 +15,14 @@ interface EducationBlockProps {
 
 export function EducationBlock({ intro, examples }: EducationBlockProps) {
   return (
-    <div className="bg-[#f5f3ef] border-l-4 border-[#155e63] rounded-r-xl px-5 py-4 mb-6">
-      <p className="text-[#3d3d3d] text-base leading-relaxed whitespace-pre-line">
+    <div className="bg-[var(--warm-250)] border-l-4 border-[var(--teal)] rounded-r-xl px-5 py-4 mb-6">
+      <p className="text-[var(--gray-1250)] text-base leading-relaxed whitespace-pre-line">
         {intro}
       </p>
       {examples && examples.length > 0 && (
         <ul className="mt-4 space-y-1.5">
           {examples.map((ex) => (
-            <li key={ex.name} className="text-[#3d3d3d] text-base leading-relaxed">
+            <li key={ex.name} className="text-[var(--gray-1250)] text-base leading-relaxed">
               <span className="font-semibold">{ex.name}:</span>{" "}
               {ex.descriptor}
             </li>

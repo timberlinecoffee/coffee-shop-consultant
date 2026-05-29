@@ -89,18 +89,18 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
   if (personas.length === 0) {
     return (
       <>
-        <div className="mt-2 rounded-2xl border border-dashed border-[#d4d4d4] bg-[#faf9f7] px-6 py-8 text-center">
-          <p className="text-sm font-medium text-[#1a1a1a] mb-1">
+        <div className="mt-2 rounded-2xl border border-dashed border-[var(--gray-700)] bg-[var(--background)] px-6 py-8 text-center">
+          <p className="text-sm font-medium text-[var(--foreground)] mb-1">
             Who is your shop for?
           </p>
-          <p className="text-xs text-[#afafaf] leading-relaxed mb-5 max-w-[260px] mx-auto">
+          <p className="text-xs text-[var(--dark-grey)] leading-relaxed mb-5 max-w-[260px] mx-auto">
             Personas help you make better decisions about everything from the menu to the playlist.
           </p>
           {canEdit && (
             <button
               type="button"
               onClick={openNew}
-              className="inline-block bg-[#155e63] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors mb-3"
+              className="inline-block bg-[var(--teal)] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors mb-3"
             >
               Add your first persona
             </button>
@@ -109,12 +109,12 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
             <button
               type="button"
               onClick={() => setShowExample(true)}
-              className="text-[#155e63] hover:underline focus:outline-none"
+              className="text-[var(--teal)] hover:underline focus:outline-none"
             >
               See an example
             </button>
           </p>
-          <p className="text-[10px] text-[#afafaf] mt-4">
+          <p className="text-[10px] text-[var(--dark-grey)] mt-4">
             You can add up to {MAX_PERSONAS} personas.
           </p>
         </div>
@@ -144,14 +144,14 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
     <>
       {/* Single-persona nudge */}
       {personas.length === 1 && !nudgeDismissed && (
-        <div className="mt-2 mb-3 flex items-start justify-between gap-3 rounded-xl bg-[#f4f9f8] border border-[#d5eae8] px-4 py-3">
-          <p className="text-xs text-[#155e63] leading-relaxed">
+        <div className="mt-2 mb-3 flex items-start justify-between gap-3 rounded-xl bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] px-4 py-3">
+          <p className="text-xs text-[var(--teal)] leading-relaxed">
             Most shops have 2-3 personas. Adding a second helps you spot where you might be designing for different people.
           </p>
           <button
             type="button"
             onClick={() => setNudgeDismissed(true)}
-            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors focus:outline-none shrink-0 mt-0.5"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus:outline-none shrink-0 mt-0.5"
             aria-label="Dismiss"
           >
             <span aria-hidden="true" className="text-xs">&#x2715;</span>
@@ -180,12 +180,12 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
             <button
               type="button"
               onClick={openNew}
-              className="text-xs font-medium text-[#155e63] border border-[#cfe0e1] rounded-full px-3 py-1.5 hover:bg-[#155e63]/5 transition-colors"
+              className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
             >
               + Add another persona
             </button>
           ) : (
-            <p className="text-xs text-[#afafaf]">
+            <p className="text-xs text-[var(--dark-grey)]">
               You have reached the maximum of {MAX_PERSONAS} personas.
             </p>
           )}
@@ -232,16 +232,16 @@ function ExampleDrawer({
         aria-modal="true"
         aria-label="Example persona"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">Example</p>
-            <h2 className="text-sm font-semibold text-[#1a1a1a]">Sample Persona</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">Example</p>
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">Sample Persona</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f4f3f1] transition-colors focus:outline-none"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
           >
             <span aria-hidden="true" className="text-sm">&#x2715;</span>
           </button>
@@ -249,12 +249,12 @@ function ExampleDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#155e63] text-white flex items-center justify-center text-base font-bold flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-base font-bold flex-shrink-0">
               {p.name.charAt(0)}
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#1a1a1a]">{p.name}</p>
-              <p className="text-xs text-[#afafaf]">
+              <p className="text-sm font-semibold text-[var(--foreground)]">{p.name}</p>
+              <p className="text-xs text-[var(--dark-grey)]">
                 {[p.occupation, p.ageRange].filter(Boolean).join(" · ")}
               </p>
             </div>
@@ -266,14 +266,14 @@ function ExampleDrawer({
 
           {p.values && p.values.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-1.5">
                 Values
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {p.values.map((v) => (
                   <span
                     key={v}
-                    className="text-[10px] font-medium text-[#155e63] bg-[#f4f9f8] border border-[#d5eae8] rounded-full px-2 py-0.5"
+                    className="text-[10px] font-medium text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] rounded-full px-2 py-0.5"
                   >
                     {PERSONA_VALUE_LABELS[v]}
                   </span>
@@ -285,31 +285,31 @@ function ExampleDrawer({
           <div className="flex gap-4">
             {p.visitFrequency && (
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-0.5">Visits</p>
-                <p className="text-xs text-[#1a1a1a]">{PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency]}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-0.5">Visits</p>
+                <p className="text-xs text-[var(--foreground)]">{PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency]}</p>
               </div>
             )}
             {p.spendPerVisit && (
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-0.5">Spend</p>
-                <p className="text-xs text-[#1a1a1a]">{PERSONA_SPEND_LABELS[p.spendPerVisit]} per visit</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-0.5">Spend</p>
+                <p className="text-xs text-[var(--foreground)]">{PERSONA_SPEND_LABELS[p.spendPerVisit]} per visit</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-[#efefef] flex items-center justify-between">
+        <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between">
           <button
             type="button"
             onClick={onClose}
-            className="text-xs text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
           >
             Close
           </button>
           <button
             type="button"
             onClick={onAdd}
-            className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+            className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
           >
             Add a persona like this
           </button>
@@ -322,8 +322,8 @@ function ExampleDrawer({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-1">{label}</p>
-      <p className="text-sm text-[#1a1a1a] leading-relaxed">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-1">{label}</p>
+      <p className="text-sm text-[var(--foreground)] leading-relaxed">{value}</p>
     </div>
   );
 }

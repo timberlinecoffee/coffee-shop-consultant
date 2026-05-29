@@ -25,12 +25,12 @@ export function EmailConfirmBanner() {
   }
 
   return (
-    <div className="w-full bg-[#faf6ee] border-b border-[#e8ddc8] px-4 py-2.5 flex items-center justify-between text-sm text-[#6b5c3e]">
+    <div className="w-full bg-[var(--warning-bg-14)] border-b border-[var(--warning-amber-bg-3)] px-4 py-2.5 flex items-center justify-between text-sm text-[var(--coffee-brown-5)]">
       <span>Check your email when you have a moment; your account is saved.</span>
       <button
         onClick={dismiss}
         aria-label="Dismiss"
-        className="ml-4 text-[#afafaf] hover:text-[#6b5c3e] transition-colors text-xl leading-none"
+        className="ml-4 text-[var(--dark-grey)] hover:text-[var(--coffee-brown-5)] transition-colors text-xl leading-none"
       >
         &times;
       </button>

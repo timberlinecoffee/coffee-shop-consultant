@@ -237,7 +237,7 @@ function TextInput({
   return (
     <input
       type="text"
-      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
       value={draft}
       placeholder={placeholder}
       disabled={disabled}
@@ -258,7 +258,7 @@ function CostInput({
       type="number"
       min={0}
       step={50}
-      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
       value={draft}
       placeholder="0"
       disabled={disabled}
@@ -274,7 +274,7 @@ function SelectInput({
 }: { value: string; options: { value: string; label: string }[]; disabled: boolean; onCommit: (v: string) => void }) {
   return (
     <select
-      className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 cursor-pointer"
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 cursor-pointer"
       value={value}
       disabled={disabled}
       onChange={(e) => onCommit(e.target.value)}
@@ -373,7 +373,7 @@ function VendorLinkedInput({
           candidateId ? (
             <button
               type="button"
-              className="text-xs text-[#155e63] underline decoration-dotted hover:no-underline truncate text-left"
+              className="text-xs text-[var(--teal)] underline decoration-dotted hover:no-underline truncate text-left"
               onClick={() => router.push("/workspace/suppliers")}
               title="Open in Suppliers & Vendors"
             >
@@ -381,7 +381,7 @@ function VendorLinkedInput({
             </button>
           ) : (
             <span
-              className="block truncate text-xs text-[#1a1a1a] cursor-text flex-1"
+              className="block truncate text-xs text-[var(--foreground)] cursor-text flex-1"
               onClick={() => !disabled && setEditing(true)}
             >
               {name}
@@ -389,7 +389,7 @@ function VendorLinkedInput({
           )
         ) : (
           <span
-            className="block truncate text-xs text-[#c0c0c0] cursor-text flex-1"
+            className="block truncate text-xs text-[var(--neutral-cool-400)] cursor-text flex-1"
             onClick={() => !disabled && setEditing(true)}
           >
             Vendor
@@ -405,7 +405,7 @@ function VendorLinkedInput({
         ref={inputRef}
         type="text"
         autoFocus
-        className="w-full h-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+        className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
         value={draft}
         placeholder="Search or add vendor..."
         onChange={(e) => { setDraft(e.target.value); setShowDropdown(true); }}
@@ -422,16 +422,16 @@ function VendorLinkedInput({
         }}
       />
       {showDropdown && (filtered.length > 0 || (!exactMatch && draft.trim())) && (
-        <div className="absolute left-0 top-full mt-0.5 z-30 bg-white border border-[#e8e8e8] rounded-lg shadow-md min-w-[200px] max-h-[180px] overflow-y-auto">
+        <div className="absolute left-0 top-full mt-0.5 z-30 bg-white border border-[var(--neutral-cool-200)] rounded-lg shadow-md min-w-[200px] max-h-[180px] overflow-y-auto">
           {filtered.map((c) => (
             <button
               key={c.id}
               type="button"
-              className="w-full text-left px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#f4f9f8] flex items-center gap-2"
+              className="w-full text-left px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--teal-tint-500)] flex items-center gap-2"
               onMouseDown={() => handleSelect(c)}
             >
               <span className="truncate flex-1">{c.name}</span>
-              <span className="text-[10px] text-[#afafaf] shrink-0">
+              <span className="text-[10px] text-[var(--dark-grey)] shrink-0">
                 {VENDOR_CATEGORY_LABELS[c.category as keyof typeof VENDOR_CATEGORY_LABELS] ?? c.category}
               </span>
             </button>
@@ -439,7 +439,7 @@ function VendorLinkedInput({
           {!exactMatch && draft.trim() && (
             <button
               type="button"
-              className="w-full text-left px-3 py-1.5 text-xs text-[#155e63] hover:bg-[#f4f9f8] font-medium border-t border-[#f0f0f0]"
+              className="w-full text-left px-3 py-1.5 text-xs text-[var(--teal)] hover:bg-[var(--teal-tint-500)] font-medium border-t border-[var(--neutral-cool-150)]"
               onMouseDown={() => void handleCreate()}
               disabled={creating}
             >
@@ -487,13 +487,13 @@ function ColPickerRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-1 px-2 py-1.5 hover:bg-[#faf9f7] group"
+      className="flex items-center gap-1 px-2 py-1.5 hover:bg-[var(--background)] group"
       role="listitem"
     >
       {/* Drag handle — horizontal grip distinguishes column reorder from row reorder */}
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing touch-none text-[#c0c0c0] hover:text-[#888] shrink-0 p-0.5"
+        className="cursor-grab active:cursor-grabbing touch-none text-[var(--neutral-cool-400)] hover:text-[#888] shrink-0 p-0.5"
         aria-label={`Drag to reorder ${col.label} column`}
         {...attributes}
         {...listeners}
@@ -505,11 +505,11 @@ function ColPickerRow({
       <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
         <input
           type="checkbox"
-          className="accent-[#155e63] cursor-pointer shrink-0"
+          className="accent-[var(--teal)] cursor-pointer shrink-0"
           checked={!hidden}
           onChange={onToggle}
         />
-        <span className="text-xs text-[#1a1a1a] truncate">{col.label}</span>
+        <span className="text-xs text-[var(--foreground)] truncate">{col.label}</span>
       </label>
 
       {/* Keyboard up/down buttons — always visible on focus/hover for a11y */}
@@ -519,7 +519,7 @@ function ColPickerRow({
           onClick={onMoveUp}
           disabled={isFirst}
           aria-label={`Move ${col.label} column up`}
-          className="text-[#afafaf] hover:text-[#155e63] disabled:opacity-20 disabled:cursor-not-allowed p-0"
+          className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-20 disabled:cursor-not-allowed p-0"
         >
           <ChevronUp size={11} />
         </button>
@@ -528,7 +528,7 @@ function ColPickerRow({
           onClick={onMoveDown}
           disabled={isLast}
           aria-label={`Move ${col.label} column down`}
-          className="text-[#afafaf] hover:text-[#155e63] disabled:opacity-20 disabled:cursor-not-allowed p-0"
+          className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-20 disabled:cursor-not-allowed p-0"
         >
           <ChevronDown size={11} />
         </button>
@@ -586,17 +586,17 @@ function SortableRow({
   const eq = listType === "equipment" ? (item as EquipmentItem) : null;
   const sup = listType === "supplies" ? (item as SuppliesItem) : null;
 
-  const cellCls = "px-2 py-1.5 border-r border-[#f0f0f0] last:border-r-0 align-middle text-xs";
+  const cellCls = "px-2 py-1.5 border-r border-[var(--neutral-cool-150)] last:border-r-0 align-middle text-xs";
 
   function renderCell(col: ColDef) {
     switch (col.id) {
       case "drag":
         return (
-          <td key="drag" className={`${cellCls} text-[#d0d0d0]`} style={{ width: colWidths.get("drag") }}>
+          <td key="drag" className={`${cellCls} text-[var(--neutral-cool-350)]`} style={{ width: colWidths.get("drag") }}>
             {canEdit && (
               <button
                 type="button"
-                className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[#c0c0c0] hover:text-[#888] transition-colors"
+                className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[#888] transition-colors"
                 {...attributes}
                 {...listeners}
                 aria-label="Drag to reorder"
@@ -734,7 +734,7 @@ function SortableRow({
               <button
                 type="button"
                 onClick={() => onDelete(item.id)}
-                className="text-[#c0c0c0] hover:text-[#a13d3d] transition-colors p-0.5"
+                className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors p-0.5"
                 aria-label="Delete row"
               >
                 <Trash2 size={12} />
@@ -752,7 +752,7 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`border-b border-[#f5f5f5] bg-white hover:bg-[#faf9f7] transition-colors ${isDragOverlay ? "shadow-lg rounded opacity-90" : ""}`}
+      className={`border-b border-[var(--neutral-cool-100)] bg-white hover:bg-[var(--background)] transition-colors ${isDragOverlay ? "shadow-lg rounded opacity-90" : ""}`}
     >
       {visibleCols.map((col) => renderCell(col))}
     </tr>
@@ -802,21 +802,21 @@ function SectionHeader({
   return (
     <tr
       ref={setNodeRef}
-      className={`border-b border-[#e4eded] transition-colors ${
-        dropHighlight ? "ring-2 ring-inset ring-[#155e63]" : ""
+      className={`border-b border-[var(--teal-bg-400)] transition-colors ${
+        dropHighlight ? "ring-2 ring-inset ring-[var(--teal)]" : ""
       }`}
     >
       <td
         colSpan={colCount}
         className={`px-2 py-1.5 sticky left-0 z-10 ${
-          dropHighlight ? "bg-[#d8eeef]" : "bg-[#f4f9f8]"
+          dropHighlight ? "bg-[var(--teal-bg-700)]" : "bg-[var(--teal-tint-500)]"
         }`}
       >
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors shrink-0"
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors shrink-0"
             aria-label={section.collapsed ? "Expand section" : "Collapse section"}
           >
             {section.collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
@@ -828,7 +828,7 @@ function SectionHeader({
               type="text"
               value={draft}
               autoFocus
-              className="text-xs font-semibold text-[#1a1a1a] bg-white border border-[#cfe0e1] rounded px-2 py-0.5 outline-none focus:border-[#155e63] min-w-[160px]"
+              className="text-xs font-semibold text-[var(--foreground)] bg-white border border-[var(--teal-tint)] rounded px-2 py-0.5 outline-none focus:border-[var(--teal)] min-w-[160px]"
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commitRename}
               onKeyDown={(e) => {
@@ -838,7 +838,7 @@ function SectionHeader({
             />
           ) : (
             <span
-              className="text-xs font-semibold text-[#1a1a1a] cursor-text hover:underline decoration-dotted"
+              className="text-xs font-semibold text-[var(--foreground)] cursor-text hover:underline decoration-dotted"
               onDoubleClick={() => canEdit && setEditing(true)}
               title={canEdit ? "Double-click to rename" : undefined}
             >
@@ -849,7 +849,7 @@ function SectionHeader({
           <div className="flex-1" />
 
           {costVisible && sectionTotal > 0 && (
-            <span className="text-xs font-semibold text-[#155e63]">
+            <span className="text-xs font-semibold text-[var(--teal)]">
               {formatCurrency(sectionTotal / 100)}
             </span>
           )}
@@ -859,7 +859,7 @@ function SectionHeader({
               <button
                 type="button"
                 onClick={onAddItem}
-                className="text-[#155e63] hover:text-[#0e4448] transition-colors"
+                className="text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
                 aria-label="Add item to section"
                 title="Add item"
               >
@@ -868,7 +868,7 @@ function SectionHeader({
               <button
                 type="button"
                 onClick={onDelete}
-                className="text-[#c0c0c0] hover:text-[#a13d3d] transition-colors"
+                className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
                 aria-label="Delete section"
                 title="Delete section"
               >
@@ -902,8 +902,8 @@ function DroppableEmptyZone({
         colSpan={colCount}
         className={`py-4 px-6 text-xs text-center border-2 border-dashed rounded-sm transition-colors ${
           isOver
-            ? "border-[#155e63] text-[#155e63] bg-[#e8f4f5]"
-            : "border-[#d8e8e8] text-[#b0c8c8]"
+            ? "border-[var(--teal)] text-[var(--teal)] bg-[var(--teal-tint-200)]"
+            : "border-[var(--teal-bg-650)] text-[var(--teal-bg-light)]"
         }`}
       >
         {isOver ? "Release to move here" : "Drop item here"}
@@ -1580,20 +1580,20 @@ export function SectionedListGrid({
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  const headerCellCls = "px-2 py-2 text-left text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide border-r border-[#f0f0f0] last:border-r-0 bg-[#faf9f7] select-none relative";
+  const headerCellCls = "px-2 py-2 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none relative";
 
   return (
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-1">
-        <div className="flex items-center gap-3 text-xs text-[#6b6b6b]">
+        <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
           {items.filter((i) => !i.archived).length > 0 && (
             <>
               <span>{items.filter((i) => !i.archived).length} item{items.filter((i) => !i.archived).length !== 1 ? "s" : ""}</span>
               {costVisible && grandTotal > 0 && (
                 <>
-                  <span className="text-[#efefef]">|</span>
-                  <span className="font-semibold text-[#1a1a1a]">Total: {formatCurrency(grandTotal / 100)}</span>
+                  <span className="text-[var(--border)]">|</span>
+                  <span className="font-semibold text-[var(--foreground)]">Total: {formatCurrency(grandTotal / 100)}</span>
                 </>
               )}
             </>
@@ -1608,14 +1608,14 @@ export function SectionedListGrid({
             <button
               type="button"
               onClick={expandAll}
-              className="text-xs text-[#6b6b6b] hover:text-[#1a1a1a] border border-[#e8e8e8] rounded px-2 py-1 hover:bg-[#f5f4f0] transition-colors"
+              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--neutral-cool-200)] rounded px-2 py-1 hover:bg-[var(--surface-warm-100)] transition-colors"
             >
               Expand all
             </button>
             <button
               type="button"
               onClick={collapseAll}
-              className="text-xs text-[#6b6b6b] hover:text-[#1a1a1a] border border-[#e8e8e8] rounded px-2 py-1 hover:bg-[#f5f4f0] transition-colors"
+              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--neutral-cool-200)] rounded px-2 py-1 hover:bg-[var(--surface-warm-100)] transition-colors"
             >
               Collapse all
             </button>
@@ -1630,7 +1630,7 @@ export function SectionedListGrid({
             type="button"
             onClick={() => setColPickerOpen((o) => !o)}
             aria-label="Column settings"
-            className="flex items-center gap-1.5 text-xs text-[#6b6b6b] hover:text-[#1a1a1a] border border-[#e8e8e8] rounded-lg px-2 py-1.5 hover:bg-[#f5f4f0] transition-colors"
+            className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--neutral-cool-200)] rounded-lg px-2 py-1.5 hover:bg-[var(--surface-warm-100)] transition-colors"
           >
             <Settings2 size={12} />
             Columns
@@ -1642,8 +1642,8 @@ export function SectionedListGrid({
               .filter((c): c is ColDef => !!c && c.toggleable);
 
             return (
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#efefef] rounded-xl shadow-lg py-1 min-w-[200px]">
-                <p className="px-3 py-1.5 text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Columns</p>
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[200px]">
+                <p className="px-3 py-1.5 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Columns</p>
                 <DndContext
                   sensors={colPickerSensors}
                   onDragStart={({ active }) => setColPickerDragId(active.id as string)}
@@ -1715,7 +1715,7 @@ export function SectionedListGrid({
       </div>
 
       {/* Table */}
-      <div className="border border-[#efefef] rounded-xl overflow-hidden">
+      <div className="border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
             <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: visibleCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}>
@@ -1726,7 +1726,7 @@ export function SectionedListGrid({
               </colgroup>
 
               <thead>
-                <tr className="border-b border-[#f0f0f0]">
+                <tr className="border-b border-[var(--neutral-cool-150)]">
                   {visibleCols.map((col) => {
                     const isColDragging = colHeaderDragDisplay?.draggingId === col.id;
                     const isDropBefore = col.toggleable
@@ -1759,22 +1759,22 @@ export function SectionedListGrid({
                         } : undefined}
                       >
                         {isDropBefore && (
-                          <span className="absolute left-0 top-0 h-full w-0.5 bg-[#155e63] z-20 pointer-events-none" aria-hidden />
+                          <span className="absolute left-0 top-0 h-full w-0.5 bg-[var(--teal)] z-20 pointer-events-none" aria-hidden />
                         )}
                         {isDropAfterEnd && (
-                          <span className="absolute right-0 top-0 h-full w-0.5 bg-[#155e63] z-20 pointer-events-none" aria-hidden />
+                          <span className="absolute right-0 top-0 h-full w-0.5 bg-[var(--teal)] z-20 pointer-events-none" aria-hidden />
                         )}
                         {col.toggleable && !colHeaderDragDisplay && (
                           <GripHorizontal
                             size={10}
-                            className="inline-block mr-1 text-[#d8d8d8] group-hover:text-[#a0a0a0] transition-colors"
+                            className="inline-block mr-1 text-[var(--gray-750)] group-hover:text-[var(--gray-1000)] transition-colors"
                             aria-hidden
                           />
                         )}
                         <span>{col.label}</span>
                         {col.resizable && (
                           <span
-                            className="absolute right-0 top-0 h-full w-[10px] cursor-col-resize hover:bg-[#155e63]/30 transition-colors"
+                            className="absolute right-0 top-0 h-full w-[10px] cursor-col-resize hover:bg-[var(--teal)]/30 transition-colors"
                             onPointerDown={(e) => { e.stopPropagation(); onResizeStart(e, col.id); }}
                           />
                         )}
@@ -1816,7 +1816,7 @@ export function SectionedListGrid({
                         <>
                           {sectionItems.length === 0 && !isDraggingActive && (
                             <tr>
-                              <td colSpan={visibleCols.length} className="py-2 px-6 text-xs text-[#c0c0c0] italic">
+                              <td colSpan={visibleCols.length} className="py-2 px-6 text-xs text-[var(--neutral-cool-400)] italic">
                                 No items — click + to add
                               </td>
                             </tr>
@@ -1848,16 +1848,16 @@ export function SectionedListGrid({
                             if (costIdx < 0) return null;
                             const afterSpan = visibleCols.length - costIdx - 1;
                             return (
-                              <tr className="border-t-2 border-[#cfe0e1] bg-[#f4f9f8]">
+                              <tr className="border-t-2 border-[var(--teal-tint)] bg-[var(--teal-tint-500)]">
                                 {costIdx > 0 && (
-                                  <td colSpan={costIdx} className="px-3 py-1.5 text-right text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide">
+                                  <td colSpan={costIdx} className="px-3 py-1.5 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
                                     Section total
                                   </td>
                                 )}
-                                <td className="px-2 py-1.5 text-xs font-bold text-[#155e63] text-right">
+                                <td className="px-2 py-1.5 text-xs font-bold text-[var(--teal)] text-right">
                                   {formatCurrency(total / 100)}
                                 </td>
-                                {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[#f4f9f8]" />}
+                                {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[var(--teal-tint-500)]" />}
                               </tr>
                             );
                           })()}
@@ -1874,9 +1874,9 @@ export function SectionedListGrid({
                   strategy={verticalListSortingStrategy}
                 >
                   {unsectionedItems.length > 0 && (
-                    <tr className="border-b border-[#e4eded]">
-                      <td colSpan={visibleCols.length} className="px-3 py-1.5 sticky left-0 z-10 bg-[#faf9f7]">
-                        <span className="text-xs font-semibold text-[#afafaf]">Unsectioned</span>
+                    <tr className="border-b border-[var(--teal-bg-400)]">
+                      <td colSpan={visibleCols.length} className="px-3 py-1.5 sticky left-0 z-10 bg-[var(--background)]">
+                        <span className="text-xs font-semibold text-[var(--dark-grey)]">Unsectioned</span>
                       </td>
                     </tr>
                   )}
@@ -1907,7 +1907,7 @@ export function SectionedListGrid({
                 {/* Empty state */}
                 {items.filter((i) => !i.archived).length === 0 && sections.length === 0 && (
                   <tr>
-                    <td colSpan={visibleCols.length} className="text-center py-10 text-sm text-[#afafaf]">
+                    <td colSpan={visibleCols.length} className="text-center py-10 text-sm text-[var(--dark-grey)]">
                       No items yet. Add a section or use a starter list.
                     </td>
                   </tr>
@@ -1919,16 +1919,16 @@ export function SectionedListGrid({
                   if (costIdx < 0) return null;
                   const afterSpan = visibleCols.length - costIdx - 1;
                   return (
-                    <tr className="bg-[#f4f9f8] border-t-2 border-[#155e63]">
+                    <tr className="bg-[var(--teal-tint-500)] border-t-2 border-[var(--teal)]">
                       {costIdx > 0 && (
-                        <td colSpan={costIdx} className="px-3 py-2.5 text-right text-xs font-bold text-[#1a1a1a] uppercase tracking-wide">
+                        <td colSpan={costIdx} className="px-3 py-2.5 text-right text-xs font-bold text-[var(--foreground)] uppercase tracking-wide">
                           Grand total
                         </td>
                       )}
-                      <td className="px-2 py-2.5 text-sm font-bold text-[#155e63] text-right">
+                      <td className="px-2 py-2.5 text-sm font-bold text-[var(--teal)] text-right">
                         {formatCurrency(grandTotal / 100)}
                       </td>
-                      {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[#f4f9f8]" />}
+                      {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[var(--teal-tint-500)]" />}
                     </tr>
                   );
                 })()}
@@ -1972,7 +1972,7 @@ export function SectionedListGrid({
           <button
             type="button"
             onClick={addSection}
-            className="flex items-center gap-2 text-sm font-medium text-[#155e63] border border-[#cfe0e1] rounded-xl px-4 py-2.5 hover:bg-[#155e63]/5 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors"
           >
             <Plus size={14} aria-hidden="true" />
             Add section
@@ -1980,7 +1980,7 @@ export function SectionedListGrid({
           <button
             type="button"
             onClick={() => addItemToSection(null)}
-            className="flex items-center gap-2 text-sm font-medium text-[#6b6b6b] border border-[#e8e8e8] rounded-xl px-4 py-2.5 hover:bg-[#faf9f7] transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-[var(--muted-foreground)] border border-[var(--neutral-cool-200)] rounded-xl px-4 py-2.5 hover:bg-[var(--background)] transition-colors"
           >
             <Plus size={14} aria-hidden="true" />
             Add item

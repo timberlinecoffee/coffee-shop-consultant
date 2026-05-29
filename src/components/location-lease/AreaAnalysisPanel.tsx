@@ -55,7 +55,7 @@ export function AreaAnalysisPanel({
 
   if (!hasCoords) {
     return (
-      <div className="rounded-xl border border-dashed border-[#efefef] bg-[#faf9f7]/40 px-3 py-3 text-center">
+      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)]/40 px-3 py-3 text-center">
         <MapPin className="mx-auto mb-1 size-4 text-[#888]/60" aria-hidden="true" />
         <p className="text-xs text-[#888]">
           Pick an address from the autocomplete above. Then we can pull what is
@@ -67,19 +67,19 @@ export function AreaAnalysisPanel({
 
   if (!canUse) {
     return (
-      <div className="rounded-xl border border-[#efefef] px-3 py-3 text-center">
+      <div className="rounded-xl border border-[var(--border)] px-3 py-3 text-center">
         <p className="text-xs text-[#888]">
           {subscriptionTier === 'free' ? (
             <>
               Area analysis requires a paid plan.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade →
               </a>
             </>
           ) : aiCreditsRemaining === 0 ? (
             <>
               You&apos;re out of credits.{' '}
-              <a href="/pricing" className="text-[#155e63] underline">
+              <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade for more →
               </a>
             </>
@@ -117,7 +117,7 @@ export function AreaAnalysisPanel({
       )}
 
       {text && (
-        <div className="rounded-xl border border-[#efefef] bg-[#f7f6f3]/40 px-4 py-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-warm-50)]/40 px-4 py-4">
           <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{text}</div>
           {generatedAt && (
             <p className="mt-3 text-[10px] italic text-[#888]">

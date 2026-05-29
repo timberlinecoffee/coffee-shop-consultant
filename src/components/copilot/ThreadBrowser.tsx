@@ -318,7 +318,7 @@ export function ThreadBrowser({
   )
 
   return (
-    <div className="border-b border-[#efefef]" data-testid="thread-browser">
+    <div className="border-b border-[var(--border)]" data-testid="thread-browser">
       <div className="flex items-center justify-between px-4 py-2 gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-[#666] truncate">
           Conversations ({filter.trim() ? `${filteredCount} of ${totalCount}` : totalCount})
@@ -327,7 +327,7 @@ export function ThreadBrowser({
           <button
             type="button"
             onClick={() => onNewThread(currentWorkspaceKey)}
-            className="text-xs font-semibold text-[#155e63] hover:underline"
+            className="text-xs font-semibold text-[var(--teal)] hover:underline"
             title={`New conversation in ${WORKSPACE_LABELS[currentWorkspaceKey]}`}
           >
             + Here
@@ -336,7 +336,7 @@ export function ThreadBrowser({
           <button
             type="button"
             onClick={() => onNewThread(null)}
-            className="text-xs font-semibold text-[#155e63] hover:underline"
+            className="text-xs font-semibold text-[var(--teal)] hover:underline"
             title="New general conversation (not tied to a workspace)"
           >
             + General
@@ -345,7 +345,7 @@ export function ThreadBrowser({
       </div>
 
       <div className="px-3 pb-2">
-        <div className="flex items-center gap-2 rounded-md border border-[#e5e3df] bg-white px-2 py-1 focus-within:ring-2 focus-within:ring-[#155e63]/30">
+        <div className="flex items-center gap-2 rounded-md border border-[var(--gray-600)] bg-white px-2 py-1 focus-within:ring-2 focus-within:ring-[var(--teal)]/30">
           <Search aria-hidden className="w-3.5 h-3.5 text-[#aaa]" />
           <input
             type="search"
@@ -359,7 +359,7 @@ export function ThreadBrowser({
             <button
               type="button"
               onClick={() => setFilter("")}
-              className="text-[10px] text-[#888] hover:text-[#1a1a1a]"
+              className="text-[10px] text-[#888] hover:text-[var(--foreground)]"
               aria-label="Clear search"
             >
               Clear
@@ -393,7 +393,7 @@ export function ThreadBrowser({
                     type="button"
                     onClick={() => toggleGroup(key)}
                     aria-expanded={isOpen}
-                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-[#1a1a1a] hover:bg-[#f7f6f3] rounded-md"
+                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-warm-50)] rounded-md"
                   >
                     <span className="flex items-center gap-2">
                       <ChevronRight
@@ -417,14 +417,14 @@ export function ThreadBrowser({
                           return (
                             <li key={thread.id}>
                               <div className="px-3 py-2 rounded-lg border border-red-200 bg-red-50">
-                                <p className="text-xs text-[#1a1a1a] mb-2">
+                                <p className="text-xs text-[var(--foreground)] mb-2">
                                   Delete this conversation? This can&#39;t be undone.
                                 </p>
                                 <div className="flex gap-2">
                                   <button
                                     type="button"
                                     onClick={() => setPendingDeleteId(null)}
-                                    className="text-xs px-2 py-1 rounded border border-[#e5e3df] bg-white text-[#555] hover:bg-[#f7f6f3]"
+                                    className="text-xs px-2 py-1 rounded border border-[var(--gray-600)] bg-white text-[#555] hover:bg-[var(--surface-warm-50)]"
                                   >
                                     Cancel
                                   </button>
@@ -446,8 +446,8 @@ export function ThreadBrowser({
                             <div
                               className={`group flex items-center rounded-lg transition-colors ${
                                 selected
-                                  ? "bg-[#155e63]/10"
-                                  : "hover:bg-[#f7f6f3]"
+                                  ? "bg-[var(--teal)]/10"
+                                  : "hover:bg-[var(--surface-warm-50)]"
                               }`}
                             >
                               {isEditing ? (
@@ -466,7 +466,7 @@ export function ThreadBrowser({
                                       if (e.key === "Escape") cancelEdit()
                                     }}
                                     maxLength={200}
-                                    className="w-full text-sm font-medium bg-transparent border-b border-[#155e63] outline-none text-[#1a1a1a]"
+                                    className="w-full text-sm font-medium bg-transparent border-b border-[var(--teal)] outline-none text-[var(--foreground)]"
                                   />
                                 </div>
                               ) : (
@@ -474,7 +474,7 @@ export function ThreadBrowser({
                                   type="button"
                                   onClick={() => onSelectThread(thread)}
                                   className={`flex-1 min-w-0 px-3 py-2 text-left ${
-                                    selected ? "text-[#155e63]" : "text-[#1a1a1a]"
+                                    selected ? "text-[var(--teal)]" : "text-[var(--foreground)]"
                                   }`}
                                 >
                                   <span className="block truncate font-medium text-sm">
@@ -506,9 +506,9 @@ export function ThreadBrowser({
                                         cur === thread.id ? null : thread.id,
                                       )
                                     }
-                                    className={`w-7 h-7 flex items-center justify-center rounded text-[#aaa] hover:text-[#1a1a1a] hover:bg-[#155e63]/10 ${
+                                    className={`w-7 h-7 flex items-center justify-center rounded text-[#aaa] hover:text-[var(--foreground)] hover:bg-[var(--teal)]/10 ${
                                       openMenuId === thread.id
-                                        ? "opacity-100 text-[#1a1a1a] bg-[#155e63]/10"
+                                        ? "opacity-100 text-[var(--foreground)] bg-[var(--teal)]/10"
                                         : "opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
                                     }`}
                                   >
@@ -518,7 +518,7 @@ export function ThreadBrowser({
                                     <div
                                       role="menu"
                                       aria-label="Conversation actions"
-                                      className="absolute right-1 top-7 z-20 min-w-[140px] rounded-md border border-[#e5e3df] bg-white shadow-md py-1"
+                                      className="absolute right-1 top-7 z-20 min-w-[140px] rounded-md border border-[var(--gray-600)] bg-white shadow-md py-1"
                                     >
                                       <button
                                         type="button"
@@ -527,7 +527,7 @@ export function ThreadBrowser({
                                           setOpenMenuId(null)
                                           startEdit(thread)
                                         }}
-                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[#1a1a1a] hover:bg-[#f7f6f3]"
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--foreground)] hover:bg-[var(--surface-warm-50)]"
                                       >
                                         <Pencil className="w-3 h-3 text-[#888]" />
                                         Rename

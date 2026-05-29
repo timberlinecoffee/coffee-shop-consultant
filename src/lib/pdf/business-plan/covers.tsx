@@ -58,14 +58,14 @@ export function renderCover(templateId: string, props: CoverProps): React.ReactE
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function accent(props: CoverProps): string {
-  return props.accentColor ?? "#E8C24A";
+  return props.accentColor ?? "var(--warning-amber)";
 }
 
 // ── Template 1: Classic ───────────────────────────────────────────────────────
 
 const classicS = StyleSheet.create({
   page: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "var(--card)",
     paddingHorizontal: 56,
     paddingTop: 0,
     paddingBottom: 0,
@@ -83,13 +83,13 @@ const classicS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 36,
     fontWeight: "bold",
-    color: "#1A6E3B",
+    color: "var(--success)",
     textAlign: "center",
   },
   subtitle: {
     fontFamily: "Source Serif Pro",
     fontSize: 22,
-    color: "#333333",
+    color: "var(--gray-1350)",
     textAlign: "center",
     marginBottom: 10,
   },
@@ -98,7 +98,7 @@ const classicS = StyleSheet.create({
     fontFamily: "Inter",
     fontSize: 13,
     fontStyle: "italic",
-    color: "#666666",
+    color: "var(--gray-1100)",
     textAlign: "center",
   },
   metaZone: {
@@ -111,19 +111,19 @@ const classicS = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter",
     fontSize: 11,
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginRight: 4,
   },
   metaValue: {
     fontFamily: "Inter",
     fontSize: 11,
     fontWeight: "600",
-    color: "#333333",
+    color: "var(--gray-1350)",
   },
   date: {
     fontFamily: "Inter",
     fontSize: 11,
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginBottom: 0,
   },
   bottomBar: {
@@ -187,7 +187,7 @@ function ClassicCover(props: CoverProps) {
 
 const modernS = StyleSheet.create({
   page: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "var(--card)",
     flexDirection: "row",
   },
   stripe: {
@@ -196,7 +196,7 @@ const modernS = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: 6,
-    backgroundColor: "#1A6E3B",
+    backgroundColor: "var(--success)",
   },
   content: {
     flex: 1,
@@ -210,21 +210,21 @@ const modernS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 44,
     fontWeight: "bold",
-    color: "#1A6E3B",
+    color: "var(--success)",
     lineHeight: 1.1,
     marginBottom: 14,
   },
   subtitle: {
     fontFamily: "Inter",
     fontSize: 18,
-    color: "#555555",
+    color: "var(--gray-1150)",
     marginBottom: 10,
   },
   tagline: {
     fontFamily: "Inter",
     fontSize: 13,
     fontStyle: "italic",
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginBottom: 14,
   },
   spacer: {
@@ -233,20 +233,20 @@ const modernS = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginBottom: 2,
   },
   metaValue: {
     fontFamily: "Inter",
     fontSize: 12,
     fontWeight: "600",
-    color: "#333333",
+    color: "var(--gray-1350)",
     marginBottom: 12,
   },
   date: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginTop: 8,
   },
   logo: {
@@ -263,7 +263,7 @@ const modernS = StyleSheet.create({
     right: 56,
     fontFamily: "Inter",
     fontSize: 8,
-    color: "#CCCCCC",
+    color: "var(--gray-800)",
   },
 });
 
@@ -322,13 +322,13 @@ function ModernCover(props: CoverProps) {
 
 const editS = StyleSheet.create({
   page: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "var(--card)",
     flexDirection: "column",
   },
   greenBlock: {
     width: "100%",
     height: 356,
-    backgroundColor: "#1A6E3B",
+    backgroundColor: "var(--success)",
     padding: 40,
     flexDirection: "column",
     justifyContent: "center",
@@ -344,7 +344,7 @@ const editS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 38,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: "var(--card)",
     textAlign: "center",
     marginBottom: 16,
   },
@@ -357,12 +357,12 @@ const editS = StyleSheet.create({
   tagline: {
     fontFamily: "Inter",
     fontSize: 13,
-    color: "#D4E8DF",
+    color: "var(--sage-bg)",
     textAlign: "center",
   },
   whiteBlock: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "var(--card)",
     paddingHorizontal: 56,
     paddingTop: 40,
     paddingBottom: 48,
@@ -370,20 +370,20 @@ const editS = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginBottom: 3,
   },
   metaValue: {
     fontFamily: "Inter",
     fontSize: 13,
     fontWeight: "600",
-    color: "#333333",
+    color: "var(--gray-1350)",
     marginBottom: 16,
   },
   date: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "#888888",
+    color: "var(--neutral-cool-600)",
     marginTop: 8,
   },
   accentSquare: {

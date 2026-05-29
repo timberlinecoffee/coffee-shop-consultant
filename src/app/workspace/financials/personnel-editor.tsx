@@ -40,8 +40,8 @@ const PAY_BASIS_LABEL: Record<PersonnelPayBasis, string> = {
 };
 
 const inputCls =
-  "text-sm border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-const fieldLabelCls = "block text-[10px] font-medium text-[#6b6b6b] mb-1";
+  "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const fieldLabelCls = "block text-[10px] font-medium text-[var(--muted-foreground)] mb-1";
 
 interface RowProps {
   line: PersonnelLine;
@@ -103,7 +103,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
   const payValue = line.pay_amount_cents ? line.pay_amount_cents / 100 : "";
 
   return (
-    <div className="border border-[#efefef] rounded-xl bg-white">
+    <div className="border border-[var(--border)] rounded-xl bg-white">
       <div className="px-3 py-2.5 space-y-2.5">
         {/* Row A: role + designation + delete */}
         <div className="flex items-center gap-2">
@@ -112,8 +112,8 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
             onClick={() => setExpanded(!expanded)}
             className={`shrink-0 transition-colors ${
               line.ramp?.enabled || line.end_month || line.seasonal?.enabled || line.benefits_fixed_cents
-                ? "text-[#155e63]"
-                : "text-[#afafaf] hover:text-[#1a1a1a]"
+                ? "text-[var(--teal)]"
+                : "text-[var(--dark-grey)] hover:text-[var(--foreground)]"
             }`}
             aria-label={expanded ? "Collapse" : "Expand"}
             title="Hire timing, seasonal pattern, fixed benefits"
@@ -146,7 +146,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
             type="button"
             onClick={onDelete}
             disabled={!canEdit}
-            className="text-[#afafaf] hover:text-[#a13d3d] shrink-0 disabled:opacity-50"
+            className="text-[var(--dark-grey)] hover:text-[var(--error)] shrink-0 disabled:opacity-50"
             aria-label="Remove role"
           >
             <Trash2 size={14} />
@@ -194,7 +194,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
           <div className="w-32">
             <label className={fieldLabelCls}>{isHourly ? "Rate / hour" : "Pay amount"}</label>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
                 {sym}
               </span>
               <NumericInput
@@ -252,25 +252,25 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                 aria-label="Benefits as a percent of pay"
                 title="Payroll taxes, health, and other burden as a % of base pay"
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
                 %
               </span>
             </div>
           </div>
           <div className="ml-auto text-right">
-            <p className="text-[10px] font-medium text-[#6b6b6b]">Loaded cost</p>
-            <p className="text-sm font-semibold text-[#155e63]">{fmt(loaded, currencyCode)}/mo</p>
+            <p className="text-[10px] font-medium text-[var(--muted-foreground)]">Loaded cost</p>
+            <p className="text-sm font-semibold text-[var(--teal)]">{fmt(loaded, currencyCode)}/mo</p>
           </div>
         </div>
       </div>
 
       {expanded && (
-        <div className="px-3 pb-3 pt-3 border-t border-[#f5f5f5] bg-[#fafafa] space-y-3">
+        <div className="px-3 pb-3 pt-3 border-t border-[var(--neutral-cool-100)] bg-[var(--neutral-cool-50)] space-y-3">
           {/* Fixed per-head benefits */}
           <div>
             <label className={fieldLabelCls}>Fixed benefits ({sym} per person / month)</label>
             <div className="relative w-40">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#afafaf] pointer-events-none">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
                 {sym}
               </span>
               <NumericInput
@@ -288,7 +288,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                 placeholder="0"
               />
             </div>
-            <p className="text-[10px] text-[#afafaf] mt-1">
+            <p className="text-[10px] text-[var(--dark-grey)] mt-1">
               A flat per-head amount on top of the percentage (e.g. a fixed health stipend).
             </p>
           </div>
@@ -312,9 +312,9 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                     onChange({ ...line, ramp: { ...line.ramp, enabled: false } });
                   }
                 }}
-                className="w-3.5 h-3.5 accent-[#155e63]"
+                className="w-3.5 h-3.5 accent-[var(--teal)]"
               />
-              <span className="text-xs font-medium text-[#1a1a1a]">
+              <span className="text-xs font-medium text-[var(--foreground)]">
                 Phased hiring: set the hire month and ramp staffing in gradually
               </span>
             </label>
@@ -336,7 +336,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                     }
                     className={`${inputCls} w-full`}
                   />
-                  <p className="text-[10px] text-[#afafaf] mt-1">Month 1 = opening</p>
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">Month 1 = opening</p>
                 </div>
                 <div>
                   <label className={fieldLabelCls}>Ramp-up months</label>
@@ -357,7 +357,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                     }
                     className={`${inputCls} w-full`}
                   />
-                  <p className="text-[10px] text-[#afafaf] mt-1">0 = full staff at once</p>
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">0 = full staff at once</p>
                 </div>
                 <div>
                   <label className={fieldLabelCls}>Start at % of staff</label>
@@ -392,23 +392,23 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                 checked={seasonalOn}
                 disabled={!canEdit}
                 onChange={(e) => enableSeasonal(e.target.checked)}
-                className="w-3.5 h-3.5 accent-[#155e63]"
+                className="w-3.5 h-3.5 accent-[var(--teal)]"
               />
-              <span className="text-xs font-medium text-[#1a1a1a]">
+              <span className="text-xs font-medium text-[var(--foreground)]">
                 Recurring season: only pay this role in certain months each year
               </span>
             </label>
             {seasonalOn && (
               <div className="ml-6 mt-2 space-y-2.5">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] text-[#afafaf]">Quick pick:</span>
+                  <span className="text-[10px] text-[var(--dark-grey)]">Quick pick:</span>
                   {SEASON_PRESETS.map((p) => (
                     <button
                       key={p.label}
                       type="button"
                       disabled={!canEdit}
                       onClick={() => updateSeasonal({ active_months: p.months })}
-                      className="text-[10px] px-2 py-0.5 rounded-md border border-[#e0e0e0] text-[#155e63] hover:bg-[#155e63]/5 disabled:opacity-50"
+                      className="text-[10px] px-2 py-0.5 rounded-md border border-[var(--border-medium)] text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:opacity-50"
                     >
                       {p.label}
                     </button>
@@ -427,8 +427,8 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                         onClick={() => toggleSeasonalMonth(month)}
                         className={`text-[11px] w-10 py-1 rounded-md border transition-colors disabled:opacity-50 ${
                           active
-                            ? "bg-[#155e63] text-white border-[#155e63]"
-                            : "bg-white text-[#6b6b6b] border-[#e0e0e0] hover:border-[#155e63]"
+                            ? "bg-[var(--teal)] text-white border-[var(--teal)]"
+                            : "bg-white text-[var(--muted-foreground)] border-[var(--border-medium)] hover:border-[var(--teal)]"
                         }`}
                       >
                         {label}
@@ -442,14 +442,14 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                     checked={line.seasonal?.repeat_yearly ?? true}
                     disabled={!canEdit}
                     onChange={(e) => updateSeasonal({ repeat_yearly: e.target.checked })}
-                    className="w-3.5 h-3.5 accent-[#155e63]"
+                    className="w-3.5 h-3.5 accent-[var(--teal)]"
                   />
-                  <span className="text-xs text-[#1a1a1a]">Repeat every year</span>
+                  <span className="text-xs text-[var(--foreground)]">Repeat every year</span>
                 </label>
                 {activeMonths.length === 0 ? (
-                  <p className="text-[10px] text-[#a13d3d]">Pick at least one active month.</p>
+                  <p className="text-[10px] text-[var(--error)]">Pick at least one active month.</p>
                 ) : (
-                  <p className="text-[10px] text-[#6b6b6b]">
+                  <p className="text-[10px] text-[var(--muted-foreground)]">
                     Paid in: {activeMonths.map((m) => MONTH_ABBR[m - 1]).join(", ")}
                     {(line.seasonal?.repeat_yearly ?? true) ? ", every year." : ", first year only."}
                   </p>
@@ -467,9 +467,9 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                   checked={typeof line.end_month === "number"}
                   disabled={!canEdit}
                   onChange={(e) => enableEndMonth(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-[#155e63]"
+                  className="w-3.5 h-3.5 accent-[var(--teal)]"
                 />
-                <span className="text-xs font-medium text-[#1a1a1a]">
+                <span className="text-xs font-medium text-[var(--foreground)]">
                   Temporary: stop paying this role after a set month (one time)
                 </span>
               </label>
@@ -541,13 +541,13 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
 
   return (
     <div className="space-y-4" id="tour-personnel">
-      <div className="rounded-xl border border-[#efefef] bg-white p-4">
+      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Users size={15} className="text-[#155e63]" aria-hidden="true" />
+            <Users size={15} className="text-[var(--teal)]" aria-hidden="true" />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">Staff & Salaries</p>
-              <p className="text-[10px] text-[#afafaf] mt-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">Staff & Salaries</p>
+              <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                 Each role drives labor cost on your P&amp;L, cash flow, and break-even. Mark baristas
                 and other hands-on staff as Direct Labor; managers and back-office roles as Overhead.
               </p>
@@ -557,7 +557,7 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
             <button
               type="button"
               onClick={addRole}
-              className="flex items-center gap-1 text-xs font-medium text-[#155e63] hover:bg-[#155e63]/5 px-2 py-1 rounded-md shrink-0"
+              className="flex items-center gap-1 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md shrink-0"
             >
               <Plus size={12} /> Add role
             </button>
@@ -566,7 +566,7 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
 
         <div className="space-y-2">
           {personnel.length === 0 ? (
-            <p className="text-xs text-[#afafaf] italic py-3 px-3 bg-[#faf9f7] rounded-lg">
+            <p className="text-xs text-[var(--dark-grey)] italic py-3 px-3 bg-[var(--background)] rounded-lg">
               No staff yet. Add roles to model your payroll — or leave this empty if you&apos;re
               running owner-only (use an owner draw on the Forecast tab instead of a salary).
             </p>
@@ -586,26 +586,26 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
       </div>
 
       {personnel.length > 0 && (
-        <div className="rounded-xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
+        <div className="rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Total Headcount</p>
-              <p className="text-lg font-bold text-[#1a1a1a]">{totalHeadcount}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Total Headcount</p>
+              <p className="text-lg font-bold text-[var(--foreground)]">{totalHeadcount}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Loaded Payroll / Month</p>
-              <p className="text-lg font-bold text-[#1a1a1a]">{fmt(totalLoaded, currencyCode)}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Loaded Payroll / Month</p>
+              <p className="text-lg font-bold text-[var(--foreground)]">{fmt(totalLoaded, currencyCode)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Direct Labor (COGS)</p>
-              <p className="text-lg font-bold text-[#1a1a1a]">{fmt(cogsLoaded, currencyCode)}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Direct Labor (COGS)</p>
+              <p className="text-lg font-bold text-[var(--foreground)]">{fmt(cogsLoaded, currencyCode)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#155e63]">Overhead Labor</p>
-              <p className="text-lg font-bold text-[#1a1a1a]">{fmt(overheadLoaded, currencyCode)}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Overhead Labor</p>
+              <p className="text-lg font-bold text-[var(--foreground)]">{fmt(overheadLoaded, currencyCode)}</p>
             </div>
           </div>
-          <p className="text-[10px] text-[#6b6b6b] mt-3">
+          <p className="text-[10px] text-[var(--muted-foreground)] mt-3">
             Loaded cost includes benefits. At full staffing — phased hires ramp in over the months
             you set. This is the labor figure used everywhere else in your plan.
           </p>

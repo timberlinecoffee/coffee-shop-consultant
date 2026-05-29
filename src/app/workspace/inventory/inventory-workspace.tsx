@@ -49,18 +49,18 @@ function SeedBanner({
   }
 
   return (
-    <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-5 py-4 mb-5">
+    <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-5 py-4 mb-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#155e63] mb-1">Generate a starter supplies list</p>
-          <p className="text-xs text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm font-semibold text-[var(--teal)] mb-1">Generate a starter supplies list</p>
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
             Creates standard supply categories with typical consumables for a coffee shop. Adjust after.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors shrink-0 mt-0.5"
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0 mt-0.5"
           aria-label="Dismiss"
         >
           <X size={14} />
@@ -71,12 +71,12 @@ function SeedBanner({
           type="button"
           onClick={handleSeed}
           disabled={status === "loading"}
-          className="text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-60"
+          className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60"
         >
           {status === "loading" ? "Generating..." : "Generate list"}
         </button>
         {status === "error" && (
-          <span className="text-xs text-[#a13d3d]">Could not generate. Try again.</span>
+          <span className="text-xs text-[var(--error)]">Could not generate. Try again.</span>
         )}
       </div>
     </div>
@@ -120,19 +120,19 @@ export function InventoryWorkspace({
   const suppliesSections = sections.filter((s) => s.list_type === "supplies");
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Package className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>
+            <Package className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
               Inventory
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Track consumables and supplies — cups, lids, dairy, beans, syrups, and cleaning supplies.
             Vendors live in{" "}
-            <Link href="/workspace/suppliers" className="text-[#155e63] underline decoration-dotted hover:decoration-solid">
+            <Link href="/workspace/suppliers" className="text-[var(--teal)] underline decoration-dotted hover:decoration-solid">
               Suppliers &amp; Vendors
             </Link>
             .
@@ -140,8 +140,8 @@ export function InventoryWorkspace({
         </header>
 
         {/* v2 backlog notice */}
-        <div className="mb-5 rounded-xl border border-[#e8e8e8] bg-[#fafafa] px-4 py-3">
-          <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-0.5">Roadmap note</p>
+        <div className="mb-5 rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50)] px-4 py-3">
+          <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Roadmap note</p>
           <p className="text-xs text-[#888] leading-relaxed">
             v2 will add inventory tracking (counts, reorder thresholds, depletion logic) — do not build in v1.
           </p>

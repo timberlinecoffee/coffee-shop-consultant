@@ -120,30 +120,30 @@ export default function EquipmentReferralsAdminPage() {
     }
   }
 
-  const fieldCls = "text-xs border border-[#e8e8e8] rounded px-2 py-1.5 outline-none focus:border-[#155e63] w-full bg-white";
+  const fieldCls = "text-xs border border-[var(--neutral-cool-200)] rounded px-2 py-1.5 outline-none focus:border-[var(--teal)] w-full bg-white";
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
-        <p className="text-sm text-[#6b6b6b]">Loading...</p>
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+        <p className="text-sm text-[var(--muted-foreground)]">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
-        <p className="text-sm text-[#a13d3d]">{error}</p>
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+        <p className="text-sm text-[var(--error)]">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-6xl mx-auto px-6 pt-10 pb-20">
         <header className="mb-8">
-          <h1 className="text-2xl font-bold text-[#1a1a1a]">Equipment Referrals</h1>
-          <p className="text-sm text-[#6b6b6b] mt-1">
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">Equipment Referrals</h1>
+          <p className="text-sm text-[var(--muted-foreground)] mt-1">
             Manage affiliate/referral links. Active entries are matched to AI recommendations.
           </p>
         </header>
@@ -153,18 +153,18 @@ export default function EquipmentReferralsAdminPage() {
             type="button"
             onClick={startNew}
             disabled={editingId === "new"}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-[#155e63] text-white px-4 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
           >
             <Plus size={13} />
             Add referral
           </button>
-          <span className="text-xs text-[#afafaf]">{rows.length} referral{rows.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-[var(--dark-grey)]">{rows.length} referral{rows.length !== 1 ? "s" : ""}</span>
         </div>
 
         {/* Inline form for new entry */}
         {editingId === "new" && (
-          <div className="mb-4 border border-[#cfe0e1] rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold text-[#155e63] mb-3">New referral</p>
+          <div className="mb-4 border border-[var(--teal-tint)] rounded-xl bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold text-[var(--teal)] mb-3">New referral</p>
             <ReferralForm
               draft={draft}
               onChange={setDraft}
@@ -177,30 +177,30 @@ export default function EquipmentReferralsAdminPage() {
           </div>
         )}
 
-        <div className="border border-[#efefef] rounded-xl overflow-hidden bg-white">
+        <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-white">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-[#faf9f7] border-b border-[#f0f0f0]">
-                <th className="px-3 py-2 text-left font-semibold text-[#6b6b6b] uppercase tracking-wide text-[10px]">Brand</th>
-                <th className="px-3 py-2 text-left font-semibold text-[#6b6b6b] uppercase tracking-wide text-[10px]">Model</th>
-                <th className="px-3 py-2 text-left font-semibold text-[#6b6b6b] uppercase tracking-wide text-[10px]">Station</th>
-                <th className="px-3 py-2 text-left font-semibold text-[#6b6b6b] uppercase tracking-wide text-[10px]">Partner</th>
-                <th className="px-3 py-2 text-left font-semibold text-[#6b6b6b] uppercase tracking-wide text-[10px]">Link</th>
-                <th className="px-3 py-2 text-center font-semibold text-[#6b6b6b] uppercase tracking-wide text-[10px]">Active</th>
+              <tr className="bg-[var(--background)] border-b border-[var(--neutral-cool-150)]">
+                <th className="px-3 py-2 text-left font-semibold text-[var(--muted-foreground)] uppercase tracking-wide text-[10px]">Brand</th>
+                <th className="px-3 py-2 text-left font-semibold text-[var(--muted-foreground)] uppercase tracking-wide text-[10px]">Model</th>
+                <th className="px-3 py-2 text-left font-semibold text-[var(--muted-foreground)] uppercase tracking-wide text-[10px]">Station</th>
+                <th className="px-3 py-2 text-left font-semibold text-[var(--muted-foreground)] uppercase tracking-wide text-[10px]">Partner</th>
+                <th className="px-3 py-2 text-left font-semibold text-[var(--muted-foreground)] uppercase tracking-wide text-[10px]">Link</th>
+                <th className="px-3 py-2 text-center font-semibold text-[var(--muted-foreground)] uppercase tracking-wide text-[10px]">Active</th>
                 <th className="px-3 py-2 w-24" />
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-[#afafaf] text-xs">
+                  <td colSpan={7} className="text-center py-10 text-[var(--dark-grey)] text-xs">
                     No referrals yet. Add one above.
                   </td>
                 </tr>
               )}
               {rows.map((row) =>
                 editingId === row.id ? (
-                  <tr key={row.id} className="border-b border-[#f0f0f0] bg-[#f4f9f8]">
+                  <tr key={row.id} className="border-b border-[var(--neutral-cool-150)] bg-[var(--teal-tint-500)]">
                     <td colSpan={7} className="p-4">
                       <ReferralForm
                         draft={draft}
@@ -216,19 +216,19 @@ export default function EquipmentReferralsAdminPage() {
                 ) : (
                   <tr
                     key={row.id}
-                    className={`border-b border-[#f0f0f0] hover:bg-[#faf9f7] cursor-pointer ${!row.active_flag ? "opacity-50" : ""}`}
+                    className={`border-b border-[var(--neutral-cool-150)] hover:bg-[var(--background)] cursor-pointer ${!row.active_flag ? "opacity-50" : ""}`}
                     onClick={() => startEdit(row)}
                   >
-                    <td className="px-3 py-2 font-medium text-[#1a1a1a]">{row.brand}</td>
-                    <td className="px-3 py-2 text-[#1a1a1a]">{row.model}</td>
-                    <td className="px-3 py-2 text-[#6b6b6b]">{row.station || row.category || "—"}</td>
-                    <td className="px-3 py-2 text-[#6b6b6b]">{row.partner_name || "—"}</td>
+                    <td className="px-3 py-2 font-medium text-[var(--foreground)]">{row.brand}</td>
+                    <td className="px-3 py-2 text-[var(--foreground)]">{row.model}</td>
+                    <td className="px-3 py-2 text-[var(--muted-foreground)]">{row.station || row.category || "—"}</td>
+                    <td className="px-3 py-2 text-[var(--muted-foreground)]">{row.partner_name || "—"}</td>
                     <td className="px-3 py-2">
                       <a
                         href={row.referral_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[#155e63] hover:underline"
+                        className="flex items-center gap-1 text-[var(--teal)] hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <ExternalLink size={11} />
@@ -239,17 +239,17 @@ export default function EquipmentReferralsAdminPage() {
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); void toggleActive(row); }}
-                        className="text-[#6b6b6b] hover:text-[#155e63] transition-colors"
+                        className="text-[var(--muted-foreground)] hover:text-[var(--teal)] transition-colors"
                         aria-label={row.active_flag ? "Deactivate" : "Activate"}
                       >
-                        {row.active_flag ? <ToggleRight size={16} className="text-[#155e63]" /> : <ToggleLeft size={16} />}
+                        {row.active_flag ? <ToggleRight size={16} className="text-[var(--teal)]" /> : <ToggleLeft size={16} />}
                       </button>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); void deleteRow(row.id); }}
-                        className="text-[#c0c0c0] hover:text-[#a13d3d] transition-colors"
+                        className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
                         aria-label="Delete"
                       >
                         <Trash2 size={13} />
@@ -291,27 +291,27 @@ function ReferralForm({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">Brand *</label>
+          <label className="block text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Brand *</label>
           <input className={fieldCls} value={draft.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. La Marzocco" />
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">Model *</label>
+          <label className="block text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Model *</label>
           <input className={fieldCls} value={draft.model} onChange={(e) => set("model", e.target.value)} placeholder="e.g. Linea Mini" />
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">Station</label>
+          <label className="block text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Station</label>
           <input className={fieldCls} value={draft.station} onChange={(e) => set("station", e.target.value)} placeholder="e.g. Espresso Bar" />
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">Partner name</label>
+          <label className="block text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Partner name</label>
           <input className={fieldCls} value={draft.partner_name} onChange={(e) => set("partner_name", e.target.value)} placeholder="e.g. Whole Latte Love" />
         </div>
         <div className="col-span-2">
-          <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">Referral URL *</label>
+          <label className="block text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Referral URL *</label>
           <input className={fieldCls} type="url" value={draft.referral_url} onChange={(e) => set("referral_url", e.target.value)} placeholder="https://..." />
         </div>
         <div className="col-span-2">
-          <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1">Notes</label>
+          <label className="block text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Notes</label>
           <input className={fieldCls} value={draft.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Optional notes" />
         </div>
         <div className="flex items-center gap-2">
@@ -320,18 +320,18 @@ function ReferralForm({
             id="active_flag"
             checked={draft.active_flag}
             onChange={(e) => set("active_flag", e.target.checked)}
-            className="accent-[#155e63]"
+            className="accent-[var(--teal)]"
           />
-          <label htmlFor="active_flag" className="text-xs text-[#1a1a1a] cursor-pointer">Active</label>
+          <label htmlFor="active_flag" className="text-xs text-[var(--foreground)] cursor-pointer">Active</label>
         </div>
       </div>
-      {error && <p className="text-xs text-[#a13d3d]">{error}</p>}
+      {error && <p className="text-xs text-[var(--error)]">{error}</p>}
       <div className="flex items-center gap-2 pt-1">
         <button
           type="button"
           onClick={onSave}
           disabled={saving || !draft.brand.trim() || !draft.model.trim() || !draft.referral_url.trim()}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-[#155e63] text-white px-3 py-1.5 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 text-xs font-semibold bg-[var(--teal)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
         >
           <Save size={11} />
           {saving ? "Saving..." : "Save"}
@@ -339,7 +339,7 @@ function ReferralForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1.5 text-xs text-[#6b6b6b] border border-[#e8e8e8] px-3 py-1.5 rounded-lg hover:bg-[#f5f4f0] transition-colors"
+          className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] border border-[var(--neutral-cool-200)] px-3 py-1.5 rounded-lg hover:bg-[var(--surface-warm-100)] transition-colors"
         >
           <X size={11} />
           Cancel

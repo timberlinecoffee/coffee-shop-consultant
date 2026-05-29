@@ -255,11 +255,11 @@ export function GuidedTour({
       {rect ? (
         <>
           {panels.map((p, i) => (
-            <div key={i} className="fixed bg-[#1a1a1a]/55" style={p} onClick={(e) => e.stopPropagation()} />
+            <div key={i} className="fixed bg-[var(--foreground)]/55" style={p} onClick={(e) => e.stopPropagation()} />
           ))}
           {/* Highlight ring — does not capture clicks so the field stays usable */}
           <div
-            className="fixed rounded-xl ring-2 ring-[#155e63] ring-offset-2 ring-offset-transparent pointer-events-none transition-all duration-150"
+            className="fixed rounded-xl ring-2 ring-[var(--teal)] ring-offset-2 ring-offset-transparent pointer-events-none transition-all duration-150"
             style={{
               top: rect.top - PAD,
               left: rect.left - PAD,
@@ -270,13 +270,13 @@ export function GuidedTour({
           />
         </>
       ) : (
-        <div className="fixed inset-0 bg-[#1a1a1a]/40" />
+        <div className="fixed inset-0 bg-[var(--foreground)]/40" />
       )}
 
       {/* Coachmark pop-out */}
       <div
         ref={popRef}
-        className={`fixed z-[52] rounded-2xl bg-white shadow-xl border border-[#efefef] ${
+        className={`fixed z-[52] rounded-2xl bg-white shadow-xl border border-[var(--border)] ${
           isSheet ? "mx-auto max-w-md" : ""
         } ${dragging ? "select-none" : ""}`}
         style={popStyle}
@@ -287,57 +287,57 @@ export function GuidedTour({
         {/* Header doubles as the drag handle */}
         <div
           onPointerDown={onDragStart}
-          className={`px-5 pt-4 pb-3 border-b border-[#f0f0f0] ${dragging ? "cursor-grabbing" : "cursor-grab"} touch-none`}
+          className={`px-5 pt-4 pb-3 border-b border-[var(--neutral-cool-150)] ${dragging ? "cursor-grabbing" : "cursor-grab"} touch-none`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
-              <GripHorizontal size={13} className="text-[#c0c0c0]" aria-hidden="true" />
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
+              <GripHorizontal size={13} className="text-[var(--neutral-cool-400)]" aria-hidden="true" />
               Guided Setup
             </span>
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onClose(index)}
-              className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+              className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
               aria-label="Close guided setup"
             >
               <X size={16} />
             </button>
           </div>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-medium text-[#6b6b6b]">
+            <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
               Step {index + 1} of {steps.length}
             </span>
-            <span className="text-[11px] text-[#afafaf]">{progressPct}%</span>
+            <span className="text-[11px] text-[var(--dark-grey)]">{progressPct}%</span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-[#f0f0f0] overflow-hidden">
+          <div className="h-1.5 w-full rounded-full bg-[var(--neutral-cool-150)] overflow-hidden">
             <div
-              className="h-full bg-[#155e63] rounded-full transition-all duration-300"
+              className="h-full bg-[var(--teal)] rounded-full transition-all duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
         </div>
 
         <div className="px-5 py-4">
-          <h3 className="text-base font-bold text-[#1a1a1a] mb-1.5">{step.title}</h3>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">{step.body}</p>
+          <h3 className="text-base font-bold text-[var(--foreground)] mb-1.5">{step.title}</h3>
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{step.body}</p>
           {step.hint && (
-            <p className="mt-3 text-xs text-[#2a4a4c] bg-[#f0f9f9] border border-[#e5eef0] rounded-lg px-3 py-2 leading-relaxed">
+            <p className="mt-3 text-xs text-[var(--teal-deeper)] bg-[var(--teal-tint-100)] border border-[var(--teal-tint-400)] rounded-lg px-3 py-2 leading-relaxed">
               <span className="font-semibold">Typical coffee shop:</span> {step.hint}
             </p>
           )}
-          {step.why && <p className="mt-2 text-[11px] text-[#afafaf] leading-relaxed">{step.why}</p>}
+          {step.why && <p className="mt-2 text-[11px] text-[var(--dark-grey)] leading-relaxed">{step.why}</p>}
           {!rect && (
-            <p className="mt-3 text-[11px] text-[#c0723d]">Finding this field. You can still continue.</p>
+            <p className="mt-3 text-[11px] text-[var(--coffee-brown-3)]">Finding this field. You can still continue.</p>
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-[#f0f0f0] flex items-center justify-between gap-3">
+        <div className="px-5 py-3 border-t border-[var(--neutral-cool-150)] flex items-center justify-between gap-3">
           {!isFirst ? (
             <button
               type="button"
               onClick={back}
-              className="flex items-center gap-1.5 text-sm font-medium text-[#6b6b6b] hover:text-[#1a1a1a] px-2 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-2 py-1.5 rounded-lg transition-colors"
             >
               <ArrowLeft size={15} /> Back
             </button>
@@ -345,7 +345,7 @@ export function GuidedTour({
             <button
               type="button"
               onClick={onSkip}
-              className="text-sm font-medium text-[#afafaf] hover:text-[#6b6b6b] px-2 py-1.5 rounded-lg transition-colors"
+              className="text-sm font-medium text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] px-2 py-1.5 rounded-lg transition-colors"
             >
               Skip for now
             </button>
@@ -353,7 +353,7 @@ export function GuidedTour({
           <button
             type="button"
             onClick={next}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#155e63] hover:bg-[#124e52] px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[var(--teal)] hover:bg-[var(--teal-deep)] px-4 py-2 rounded-lg transition-colors"
           >
             {isLast ? (
               <>

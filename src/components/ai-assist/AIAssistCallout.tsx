@@ -36,7 +36,7 @@ type Phase =
 
 const MD_COMPONENTS: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-  strong: ({ children }) => <strong className="font-semibold text-[#1a1a1a]">{children}</strong>,
+  strong: ({ children }) => <strong className="font-semibold text-[var(--foreground)]">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   ul: ({ children }) => <ul className="list-disc pl-4 mb-2 last:mb-0 space-y-0.5">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 last:mb-0 space-y-0.5">{children}</ol>,
@@ -237,14 +237,14 @@ export function AIAssistCallout({
       {/* Dialog card */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-[#efefef]">
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-[var(--border)]">
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#155e63] mb-0.5">
+            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[var(--teal)] mb-0.5">
               {moduleLabel}
             </p>
             <h2
               id="ai-assist-title"
-              className="text-base font-semibold text-[#1a1a1a]"
+              className="text-base font-semibold text-[var(--foreground)]"
             >
               Improve: {fieldLabel}
             </h2>
@@ -254,7 +254,7 @@ export function AIAssistCallout({
             onClick={isStreaming ? undefined : onClose}
             disabled={isStreaming}
             aria-label="Close"
-            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ml-4 mt-0.5 shrink-0"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ml-4 mt-0.5 shrink-0"
           >
             <X size={16} aria-hidden="true" />
           </button>
@@ -268,7 +268,7 @@ export function AIAssistCallout({
               <div>
                 <label
                   htmlFor="ai-draft"
-                  className="block text-xs font-medium text-[#6b6b6b] mb-1.5"
+                  className="block text-xs font-medium text-[var(--muted-foreground)] mb-1.5"
                 >
                   Your current text
                 </label>
@@ -277,17 +277,17 @@ export function AIAssistCallout({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={4}
-                  className="w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7] resize-none leading-relaxed"
+                  className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="ai-instruction"
-                  className="block text-xs font-medium text-[#6b6b6b] mb-1.5"
+                  className="block text-xs font-medium text-[var(--muted-foreground)] mb-1.5"
                 >
                   Instruction{" "}
-                  <span className="text-[#afafaf] font-normal">(optional)</span>
+                  <span className="text-[var(--dark-grey)] font-normal">(optional)</span>
                 </label>
                 <input
                   id="ai-instruction"
@@ -295,7 +295,7 @@ export function AIAssistCallout({
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   placeholder="e.g. Make it more specific to the neighbourhood"
-                  className="w-full border border-[#efefef] rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#155e63] transition-colors bg-[#faf9f7]"
+                  className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)]"
                 />
               </div>
 
@@ -304,14 +304,14 @@ export function AIAssistCallout({
                   type="button"
                   onClick={() => void startStream("improve")}
                   disabled={!draft.trim()}
-                  className="flex-1 bg-[#155e63] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Improve this
                 </button>
                 <button
                   type="button"
                   onClick={() => void startStream("write")}
-                  className="flex-1 border border-[#155e63] text-[#155e63] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#155e63]/5 transition-colors"
+                  className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
                   Write this for me
                 </button>
@@ -322,20 +322,20 @@ export function AIAssistCallout({
           {/* ── Streaming state ──────────────────────────────── */}
           {phase.kind === "streaming" && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-[#6b6b6b] mb-3">
+              <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)] mb-3">
                 <span
-                  className="inline-block w-3 h-3 rounded-full border-2 border-[#155e63] border-t-transparent animate-spin shrink-0"
+                  className="inline-block w-3 h-3 rounded-full border-2 border-[var(--teal)] border-t-transparent animate-spin shrink-0"
                   aria-hidden="true"
                 />
                 <span>Writing suggestion...</span>
               </div>
 
-              <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] px-4 py-3 min-h-[80px]">
-                <p className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 min-h-[80px]">
+                <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
                   {phase.buffer}
                   <span
                     aria-hidden
-                    className="ml-0.5 inline-block w-0.5 h-[1em] align-text-bottom bg-[#155e63] animate-pulse"
+                    className="ml-0.5 inline-block w-0.5 h-[1em] align-text-bottom bg-[var(--teal)] animate-pulse"
                   />
                 </p>
               </div>
@@ -343,7 +343,7 @@ export function AIAssistCallout({
               <button
                 type="button"
                 onClick={handleAbort}
-                className="text-sm text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+                className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
               >
                 Stop
               </button>
@@ -354,22 +354,22 @@ export function AIAssistCallout({
           {phase.kind === "review" && (
             <div className="space-y-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#afafaf] mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-2">
                   Current version
                 </p>
-                <div className="rounded-xl border border-[#efefef] bg-[#faf9f7] px-4 py-3">
-                  <p className="text-sm text-[#6b6b6b] leading-relaxed whitespace-pre-wrap">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <p className="text-sm text-[var(--muted-foreground)] leading-relaxed whitespace-pre-wrap">
                     {currentValue.trim() || <span className="italic">Empty</span>}
                   </p>
                 </div>
               </div>
 
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
                   Suggested version
                 </p>
-                <div className="rounded-xl border border-[#cfe0e1] bg-[#f4f9f8] px-4 py-3">
-                  <div className="text-sm text-[#1a1a1a] leading-relaxed">
+                <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
+                  <div className="text-sm text-[var(--foreground)] leading-relaxed">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeSanitize]}
@@ -385,14 +385,14 @@ export function AIAssistCallout({
                 <button
                   type="button"
                   onClick={handleApply}
-                  className="flex-1 bg-[#155e63] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+                  className="flex-1 bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
                 >
                   Use this version
                 </button>
                 <button
                   type="button"
                   onClick={handleTryAgain}
-                  className="flex-1 border border-[#d4d4d4] text-[#6b6b6b] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#f4f4f4] transition-colors"
+                  className="flex-1 border border-[var(--gray-700)] text-[var(--muted-foreground)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--gray-200)] transition-colors"
                 >
                   Try again
                 </button>
@@ -403,11 +403,11 @@ export function AIAssistCallout({
           {/* ── Quota state ──────────────────────────────────── */}
           {phase.kind === "quota" && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-[#d4a017]/40 bg-[#fef9ec] px-4 py-3">
-                <p className="text-sm font-semibold text-[#7a5a17] mb-1">
+              <div className="rounded-xl border border-[var(--warning-text-11)]/40 bg-[var(--warning-bg-4)] px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--warning-text-9)] mb-1">
                   AI credits used up
                 </p>
-                <p className="text-sm text-[#7a5a17] leading-relaxed">
+                <p className="text-sm text-[var(--warning-text-9)] leading-relaxed">
                   {phase.reason === "paused"
                     ? "Your subscription is paused. Reactivate to keep using AI features."
                     : phase.reason === "expired"
@@ -423,7 +423,7 @@ export function AIAssistCallout({
                       ? "/account/billing"
                       : "/pricing"
                   }
-                  className="flex-1 text-center bg-[#155e63] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#0e4448] transition-colors"
+                  className="flex-1 text-center bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
                 >
                   {phase.reason === "paused" || phase.reason === "expired"
                     ? "Reactivate"
@@ -432,7 +432,7 @@ export function AIAssistCallout({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 text-sm text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+                  className="flex-1 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                   Close
                 </button>
@@ -443,11 +443,11 @@ export function AIAssistCallout({
           {/* ── Error state ──────────────────────────────────── */}
           {phase.kind === "error" && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-[#f0d0d0] bg-[#fdf4f4] px-4 py-3">
-                <p className="text-sm font-semibold text-[#a13d3d] mb-1">
+              <div className="rounded-xl border border-[var(--error-bg-9)] bg-[var(--error-bg-2)] px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--error)] mb-1">
                   Something went wrong
                 </p>
-                <p className="text-sm text-[#a13d3d] leading-relaxed">
+                <p className="text-sm text-[var(--error)] leading-relaxed">
                   {phase.message}
                 </p>
               </div>
@@ -456,14 +456,14 @@ export function AIAssistCallout({
                 <button
                   type="button"
                   onClick={handleTryAgain}
-                  className="flex-1 border border-[#155e63] text-[#155e63] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[#155e63]/5 transition-colors"
+                  className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
                   Try again
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 text-sm text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+                  className="flex-1 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                   Close
                 </button>

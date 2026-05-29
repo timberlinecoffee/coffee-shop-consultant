@@ -37,7 +37,7 @@ export default function BenefitSections() {
 
 function BenefitSection({ benefit, index }: { benefit: Benefit; index: number }) {
   const photoLeft = benefit.photoSide === "left";
-  const bg = index % 2 === 0 ? "#FFFDF8" : "#FDF5EC";
+  const bg = index % 2 === 0 ? "var(--warm-50)" : "var(--coffee-100)";
   // Card overlaps the inner edge of the photo (the edge facing the text column).
   const cardAnchor: React.CSSProperties = photoLeft
     ? { right: "-28px", bottom: "32px" }
@@ -87,14 +87,14 @@ function BenefitSection({ benefit, index }: { benefit: Benefit; index: number })
                 fontSize: "clamp(1.75rem, 3.2vw, 2.35rem)",
                 lineHeight: 1.18,
                 fontWeight: 700,
-                color: "#1A1A1A",
+                color: "var(--foreground)",
                 letterSpacing: "-0.01em",
               }}
             >
               {benefit.headline}
             </h2>
             <p
-              style={{ fontSize: "18px", lineHeight: 1.6, color: "#4A4A4A", maxWidth: "420px" }}
+              style={{ fontSize: "18px", lineHeight: 1.6, color: "var(--gray-1200)", maxWidth: "420px" }}
             >
               {benefit.oneLiner}
             </p>
@@ -123,7 +123,7 @@ function MockCard({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        background: "#FFFFFF",
+        background: "var(--card)",
         borderRadius: "12px",
         boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
         border: "1px solid rgba(0,0,0,0.04)",
@@ -139,7 +139,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: "9px",
   textTransform: "uppercase",
   letterSpacing: "0.06em",
-  color: "#8F8F85",
+  color: "var(--neutral-500)",
 };
 
 /* ── Section 1 — Daily Financials ─────────────────────────────────────────── */
@@ -150,7 +150,7 @@ function FinancialsCluster() {
         <p style={{ fontSize: "11px", fontWeight: 600, color: TEAL }}>Today vs. 30-Day Average</p>
         <span style={{ fontSize: "9px", fontWeight: 600, color: SAGE }}>+12%</span>
       </div>
-      <div className="rounded-lg p-2.5 mb-2.5" style={{ background: "#FAFAF8", border: "1px solid #EFEFEA" }}>
+      <div className="rounded-lg p-2.5 mb-2.5" style={{ background: "var(--neutral-50)", border: "1px solid var(--warm-gray-ef)" }}>
         <p style={labelStyle}>Revenue today</p>
         <p style={{ fontSize: "20px", fontWeight: 700, color: TEAL, lineHeight: 1.1 }}>$1,284</p>
         <div className="flex items-end gap-0.5 h-6 mt-2">
@@ -158,7 +158,7 @@ function FinancialsCluster() {
             <div
               key={i}
               className="flex-1 rounded-sm"
-              style={{ height: `${h}%`, background: i === 6 ? "#76b39d" : "#E5E5E0" }}
+              style={{ height: `${h}%`, background: i === 6 ? "var(--sage)" : "var(--border-subtle)" }}
             />
           ))}
         </div>
@@ -191,8 +191,8 @@ function MenuCluster() {
       <p style={{ fontSize: "11px", fontWeight: 600, color: TEAL, marginBottom: "8px" }}>
         Menu Profitability
       </p>
-      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #EFEFEA" }}>
-        <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr] px-2.5 py-1.5" style={{ background: "#F0F0EE" }}>
+      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--warm-gray-ef)" }}>
+        <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr] px-2.5 py-1.5" style={{ background: "var(--warm-surface)" }}>
           {["Item", "Cost", "Margin"].map((h) => (
             <p key={h} style={labelStyle}>{h}</p>
           ))}
@@ -201,21 +201,21 @@ function MenuCluster() {
           <div
             key={r.name}
             className="grid grid-cols-[1.4fr_0.8fr_0.8fr] items-center px-2.5 py-1.5"
-            style={{ background: "white", borderTop: i > 0 ? "1px solid #F2F2EE" : "none" }}
+            style={{ background: "white", borderTop: i > 0 ? "1px solid var(--warm-gray-f2)" : "none" }}
           >
             <p style={{ fontSize: "11px", fontWeight: 500, color: TEAL, display: "flex", alignItems: "center", gap: "4px" }}>
               {r.name}
               {r.top && (
                 <span
                   className="rounded-full px-1.5"
-                  style={{ fontSize: "8px", fontWeight: 600, color: "white", background: "#76b39d" }}
+                  style={{ fontSize: "8px", fontWeight: 600, color: "white", background: "var(--sage)" }}
                 >
                   Top
                 </span>
               )}
             </p>
-            <p style={{ fontSize: "11px", color: "#8F8F85" }}>{r.cost}</p>
-            <p style={{ fontSize: "11px", fontWeight: 600, color: "#76b39d" }}>{r.margin}</p>
+            <p style={{ fontSize: "11px", color: "var(--neutral-500)" }}>{r.cost}</p>
+            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--sage)" }}>{r.margin}</p>
           </div>
         ))}
       </div>
@@ -228,9 +228,9 @@ function ScheduleCluster() {
   const days = ["M", "T", "W", "T", "F"];
   // role color per staff row
   const rows = [
-    { who: "Mia", color: "#76b39d", shifts: [1, 1, 0, 1, 1] },
-    { who: "Leo", color: "#155e63", shifts: [1, 0, 1, 1, 0] },
-    { who: "Ada", color: "#c98a5e", shifts: [0, 1, 1, 0, 1] },
+    { who: "Mia", color: "var(--sage)", shifts: [1, 1, 0, 1, 1] },
+    { who: "Leo", color: "var(--teal)", shifts: [1, 0, 1, 1, 0] },
+    { who: "Ada", color: "var(--coffee-brown-2)", shifts: [0, 1, 1, 0, 1] },
   ];
   return (
     <div>
@@ -246,11 +246,11 @@ function ScheduleCluster() {
       </div>
       <div className="rounded-lg px-2.5 py-1.5" style={{ background: "rgba(118,179,157,0.1)", border: "1px solid rgba(118,179,157,0.22)" }}>
         <div className="flex items-center justify-between mb-1">
-          <p style={{ fontSize: "10px", fontWeight: 500, color: "#155e63" }}>Labor cost</p>
-          <p style={{ fontSize: "10px", fontWeight: 700, color: "#155e63" }}>29%</p>
+          <p style={{ fontSize: "10px", fontWeight: 500, color: "var(--teal)" }}>Labor cost</p>
+          <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--teal)" }}>29%</p>
         </div>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(21,94,99,0.12)" }}>
-          <div style={{ width: "29%", height: "100%", background: "#76b39d" }} />
+          <div style={{ width: "29%", height: "100%", background: "var(--sage)" }} />
         </div>
       </div>
     </div>
@@ -260,12 +260,12 @@ function ScheduleCluster() {
 function Row({ who, color, shifts }: { who: string; color: string; shifts: number[] }) {
   return (
     <>
-      <p style={{ fontSize: "10px", fontWeight: 500, color: "#4A4A42", display: "flex", alignItems: "center" }}>{who}</p>
+      <p style={{ fontSize: "10px", fontWeight: 500, color: "var(--neutral-700)", display: "flex", alignItems: "center" }}>{who}</p>
       {shifts.map((s, i) => (
         <div
           key={i}
           className="rounded"
-          style={{ height: "14px", background: s ? color : "#F0F0EE", opacity: s ? 1 : 1 }}
+          style={{ height: "14px", background: s ? color : "var(--warm-surface)", opacity: s ? 1 : 1 }}
         />
       ))}
     </>
@@ -288,15 +288,15 @@ function LoyaltyCluster() {
         </div>
         <div className="flex items-end gap-0.5 h-7">
           {[50, 62, 58, 70, 78, 88].map((h, i) => (
-            <div key={i} className="rounded-sm" style={{ width: "5px", height: `${h}%`, background: i === 5 ? "#76b39d" : "#E5E5E0" }} />
+            <div key={i} className="rounded-sm" style={{ width: "5px", height: `${h}%`, background: i === 5 ? "var(--sage)" : "var(--border-subtle)" }} />
           ))}
         </div>
       </div>
       <p style={{ ...labelStyle, marginBottom: "4px" }}>Top regulars this month</p>
       <div className="space-y-1">
         {regulars.map((r) => (
-          <div key={r.name} className="flex items-center justify-between rounded-lg px-2.5 py-1.5" style={{ background: "#FAFAF8", border: "1px solid #EFEFEA" }}>
-            <p style={{ fontSize: "11px", fontWeight: 500, color: "#4A4A42" }}>{r.name}</p>
+          <div key={r.name} className="flex items-center justify-between rounded-lg px-2.5 py-1.5" style={{ background: "var(--neutral-50)", border: "1px solid var(--warm-gray-ef)" }}>
+            <p style={{ fontSize: "11px", fontWeight: 500, color: "var(--neutral-700)" }}>{r.name}</p>
             <p style={{ fontSize: "10px", fontWeight: 600, color: SAGE }}>{r.visits} visits</p>
           </div>
         ))}
@@ -320,7 +320,7 @@ function OpeningCluster() {
         <p style={{ fontSize: "11px", fontWeight: 600, color: TEAL }}>Opening Checklist</p>
         <span
           className="rounded-full px-1.5 py-0.5"
-          style={{ fontSize: "8px", fontWeight: 600, color: "#b4622f", background: "rgba(201,138,94,0.15)" }}
+          style={{ fontSize: "8px", fontWeight: 600, color: "var(--coffee-brown-4)", background: "rgba(201,138,94,0.15)" }}
         >
           Low: oat milk
         </span>
@@ -330,7 +330,7 @@ function OpeningCluster() {
           <div key={t.label} className="flex items-center gap-2">
             <div
               className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: t.done ? "#76b39d" : "#E5E5E0" }}
+              style={{ background: t.done ? "var(--sage)" : "var(--border-subtle)" }}
             >
               {t.done && (
                 <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
@@ -338,7 +338,7 @@ function OpeningCluster() {
                 </svg>
               )}
             </div>
-            <p style={{ fontSize: "11px", color: t.done ? "#8F8F85" : "#4A4A42", textDecoration: t.done ? "line-through" : "none" }}>
+            <p style={{ fontSize: "11px", color: t.done ? "var(--neutral-500)" : "var(--neutral-700)", textDecoration: t.done ? "line-through" : "none" }}>
               {t.label}
             </p>
           </div>
@@ -364,30 +364,30 @@ function GrowthCluster() {
         <p style={{ fontSize: "11px", fontWeight: 600, color: TEAL }}>Revenue Trend</p>
         <span
           className="rounded-full px-1.5 py-0.5"
-          style={{ fontSize: "9px", fontWeight: 700, color: "white", background: "#76b39d" }}
+          style={{ fontSize: "9px", fontWeight: 700, color: "white", background: "var(--sage)" }}
         >
           +18% YoY
         </span>
       </div>
-      <div className="rounded-lg p-2.5 mb-2.5" style={{ background: "#FAFAF8", border: "1px solid #EFEFEA" }}>
+      <div className="rounded-lg p-2.5 mb-2.5" style={{ background: "var(--neutral-50)", border: "1px solid var(--warm-gray-ef)" }}>
         <div className="flex items-end gap-0.5 h-12">
           {bars.map((h, i) => (
             <div
               key={i}
               className="flex-1 rounded-sm"
-              style={{ height: `${h}%`, background: i === bars.length - 1 ? "#155e63" : "#CDE3D9" }}
+              style={{ height: `${h}%`, background: i === bars.length - 1 ? "var(--teal)" : "var(--sage-bg-2)" }}
             />
           ))}
         </div>
         <p style={{ ...labelStyle, marginTop: "6px" }}>12-month revenue</p>
       </div>
       <div className="rounded-lg px-2.5 py-1.5 flex items-center gap-2" style={{ background: "rgba(118,179,157,0.1)", border: "1px solid rgba(118,179,157,0.22)" }}>
-        <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#76b39d" }}>
+        <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--sage)" }}>
           <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <p style={{ fontSize: "10px", fontWeight: 500, color: "#155e63" }}>3 months from your 6-month goal</p>
+        <p style={{ fontSize: "10px", fontWeight: 500, color: "var(--teal)" }}>3 months from your 6-month goal</p>
       </div>
     </div>
   );

@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         if (!done) {
           console.error("[launch-plan/generate] TTFT timeout")
           cleanup()
-          send(sse("error", { code: "timeout", message: "Couldn't generate plan — try again or contact support." }))
+          send(sse("error", { code: "timeout", message: "Couldn't generate plan. Try again or contact support." }))
           send(sse("done", {}))
           controller.close()
         }
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
               if (!done) {
                 console.error("[launch-plan/generate] gap timer fired")
                 cleanup()
-                send(sse("error", { code: "timeout", message: "Couldn't generate plan — try again or contact support." }))
+                send(sse("error", { code: "timeout", message: "Couldn't generate plan. Try again or contact support." }))
                 send(sse("done", {}))
                 controller.close()
               }
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
         } catch {
           console.error("[launch-plan/generate] JSON parse failed")
           cleanup()
-          send(sse("error", { code: "parse_error", message: "Couldn't generate plan — try again or contact support." }))
+          send(sse("error", { code: "parse_error", message: "Couldn't generate plan. Try again or contact support." }))
           send(sse("done", {}))
           controller.close()
           return
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
         if (insertErr) {
           console.error("[launch-plan/generate] insert error:", insertErr.message)
           cleanup()
-          send(sse("error", { code: "db_error", message: "Couldn't save the plan — try again or contact support." }))
+          send(sse("error", { code: "db_error", message: "Couldn't save the plan. Try again or contact support." }))
           send(sse("done", {}))
           controller.close()
           return
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
           const msg = err instanceof Error ? err.message : "Unknown error"
           console.error("[launch-plan/generate] unhandled error:", msg)
           cleanup()
-          send(sse("error", { code: "upstream_error", message: "Couldn't generate plan — try again or contact support." }))
+          send(sse("error", { code: "upstream_error", message: "Couldn't generate plan. Try again or contact support." }))
           send(sse("done", {}))
           controller.close()
         }

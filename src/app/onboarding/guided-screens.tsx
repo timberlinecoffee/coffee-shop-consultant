@@ -85,7 +85,7 @@ export function ShopVisionScreen({
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">
+          <h1 className="text-2xl font-bold text-[var(--foreground)] mb-1">
             What kind of shop are you building?
           </h1>
         </div>
@@ -93,7 +93,7 @@ export function ShopVisionScreen({
           <button
             type="button"
             onClick={() => setSkipped(true)}
-            className="text-xs text-[#6b6b6b] hover:text-[#155e63] hover:underline transition-colors ml-4 mt-1 shrink-0"
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--teal)] hover:underline transition-colors ml-4 mt-1 shrink-0"
           >
             Already know your shop type? Skip to summary
           </button>
@@ -129,7 +129,7 @@ export function ShopVisionScreen({
       {!skipped && (
         <div className="space-y-6 mb-6">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a] mb-3">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-3">
               1. How will customers use your shop?
             </p>
             <div className="space-y-2">
@@ -140,15 +140,15 @@ export function ShopVisionScreen({
                   onClick={() => toggleUsage(opt)}
                   className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
                     meta.usage_types.includes(opt)
-                      ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                      : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
+                      ? "border-[var(--teal)] bg-[var(--teal)]/5 text-[var(--teal)] font-medium"
+                      : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--dark-grey)]"
                   }`}
                 >
                   <div
                     className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
                       meta.usage_types.includes(opt)
-                        ? "bg-[#155e63] border-[#155e63]"
-                        : "border-[#afafaf]"
+                        ? "bg-[var(--teal)] border-[var(--teal)]"
+                        : "border-[var(--dark-grey)]"
                     }`}
                   >
                     {meta.usage_types.includes(opt) && (
@@ -162,11 +162,11 @@ export function ShopVisionScreen({
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
               2. What does a great visit look like to your ideal customer?
             </p>
             <FieldExamplePopover examples={FIELD_EXAMPLES.great_visit} />
-            <p className="text-xs text-[#afafaf] mb-2">One or two sentences is enough.</p>
+            <p className="text-xs text-[var(--dark-grey)] mb-2">One or two sentences is enough.</p>
             <textarea
               value={meta.great_visit}
               onChange={(e) =>
@@ -174,12 +174,12 @@ export function ShopVisionScreen({
               }
               placeholder="They walked in, ordered fast, and made it to work on time."
               rows={3}
-              className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a] mb-3">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-3">
               3. Is coffee the main draw, or is it part of a bigger experience?
             </p>
             <div className="space-y-2">
@@ -192,19 +192,19 @@ export function ShopVisionScreen({
                   }
                   className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
                     meta.coffee_vs_experience === opt
-                      ? "border-[#155e63] bg-[#155e63]/5 text-[#155e63] font-medium"
-                      : "border-[#efefef] bg-white text-[#1a1a1a] hover:border-[#afafaf]"
+                      ? "border-[var(--teal)] bg-[var(--teal)]/5 text-[var(--teal)] font-medium"
+                      : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--dark-grey)]"
                   }`}
                 >
                   <span
                     className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                       meta.coffee_vs_experience === opt
-                        ? "border-[#155e63]"
-                        : "border-[#afafaf]"
+                        ? "border-[var(--teal)]"
+                        : "border-[var(--dark-grey)]"
                     }`}
                   >
                     {meta.coffee_vs_experience === opt && (
-                      <span className="w-2 h-2 rounded-full bg-[#155e63] block" />
+                      <span className="w-2 h-2 rounded-full bg-[var(--teal)] block" />
                     )}
                   </span>
                   {opt}
@@ -218,11 +218,11 @@ export function ShopVisionScreen({
       <ExampleDrawer examples={VISION_EXAMPLES} />
 
       <div>
-        <label className="block text-sm font-semibold text-[#1a1a1a] mb-1">
+        <label className="block text-sm font-semibold text-[var(--foreground)] mb-1">
           Describe your shop in a sentence or two.
         </label>
         <FieldExamplePopover examples={FIELD_EXAMPLES.vision_synthesized} />
-        <p className="text-xs text-[#afafaf] mb-2">
+        <p className="text-xs text-[var(--dark-grey)] mb-2">
           {skipped
             ? "You can always come back and add more detail."
             : "You built this from the questions above. Change anything you'd like."}
@@ -232,7 +232,7 @@ export function ShopVisionScreen({
           onChange={(e) => onSynthesizedChange(e.target.value)}
           placeholder="Run a two-window drive-thru in Frisco that gets teachers and nurses their drinks in under three minutes, five days a week, before the 7:45 school bell."
           rows={3}
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
         />
       </div>
     </div>
@@ -264,14 +264,14 @@ export function TargetCustomerScreen({
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1">
+        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-1">
           Who are you building this shop for?
         </h1>
         {!skipped && (
           <button
             type="button"
             onClick={() => setSkipped(true)}
-            className="text-xs text-[#6b6b6b] hover:text-[#155e63] hover:underline transition-colors ml-4 mt-1 shrink-0"
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--teal)] hover:underline transition-colors ml-4 mt-1 shrink-0"
           >
             Already know your customer? Skip to summary
           </button>
@@ -307,7 +307,7 @@ export function TargetCustomerScreen({
       {!skipped && (
         <div className="space-y-6 mb-6">
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
               1. Who lives or works within a 10-minute walk or drive of your
               location?
             </p>
@@ -319,12 +319,12 @@ export function TargetCustomerScreen({
               }
               placeholder="A lot of commuters heading downtown, some families, a few apartment buildings with young professionals."
               rows={2}
-              className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
               2. Who do you most want to serve? Whose success makes you feel
               like the day was worth it?
             </p>
@@ -336,17 +336,17 @@ export function TargetCustomerScreen({
               }
               placeholder="The nurse coming off a night shift who just needs one good thing before she sleeps."
               rows={2}
-              className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
               3. What does your customer do right before or right after they
               visit you?
             </p>
             <FieldExamplePopover examples={FIELD_EXAMPLES.pre_post_visit} />
-            <p className="text-xs text-[#afafaf] mb-2">
+            <p className="text-xs text-[var(--dark-grey)] mb-2">
               Helps you understand their context.
             </p>
             <textarea
@@ -356,7 +356,7 @@ export function TargetCustomerScreen({
               }
               placeholder="They drop the kids at school, then come to us before heading to the office."
               rows={2}
-              className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -365,11 +365,11 @@ export function TargetCustomerScreen({
       <ExampleDrawer examples={CUSTOMER_EXAMPLES} />
 
       <div>
-        <label className="block text-sm font-semibold text-[#1a1a1a] mb-1">
+        <label className="block text-sm font-semibold text-[var(--foreground)] mb-1">
           Describe your core customer in a sentence or two.
         </label>
         <FieldExamplePopover examples={FIELD_EXAMPLES.target_synthesized} />
-        <p className="text-xs text-[#afafaf] mb-2">
+        <p className="text-xs text-[var(--dark-grey)] mb-2">
           {skipped
             ? "You can always add more detail later."
             : "This doesn't have to be perfect. You'll refine it as you learn more."}
@@ -379,7 +379,7 @@ export function TargetCustomerScreen({
           onChange={(e) => onSynthesizedChange(e.target.value)}
           placeholder="Frisco parents on the school drop-off run, nurses clocking in at 7am at Baylor Scott, and the construction crew that's been on Eldorado Pkwy for six months. They know their order before they reach the window."
           rows={3}
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
         />
       </div>
     </div>
@@ -424,23 +424,23 @@ export function DifferentiationScreen({
   if (deferred) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-4">
+        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-4">
           How will you stand out?
         </h1>
-        <div className="bg-[#fffbeb] border border-[#fcd34d] rounded-xl px-4 py-3 mb-6">
-          <p className="text-sm text-[#92400e] font-medium">
+        <div className="bg-[var(--warning-bg)] border border-[var(--warning-amber-2)] rounded-xl px-4 py-3 mb-6">
+          <p className="text-sm text-[var(--warning-darker)] font-medium">
             You will want real-world info before answering this.
           </p>
         </div>
-        <div className="bg-[#f5f3ef] border border-[#e5e3de] rounded-xl px-5 py-4 text-center">
-          <p className="text-sm text-[#6b6b6b] mb-3">
+        <div className="bg-[var(--warm-250)] border border-[var(--gray-650)] rounded-xl px-5 py-4 text-center">
+          <p className="text-sm text-[var(--muted-foreground)] mb-3">
             This question is saved for later. Complete the rest of your
             onboarding now and come back once you've visited a few local shops.
           </p>
           <button
             type="button"
             onClick={() => update({ deferred: false })}
-            className="text-sm text-[#155e63] hover:underline"
+            className="text-sm text-[var(--teal)] hover:underline"
           >
             I'm ready to answer now
           </button>
@@ -452,22 +452,22 @@ export function DifferentiationScreen({
   return (
     <div>
       <div className="flex items-start justify-between mb-4">
-        <h1 className="text-2xl font-bold text-[#1a1a1a]">
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">
           How will you stand out?
         </h1>
         {!skippedObservation && (
           <button
             type="button"
             onClick={() => update({ skippedObservation: true })}
-            className="text-xs text-[#6b6b6b] hover:text-[#155e63] hover:underline transition-colors ml-4 mt-1 shrink-0"
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--teal)] hover:underline transition-colors ml-4 mt-1 shrink-0"
           >
             Already have a clear differentiator? Skip the observation step
           </button>
         )}
       </div>
 
-      <div className="bg-[#fffbeb] border border-[#fcd34d] rounded-xl px-4 py-3 mb-5">
-        <p className="text-sm text-[#92400e] font-medium">
+      <div className="bg-[var(--warning-bg)] border border-[var(--warning-amber-2)] rounded-xl px-4 py-3 mb-5">
+        <p className="text-sm text-[var(--warning-darker)] font-medium">
           You will want real-world info before answering this.
         </p>
       </div>
@@ -491,17 +491,17 @@ export function DifferentiationScreen({
           !step2Unlocked ? "opacity-40 pointer-events-none select-none" : ""
         }`}
       >
-        <p className="text-sm font-semibold text-[#1a1a1a]">
+        <p className="text-sm font-semibold text-[var(--foreground)]">
           STEP 2: Now that you've looked around, answer these
         </p>
         {!step2Unlocked && (
-          <p className="text-xs text-[#afafaf]">
-            Add at least one shop observation above to unlock these questions.
+          <p className="text-xs text-[var(--dark-grey)]">
+            Add at least one shop observation above to access these questions.
           </p>
         )}
 
         <div>
-          <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+          <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
             1. What gap did you notice most often across the shops you visited?
           </p>
           {step2Unlocked && <FieldExamplePopover examples={FIELD_EXAMPLES.gap_noticed} />}
@@ -516,12 +516,12 @@ export function DifferentiationScreen({
             placeholder="Every shop was quiet and a little cold. Nobody made me feel welcome when I walked in."
             rows={2}
             disabled={!step2Unlocked}
-            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed disabled:bg-[#f5f5f3]"
+            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
           />
         </div>
 
         <div>
-          <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+          <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
             2. Who is your closest competitor? What do they do well, and what
             would you do differently?
           </p>
@@ -537,12 +537,12 @@ export function DifferentiationScreen({
             placeholder="Ritual on Valencia. Great coffee, but it feels cold and the staff turnover shows."
             rows={2}
             disabled={!step2Unlocked}
-            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed disabled:bg-[#f5f5f3]"
+            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
           />
         </div>
 
         <div>
-          <p className="text-sm font-semibold text-[#1a1a1a] mb-1">
+          <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
             3. What will a customer get from you that they genuinely cannot get
             easily anywhere else nearby?
           </p>
@@ -558,7 +558,7 @@ export function DifferentiationScreen({
             placeholder="The only shop open past 9pm on the east side."
             rows={2}
             disabled={!step2Unlocked}
-            className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed disabled:bg-[#f5f5f3]"
+            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
           />
         </div>
       </div>
@@ -566,11 +566,11 @@ export function DifferentiationScreen({
       <ExampleDrawer examples={DIFF_EXAMPLES} />
 
       <div>
-        <label className="block text-sm font-semibold text-[#1a1a1a] mb-1">
+        <label className="block text-sm font-semibold text-[var(--foreground)] mb-1">
           What makes your shop different?
         </label>
         <FieldExamplePopover examples={FIELD_EXAMPLES.diff_synthesized} />
-        <p className="text-xs text-[#afafaf] mb-2">
+        <p className="text-xs text-[var(--dark-grey)] mb-2">
           Be specific. "Better coffee" isn't a differentiator. "The only shop
           open past 9pm on the east side" is.
         </p>
@@ -579,7 +579,7 @@ export function DifferentiationScreen({
           onChange={(e) => update({ synthesized: e.target.value })}
           placeholder="Only drive-thru in a five-mile radius pulling real espresso — not a pod machine. We cap the menu at 12 drinks so every barista can nail each one and the line stays under three minutes at 8am peak."
           rows={3}
-          className="w-full border border-[#efefef] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:outline-none focus:border-[#155e63] transition-colors bg-white resize-none leading-relaxed"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
         />
       </div>
     </div>

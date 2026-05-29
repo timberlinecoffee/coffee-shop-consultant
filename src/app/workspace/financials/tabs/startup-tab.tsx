@@ -149,15 +149,15 @@ export function StartupTab({
   const totalMonthlyLoanPayment = loanLines.reduce((acc, l) => acc + monthlyPaymentFor(l), 0);
 
   const inputCls =
-    "w-32 text-sm text-right border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
+    "w-32 text-sm text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
     <div className="space-y-4">
       {/* Equipment-first guidance — only when nothing entered at all */}
       {nothingEntered && (
-        <div className="rounded-2xl border border-[#155e63]/20 bg-[#155e63]/5 px-5 py-4">
-          <p className="text-sm font-semibold text-[#1a1a1a]">Start with your equipment.</p>
-          <p className="text-xs text-[#6b6b6b] mt-1 leading-relaxed">
+        <div className="rounded-2xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-5 py-4">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Start with your equipment.</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
             Your espresso machine, grinders, fridge and POS are usually the biggest part of
             opening. Build them in the Build-Out &amp; Equipment workspace and they flow in
             here automatically — then fill in the rest below. Your total builds up from what
@@ -165,7 +165,7 @@ export function StartupTab({
           </p>
           <a
             href="/workspace/buildout-equipment"
-            className="mt-3 inline-block text-xs font-semibold text-white bg-[#155e63] rounded-lg px-4 py-2 hover:bg-[#124e52] transition-colors"
+            className="mt-3 inline-block text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors"
           >
             Add your equipment →
           </a>
@@ -189,10 +189,10 @@ export function StartupTab({
       {/* Startup cost table */}
       {/* tour-startup-capital-assets is on this always-rendered card so the guided tour
           lands even when a new user has no capex lines yet (TIM-1267) */}
-      <div id="tour-startup-capital-assets" className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+      <div id="tour-startup-capital-assets" className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
-          <p className="text-sm font-semibold text-[#1a1a1a]">What It Takes To Open The Door</p>
-          <p className="text-xs text-[#afafaf] mt-0.5">
+          <p className="text-sm font-semibold text-[var(--foreground)]">What It Takes To Open The Door</p>
+          <p className="text-xs text-[var(--dark-grey)] mt-0.5">
             Enter each one-time cost below. The total adds itself up as you go.
           </p>
         </div>
@@ -200,15 +200,15 @@ export function StartupTab({
           <tbody>
             {/* Capital Assets section — read-only, sourced */}
             {(capexRows.length > 0 || !hasLegacyLumpSums) && (
-              <tr className="border-t border-[#f0f0f0] bg-[#fafafa]">
+              <tr className="border-t border-[var(--neutral-cool-150)] bg-[var(--neutral-cool-50)]">
                 <td className="py-2 pl-5 pr-4" colSpan={2}>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#afafaf]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--dark-grey)]">
                     Capital Assets
                   </span>
                   {hasPerAssetData && (
                     <a
                       href="/workspace/buildout-equipment"
-                      className="ml-2 text-[10px] font-medium text-[#155e63] hover:underline"
+                      className="ml-2 text-[10px] font-medium text-[var(--teal)] hover:underline"
                     >
                       {hasEquipmentItems ? "Edit in Build-Out & Equipment →" : "Add in Build-Out & Equipment →"}
                     </a>
@@ -218,16 +218,16 @@ export function StartupTab({
             )}
 
             {capexRows.map((row) => (
-              <tr key={row.key} className="border-t border-[#f0f0f0]">
+              <tr key={row.key} className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-8 pr-4">
-                  <span className="text-[#1a1a1a]">{row.label}</span>
-                  <p className="text-[10px] text-[#afafaf] mt-0.5">
+                  <span className="text-[var(--foreground)]">{row.label}</span>
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                     {row.lifeYears}yr life · straight-line depreciation
                     {row.fromWorkspace && " · from Build-Out & Equipment"}
                     {row.legacy && " · lump sum (add assets to switch to per-asset tracking)"}
                   </p>
                 </td>
-                <td className="py-3 pr-5 text-right font-medium align-top text-[#1a1a1a]">
+                <td className="py-3 pr-5 text-right font-medium align-top text-[var(--foreground)]">
                   {f(row.valueCents)}
                 </td>
               </tr>
@@ -236,16 +236,16 @@ export function StartupTab({
             {/* When no capex rows and no legacy data but equipment items exist,
                 show the equipment workspace total as a sourced row */}
             {!hasPerAssetData && !hasLegacyLumpSums && equipmentTotalCents > 0 && (
-              <tr className="border-t border-[#f0f0f0]">
+              <tr className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-8 pr-4">
-                  <span className="text-[#1a1a1a]">Equipment</span>
+                  <span className="text-[var(--foreground)]">Equipment</span>
                   <a
                     href="/workspace/buildout-equipment"
-                    className="ml-2 text-xs font-medium text-[#155e63] hover:underline"
+                    className="ml-2 text-xs font-medium text-[var(--teal)] hover:underline"
                   >
                     {hasEquipmentItems ? "Edit in Build-Out & Equipment →" : "Add in Build-Out & Equipment →"}
                   </a>
-                  <p className="text-[10px] text-[#afafaf] mt-0.5">
+                  <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                     {hasEquipmentItems
                       ? "From your Build-Out & Equipment plan"
                       : "Entered once in Build-Out & Equipment, flows in here automatically"}
@@ -256,8 +256,8 @@ export function StartupTab({
             )}
 
             {capexRows.length === 0 && !hasLegacyLumpSums && equipmentTotalCents === 0 && (
-              <tr className="border-t border-[#f0f0f0]">
-                <td className="py-3 pl-8 pr-4 text-[#afafaf]" colSpan={2}>
+              <tr className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-8 pr-4 text-[var(--dark-grey)]" colSpan={2}>
                   No capital assets yet. Add equipment and build-out items in the Build-Out &amp; Equipment workspace.
                 </td>
               </tr>
@@ -265,16 +265,16 @@ export function StartupTab({
 
             {/* Everything else — entered right here */}
             {EDITABLE_FIELDS.map((fld) => (
-              <tr key={fld.key} className="border-t border-[#f0f0f0]">
+              <tr key={fld.key} className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-5 pr-4">
-                  <label htmlFor={`startup-${fld.key}`} className="text-[#1a1a1a]">
+                  <label htmlFor={`startup-${fld.key}`} className="text-[var(--foreground)]">
                     {fld.label}
                   </label>
-                  {fld.hint && <p className="text-[10px] text-[#afafaf] mt-0.5">{fld.hint}</p>}
+                  {fld.hint && <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{fld.hint}</p>}
                 </td>
                 <td className="py-3 pr-5 text-right align-top">
                   <div className="flex items-center justify-end gap-1.5">
-                    <span className="text-xs text-[#afafaf]">{currencyCode}</span>
+                    <span className="text-xs text-[var(--dark-grey)]">{currencyCode}</span>
                     <NumericInput
                       id={`startup-${fld.key}`}
                       className={inputCls}
@@ -291,7 +291,7 @@ export function StartupTab({
               </tr>
             ))}
 
-            <tr className="border-t-2 border-[#155e63] bg-[#f7fafa]">
+            <tr className="border-t-2 border-[var(--teal)] bg-[var(--teal-tint-50)]">
               <td className="py-3 pl-5 pr-4 font-semibold">Total Startup Cost</td>
               <td className="py-3 pr-5 text-right font-bold text-lg">{f(totalStartup)}</td>
             </tr>
@@ -300,36 +300,36 @@ export function StartupTab({
       </div>
 
       {/* Funding sources — edited in the Funding tab, reflected here */}
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2 flex items-baseline justify-between">
-          <p className="text-sm font-semibold text-[#1a1a1a]">Funding Sources</p>
-          <p className="text-xs text-[#afafaf]">Edit in the Funding tab</p>
+          <p className="text-sm font-semibold text-[var(--foreground)]">Funding Sources</p>
+          <p className="text-xs text-[var(--dark-grey)]">Edit in the Funding tab</p>
         </div>
         <table className="w-full border-collapse text-sm">
           <tbody>
             {founderTotal > 0 && (
-              <tr className="border-t border-[#f0f0f0]">
-                <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Founder Equity</td>
+              <tr className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-5 pr-4 text-[var(--foreground)]">Founder Equity</td>
                 <td className="py-3 pr-5 text-right font-medium">{f(founderTotal)}</td>
               </tr>
             )}
             {investorTotal > 0 && (
-              <tr className="border-t border-[#f0f0f0]">
-                <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Investor Equity</td>
+              <tr className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-5 pr-4 text-[var(--foreground)]">Investor Equity</td>
                 <td className="py-3 pr-5 text-right font-medium">{f(investorTotal)}</td>
               </tr>
             )}
             {grantTotal > 0 && (
-              <tr className="border-t border-[#f0f0f0]">
-                <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">Grants / Other</td>
+              <tr className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-5 pr-4 text-[var(--foreground)]">Grants / Other</td>
                 <td className="py-3 pr-5 text-right font-medium">{f(grantTotal)}</td>
               </tr>
             )}
             {loanLines.map((l) => (
-              <tr key={l.id} className="border-t border-[#f0f0f0]">
-                <td className="py-3 pl-5 pr-4 text-[#1a1a1a]">
+              <tr key={l.id} className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-5 pr-4 text-[var(--foreground)]">
                   {l.label}
-                  <span className="ml-2 text-xs text-[#afafaf]">
+                  <span className="ml-2 text-xs text-[var(--dark-grey)]">
                     ({l.term_months ?? 0} mo @ {l.annual_rate_pct ?? 0}% : {f(monthlyPaymentFor(l))}/mo)
                   </span>
                 </td>
@@ -337,13 +337,13 @@ export function StartupTab({
               </tr>
             ))}
             {totalFunding === 0 && (
-              <tr className="border-t border-[#f0f0f0]">
-                <td className="py-3 pl-5 pr-4 text-[#afafaf]" colSpan={2}>
+              <tr className="border-t border-[var(--neutral-cool-150)]">
+                <td className="py-3 pl-5 pr-4 text-[var(--dark-grey)]" colSpan={2}>
                   No funding sources yet — add how you&apos;ll pay for it in the Funding tab.
                 </td>
               </tr>
             )}
-            <tr className="border-t-2 border-[#155e63] bg-[#f7fafa]">
+            <tr className="border-t-2 border-[var(--teal)] bg-[var(--teal-tint-50)]">
               <td className="py-3 pl-5 pr-4 font-semibold">Total Funding</td>
               <td className="py-3 pr-5 text-right font-bold">{f(totalFunding)}</td>
             </tr>
@@ -391,9 +391,9 @@ export function StartupTab({
       )}
 
       {/* Helpful context */}
-      <div className="rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
-        <div className="space-y-2 text-sm text-[#2a4a4c] leading-relaxed">
+      <div className="rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
+        <div className="space-y-2 text-sm text-[var(--teal-deeper)] leading-relaxed">
           <p>The working capital reserve and opening cash buffer are not spent — they sit in your bank account as a cushion. Banks and lenders like to see 3 months of fixed costs in reserve before you open.</p>
           {capexRows.length > 0 ? (
             <p>

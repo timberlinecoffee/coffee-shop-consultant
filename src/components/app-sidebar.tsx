@@ -143,11 +143,11 @@ function EyeOffIcon() {
 function statusPillClasses(status: WorkspaceStatus): string {
   switch (status) {
     case "complete":
-      return "bg-[#155e63]/10 text-[#155e63] border-[#155e63]/20";
+      return "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20";
     case "in_progress":
       return "bg-amber-100 text-amber-800 border-amber-200";
     case "not_started":
-      return "bg-[#f5f4f0] text-[#8a8a8a] border-[#e6e3dd]";
+      return "bg-[var(--surface-warm-100)] text-[var(--neutral-cool-500)] border-[var(--warm-700)]";
   }
 }
 
@@ -164,11 +164,11 @@ function SidebarStatusPill({ status }: { status: WorkspaceStatus }) {
 function statusDotClass(status: WorkspaceStatus): string {
   switch (status) {
     case "complete":
-      return "bg-[#155e63]";
+      return "bg-[var(--teal)]";
     case "in_progress":
       return "bg-amber-400";
     case "not_started":
-      return "bg-[#d6d3cd]";
+      return "bg-[var(--warm-1000)]";
   }
 }
 
@@ -197,7 +197,7 @@ function NavItem({
         <span
           aria-disabled="true"
           title={item.label}
-          className="flex items-center justify-center w-10 h-10 rounded-lg text-[#c0c0c0] cursor-default select-none mx-auto"
+          className="flex items-center justify-center w-10 h-10 rounded-lg text-[var(--neutral-cool-400)] cursor-default select-none mx-auto"
         >
           <LockIcon />
         </span>
@@ -207,7 +207,7 @@ function NavItem({
       <span
         aria-disabled="true"
         title="Coming soon"
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#afafaf] cursor-default select-none"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-[var(--dark-grey)] cursor-default select-none"
       >
         <LockIcon />
         <span className="text-sm">{item.label}</span>
@@ -226,8 +226,8 @@ function NavItem({
         onClick={onNavigate}
         className={`relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors mx-auto ${
           isActive
-            ? "bg-[#155e63]/10 text-[#155e63]"
-            : "text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a]"
+            ? "bg-[var(--teal)]/10 text-[var(--teal)]"
+            : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] hover:text-[var(--foreground)]"
         }`}
       >
         <NavIconGlyph icon={item.icon} size={17} />
@@ -250,8 +250,8 @@ function NavItem({
         onClick={onNavigate}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors min-w-0 ${
           isActive
-            ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
-            : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
+            ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+            : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
         }`}
       >
         <NavIconGlyph icon={item.icon} size={14} />
@@ -267,15 +267,15 @@ function NavItem({
       onClick={onNavigate}
       className={`flex flex-col gap-1 px-3 py-2 rounded-lg transition-colors ${
         isActive
-          ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
-          : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
+          ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+          : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
       }`}
     >
       <div className="flex items-center gap-2 min-w-0">
         <NavIconGlyph icon={item.icon} size={14} />
         <span className="text-sm truncate flex-1 min-w-0">{item.label}</span>
         {status === "complete" && (
-          <span className="text-[#155e63] flex-shrink-0" aria-hidden="true">
+          <span className="text-[var(--teal)] flex-shrink-0" aria-hidden="true">
             <CheckIcon />
           </span>
         )}
@@ -432,7 +432,7 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       {/* Brand header */}
       <div
-        className={`flex items-center border-b border-[#efefef] flex-shrink-0 ${
+        className={`flex items-center border-b border-[var(--border)] flex-shrink-0 ${
           collapsed ? "justify-center px-2 py-4" : "justify-between px-4 py-4"
         }`}
       >
@@ -444,7 +444,7 @@ function SidebarContent({
             className="flex items-center justify-center"
             onClick={onClose}
           >
-            <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
           </Link>
@@ -456,17 +456,17 @@ function SidebarContent({
               className="flex items-center gap-2"
               onClick={onClose}
             >
-              <div className="w-7 h-7 bg-[#155e63] rounded flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-xs font-bold">TCS</span>
               </div>
-              <span className="text-sm font-semibold text-[#1a1a1a]">
+              <span className="text-sm font-semibold text-[var(--foreground)]">
                 Timberline
               </span>
             </Link>
             {onClose && (
               <button
                 onClick={onClose}
-                className="lg:hidden text-[#afafaf] hover:text-[#1a1a1a] p-1 transition-colors"
+                className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1 transition-colors"
                 aria-label="Close navigation"
               >
                 <CloseIcon />
@@ -503,7 +503,7 @@ function SidebarContent({
                   id={headerId}
                   role="separator"
                   aria-label={WORKSPACE_CATEGORY_LABEL[category]}
-                  className="mx-2 my-2 h-px bg-[#efefef]"
+                  className="mx-2 my-2 h-px bg-[var(--border)]"
                 />
               ) : (
                 <button
@@ -512,45 +512,54 @@ function SidebarContent({
                   onClick={() => toggleCategory(category)}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
-                  className="group flex w-full items-center justify-between px-3 py-1 mb-1 rounded-md text-left hover:bg-[#f5f4f0] transition-colors"
+                  className="group flex w-full items-center justify-between px-3 py-1 mb-1 rounded-md text-left hover:bg-[var(--surface-warm-100)] transition-colors"
                 >
-                  <span className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wider group-hover:text-[#6b6b6b]">
+                  <span className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wider group-hover:text-[var(--muted-foreground)]">
                     {WORKSPACE_CATEGORY_LABEL[category]}
                   </span>
-                  <span className="text-[#afafaf] group-hover:text-[#6b6b6b]">
+                  <span className="text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)]">
                     <ChevronIcon open={isOpen} />
                   </span>
                 </button>
               )}
-              {isOpen && (
-                <ul id={panelId} role="list" className="space-y-0.5">
-                  {groupItems.map((item) => (
-                    <li key={item.moduleNumber}>
-                      <NavItem
-                        item={item}
-                        isActive={pathname.startsWith(item.href)}
-                        collapsed={collapsed}
-                        showStatus={showStatus}
-                        onNavigate={onClose}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateRows: isOpen ? "1fr" : "0fr",
+                  transition: "grid-template-rows 150ms ease-out",
+                }}
+                aria-hidden={!isOpen}
+              >
+                <div style={{ overflow: "hidden" }}>
+                  <ul id={panelId} role="list" className="space-y-0.5">
+                    {groupItems.map((item) => (
+                      <li key={item.moduleNumber}>
+                        <NavItem
+                          item={item}
+                          isActive={pathname.startsWith(item.href)}
+                          collapsed={collapsed}
+                          showStatus={showStatus}
+                          onNavigate={onClose}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </section>
           );
         })}
       </nav>
 
       {/* TIM-1062: Export Business Plan — single entry point from any workspace */}
-      <div className={`border-t border-[#efefef] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+      <div className={`border-t border-[var(--border)] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
         {collapsed ? (
           <Link
             href="/workspace/business-plan/print"
             target="_blank"
             title="Export Business Plan"
             onClick={onClose}
-            className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-[#155e63] hover:bg-[#155e63]/5 transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-[var(--teal)] hover:bg-[var(--teal)]/5 transition-colors"
           >
             <ExportPlanIcon />
           </Link>
@@ -559,7 +568,7 @@ function SidebarContent({
             href="/workspace/business-plan/print"
             target="_blank"
             onClick={onClose}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#155e63] hover:bg-[#155e63]/5 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 transition-colors"
           >
             <ExportPlanIcon />
             Export Business Plan
@@ -568,7 +577,7 @@ function SidebarContent({
       </div>
 
       {/* Account link */}
-      <div className={`border-t border-[#efefef] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+      <div className={`border-t border-[var(--border)] py-3 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
         {collapsed ? (
           <Link
             href="/account"
@@ -577,8 +586,8 @@ function SidebarContent({
             onClick={onClose}
             className={`flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-colors ${
               pathname.startsWith("/account")
-                ? "bg-[#155e63]/10 text-[#155e63]"
-                : "text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a]"
+                ? "bg-[var(--teal)]/10 text-[var(--teal)]"
+                : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] hover:text-[var(--foreground)]"
             }`}
           >
             <AccountIcon />
@@ -590,8 +599,8 @@ function SidebarContent({
             onClick={onClose}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
               pathname.startsWith("/account")
-                ? "border-l-2 border-[#155e63] pl-[10px] bg-[#155e63]/5 font-semibold text-[#155e63]"
-                : "text-[#1a1a1a] hover:bg-[#f5f4f0]"
+                ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+                : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
             }`}
           >
             <AccountIcon />
@@ -601,7 +610,7 @@ function SidebarContent({
       </div>
 
       {/* TIM-1213: status visibility toggle (Menu mode vs Status mode) */}
-      <div className={`border-t border-[#efefef] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+      <div className={`border-t border-[var(--border)] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
         {collapsed ? (
           <button
             type="button"
@@ -612,8 +621,8 @@ function SidebarContent({
             aria-label={showStatus ? "Hide Progress" : "Show Progress"}
             className={`flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-colors ${
               showStatus
-                ? "text-[#155e63] bg-[#155e63]/5"
-                : "text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0]"
+                ? "text-[var(--teal)] bg-[var(--teal)]/5"
+                : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
             }`}
           >
             {showStatus ? <EyeIcon /> : <EyeOffIcon />}
@@ -625,7 +634,7 @@ function SidebarContent({
             aria-checked={showStatus}
             onClick={toggleShowStatus}
             title={showStatus ? "Hide Progress" : "Show Progress"}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-[#6b6b6b] hover:bg-[#f5f4f0] hover:text-[#1a1a1a] transition-colors"
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] hover:text-[var(--foreground)] transition-colors"
           >
             <span className="flex items-center gap-2">
               {showStatus ? <EyeIcon /> : <EyeOffIcon />}
@@ -634,7 +643,7 @@ function SidebarContent({
             <span
               aria-hidden="true"
               className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${
-                showStatus ? "bg-[#155e63]" : "bg-[#d6d3cd]"
+                showStatus ? "bg-[var(--teal)]" : "bg-[var(--warm-1000)]"
               }`}
             >
               <span
@@ -649,12 +658,12 @@ function SidebarContent({
 
       {/* Desktop collapse toggle */}
       {onToggleCollapse && (
-        <div className={`border-t border-[#efefef] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
+        <div className={`border-t border-[var(--border)] py-2 flex-shrink-0 ${collapsed ? "px-1" : "px-2"}`}>
           <button
             onClick={onToggleCollapse}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`flex items-center rounded-lg text-[#afafaf] hover:text-[#1a1a1a] hover:bg-[#f5f4f0] transition-colors py-2 ${
+            className={`flex items-center rounded-lg text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors py-2 ${
               collapsed ? "justify-center w-10 h-10 mx-auto" : "gap-2 px-3 w-full"
             }`}
           >
@@ -736,7 +745,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse }: AppSi
     <>
       {/* Desktop fixed sidebar */}
       <aside
-        className={`hidden lg:flex flex-col fixed top-0 left-0 h-screen ${sidebarWidth} bg-white border-r border-[#efefef] z-30 transition-all duration-200`}
+        className={`hidden lg:flex flex-col fixed top-0 left-0 h-screen ${sidebarWidth} bg-white border-r border-[var(--border)] z-30 transition-all duration-200`}
         aria-label="Workspace navigation"
       >
         <SidebarContent

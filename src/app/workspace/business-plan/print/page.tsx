@@ -235,7 +235,7 @@ export default async function BusinessPlanPrintPage({
   const visibleSections: SectionKey[] = SECTION_KEYS.filter((k) => !excluded.has(k));
 
   const coverTemplateId = coverRow?.template_id ?? "classic";
-  const coverAccent = coverRow?.accent_color ?? "#E8C24A";
+  const coverAccent = coverRow?.accent_color ?? "var(--warning-amber)";
   const coverTagline = coverRow?.tagline ?? null;
   const coverPreparedFor = coverRow?.prepared_for ?? null;
   const coverAuthorName = coverRow?.author_name ?? null;
@@ -266,10 +266,10 @@ export default async function BusinessPlanPrintPage({
       />
 
       {/* Action bar — hidden when printing */}
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-[#efefef] px-6 py-3.5 flex items-center justify-between">
+      <div className="no-print sticky top-0 z-10 bg-white border-b border-[var(--border)] px-6 py-3.5 flex items-center justify-between">
         <Link
           href="/workspace/business-plan"
-          className="text-sm text-[#155e63] font-medium hover:underline flex items-center gap-1.5"
+          className="text-sm text-[var(--teal)] font-medium hover:underline flex items-center gap-1.5"
         >
           <span aria-hidden="true">←</span> Back to editing
         </Link>
@@ -297,17 +297,17 @@ export default async function BusinessPlanPrintPage({
 
         {/* ── Table of contents ────────────────────────────────────────────── */}
         <section className="page-break mb-16">
-          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#155e63] mb-4">
+          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--teal)] mb-4">
             Contents
           </p>
           <div className="space-y-2">
             {visibleSections.map((key, i) => (
               <div
                 key={key}
-                className="flex items-baseline justify-between border-b border-dotted border-[#efefef] py-1.5"
+                className="flex items-baseline justify-between border-b border-dotted border-[var(--border)] py-1.5"
               >
-                <span className="text-sm text-[#1a1a1a]">
-                  <span className="text-[#afafaf] font-medium mr-2">
+                <span className="text-sm text-[var(--foreground)]">
+                  <span className="text-[var(--dark-grey)] font-medium mr-2">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   {SECTION_LABELS[key]}
@@ -353,11 +353,11 @@ export default async function BusinessPlanPrintPage({
           </SectionFrame>
         ))}
 
-        <footer className="mt-16 pt-6 border-t border-[#efefef] flex items-center justify-between">
-          <span className="text-xs text-[#afafaf]">
+        <footer className="mt-16 pt-6 border-t border-[var(--border)] flex items-center justify-between">
+          <span className="text-xs text-[var(--dark-grey)]">
             {shopName} &middot; Business Plan &middot; {year}
           </span>
-          <span className="text-xs text-[#afafaf]">Timberline Coffee School</span>
+          <span className="text-xs text-[var(--dark-grey)]">Timberline Coffee School</span>
         </footer>
       </div>
     </div>
@@ -378,16 +378,16 @@ function SectionFrame({
   return (
     <section className="page-break mb-14">
       <div className="mb-6">
-        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#155e63] mb-1">
+        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--teal)] mb-1">
           Section {String(index).padStart(2, "0")}
         </p>
         <h2
-          className="font-bold text-[#1a1a1a] leading-tight"
+          className="font-bold text-[var(--foreground)] leading-tight"
           style={{ fontSize: "26px", letterSpacing: "-0.01em" }}
         >
           {title}
         </h2>
-        <div className="mt-4 border-t border-[#efefef]" />
+        <div className="mt-4 border-t border-[var(--border)]" />
       </div>
       {children}
     </section>
@@ -396,8 +396,8 @@ function SectionFrame({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#d4d4d4] px-6 py-8 text-center">
-      <p className="text-sm text-[#afafaf]">{message}</p>
+    <div className="rounded-2xl border border-dashed border-[var(--gray-700)] px-6 py-8 text-center">
+      <p className="text-sm text-[var(--dark-grey)]">{message}</p>
     </div>
   );
 }
@@ -413,8 +413,8 @@ function SectionCard({
 }) {
   if (featured) {
     return (
-      <div className="section-card rounded-2xl bg-[#f4f9f8] border border-[#d5eae8] px-7 py-6">
-        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-3">
+      <div className="section-card rounded-2xl bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] px-7 py-6">
+        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3">
           {label}
         </p>
         {children}
@@ -422,10 +422,10 @@ function SectionCard({
     );
   }
   return (
-    <div className="section-card bg-white border border-[#efefef] rounded-2xl overflow-hidden flex">
-      <div className="w-1 bg-[#155e63] flex-shrink-0" />
+    <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
+      <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
       <div className="px-6 py-5 flex-1 min-w-0">
-        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#155e63] mb-2.5">
+        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
           {label}
         </p>
         {children}
@@ -437,7 +437,7 @@ function SectionCard({
 function Paragraph({ children }: { children: React.ReactNode }) {
   return (
     <p
-      className="text-[#1a1a1a] leading-[1.75] whitespace-pre-wrap"
+      className="text-[var(--foreground)] leading-[1.75] whitespace-pre-wrap"
       style={{ fontSize: "14.5px" }}
     >
       {children}
@@ -494,23 +494,23 @@ function PersonasBlock({ label, personas }: { label: string; personas: CustomerP
           return (
             <div
               key={p.id}
-              className="border-t border-[#efefef] pt-4 first:border-t-0 first:pt-0"
+              className="border-t border-[var(--border)] pt-4 first:border-t-0 first:pt-0"
             >
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-sm font-semibold text-[#1a1a1a]">{p.name}</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">{p.name}</p>
                 {p.isPrimary && (
-                  <span className="text-[9px] font-semibold uppercase tracking-wide text-[#155e63] border border-[#cfe0e1] rounded-full px-1.5 py-0.5 leading-none">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-1.5 py-0.5 leading-none">
                     Primary
                   </span>
                 )}
               </div>
               {p.whyTheyVisit?.trim() && (
-                <p className="text-sm text-[#1a1a1a] leading-relaxed mb-1">
+                <p className="text-sm text-[var(--foreground)] leading-relaxed mb-1">
                   {p.whyTheyVisit.trim()}
                 </p>
               )}
               {(habits.length > 0 || (p.values && p.values.length > 0)) && (
-                <p className="text-xs text-[#6b6b6b]">
+                <p className="text-xs text-[var(--muted-foreground)]">
                   {[
                     habits.length > 0 ? habits.join(", ") : null,
                     p.values && p.values.length > 0
@@ -552,7 +552,7 @@ function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
   return (
     <div className="space-y-5">
       <SectionCard label="Team Summary" featured>
-        <p className="text-sm text-[#1a1a1a] leading-[1.75]">
+        <p className="text-sm text-[var(--foreground)] leading-[1.75]">
           {totalHeadcount} total headcount across {roles.length} role
           {roles.length === 1 ? "" : "s"}
           {totalMonthlyCents > 0
@@ -561,27 +561,27 @@ function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
         </p>
       </SectionCard>
       <SectionCard label="Roles">
-        <div className="divide-y divide-[#efefef]">
+        <div className="divide-y divide-[var(--border)]">
           {roles.map((r) => (
             <div key={r.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm font-semibold text-[#1a1a1a]">
+                <p className="text-sm font-semibold text-[var(--foreground)]">
                   {r.role_title}
                   {r.headcount && r.headcount > 1 ? (
-                    <span className="text-[#6b6b6b] font-normal"> &times;{r.headcount}</span>
+                    <span className="text-[var(--muted-foreground)] font-normal"> &times;{r.headcount}</span>
                   ) : null}
                 </p>
-                <p className="text-xs text-[#6b6b6b] whitespace-nowrap">
+                <p className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
                   {r.monthly_cost_cents ? `${centsToUsd(r.monthly_cost_cents)}/mo` : ""}
                 </p>
               </div>
-              <p className="text-xs text-[#6b6b6b] mt-0.5">
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 {[r.status, r.start_date ? `starts ${formatDate(r.start_date)}` : null]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
               {r.notes?.trim() && (
-                <p className="text-sm text-[#1a1a1a] leading-relaxed mt-1.5">{r.notes.trim()}</p>
+                <p className="text-sm text-[var(--foreground)] leading-relaxed mt-1.5">{r.notes.trim()}</p>
               )}
             </div>
           ))}
@@ -621,11 +621,11 @@ function MenuSection({ items }: { items: MenuRow[] }) {
     <div className="space-y-5">
       {cats.map((cat) => (
         <SectionCard key={cat} label={cat}>
-          <ul className="divide-y divide-[#efefef]">
+          <ul className="divide-y divide-[var(--border)]">
             {byCategory[cat].map((item) => (
               <li key={item.id} className="py-2 first:pt-0 last:pb-0 flex items-baseline gap-3">
-                <span className="flex-1 text-sm text-[#1a1a1a]">{item.name}</span>
-                <span className="text-sm text-[#6b6b6b] whitespace-nowrap">
+                <span className="flex-1 text-sm text-[var(--foreground)]">{item.name}</span>
+                <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">
                   {centsToUsd(item.price_cents)}
                 </span>
               </li>
@@ -665,15 +665,15 @@ function EquipmentSection({ items }: { items: EquipmentRow[] }) {
     if (rows.length === 0) return null;
     return (
       <SectionCard key={label} label={label}>
-        <ul className="divide-y divide-[#efefef]">
+        <ul className="divide-y divide-[var(--border)]">
           {rows.map((item) => (
             <li key={item.id} className="py-2.5 first:pt-0 last:pb-0">
               <div className="flex items-baseline gap-3">
-                <span className="flex-1 text-sm text-[#1a1a1a]">{item.name}</span>
-                <span className="text-sm text-[#6b6b6b] whitespace-nowrap">{usd(item.cost_usd)}</span>
+                <span className="flex-1 text-sm text-[var(--foreground)]">{item.name}</span>
+                <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">{usd(item.cost_usd)}</span>
               </div>
               {(item.brand?.trim() || item.model?.trim() || item.supplier?.trim()) && (
-                <p className="text-xs text-[#6b6b6b] mt-0.5">
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                   {[
                     [item.brand?.trim(), item.model?.trim()].filter(Boolean).join(" "),
                     item.supplier?.trim() ? `Supplier: ${item.supplier.trim()}` : null,
@@ -692,7 +692,7 @@ function EquipmentSection({ items }: { items: EquipmentRow[] }) {
   return (
     <div className="space-y-5">
       <SectionCard label="Equipment Total" featured>
-        <p className="text-sm text-[#1a1a1a] leading-[1.75]">
+        <p className="text-sm text-[var(--foreground)] leading-[1.75]">
           {items.length} items, estimated total {usd(total)}
           {hasSupplierData ? "." : ". Visit the Suppliers workspace to add supplier details."}
         </p>
@@ -752,12 +752,12 @@ function BuildoutSection({
     <div className="space-y-5">
       {chosen && (
         <SectionCard label="Site" featured>
-          <p className="text-sm font-semibold text-[#1a1a1a]">{chosen.name}</p>
-          <p className="text-sm text-[#1a1a1a] mt-1">
+          <p className="text-sm font-semibold text-[var(--foreground)]">{chosen.name}</p>
+          <p className="text-sm text-[var(--foreground)] mt-1">
             {[chosen.address, chosen.neighborhood].filter(Boolean).join(" · ")}
           </p>
           {(chosen.sq_ft || chosen.asking_rent_cents) && (
-            <p className="text-xs text-[#6b6b6b] mt-2">
+            <p className="text-xs text-[var(--muted-foreground)] mt-2">
               {[
                 chosen.sq_ft ? `${chosen.sq_ft.toLocaleString()} sq ft` : null,
                 chosen.asking_rent_cents ? `${centsToUsd(chosen.asking_rent_cents)}/mo rent` : null,
@@ -772,10 +772,10 @@ function BuildoutSection({
         <SectionCard label="Layout Sections">
           <ul className="space-y-2">
             {layoutSections.map((s) => (
-              <li key={s.id} className="text-sm text-[#1a1a1a]">
+              <li key={s.id} className="text-sm text-[var(--foreground)]">
                 <span className="font-medium">{s.name}</span>
                 {s.notes?.trim() && (
-                  <span className="text-[#6b6b6b]">: {s.notes.trim()}</span>
+                  <span className="text-[var(--muted-foreground)]">: {s.notes.trim()}</span>
                 )}
               </li>
             ))}
@@ -784,23 +784,23 @@ function BuildoutSection({
       )}
       {(buildOutCents || licensesCents || depositsCents) > 0 && (
         <SectionCard label="Build-out Budget">
-          <ul className="divide-y divide-[#efefef]">
+          <ul className="divide-y divide-[var(--border)]">
             {buildOutCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Construction & finishes</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(buildOutCents)}</span>
+                <span className="text-sm text-[var(--foreground)]">Construction & finishes</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(buildOutCents)}</span>
               </li>
             )}
             {licensesCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Licenses & permits</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(licensesCents)}</span>
+                <span className="text-sm text-[var(--foreground)]">Licenses & permits</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(licensesCents)}</span>
               </li>
             )}
             {depositsCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Deposits</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(depositsCents)}</span>
+                <span className="text-sm text-[var(--foreground)]">Deposits</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(depositsCents)}</span>
               </li>
             )}
           </ul>
@@ -829,17 +829,17 @@ function LaunchSection({ items }: { items: LaunchRow[] }) {
   }
   return (
     <SectionCard label="Milestones">
-      <ul className="divide-y divide-[#efefef]">
+      <ul className="divide-y divide-[var(--border)]">
         {items.map((m) => (
           <li key={m.id} className="py-2.5 first:pt-0 last:pb-0">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm text-[#1a1a1a]">{m.milestone}</span>
-              <span className="text-xs text-[#6b6b6b] whitespace-nowrap">
+              <span className="text-sm text-[var(--foreground)]">{m.milestone}</span>
+              <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
                 {formatDate(m.target_date)}
               </span>
             </div>
             {(m.track || m.owner || (m.status && m.status !== "pending")) && (
-              <p className="text-xs text-[#6b6b6b] mt-0.5">
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 {[m.track, m.owner, m.status && m.status !== "pending" ? `[${m.status}]` : null]
                   .filter(Boolean)
                   .join(" · ")}
@@ -910,7 +910,7 @@ function MarketingSection({
         <SectionCard label="Brand Pillars">
           <ul className="space-y-1.5">
             {pillars.map((p, i) => (
-              <li key={i} className="text-sm text-[#1a1a1a] leading-snug">
+              <li key={i} className="text-sm text-[var(--foreground)] leading-snug">
                 &bull; {p}
               </li>
             ))}
@@ -919,15 +919,15 @@ function MarketingSection({
       )}
       {presence.length > 0 && (
         <SectionCard label="Digital Presence (Waitlist, GBP, Social)">
-          <ul className="divide-y divide-[#efefef]">
+          <ul className="divide-y divide-[var(--border)]">
             {presence.map((p, i) => (
               <li key={i} className="py-2 first:pt-0 last:pb-0">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-[#1a1a1a]">{p.channel_name}</span>
-                  <span className="text-xs text-[#6b6b6b]">{p.status ?? ""}</span>
+                  <span className="text-sm text-[var(--foreground)]">{p.channel_name}</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">{p.status ?? ""}</span>
                 </div>
                 {(p.url_or_handle?.trim() || p.owner?.trim()) && (
-                  <p className="text-xs text-[#6b6b6b] mt-0.5">
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                     {[p.url_or_handle?.trim(), p.owner?.trim() ? `Owner: ${p.owner.trim()}` : null]
                       .filter(Boolean)
                       .join(" · ")}
@@ -940,14 +940,14 @@ function MarketingSection({
       )}
       {campaigns.length > 0 && (
         <SectionCard label="Campaigns & Promotions">
-          <ul className="divide-y divide-[#efefef]">
+          <ul className="divide-y divide-[var(--border)]">
             {campaigns.map((c, i) => (
               <li key={i} className="py-2 first:pt-0 last:pb-0">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-[#1a1a1a]">{c.name}</span>
-                  <span className="text-xs text-[#6b6b6b]">{centsToUsd(c.budget_cents)}</span>
+                  <span className="text-sm text-[var(--foreground)]">{c.name}</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">{centsToUsd(c.budget_cents)}</span>
                 </div>
-                <p className="text-xs text-[#6b6b6b] mt-0.5">
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                   {[
                     c.objective,
                     c.channels && c.channels.length > 0 ? c.channels.join(", ") : null,
@@ -990,22 +990,22 @@ function OperationsSection({ playbook }: { playbook: OperationsPlaybookDocument 
         return (
           <SectionCard key={key} label={SOP_CATEGORY_LABELS[key]}>
             {cat.intro.trim() && (
-              <p className="text-sm text-[#1a1a1a] leading-relaxed mb-2">{cat.intro.trim()}</p>
+              <p className="text-sm text-[var(--foreground)] leading-relaxed mb-2">{cat.intro.trim()}</p>
             )}
             {cat.items.length > 0 && (
-              <ol className="space-y-1 pl-5 list-decimal text-sm text-[#1a1a1a]">
+              <ol className="space-y-1 pl-5 list-decimal text-sm text-[var(--foreground)]">
                 {cat.items.slice(0, 12).map((item) => (
                   <li key={item.id} className="leading-snug">
                     {item.text}
                     {item.duration_min != null && (
-                      <span className="text-xs text-[#6b6b6b] ml-2">
+                      <span className="text-xs text-[var(--muted-foreground)] ml-2">
                         ({item.duration_min} min)
                       </span>
                     )}
                   </li>
                 ))}
                 {cat.items.length > 12 && (
-                  <li className="text-xs text-[#6b6b6b] list-none">
+                  <li className="text-xs text-[var(--muted-foreground)] list-none">
                     … and {cat.items.length - 12} more steps (see Operations Playbook print).
                   </li>
                 )}
@@ -1071,7 +1071,7 @@ function FinancialsSection({
   return (
     <div className="space-y-5">
       <SectionCard label="Year 1 Projections" featured>
-        <table className="w-full text-sm text-[#1a1a1a]">
+        <table className="w-full text-sm text-[var(--foreground)]">
           <tbody>
             <tr>
               <td className="py-1">Revenue</td>
@@ -1079,21 +1079,21 @@ function FinancialsSection({
             </tr>
             <tr>
               <td className="py-1">COGS</td>
-              <td className="py-1 text-right text-[#6b6b6b]">
+              <td className="py-1 text-right text-[var(--muted-foreground)]">
                 {centsToUsd(totalCogs)} ({pct(totalCogs, totalRev)})
               </td>
             </tr>
             <tr>
               <td className="py-1">Labor</td>
-              <td className="py-1 text-right text-[#6b6b6b]">
+              <td className="py-1 text-right text-[var(--muted-foreground)]">
                 {centsToUsd(totalLabor)} ({pct(totalLabor, totalRev)})
               </td>
             </tr>
             <tr>
               <td className="py-1">Operating Expenses</td>
-              <td className="py-1 text-right text-[#6b6b6b]">{centsToUsd(totalOpex)}</td>
+              <td className="py-1 text-right text-[var(--muted-foreground)]">{centsToUsd(totalOpex)}</td>
             </tr>
-            <tr className="border-t border-[#d5eae8]">
+            <tr className="border-t border-[var(--teal-tint-300)]">
               <td className="pt-2 font-semibold">Net Income</td>
               <td className="pt-2 text-right font-semibold">{centsToUsd(totalNet)}</td>
             </tr>
@@ -1103,50 +1103,50 @@ function FinancialsSection({
 
       {totalStartupCents > 0 && (
         <SectionCard label="Startup Costs">
-          <ul className="divide-y divide-[#efefef]">
+          <ul className="divide-y divide-[var(--border)]">
             {/* TIM-1255: show per-asset capex lines instead of dead lump-sum field */}
             {projections.forecast_lines
               .filter((l) => l.category === "capex" && l.mode === "flat" && l.value > 0)
               .map((l) => (
                 <li key={l.id} className="py-2 flex items-baseline justify-between">
-                  <span className="text-sm text-[#1a1a1a]">{l.label}</span>
-                  <span className="text-sm text-[#6b6b6b]">{centsToUsd(l.value)}</span>
+                  <span className="text-sm text-[var(--foreground)]">{l.label}</span>
+                  <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(l.value)}</span>
                 </li>
               ))}
             {licensesCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Licenses & permits</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(licensesCents)}</span>
+                <span className="text-sm text-[var(--foreground)]">Licenses & permits</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(licensesCents)}</span>
               </li>
             )}
             {depositsCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Deposits</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(depositsCents)}</span>
+                <span className="text-sm text-[var(--foreground)]">Deposits</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(depositsCents)}</span>
               </li>
             )}
             {cashReserveCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
-                <span className="text-sm text-[#1a1a1a]">Cash reserve</span>
-                <span className="text-sm text-[#6b6b6b]">{centsToUsd(cashReserveCents)}</span>
+                <span className="text-sm text-[var(--foreground)]">Cash reserve</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(cashReserveCents)}</span>
               </li>
             )}
-            <li className="py-2 flex items-baseline justify-between border-t border-[#d5eae8]">
-              <span className="text-sm font-semibold text-[#1a1a1a]">Total</span>
-              <span className="text-sm font-semibold text-[#1a1a1a]">{centsToUsd(totalStartupCents)}</span>
+            <li className="py-2 flex items-baseline justify-between border-t border-[var(--teal-tint-300)]">
+              <span className="text-sm font-semibold text-[var(--foreground)]">Total</span>
+              <span className="text-sm font-semibold text-[var(--foreground)]">{centsToUsd(totalStartupCents)}</span>
             </li>
           </ul>
         </SectionCard>
       )}
 
       <SectionCard label="Runway & Break-Even">
-        <ul className="space-y-1.5 text-sm text-[#1a1a1a]">
+        <ul className="space-y-1.5 text-sm text-[var(--foreground)]">
           <li>
-            <span className="text-[#6b6b6b]">Cash reserve at open:</span>{" "}
+            <span className="text-[var(--muted-foreground)]">Cash reserve at open:</span>{" "}
             {cashReserveCents > 0 ? centsToUsd(cashReserveCents) : "Not yet set"}
           </li>
           <li>
-            <span className="text-[#6b6b6b]">Estimated months to first profitable month:</span>{" "}
+            <span className="text-[var(--muted-foreground)]">Estimated months to first profitable month:</span>{" "}
             {breakEvenMonth ? `${breakEvenMonth}` : "Year 1 model does not reach break-even"}
           </li>
         </ul>
@@ -1175,11 +1175,11 @@ function AppendixSection({
     <div className="space-y-5">
       <SectionCard label="Assumptions & Open Questions" featured>
         {deferredOrEmpty.length === 0 ? (
-          <p className="text-sm text-[#1a1a1a] leading-relaxed">
+          <p className="text-sm text-[var(--foreground)] leading-relaxed">
             Every Concept component is filled in. No open questions on file.
           </p>
         ) : (
-          <ul className="space-y-1.5 text-sm text-[#1a1a1a]">
+          <ul className="space-y-1.5 text-sm text-[var(--foreground)]">
             {deferredOrEmpty.map((meta) => (
               <li key={meta.id}>&bull; {meta.label}: still to be decided.</li>
             ))}
@@ -1187,13 +1187,13 @@ function AppendixSection({
         )}
       </SectionCard>
       <SectionCard label="Source Provenance">
-        <p className="text-sm text-[#1a1a1a] leading-relaxed">
+        <p className="text-sm text-[var(--foreground)] leading-relaxed">
           Plan content is sourced from the owner&apos;s Groundwork workspaces. AI-assisted drafts
           are reviewed and edited by the owner before they appear here. Numerical projections are
           derived from the Financials workspace inputs.
         </p>
         {updatedAt && (
-          <p className="text-xs text-[#6b6b6b] mt-2">Concept last updated {formatDate(updatedAt)}.</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-2">Concept last updated {formatDate(updatedAt)}.</p>
         )}
       </SectionCard>
     </div>
@@ -1235,25 +1235,25 @@ function PrintCoverClassic({ shopName, date, accent, tagline, preparedFor, autho
         </div>
       )}
 
-      <p className="text-sm font-semibold tracking-widest uppercase mb-3" style={{ color: "#1A6E3B" }}>
+      <p className="text-sm font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--success)" }}>
         Business Plan
       </p>
-      <h1 className="font-bold leading-tight mb-3" style={{ fontSize: "40px", color: "#1A6E3B", letterSpacing: "-0.01em" }}>
+      <h1 className="font-bold leading-tight mb-3" style={{ fontSize: "40px", color: "var(--success)", letterSpacing: "-0.01em" }}>
         {shopName}
       </h1>
 
       <div className="my-4 rounded-full" style={{ width: 120, height: 2, backgroundColor: accent }} />
 
-      {tagline && <p className="text-sm italic text-[#666666] mb-4">{tagline}</p>}
+      {tagline && <p className="text-sm italic text-[var(--gray-1100)] mb-4">{tagline}</p>}
 
       <div className="mt-auto pt-12 space-y-1 text-sm">
         {preparedFor && (
-          <p><span className="text-[#888888]">Prepared for</span> <span className="font-semibold text-[#333333]">{preparedFor}</span></p>
+          <p><span className="text-[var(--neutral-cool-600)]">Prepared for</span> <span className="font-semibold text-[var(--gray-1350)]">{preparedFor}</span></p>
         )}
         {authorName && (
-          <p><span className="text-[#888888]">Prepared by</span> <span className="font-semibold text-[#333333]">{authorName}</span></p>
+          <p><span className="text-[var(--neutral-cool-600)]">Prepared by</span> <span className="font-semibold text-[var(--gray-1350)]">{authorName}</span></p>
         )}
-        <p className="text-[#888888] text-xs mt-2">{date}</p>
+        <p className="text-[var(--neutral-cool-600)] text-xs mt-2">{date}</p>
       </div>
 
       <div className="mt-8 w-full" style={{ height: 4, backgroundColor: accent }} />
@@ -1264,29 +1264,29 @@ function PrintCoverClassic({ shopName, date, accent, tagline, preparedFor, autho
 function PrintCoverModern({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
   return (
     <header className="page-break mb-16 relative" style={{ paddingLeft: 0 }}>
-      <div className="absolute top-0 left-0 bottom-0 w-[6px] rounded-sm" style={{ backgroundColor: "#1A6E3B" }} />
+      <div className="absolute top-0 left-0 bottom-0 w-[6px] rounded-sm" style={{ backgroundColor: "var(--success)" }} />
       <div className="pl-16 pr-8 pt-16 pb-12 flex flex-col min-h-[500px]">
-        <h1 className="font-bold leading-tight mb-4" style={{ fontSize: "44px", color: "#1A6E3B", letterSpacing: "-0.01em" }}>
+        <h1 className="font-bold leading-tight mb-4" style={{ fontSize: "44px", color: "var(--success)", letterSpacing: "-0.01em" }}>
           {shopName}
         </h1>
-        <p className="text-lg text-[#555555] mb-3">Business Plan</p>
-        {tagline && <p className="text-sm italic text-[#888888] mb-4">{tagline}</p>}
+        <p className="text-lg text-[var(--gray-1150)] mb-3">Business Plan</p>
+        {tagline && <p className="text-sm italic text-[var(--neutral-cool-600)] mb-4">{tagline}</p>}
         <div className="w-full mb-4" style={{ height: 2, backgroundColor: accent }} />
 
         <div className="mt-auto space-y-3 text-sm">
           {preparedFor && (
             <div>
-              <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared for</p>
-              <p className="font-semibold text-[#333333]">{preparedFor}</p>
+              <p className="text-[10px] text-[var(--neutral-cool-600)] uppercase tracking-wide">Prepared for</p>
+              <p className="font-semibold text-[var(--gray-1350)]">{preparedFor}</p>
             </div>
           )}
           {authorName && (
             <div>
-              <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared by</p>
-              <p className="font-semibold text-[#333333]">{authorName}</p>
+              <p className="text-[10px] text-[var(--neutral-cool-600)] uppercase tracking-wide">Prepared by</p>
+              <p className="font-semibold text-[var(--gray-1350)]">{authorName}</p>
             </div>
           )}
-          <p className="text-xs text-[#888888] mt-2">{date}</p>
+          <p className="text-xs text-[var(--neutral-cool-600)] mt-2">{date}</p>
         </div>
       </div>
 
@@ -1296,7 +1296,7 @@ function PrintCoverModern({ shopName, date, accent, tagline, preparedFor, author
           <img src={logoUrl} alt="Logo" className="max-h-[52px] max-w-[120px] object-contain" />
         </div>
       )}
-      <p className="absolute bottom-6 right-8 text-[10px] text-[#CCCCCC]">Confidential</p>
+      <p className="absolute bottom-6 right-8 text-[10px] text-[var(--gray-800)]">Confidential</p>
     </header>
   );
 }
@@ -1307,7 +1307,7 @@ function PrintCoverEditorial({ shopName, date, accent, tagline, preparedFor, aut
       {/* Green header block */}
       <div
         className="w-full flex flex-col items-center justify-center text-center p-10"
-        style={{ backgroundColor: "#1A6E3B", minHeight: "320px" }}
+        style={{ backgroundColor: "var(--success)", minHeight: "320px" }}
       >
         {logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -1317,24 +1317,24 @@ function PrintCoverEditorial({ shopName, date, accent, tagline, preparedFor, aut
           {shopName}
         </h1>
         <p className="text-lg font-semibold mb-3" style={{ color: accent }}>Business Plan</p>
-        {tagline && <p className="text-sm" style={{ color: "#D4E8DF" }}>{tagline}</p>}
+        {tagline && <p className="text-sm" style={{ color: "var(--sage-bg)" }}>{tagline}</p>}
       </div>
 
       {/* White metadata block */}
       <div className="px-14 pt-10 pb-12 space-y-4 text-sm relative">
         {preparedFor && (
           <div>
-            <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared for</p>
-            <p className="font-semibold text-[#333333] text-base">{preparedFor}</p>
+            <p className="text-[10px] text-[var(--neutral-cool-600)] uppercase tracking-wide">Prepared for</p>
+            <p className="font-semibold text-[var(--gray-1350)] text-base">{preparedFor}</p>
           </div>
         )}
         {authorName && (
           <div>
-            <p className="text-[10px] text-[#888888] uppercase tracking-wide">Prepared by</p>
-            <p className="font-semibold text-[#333333] text-base">{authorName}</p>
+            <p className="text-[10px] text-[var(--neutral-cool-600)] uppercase tracking-wide">Prepared by</p>
+            <p className="font-semibold text-[var(--gray-1350)] text-base">{authorName}</p>
           </div>
         )}
-        <p className="text-xs text-[#888888]">{date}</p>
+        <p className="text-xs text-[var(--neutral-cool-600)]">{date}</p>
         <div className="absolute bottom-10 right-12" style={{ width: 48, height: 8, backgroundColor: accent, borderRadius: 2 }} />
       </div>
     </header>

@@ -55,7 +55,7 @@ export function LaunchPlanPdfButton() {
       type="button"
       onClick={() => void exportPdf()}
       disabled={exporting}
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#155e63] border border-[#155e63] hover:bg-[#155e63] hover:text-white disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
       aria-label="Export launch plan as PDF"
     >
       {exporting ? (

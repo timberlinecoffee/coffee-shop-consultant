@@ -19,9 +19,9 @@ import {
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
-const inputCls = "w-full text-sm border border-[#e0e0e0] rounded-lg px-3 py-2 text-[#1a1a1a] placeholder-[#c0c0c0] focus:outline-none focus:border-[#155e63] disabled:bg-[#faf9f7] disabled:text-[#afafaf] transition-colors";
-const labelCls = "block text-xs font-medium text-[#6b6b6b] mb-1";
-const sectionLabelCls = "text-[10px] font-semibold uppercase tracking-wider text-[#155e63] mb-3";
+const inputCls = "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
+const sectionLabelCls = "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
 
 function makeLocalId() { return `local_${Math.random().toString(36).slice(2, 10)}`; }
 
@@ -32,7 +32,7 @@ function StatusPill<T extends string>({ status, config, onClick }: {
   config: Record<string, { label: string; className: string }>;
   onClick?: (e: React.MouseEvent) => void;
 }) {
-  const cfg = config[status] ?? { label: status, className: "bg-[#f5f5f5] text-[#888] border-[#e0e0e0]" };
+  const cfg = config[status] ?? { label: status, className: "bg-[var(--neutral-cool-100)] text-[#888] border-[var(--border-medium)]" };
   return (
     <button type="button" onClick={onClick}
       className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.className} ${onClick ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}>
@@ -66,37 +66,37 @@ function BrandTab({ canEdit, brand, onBrandChange, conceptBrandVoice, conceptSho
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-[#efefef] bg-white p-5">
+      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
         <div className="flex items-center justify-between mb-4">
           <span className={sectionLabelCls}>From Your Concept</span>
-          <a href="/workspace/concept" className="flex items-center gap-1 text-xs text-[#155e63] hover:underline">
+          <a href="/workspace/concept" className="flex items-center gap-1 text-xs text-[var(--teal)] hover:underline">
             Edit in Concept <ExternalLink className="w-3 h-3" />
           </a>
         </div>
         <div className="space-y-3">
           <div>
             <span className={labelCls}>Shop identity</span>
-            <p className="text-sm text-[#1a1a1a] leading-relaxed">
-              {conceptShopIdentity || <span className="text-[#c0c0c0]">Not set in Concept yet.</span>}
+            <p className="text-sm text-[var(--foreground)] leading-relaxed">
+              {conceptShopIdentity || <span className="text-[var(--neutral-cool-400)]">Not set in Concept yet.</span>}
             </p>
           </div>
           <div>
             <span className={labelCls}>Brand voice</span>
-            <p className="text-sm text-[#1a1a1a] leading-relaxed">
-              {conceptBrandVoice || <span className="text-[#c0c0c0]">Not set in Concept yet.</span>}
+            <p className="text-sm text-[var(--foreground)] leading-relaxed">
+              {conceptBrandVoice || <span className="text-[var(--neutral-cool-400)]">Not set in Concept yet.</span>}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#efefef] bg-white p-5 space-y-4">
+      <div className="rounded-2xl border border-[var(--border)] bg-white p-5 space-y-4">
         <span className={sectionLabelCls}>Marketing Brand</span>
         <div>
           <label className={labelCls}>Positioning statement</label>
           <textarea className={inputCls} rows={2} disabled={!canEdit}
             placeholder="One sentence: who you serve, what you do, why it matters."
             value={brand.positioning_statement} onChange={(e) => handleChange("positioning_statement", e.target.value)} />
-          <p className="text-[10px] text-[#afafaf] mt-1">Keep it to one sentence. It becomes the lens for every marketing decision.</p>
+          <p className="text-[10px] text-[var(--dark-grey)] mt-1">Keep it to one sentence. It becomes the lens for every marketing decision.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(["brand_pillar_1", "brand_pillar_2", "brand_pillar_3"] as const).map((field, i) => (
@@ -177,31 +177,31 @@ function DigitalPresenceTab({ canEdit, rows, onRowsChange }: {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 px-4 py-2 bg-[#faf9f7] border-b border-[#efefef] text-[10px] font-semibold uppercase tracking-wider text-[#6b6b6b]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 px-4 py-2 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
           <span>Channel</span><span>Status</span><span>URL / Handle</span><span>Owner</span><span />
         </div>
         {rows.map((row) => (
-          <div key={row.id} className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[#f5f5f5] last:border-0">
+          <div key={row.id} className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0">
             <div>
-              <span className="text-sm text-[#1a1a1a] truncate block">{row.channel_name}</span>
+              <span className="text-sm text-[var(--foreground)] truncate block">{row.channel_name}</span>
               {row.last_updated_at && (
-                <span className="text-[10px] text-[#afafaf]">Updated {row.last_updated_at}</span>
+                <span className="text-[10px] text-[var(--dark-grey)]">Updated {row.last_updated_at}</span>
               )}
             </div>
             <StatusPill status={row.status} config={PRESENCE_STATUS_CONFIG} onClick={() => cycleStatus(row)} />
             <input type="text" disabled={!canEdit}
-              className="text-sm border border-[#e0e0e0] rounded-md px-2 py-1 focus:outline-none focus:border-[#155e63] disabled:bg-transparent disabled:border-transparent w-full"
+              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
               placeholder="https://..." value={row.url_or_handle ?? ""}
               onChange={(e) => updateField(row, "url_or_handle", e.target.value)}
               onBlur={() => saveField(row, "url_or_handle")} />
             <input type="text" disabled={!canEdit}
-              className="text-sm border border-[#e0e0e0] rounded-md px-2 py-1 focus:outline-none focus:border-[#155e63] disabled:bg-transparent disabled:border-transparent w-full"
+              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
               placeholder="Name" value={row.owner ?? ""}
               onChange={(e) => updateField(row, "owner", e.target.value)}
               onBlur={() => saveField(row, "owner")} />
             <button type="button" disabled={!canEdit} onClick={() => deleteRow(row)}
-              className="text-[#c0c0c0] hover:text-red-400 disabled:opacity-30 p-1">
+              className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -213,7 +213,7 @@ function DigitalPresenceTab({ canEdit, rows, onRowsChange }: {
             value={newChannel} onChange={(e) => setNewChannel(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addChannel()} />
           <button type="button" onClick={addChannel} disabled={adding || !newChannel.trim()}
-            className="flex items-center gap-1.5 text-sm font-medium text-white bg-[#155e63] hover:bg-[#0e4a4f] disabled:opacity-50 px-4 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg transition-colors">
             <Plus className="w-4 h-4" /> Add
           </button>
         </div>
@@ -281,38 +281,38 @@ function ContentCalendarTab({ canEdit, posts, onPostsChange }: {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[#f0f0f0]"><ChevronLeft className="w-4 h-4 text-[#6b6b6b]" /></button>
-          <span className="text-sm font-semibold text-[#1a1a1a] w-36 text-center">{MONTH_NAMES[month]} {year}</span>
-          <button type="button" onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[#f0f0f0]"><ChevronRight className="w-4 h-4 text-[#6b6b6b]" /></button>
+          <button type="button" onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[var(--neutral-cool-150)]"><ChevronLeft className="w-4 h-4 text-[var(--muted-foreground)]" /></button>
+          <span className="text-sm font-semibold text-[var(--foreground)] w-36 text-center">{MONTH_NAMES[month]} {year}</span>
+          <button type="button" onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[var(--neutral-cool-150)]"><ChevronRight className="w-4 h-4 text-[var(--muted-foreground)]" /></button>
         </div>
         {canEdit && (
           <button type="button" onClick={() => setShowTemplates(!showTemplates)}
-            className="text-xs font-medium text-[#155e63] border border-[#155e63]/30 px-3 py-1.5 rounded-lg hover:bg-[#155e63]/5">
+            className="text-xs font-medium text-[var(--teal)] border border-[var(--teal)]/30 px-3 py-1.5 rounded-lg hover:bg-[var(--teal)]/5">
             Use template
           </button>
         )}
       </div>
 
       {showTemplates && (
-        <div className="rounded-xl border border-[#efefef] bg-white p-4 space-y-3">
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4 space-y-3">
           <span className={sectionLabelCls}>Recurring Cadence Templates</span>
           {CADENCE_TEMPLATES.map((t, i) => (
-            <div key={i} className="flex items-start justify-between gap-4 pb-3 border-b border-[#f5f5f5] last:border-0 last:pb-0">
+            <div key={i} className="flex items-start justify-between gap-4 pb-3 border-b border-[var(--neutral-cool-100)] last:border-0 last:pb-0">
               <div>
-                <p className="text-sm font-semibold text-[#1a1a1a]">{t.name}</p>
-                <p className="text-xs text-[#6b6b6b] mt-0.5">{t.description}</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">{t.name}</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{t.description}</p>
               </div>
               <button type="button" onClick={() => applyTemplate(i)}
-                className="flex-shrink-0 text-xs font-medium text-white bg-[#155e63] hover:bg-[#0e4a4f] px-3 py-1.5 rounded-lg">Apply</button>
+                className="flex-shrink-0 text-xs font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] px-3 py-1.5 rounded-lg">Apply</button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-[#efefef]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-[var(--border)]">
           {DAY_NAMES.map((d) => (
-            <div key={d} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[#6b6b6b]">{d}</div>
+            <div key={d} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
@@ -321,14 +321,14 @@ function ContentCalendarTab({ canEdit, posts, onPostsChange }: {
             const dateStr = day ? `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` : "";
             return (
               <div key={i}
-                className={`min-h-[72px] border-r border-b border-[#f5f5f5] p-1.5 ${day && canEdit ? "cursor-pointer hover:bg-[#faf9f7]" : ""} ${!day ? "bg-[#fafafa]" : ""}`}
+                className={`min-h-[72px] border-r border-b border-[var(--neutral-cool-100)] p-1.5 ${day && canEdit ? "cursor-pointer hover:bg-[var(--background)]" : ""} ${!day ? "bg-[var(--neutral-cool-50)]" : ""}`}
                 onClick={() => { if (!day || !canEdit) return; setDrawer({ mode: "new", date: dateStr }); }}>
                 {day && (
                   <>
-                    <span className="text-[10px] text-[#afafaf] font-medium block mb-1">{day}</span>
+                    <span className="text-[10px] text-[var(--dark-grey)] font-medium block mb-1">{day}</span>
                     {dayPosts.map((post) => (
                       <div key={post.id}
-                        className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-[#155e63]/10 text-[#155e63] mb-0.5 cursor-pointer truncate"
+                        className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-[var(--teal)]/10 text-[var(--teal)] mb-0.5 cursor-pointer truncate"
                         onClick={(e) => { e.stopPropagation(); setDrawer({ mode: "edit", post }); }}>
                         {post.theme || post.format}
                       </div>
@@ -386,8 +386,8 @@ function PostDrawerModal({ canEdit, drawer, onClose, onSaved, onDelete }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-[#1a1a1a]">{drawer.mode === "edit" ? "Edit post" : "New post"}</span>
-          <button type="button" onClick={onClose} className="text-[#afafaf] hover:text-[#1a1a1a]"><X className="w-4 h-4" /></button>
+          <span className="text-sm font-semibold text-[var(--foreground)]">{drawer.mode === "edit" ? "Edit post" : "New post"}</span>
+          <button type="button" onClick={onClose} className="text-[var(--dark-grey)] hover:text-[var(--foreground)]"><X className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={labelCls}>Date</label><input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} disabled={!canEdit} /></div>
@@ -398,7 +398,7 @@ function PostDrawerModal({ canEdit, drawer, onClose, onSaved, onDelete }: {
           </div>
         </div>
         <div><label className={labelCls}>Theme / topic</label><input type="text" className={inputCls} value={theme} onChange={(e) => setTheme(e.target.value)} disabled={!canEdit} placeholder="Menu Feature, Behind the Scenes..." /></div>
-        <div><label className={labelCls}>Channels</label><input type="text" className={inputCls} value={channelsRaw} onChange={(e) => setChannelsRaw(e.target.value)} disabled={!canEdit} placeholder="Instagram, TikTok" /><p className="text-[10px] text-[#afafaf] mt-0.5">Comma-separated</p></div>
+        <div><label className={labelCls}>Channels</label><input type="text" className={inputCls} value={channelsRaw} onChange={(e) => setChannelsRaw(e.target.value)} disabled={!canEdit} placeholder="Instagram, TikTok" /><p className="text-[10px] text-[var(--dark-grey)] mt-0.5">Comma-separated</p></div>
         <div><label className={labelCls}>Caption draft</label><textarea className={inputCls} rows={3} value={caption} onChange={(e) => setCaption(e.target.value)} disabled={!canEdit} placeholder="Write your caption..." /></div>
         <div><label className={labelCls}>Status</label>
           <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as PostStatus)} disabled={!canEdit}>
@@ -408,7 +408,7 @@ function PostDrawerModal({ canEdit, drawer, onClose, onSaved, onDelete }: {
         {canEdit && (
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={save} disabled={saving || !date}
-              className="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium text-white bg-[#155e63] hover:bg-[#0e4a4f] disabled:opacity-50 px-4 py-2 rounded-lg">
+              className="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg">
               <Check className="w-4 h-4" />{saving ? "Saving..." : "Save"}
             </button>
             {drawer.mode === "edit" && existing && (
@@ -468,8 +468,8 @@ function CampaignTab({ canEdit, campaigns, onCampaignsChange }: {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2 bg-[#faf9f7] border-b border-[#efefef] text-[10px] font-semibold uppercase tracking-wider text-[#6b6b6b]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
           <span>Campaign</span><span>Objective</span><span>Dates</span><span>Budget</span><span>Spent</span><span>Status</span><span />
         </div>
         {campaigns.map((c) =>
@@ -477,19 +477,19 @@ function CampaignTab({ canEdit, campaigns, onCampaignsChange }: {
             <CampaignEditRow key={c.id} campaign={c} onSave={(fields) => savePatch(c.id, fields)} onCancel={() => setEditingId(null)} />
           ) : (
             <div key={c.id}
-              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[#f5f5f5] last:border-0 hover:bg-[#faf9f7] cursor-pointer"
+              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0 hover:bg-[var(--background)] cursor-pointer"
               onClick={() => canEdit && setEditingId(c.id)}>
               <div>
-                <p className="text-sm font-medium text-[#1a1a1a] truncate">{c.name}</p>
-                {c.key_results && <p className="text-[10px] text-[#6b6b6b] truncate">{c.key_results}</p>}
+                <p className="text-sm font-medium text-[var(--foreground)] truncate">{c.name}</p>
+                {c.key_results && <p className="text-[10px] text-[var(--muted-foreground)] truncate">{c.key_results}</p>}
               </div>
-              <span className="text-xs text-[#6b6b6b]">{CAMPAIGN_OBJECTIVE_LABELS[c.objective]}</span>
-              <span className="text-xs text-[#6b6b6b]">{c.start_date ? c.start_date.slice(0, 7) : "—"}</span>
-              <span className="text-xs text-[#1a1a1a]">{formatCents(c.budget_cents)}</span>
-              <span className="text-xs text-[#1a1a1a]">{formatCents(c.actual_spend_cents)}</span>
+              <span className="text-xs text-[var(--muted-foreground)]">{CAMPAIGN_OBJECTIVE_LABELS[c.objective]}</span>
+              <span className="text-xs text-[var(--muted-foreground)]">{c.start_date ? c.start_date.slice(0, 7) : "—"}</span>
+              <span className="text-xs text-[var(--foreground)]">{formatCents(c.budget_cents)}</span>
+              <span className="text-xs text-[var(--foreground)]">{formatCents(c.actual_spend_cents)}</span>
               <StatusPill status={c.status} config={CAMPAIGN_STATUS_CONFIG} onClick={(e) => { e.stopPropagation(); cycleCampaignStatus(c); }} />
               <button type="button" disabled={!canEdit} onClick={(e) => { e.stopPropagation(); deleteCampaign(c.id); }}
-                className="text-[#c0c0c0] hover:text-red-400 disabled:opacity-30 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           )
         )}
@@ -497,7 +497,7 @@ function CampaignTab({ canEdit, campaigns, onCampaignsChange }: {
       </div>
       {canEdit && !newRow && (
         <button type="button" onClick={() => setNewRow(emptyNew())}
-          className="flex items-center gap-1.5 text-sm font-medium text-[#155e63] border border-[#155e63]/30 hover:bg-[#155e63]/5 px-4 py-2 rounded-lg">
+          className="flex items-center gap-1.5 text-sm font-medium text-[var(--teal)] border border-[var(--teal)]/30 hover:bg-[var(--teal)]/5 px-4 py-2 rounded-lg">
           <Plus className="w-4 h-4" /> Add campaign
         </button>
       )}
@@ -529,7 +529,7 @@ function CampaignEditRow({ campaign, onSave, onCancel }: {
   }
 
   return (
-    <div className="px-4 py-3 border-b border-[#f5f5f5] bg-[#f7fafa] space-y-3">
+    <div className="px-4 py-3 border-b border-[var(--neutral-cool-100)] bg-[var(--teal-tint-50)] space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="col-span-2"><label className={labelCls}>Name</label><input type="text" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Campaign name" autoFocus /></div>
         <div><label className={labelCls}>Objective</label>
@@ -555,10 +555,10 @@ function CampaignEditRow({ campaign, onSave, onCancel }: {
       </div>
       <div className="flex gap-2">
         <button type="button" onClick={handleSave} disabled={!name.trim()}
-          className="flex items-center gap-1.5 text-sm font-medium text-white bg-[#155e63] hover:bg-[#0e4a4f] disabled:opacity-50 px-4 py-2 rounded-lg">
+          className="flex items-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg">
           <Check className="w-4 h-4" /> Save
         </button>
-        <button type="button" onClick={onCancel} className="text-sm font-medium text-[#6b6b6b] border border-[#e0e0e0] hover:bg-[#f5f5f5] px-4 py-2 rounded-lg">Cancel</button>
+        <button type="button" onClick={onCancel} className="text-sm font-medium text-[var(--muted-foreground)] border border-[var(--border-medium)] hover:bg-[var(--neutral-cool-100)] px-4 py-2 rounded-lg">Cancel</button>
       </div>
     </div>
   );
@@ -603,31 +603,31 @@ function BudgetTab({ canEdit, lines, onLinesChange, avgMonthlyRevenueCents }: {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-[#efefef] bg-white p-5">
+      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
         <div className="flex items-end justify-between">
-          <div><span className={sectionLabelCls}>Monthly total</span><p className="text-3xl font-bold text-[#1a1a1a]">{formatCents(total)}</p></div>
+          <div><span className={sectionLabelCls}>Monthly total</span><p className="text-3xl font-bold text-[var(--foreground)]">{formatCents(total)}</p></div>
           {pctOfRevenue !== null && (
             <div className="text-right">
               <span className={sectionLabelCls}>% of projected revenue</span>
-              <p className="text-2xl font-semibold text-[#155e63]">{pctOfRevenue}%</p>
-              <p className="text-[10px] text-[#afafaf]">based on your Financials forecast</p>
+              <p className="text-2xl font-semibold text-[var(--teal)]">{pctOfRevenue}%</p>
+              <p className="text-[10px] text-[var(--dark-grey)]">based on your Financials forecast</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_auto] gap-4 px-4 py-2 bg-[#faf9f7] border-b border-[#efefef] text-[10px] font-semibold uppercase tracking-wider text-[#6b6b6b]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="grid grid-cols-[2fr_1fr_auto] gap-4 px-4 py-2 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
           <span>Channel</span><span>Monthly ($)</span><span />
         </div>
         {lines.map((line) => (
-          <div key={line.id} className="grid grid-cols-[2fr_1fr_auto] gap-4 items-center px-4 py-3 border-b border-[#f5f5f5] last:border-0">
-            <span className="text-sm text-[#1a1a1a]">{line.channel_name}</span>
+          <div key={line.id} className="grid grid-cols-[2fr_1fr_auto] gap-4 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0">
+            <span className="text-sm text-[var(--foreground)]">{line.channel_name}</span>
             <input type="number" min="0" disabled={!canEdit}
-              className="text-sm border border-[#e0e0e0] rounded-md px-2 py-1 focus:outline-none focus:border-[#155e63] disabled:bg-transparent disabled:border-transparent w-full"
+              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
               value={line.monthly_cents / 100} onChange={(e) => updateAmount(line, e.target.value)} />
             <button type="button" disabled={!canEdit} onClick={() => deleteLine(line)}
-              className="text-[#c0c0c0] hover:text-red-400 disabled:opacity-30 p-1"><X className="w-3.5 h-3.5" /></button>
+              className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1"><X className="w-3.5 h-3.5" /></button>
           </div>
         ))}
       </div>
@@ -637,12 +637,12 @@ function BudgetTab({ canEdit, lines, onLinesChange, avgMonthlyRevenueCents }: {
           <input type="text" className={`${inputCls} flex-1`} placeholder="Add a channel (e.g. Podcast Sponsorship)"
             value={newChannel} onChange={(e) => setNewChannel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addLine()} />
           <button type="button" onClick={addLine} disabled={adding || !newChannel.trim()}
-            className="flex items-center gap-1.5 text-sm font-medium text-white bg-[#155e63] hover:bg-[#0e4a4f] disabled:opacity-50 px-4 py-2 rounded-lg">
+            className="flex items-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg">
             <Plus className="w-4 h-4" /> Add
           </button>
         </div>
       )}
-      <p className="text-xs text-[#afafaf]">This total updates the Marketing line in your Financials forecast automatically.</p>
+      <p className="text-xs text-[var(--dark-grey)]">This total updates the Marketing line in your Financials forecast automatically.</p>
     </div>
   );
 }
@@ -689,22 +689,22 @@ export function MarketingWorkspace({
   function guardEdit(fn: () => void) { if (!canEdit) { setShowPaywall(true); return; } fn(); }
 
   return (
-    <div className="bg-[#faf9f7] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Megaphone className="w-5 h-5 text-[#155e63] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[#1a1a1a]" style={{ fontSize: "28px" }}>Marketing</h1>
+            <Megaphone className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>Marketing</h1>
           </div>
-          <p className="text-sm text-[#6b6b6b] leading-relaxed">
+          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Track your brand, channels, content schedule, campaigns, and monthly spend from one place.
           </p>
         </header>
 
-        <div className="flex gap-1 mb-6 border-b border-[#efefef] overflow-x-auto">
+        <div className="flex gap-1 mb-6 border-b border-[var(--border)] overflow-x-auto">
           {TABS.map((t) => (
             <button key={t.id} type="button" onClick={() => setActiveTab(t.id)}
-              className={`flex-shrink-0 text-sm font-medium px-4 py-2.5 border-b-2 transition-colors ${activeTab === t.id ? "border-[#155e63] text-[#155e63]" : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"}`}>
+              className={`flex-shrink-0 text-sm font-medium px-4 py-2.5 border-b-2 transition-colors ${activeTab === t.id ? "border-[var(--teal)] text-[var(--teal)]" : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}>
               {t.label}
             </button>
           ))}

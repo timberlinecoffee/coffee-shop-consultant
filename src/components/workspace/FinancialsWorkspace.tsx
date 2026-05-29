@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -52,11 +53,11 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-2xl border border-[#efefef] p-6 sm:p-8">
+    <section className="bg-white rounded-2xl border border-[var(--border)] p-6 sm:p-8">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-[#1a1a1a]">{title}</h2>
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">{title}</h2>
         {description && (
-          <p className="text-sm text-[#6b6b6b] mt-1">{description}</p>
+          <p className="text-sm text-[var(--muted-foreground)] mt-1">{description}</p>
         )}
       </div>
       {children}
@@ -67,30 +68,48 @@ function SectionCard({
 function EmptyState({
   message,
   action,
+  photoSrc,
+  photoAlt,
 }: {
   message: string;
   action: React.ReactNode;
+  photoSrc?: string;
+  photoAlt?: string;
 }) {
   return (
     <div className="text-center py-8 px-4">
-      <div
-        className="w-10 h-10 mx-auto mb-3 rounded-full bg-[#faf9f7] border border-[#efefef] flex items-center justify-center"
-        aria-hidden="true"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#afafaf"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      {photoSrc && (
+        <div className="relative w-full rounded-xl overflow-hidden mb-4" style={{ height: "120px" }}>
+          <Image
+            src={photoSrc}
+            alt={photoAlt ?? ""}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
+          <div className="absolute inset-0" style={{ background: "rgba(21,94,99,0.08)" }} />
+        </div>
+      )}
+      {!photoSrc && (
+        <div
+          className="w-10 h-10 mx-auto mb-3 rounded-full bg-[var(--background)] border border-[var(--border)] flex items-center justify-center"
+          aria-hidden="true"
         >
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-      </div>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--dark-grey)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </div>
+      )}
       <p className="text-sm text-[#888] mb-4">{message}</p>
       {action}
     </div>
@@ -108,7 +127,7 @@ function AddButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#155e63] hover:text-[#0e4448] transition-colors"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
     >
       <svg
         width="16"
@@ -135,7 +154,7 @@ function DeleteButton({ onClick, label }: { onClick: () => void; label: string }
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="shrink-0 p-1.5 rounded-lg text-[#afafaf] hover:text-red-500 hover:bg-red-50 transition-colors"
+      className="shrink-0 p-1.5 rounded-lg text-[var(--dark-grey)] hover:text-red-500 hover:bg-red-50 transition-colors"
     >
       <svg
         width="15"
@@ -172,10 +191,10 @@ function TotalRow({
       ? "text-green-700"
       : highlight === "red"
       ? "text-red-600"
-      : "text-[#1a1a1a]";
+      : "text-[var(--foreground)]";
   return (
-    <div className="flex justify-between items-center pt-3 border-t border-[#efefef] mt-3">
-      <span className="text-sm font-medium text-[#6b6b6b]">{label}</span>
+    <div className="flex justify-between items-center pt-3 border-t border-[var(--border)] mt-3">
+      <span className="text-sm font-medium text-[var(--muted-foreground)]">{label}</span>
       <span className={`text-base font-semibold ${color}`}>
         ${fmtMoney(cents)}
       </span>
@@ -184,11 +203,11 @@ function TotalRow({
 }
 
 function inputCls(extraCls?: string) {
-  return `block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#afafaf] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63] ${extraCls ?? ""}`;
+  return `block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${extraCls ?? ""}`;
 }
 
 function selectCls() {
-  return "block w-full rounded-lg border border-[#efefef] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#155e63] focus:outline-none focus:ring-1 focus:ring-[#155e63] appearance-none";
+  return "block w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--teal)] focus:outline-none focus:ring-1 focus:ring-[var(--teal)] appearance-none";
 }
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -208,7 +227,7 @@ function Toast({
       aria-live="polite"
       className={`fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium transition-all ${
         type === "success"
-          ? "bg-[#155e63] text-white"
+          ? "bg-[var(--teal)] text-white"
           : "bg-red-600 text-white"
       }`}
     >
@@ -554,13 +573,13 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
   // ── render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] pb-24 lg:pb-12">
+    <div className="min-h-screen bg-[var(--background)] pb-24 lg:pb-12">
       {/* Nav */}
-      <nav className="bg-white border-b border-[#efefef] px-4 sm:px-6 py-4">
+      <nav className="bg-white border-b border-[var(--border)] px-4 sm:px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <Link
             href="/dashboard"
-            className="text-sm text-[#155e63] font-medium hover:underline"
+            className="text-sm text-[var(--teal)] font-medium hover:underline"
           >
             ← Back to dashboard
           </Link>
@@ -569,7 +588,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
               type="button"
               onClick={exportPdf}
               disabled={exporting || loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#155e63] bg-white px-3 py-1.5 text-xs font-medium text-[#155e63] hover:bg-[#155e63] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--teal)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Export financials as PDF"
             >
               <svg
@@ -589,7 +608,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
               </svg>
               {exporting ? "Exporting…" : "Export PDF"}
             </button>
-            <span className="hidden sm:inline text-xs text-[#6b6b6b]">
+            <span className="hidden sm:inline text-xs text-[var(--muted-foreground)]">
               Workspace · Financials
             </span>
           </div>
@@ -612,11 +631,11 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
             <span className="text-3xl" aria-hidden="true">
               📊
             </span>
-            <h1 className="text-2xl font-semibold text-[#1a1a1a]">
+            <h1 className="text-2xl font-semibold text-[var(--foreground)]">
               Financials
             </h1>
           </div>
-          <p className="text-sm text-[#6b6b6b]">
+          <p className="text-sm text-[var(--muted-foreground)]">
             Build your startup budget, monthly P&amp;L, break-even analysis, and
             funding plan. Changes save automatically.
           </p>
@@ -633,7 +652,9 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
             >
               {financials.startup_costs.length === 0 ? (
                 <EmptyState
-                  message="No startup costs yet — add your first line item."
+                  message="No startup costs yet. Add your first line item."
+                  photoSrc="https://images.pexels.com/photos/4474033/pexels-photo-4474033.jpeg?auto=compress&cs=tinysrgb&w=800&h=240&dpr=1"
+                  photoAlt="Coffee shop owner reviewing startup costs at a desk"
                   action={
                     <AddButton
                       label="Add cost"
@@ -707,12 +728,12 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
               )}
 
               {/* COGS % */}
-              <div className="mt-6 pt-5 border-t border-[#efefef]">
+              <div className="mt-6 pt-5 border-t border-[var(--border)]">
                 <SubHeading>Cost of goods sold (COGS)</SubHeading>
                 <div className="flex items-center gap-3 mt-3">
                   <label
                     htmlFor="cogs-percent"
-                    className="text-sm text-[#6b6b6b] whitespace-nowrap"
+                    className="text-sm text-[var(--muted-foreground)] whitespace-nowrap"
                   >
                     COGS %
                   </label>
@@ -738,14 +759,14 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
                     className={inputCls("w-20 text-center")}
                     aria-label="Cost of goods sold percentage"
                   />
-                  <span className="text-sm text-[#6b6b6b]">
+                  <span className="text-sm text-[var(--muted-foreground)]">
                     % of revenue (typically 25–35% for specialty coffee)
                   </span>
                 </div>
               </div>
 
               {/* Labor */}
-              <div className="mt-6 pt-5 border-t border-[#efefef]">
+              <div className="mt-6 pt-5 border-t border-[var(--border)]">
                 <SubHeading>Labor</SubHeading>
                 {financials.monthly_pnl.labor.length === 0 ? (
                   <EmptyState
@@ -783,7 +804,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
               </div>
 
               {/* Fixed costs */}
-              <div className="mt-6 pt-5 border-t border-[#efefef]">
+              <div className="mt-6 pt-5 border-t border-[var(--border)]">
                 <SubHeading>Fixed costs</SubHeading>
                 {financials.monthly_pnl.fixed_costs.length === 0 ? (
                   <EmptyState
@@ -837,10 +858,10 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
                     : null
                 }
               />
-              <div className="mt-6 pt-5 border-t border-[#efefef]">
+              <div className="mt-6 pt-5 border-t border-[var(--border)]">
                 <label
                   htmlFor="break-even-notes"
-                  className="block text-sm font-medium text-[#1a1a1a] mb-2"
+                  className="block text-sm font-medium text-[var(--foreground)] mb-2"
                 >
                   Assumptions &amp; notes
                 </label>
@@ -898,7 +919,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
                   </div>
                   <TotalRow label="Total funding" cents={totalFunding} />
                   <div className="flex justify-between items-center pt-3">
-                    <span className="text-sm text-[#6b6b6b]">
+                    <span className="text-sm text-[var(--muted-foreground)]">
                       vs. startup costs
                     </span>
                     <span
@@ -938,7 +959,7 @@ export function FinancialsWorkspace({ planId }: FinancialsWorkspaceProps) {
 
 function SubHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-sm font-semibold text-[#1a1a1a] mb-3">{children}</h3>
+    <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">{children}</h3>
   );
 }
 
@@ -987,7 +1008,7 @@ function StartupCostRow({
         className={inputCls("flex-1 min-w-[120px]")}
       />
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--dark-grey)]">
           $
         </span>
         <input
@@ -1054,7 +1075,7 @@ function RevenueRow({
         className={inputCls("flex-1 min-w-[120px]")}
       />
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--dark-grey)]">
           $
         </span>
         <input
@@ -1069,7 +1090,7 @@ function RevenueRow({
           className={inputCls("pl-6 w-28 text-right")}
         />
       </div>
-      <span className="self-center text-xs text-[#afafaf] whitespace-nowrap">
+      <span className="self-center text-xs text-[var(--dark-grey)] whitespace-nowrap">
         /mo
       </span>
       <DeleteButton
@@ -1126,9 +1147,9 @@ function LaborRow({
         className={inputCls("w-16 text-center")}
         title="Headcount"
       />
-      <span className="self-center text-xs text-[#afafaf]">×</span>
+      <span className="self-center text-xs text-[var(--dark-grey)]">×</span>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--dark-grey)]">
           $
         </span>
         <input
@@ -1143,7 +1164,7 @@ function LaborRow({
           className={inputCls("pl-6 w-28 text-right")}
         />
       </div>
-      <span className="self-center text-xs text-[#afafaf] whitespace-nowrap">
+      <span className="self-center text-xs text-[var(--dark-grey)] whitespace-nowrap">
         /mo each
       </span>
       <DeleteButton
@@ -1199,7 +1220,7 @@ function FixedCostRow({
         className={inputCls("flex-1 min-w-[120px]")}
       />
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--dark-grey)]">
           $
         </span>
         <input
@@ -1214,7 +1235,7 @@ function FixedCostRow({
           className={inputCls("pl-6 w-28 text-right")}
         />
       </div>
-      <span className="self-center text-xs text-[#afafaf] whitespace-nowrap">
+      <span className="self-center text-xs text-[var(--dark-grey)] whitespace-nowrap">
         /mo
       </span>
       <DeleteButton
@@ -1271,7 +1292,7 @@ function FundingRow({
           className={inputCls("flex-1 min-w-[120px]")}
         />
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#afafaf]">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--dark-grey)]">
             $
           </span>
           <input
@@ -1319,11 +1340,11 @@ function PnlSummary({
   const isPositive = netProfit >= 0;
 
   return (
-    <div className="mt-6 pt-5 border-t border-[#efefef]">
-      <h3 className="text-sm font-semibold text-[#1a1a1a] mb-4">
+    <div className="mt-6 pt-5 border-t border-[var(--border)]">
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
         Monthly P&L summary
       </h3>
-      <div className="bg-[#faf9f7] rounded-xl p-4 space-y-2 text-sm">
+      <div className="bg-[var(--background)] rounded-xl p-4 space-y-2 text-sm">
         <PnlLine label="Total revenue" cents={totalRevenue} />
         <PnlLine
           label={`COGS (${cogsPct}%)`}
@@ -1338,8 +1359,8 @@ function PnlSummary({
         />
         <PnlLine label="Labor" cents={-totalLabor} muted />
         <PnlLine label="Fixed costs" cents={-totalFixed} muted />
-        <div className="flex justify-between items-center pt-2 border-t border-[#efefef] mt-2">
-          <span className="font-semibold text-[#1a1a1a]">Net profit / month</span>
+        <div className="flex justify-between items-center pt-2 border-t border-[var(--border)] mt-2">
+          <span className="font-semibold text-[var(--foreground)]">Net profit / month</span>
           <span
             className={`font-bold text-base ${
               isPositive ? "text-green-700" : "text-red-600"
@@ -1371,19 +1392,19 @@ function PnlLine({
   return (
     <div
       className={`flex justify-between items-center ${
-        separator ? "pt-2 border-t border-[#efefef] mt-1" : ""
+        separator ? "pt-2 border-t border-[var(--border)] mt-1" : ""
       }`}
     >
       <span
         className={`${
-          muted ? "text-[#6b6b6b]" : "text-[#1a1a1a]"
+          muted ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]"
         } ${bold ? "font-semibold" : ""}`}
       >
         {label}
       </span>
       <span
         className={`${bold ? "font-semibold" : ""} ${
-          cents < 0 ? "text-[#6b6b6b]" : "text-[#1a1a1a]"
+          cents < 0 ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]"
         }`}
       >
         {sign}${fmtMoney(abs)}
@@ -1405,7 +1426,7 @@ function BreakEvenSummary({
     breakEven;
 
   return (
-    <div className="bg-[#faf9f7] rounded-xl p-4 space-y-3 text-sm">
+    <div className="bg-[var(--background)] rounded-xl p-4 space-y-3 text-sm">
       <MetricRow
         label="Gross margin"
         value={`${grossMarginPct}%`}
@@ -1422,8 +1443,8 @@ function BreakEvenSummary({
         hint="Revenue needed to cover all costs"
       />
       {revenueGap !== 0 && breakEvenRevenue > 0 && (
-        <div className="flex justify-between items-center pt-2 border-t border-[#efefef]">
-          <span className="text-[#6b6b6b]">
+        <div className="flex justify-between items-center pt-2 border-t border-[var(--border)]">
+          <span className="text-[var(--muted-foreground)]">
             {revenueGap > 0 ? "Revenue gap to break-even" : "Revenue surplus"}
           </span>
           <span
@@ -1458,10 +1479,10 @@ function MetricRow({
   return (
     <div className="flex justify-between items-start gap-4">
       <div>
-        <div className="text-[#1a1a1a]">{label}</div>
-        {hint && <div className="text-xs text-[#afafaf] mt-0.5">{hint}</div>}
+        <div className="text-[var(--foreground)]">{label}</div>
+        {hint && <div className="text-xs text-[var(--dark-grey)] mt-0.5">{hint}</div>}
       </div>
-      <span className="font-semibold text-[#1a1a1a] shrink-0">{value}</span>
+      <span className="font-semibold text-[var(--foreground)] shrink-0">{value}</span>
     </div>
   );
 }
@@ -1474,13 +1495,13 @@ function LoadingSkeleton() {
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="bg-white rounded-2xl border border-[#efefef] p-6 sm:p-8"
+          className="bg-white rounded-2xl border border-[var(--border)] p-6 sm:p-8"
         >
-          <div className="h-5 w-32 bg-[#efefef] rounded animate-pulse mb-2" />
-          <div className="h-3 w-48 bg-[#efefef] rounded animate-pulse mb-6" />
+          <div className="h-5 w-32 bg-[var(--border)] rounded animate-pulse mb-2" />
+          <div className="h-3 w-48 bg-[var(--border)] rounded animate-pulse mb-6" />
           <div className="space-y-3">
-            <div className="h-10 bg-[#faf9f7] rounded-lg animate-pulse" />
-            <div className="h-10 bg-[#faf9f7] rounded-lg animate-pulse" />
+            <div className="h-10 bg-[var(--background)] rounded-lg animate-pulse" />
+            <div className="h-10 bg-[var(--background)] rounded-lg animate-pulse" />
           </div>
         </div>
       ))}

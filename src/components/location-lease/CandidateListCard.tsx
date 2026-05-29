@@ -238,7 +238,7 @@ export function CandidateListCard({
                 variant="ghost"
                 size="sm"
                 onClick={toggleSelectMode}
-                className={cn(selectMode && 'bg-[#155e63] text-white hover:bg-[#155e63]/90')}
+                className={cn(selectMode && 'bg-[var(--teal)] text-white hover:bg-[var(--teal)]/90')}
                 aria-label={selectMode ? 'Exit select mode' : 'Select multiple'}
                 aria-pressed={selectMode}
                 disabled={candidates.length === 0}
@@ -250,7 +250,7 @@ export function CandidateListCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setDrawerOpen((p) => !p)}
-                className={cn(drawerOpen && 'bg-[#155e63] text-white hover:bg-[#155e63]/90')}
+                className={cn(drawerOpen && 'bg-[var(--teal)] text-white hover:bg-[var(--teal)]/90')}
                 aria-label="Toggle Co-Pilot"
               >
                 <MessageCircle className="size-3.5" />
@@ -270,7 +270,7 @@ export function CandidateListCard({
             <div
               role="tablist"
               aria-label="Location filter"
-              className="inline-flex items-center rounded-lg border border-[#efefef] p-0.5 bg-[#f7f6f3]/50"
+              className="inline-flex items-center rounded-lg border border-[var(--border)] p-0.5 bg-[var(--surface-warm-50)]/50"
             >
               <button
                 type="button"
@@ -328,7 +328,7 @@ export function CandidateListCard({
             <div
               role="toolbar"
               aria-label="Bulk shortlist actions"
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#155e63]/30 bg-[#155e63]/[0.04] px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--teal)]/30 bg-[var(--teal)]/[0.04] px-3 py-2"
             >
               <div className="flex items-center gap-2 text-xs text-foreground">
                 <span className="font-semibold">{selectionSummary.total} selected</span>
@@ -339,7 +339,7 @@ export function CandidateListCard({
                   <button
                     type="button"
                     onClick={selectAllVisible}
-                    className="text-[#155e63] underline-offset-2 hover:underline"
+                    className="text-[var(--teal)] underline-offset-2 hover:underline"
                   >
                     Select all visible ({visible.length})
                   </button>

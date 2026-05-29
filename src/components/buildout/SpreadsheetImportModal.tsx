@@ -200,17 +200,17 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#efefef]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-base font-bold text-[#1a1a1a]">Import from Spreadsheet</h2>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+            <h2 className="text-base font-bold text-[var(--foreground)]">Import from Spreadsheet</h2>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Upload a .xlsx or .csv file — AI maps columns and assigns stations automatically.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#afafaf] hover:text-[#1a1a1a] transition-colors"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
             aria-label="Close"
           >
             <X size={18} />
@@ -223,14 +223,14 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
           {(step === "upload") && (
             <div>
               <div
-                className="border-2 border-dashed border-[#d0e4e5] rounded-xl p-12 flex flex-col items-center justify-center cursor-pointer hover:border-[#155e63] hover:bg-[#f4f9f8] transition-colors"
+                className="border-2 border-dashed border-[var(--teal-bg-d0)] rounded-xl p-12 flex flex-col items-center justify-center cursor-pointer hover:border-[var(--teal)] hover:bg-[var(--teal-tint-500)] transition-colors"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload size={32} className="text-[#155e63] mb-3" aria-hidden="true" />
-                <p className="text-sm font-semibold text-[#1a1a1a]">Drop a spreadsheet here, or click to browse</p>
-                <p className="text-xs text-[#6b6b6b] mt-1">Supports .xlsx and .csv — max 5 MB</p>
+                <Upload size={32} className="text-[var(--teal)] mb-3" aria-hidden="true" />
+                <p className="text-sm font-semibold text-[var(--foreground)]">Drop a spreadsheet here, or click to browse</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">Supports .xlsx and .csv — max 5 MB</p>
               </div>
               <input
                 ref={fileInputRef}
@@ -240,7 +240,7 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
                 onChange={handleFileChange}
               />
               {error && (
-                <p className="mt-3 text-sm text-[#a13d3d]">{error}</p>
+                <p className="mt-3 text-sm text-[var(--error)]">{error}</p>
               )}
             </div>
           )}
@@ -248,9 +248,9 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
           {/* ── Step: parsing ── */}
           {step === "parsing" && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-8 h-8 border-2 border-[#155e63] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-semibold text-[#1a1a1a]">{uploadProgress || "Processing..."}</p>
-              <p className="text-xs text-[#6b6b6b] mt-1">This usually takes 10–20 seconds.</p>
+              <div className="w-8 h-8 border-2 border-[var(--teal)] border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm font-semibold text-[var(--foreground)]">{uploadProgress || "Processing..."}</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">This usually takes 10–20 seconds.</p>
             </div>
           )}
 
@@ -258,45 +258,45 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
           {step === "preview" && (
             <div>
               {error && (
-                <p className="mb-3 text-sm text-[#a13d3d]">{error}</p>
+                <p className="mb-3 text-sm text-[var(--error)]">{error}</p>
               )}
 
               {/* Summary bar */}
-              <div className="flex items-center gap-6 mb-4 px-4 py-3 bg-[#f4f9f8] rounded-xl border border-[#d0e4e5]">
+              <div className="flex items-center gap-6 mb-4 px-4 py-3 bg-[var(--teal-tint-500)] rounded-xl border border-[var(--teal-bg-d0)]">
                 <div>
-                  <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Rows to Import</p>
-                  <p className="text-sm font-bold text-[#155e63]">{activeRows.length}</p>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Rows to Import</p>
+                  <p className="text-sm font-bold text-[var(--teal)]">{activeRows.length}</p>
                 </div>
                 {totalCents > 0 && (
                   <>
-                    <div className="h-8 w-px bg-[#efefef]" />
+                    <div className="h-8 w-px bg-[var(--border)]" />
                     <div>
-                      <p className="text-[10px] font-semibold text-[#afafaf] uppercase tracking-wide">Total Value</p>
-                      <p className="text-sm font-bold text-[#1a1a1a]">{formatCurrency(totalCents / 100)}</p>
+                      <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Total Value</p>
+                      <p className="text-sm font-bold text-[var(--foreground)]">{formatCurrency(totalCents / 100)}</p>
                     </div>
                   </>
                 )}
-                <div className="ml-auto text-xs text-[#6b6b6b]">
+                <div className="ml-auto text-xs text-[var(--muted-foreground)]">
                   Edit any cell before committing. Uncheck rows to skip them.
                 </div>
               </div>
 
               {rows.length === 0 ? (
-                <p className="text-sm text-[#6b6b6b] text-center py-8">No rows were parsed from the file.</p>
+                <p className="text-sm text-[var(--muted-foreground)] text-center py-8">No rows were parsed from the file.</p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-[#efefef]">
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
                   <table className="w-full text-xs min-w-[900px]">
                     <thead>
-                      <tr className="bg-[#f7f7f7] border-b border-[#efefef]">
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] w-8"></th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[180px]">Name</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[150px]">Station</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[110px]">Brand</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[110px]">Model</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[110px]">Vendor</th>
-                        <th className="text-right px-3 py-2 font-semibold text-[#6b6b6b] w-20">Cost</th>
-                        <th className="text-right px-3 py-2 font-semibold text-[#6b6b6b] w-16">Qty</th>
-                        <th className="text-left px-3 py-2 font-semibold text-[#6b6b6b] min-w-[140px]">Notes</th>
+                      <tr className="bg-[var(--gray-100)] border-b border-[var(--border)]">
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] w-8"></th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[180px]">Name</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[150px]">Station</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[110px]">Brand</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[110px]">Model</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[110px]">Vendor</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[var(--muted-foreground)] w-20">Cost</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[var(--muted-foreground)] w-16">Qty</th>
+                        <th className="text-left px-3 py-2 font-semibold text-[var(--muted-foreground)] min-w-[140px]">Notes</th>
                         <th className="w-8"></th>
                       </tr>
                     </thead>
@@ -320,25 +320,25 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
           {/* ── Step: committing ── */}
           {step === "committing" && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-8 h-8 border-2 border-[#155e63] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-semibold text-[#1a1a1a]">Saving equipment items...</p>
+              <div className="w-8 h-8 border-2 border-[var(--teal)] border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm font-semibold text-[var(--foreground)]">Saving equipment items...</p>
             </div>
           )}
 
           {/* ── Step: done ── */}
           {step === "done" && (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full bg-[#d4edea] flex items-center justify-center mb-4">
+              <div className="w-10 h-10 rounded-full bg-[var(--teal-bg-800)] flex items-center justify-center mb-4">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                  <path d="M3.5 9L7.5 13L14.5 5" stroke="#155e63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3.5 9L7.5 13L14.5 5" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <p className="text-sm font-bold text-[#1a1a1a]">Import complete</p>
-              <p className="text-xs text-[#6b6b6b] mt-1">Your equipment list has been updated.</p>
+              <p className="text-sm font-bold text-[var(--foreground)]">Import complete</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">Your equipment list has been updated.</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-5 text-sm font-semibold bg-[#155e63] text-white px-5 py-2 rounded-lg hover:bg-[#0e4448] transition-colors"
+                className="mt-5 text-sm font-semibold bg-[var(--teal)] text-white px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
               >
                 Close
               </button>
@@ -348,11 +348,11 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
 
         {/* Footer */}
         {step === "preview" && (
-          <div className="px-6 py-4 border-t border-[#efefef] flex items-center justify-between gap-3">
+          <div className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => { setStep("upload"); setRows([]); setError(null); }}
-              className="text-sm text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
             >
               Upload different file
             </button>
@@ -360,7 +360,7 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
               type="button"
               onClick={handleCommit}
               disabled={activeRows.length === 0}
-              className="text-sm font-semibold bg-[#155e63] text-white px-6 py-2 rounded-lg hover:bg-[#0e4448] transition-colors disabled:opacity-50"
+              className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
             >
               Commit {activeRows.length} {activeRows.length === 1 ? "item" : "items"}
             </button>
@@ -388,7 +388,7 @@ function PreviewRow({
 
   return (
     <tr
-      className={`border-b border-[#f0f0f0] ${skipped ? "opacity-40" : "hover:bg-[#fafafa]"}`}
+      className={`border-b border-[var(--neutral-cool-150)] ${skipped ? "opacity-40" : "hover:bg-[var(--neutral-cool-50)]"}`}
     >
       {/* Skip toggle */}
       <td className="px-3 py-1.5">
@@ -396,7 +396,7 @@ function PreviewRow({
           type="checkbox"
           checked={!skipped}
           onChange={(e) => onChange({ skip: !e.target.checked })}
-          className="accent-[#155e63] w-3.5 h-3.5"
+          className="accent-[var(--teal)] w-3.5 h-3.5"
           aria-label="Include row"
         />
       </td>
@@ -408,7 +408,7 @@ function PreviewRow({
           value={row.name}
           onChange={(e) => onChange({ name: e.target.value })}
           disabled={skipped}
-          className="w-full min-w-[160px] text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full min-w-[160px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -419,7 +419,7 @@ function PreviewRow({
             value={row.section_name}
             onChange={(e) => onChange({ section_name: e.target.value })}
             disabled={skipped}
-            className="w-full min-w-[130px] text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none appearance-none pr-5 transition-colors disabled:pointer-events-none"
+            className="w-full min-w-[130px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none appearance-none pr-5 transition-colors disabled:pointer-events-none"
           >
             {stationOptions.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -428,7 +428,7 @@ function PreviewRow({
               <option value={row.section_name}>{row.section_name}</option>
             )}
           </select>
-          <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 text-[#afafaf] pointer-events-none" />
+          <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] pointer-events-none" />
         </div>
       </td>
 
@@ -440,7 +440,7 @@ function PreviewRow({
           onChange={(e) => onChange({ vendor: e.target.value })}
           disabled={skipped}
           placeholder="Brand"
-          className="w-full text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[#c0c0c0]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -452,7 +452,7 @@ function PreviewRow({
           onChange={(e) => onChange({ model: e.target.value })}
           disabled={skipped}
           placeholder="Model"
-          className="w-full text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[#c0c0c0]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -464,7 +464,7 @@ function PreviewRow({
           onChange={(e) => onChange({ supplier: e.target.value })}
           disabled={skipped}
           placeholder="Vendor"
-          className="w-full text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[#c0c0c0]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -475,7 +475,7 @@ function PreviewRow({
           value={centsToDollarString(row.unit_cost_cents)}
           onChange={(e) => onChange({ unit_cost_cents: dollarStringToCents(e.target.value) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -487,7 +487,7 @@ function PreviewRow({
           value={row.quantity}
           onChange={(e) => onChange({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -499,7 +499,7 @@ function PreviewRow({
           onChange={(e) => onChange({ notes: e.target.value })}
           disabled={skipped}
           placeholder="Notes"
-          className="w-full text-xs text-[#1a1a1a] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[#d0d0d0] focus:border-[#155e63] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[#c0c0c0]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -508,7 +508,7 @@ function PreviewRow({
         <button
           type="button"
           onClick={onRemove}
-          className="text-[#afafaf] hover:text-[#a13d3d] transition-colors"
+          className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors"
           aria-label="Remove row"
         >
           <Trash2 size={12} />

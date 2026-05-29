@@ -50,8 +50,8 @@ export function InfoTip({
         aria-expanded={open}
         aria-label={`What is ${label}?`}
         className={cn(
-          'inline-flex items-center justify-center rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#155e63]',
-          open ? 'text-[#155e63]' : 'text-[#c8c5be] hover:text-[#155e63]',
+          'inline-flex items-center justify-center rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)]',
+          open ? 'text-[var(--teal)]' : 'text-[var(--warm-900)] hover:text-[var(--teal)]',
         )}
       >
         <HelpCircle size={13} strokeWidth={2} aria-hidden="true" />
@@ -61,22 +61,22 @@ export function InfoTip({
         <div
           role="dialog"
           aria-label={`${label} explanation`}
-          className="absolute left-0 top-full z-30 mt-1 w-64 rounded-xl border border-[#e0ddd8] bg-[#f5f3ef] p-3 shadow-lg"
+          className="absolute left-0 top-full z-30 mt-1 w-64 rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
         >
           <div className="mb-1.5 flex items-start justify-between gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#155e63]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
               {label}
             </span>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close explanation"
-              className="text-[#afafaf] transition-colors hover:text-[#1a1a1a]"
+              className="text-[var(--dark-grey)] transition-colors hover:text-[var(--foreground)]"
             >
               <X size={12} aria-hidden="true" />
             </button>
           </div>
-          <div className="text-xs leading-relaxed text-[#3a3a3a]">{children}</div>
+          <div className="text-xs leading-relaxed text-[var(--gray-1300)]">{children}</div>
         </div>
       )}
     </span>

@@ -101,9 +101,9 @@ const HIRING_STATUS_LABEL: Record<HiringRoleStatus, string> = {
 }
 
 const READINESS_LABEL: Record<ReadinessStatus, string> = {
-  green: "Green — On track",
-  yellow: "Yellow — Gaps to address",
-  red: "Red — Critical blockers",
+  green: "Green: On track",
+  yellow: "Yellow: Gaps to address",
+  red: "Red: Critical blockers",
 }
 
 const WORKSPACE_LABELS: Record<string, string> = {
@@ -164,7 +164,7 @@ function computeTMinus(targetDate: string | null): number | null {
 }
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   const d = new Date(iso)
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: BRAND.colors.muted,
     padding: 8,
-    backgroundColor: "#F5F6F5",
+    backgroundColor: "var(--neutral-cool-f5)",
     borderRadius: 4,
     marginBottom: 8,
   },
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   ganttDotDone: { backgroundColor: BRAND.colors.primary },
   ganttDotInProgress: { backgroundColor: BRAND.colors.accent },
-  ganttDotAtRisk: { backgroundColor: "#B23A1F" },
+  ganttDotAtRisk: { backgroundColor: "var(--rust)" },
   ganttDotPending: { backgroundColor: BRAND.colors.rule },
   // Readiness
   readinessBadge: {
@@ -320,13 +320,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  readinessGreen: { backgroundColor: "#E6F4E6" },
-  readinessYellow: { backgroundColor: "#FFF8E6" },
-  readinessRed: { backgroundColor: "#FDE8E8" },
+  readinessGreen: { backgroundColor: "var(--success-bg-2)" },
+  readinessYellow: { backgroundColor: "var(--warning-bg-2)" },
+  readinessRed: { backgroundColor: "var(--error-bg-8)" },
   readinessBadgeText: { fontSize: 11, fontWeight: 700 },
-  readinessGreenText: { color: "#2d6a2d" },
-  readinessYellowText: { color: "#8a6200" },
-  readinessRedText: { color: "#B23A1F" },
+  readinessGreenText: { color: "var(--success-medium)" },
+  readinessYellowText: { color: "var(--warning-text-3)" },
+  readinessRedText: { color: "var(--rust)" },
   wsRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -489,11 +489,11 @@ function CoverPage({ content, generatedDate }: { content: LaunchPlanContent; gen
 
   const tMinusLabel =
     tMinus == null
-      ? "—"
+      ? "-"
       : tMinus > 0
       ? `T-${tMinus} day${tMinus !== 1 ? "s" : ""}`
       : tMinus === 0
-      ? "Day 0 — Launch day!"
+      ? "Day 0: Launch day!"
       : `Launched ${Math.abs(tMinus)} day${Math.abs(tMinus) !== 1 ? "s" : ""} ago`
 
   return (
@@ -504,7 +504,7 @@ function CoverPage({ content, generatedDate }: { content: LaunchPlanContent; gen
       <Text style={styles.coverShop}>{content.shopName ?? content.planName}</Text>
 
       <Text style={styles.coverMetaLabel}>Owner</Text>
-      <Text style={styles.coverMetaValue}>{content.ownerEmail ?? "—"}</Text>
+      <Text style={styles.coverMetaValue}>{content.ownerEmail ?? "-"}</Text>
 
       <Text style={styles.coverMetaLabel}>Target opening date</Text>
       <Text style={styles.coverMetaValue}>{launchDateLabel}</Text>
@@ -547,7 +547,7 @@ function TimelineSection({ content }: { content: LaunchPlanContent }) {
     milestone: item.milestone,
     target_date: fmtDate(item.target_date),
     status: ITEM_STATUS_LABEL[item.status],
-    notes: item.notes ?? "—",
+    notes: item.notes ?? "-",
   }))
 
   return (
@@ -592,7 +592,7 @@ function SoftOpenSection({ content }: { content: LaunchPlanContent }) {
             rows={bucket.rows.map((r) => ({
               day: r.day_offset >= 0 ? `+${r.day_offset}` : String(r.day_offset),
               task: r.task,
-              owner: r.owner ?? "—",
+              owner: r.owner ?? "-",
               status: ITEM_STATUS_LABEL[r.status],
             }))}
           />
@@ -634,7 +634,7 @@ function MarketingSection({ content }: { content: LaunchPlanContent }) {
               rows={rows.map((r) => ({
                 asset: r.asset,
                 launch_date: fmtDate(r.launch_date),
-                responsible: r.responsible ?? "—",
+                responsible: r.responsible ?? "-",
                 status: ITEM_STATUS_LABEL[r.status],
               }))}
             />
@@ -686,7 +686,7 @@ function HiringPlanSection({ content }: { content: LaunchPlanContent }) {
           Total headcount: {totalHeadcount}
         </Text>
         <Text style={styles.payrollFooterValue}>
-          Monthly payroll: {totalPayrollCents > 0 ? fmtUsd(totalPayrollCents) : "—"}
+          Monthly payroll: {totalPayrollCents > 0 ? fmtUsd(totalPayrollCents) : "-"}
         </Text>
       </View>
     </PdfSection>
@@ -738,11 +738,11 @@ function ReadinessSection({ content }: { content: LaunchPlanContent }) {
       {r.perWorkspace.map((ws) => (
         <View key={ws.key} style={styles.wsRow}>
           <Text style={styles.wsKey}>{WORKSPACE_LABELS[ws.key] ?? ws.key}</Text>
-          <Text style={[styles.wsStatus, { color: ws.status === "green" ? "#2d6a2d" : ws.status === "yellow" ? "#8a6200" : "#B23A1F" }]}>
+          <Text style={[styles.wsStatus, { color: ws.status === "green" ? "var(--success-medium)" : ws.status === "yellow" ? "var(--warning-text-3)" : "var(--rust)" }]}>
             {ws.status.charAt(0).toUpperCase() + ws.status.slice(1)}
           </Text>
           <Text style={styles.wsBlocker}>
-            {ws.blockers.length > 0 ? ws.blockers[0] : ws.topNextActions[0] ?? "—"}
+            {ws.blockers.length > 0 ? ws.blockers[0] : ws.topNextActions[0] ?? "-"}
           </Text>
         </View>
       ))}

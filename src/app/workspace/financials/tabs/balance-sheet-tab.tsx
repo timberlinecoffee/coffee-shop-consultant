@@ -34,10 +34,10 @@ interface RowProps {
 
 function BSRow({ label, values, bold, indent, highlight, negative, currencyCode }: RowProps & { currencyCode: string }) {
   return (
-    <tr className={highlight ? "bg-[#f7fafa]" : ""}>
+    <tr className={highlight ? "bg-[var(--teal-tint-50)]" : ""}>
       {/* TIM-1309: opaque frozen column with z-index above scrolled cells. */}
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${highlight ? "bg-[#f7fafa]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
+        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${highlight ? "bg-[var(--teal-tint-50)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
       >
         {label}
       </td>
@@ -103,7 +103,7 @@ function SectionHeader({ label, colCount }: { label: string; colCount: number })
   return (
     <tr>
       <td colSpan={colCount + 1} className="px-4 pt-4 pb-1">
-        <span className="text-xs font-semibold text-[#155e63] uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide">{label}</span>
       </td>
     </tr>
   );
@@ -112,7 +112,7 @@ function SectionHeader({ label, colCount }: { label: string; colCount: number })
 function DividerRow({ cols }: { cols: number }) {
   return (
     <tr>
-      <td colSpan={cols + 1}><div className="h-px bg-[#efefef]" /></td>
+      <td colSpan={cols + 1}><div className="h-px bg-[var(--border)]" /></td>
     </tr>
   );
 }
@@ -196,24 +196,24 @@ export function BalanceSheetTab({
       <BalanceSheetSummaryChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <ViewModeToggle mode={view} onChange={setView} />
-        <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
+        <div className="flex rounded-lg border border-[var(--border-medium)] overflow-hidden text-sm">
           {(["monthly", "annual"] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 capitalize ${period === p ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:bg-[#f5f5f5]"}`}
+              className={`px-3 py-1.5 capitalize ${period === p ? "bg-[var(--teal)] text-white" : "bg-white text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)]"}`}
             >
               {p}
             </button>
           ))}
         </div>
         {period === "monthly" && (
-          <div className="flex rounded-lg border border-[#e0e0e0] overflow-hidden text-sm">
+          <div className="flex rounded-lg border border-[var(--border-medium)] overflow-hidden text-sm">
             {([1, 2, 3, 4, 5] as const).map((y) => (
               <button
                 key={y}
                 onClick={() => setYear(y)}
-                className={`px-3 py-1.5 ${year === y ? "bg-[#155e63] text-white" : "bg-white text-[#6b6b6b] hover:bg-[#f5f5f5]"}`}
+                className={`px-3 py-1.5 ${year === y ? "bg-[var(--teal)] text-white" : "bg-white text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)]"}`}
               >
                 Year {y}
               </button>
@@ -259,15 +259,15 @@ export function BalanceSheetTab({
           </ChartCard>
         </div>
       ) : (
-      <div className="rounded-2xl border border-[#efefef] bg-white overflow-x-auto">
+      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-[#efefef]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
+            <tr className="border-b border-[var(--border)]">
+              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
                 Line Item
               </th>
               {columns.map((c) => (
-                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide whitespace-nowrap">
+                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
                   {c.label}
                 </th>
               ))}
@@ -306,8 +306,8 @@ export function BalanceSheetTab({
       </div>
       )}
 
-      <div className="mt-4 rounded-2xl border border-[#e5eef0] bg-[#f0f9f9] px-5 py-4">
-        <p className="text-xs font-semibold text-[#155e63] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
+      <div className="mt-4 rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <BalanceSheetCritique slices={slices} year={year} />
       </div>
     </div>
@@ -458,7 +458,7 @@ function BalanceSheetCritique({ slices, year }: { slices: MonthlySlice[]; year: 
   return (
     <div className="space-y-2">
       {lines.map((line, i) => (
-        <p key={i} className="text-sm text-[#2a4a4c] leading-relaxed">{line}</p>
+        <p key={i} className="text-sm text-[var(--teal-deeper)] leading-relaxed">{line}</p>
       ))}
     </div>
   );
