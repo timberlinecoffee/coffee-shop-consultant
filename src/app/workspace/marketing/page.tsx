@@ -1,87 +1,84 @@
-// TIM-1036: Marketing Suite workspace page.
+// TIM-1417: Marketing planning workspace — one entry point on the V1 owner
+// workspace. Replaces the V2 execution tooling and the separate Marketing &
+// Pre-Launch surface. Owner-written planning only: Overview, Channels,
+// Story And Brand, Pre-launch Plan.
+
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
-import { MarketingWorkspace } from "./marketing-workspace";
-import type { MarketingBrand, DigitalPresenceRow, ContentPost, MarketingCampaign, MarketingBudgetLine } from "@/lib/marketing";
-import { DEFAULT_DIGITAL_CHANNELS, DEFAULT_BUDGET_CHANNELS } from "@/lib/marketing";
+import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { normalizeMarketing, type MarketingDocument } from "@/lib/marketing";
 import { normalizeConceptV2 } from "@/lib/concept";
+import { MarketingWorkspace } from "./marketing-workspace";
 
 export const dynamic = "force-dynamic";
 
 export default async function MarketingWorkspacePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase.from("coffee_shop_plans").select("id, plan_name").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: plan } = await supabase
+    .from("coffee_shop_plans")
+    .select("id, plan_name")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (!plan) redirect("/onboarding");
+
   const planId = plan.id;
 
   const [
-    { data: brandData },
+    { data: doc },
     { data: conceptDoc },
-    { data: presenceData },
-    { data: postsData },
-    { data: campaignsData },
-    { data: budgetData },
-    { data: financialModel },
     { data: profile },
   ] = await Promise.all([
-    supabase.from("marketing_brand").select("*").eq("plan_id", planId).maybeSingle(),
-    supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
-    supabase.from("marketing_digital_presence").select("*").eq("plan_id", planId).order("position", { ascending: true }),
-    supabase.from("marketing_content_posts").select("*").eq("plan_id", planId).order("post_date", { ascending: true }),
-    supabase.from("marketing_campaigns").select("*").eq("plan_id", planId).order("created_at", { ascending: true }),
-    supabase.from("marketing_budget_lines").select("*").eq("plan_id", planId).order("position", { ascending: true }),
-    supabase.from("financial_models").select("forecast_inputs").eq("plan_id", planId).maybeSingle(),
-    supabase.from("users").select("subscription_status, subscription_tier, copilot_trial_messages_used").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("workspace_documents")
+      .select("content, updated_at")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "marketing")
+      .maybeSingle(),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until, target_opening_date")
+      .eq("id", user.id)
+      .maybeSingle(),
   ]);
 
-  let initialPresence = (presenceData ?? []) as DigitalPresenceRow[];
-  if (initialPresence.length === 0) {
-    const seeds = DEFAULT_DIGITAL_CHANNELS.map((c) => ({ plan_id: planId, channel_name: c.channel_name, position: c.position, status: "not_started" as const, url_or_handle: null, owner: null, last_updated_at: null, is_system: true }));
-    const { data: seeded } = await supabase.from("marketing_digital_presence").insert(seeds).select();
-    initialPresence = (seeded ?? []) as DigitalPresenceRow[];
-  }
+  const initialDoc: MarketingDocument = normalizeMarketing(doc?.content);
 
-  let initialBudget = (budgetData ?? []) as MarketingBudgetLine[];
-  if (initialBudget.length === 0) {
-    const seeds = DEFAULT_BUDGET_CHANNELS.map((c) => ({ plan_id: planId, channel_name: c.channel_name, monthly_cents: 0, is_system: true, position: c.position }));
-    const { data: seeded } = await supabase.from("marketing_budget_lines").insert(seeds).select();
-    initialBudget = (seeded ?? []) as MarketingBudgetLine[];
-  }
-
-  // TIM-1406: V1/V2-safe concept read via normalizer; shop name comes from
-  // coffee_shop_plans.plan_name (SoT).
   const concept = normalizeConceptV2(conceptDoc?.content);
+  const conceptShopIdentity =
+    (plan.plan_name?.trim() ?? "") || concept.components.shop_identity.content;
   const conceptBrandVoice = concept.components.brand_voice.content;
-  const conceptShopIdentity = (plan.plan_name?.trim() ?? "") || concept.components.shop_identity.content;
 
-  const forecastInputs = financialModel?.forecast_inputs as Record<string, unknown> | null;
-  const monthlySlices = forecastInputs?.monthly as unknown[] | null;
-  let avgMonthlyRevenueCents = 0;
-  if (Array.isArray(monthlySlices) && monthlySlices.length > 0) {
-    const total = monthlySlices.reduce((sum: number, m: unknown) => sum + (((m as Record<string, unknown>).revenue_cents as number) ?? 0), 0);
-    avgMonthlyRevenueCents = Math.round(total / monthlySlices.length);
-  }
+  const canEdit =
+    isSubscriptionActive(profile?.subscription_status ?? "free_trial") ||
+    isBetaWaived(profile?.beta_waiver_until ?? null);
 
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
-  const initialTrialMessagesUsed = profile?.subscription_tier === "free" ? (profile.copilot_trial_messages_used ?? 0) : undefined;
+  const initialTrialMessagesUsed =
+    profile?.subscription_tier === "free"
+      ? (profile.copilot_trial_messages_used ?? 0)
+      : undefined;
 
   return (
     <MarketingWorkspace
       planId={planId}
       canEdit={canEdit}
-      initialTrialMessagesUsed={initialTrialMessagesUsed}
-      initialBrand={(brandData ?? null) as MarketingBrand | null}
-      conceptBrandVoice={conceptBrandVoice}
+      initialDoc={initialDoc}
       conceptShopIdentity={conceptShopIdentity}
-      initialPresence={initialPresence}
-      initialPosts={(postsData ?? []) as ContentPost[]}
-      initialCampaigns={(campaignsData ?? []) as MarketingCampaign[]}
-      initialBudgetLines={initialBudget}
-      avgMonthlyRevenueCents={avgMonthlyRevenueCents}
+      conceptBrandVoice={conceptBrandVoice}
+      targetOpeningDate={profile?.target_opening_date ?? null}
+      initialTrialMessagesUsed={initialTrialMessagesUsed}
     />
   );
 }

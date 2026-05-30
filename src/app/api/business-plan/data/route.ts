@@ -21,7 +21,7 @@ import {
   type BpMenuItem,
   type BpLaunchItem,
   type BpHiringRole,
-  type BpMarketingBrand,
+  toBpMarketingPlanning,
 } from "@/lib/business-plan";
 
 export async function GET() {
@@ -49,7 +49,7 @@ export async function GET() {
     { data: menuRows },
     { data: launchRows },
     { data: hiringRows },
-    { data: marketingBrandRow },
+    { data: marketingDoc },
     { data: financialModel },
     { data: savedSections },
   ] = await Promise.all([
@@ -87,9 +87,10 @@ export async function GET() {
       .eq("plan_id", planId)
       .order("created_at"),
     supabase
-      .from("marketing_brand")
-      .select("positioning_statement, brand_pillar_1, brand_pillar_2, brand_pillar_3")
+      .from("workspace_documents")
+      .select("content")
       .eq("plan_id", planId)
+      .eq("workspace_key", "marketing")
       .maybeSingle(),
     supabase
       .from("financial_models")
@@ -117,7 +118,7 @@ export async function GET() {
       financialModel
     ),
     menu_pricing: assembleMenuPricing((menuRows ?? []) as BpMenuItem[]),
-    marketing_plan: assembleMarketingPlan(marketingBrandRow as BpMarketingBrand | null),
+    marketing_plan: assembleMarketingPlan(toBpMarketingPlanning(marketingDoc?.content)),
     operations_launch: assembleOperationsLaunch((launchRows ?? []) as BpLaunchItem[]),
     team_hiring: assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
     financial_plan: assembleFinancialPlan(financialModel, equipmentRows ?? []),

@@ -442,22 +442,32 @@ export function OnboardingFlow({
         );
       if (conceptError) throw conceptError;
 
-      // TIM-1406: also seed marketing_brand with the picked pillars so the
-      // Marketing workspace shows them on first open instead of asking the
-      // user to retype the same answers. Marketing remains the SoT for these
-      // columns after first save.
+      // TIM-1417: brand_pillars from onboarding flow feed the Marketing
+      // workspace's Story And Brand section on first open. Persist as part of
+      // the marketing workspace_document under workspace_key='marketing'.
       const brandPillars = Array.isArray(wizardState.answers.brand_pillars)
         ? (wizardState.answers.brand_pillars as string[])
         : [];
       if (brandPillars.length > 0) {
-        await supabase.from("marketing_brand").upsert(
+        const differentiator = brandPillars.filter(Boolean).join(", ");
+        await supabase.from("workspace_documents").upsert(
           {
             plan_id: planId,
-            brand_pillar_1: brandPillars[0] ?? "",
-            brand_pillar_2: brandPillars[1] ?? "",
-            brand_pillar_3: brandPillars[2] ?? "",
+            workspace_key: "marketing",
+            content: {
+              overview: { narrative: "" },
+              channels: { selected: [] },
+              story: {
+                founder_story: "",
+                origin: "",
+                differentiator,
+                target_customer: "",
+              },
+              pre_launch: { milestones: [] },
+              last_generated_at: null,
+            },
           },
-          { onConflict: "plan_id" },
+          { onConflict: "plan_id,workspace_key" },
         );
       }
 

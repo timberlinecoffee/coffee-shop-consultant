@@ -1,167 +1,283 @@
-// TIM-1036: Marketing Suite v1 — types, constants, and helpers.
+// TIM-1417: Marketing planning surface — types, defaults, normalizer.
+// Replaces the V2 execution tooling (campaigns, content posts, digital presence,
+// budget lines) and the separate Marketing & Pre-Launch surface. Single
+// planning document stored in workspace_documents under workspace_key='marketing'.
+//
+// Four sections: Overview, Channels, Story/Brand, Pre-launch Plan.
 
-export interface MarketingBrand {
-  id: string;
-  plan_id: string;
-  positioning_statement: string;
-  brand_pillar_1: string;
-  brand_pillar_2: string;
-  brand_pillar_3: string;
-  do_say: string;
-  dont_say: string;
-  created_at: string;
-  updated_at: string;
+import { toTitleCase } from "@/lib/text";
+
+// ── Channels ────────────────────────────────────────────────────────────────
+
+export const MARKETING_CHANNEL_OPTIONS = [
+  "Instagram",
+  "TikTok",
+  "Facebook",
+  "Email Newsletter",
+  "Local Press",
+  "Community Events",
+  "Google Business Profile",
+  "Word Of Mouth",
+  "Local Partnerships",
+  "Owned Website",
+] as const;
+
+export type MarketingChannelOption = (typeof MARKETING_CHANNEL_OPTIONS)[number];
+
+// ── Sections ────────────────────────────────────────────────────────────────
+
+export interface MarketingOverviewSection {
+  narrative: string;
 }
 
-export function emptyMarketingBrand(planId: string): MarketingBrand {
-  return { id: "", plan_id: planId, positioning_statement: "", brand_pillar_1: "", brand_pillar_2: "", brand_pillar_3: "", do_say: "", dont_say: "", created_at: "", updated_at: "" };
-}
-
-export type PresenceStatus = "not_started" | "in_progress" | "live";
-
-export interface DigitalPresenceRow {
-  id: string;
-  plan_id: string;
-  channel_name: string;
-  status: PresenceStatus;
-  url_or_handle: string | null;
-  owner: string | null;
-  last_updated_at: string | null;
-  is_system: boolean;
-  position: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export const PRESENCE_STATUS_CONFIG: Record<PresenceStatus, { label: string; className: string }> = {
-  not_started: { label: "Not Started", className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" },
-  in_progress: { label: "In Progress", className: "bg-amber-50 text-amber-700 border-amber-200" },
-  live:        { label: "Live",        className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-};
-
-export const PRESENCE_STATUS_ORDER: PresenceStatus[] = ["not_started", "in_progress", "live"];
-
-export const DEFAULT_DIGITAL_CHANNELS: Array<{ channel_name: string; position: number }> = [
-  { channel_name: "Google Business Profile", position: 0 },
-  { channel_name: "Instagram",               position: 1 },
-  { channel_name: "TikTok",                  position: 2 },
-  { channel_name: "Yelp",                    position: 3 },
-  { channel_name: "Apple Maps",              position: 4 },
-  { channel_name: "Owned Website",           position: 5 },
-  { channel_name: "Email List",              position: 6 },
-  { channel_name: "SMS List",                position: 7 },
-  { channel_name: "Resy / OpenTable",        position: 8 },
-  { channel_name: "DoorDash / Uber Eats",    position: 9 },
-];
-
-export type PostFormat  = "photo" | "reel" | "story" | "video" | "graphic" | "other";
-export type PostStatus  = "planned" | "scheduled" | "posted";
-
-export interface ContentPost {
-  id: string;
-  plan_id: string;
-  post_date: string;
-  channels: string[];
-  theme: string;
-  format: PostFormat;
-  caption_draft: string;
-  status: PostStatus;
-  created_at: string;
-  updated_at: string;
-}
-
-export const POST_FORMAT_OPTIONS: PostFormat[] = ["photo", "reel", "story", "video", "graphic", "other"];
-
-export const POST_STATUS_CONFIG: Record<PostStatus, { label: string; className: string }> = {
-  planned:   { label: "Planned",   className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" },
-  scheduled: { label: "Scheduled", className: "bg-blue-50 text-blue-700 border-blue-200" },
-  posted:    { label: "Posted",    className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-};
-
-export interface CalendarTemplate {
+export interface MarketingChannelEntry {
   name: string;
-  description: string;
-  posts: Array<{ dayOfWeek: number; theme: string; format: PostFormat }>;
+  notes: string;
 }
 
-export const CADENCE_TEMPLATES: CalendarTemplate[] = [
-  {
-    name: "Community Builder",
-    description: "Monday menu feature, Wednesday behind-the-scenes, Friday community spotlight",
-    posts: [
-      { dayOfWeek: 1, theme: "Menu Feature",        format: "photo" },
-      { dayOfWeek: 3, theme: "Behind the Scenes",   format: "reel"  },
-      { dayOfWeek: 5, theme: "Community Spotlight", format: "photo" },
-    ],
-  },
-  {
-    name: "Storyteller",
-    description: "Tuesday origin story, Thursday customer story, Saturday weekend special",
-    posts: [
-      { dayOfWeek: 2, theme: "Origin Story",    format: "reel"  },
-      { dayOfWeek: 4, theme: "Customer Story",  format: "story" },
-      { dayOfWeek: 6, theme: "Weekend Special", format: "photo" },
-    ],
-  },
-];
+export interface MarketingChannelsSection {
+  selected: MarketingChannelEntry[];
+}
 
-export type CampaignObjective = "awareness" | "trial" | "retention" | "loyalty";
-export type CampaignStatus    = "planned" | "running" | "completed";
+export interface MarketingStorySection {
+  founder_story: string;
+  origin: string;
+  differentiator: string;
+  target_customer: string;
+}
 
-export interface MarketingCampaign {
+export interface MarketingMilestone {
   id: string;
-  plan_id: string;
-  name: string;
-  objective: CampaignObjective;
-  channels: string[];
-  start_date: string | null;
-  end_date: string | null;
-  budget_cents: number;
-  actual_spend_cents: number;
-  status: CampaignStatus;
-  key_results: string;
-  created_at: string;
-  updated_at: string;
+  label: string;
+  target_date: string | null; // ISO yyyy-mm-dd
+  notes: string;
+  completed: boolean;
 }
 
-export const CAMPAIGN_OBJECTIVE_OPTIONS: CampaignObjective[] = ["awareness", "trial", "retention", "loyalty"];
+export interface MarketingPreLaunchSection {
+  milestones: MarketingMilestone[];
+}
 
-export const CAMPAIGN_OBJECTIVE_LABELS: Record<CampaignObjective, string> = {
-  awareness: "Awareness",
-  trial:     "Trial",
-  retention: "Retention",
-  loyalty:   "Loyalty",
+export interface MarketingDocument {
+  overview: MarketingOverviewSection;
+  channels: MarketingChannelsSection;
+  story: MarketingStorySection;
+  pre_launch: MarketingPreLaunchSection;
+  last_generated_at: string | null;
+}
+
+// ── Defaults ────────────────────────────────────────────────────────────────
+
+export const EMPTY_MARKETING: MarketingDocument = {
+  overview: { narrative: "" },
+  channels: { selected: [] },
+  story: {
+    founder_story: "",
+    origin: "",
+    differentiator: "",
+    target_customer: "",
+  },
+  pre_launch: { milestones: [] },
+  last_generated_at: null,
 };
 
-export const CAMPAIGN_STATUS_CONFIG: Record<CampaignStatus, { label: string; className: string }> = {
-  planned:   { label: "Planned",   className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" },
-  running:   { label: "Running",   className: "bg-blue-50 text-blue-700 border-blue-200" },
-  completed: { label: "Completed", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-};
-
-export interface MarketingBudgetLine {
-  id: string;
-  plan_id: string;
-  channel_name: string;
-  monthly_cents: number;
-  is_system: boolean;
-  position: number;
-  created_at: string;
-  updated_at: string;
+function localId(): string {
+  return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export const DEFAULT_BUDGET_CHANNELS: Array<{ channel_name: string; position: number }> = [
-  { channel_name: "Paid Social",   position: 0 },
-  { channel_name: "Print / Local", position: 1 },
-  { channel_name: "Events",        position: 2 },
-  { channel_name: "Influencer",    position: 3 },
-  { channel_name: "Tools",         position: 4 },
+export function defaultPreLaunchMilestones(): MarketingMilestone[] {
+  const labels = [
+    "Soft Launch For Friends And Family",
+    "Industry Preview Night",
+    "Public Opening Week",
+    "First Community Event",
+  ];
+  return labels.map((label) => ({
+    id: localId(),
+    label,
+    target_date: null,
+    notes: "",
+    completed: false,
+  }));
+}
+
+// ── Section metadata ────────────────────────────────────────────────────────
+
+export type MarketingSectionKey = "overview" | "channels" | "story" | "pre_launch";
+
+export const MARKETING_SECTION_KEYS: MarketingSectionKey[] = [
+  "overview",
+  "channels",
+  "story",
+  "pre_launch",
 ];
 
-export function totalBudgetCents(lines: MarketingBudgetLine[]): number {
-  return lines.reduce((sum, l) => sum + l.monthly_cents, 0);
+export const MARKETING_SECTION_LABELS: Record<MarketingSectionKey, string> = {
+  overview: "Overview",
+  channels: "Channels",
+  story: "Story And Brand",
+  pre_launch: "Pre-launch Plan",
+};
+
+export const MARKETING_SECTION_TAGLINES: Record<MarketingSectionKey, string> = {
+  overview:
+    "Your plan, in your own words. The high-level story you tell yourself about how the shop gets known.",
+  channels:
+    "The places you intend to show up. Pick the ones you can keep up with and skip the rest.",
+  story:
+    "The prompts that feed everything else. Founder story, origin, what makes this shop different, and who it is for.",
+  pre_launch:
+    "The handful of milestones between today and a busy opening week. Set dates you can actually hit.",
+};
+
+// ── Normalize from jsonb ────────────────────────────────────────────────────
+
+function pickString(obj: Record<string, unknown> | null | undefined, key: string): string {
+  const v = obj?.[key];
+  return typeof v === "string" ? v : "";
 }
 
-export function formatCents(cents: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(cents / 100);
+function pickBool(obj: Record<string, unknown> | null | undefined, key: string): boolean {
+  return obj?.[key] === true;
+}
+
+function pickNullableString(
+  obj: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const v = obj?.[key];
+  if (typeof v === "string" && v.length > 0) return v;
+  return null;
+}
+
+function normalizeChannels(input: unknown): MarketingChannelEntry[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const out: MarketingChannelEntry[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const name = pickString(r, "name").trim();
+    if (!name) continue;
+    if (seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push({ name, notes: pickString(r, "notes") });
+  }
+  return out;
+}
+
+function normalizeMilestones(input: unknown): MarketingMilestone[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((raw) => {
+      if (!raw || typeof raw !== "object") return null;
+      const r = raw as Record<string, unknown>;
+      const label = pickString(r, "label");
+      if (!label) return null;
+      return {
+        id: pickString(r, "id") || localId(),
+        label,
+        target_date: pickNullableString(r, "target_date"),
+        notes: pickString(r, "notes"),
+        completed: pickBool(r, "completed"),
+      };
+    })
+    .filter((m): m is MarketingMilestone => m !== null);
+}
+
+export function normalizeMarketing(input: unknown): MarketingDocument {
+  if (!input || typeof input !== "object") return structuredClone(EMPTY_MARKETING);
+  const obj = input as Record<string, unknown>;
+
+  const overviewIn = (obj.overview as Record<string, unknown> | undefined) ?? {};
+  const channelsIn = (obj.channels as Record<string, unknown> | undefined) ?? {};
+  const storyIn = (obj.story as Record<string, unknown> | undefined) ?? {};
+  const preIn = (obj.pre_launch as Record<string, unknown> | undefined) ?? {};
+
+  return {
+    overview: { narrative: pickString(overviewIn, "narrative") },
+    channels: { selected: normalizeChannels(channelsIn.selected) },
+    story: {
+      founder_story: pickString(storyIn, "founder_story"),
+      origin: pickString(storyIn, "origin"),
+      differentiator: pickString(storyIn, "differentiator"),
+      target_customer: pickString(storyIn, "target_customer"),
+    },
+    pre_launch: { milestones: normalizeMilestones(preIn.milestones) },
+    last_generated_at: pickNullableString(obj, "last_generated_at"),
+  };
+}
+
+export function isMarketingEmpty(doc: MarketingDocument): boolean {
+  return (
+    !doc.overview.narrative &&
+    doc.channels.selected.length === 0 &&
+    !doc.story.founder_story &&
+    !doc.story.origin &&
+    !doc.story.differentiator &&
+    !doc.story.target_customer &&
+    doc.pre_launch.milestones.length === 0
+  );
+}
+
+// ── Title Case at API boundary (label-shaped only) ──────────────────────────
+//
+// Channel names and milestone labels are label-shaped — Title Case.
+// Narratives, prompts, and notes are sentence-form copy — left untouched.
+
+export function titleCaseMarketingFromAI(doc: MarketingDocument): MarketingDocument {
+  return {
+    overview: doc.overview,
+    channels: {
+      selected: doc.channels.selected.map((c) => ({
+        name: c.name ? toTitleCase(c.name) : "",
+        notes: c.notes,
+      })),
+    },
+    story: doc.story,
+    pre_launch: {
+      milestones: doc.pre_launch.milestones.map((m) => ({
+        ...m,
+        label: m.label ? toTitleCase(m.label) : "",
+      })),
+    },
+    last_generated_at: doc.last_generated_at,
+  };
+}
+
+// ── AI copilot context ──────────────────────────────────────────────────────
+
+export function formatMarketingForAI(doc: MarketingDocument): string {
+  const lines: string[] = [];
+
+  lines.push("**Overview**");
+  lines.push(doc.overview.narrative ? `- ${doc.overview.narrative}` : "- (empty)");
+
+  lines.push("\n**Channels**");
+  if (doc.channels.selected.length === 0) {
+    lines.push("- (none selected)");
+  } else {
+    for (const c of doc.channels.selected) {
+      lines.push(`- ${c.name}${c.notes ? `: ${c.notes}` : ""}`);
+    }
+  }
+
+  lines.push("\n**Story And Brand**");
+  if (doc.story.founder_story) lines.push(`- Founder story: ${doc.story.founder_story}`);
+  if (doc.story.origin) lines.push(`- Origin: ${doc.story.origin}`);
+  if (doc.story.differentiator) lines.push(`- What makes us different: ${doc.story.differentiator}`);
+  if (doc.story.target_customer) lines.push(`- Who it is for: ${doc.story.target_customer}`);
+
+  lines.push("\n**Pre-launch Plan**");
+  if (doc.pre_launch.milestones.length === 0) {
+    lines.push("- (no milestones)");
+  } else {
+    for (const m of doc.pre_launch.milestones) {
+      const date = m.target_date ? ` (${m.target_date})` : "";
+      const done = m.completed ? " [done]" : "";
+      lines.push(`- ${m.label}${date}${done}${m.notes ? ` — ${m.notes}` : ""}`);
+    }
+  }
+
+  return lines.join("\n");
 }

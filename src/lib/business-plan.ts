@@ -1,6 +1,7 @@
 // TIM-1037: Business Plan Generator v1 — types, section keys, assemblers.
 
 import { normalizeConceptV2 } from "@/lib/concept";
+import { normalizeMarketing } from "@/lib/marketing";
 import { normalizeMonthlyProjections, computeMonthlyProjections, totalCapexCents, type EquipmentSummary } from "@/lib/financial-projection";
 
 // ── Section keys ─────────────────────────────────────────────────────────────
@@ -96,11 +97,37 @@ export interface BpHiringRole {
   status: string;
 }
 
-export interface BpMarketingBrand {
-  positioning_statement: string;
-  brand_pillar_1: string;
-  brand_pillar_2: string;
-  brand_pillar_3: string;
+// TIM-1417: Marketing inputs come from the planning document
+// (workspace_documents.workspace_key='marketing'). The business plan renders
+// the story sections and selected channels, not the deprecated
+// marketing_brand pillar shape.
+export interface BpMarketingPlanning {
+  overview_narrative: string;
+  founder_story: string;
+  differentiator: string;
+  target_customer: string;
+  channels: string[];
+}
+
+export function toBpMarketingPlanning(content: unknown): BpMarketingPlanning | null {
+  const doc = normalizeMarketing(content);
+  const channels = doc.channels.selected.map((c) => c.name).filter(Boolean);
+  if (
+    !doc.overview.narrative &&
+    !doc.story.founder_story &&
+    !doc.story.differentiator &&
+    !doc.story.target_customer &&
+    channels.length === 0
+  ) {
+    return null;
+  }
+  return {
+    overview_narrative: doc.overview.narrative,
+    founder_story: doc.story.founder_story,
+    differentiator: doc.story.differentiator,
+    target_customer: doc.story.target_customer,
+    channels,
+  };
 }
 
 // ── Auto-content assemblers ───────────────────────────────────────────────────
@@ -269,20 +296,34 @@ export function assembleMenuPricing(menuItems: BpMenuItem[]): string {
   return lines.join("\n").trim();
 }
 
-export function assembleMarketingPlan(brand: BpMarketingBrand | null): string {
-  if (!brand || (!brand.positioning_statement && !brand.brand_pillar_1)) {
+export function assembleMarketingPlan(planning: BpMarketingPlanning | null): string {
+  if (
+    !planning ||
+    (!planning.overview_narrative &&
+      !planning.founder_story &&
+      !planning.differentiator &&
+      !planning.target_customer &&
+      planning.channels.length === 0)
+  ) {
     return "Complete the Marketing workspace to populate this section.";
   }
 
   const lines: string[] = [];
-  if (brand.positioning_statement) {
-    lines.push(`Positioning\n${brand.positioning_statement}`);
+  if (planning.overview_narrative) {
+    lines.push(`Overview\n${planning.overview_narrative}`);
   }
-
-  const pillars = [brand.brand_pillar_1, brand.brand_pillar_2, brand.brand_pillar_3].filter(Boolean);
-  if (pillars.length > 0) {
-    lines.push(`\nBrand Pillars`);
-    for (const p of pillars) lines.push(`- ${p}`);
+  if (planning.differentiator) {
+    lines.push(`\nWhat Makes Us Different\n${planning.differentiator}`);
+  }
+  if (planning.target_customer) {
+    lines.push(`\nWho It Is For\n${planning.target_customer}`);
+  }
+  if (planning.founder_story) {
+    lines.push(`\nFounder Story\n${planning.founder_story}`);
+  }
+  if (planning.channels.length > 0) {
+    lines.push(`\nChannels`);
+    for (const c of planning.channels) lines.push(`- ${c}`);
   }
 
   return lines.join("\n").trim();

@@ -23,6 +23,11 @@ import {
   type OperationsPlaybookDocument,
 } from "@/lib/operations-playbook";
 import {
+  normalizeMarketing,
+  isMarketingEmpty,
+  type MarketingDocument,
+} from "@/lib/marketing";
+import {
   normalizeMonthlyProjections,
   computeMonthlyProjections,
   totalCapexCents,
@@ -134,9 +139,7 @@ export default async function BusinessPlanPrintPage({
     { data: buildoutSections },
     { data: locations },
     { data: launchItems },
-    { data: marketingBrand },
-    { data: digitalPresence },
-    { data: campaigns },
+    { data: marketingDoc },
     { data: financialModel },
     { data: coverRow },
   ] = await Promise.all([
@@ -191,20 +194,11 @@ export default async function BusinessPlanPrintPage({
       .eq("plan_id", planId)
       .order("target_date", { ascending: true, nullsFirst: false }),
     supabase
-      .from("marketing_brand")
-      .select("positioning_statement, brand_pillar_1, brand_pillar_2, brand_pillar_3, do_say, dont_say")
+      .from("workspace_documents")
+      .select("content")
       .eq("plan_id", planId)
+      .eq("workspace_key", "marketing")
       .maybeSingle(),
-    supabase
-      .from("marketing_digital_presence")
-      .select("channel_name, status, url_or_handle, owner")
-      .eq("plan_id", planId)
-      .order("position"),
-    supabase
-      .from("marketing_campaigns")
-      .select("name, objective, channels, start_date, end_date, budget_cents")
-      .eq("plan_id", planId)
-      .order("start_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("financial_models")
       .select("forecast_inputs, monthly_projections, startup_costs")
@@ -333,11 +327,7 @@ export default async function BusinessPlanPrintPage({
             )}
             {key === "launch" && <LaunchSection items={launchItems ?? []} />}
             {key === "marketing" && (
-              <MarketingSection
-                brand={marketingBrand}
-                presence={digitalPresence ?? []}
-                campaigns={campaigns ?? []}
-              />
+              <MarketingSection marketing={normalizeMarketing(marketingDoc?.content)} />
             )}
             {key === "suppliers" && <SuppliersSection />}
             {key === "operations" && <OperationsSection playbook={ops} />}
@@ -852,110 +842,85 @@ function LaunchSection({ items }: { items: LaunchRow[] }) {
   );
 }
 
-// ── Marketing & Pre-Launch ────────────────────────────────────────────────────
+// ── Marketing ─────────────────────────────────────────────────────────────────
 
-type MarketingBrandRow = {
-  positioning_statement: string | null;
-  brand_pillar_1: string | null;
-  brand_pillar_2: string | null;
-  brand_pillar_3: string | null;
-  do_say: string | null;
-  dont_say: string | null;
-} | null;
-
-type DigitalPresenceRow = {
-  channel_name: string;
-  status: string | null;
-  url_or_handle: string | null;
-  owner: string | null;
-};
-
-type CampaignRow = {
-  name: string;
-  objective: string | null;
-  channels: string[] | null;
-  start_date: string | null;
-  end_date: string | null;
-  budget_cents: number | null;
-};
-
-function MarketingSection({
-  brand,
-  presence,
-  campaigns,
-}: {
-  brand: MarketingBrandRow;
-  presence: DigitalPresenceRow[];
-  campaigns: CampaignRow[];
-}) {
-  const hasBrand =
-    !!brand && Boolean(brand.positioning_statement?.trim() || brand.brand_pillar_1?.trim());
-  if (!hasBrand && presence.length === 0 && campaigns.length === 0) {
+function MarketingSection({ marketing }: { marketing: MarketingDocument }) {
+  if (isMarketingEmpty(marketing)) {
     return (
       <EmptyState message="No marketing plan yet. Visit the Marketing workspace to add one." />
     );
   }
-  const pillars = [brand?.brand_pillar_1, brand?.brand_pillar_2, brand?.brand_pillar_3]
-    .map((p) => p?.trim())
-    .filter(Boolean) as string[];
+  const channels = marketing.channels.selected;
+  const milestones = marketing.pre_launch.milestones;
 
   return (
     <div className="space-y-5">
-      {brand?.positioning_statement?.trim() && (
-        <SectionCard label="Positioning" featured>
-          <Paragraph>{brand.positioning_statement.trim()}</Paragraph>
+      {marketing.overview.narrative.trim() && (
+        <SectionCard label="Overview" featured>
+          <Paragraph>{marketing.overview.narrative.trim()}</Paragraph>
         </SectionCard>
       )}
-      {pillars.length > 0 && (
-        <SectionCard label="Brand Pillars">
-          <ul className="space-y-1.5">
-            {pillars.map((p, i) => (
-              <li key={i} className="text-sm text-[var(--foreground)] leading-snug">
-                &bull; {p}
-              </li>
-            ))}
-          </ul>
+      {(marketing.story.founder_story.trim() ||
+        marketing.story.origin.trim() ||
+        marketing.story.differentiator.trim() ||
+        marketing.story.target_customer.trim()) && (
+        <SectionCard label="Story And Brand">
+          {marketing.story.founder_story.trim() && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Founder Story</p>
+              <Paragraph>{marketing.story.founder_story.trim()}</Paragraph>
+            </div>
+          )}
+          {marketing.story.origin.trim() && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Origin</p>
+              <Paragraph>{marketing.story.origin.trim()}</Paragraph>
+            </div>
+          )}
+          {marketing.story.differentiator.trim() && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">What Makes Us Different</p>
+              <Paragraph>{marketing.story.differentiator.trim()}</Paragraph>
+            </div>
+          )}
+          {marketing.story.target_customer.trim() && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Who It Is For</p>
+              <Paragraph>{marketing.story.target_customer.trim()}</Paragraph>
+            </div>
+          )}
         </SectionCard>
       )}
-      {presence.length > 0 && (
-        <SectionCard label="Digital Presence (Waitlist, GBP, Social)">
+      {channels.length > 0 && (
+        <SectionCard label="Channels">
           <ul className="divide-y divide-[var(--border)]">
-            {presence.map((p, i) => (
+            {channels.map((c, i) => (
               <li key={i} className="py-2 first:pt-0 last:pb-0">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-[var(--foreground)]">{p.channel_name}</span>
-                  <span className="text-xs text-[var(--muted-foreground)]">{p.status ?? ""}</span>
+                  <span className="text-sm text-[var(--foreground)]">{c.name}</span>
                 </div>
-                {(p.url_or_handle?.trim() || p.owner?.trim()) && (
-                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                    {[p.url_or_handle?.trim(), p.owner?.trim() ? `Owner: ${p.owner.trim()}` : null]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+                {c.notes.trim() && (
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{c.notes.trim()}</p>
                 )}
               </li>
             ))}
           </ul>
         </SectionCard>
       )}
-      {campaigns.length > 0 && (
-        <SectionCard label="Campaigns & Promotions">
+      {milestones.length > 0 && (
+        <SectionCard label="Pre-launch Plan">
           <ul className="divide-y divide-[var(--border)]">
-            {campaigns.map((c, i) => (
+            {milestones.map((m, i) => (
               <li key={i} className="py-2 first:pt-0 last:pb-0">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-[var(--foreground)]">{c.name}</span>
-                  <span className="text-xs text-[var(--muted-foreground)]">{centsToUsd(c.budget_cents)}</span>
+                  <span className="text-sm text-[var(--foreground)]">{m.label}</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    {m.target_date ? formatDate(m.target_date) : "Date TBD"}
+                  </span>
                 </div>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                  {[
-                    c.objective,
-                    c.channels && c.channels.length > 0 ? c.channels.join(", ") : null,
-                    c.start_date ? `${formatDate(c.start_date)}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
+                {m.notes.trim() && (
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{m.notes.trim()}</p>
+                )}
               </li>
             ))}
           </ul>

@@ -23,7 +23,7 @@ import {
   type BpMenuItem,
   type BpLaunchItem,
   type BpHiringRole,
-  type BpMarketingBrand,
+  toBpMarketingPlanning,
 } from "@/lib/business-plan";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ export default async function BusinessPlanWorkspacePage() {
     { data: menuRows },
     { data: launchRows },
     { data: hiringRows },
-    { data: marketingBrandRow },
+    { data: marketingDoc },
     { data: financialModel },
     { data: savedSections },
     { data: profile },
@@ -95,9 +95,10 @@ export default async function BusinessPlanWorkspacePage() {
       .eq("plan_id", planId)
       .order("created_at"),
     supabase
-      .from("marketing_brand")
-      .select("positioning_statement, brand_pillar_1, brand_pillar_2, brand_pillar_3")
+      .from("workspace_documents")
+      .select("content")
       .eq("plan_id", planId)
+      .eq("workspace_key", "marketing")
       .maybeSingle(),
     supabase
       .from("financial_models")
@@ -139,9 +140,7 @@ export default async function BusinessPlanWorkspacePage() {
       financialModel
     ),
     menu_pricing: assembleMenuPricing((menuRows ?? []) as BpMenuItem[]),
-    marketing_plan: assembleMarketingPlan(
-      marketingBrandRow as BpMarketingBrand | null
-    ),
+    marketing_plan: assembleMarketingPlan(toBpMarketingPlanning(marketingDoc?.content)),
     operations_launch: assembleOperationsLaunch(
       (launchRows ?? []) as BpLaunchItem[]
     ),

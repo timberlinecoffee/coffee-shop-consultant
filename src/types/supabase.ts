@@ -13,7 +13,6 @@ export type WorkspaceKey =
   | 'marketing'
   | 'suppliers'
   | 'operations_playbook'
-  | 'marketing_pre_launch'
 
 export type LaunchItemStatus = 'pending' | 'in_progress' | 'done' | 'at_risk'
 

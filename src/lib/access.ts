@@ -32,7 +32,6 @@ export const MUTABLE_WORKSPACE_KEYS = new Set([
   'marketing',
   'suppliers',
   'operations_playbook',
-  'marketing_pre_launch',
 ] as const);
 
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro";
