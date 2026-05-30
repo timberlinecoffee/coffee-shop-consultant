@@ -44,6 +44,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { SectionHelp } from "@/components/ui/section-help";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   type MenuItemWithCogs,
   type MenuIngredient,
@@ -2556,6 +2557,12 @@ export function MenuWorkspace({
   const [suggestions, setSuggestions] = useState<MenuSuggestion[]>([]);
   const [addedSuggestionKeys, setAddedSuggestionKeys] = useState<Set<string>>(new Set());
   const [addingSuggestionKeys, setAddingSuggestionKeys] = useState<Set<string>>(new Set());
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once any menu items exist.
+  useEffect(() => {
+    if (items.length > 0) promoteOnEdit("menu_pricing");
+  }, [items.length, promoteOnEdit]);
 
   const tabs: { id: Tab; label: string; Icon: typeof Utensils }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },

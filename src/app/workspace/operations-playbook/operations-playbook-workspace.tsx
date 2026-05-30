@@ -20,6 +20,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -84,6 +85,12 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress on first successful save.
+  useEffect(() => {
+    if (savedAt) promoteOnEdit("operations_playbook");
+  }, [savedAt, promoteOnEdit]);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);

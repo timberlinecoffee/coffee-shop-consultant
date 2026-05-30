@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ClipboardList, Plus, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import type { LaunchItemStatus } from "@/types/supabase";
 
 interface Props {
@@ -138,6 +139,12 @@ export function OpeningMonthPlanWorkspace({
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [seeding, setSeeding] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once any plan items exist.
+  useEffect(() => {
+    if (items.length > 0) promoteOnEdit("opening_month_plan");
+  }, [items.length, promoteOnEdit]);
 
   function showToast(type: "success" | "error", msg: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);

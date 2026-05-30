@@ -35,6 +35,7 @@ import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   type OrgRole,
   type InterviewCandidate, // V2: candidate tracking
@@ -2485,6 +2486,13 @@ export function HiringWorkspace({
   const [competencies, setCompetencies] = useState<StaffCompetency[]>(initialCompetencies);
   const [staffFiles, setStaffFiles] = useState<StaffFile[]>(initialStaffFiles);
   const [evaluations, setEvaluations] = useState<CompetencyEvaluation[]>(initialCompetencyEvals);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once any hiring data exists.
+  const hasContent = roles.length > 0 || candidates.length > 0 || competencies.length > 0 || tasks.length > 0;
+  useEffect(() => {
+    if (hasContent) promoteOnEdit("hiring");
+  }, [hasContent, promoteOnEdit]);
 
   const tabs: { id: Tab; label: string; Icon: typeof Users }[] = [
     { id: "org", label: "Org Structure", Icon: Network },

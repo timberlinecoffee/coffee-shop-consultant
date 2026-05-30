@@ -4,11 +4,12 @@
 // syrups, cleaning supplies). v1 = simple list. No tracking, depletion, or
 // reorder logic in v1. Suppliers reference points to Suppliers & Vendors.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Package, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
@@ -93,6 +94,12 @@ export function InventoryWorkspace({
   const [supplies, setSupplies] = useState<SuppliesItem[]>(initialSupplies);
   const [sections, setSections] = useState<ListSection[]>(initialSections);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once any inventory items exist.
+  useEffect(() => {
+    if (supplies.length > 0) promoteOnEdit("inventory");
+  }, [supplies.length, promoteOnEdit]);
 
   const hasAiSupplies = supplies.some((i) => i.source === "ai_suggested");
 

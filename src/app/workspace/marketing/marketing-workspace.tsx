@@ -18,6 +18,7 @@ import {
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
 import {
   type MarketingDocument,
@@ -69,6 +70,12 @@ export function MarketingWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<MarketingSectionKey | null>(null);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress on first successful save.
+  useEffect(() => {
+    if (savedAt) promoteOnEdit("marketing");
+  }, [savedAt, promoteOnEdit]);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);

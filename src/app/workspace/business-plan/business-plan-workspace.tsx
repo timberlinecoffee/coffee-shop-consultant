@@ -4,7 +4,7 @@
 // TIM-1225: adds Cover & Branding panel above section list.
 // TIM-1315: adds worked example reference panel per section.
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,6 +12,7 @@ import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
 import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 
 interface Props {
   planId: string;
@@ -123,6 +124,13 @@ export function BusinessPlanWorkspace({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once any section has user content.
+  const hasContent = sections.some((s) => s.userContent || s.autoContent);
+  useEffect(() => {
+    if (hasContent) promoteOnEdit("business_plan");
+  }, [hasContent, promoteOnEdit]);
 
   const abortRef = useRef<AbortController | null>(null);
   const streamBufRef = useRef<string>("");
