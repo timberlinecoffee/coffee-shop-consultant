@@ -6,6 +6,7 @@ import { useState, useRef } from "react";
 import { Megaphone, Plus, Trash2, ExternalLink, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import type {
   MarketingBrand, DigitalPresenceRow, ContentPost, MarketingCampaign, MarketingBudgetLine,
   PresenceStatus, PostFormat, PostStatus, CampaignObjective, CampaignStatus,
@@ -184,7 +185,7 @@ function DigitalPresenceTab({ canEdit, rows, onRowsChange }: {
         {rows.map((row) => (
           <div key={row.id} className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0">
             <div>
-              <span className="text-sm text-[var(--foreground)] truncate block">{row.channel_name}</span>
+              <TruncatedText text={row.channel_name} className="text-sm text-[var(--foreground)] block" />
               {row.last_updated_at && (
                 <span className="text-[10px] text-[var(--dark-grey)]">Updated {row.last_updated_at}</span>
               )}
@@ -328,9 +329,9 @@ function ContentCalendarTab({ canEdit, posts, onPostsChange }: {
                     <span className="text-[10px] text-[var(--dark-grey)] font-medium block mb-1">{day}</span>
                     {dayPosts.map((post) => (
                       <div key={post.id}
-                        className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-[var(--teal)]/10 text-[var(--teal)] mb-0.5 cursor-pointer truncate"
+                        className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-[var(--teal)]/10 text-[var(--teal)] mb-0.5 cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); setDrawer({ mode: "edit", post }); }}>
-                        {post.theme || post.format}
+                        <TruncatedText text={post.theme || post.format} />
                       </div>
                     ))}
                   </>
@@ -479,9 +480,11 @@ function CampaignTab({ canEdit, campaigns, onCampaignsChange }: {
             <div key={c.id}
               className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0 hover:bg-[var(--background)] cursor-pointer"
               onClick={() => canEdit && setEditingId(c.id)}>
-              <div>
-                <p className="text-sm font-medium text-[var(--foreground)] truncate">{c.name}</p>
-                {c.key_results && <p className="text-[10px] text-[var(--muted-foreground)] truncate">{c.key_results}</p>}
+              <div className="min-w-0">
+                <TruncatedText text={c.name} className="text-sm font-medium text-[var(--foreground)] block" />
+                {c.key_results && (
+                  <TruncatedText text={c.key_results} className="text-[10px] text-[var(--muted-foreground)] block" />
+                )}
               </div>
               <span className="text-xs text-[var(--muted-foreground)]">{CAMPAIGN_OBJECTIVE_LABELS[c.objective]}</span>
               <span className="text-xs text-[var(--muted-foreground)]">{c.start_date ? c.start_date.slice(0, 7) : "—"}</span>

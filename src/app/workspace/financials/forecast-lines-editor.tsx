@@ -20,6 +20,7 @@ import type {
 } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
@@ -481,7 +482,9 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                         <tbody className="divide-y divide-[var(--teal-bg-e8f)]">
                           {menuCogsItems.map((it, i) => (
                             <tr key={i}>
-                              <td className="py-1 pr-2 text-[var(--foreground)] truncate max-w-[120px]">{it.name}</td>
+                              <td className="py-1 pr-2 text-[var(--foreground)]" style={{ maxWidth: 120 }}>
+                                <TruncatedText text={it.name} />
+                              </td>
                               <td className="py-1 text-right text-[var(--muted-foreground)]">{it.expected_mix_pct.toFixed(0)}%</td>
                               <td className="py-1 text-right font-medium text-[var(--teal)]">{it.cogs_pct.toFixed(1)}%</td>
                             </tr>

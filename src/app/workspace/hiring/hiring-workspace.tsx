@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
@@ -303,9 +304,14 @@ function OrgTab({
           )}
           <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2 min-w-0">
             <Users size={14} className="text-[var(--teal)] shrink-0" />
-            <span className="text-sm font-medium text-[var(--foreground)] truncate">
-              {role.role_title || <span className="text-[var(--dark-grey)] font-normal">Unnamed role</span>}
-            </span>
+            {role.role_title ? (
+              <TruncatedText
+                text={role.role_title}
+                className="text-sm font-medium text-[var(--foreground)]"
+              />
+            ) : (
+              <span className="text-sm font-medium text-[var(--dark-grey)] font-normal">Unnamed role</span>
+            )}
             <span className="text-xs text-[var(--muted-foreground)] shrink-0">
               ×{role.headcount}
             </span>
@@ -588,11 +594,16 @@ function RoleRow({
       {/* Role header row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-[var(--foreground)] truncate block">
-            {role.role_title || (
-              <span className="text-[var(--dark-grey)] font-normal">Unnamed role</span>
-            )}
-          </span>
+          {role.role_title ? (
+            <TruncatedText
+              text={role.role_title}
+              className="text-sm font-medium text-[var(--foreground)] block"
+            />
+          ) : (
+            <span className="text-sm font-medium text-[var(--dark-grey)] font-normal block">
+              Unnamed role
+            </span>
+          )}
           <span className="text-xs text-[var(--muted-foreground)]">
             {role.headcount} headcount
             {role.monthly_cost_cents

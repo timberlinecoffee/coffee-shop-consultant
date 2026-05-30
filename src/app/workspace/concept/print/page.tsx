@@ -19,7 +19,10 @@ import {
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
+  isSeededCategoryKey,
+  type VendorCategoryId,
   type VendorCategoryKey,
+  type VendorCustomCategory,
   type VendorDecision,
 } from "@/lib/suppliers";
 import { PrintButton } from "./print-button";
@@ -47,7 +50,7 @@ export default async function ConceptPrintPage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [{ data: doc }, { data: decisionsData }] = await Promise.all([
+  const [{ data: doc }, { data: decisionsData }, { data: customCatsData }] = await Promise.all([
     supabase
       .from("workspace_documents")
       .select("content, updated_at")
@@ -60,13 +63,23 @@ export default async function ConceptPrintPage() {
       .eq("plan_id", plan.id)
       .eq("is_current", true)
       .order("category", { ascending: true }),
+    supabase
+      .from("vendor_custom_categories")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .order("position", { ascending: true }),
   ]);
 
   const supplierDecisions = (decisionsData ?? []) as VendorDecision[];
-  const decisionsByCategory = new Map<VendorCategoryKey, VendorDecision>();
+  const decisionsByCategory = new Map<VendorCategoryId, VendorDecision>();
   for (const d of supplierDecisions) {
     decisionsByCategory.set(d.category, d);
   }
+  // TIM-1414: custom categories appear in the concept brief alongside seeded ones.
+  const customCats = (customCatsData ?? []) as VendorCustomCategory[];
+  const customCatLabelByKey = new Map<string, string>(
+    customCats.map((c) => [c.key, c.label])
+  );
 
   const conceptDoc: ConceptDocumentV2 = normalizeConceptV2(doc?.content);
 
@@ -247,12 +260,18 @@ export default async function ConceptPrintPage() {
                 Suppliers Locked In
               </p>
               <ul className="space-y-2.5">
-                {VENDOR_CATEGORY_KEYS.map((key) => {
+                {[
+                  ...VENDOR_CATEGORY_KEYS.map((k) => k as VendorCategoryId),
+                  ...customCats.map((c) => c.key as VendorCategoryId),
+                ].map((key) => {
                   const decision = decisionsByCategory.get(key);
                   if (!decision) return null;
+                  const label = isSeededCategoryKey(key)
+                    ? VENDOR_CATEGORY_LABELS[key as VendorCategoryKey]
+                    : customCatLabelByKey.get(key) ?? "Custom category";
                   return (
                     <li key={key} className="text-[var(--foreground)]" style={{ fontSize: "14.5px", lineHeight: 1.6 }}>
-                      <span className="font-semibold">{VENDOR_CATEGORY_LABELS[key]}:</span>{" "}
+                      <span className="font-semibold">{label}:</span>{" "}
                       {decision.vendor_name}
                       <span className="text-[var(--dark-grey)] text-xs">
                         {" "}
