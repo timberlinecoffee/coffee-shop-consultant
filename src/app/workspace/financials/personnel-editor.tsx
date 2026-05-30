@@ -342,7 +342,12 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
             {line.ramp?.enabled && (
               <div className="ml-6 mt-2 grid grid-cols-3 gap-3 max-w-md">
                 <div>
-                  <label className={fieldLabelCls}>Hire month</label>
+                  {/* TIM-1477: helper one-liner moved into a "?" popup beside
+                      the question label, matching the Financial Suite pattern. */}
+                  <span className="inline-flex items-center gap-1.5 mb-1">
+                    <label className={fieldLabelCls}>Hire month</label>
+                    <InfoTip label="Hire month">Month 1 = opening. Use a later number to delay this hire until the shop has ramped.</InfoTip>
+                  </span>
                   <NumericInput
                     type="number"
                     min={1}
@@ -357,10 +362,12 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                     }
                     className={`${inputCls} w-full`}
                   />
-                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">Month 1 = opening</p>
                 </div>
                 <div>
-                  <label className={fieldLabelCls}>Ramp-up months</label>
+                  <span className="inline-flex items-center gap-1.5 mb-1">
+                    <label className={fieldLabelCls}>Ramp-up months</label>
+                    <InfoTip label="Ramp-up months">0 = full staff at once. Higher values phase the team in gradually, with payroll cost ramping with them.</InfoTip>
+                  </span>
                   <NumericInput
                     type="number"
                     min={0}
@@ -378,7 +385,6 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                     }
                     className={`${inputCls} w-full`}
                   />
-                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">0 = full staff at once</p>
                 </div>
                 <div>
                   <label className={fieldLabelCls}>Start at % of staff</label>

@@ -20,6 +20,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   type MarketingDocument,
   type MarketingSectionKey,
@@ -41,7 +42,6 @@ const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1"
 const sectionLabelCls =
   "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
 const cardCls = "rounded-xl border border-[var(--border)] bg-white";
-const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
 function localId(): string {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
@@ -332,7 +332,16 @@ function SectionEditor(props: SectionEditorProps) {
 function OverviewEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
   return (
     <div>
-      <label className={labelCls}>How you plan to market the shop</label>
+      {/* TIM-1477: helper one-liner moved into a "?" popup beside the question
+          label, matching the Financial / Concept Suite pattern. */}
+      <span className="flex items-center gap-1.5 mb-1">
+        <label className={labelCls.replace(" mb-1", "")}>How you plan to market the shop</label>
+        <InfoTip label="How you plan to market the shop">
+          Write it like you would say it to a friend. A few paragraphs in your
+          own voice. The tone you set here feeds every other marketing
+          surface, from your social bio to your launch posts.
+        </InfoTip>
+      </span>
       <textarea
         className={textareaCls}
         rows={10}
@@ -343,10 +352,6 @@ function OverviewEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
         disabled={!canEdit}
         placeholder="A few paragraphs in your own voice. How will people hear about this shop in the lead-up to opening, and after? What feels right for the neighborhood, the concept, the kind of regular you want?"
       />
-      <p className={helperCls}>
-        Tip: Write it like you would say it to a friend. The voice that comes
-        through here feeds every other surface.
-      </p>
     </div>
   );
 }

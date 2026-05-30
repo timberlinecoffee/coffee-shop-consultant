@@ -11,6 +11,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
+import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import {
@@ -455,38 +456,6 @@ function Section({
       </div>
       {open && children}
     </div>
-  );
-}
-
-// TIM-1438: small wrapper that renders a field label + a "?" InfoTip on the
-// same row, replacing the always-visible <p> hint that used to sit below the
-// input. Keeps the help reachable but out of the way until requested.
-function LabelWithHint({
-  htmlFor,
-  className,
-  hintLabel,
-  hint,
-  children,
-}: {
-  htmlFor?: string;
-  className?: string;
-  hintLabel?: string;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const labelText =
-    typeof children === "string"
-      ? children
-      : typeof hintLabel === "string"
-      ? hintLabel
-      : "Field";
-  return (
-    <span className="flex items-center gap-1.5 mb-1">
-      <label htmlFor={htmlFor} className={className}>
-        {children}
-      </label>
-      {hint && <InfoTip label={hintLabel ?? labelText}>{hint}</InfoTip>}
-    </span>
   );
 }
 

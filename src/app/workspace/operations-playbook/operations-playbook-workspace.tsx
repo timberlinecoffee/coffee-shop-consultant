@@ -20,6 +20,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
+import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   type OperationsPlaybookDocument,
@@ -53,7 +54,6 @@ const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1"
 const sectionLabelCls =
   "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
 const cardCls = "rounded-xl border border-[var(--border)] bg-white";
-const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
 function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
@@ -504,7 +504,17 @@ function CategoryEditor({
       />
 
       <div className="mb-5">
-        <label className={labelCls}>How this SOP works</label>
+        {/* TIM-1477: helper one-liner moved into a "?" popup beside the
+            question label, matching the Financial / Concept Suite pattern.
+            The old "Tip: Title each step…" footer is folded in here. */}
+        <span className="flex items-center gap-1.5 mb-1">
+          <label className={labelCls.replace(" mb-1", "")}>How this SOP works</label>
+          <InfoTip label="How this SOP works">
+            A one-line description for your team that frames the whole
+            checklist. Title each step so a brand-new barista could follow it
+            without asking questions.
+          </InfoTip>
+        </span>
         <textarea
           className={textareaCls}
           rows={3}
@@ -585,11 +595,8 @@ function CategoryEditor({
           <Plus className="w-3.5 h-3.5" /> Add step
         </button>
       )}
-
-      <p className={helperCls}>
-        Tip: Title each step so a brand-new barista could follow it without
-        asking questions.
-      </p>
+      {/* TIM-1477: inline "Tip" one-liner removed — folded into the InfoTip
+          beside the "How this SOP works" question label above. */}
     </section>
   );
 }
@@ -775,7 +782,9 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
         <div className="flex-1 min-w-0 flex items-center gap-1">
           <h2 className={sectionLabelCls}>Drink Recipes</h2>
           <SectionHelp title="Drink Recipes">
-            Read-only view of the recipes you build in the Menu workspace. Edit a recipe by opening the menu item.
+            Read-only view of the recipes you build in the Menu workspace. Edit
+            a recipe by opening the menu item. Tip: add the prep notes and
+            ingredients on each menu item. They print here for the bar.
           </SectionHelp>
         </div>
         <Link
@@ -821,10 +830,8 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
         </div>
       )}
 
-      <p className={`${helperCls} mt-4`}>
-        Tip: Add the prep notes and ingredients on each menu item in the Menu
-        workspace. They print here for the bar.
-      </p>
+      {/* TIM-1477: inline "Tip" one-liner removed — folded into the
+          SectionHelp popover beside the Drink Recipes section header above. */}
     </section>
   );
 }
