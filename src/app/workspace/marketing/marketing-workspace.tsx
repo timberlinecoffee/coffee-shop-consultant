@@ -14,7 +14,6 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
-  Printer,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -34,9 +33,10 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
+// TIM-1408: section eyebrow + card radius normalized to global tokens
 const sectionLabelCls =
-  "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
-const cardCls = "rounded-2xl border border-[var(--border)] bg-white";
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-2";
+const cardCls = "rounded-xl border border-[var(--border)] bg-white";
 const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
 function localId(): string {
@@ -157,20 +157,17 @@ export function MarketingWorkspace({
                 className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
                 aria-hidden="true"
               />
-              <h1
-                className="font-bold text-[var(--foreground)]"
-                style={{ fontSize: "28px" }}
-              >
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
                 Marketing
               </h1>
             </div>
             <Link
               href="/workspace/marketing/print"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:underline"
+              className="hidden sm:inline-block text-xs font-medium text-[var(--teal)] hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Printer className="w-3.5 h-3.5" /> Print view
+              Print view
             </Link>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">

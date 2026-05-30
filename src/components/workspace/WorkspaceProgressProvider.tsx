@@ -17,6 +17,7 @@ import {
 } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
+import { CoPilotBeacon } from "@/components/workspace/CoPilotBeacon";
 import {
   isWorkspaceStatus,
   type WorkspaceStatus,
@@ -184,6 +185,8 @@ export function WorkspaceProgressProvider({
           <WorkspaceTopBar items={navItems} />
           <main className="flex-1">{children}</main>
         </div>
+        {/* TIM-1408: single global Co-pilot entry point */}
+        <CoPilotBeacon />
       </div>
     </WorkspaceStatusContext.Provider>
   );

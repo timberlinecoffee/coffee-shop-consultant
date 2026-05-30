@@ -542,7 +542,7 @@ export function SuppliersWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Truck className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Suppliers &amp; Vendors
             </h1>
           </div>
@@ -553,7 +553,7 @@ export function SuppliersWorkspace({
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
           {/* Category nav */}
-          <nav className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden self-start">
+          <nav className="rounded-xl border border-[var(--border)] bg-white overflow-hidden self-start">
             <ul className="divide-y divide-[var(--border)]">
               {allCategoryIds.map((key) => {
                 const decision = decisionsByCategory.get(key);
@@ -688,7 +688,7 @@ export function SuppliersWorkspace({
 
           {/* Active category panel */}
           <section className="min-w-0">
-            <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+            <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">

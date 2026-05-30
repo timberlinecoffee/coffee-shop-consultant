@@ -53,7 +53,7 @@ export function PersonaCard({
   }
 
   return (
-    <div className="relative rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+    <div className="relative rounded-xl border border-[var(--border)] bg-white overflow-hidden">
       {/* Top bar */}
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-3">

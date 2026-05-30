@@ -77,7 +77,7 @@ function CashRunwayBanner({
   const trough = slices.reduce((lowest, s) => (s.cash_cents < lowest.cash_cents ? s : lowest), slices[0]);
 
   return (
-    <div className="mb-4 rounded-2xl border border-[var(--error-bg-12)] bg-[var(--error-bg-7)] px-5 py-4">
+    <div className="mb-4 rounded-xl border border-[var(--error-bg-12)] bg-[var(--error-bg-7)] px-5 py-4">
       <p className="text-sm font-semibold text-red-700">
         Cash runs out in {monthLabel(firstNegative)} of Year {firstNegative.year}.
       </p>
@@ -313,7 +313,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
           </ChartCard>
         </div>
       ) : (
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-x-auto">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">
@@ -357,7 +357,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
       </div>
       )}
 
-      <div className="mt-4 rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+      <div className="mt-4 rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <CashFlowCritique slices={slices} year={year} monthLabels={MONTHS} currencyCode={currencyCode} />
       </div>
@@ -405,7 +405,7 @@ function LoanAmortizationSchedule({
     : (slices[startOfYearIdx - 1]?.long_term_debt_cents ?? originalLoan);
 
   return (
-    <div className="mt-4 rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+    <div className="mt-4 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
       <div className="px-5 pt-4 pb-2 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-[var(--foreground)]">Loan Amortization Schedule</p>

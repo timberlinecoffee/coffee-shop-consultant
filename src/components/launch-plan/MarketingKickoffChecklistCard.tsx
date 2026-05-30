@@ -54,7 +54,7 @@ export function MarketingKickoffChecklistCard() {
   };
 
   return (
-    <section className="bg-white rounded-2xl border border-[var(--border)] p-6">
+    <section className="bg-white rounded-xl border border-[var(--border)] p-6">
       <header className="flex items-start justify-between mb-4">
         <div>
           <h2 className="font-semibold text-lg text-[var(--foreground)]">Marketing Kickoff</h2>

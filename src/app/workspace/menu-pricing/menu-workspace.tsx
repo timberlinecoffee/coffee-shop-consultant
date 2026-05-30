@@ -90,7 +90,7 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-4";
 
 // TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
 // so the ingredient grid stays flat and scannable.
@@ -2112,7 +2112,7 @@ function InsightsTab({
       <div>
         <div className="flex items-center gap-2 mb-1">
           <LayoutGrid className="w-4 h-4 text-[var(--teal)]" />
-          <h2 className="text-lg font-bold text-[var(--foreground)]">What To Serve</h2>
+          <h2 className="text-base font-semibold text-[var(--foreground)]">What To Serve</h2>
         </div>
         <p className="text-xs text-[var(--muted-foreground)] leading-relaxed max-w-2xl">
           Every item is sorted by two things: how profitable it is (your gross
@@ -2186,7 +2186,7 @@ function InsightsTab({
       <div>
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="w-4 h-4 text-[var(--teal)]" />
-          <h2 className="text-lg font-bold text-[var(--foreground)]">Margin Ranking</h2>
+          <h2 className="text-base font-semibold text-[var(--foreground)]">Margin Ranking</h2>
         </div>
         <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-3">
           Your items from most to least profitable. Set each item&rsquo;s expected
@@ -2270,7 +2270,7 @@ function InsightsTab({
       {/* Needs info */}
       {needsInfo.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)] mb-2">
             Not Enough Info Yet ({needsInfo.length})
           </h3>
           <div className="rounded-xl border border-[var(--border)] bg-white divide-y divide-[var(--gray-200)]">
@@ -3080,7 +3080,7 @@ export function MenuWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Utensils className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Menu &amp; Pricing
             </h1>
           </div>

@@ -210,7 +210,8 @@ export default async function DashboardPage() {
         />
 
         {/* Quick links */}
-        <h2 className="font-semibold text-lg text-[var(--foreground)] mb-4">Quick Links</h2>
+        {/* TIM-1408: section heading normalized to standard h2 token */}
+        <h2 className="text-base font-semibold text-[var(--foreground)] mb-4">Quick Links</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           {[
             {

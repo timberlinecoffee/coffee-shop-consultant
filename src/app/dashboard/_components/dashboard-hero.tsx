@@ -82,11 +82,13 @@ export function DashboardHero({ firstName }: { firstName: string }) {
   );
 
   return (
-    <div className="mb-10">
-      <h1 className="text-3xl font-bold text-[var(--foreground)] tracking-tight">
+    <div className="mb-8">
+      {/* TIM-1408: dashboard hero brought down to body scale so the workspace
+          nav and launch readiness ring carry the visual weight. */}
+      <p className="text-sm font-medium text-[var(--foreground)]">
         {content ? `${content.greeting}, ${firstName}.` : `Welcome back, ${firstName}.`}
-      </h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--muted-foreground)]">
+      </p>
+      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[var(--muted-foreground)]">
         {content?.fact ?? COFFEE_FACTS[0]}
       </p>
     </div>
