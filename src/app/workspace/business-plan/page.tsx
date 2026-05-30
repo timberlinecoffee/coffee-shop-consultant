@@ -175,6 +175,7 @@ export default async function BusinessPlanWorkspacePage() {
   const initialCoverSettings: CoverSettings = {
     template_id: (coverRow?.template_id ?? "classic") as CoverTemplateId,
     accent_color: coverRow?.accent_color ?? null,
+    color_pack_id: (coverRow as { color_pack_id?: string | null } | null)?.color_pack_id ?? null,
     logo_path: coverRow?.logo_path ?? null,
     tagline: coverRow?.tagline ?? null,
     prepared_for: coverRow?.prepared_for ?? null,
