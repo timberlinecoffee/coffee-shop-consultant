@@ -38,10 +38,17 @@ export type MenuItem = {
   prep_time_seconds: number | null
   notes: string | null
   recipe: Record<string, unknown>
+  // TIM-1471: ordered prep instructions shown in the Recipe tab. Owner-editable,
+  // AI-seedable. Always an array (DB default '{}').
+  preparation_steps: string[]
   archived: boolean
   created_at: string
   updated_at: string
 }
+
+// TIM-1471: workspace-level target gross margin (default 0.75) drives the MSRP
+// readout in the Cost of Goods tab. Persisted on coffee_shop_plans.
+export const DEFAULT_TARGET_GROSS_MARGIN = 0.75
 
 export type MenuItemWithCogs = MenuItem & {
   computed_cogs_cents: number
@@ -121,4 +128,17 @@ export function aggregateMargins(items: MenuItemWithCogs[]): {
 export function effectiveCogsCents(item: MenuItemWithCogs): number {
   if (item.computed_cogs_cents > 0) return item.computed_cogs_cents
   return item.cogs_cents ?? 0
+}
+
+// TIM-1471: Minimum Suggested Retail Price from COGS and a target gross margin.
+// Returns null when COGS is unknown (a meaningful MSRP requires it). Margin is
+// clamped into the valid open interval (0, 1) defensively.
+export function computeMsrpCents(
+  cogsCents: number,
+  targetGrossMargin: number,
+): number | null {
+  if (!Number.isFinite(cogsCents) || cogsCents <= 0) return null
+  if (!Number.isFinite(targetGrossMargin)) return null
+  const m = Math.min(Math.max(targetGrossMargin, 0.001), 0.999)
+  return Math.round(cogsCents / (1 - m))
 }

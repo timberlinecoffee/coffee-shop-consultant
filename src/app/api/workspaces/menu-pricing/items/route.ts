@@ -159,11 +159,26 @@ export async function PATCH(request: NextRequest) {
     "name", "category_id", "price_cents", "cogs_cents",
     "expected_mix_pct", "expected_popularity", "prep_time_seconds", "notes", "recipe",
     "archived", "position",
+    // TIM-1471: Recipe-tab ordered prep instructions. Filter empty rows so a
+    // half-typed blank step doesn't persist; clamp to a sensible upper bound.
+    "preparation_steps",
   ]
   for (const f of fields) {
     if (f in rest) {
       const val = rest[f]
-      allowed[f] = f === "name" && typeof val === "string" ? toTitleCase(val) : val
+      if (f === "name" && typeof val === "string") {
+        allowed[f] = toTitleCase(val)
+      } else if (f === "preparation_steps") {
+        if (Array.isArray(val)) {
+          allowed[f] = val
+            .filter((s): s is string => typeof s === "string")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+            .slice(0, 50)
+        }
+      } else {
+        allowed[f] = val
+      }
     }
   }
 

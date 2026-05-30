@@ -56,6 +56,7 @@ import {
   formatCents,
   costPerUnit,
   aggregateMargins,
+  computeMsrpCents,
 } from "@/lib/menu";
 import {
   type ExpectedPopularity,
@@ -82,8 +83,19 @@ interface Props {
   initialItemIngredients: MenuItemIngredient[];
   initialCategories: MenuCategory[];
   initialCategoryDefaults: CategoryDefaultIngredient[];
+  initialTargetGrossMargin: number;
   conceptContext?: ConceptContext;
 }
+
+// TIM-1471: "Benchmark against cafés in my area" — AI compares current price
+// to the local market band and tells the owner where they sit.
+type BenchmarkResult = {
+  low_cents: number;
+  high_cents: number;
+  current_price_cents: number;
+  verdict: "below" | "in_band" | "above" | "unknown";
+  commentary: string;
+};
 
 function makeLocalId() {
   return "local_" + Math.random().toString(36).slice(2, 10);
@@ -764,6 +776,8 @@ function IngredientsTab({
 
 // ─── Item editor panel ───────────────────────────────────────────────────────
 
+type ItemEditorTab = "recipe" | "cogs";
+
 function ItemEditorPanel({
   item,
   category,
@@ -771,6 +785,7 @@ function ItemEditorPanel({
   ingredients,
   itemIngredients,
   canEdit,
+  targetGrossMargin,
   onClose,
   onUpdateItem,
   onAddRecipeLine,
@@ -779,9 +794,16 @@ function ItemEditorPanel({
   onSuggestRecipe,
   recipeLoading,
   recipeError,
+  onSuggestPrepSteps,
+  prepStepsLoading,
+  prepStepsError,
   onSuggestPrice,
   priceLoading,
   priceSuggestion,
+  onBenchmarkPrice,
+  benchmarkLoading,
+  benchmarkResult,
+  benchmarkError,
 }: {
   item: MenuItemWithCogs;
   category: MenuCategory | undefined;
@@ -789,6 +811,7 @@ function ItemEditorPanel({
   ingredients: MenuIngredient[];
   itemIngredients: MenuItemIngredient[];
   canEdit: boolean;
+  targetGrossMargin: number;
   onClose: () => void;
   onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
   onAddRecipeLine: (
@@ -804,10 +827,18 @@ function ItemEditorPanel({
   onSuggestRecipe: () => Promise<void>;
   recipeLoading: boolean;
   recipeError: string | null;
+  onSuggestPrepSteps: () => Promise<void>;
+  prepStepsLoading: boolean;
+  prepStepsError: string | null;
   onSuggestPrice: () => Promise<void>;
   priceLoading: boolean;
   priceSuggestion: PriceSuggestion | null;
+  onBenchmarkPrice: () => Promise<void>;
+  benchmarkLoading: boolean;
+  benchmarkResult: BenchmarkResult | null;
+  benchmarkError: string | null;
 }) {
+  const [activeTab, setActiveTab] = useState<ItemEditorTab>("recipe");
   const [name, setName] = useState(item.name);
   const [notes, setNotes] = useState(item.notes ?? "");
   const [priceDisplay, setPriceDisplay] = useState(
@@ -874,8 +905,10 @@ function ItemEditorPanel({
     [ingredients, usedIngredientIds]
   );
 
+  const msrpCents = computeMsrpCents(effectiveCogs, targetGrossMargin);
+
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <input
@@ -888,8 +921,6 @@ function ItemEditorPanel({
             onBlur={handleNameBlur}
             placeholder="Item name"
           />
-          {/* TIM-1140: Category badge — "Category:" label + folder icon makes
-              it unambiguous, then an inline <select> for fast reassignment. */}
           <div className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-[var(--muted-foreground)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint)] rounded-full pl-2 pr-1 py-0.5">
             <Tag size={10} className="text-[var(--teal)]" />
             <span className="font-semibold uppercase tracking-wider">Category</span>
@@ -912,122 +943,207 @@ function ItemEditorPanel({
           type="button"
           onClick={onClose}
           className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors mt-0.5 shrink-0"
+          aria-label="Collapse"
         >
           <X size={16} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-        <div>
-          <p className={sectionLabelCls}>Pricing</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Retail Price ($)</label>
-              <input
-                type="number"
-                className={inputCls}
-                value={priceDisplay}
-                disabled={!canEdit}
-                onChange={(e) => setPriceDisplay(e.target.value)}
-                onBlur={handlePriceBlur}
-                min={0}
-                step="0.01"
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Cost of Goods</label>
-              <p className="text-sm font-semibold text-[var(--foreground)] py-2">
-                {cogsDisplay}
-              </p>
-              {marginPct !== null && (
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Gross margin:{" "}
-                  <span className="font-semibold text-[var(--teal)]">
-                    {marginPct}%
-                  </span>
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* TIM-1322: owner's popularity estimate (no POS history pre-launch).
-              Pairs with margin to place the item on the menu-engineering matrix
-              in the Insights tab. */}
-          <div className="mt-4">
-            <label className={labelCls}>Expected Popularity</label>
-            <PopularitySelector
-              value={item.expected_popularity}
-              disabled={!canEdit}
-              onChange={(v) => onUpdateItem({ expected_popularity: v })}
-            />
-            <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
-              Your best guess at how often this will sell. We pair it with your
-              margin in the Insights tab to suggest what to feature or rework.
-            </p>
-          </div>
+      {/* TIM-1471: structured tabs inside the expanded card. */}
+      <div className="px-5 pt-3" role="tablist" aria-label="Item details">
+        <div className="inline-flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-lg p-0.5">
+          {([
+            { id: "recipe" as const, label: "Recipe" },
+            { id: "cogs" as const, label: "Cost of Goods" },
+          ]).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
+                activeTab === t.id
+                  ? "bg-[var(--teal)] text-white"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        <div>
-          <p className={sectionLabelCls}>Recipe</p>
+      <div className="px-5 pb-5 pt-4">
+        {activeTab === "recipe" && (
+          <RecipeTabContent
+            item={item}
+            ingredients={ingredients}
+            recipeLines={recipeLines}
+            availableIngredients={availableIngredients}
+            canEdit={canEdit}
+            itemName={name}
+            notes={notes}
+            setNotes={setNotes}
+            onNotesBlur={handleNotesBlur}
+            onAddRecipeLine={handleIngredientSelect}
+            onUpdateRecipeLine={onUpdateRecipeLine}
+            onDeleteRecipeLine={onDeleteRecipeLine}
+            onSuggestRecipe={onSuggestRecipe}
+            recipeLoading={recipeLoading}
+            recipeError={recipeError}
+            onUpdateItem={onUpdateItem}
+            onSuggestPrepSteps={onSuggestPrepSteps}
+            prepStepsLoading={prepStepsLoading}
+            prepStepsError={prepStepsError}
+          />
+        )}
 
-          {canEdit && (
-            <div className="mb-3">
-              <button
-                type="button"
-                onClick={onSuggestRecipe}
-                disabled={recipeLoading || name.trim().length === 0}
-                title={
-                  name.trim().length === 0
-                    ? "Name the item first"
-                    : "Suggest a starting recipe with AI"
-                }
-                className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {recipeLoading ? (
-                  <svg
-                    className="animate-spin w-3.5 h-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeDasharray="31.4"
-                      strokeDashoffset="10"
-                    />
-                  </svg>
-                ) : (
-                  <Sparkles size={13} />
-                )}
-                {recipeLoading ? "Building recipe…" : "Suggest recipe with AI"}
-              </button>
-              {name.trim().length === 0 && (
-                <p className="text-[11px] text-[var(--dark-grey)] mt-1.5">
-                  Add an item name above to get a recipe suggestion.
-                </p>
-              )}
-              {recipeError && (
-                <p className="text-[11px] text-[var(--error-accent)] mt-1.5">{recipeError}</p>
-              )}
-              <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
-                AI fills in a standard build as a starting point. Edit or remove any line.
-              </p>
-            </div>
-          )}
+        {activeTab === "cogs" && (
+          <CostOfGoodsTabContent
+            item={item}
+            canEdit={canEdit}
+            priceDisplay={priceDisplay}
+            setPriceDisplay={setPriceDisplay}
+            onPriceBlur={handlePriceBlur}
+            cogsDisplay={cogsDisplay}
+            effectiveCogs={effectiveCogs}
+            marginPct={marginPct}
+            msrpCents={msrpCents}
+            targetGrossMargin={targetGrossMargin}
+            onUpdateItem={onUpdateItem}
+            onSuggestPrice={onSuggestPrice}
+            priceLoading={priceLoading}
+            priceSuggestion={priceSuggestion}
+            onBenchmarkPrice={onBenchmarkPrice}
+            benchmarkLoading={benchmarkLoading}
+            benchmarkResult={benchmarkResult}
+            benchmarkError={benchmarkError}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
-          {recipeLines.length > 0 ? (
-            <div className="space-y-2 mb-3">
-              {recipeLines.map((line) => {
-                const ing = ingredients.find((i) => i.id === line.ingredient_id);
-                const lineCost =
-                  ing ? line.amount * costPerUnit(ing) : null;
-                return (
+// TIM-1471: Recipe tab — reads like a recipe page. Ingredients on top, then
+// preparation steps as an ordered list. Both editable. Both AI-seedable.
+// UX/UI Designer to layer a treatment pass on top of this structure.
+function RecipeTabContent({
+  item,
+  ingredients,
+  recipeLines,
+  availableIngredients,
+  canEdit,
+  itemName,
+  notes,
+  setNotes,
+  onNotesBlur,
+  onAddRecipeLine,
+  onUpdateRecipeLine,
+  onDeleteRecipeLine,
+  onSuggestRecipe,
+  recipeLoading,
+  recipeError,
+  onUpdateItem,
+  onSuggestPrepSteps,
+  prepStepsLoading,
+  prepStepsError,
+}: {
+  item: MenuItemWithCogs;
+  ingredients: MenuIngredient[];
+  recipeLines: MenuItemIngredient[];
+  availableIngredients: MenuIngredient[];
+  canEdit: boolean;
+  itemName: string;
+  notes: string;
+  setNotes: (v: string) => void;
+  onNotesBlur: () => void;
+  onAddRecipeLine: (ingredientId: string) => void;
+  onUpdateRecipeLine: (
+    id: string,
+    patch: { amount?: number; unit?: IngredientUnit }
+  ) => Promise<void>;
+  onDeleteRecipeLine: (id: string) => Promise<void>;
+  onSuggestRecipe: () => Promise<void>;
+  recipeLoading: boolean;
+  recipeError: string | null;
+  onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
+  onSuggestPrepSteps: () => Promise<void>;
+  prepStepsLoading: boolean;
+  prepStepsError: string | null;
+}) {
+  const steps = item.preparation_steps ?? [];
+  const noName = itemName.trim().length === 0;
+
+  function setSteps(next: string[]) {
+    onUpdateItem({ preparation_steps: next });
+  }
+  function updateStep(idx: number, value: string) {
+    const next = [...steps];
+    next[idx] = value;
+    setSteps(next);
+  }
+  function removeStep(idx: number) {
+    setSteps(steps.filter((_, i) => i !== idx));
+  }
+  function addStep() {
+    setSteps([...steps, ""]);
+  }
+  function moveStep(idx: number, dir: -1 | 1) {
+    const j = idx + dir;
+    if (j < 0 || j >= steps.length) return;
+    const next = [...steps];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setSteps(next);
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* AI generators */}
+      {canEdit && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onSuggestRecipe}
+            disabled={recipeLoading || noName}
+            title={noName ? "Name the item first" : "Suggest a starting recipe with AI"}
+            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Sparkles size={13} />
+            {recipeLoading ? "Building recipe…" : "Suggest recipe with AI"}
+          </button>
+          <button
+            type="button"
+            onClick={onSuggestPrepSteps}
+            disabled={prepStepsLoading || noName}
+            title={noName ? "Name the item first" : "Suggest preparation steps with AI"}
+            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Sparkles size={13} />
+            {prepStepsLoading ? "Writing steps…" : "Suggest prep steps with AI"}
+          </button>
+        </div>
+      )}
+      {(recipeError || prepStepsError) && (
+        <p className="text-[11px] text-[var(--error-accent)]">
+          {recipeError || prepStepsError}
+        </p>
+      )}
+
+      {/* Ingredients — recipe-page treatment: light hierarchy, name + qty + unit */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+          Ingredients
+        </h3>
+        {recipeLines.length > 0 ? (
+          <ul className="space-y-2 mb-3">
+            {recipeLines.map((line) => {
+              const ing = ingredients.find((i) => i.id === line.ingredient_id);
+              const lineCost = ing ? line.amount * costPerUnit(ing) : null;
+              return (
+                <li key={line.id}>
                   <RecipeLineRow
-                    key={line.id}
                     line={line}
                     ingredient={ing ?? null}
                     lineCost={lineCost}
@@ -1035,117 +1151,353 @@ function ItemEditorPanel({
                     onUpdate={(patch) => onUpdateRecipeLine(line.id, patch)}
                     onDelete={() => onDeleteRecipeLine(line.id)}
                   />
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-[var(--dark-grey)] mb-3">
-              No recipe lines yet. Add an ingredient below to build the recipe and compute COGS automatically.
-            </p>
-          )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-xs text-[var(--dark-grey)] mb-3 italic">
+            No ingredients yet. Add one below to build the recipe and compute COGS.
+          </p>
+        )}
 
-          {canEdit && availableIngredients.length > 0 && (
-            <IngredientCombobox
-              ingredients={availableIngredients}
-              onSelect={handleIngredientSelect}
-            />
-          )}
-
-          {canEdit && availableIngredients.length === 0 && ingredients.length === 0 && (
-            <p className="text-xs text-[var(--dark-grey)]">
-              Add ingredients in the Ingredients tab first.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <p className={sectionLabelCls}>Notes</p>
-          <textarea
-            className={inputCls + " resize-none"}
-            rows={3}
-            value={notes}
-            disabled={!canEdit}
-            onChange={(e) => setNotes(e.target.value)}
-            onBlur={handleNotesBlur}
-            placeholder="Prep notes, variations, seasonal availability…"
+        {canEdit && availableIngredients.length > 0 && (
+          <IngredientCombobox
+            ingredients={availableIngredients}
+            onSelect={onAddRecipeLine}
           />
-        </div>
+        )}
+        {canEdit && availableIngredients.length === 0 && ingredients.length === 0 && (
+          <p className="text-xs text-[var(--dark-grey)]">
+            Add ingredients in the Ingredients tab first.
+          </p>
+        )}
+      </section>
 
-        {canEdit && (
-          <div>
-            <p className={sectionLabelCls}>AI Price Suggestion</p>
-            <button
-              type="button"
-              onClick={onSuggestPrice}
-              disabled={priceLoading}
-              className="flex items-center gap-2 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] disabled:opacity-60 transition-colors"
-            >
-              {priceLoading ? (
-                <svg
-                  className="animate-spin w-3.5 h-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeDasharray="31.4"
-                    strokeDashoffset="10"
-                  />
-                </svg>
-              ) : (
-                <Sparkles size={13} />
-              )}
-              {priceLoading ? "Thinking…" : "Suggest retail price"}
-            </button>
-
-            {priceSuggestion && (
-              <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
-                <div className="flex items-baseline gap-2">
-                  <div>
-                    <p className="text-xs text-[var(--muted-foreground)]">Recommended</p>
-                    <p className="text-2xl font-bold text-[var(--teal)]">
-                      ${(priceSuggestion.suggested_price_cents / 100).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Market range:{" "}
-                  <span className="font-medium text-[var(--foreground)]">
-                    ${(priceSuggestion.low_cents / 100).toFixed(2)} – ${(priceSuggestion.high_cents / 100).toFixed(2)}
-                  </span>
-                </p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Margin at recommended price:{" "}
-                  <span className="font-semibold text-[var(--teal)]">
-                    {(priceSuggestion.margin_pct * 100).toFixed(1)}%
-                  </span>
-                </p>
-                <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
-                  {priceSuggestion.commentary}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPriceDisplay(
-                      (priceSuggestion.suggested_price_cents / 100).toFixed(2)
-                    );
-                    onUpdateItem({
-                      price_cents: priceSuggestion.suggested_price_cents,
-                    });
+      {/* Preparation steps — ordered list, recipe-page treatment */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+          Preparation
+        </h3>
+        {steps.length === 0 ? (
+          <p className="text-xs text-[var(--dark-grey)] mb-3 italic">
+            No preparation steps yet. {canEdit && "Click \"Suggest prep steps with AI\" above, or add steps manually."}
+          </p>
+        ) : (
+          <ol className="space-y-2 mb-3">
+            {steps.map((step, idx) => (
+              <li key={idx} className="flex items-start gap-3">
+                <span className="mt-2 shrink-0 w-6 h-6 rounded-full bg-[var(--teal)] text-white text-xs font-bold flex items-center justify-center">
+                  {idx + 1}
+                </span>
+                <textarea
+                  className={inputCls + " resize-none flex-1"}
+                  rows={2}
+                  value={step}
+                  disabled={!canEdit}
+                  onChange={(e) => updateStep(idx, e.target.value)}
+                  onBlur={() => {
+                    const cleaned = steps
+                      .map((s) => s.trim())
+                      .filter((s) => s.length > 0);
+                    onUpdateItem({ preparation_steps: cleaned });
                   }}
-                  className="text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
-                >
-                  Use this price
-                </button>
-              </div>
+                  placeholder="Step instructions…"
+                />
+                {canEdit && (
+                  <div className="flex flex-col gap-0.5 mt-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => moveStep(idx, -1)}
+                      disabled={idx === 0}
+                      className="text-[var(--neutral-cool-400)] hover:text-[var(--teal)] disabled:opacity-30 transition-colors"
+                      aria-label="Move step up"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveStep(idx, 1)}
+                      disabled={idx === steps.length - 1}
+                      className="text-[var(--neutral-cool-400)] hover:text-[var(--teal)] disabled:opacity-30 transition-colors"
+                      aria-label="Move step down"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeStep(idx)}
+                      className="text-[var(--neutral-cool-400)] hover:text-[var(--error-accent)] transition-colors"
+                      aria-label="Remove step"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={addStep}
+            className="flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-deep)] transition-colors"
+          >
+            <Plus size={13} />
+            Add step
+          </button>
+        )}
+      </section>
+
+      {/* Notes — prep notes, seasonal availability, variations */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+          Notes
+        </h3>
+        <textarea
+          className={inputCls + " resize-none"}
+          rows={3}
+          value={notes}
+          disabled={!canEdit}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={onNotesBlur}
+          placeholder="Prep notes, variations, seasonal availability…"
+        />
+      </section>
+    </div>
+  );
+}
+
+// TIM-1471: Cost of Goods tab — the costing summary. COGS, selling price,
+// MSRP (derived from target gross margin), gross margin, AI benchmark.
+function CostOfGoodsTabContent({
+  item,
+  canEdit,
+  priceDisplay,
+  setPriceDisplay,
+  onPriceBlur,
+  cogsDisplay,
+  effectiveCogs,
+  marginPct,
+  msrpCents,
+  targetGrossMargin,
+  onUpdateItem,
+  onSuggestPrice,
+  priceLoading,
+  priceSuggestion,
+  onBenchmarkPrice,
+  benchmarkLoading,
+  benchmarkResult,
+  benchmarkError,
+}: {
+  item: MenuItemWithCogs;
+  canEdit: boolean;
+  priceDisplay: string;
+  setPriceDisplay: (v: string) => void;
+  onPriceBlur: () => void;
+  cogsDisplay: string;
+  effectiveCogs: number;
+  marginPct: string | null;
+  msrpCents: number | null;
+  targetGrossMargin: number;
+  onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
+  onSuggestPrice: () => Promise<void>;
+  priceLoading: boolean;
+  priceSuggestion: PriceSuggestion | null;
+  onBenchmarkPrice: () => Promise<void>;
+  benchmarkLoading: boolean;
+  benchmarkResult: BenchmarkResult | null;
+  benchmarkError: string | null;
+}) {
+  const targetPct = (targetGrossMargin * 100).toFixed(0);
+  const noPriceYet = item.price_cents === 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Costing summary — 4-stat grid */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+          Costing
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Selling Price ($)</label>
+            <input
+              type="number"
+              className={inputCls}
+              value={priceDisplay}
+              disabled={!canEdit}
+              onChange={(e) => setPriceDisplay(e.target.value)}
+              onBlur={onPriceBlur}
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Cost of Goods</label>
+            <p className="text-sm font-semibold text-[var(--foreground)] py-2">
+              {cogsDisplay}
+            </p>
+          </div>
+          <div>
+            <label className={labelCls}>Min. Suggested Price</label>
+            <p className="text-sm font-semibold text-[var(--foreground)] py-2">
+              {msrpCents !== null ? formatCents(msrpCents) : "—"}
+            </p>
+            <p className="text-[11px] text-[var(--muted-foreground)]">
+              From {targetPct}% target margin
+            </p>
+          </div>
+          <div>
+            <label className={labelCls}>Profit Margin</label>
+            <p className="text-sm font-semibold text-[var(--teal)] py-2">
+              {marginPct !== null ? `${marginPct}%` : "—"}
+            </p>
+            {msrpCents !== null && item.price_cents > 0 && item.price_cents < msrpCents && (
+              <p className="text-[11px] text-[var(--warning-text)]">
+                Below target margin
+              </p>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      </section>
+
+      {/* Expected popularity — kept on the costing tab since it pairs with margin
+          for the Insights matrix. */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+          Expected Popularity
+        </h3>
+        <PopularitySelector
+          value={item.expected_popularity}
+          disabled={!canEdit}
+          onChange={(v) => onUpdateItem({ expected_popularity: v })}
+        />
+        <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
+          Your best guess at how often this will sell. Paired with margin in the Insights tab.
+        </p>
+      </section>
+
+      {/* AI suggest retail price (existing TIM-1020) */}
+      {canEdit && (
+        <section>
+          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+            AI Price Suggestion
+          </h3>
+          <button
+            type="button"
+            onClick={onSuggestPrice}
+            disabled={priceLoading || effectiveCogs <= 0}
+            title={effectiveCogs <= 0 ? "Add a recipe or manual COGS first" : "Suggest a retail price"}
+            className="flex items-center gap-2 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            <Sparkles size={13} />
+            {priceLoading ? "Thinking…" : "Suggest retail price"}
+          </button>
+          {priceSuggestion && (
+            <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
+              <div>
+                <p className="text-xs text-[var(--muted-foreground)]">Recommended</p>
+                <p className="text-2xl font-bold text-[var(--teal)]">
+                  ${(priceSuggestion.suggested_price_cents / 100).toFixed(2)}
+                </p>
+              </div>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Market range:{" "}
+                <span className="font-medium text-[var(--foreground)]">
+                  ${(priceSuggestion.low_cents / 100).toFixed(2)} to ${(priceSuggestion.high_cents / 100).toFixed(2)}
+                </span>
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Margin at recommended price:{" "}
+                <span className="font-semibold text-[var(--teal)]">
+                  {(priceSuggestion.margin_pct * 100).toFixed(1)}%
+                </span>
+              </p>
+              <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
+                {priceSuggestion.commentary}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPriceDisplay(
+                    (priceSuggestion.suggested_price_cents / 100).toFixed(2)
+                  );
+                  onUpdateItem({
+                    price_cents: priceSuggestion.suggested_price_cents,
+                  });
+                }}
+                className="text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
+              >
+                Use this price
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* AI benchmark against cafés in my area (TIM-1471) */}
+      {canEdit && (
+        <section>
+          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+            Local Benchmark
+          </h3>
+          <button
+            type="button"
+            onClick={onBenchmarkPrice}
+            disabled={benchmarkLoading || noPriceYet}
+            title={noPriceYet ? "Set a selling price first" : "Benchmark against cafés in my area"}
+            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Sparkles size={13} />
+            {benchmarkLoading ? "Reading local market…" : "Benchmark against cafés in my area"}
+          </button>
+          {benchmarkError && (
+            <p className="text-[11px] text-[var(--error-accent)] mt-1.5">{benchmarkError}</p>
+          )}
+          {benchmarkResult && (
+            <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Local range for{" "}
+                <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  ${(benchmarkResult.low_cents / 100).toFixed(2)} to ${(benchmarkResult.high_cents / 100).toFixed(2)}
+                </span>
+              </p>
+              <p className="text-xs">
+                Your price{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  ${(benchmarkResult.current_price_cents / 100).toFixed(2)}
+                </span>{" "}
+                reads as{" "}
+                <span
+                  className={
+                    benchmarkResult.verdict === "below"
+                      ? "font-semibold text-[var(--warning-text)]"
+                      : benchmarkResult.verdict === "above"
+                        ? "font-semibold text-[var(--warning-text)]"
+                        : "font-semibold text-[var(--teal)]"
+                  }
+                >
+                  {benchmarkResult.verdict === "below"
+                    ? "below market"
+                    : benchmarkResult.verdict === "above"
+                      ? "above market"
+                      : benchmarkResult.verdict === "in_band"
+                        ? "in market range"
+                        : "unknown"}
+                </span>
+                .
+              </p>
+              <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
+                {benchmarkResult.commentary}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
@@ -1578,29 +1930,135 @@ function DefaultAddRow({
 
 // ─── Workspace aggregate metrics + per-category header ───────────────────────
 
-function MetricsBar({ items }: { items: MenuItemWithCogs[] }) {
+function MetricsBar({
+  items,
+  targetGrossMargin,
+  canEdit,
+  onUpdateTargetGrossMargin,
+}: {
+  items: MenuItemWithCogs[];
+  targetGrossMargin: number;
+  canEdit: boolean;
+  onUpdateTargetGrossMargin: (next: number) => Promise<void>;
+}) {
   const agg = aggregateMargins(items);
-  if (agg.count === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-5 py-3 text-xs text-[var(--muted-foreground)]">
-        Add an item with a price and recipe ingredients (or a manual COGS) to see workspace-level margin metrics.
-      </div>
-    );
-  }
   return (
     <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-5 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-1.5">
-      <div>
-        <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg COGS</span>{" "}
-        <span className="text-base font-bold text-[var(--foreground)] ml-1">{agg.avgCogsPct?.toFixed(1)}%</span>
-      </div>
-      <div>
-        <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg Gross Profit</span>{" "}
-        <span className="text-base font-bold text-[var(--teal)] ml-1">{agg.avgGpPct?.toFixed(1)}%</span>
-      </div>
-      <div className="text-[11px] text-[var(--muted-foreground)]">
-        Unweighted simple mean across {agg.count} priced item{agg.count !== 1 ? "s" : ""} with COGS.
-      </div>
+      {agg.count > 0 ? (
+        <>
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg COGS</span>{" "}
+            <span className="text-base font-bold text-[var(--foreground)] ml-1">{agg.avgCogsPct?.toFixed(1)}%</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg Gross Profit</span>{" "}
+            <span className="text-base font-bold text-[var(--teal)] ml-1">{agg.avgGpPct?.toFixed(1)}%</span>
+          </div>
+        </>
+      ) : (
+        <div className="text-[11px] text-[var(--muted-foreground)]">
+          Add a priced item with recipe ingredients (or a manual COGS) to see workspace margin.
+        </div>
+      )}
+      <TargetMarginControl
+        value={targetGrossMargin}
+        canEdit={canEdit}
+        onUpdate={onUpdateTargetGrossMargin}
+      />
+      {agg.count > 0 && (
+        <div className="text-[11px] text-[var(--muted-foreground)]">
+          Unweighted simple mean across {agg.count} priced item{agg.count !== 1 ? "s" : ""} with COGS.
+        </div>
+      )}
     </div>
+  );
+}
+
+// TIM-1471: workspace-level target gross margin (default 75%) feeds MSRP in
+// the Cost of Goods tab. Inline-editable so the owner can tune it without
+// leaving the menu.
+function TargetMarginControl({
+  value,
+  canEdit,
+  onUpdate,
+}: {
+  value: number;
+  canEdit: boolean;
+  onUpdate: (next: number) => Promise<void>;
+}) {
+  // editingKey > 0 puts the control into edit mode. Each transition allocates a
+  // fresh key so the input re-mounts and re-reads `value` (avoiding a sync
+  // useEffect to keep draft state in step with the prop).
+  const [editingKey, setEditingKey] = useState(0);
+  const editing = editingKey > 0;
+
+  return (
+    <div className="inline-flex items-baseline gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">
+        Target GM
+      </span>
+      {editing ? (
+        <TargetMarginInput
+          key={editingKey}
+          initialPct={(value * 100).toFixed(0)}
+          currentValue={value}
+          onCommit={(next) => {
+            if (next !== null && next !== value) onUpdate(next);
+            setEditingKey(0);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          disabled={!canEdit}
+          onClick={() => setEditingKey((k) => k + 1)}
+          className="text-base font-bold text-[var(--foreground)] ml-1 hover:underline decoration-dotted disabled:cursor-default disabled:no-underline"
+          title={canEdit ? "Click to edit target gross margin" : "Target gross margin"}
+        >
+          {(value * 100).toFixed(0)}%
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TargetMarginInput({
+  initialPct,
+  currentValue,
+  onCommit,
+}: {
+  initialPct: string;
+  currentValue: number;
+  onCommit: (next: number | null) => void;
+}) {
+  const [draft, setDraft] = useState(initialPct);
+
+  function commit() {
+    const pct = parseFloat(draft);
+    if (Number.isNaN(pct)) {
+      onCommit(null);
+      return;
+    }
+    const clamped = Math.min(Math.max(pct, 1), 99);
+    onCommit(Math.round(clamped) / 100);
+  }
+
+  return (
+    <input
+      autoFocus
+      type="number"
+      min={1}
+      max={99}
+      step={1}
+      className="w-12 ml-1 text-sm font-bold text-[var(--foreground)] bg-white border border-[var(--teal)] rounded px-1 py-0.5 text-right focus-visible:outline-none"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") onCommit(currentValue);
+      }}
+    />
   );
 }
 
@@ -1627,6 +2085,8 @@ interface MenuTabProps {
   categoryDefaults: CategoryDefaultIngredient[];
   selectedItemId: string | null;
   expandedDefaultsCatId: string | null;
+  targetGrossMargin: number;
+  onUpdateTargetGrossMargin: (next: number) => Promise<void>;
   onToggleDefaults: (catId: string) => void;
   onSelectItem: (id: string | null) => void;
   onAddItem: (categoryId: string) => Promise<void>;
@@ -1647,9 +2107,16 @@ interface MenuTabProps {
   onSuggestRecipe: (item: MenuItemWithCogs) => Promise<void>;
   recipeLoading: boolean;
   recipeError: string | null;
+  onSuggestPrepSteps: (item: MenuItemWithCogs) => Promise<void>;
+  prepStepsLoading: boolean;
+  prepStepsError: string | null;
   onSuggestPrice: (item: MenuItemWithCogs) => Promise<void>;
   priceLoading: boolean;
   priceSuggestion: PriceSuggestion | null;
+  onBenchmarkPrice: (item: MenuItemWithCogs) => Promise<void>;
+  benchmarkLoading: boolean;
+  benchmarkResult: BenchmarkResult | null;
+  benchmarkError: string | null;
   onReorderItems: (updates: Array<{ id: string; position: number; category_id: string }>) => Promise<void>;
   onAddCategory: () => Promise<void>;
   onRenameCategory: (id: string, name: string) => Promise<void>;
@@ -1664,16 +2131,19 @@ interface MenuTabProps {
 function MenuTab(props: MenuTabProps) {
   const {
     canEdit, items, categories, ingredients, itemIngredients, categoryDefaults,
-    selectedItemId, expandedDefaultsCatId, onToggleDefaults,
+    selectedItemId, expandedDefaultsCatId,
+    targetGrossMargin, onUpdateTargetGrossMargin,
+    onToggleDefaults,
     onSelectItem, onAddItem, onOpenSuggest, onUpdateItem, onDeleteItem,
     onAddRecipeLine, onUpdateRecipeLine, onDeleteRecipeLine,
     onSuggestRecipe, recipeLoading, recipeError,
-    onSuggestPrice, priceLoading, priceSuggestion, onReorderItems,
+    onSuggestPrepSteps, prepStepsLoading, prepStepsError,
+    onSuggestPrice, priceLoading, priceSuggestion,
+    onBenchmarkPrice, benchmarkLoading, benchmarkResult, benchmarkError,
+    onReorderItems,
     onAddCategory, onRenameCategory, onDeleteCategory,
     onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
   } = props;
-
-  const selectedItem = items.find((i) => i.id === selectedItemId) ?? null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -1732,142 +2202,158 @@ function MenuTab(props: MenuTabProps) {
     onReorderItems(updates);
   }
 
+  // TIM-1471: single-column layout. The right side of the screen is reserved
+  // for the AI chat — selecting an item expands it inline (accordion pattern
+  // mirroring the Hiring/Operations Playbook suites), it does not slide a
+  // panel out from the right.
   return (
-    <div
-      className={
-        selectedItemId
-          ? "grid grid-cols-[1fr_360px] gap-5 items-start"
-          : "block"
-      }
-    >
-      <div className="space-y-4">
-        {canEdit && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Not sure where to start?</p>
-              <p className="text-xs text-[var(--muted-foreground)]">Get menu ideas that fit your concept and location.</p>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenSuggest}
-              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[var(--teal)] rounded-lg px-3.5 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
-            >
-              <Sparkles size={14} />
-              Suggest menu items
-            </button>
+    <div className="space-y-4">
+      {canEdit && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Not sure where to start?</p>
+            <p className="text-xs text-[var(--muted-foreground)]">Get menu ideas that fit your concept and location.</p>
           </div>
-        )}
-
-        <MetricsBar items={items} />
-
-        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-          {categories.map((cat) => {
-            const catItems = items
-              .filter((i) => i.category_id === cat.id && !i.archived)
-              .sort((a, b) => a.position - b.position);
-            const catDefaults = categoryDefaults
-              .filter((d) => d.category_id === cat.id)
-              .sort((a, b) => a.position - b.position);
-            const defaultsOpen = expandedDefaultsCatId === cat.id;
-            return (
-              <div
-                key={cat.id}
-                className="rounded-xl border border-[var(--border)] bg-white overflow-hidden"
-              >
-                <CategoryHeader
-                  category={cat}
-                  itemCount={catItems.length}
-                  catItems={catItems}
-                  defaultsCount={catDefaults.length}
-                  defaultsOpen={defaultsOpen}
-                  canEdit={canEdit}
-                  canDelete={categories.length > 1}
-                  onAddItem={() => onAddItem(cat.id)}
-                  onToggleDefaults={() => onToggleDefaults(cat.id)}
-                  onRename={(name) => onRenameCategory(cat.id, name)}
-                  onDelete={() => onDeleteCategory(cat.id)}
-                />
-
-                {defaultsOpen && (
-                  <CategoryDefaultsEditor
-                    category={cat}
-                    defaults={catDefaults}
-                    ingredients={ingredients}
-                    canEdit={canEdit}
-                    onAdd={(ingId, amt, unit) => onAddDefault(cat.id, ingId, amt, unit)}
-                    onUpdate={onUpdateDefault}
-                    onDelete={onDeleteDefault}
-                    onApplyToExisting={() => onApplyDefaults(cat.id)}
-                  />
-                )}
-
-                <SortableContext
-                  id={`__cat__:${cat.id}`}
-                  items={catItems.length > 0 ? catItems.map((i) => i.id) : [`__cat__:${cat.id}`]}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {catItems.length === 0 ? (
-                    <EmptyCategoryDropZone categoryId={cat.id} canEdit={canEdit} />
-                  ) : (
-                    <div className="divide-y divide-[var(--neutral-cool-100)]">
-                      {catItems.map((item) => (
-                        <SortableMenuItemRow
-                          key={item.id}
-                          item={item}
-                          category={cat}
-                          isSelected={item.id === selectedItemId}
-                          canEdit={canEdit}
-                          onSelect={() =>
-                            onSelectItem(item.id === selectedItemId ? null : item.id)
-                          }
-                          onUpdate={(patch) => onUpdateItem(item.id, patch)}
-                          onDelete={() => onDeleteItem(item.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </SortableContext>
-              </div>
-            );
-          })}
-        </DndContext>
-
-        {canEdit && (
           <button
             type="button"
-            onClick={onAddCategory}
-            className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors"
+            onClick={onOpenSuggest}
+            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[var(--teal)] rounded-lg px-3.5 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
           >
-            <Plus size={14} />
-            Add category
+            <Sparkles size={14} />
+            Suggest menu items
           </button>
-        )}
-      </div>
-
-      {selectedItem && (
-        <div className="sticky top-6">
-          <ItemEditorPanel
-            item={selectedItem}
-            category={categories.find((c) => c.id === selectedItem.category_id)}
-            categories={categories}
-            ingredients={ingredients}
-            itemIngredients={itemIngredients}
-            canEdit={canEdit}
-            onClose={() => onSelectItem(null)}
-            onUpdateItem={(patch) => onUpdateItem(selectedItem.id, patch)}
-            onAddRecipeLine={(ingId, amount, unit) =>
-              onAddRecipeLine(selectedItem.id, ingId, amount, unit)
-            }
-            onUpdateRecipeLine={onUpdateRecipeLine}
-            onDeleteRecipeLine={onDeleteRecipeLine}
-            onSuggestRecipe={() => onSuggestRecipe(selectedItem)}
-            recipeLoading={recipeLoading}
-            recipeError={recipeError}
-            onSuggestPrice={() => onSuggestPrice(selectedItem)}
-            priceLoading={priceLoading}
-            priceSuggestion={priceSuggestion}
-          />
         </div>
+      )}
+
+      <MetricsBar
+        items={items}
+        targetGrossMargin={targetGrossMargin}
+        canEdit={canEdit}
+        onUpdateTargetGrossMargin={onUpdateTargetGrossMargin}
+      />
+
+      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+        {categories.map((cat) => {
+          const catItems = items
+            .filter((i) => i.category_id === cat.id && !i.archived)
+            .sort((a, b) => a.position - b.position);
+          const catDefaults = categoryDefaults
+            .filter((d) => d.category_id === cat.id)
+            .sort((a, b) => a.position - b.position);
+          const defaultsOpen = expandedDefaultsCatId === cat.id;
+          return (
+            <div
+              key={cat.id}
+              className="rounded-xl border border-[var(--border)] bg-white overflow-hidden"
+            >
+              <CategoryHeader
+                category={cat}
+                itemCount={catItems.length}
+                catItems={catItems}
+                defaultsCount={catDefaults.length}
+                defaultsOpen={defaultsOpen}
+                canEdit={canEdit}
+                canDelete={categories.length > 1}
+                onAddItem={() => onAddItem(cat.id)}
+                onToggleDefaults={() => onToggleDefaults(cat.id)}
+                onRename={(name) => onRenameCategory(cat.id, name)}
+                onDelete={() => onDeleteCategory(cat.id)}
+              />
+
+              {defaultsOpen && (
+                <CategoryDefaultsEditor
+                  category={cat}
+                  defaults={catDefaults}
+                  ingredients={ingredients}
+                  canEdit={canEdit}
+                  onAdd={(ingId, amt, unit) => onAddDefault(cat.id, ingId, amt, unit)}
+                  onUpdate={onUpdateDefault}
+                  onDelete={onDeleteDefault}
+                  onApplyToExisting={() => onApplyDefaults(cat.id)}
+                />
+              )}
+
+              <SortableContext
+                id={`__cat__:${cat.id}`}
+                items={catItems.length > 0 ? catItems.map((i) => i.id) : [`__cat__:${cat.id}`]}
+                strategy={verticalListSortingStrategy}
+              >
+                {catItems.length === 0 ? (
+                  <EmptyCategoryDropZone categoryId={cat.id} canEdit={canEdit} />
+                ) : (
+                  <div className="divide-y divide-[var(--neutral-cool-100)]">
+                    {catItems.map((item) => {
+                      const isExpanded = item.id === selectedItemId;
+                      return (
+                        <div key={item.id}>
+                          <SortableMenuItemRow
+                            item={item}
+                            category={cat}
+                            isSelected={isExpanded}
+                            canEdit={canEdit}
+                            onSelect={() =>
+                              onSelectItem(isExpanded ? null : item.id)
+                            }
+                            onUpdate={(patch) => onUpdateItem(item.id, patch)}
+                            onDelete={() => onDeleteItem(item.id)}
+                          />
+                          {isExpanded && (
+                            <div className="bg-[var(--warm-1050)] border-t border-[var(--neutral-cool-200)]">
+                              <ItemEditorPanel
+                                item={item}
+                                category={cat}
+                                categories={categories}
+                                ingredients={ingredients}
+                                itemIngredients={itemIngredients}
+                                canEdit={canEdit}
+                                targetGrossMargin={targetGrossMargin}
+                                onClose={() => onSelectItem(null)}
+                                onUpdateItem={(patch) =>
+                                  onUpdateItem(item.id, patch)
+                                }
+                                onAddRecipeLine={(ingId, amount, unit) =>
+                                  onAddRecipeLine(item.id, ingId, amount, unit)
+                                }
+                                onUpdateRecipeLine={onUpdateRecipeLine}
+                                onDeleteRecipeLine={onDeleteRecipeLine}
+                                onSuggestRecipe={() => onSuggestRecipe(item)}
+                                recipeLoading={recipeLoading}
+                                recipeError={recipeError}
+                                onSuggestPrepSteps={() =>
+                                  onSuggestPrepSteps(item)
+                                }
+                                prepStepsLoading={prepStepsLoading}
+                                prepStepsError={prepStepsError}
+                                onSuggestPrice={() => onSuggestPrice(item)}
+                                priceLoading={priceLoading}
+                                priceSuggestion={priceSuggestion}
+                                onBenchmarkPrice={() => onBenchmarkPrice(item)}
+                                benchmarkLoading={benchmarkLoading}
+                                benchmarkResult={benchmarkResult}
+                                benchmarkError={benchmarkError}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </SortableContext>
+            </div>
+          );
+        })}
+      </DndContext>
+
+      {canEdit && (
+        <button
+          type="button"
+          onClick={onAddCategory}
+          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors"
+        >
+          <Plus size={14} />
+          Add category
+        </button>
       )}
     </div>
   );
@@ -2527,6 +3013,7 @@ export function MenuWorkspace({
   initialItemIngredients,
   initialCategories,
   initialCategoryDefaults,
+  initialTargetGrossMargin,
   conceptContext,
 }: Props) {
   const [items, setItems] = useState<MenuItemWithCogs[]>(initialItems);
@@ -2534,6 +3021,8 @@ export function MenuWorkspace({
   const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(initialItemIngredients);
   const [categories, setCategories] = useState<MenuCategory[]>(initialCategories);
   const [categoryDefaults, setCategoryDefaults] = useState<CategoryDefaultIngredient[]>(initialCategoryDefaults);
+  // TIM-1471: workspace-level target gross margin → drives MSRP in COGS tab.
+  const [targetGrossMargin, setTargetGrossMargin] = useState<number>(initialTargetGrossMargin);
   // TIM-1416: Operations Playbook recipes panel deep-links into a specific menu
   // item via ?item=<id>. Honor the param on first render so the editor opens
   // directly — initial state, not an effect, to avoid cascading renders.
@@ -2551,6 +3040,13 @@ export function MenuWorkspace({
   const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
+  // TIM-1471: AI preparation-steps generator state.
+  const [prepStepsLoading, setPrepStepsLoading] = useState(false);
+  const [prepStepsError, setPrepStepsError] = useState<string | null>(null);
+  // TIM-1471: AI benchmark-against-cafés state.
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
+  const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkResult | null>(null);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   // TIM-1323: AI menu-item suggestions (pick-list modal).
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -2594,6 +3090,7 @@ export function MenuWorkspace({
       prep_time_seconds: null,
       notes: null,
       recipe: {},
+      preparation_steps: [],
       archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -2996,6 +3493,96 @@ export function MenuWorkspace({
     }
   }
 
+  // ── AI preparation steps (TIM-1471) ──────────────────────────────────────
+  async function suggestPreparationSteps(item: MenuItemWithCogs) {
+    if (!item.name.trim()) return;
+    setPrepStepsLoading(true);
+    setPrepStepsError(null);
+    try {
+      const lineNames = itemIngredients
+        .filter((ii) => ii.menu_item_id === item.id)
+        .map((ii) => ingredients.find((g) => g.id === ii.ingredient_id)?.name)
+        .filter((n): n is string => typeof n === "string" && n.length > 0);
+      const res = await fetch(
+        "/api/workspaces/menu-pricing/suggest-preparation-steps",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            item_id: item.id,
+            item_name: item.name,
+            ingredient_names: lineNames,
+            concept_context: conceptContext ?? {},
+          }),
+        },
+      );
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        setPrepStepsError("Couldn't suggest steps. Try again in a moment.");
+        return;
+      }
+      const data = (await res.json()) as { steps: string[] };
+      // Persist the AI-generated steps in local state — server already saved them.
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id ? { ...i, preparation_steps: data.steps } : i,
+        ),
+      );
+    } catch {
+      setPrepStepsError("Couldn't suggest steps. Try again in a moment.");
+    } finally {
+      setPrepStepsLoading(false);
+    }
+  }
+
+  // ── AI benchmark against cafés in my area (TIM-1471) ─────────────────────
+  async function benchmarkPrice(item: MenuItemWithCogs) {
+    setBenchmarkLoading(true);
+    setBenchmarkError(null);
+    setBenchmarkResult(null);
+    try {
+      const res = await fetch("/api/workspaces/menu-pricing/benchmark-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_id: item.id,
+          item_name: item.name,
+          current_price_cents: item.price_cents,
+          concept_context: conceptContext ?? {},
+        }),
+      });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        setBenchmarkError("Couldn't pull a benchmark. Try again in a moment.");
+        return;
+      }
+      const data = (await res.json()) as BenchmarkResult;
+      setBenchmarkResult(data);
+    } catch {
+      setBenchmarkError("Couldn't pull a benchmark. Try again in a moment.");
+    } finally {
+      setBenchmarkLoading(false);
+    }
+  }
+
+  // ── Target gross margin (TIM-1471) ───────────────────────────────────────
+  async function updateTargetGrossMargin(next: number) {
+    const prev = targetGrossMargin;
+    setTargetGrossMargin(next);
+    const res = await fetch("/api/workspaces/menu-pricing/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_gross_margin: next }),
+    });
+    if (!res.ok) setTargetGrossMargin(prev);
+  }
+
   // ── AI menu-item suggestions (TIM-1323) ──────────────────────────────────
   async function suggestMenuItems() {
     setSuggestOpen(true);
@@ -3084,6 +3671,9 @@ export function MenuWorkspace({
     setSelectedItemId(id);
     setPriceSuggestion(null);
     setRecipeError(null);
+    setPrepStepsError(null);
+    setBenchmarkResult(null);
+    setBenchmarkError(null);
   }, []);
 
   return (
@@ -3129,6 +3719,8 @@ export function MenuWorkspace({
             categoryDefaults={categoryDefaults}
             selectedItemId={selectedItemId}
             expandedDefaultsCatId={expandedDefaultsCatId}
+            targetGrossMargin={targetGrossMargin}
+            onUpdateTargetGrossMargin={updateTargetGrossMargin}
             onToggleDefaults={(catId) =>
               setExpandedDefaultsCatId((prev) => (prev === catId ? null : catId))
             }
@@ -3143,9 +3735,16 @@ export function MenuWorkspace({
             onSuggestRecipe={suggestRecipe}
             recipeLoading={recipeLoading}
             recipeError={recipeError}
+            onSuggestPrepSteps={suggestPreparationSteps}
+            prepStepsLoading={prepStepsLoading}
+            prepStepsError={prepStepsError}
             onSuggestPrice={suggestPrice}
             priceLoading={priceLoading}
             priceSuggestion={priceSuggestion}
+            onBenchmarkPrice={benchmarkPrice}
+            benchmarkLoading={benchmarkLoading}
+            benchmarkResult={benchmarkResult}
+            benchmarkError={benchmarkError}
             onReorderItems={reorderItems}
             onAddCategory={addCategory}
             onRenameCategory={renameCategory}
