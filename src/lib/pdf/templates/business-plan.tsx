@@ -343,11 +343,13 @@ function FinancialAppendixPages({
   equipment,
   shopName,
   date,
+  bodyFontFamily,
 }: {
   mp: MonthlyProjections;
   equipment: EquipmentSummary;
   shopName: string;
   date: string;
+  bodyFontFamily: string;
 }) {
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
@@ -396,7 +398,7 @@ function FinancialAppendixPages({
   return (
     <>
       {/* Annual summary + Year 1 P&L (landscape) */}
-      <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
+      <Page size="A4" orientation="landscape" style={[FA.pageLandscape, { fontFamily: bodyFontFamily }]}>
         <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
         <View style={FA.headingBar}>
           <Text style={FA.heading}>5-Year Financial Summary</Text>
@@ -422,7 +424,7 @@ function FinancialAppendixPages({
       </Page>
 
       {/* Year 1 Cash Flow (landscape) */}
-      <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
+      <Page size="A4" orientation="landscape" style={[FA.pageLandscape, { fontFamily: bodyFontFamily }]}>
         <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
         <View style={FA.headingBar}>
           <Text style={FA.heading}>Year 1: Monthly Cash Flow</Text>
@@ -438,7 +440,7 @@ function FinancialAppendixPages({
       </Page>
 
       {/* Year 1 Balance Sheet (landscape) */}
-      <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
+      <Page size="A4" orientation="landscape" style={[FA.pageLandscape, { fontFamily: bodyFontFamily }]}>
         <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
         <View style={FA.headingBar}>
           <Text style={FA.heading}>Year 1: Monthly Balance Sheet (End of Month)</Text>
@@ -539,6 +541,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
             equipment={financialData.equipment}
             shopName={displayName}
             date={date}
+            bodyFontFamily={bodyFontFamily}
           />
         )}
       </PdfDocument>

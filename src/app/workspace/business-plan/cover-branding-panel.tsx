@@ -89,11 +89,11 @@ const BODY_FONTS = [
 
 export const BODY_FONT_MAP: Record<string, string> = {
   inter: "Inter, sans-serif",
-  "dm-sans": '"DM Sans", sans-serif',
-  lato: "Lato, sans-serif",
-  "source-serif-4": '"Source Serif 4", serif',
-  "libre-baskerville": '"Libre Baskerville", serif',
-  nunito: "Nunito, sans-serif",
+  "dm-sans": "var(--font-dm-sans), sans-serif",
+  lato: "var(--font-lato), sans-serif",
+  "source-serif-4": "var(--font-source-serif-4), serif",
+  "libre-baskerville": "var(--font-libre-baskerville), serif",
+  nunito: "var(--font-nunito), sans-serif",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
