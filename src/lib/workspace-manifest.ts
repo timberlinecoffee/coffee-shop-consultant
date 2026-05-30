@@ -65,14 +65,14 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 8,  workspaceKey: "business_plan",        label: "Business Plan",          href: "/workspace/business-plan",        icon: "file-text",      category: "plan",    blurb: "Pull every workspace into one lender-ready document." },
   { moduleNumber: 3,  workspaceKey: "location_lease",       label: "Location & Lease",       href: "/workspace/location-lease",       icon: "map-pin",        category: "setup",   blurb: "Compare sites and weigh lease terms before you sign." },
   { moduleNumber: 4,  workspaceKey: "menu_pricing",         label: "Menu & Pricing",         href: "/workspace/menu-pricing",         icon: "utensils",       category: "setup",   blurb: "Build your drink lineup and price it for healthy margins." },
-  { moduleNumber: 5,  workspaceKey: "buildout_equipment",   label: "Build Out & Equipment",  href: "/workspace/buildout-equipment",   icon: "wrench",         category: "setup",   blurb: "Plan the space and the gear it takes to open." },
+  // TIM-1458: Inventory standalone entry folded into the Equipment & Supplies
+  // suite. Supplies still lives under the same workspace_key + module slot.
+  { moduleNumber: 5,  workspaceKey: "buildout_equipment",   label: "Equipment & Supplies",   href: "/workspace/buildout-equipment",   icon: "wrench",         category: "setup",   blurb: "Plan the gear and the opening-day consumables that go on the bar." },
   { moduleNumber: 10, workspaceKey: "suppliers",            label: "Suppliers & Vendors",    href: "/workspace/suppliers",            icon: "truck",          category: "setup",   blurb: "Line up the roasters and vendors behind your bar." },
   { moduleNumber: 7,  workspaceKey: "hiring",               label: "Hiring & Onboarding",    href: "/workspace/hiring",               icon: "users",          category: "launch",  blurb: "Define roles, screen candidates, and train your first team." },
   { moduleNumber: 9,  workspaceKey: "marketing",            label: "Marketing",              href: "/workspace/marketing",            icon: "megaphone",      category: "launch",  blurb: "Plan the story, channels, and milestones that get people in the door." },
-  { moduleNumber: 6,  workspaceKey: "opening_milestones",   label: "Opening Milestones",     href: "/workspace/opening-milestones",   icon: "rocket",         category: "launch",  blurb: "Track the dated milestones that gate opening day." },
-  { moduleNumber: 14, workspaceKey: "opening_month_plan",   label: "Opening Month Plan",     href: "/workspace/opening-month-plan",   icon: "clipboard-list", category: "launch",  blurb: "Plan the weeks before, opening week, and your first 30 days in the shop." },
+  { moduleNumber: 6,  workspaceKey: "opening_month_plan",   label: "Opening Month Plan",     href: "/workspace/opening-month-plan",   icon: "rocket",         category: "launch",  blurb: "Track the dated milestones to opening day and the tactical plan for the weeks around it." },
   { moduleNumber: 11, workspaceKey: "operations_playbook",  label: "Operations Playbook",    href: "/workspace/operations-playbook",  icon: "clipboard-list", category: "operate", blurb: "Document the daily routines that keep the shop running." },
-  { moduleNumber: 13, workspaceKey: "inventory",            label: "Inventory",              href: "/workspace/inventory",            icon: "package",        category: "operate", blurb: "Track what you stock and reorder before you run out." },
 ];
 
 export function buildNavItems(

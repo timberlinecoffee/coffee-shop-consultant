@@ -1,6 +1,6 @@
-// TIM-1411: Opening Milestones workspace config (targetLaunchDate, lastGeneratedAt,
+// TIM-1449: Opening Month Plan workspace config (targetLaunchDate, lastGeneratedAt,
 // viewPreference, sourcesSnapshotAt). Stored in workspace_documents with key
-// 'opening_milestones' (renamed from 'launch_plan' in TIM-1411).
+// 'opening_month_plan' (collapsed from the short-lived opening_milestones split in TIM-1411).
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
@@ -25,7 +25,7 @@ export async function GET() {
     .from("workspace_documents")
     .select("content, updated_at")
     .eq("plan_id", plan.id)
-    .eq("workspace_key", "opening_milestones")
+    .eq("workspace_key", "opening_month_plan")
     .maybeSingle()
 
   return Response.json({ config: normalizeLaunchPlanConfig(doc?.content), updated_at: doc?.updated_at ?? null })
@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest) {
     .from("workspace_documents")
     .select("content")
     .eq("plan_id", plan.id)
-    .eq("workspace_key", "opening_milestones")
+    .eq("workspace_key", "opening_month_plan")
     .maybeSingle()
 
   const current = normalizeLaunchPlanConfig(existing?.content)
@@ -79,7 +79,7 @@ export async function PATCH(request: NextRequest) {
   const { data, error } = await supabase
     .from("workspace_documents")
     .upsert(
-      { plan_id: plan.id, workspace_key: "opening_milestones", content: current },
+      { plan_id: plan.id, workspace_key: "opening_month_plan", content: current },
       { onConflict: "plan_id,workspace_key" }
     )
     .select("id, updated_at")

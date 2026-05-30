@@ -1,13 +1,13 @@
-// TIM-1411: Opening Month Plan workspace — tactical week-by-week / day-by-day
-// playbook for the weeks before opening through the first 30 days. Distinct
-// from Opening Milestones (which tracks gating dated milestones).
-//
-// Data: reuses `soft_open_plan_items` (day_offset, task, owner, status, notes).
-// Buckets: Pre-Open Weeks (-28..-1), Opening Week (0..7), First 30 Days (8..30).
+// TIM-1449: Unified Opening Month Plan workspace (founder reversed the TIM-1411
+// split). Loads milestones + workspace_documents config + source workspace
+// timestamps (for the stale banner), and hands them to the unified
+// OpeningMonthPlanWorkspace which renders both Milestones and Playbook sections.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { normalizeLaunchPlanConfig } from "@/lib/launch-plan";
 import { OpeningMonthPlanWorkspace } from "./opening-month-plan-workspace";
+import type { Milestone } from "@/lib/launch-plan";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +31,45 @@ export default async function OpeningMonthPlanWorkspacePage() {
 
   const planId = plan.id;
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [
+    { data: milestonesData },
+    { data: configDoc },
+    { data: profile },
+    { data: sourceDocs },
+  ] = await Promise.all([
+    supabase
+      .from("launch_milestones")
+      .select("*")
+      .eq("plan_id", planId)
+      .order("order_index", { ascending: true })
+      .order("target_date", { ascending: true }),
+    supabase
+      .from("workspace_documents")
+      .select("content, updated_at")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "opening_month_plan")
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("workspace_documents")
+      .select("workspace_key, updated_at")
+      .eq("plan_id", planId)
+      .in("workspace_key", ["concept", "location_lease", "buildout_equipment", "hiring", "financials"]),
+  ]);
+
+  const config = normalizeLaunchPlanConfig(configDoc?.content);
+
+  const sourcesUpdatedAt =
+    sourceDocs && sourceDocs.length > 0
+      ? sourceDocs.reduce<string | null>((max, d) => {
+          if (!max) return d.updated_at;
+          return d.updated_at > max ? d.updated_at : max;
+        }, null)
+      : null;
 
   const canEdit =
     isSubscriptionActive(profile?.subscription_status ?? "free_trial") ||
@@ -49,6 +83,9 @@ export default async function OpeningMonthPlanWorkspacePage() {
   return (
     <OpeningMonthPlanWorkspace
       planId={planId}
+      initialMilestones={(milestonesData ?? []) as Milestone[]}
+      initialConfig={config}
+      initialSourcesUpdatedAt={sourcesUpdatedAt}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
     />

@@ -59,7 +59,7 @@ function parseOffset(s: string): number {
 
 export function SoftOpenPlanCard() {
   const { loading, items, error, paywall, addItem, updateItem, removeItem } =
-    useLaunchPlanRows<SoftOpenItem>("/api/launch-plan/soft-open-plan");
+    useLaunchPlanRows<SoftOpenItem>("/api/opening-month-plan/soft-open-plan");
 
   const grouped = BUCKETS.map((b) => ({
     ...b,

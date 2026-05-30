@@ -1,14 +1,16 @@
 // Auto-generated from schema + TIM-629 copilot_v1 migration + TIM-731 launch_plan_workspace + TIM-866 copilot_trial_messages + TIM-925 beta_waiver.
 // Regenerate with: supabase gen types typescript --local > src/types/supabase.ts
 
+// TIM-1458: 'inventory' removed — Supplies is now a page inside the
+// Equipment & Supplies suite under the 'buildout_equipment' workspace key.
+// Legacy DB rows with workspace_key='inventory' (if any) are left untouched
+// and read as orphans by the app.
 export type WorkspaceKey =
   | 'concept'
   | 'location_lease'
   | 'financials'
   | 'menu_pricing'
   | 'buildout_equipment'
-  | 'inventory'
-  | 'opening_milestones'
   | 'opening_month_plan'
   | 'hiring'
   | 'marketing'

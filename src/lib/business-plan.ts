@@ -31,7 +31,7 @@ export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
   { key: "company_concept",     title: "Company & Concept",              defaultVisible: true,  sourceLabel: "Concept workspace" },
   { key: "market_analysis",     title: "Market Analysis",                defaultVisible: true,  sourceLabel: "Concept workspace" },
   { key: "location_real_estate",title: "Location & Real Estate",         defaultVisible: true,  sourceLabel: "Location & Lease workspace" },
-  { key: "buildout_equipment",  title: "Build Out & Equipment",          defaultVisible: true,  sourceLabel: "Build Out & Equipment workspace" },
+  { key: "buildout_equipment",  title: "Equipment & Supplies",           defaultVisible: true,  sourceLabel: "Equipment & Supplies workspace" },
   { key: "menu_pricing",        title: "Menu & Pricing",                 defaultVisible: true,  sourceLabel: "Menu & Pricing workspace" },
   { key: "marketing_plan",      title: "Marketing Plan",                 defaultVisible: true,  sourceLabel: "Marketing workspace" },
   { key: "operations_launch",   title: "Operations & Launch Timeline",   defaultVisible: true,  sourceLabel: "Launch Plan workspace" },
@@ -251,7 +251,7 @@ export function assembleBuildoutEquipment(
       if (minor.length > 8) lines.push(`  … and ${minor.length - 8} more`);
     }
   } else {
-    lines.push("Add equipment in the Build Out & Equipment workspace to populate this section.");
+    lines.push("Add equipment in the Equipment & Supplies workspace to populate this section.");
   }
 
   // Build-out budget from financial model startup costs

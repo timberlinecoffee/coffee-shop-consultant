@@ -111,8 +111,7 @@ const WORKSPACE_LABELS: Record<string, string> = {
   location_lease: "Location & Lease",
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
-  buildout_equipment: "Build Out & Equipment",
-  opening_milestones: "Opening Milestones",
+  buildout_equipment: "Equipment & Supplies",
   opening_month_plan: "Opening Month Plan",
 }
 
@@ -864,7 +863,7 @@ async function loadLaunchPlanData(
 // ── Template export ───────────────────────────────────────────────────────────
 
 export const launchPlanTemplate: PdfTemplate<LaunchPlanContent> = {
-  workspace_key: "opening_milestones",
+  workspace_key: "opening_month_plan",
 
   dataLoader: (planId, userId, supabase) =>
     loadLaunchPlanData(planId, userId, supabase),

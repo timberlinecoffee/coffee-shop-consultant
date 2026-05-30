@@ -10,7 +10,6 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
-import { TruncatedText } from "@/components/ui/TruncatedText";
 import { InfoTip } from "@/components/ui/info-tip";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -47,6 +46,7 @@ import { BreakEvenTab } from "./tabs/break-even-tab";
 import { RatiosTab } from "./tabs/ratios-tab";
 import { StartupTab } from "./tabs/startup-tab";
 import { FundingTab } from "./tabs/funding-tab";
+import { DepreciationTab } from "./tabs/depreciation-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PersonnelEditor } from "./personnel-editor";
 import { OrgSyncPanel } from "./org-sync-panel";
@@ -107,7 +107,7 @@ const TOUR_STEPS: TourStep[] = [
     tab: "startup",
     targetId: "tour-startup-capital-assets",
     title: "Add up your opening costs",
-    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Build-Out & Equipment workspace; add supplies, deposits and other one-time costs directly. The total builds up as you go.",
+    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Equipment & Supplies workspace; add supplies, deposits and other one-time costs directly. The total builds up as you go.",
     hint: "opening a small espresso bar often runs $80k–$250k all in.",
   },
   {
@@ -196,7 +196,7 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup";
+type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup" | "depreciation";
 
 // TIM-1257: deriveFinancialInputs + findForecastLineByKey now live in
 // @/lib/financial-projection (single source of truth, unit-testable).
@@ -496,7 +496,6 @@ function ForecastTab({
   onUpdateMp,
   menuBlendedCogsPct,
   menuCogsItems,
-  equipmentItems,
   onStartWizard,
   onGoToStartup,
   manualLines,
@@ -509,7 +508,6 @@ function ForecastTab({
   onUpdateMp: (next: MonthlyProjections) => void;
   menuBlendedCogsPct: number | null;
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
-  equipmentItems: EquipmentItem[];
   onStartWizard?: () => void;
   onGoToStartup?: () => void;
   // TIM-1310: grid-level customizations surfaced on the input page so the
@@ -943,43 +941,6 @@ function ForecastTab({
             onClearLineOverrides={onClearLineOverrides}
             onGoToProjections={onGoToProjections}
           />
-          {/* TIM-1253: show equipment items from Build-Out & Equipment workspace
-              as read-only capex entries so the user sees them in the capex
-              schedule without re-typing. Editing happens in the other workspace. */}
-          {equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0).length > 0 && (
-            <div className="mt-4 border-t border-[var(--border)] pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
-                Asset Purchases from Build-Out &amp; Equipment
-              </p>
-              <div className="space-y-1">
-                {equipmentItems
-                  .filter((i) => !i.archived && i.unit_cost_cents > 0)
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-[var(--teal-tint-500)] text-xs"
-                    >
-                      <TruncatedText
-                        text={item.name || "Unnamed asset"}
-                        className="font-medium text-[var(--foreground)] flex-1"
-                      />
-                      <span className="text-[var(--muted-foreground)] shrink-0">
-                        {formatCurrency((item.unit_cost_cents * item.quantity) / 100)}
-                      </span>
-                      <span className="text-[var(--dark-grey)] shrink-0 hidden sm:inline">
-                        {item.useful_life_years ?? 7}yr life
-                      </span>
-                    </div>
-                  ))}
-              </div>
-              <a
-                href="/workspace/buildout-equipment"
-                className="mt-2 inline-block text-xs font-medium text-[var(--teal)] hover:underline"
-              >
-                Edit in Build-Out &amp; Equipment →
-              </a>
-            </div>
-          )}
         </div>
       </Section>
 
@@ -2146,6 +2107,7 @@ export function FinancialsWorkspace({
     { id: "break-even", label: "Break-Even" },
     { id: "ratios", label: "Ratios" },
     { id: "startup", label: "Startup Costs" },
+    { id: "depreciation", label: "Depreciation" },
   ];
 
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
@@ -2267,7 +2229,6 @@ export function FinancialsWorkspace({
             onUpdateMp={handleMpUpdate}
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
-            equipmentItems={initialEquipmentItems}
             onStartWizard={openWizard}
             onGoToStartup={() => setActiveTab("startup")}
             manualLines={mp.manual_lines ?? []}
@@ -2352,6 +2313,14 @@ export function FinancialsWorkspace({
             currencyCode={currencyCode}
             canEdit={canEdit}
             onUpdateField={handleStartupCostUpdate}
+          />
+        )}
+        {activeTab === "depreciation" && (
+          <DepreciationTab
+            equipmentItems={initialEquipmentItems}
+            slices={slices}
+            fiscalYearStartMonth={fiscalYearStartMonth}
+            currencyCode={currencyCode}
           />
         )}
       </div>

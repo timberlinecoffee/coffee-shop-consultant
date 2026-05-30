@@ -3,8 +3,8 @@
 
 export const TOTAL_MODULES = 14;
 
-// Modules with shipped pages — Concept, Financials, Location, Menu, Buildout, Opening Milestones (6), Hiring, Business Plan, Marketing, Suppliers & Vendors, Operations Playbook, Inventory, Opening Month Plan (14). Module 12 (Marketing & Pre-Launch) was folded into Marketing in TIM-1417. Module 14 (Opening Month Plan) was split from the old Launch Plan in TIM-1411.
-export const AVAILABLE_MODULES: ReadonlySet<number> = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14]);
+// Modules with shipped pages — Concept, Financials, Location, Menu, Buildout, Opening Month Plan (6), Hiring, Business Plan, Marketing, Suppliers & Vendors, Operations Playbook, Inventory. Module 12 (Marketing & Pre-Launch) was folded into Marketing in TIM-1417. The TIM-1411 split of Opening Milestones (6) + Opening Month Plan (14) was merged back into a single Opening Month Plan suite at slot 6 in TIM-1449.
+export const AVAILABLE_MODULES: ReadonlySet<number> = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]);
 
 export function isModuleAvailable(moduleNumber: number): boolean {
   return (

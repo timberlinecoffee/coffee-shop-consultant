@@ -20,14 +20,14 @@ export function isBetaWaived(betaWaiverUntil: string | Date | null | undefined):
 }
 
 // Canonical set of workspace keys that require an active subscription to mutate.
+// TIM-1458: 'inventory' removed — Supplies is now a page inside the
+// Equipment & Supplies suite, gated by the same 'buildout_equipment' key.
 export const MUTABLE_WORKSPACE_KEYS = new Set([
   'concept',
   'location_lease',
   'financials',
   'menu_pricing',
   'buildout_equipment',
-  'inventory',
-  'opening_milestones',
   'opening_month_plan',
   'hiring',
   'marketing',

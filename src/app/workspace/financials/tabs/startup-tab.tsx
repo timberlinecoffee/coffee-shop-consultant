@@ -5,7 +5,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
   startupCosts: StartupCosts;
-  // TIM-1258: Equipment total sourced from Build-Out & Equipment workspace.
+  // TIM-1258: Equipment total sourced from Equipment & Supplies workspace.
   equipmentTotalCents: number;
   hasEquipmentItems: boolean;
   // TIM-1254b: per-asset capex display in the Capital Assets section.
@@ -203,7 +203,7 @@ export function StartupTab({
           <p className="text-sm font-semibold text-[var(--foreground)]">Start with your equipment.</p>
           <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
             Your espresso machine, grinders, fridge and POS are usually the biggest part of
-            opening. Build them in the Build-Out &amp; Equipment workspace and they flow in
+            opening. Build them in the Equipment &amp; Supplies workspace and they flow in
             here automatically — then fill in the rest below. Your total builds up from what
             you actually need, one line at a time.
           </p>
@@ -223,7 +223,7 @@ export function StartupTab({
           <p className="text-xs text-amber-700 mt-1 leading-relaxed">
             Your build-out and equipment are saved as lump sums. Add individual assets in the{" "}
             <a href="/workspace/buildout-equipment" className="font-semibold underline">
-              Build-Out &amp; Equipment workspace
+              Equipment &amp; Supplies workspace
             </a>{" "}
             and each asset will appear here with its own depreciation schedule.
           </p>
@@ -254,7 +254,7 @@ export function StartupTab({
                       href="/workspace/buildout-equipment"
                       className="ml-2 text-[10px] font-medium text-[var(--teal)] hover:underline"
                     >
-                      {hasEquipmentItems ? "Edit in Build-Out & Equipment →" : "Add in Build-Out & Equipment →"}
+                      {hasEquipmentItems ? "Edit in Equipment & Supplies →" : "Add in Equipment & Supplies →"}
                     </a>
                   )}
                 </td>
@@ -269,7 +269,7 @@ export function StartupTab({
                   <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                     {group.count} {group.count === 1 ? "item" : "items"} · {group.avgLifeYears}yr avg life · straight-line ·{" "}
                     <a href="/workspace/buildout-equipment" className="text-[var(--teal)] hover:underline">
-                      View in Build-Out &amp; Equipment
+                      View in Equipment &amp; Supplies
                     </a>
                   </p>
                 </td>
@@ -305,12 +305,12 @@ export function StartupTab({
                     href="/workspace/buildout-equipment"
                     className="ml-2 text-xs font-medium text-[var(--teal)] hover:underline"
                   >
-                    {hasEquipmentItems ? "Edit in Build-Out & Equipment →" : "Add in Build-Out & Equipment →"}
+                    {hasEquipmentItems ? "Edit in Equipment & Supplies →" : "Add in Equipment & Supplies →"}
                   </a>
                   <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                     {hasEquipmentItems
-                      ? "From your Build-Out & Equipment plan"
-                      : "Entered once in Build-Out & Equipment, flows in here automatically"}
+                      ? "From your Equipment & Supplies plan"
+                      : "Entered once in Equipment & Supplies, flows in here automatically"}
                   </p>
                 </td>
                 <td className="py-3 pr-5 text-right font-medium align-top">{f(equipmentTotalCents)}</td>
@@ -320,7 +320,7 @@ export function StartupTab({
             {capexRows.length === 0 && !hasLegacyLumpSums && equipmentTotalCents === 0 && (
               <tr className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-8 pr-4 text-[var(--dark-grey)]" colSpan={2}>
-                  No capital assets yet. Add equipment and build-out items in the Build-Out &amp; Equipment workspace.
+                  No capital assets yet. Add equipment and build-out items in the Equipment &amp; Supplies workspace.
                 </td>
               </tr>
             )}
@@ -460,13 +460,13 @@ export function StartupTab({
           {capexRows.length > 0 ? (
             <p>
               Each capital asset depreciates straight-line over its own useful life, reducing your taxable income
-              each year. Enter individual assets in the Build-Out &amp; Equipment workspace so each one tracks its
+              each year. Enter individual assets in the Equipment &amp; Supplies workspace so each one tracks its
               own schedule.
             </p>
           ) : (
             <p>
               Equipment is on a depreciation schedule, which reduces your taxable income over time. Enter your
-              equipment in the Build-Out &amp; Equipment workspace so each asset depreciates on its own useful life.
+              equipment in the Equipment &amp; Supplies workspace so each asset depreciates on its own useful life.
             </p>
           )}
           {loanTotal > 0 && (

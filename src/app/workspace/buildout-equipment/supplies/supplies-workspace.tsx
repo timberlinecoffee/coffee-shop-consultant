@@ -1,19 +1,19 @@
 "use client";
 
-// TIM-1171: Inventory workspace — supplies list (cups, lids, dairy, beans,
-// syrups, cleaning supplies). v1 = simple list.
-// TIM-1447: Cohesion with Build-Out & Equipment — sticky grand-total banner,
-// View toolbar (AI markings toggle), section totals via SectionedListGrid.
-// Vendor field uses the new Suppliers-sourced dropdown (with + Add new).
+// TIM-1458: Supplies page inside the Equipment & Supplies suite.
+// Carries forward the TIM-1447 inventory-workspace polish (sticky Startup
+// Total banner, View toolbar + AI markings toggle, vendor dropdown via
+// SectionedListGrid) but lives as a sibling page to the Equipment page and
+// promotes the shared "buildout_equipment" status.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Package, X, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
+import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 
@@ -88,7 +88,7 @@ function SeedBanner({
   );
 }
 
-export function InventoryWorkspace({
+export function SuppliesWorkspace({
   planId,
   initialSupplies,
   initialSections,
@@ -104,9 +104,9 @@ export function InventoryWorkspace({
   const viewOptionsRef = useRef<HTMLDivElement>(null);
 
   const { promoteOnEdit } = useWorkspaceStatus();
-  // Auto-promote not_started → in_progress once any inventory items exist.
+  // TIM-1458: editing supplies promotes the shared Equipment & Supplies suite.
   useEffect(() => {
-    if (supplies.length > 0) promoteOnEdit("inventory");
+    if (supplies.length > 0) promoteOnEdit("buildout_equipment");
   }, [supplies.length, promoteOnEdit]);
 
   const hasAiSupplies = supplies.some((i) => i.source === "ai_suggested");
@@ -178,7 +178,6 @@ export function InventoryWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      {/* Sticky grand total summary — parity with Build-Out & Equipment (TIM-1447) */}
       {grandTotalCents > 0 && (
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[var(--teal-bg-ultra)] shadow-sm">
           <div className="px-6 py-3 flex items-center gap-6">
@@ -208,24 +207,20 @@ export function InventoryWorkspace({
         </div>
       )}
       <div className="px-6 pt-8 pb-16">
-        <header className="mb-6">
+        <header className="mb-4">
           <div className="flex items-center gap-2 mb-1">
             <Package className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
             <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Inventory
+              Equipment &amp; Supplies
             </h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Track consumables and supplies — cups, lids, dairy, beans, syrups, and cleaning supplies.
-            Vendors live in{" "}
-            <Link href="/workspace/suppliers" className="text-[var(--teal)] underline decoration-dotted hover:decoration-solid">
-              Suppliers &amp; Vendors
-            </Link>
-            .
+            Plan the consumables you&apos;ll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
           </p>
         </header>
 
-        {/* View toolbar — parity with Build-Out & Equipment (TIM-1447) */}
+        <EquipmentSuppliesSubNav active="supplies" />
+
         <div className="flex items-center gap-3 mb-5">
           <div className="relative" ref={viewOptionsRef}>
             <button
@@ -280,8 +275,8 @@ export function InventoryWorkspace({
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
       <CoPilotDrawer
         planId={planId}
-        workspaceKey="inventory"
-        currentFocus={{ label: "Inventory" }}
+        workspaceKey="buildout_equipment"
+        currentFocus={{ label: "Equipment & Supplies — Supplies" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>

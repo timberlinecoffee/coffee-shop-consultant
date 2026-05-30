@@ -2303,7 +2303,7 @@ export function SectionedListGrid({
                           {sectionItems.length === 0 && !isDraggingActive && (
                             <tr>
                               <td colSpan={visibleCols.length} className="py-2 px-6 text-xs text-[var(--neutral-cool-400)] italic">
-                                No items — click + to add
+                                No items yet. Click + to add one.
                               </td>
                             </tr>
                           )}

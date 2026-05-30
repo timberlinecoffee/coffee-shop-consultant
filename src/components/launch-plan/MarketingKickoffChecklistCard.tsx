@@ -35,7 +35,7 @@ const STATUS_PILL: Record<LaunchItemStatus, string> = {
 
 export function MarketingKickoffChecklistCard() {
   const { loading, items, error, paywall, addItem, updateItem, removeItem } =
-    useLaunchPlanRows<MarketingItem>("/api/launch-plan/marketing-kickoff");
+    useLaunchPlanRows<MarketingItem>("/api/opening-month-plan/marketing-kickoff");
 
   const [channelFilter, setChannelFilter] = useState<string>("");
 
