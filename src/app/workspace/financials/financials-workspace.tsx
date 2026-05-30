@@ -11,6 +11,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { TruncatedText } from "@/components/ui/TruncatedText";
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -403,17 +404,22 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
 // TIM-1244: progressive-disclosure wrapper. Collapsible section with a teal
 // label header and a chevron; "advanced" tags rarely-used groups so the page
 // leads with the inputs that matter most and feels calm, not like a tax form.
+// TIM-1438: optional `hint` renders the section description behind a "?" icon
+// so the input page stays scannable (founder feedback: instructions add
+// unnecessary clutter, move them behind a question-mark toggle).
 function Section({
   id,
   title,
   defaultOpen = false,
   advanced = false,
+  hint,
   children,
 }: {
   id?: string;
   title: string;
   defaultOpen?: boolean;
   advanced?: boolean;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -430,32 +436,75 @@ function Section({
   }, [id]);
   return (
     <div id={id}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between mb-3 group"
-      >
+      <div className="w-full flex items-center justify-between mb-3 group">
         <span className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
-            {title}
-          </span>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)] rounded"
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
+              {title}
+            </span>
+          </button>
           {advanced && (
             <span className="text-[9px] font-medium uppercase tracking-wide text-[var(--dark-grey)] bg-[var(--gray-300)] rounded px-1.5 py-0.5">
               Advanced
             </span>
           )}
+          {hint && <InfoTip label={title}>{hint}</InfoTip>}
         </span>
-        <ChevronDown
-          size={15}
-          className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden="true"
-        />
-      </button>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
+          className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)] rounded"
+        >
+          <ChevronDown
+            size={15}
+            className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
       {open && children}
     </div>
+  );
+}
+
+// TIM-1438: small wrapper that renders a field label + a "?" InfoTip on the
+// same row, replacing the always-visible <p> hint that used to sit below the
+// input. Keeps the help reachable but out of the way until requested.
+function LabelWithHint({
+  htmlFor,
+  className,
+  hintLabel,
+  hint,
+  children,
+}: {
+  htmlFor?: string;
+  className?: string;
+  hintLabel?: string;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const labelText =
+    typeof children === "string"
+      ? children
+      : typeof hintLabel === "string"
+      ? hintLabel
+      : "Field";
+  return (
+    <span className="flex items-center gap-1.5 mb-1">
+      <label htmlFor={htmlFor} className={className}>
+        {children}
+      </label>
+      {hint && <InfoTip label={hintLabel ?? labelText}>{hint}</InfoTip>}
+    </span>
   );
 }
 
@@ -577,11 +626,13 @@ function ForecastTab({
       )}
 
       {/* Customer Flow */}
-      <Section id="section-customer-flow" title="Customer Flow by Day" defaultOpen>
+      <Section
+        id="section-customer-flow"
+        title="Customer Flow by Day"
+        defaultOpen
+        hint="Estimated customers per open day. Closed days are excluded from revenue calculations."
+      >
         <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
-            Estimated customers per open day. Closed days are excluded from revenue calculations.
-          </p>
           <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
             {DAY_KEYS.map((day) => {
               const isOpen = mp.weekly_schedule[day].open;
@@ -707,13 +758,19 @@ function ForecastTab({
       </Section>
 
       {/* Primary Revenue Streams (TIM-1245) — was "Revenue Drivers" */}
-      <Section id="section-revenue" title="Primary Revenue Streams" defaultOpen>
-        <div id="tour-revenue" className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+      <Section
+        id="section-revenue"
+        title="Primary Revenue Streams"
+        defaultOpen
+        hint={
+          <>
             Your day-to-day food &amp; beverage sales. Customers per day (above) ×
             average sale is your primary revenue. Keep it as one number, or split it
             into beverage and food to plan each separately.
-          </p>
+          </>
+        }
+      >
+        <div id="tour-revenue" className="rounded-xl border border-[var(--border)] bg-white p-4">
           {(baseRevenueOverrides > 0 || baseRevenueManual) && (
             <div className="mb-4 rounded-lg border border-[var(--teal-bg-950)] bg-[var(--teal-bg-subtle)] px-3 py-2.5 flex items-start justify-between gap-3 flex-wrap">
               <div className="flex items-start gap-2">
@@ -752,7 +809,13 @@ function ForecastTab({
             {splitOn ? (
               <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Beverage: average per sale ({mp.currency_code ?? "USD"})</label>
+                  <LabelWithHint
+                    className={labelCls.replace(" mb-1", "")}
+                    hintLabel="Beverage average per sale"
+                    hint="Espresso, drip, tea, etc."
+                  >
+                    {`Beverage: average per sale (${mp.currency_code ?? "USD"})`}
+                  </LabelWithHint>
                   <NumericInput
                     className={inputCls}
                     type="number"
@@ -763,10 +826,15 @@ function ForecastTab({
                     placeholder="5.50"
                     disabled={!canEdit}
                   />
-                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">Espresso, drip, tea, etc.</p>
                 </div>
                 <div>
-                  <label className={labelCls}>Food: average per sale ({mp.currency_code ?? "USD"})</label>
+                  <LabelWithHint
+                    className={labelCls.replace(" mb-1", "")}
+                    hintLabel="Food average per sale"
+                    hint="Pastries, sandwiches, snacks"
+                  >
+                    {`Food: average per sale (${mp.currency_code ?? "USD"})`}
+                  </LabelWithHint>
                   <NumericInput
                     className={inputCls}
                     type="number"
@@ -777,12 +845,17 @@ function ForecastTab({
                     placeholder="2.00"
                     disabled={!canEdit}
                   />
-                  <p className="text-[10px] text-[var(--dark-grey)] mt-1">Pastries, sandwiches, snacks</p>
                 </div>
               </div>
             ) : (
               <div>
-                <label className={labelCls}>Average ticket ({mp.currency_code ?? "USD"})</label>
+                <LabelWithHint
+                  className={labelCls.replace(" mb-1", "")}
+                  hintLabel="Average ticket"
+                  hint="Typical espresso bar: $6–$10"
+                >
+                  {`Average ticket (${mp.currency_code ?? "USD"})`}
+                </LabelWithHint>
                 <NumericInput
                   className={inputCls}
                   type="number"
@@ -795,11 +868,16 @@ function ForecastTab({
                   placeholder="7.50"
                   disabled={!canEdit}
                 />
-                <p className="text-[10px] text-[var(--dark-grey)] mt-1">Typical espresso bar: $6–$10</p>
               </div>
             )}
             <div id="tour-cogs">
-              <label className={labelCls}>COGS % of revenue</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="COGS % of revenue"
+                hint="Typical coffee shop: 28–35%"
+              >
+                COGS % of revenue
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -810,7 +888,6 @@ function ForecastTab({
                 placeholder="30"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">Typical coffee shop: 28–35%</p>
             </div>
           </div>
 
@@ -865,13 +942,18 @@ function ForecastTab({
       </Section>
 
       {/* Additional Revenue Streams (TIM-1245) — promoted to a first-class section */}
-      <Section title="Additional Revenue Streams" defaultOpen>
-        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+      <Section
+        title="Additional Revenue Streams"
+        defaultOpen
+        hint={
+          <>
             Income beyond your primary food &amp; beverage sales. Use the quick-add
             chips to start a common stream, or add your own. Each line can be a fixed
             monthly amount; click the arrow to expand a line and ramp it up or grow it over time.
-          </p>
+          </>
+        }
+      >
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <ForecastLinesEditor
             lines={mp.forecast_lines}
             canEdit={canEdit}
@@ -890,9 +972,12 @@ function ForecastTab({
       </Section>
 
       {/* Costs & Expenses — COGS / Overhead / Capex */}
-      <Section id="section-costs" title="Costs & Expenses" defaultOpen>
-        <div id="tour-costs" className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+      <Section
+        id="section-costs"
+        title="Costs & Expenses"
+        defaultOpen
+        hint={
+          <>
             Add, rename, or remove any line. For COGS lines, toggle{" "}
             <span className="font-semibold">$</span> (static monthly amount) or{" "}
             <span className="font-semibold">%</span> (percent of revenue). For operating
@@ -900,7 +985,10 @@ function ForecastTab({
             dropdown: a fixed monthly amount, percent of overall revenue, or percent of a
             specific revenue stream. Click the arrow to expand a line and configure a
             ramp-up period or month-over-month growth.
-          </p>
+          </>
+        }
+      >
+        <div id="tour-costs" className="rounded-xl border border-[var(--border)] bg-white p-4">
           <ForecastLinesEditor
             lines={mp.forecast_lines}
             canEdit={canEdit}
@@ -955,15 +1043,26 @@ function ForecastTab({
       </Section>
 
       {/* Other Operating Costs — TIM-1180 */}
-      <Section title="Other Operating Costs" advanced>
-        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+      <Section
+        title="Other Operating Costs"
+        advanced
+        hint={
+          <>
             Costs that scale with sales but aren&apos;t line items above. These flow into your
             P&amp;L, break-even, and ratios.
-          </p>
+          </>
+        }
+      >
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className={labelCls}>Payment processing %</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Payment processing %"
+                hint="% of gross revenue. Card fees: 2.5–3.0%"
+              >
+                Payment processing %
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -977,10 +1076,15 @@ function ForecastTab({
                 placeholder="2.5"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">% of gross revenue. Card fees: 2.5–3.0%</p>
             </div>
             <div>
-              <label className={labelCls}>Spoilage %</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Spoilage %"
+                hint="% of goods COGS lost to waste; typically 2–5%"
+              >
+                Spoilage %
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -994,10 +1098,15 @@ function ForecastTab({
                 placeholder="2"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">% of goods COGS lost to waste; typically 2–5%</p>
             </div>
             <div>
-              <label className={labelCls}>Loyalty discount %</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Loyalty discount %"
+                hint="% of revenue redeemed; 0 if no program"
+              >
+                Loyalty discount %
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -1011,22 +1120,32 @@ function ForecastTab({
                 placeholder="1"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">% of revenue redeemed; 0 if no program</p>
             </div>
           </div>
         </div>
       </Section>
 
       {/* Owner Activity — TIM-1169 */}
-      <Section title="Owner Activity" advanced>
-        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+      <Section
+        title="Owner Activity"
+        advanced
+        hint={
+          <>
             Money you (the owner) take out of the business each month, plus any extra cash you put back in
             later on. These move equity and cash without touching net income.
-          </p>
+          </>
+        }
+      >
+        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Owner draws ({mp.currency_code ?? "USD"} / month)</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Owner draws"
+                hint="What you pay yourself from the business each month. Shows up on the cash flow as a financing outflow."
+              >
+                {`Owner draws (${mp.currency_code ?? "USD"} / month)`}
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -1048,9 +1167,6 @@ function ForecastTab({
                 placeholder="0"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                What you pay yourself from the business each month. Shows up on the cash flow as a financing outflow.
-              </p>
             </div>
             <div>
               <label className={labelCls}>Owner contributions</label>
@@ -1098,11 +1214,33 @@ function ForecastTab({
       {/* TIM-1247: taxes lead the page (not collapsed/advanced) so the two
           clearly labeled rates are visible without hunting — founder feedback
           that the single rate wasn't reaching the user. */}
-      <Section id="section-taxes" title="Taxes" defaultOpen>
+      <Section
+        id="section-taxes"
+        title="Taxes"
+        defaultOpen
+        hint={
+          <>
+            Two different taxes. <strong>Income tax</strong> is your cost and
+            reduces net income. <strong>Sales tax</strong> is collected on sales
+            and remitted to the state: money that passes through you, not income.
+          </>
+        }
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div id="tour-taxes">
-              <label className={labelCls}>Income Tax Rate %</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Income Tax Rate %"
+                hint={
+                  <>
+                    Tax on your profit. Applied to pre-tax profit (only when positive)
+                    and subtracted to reach Net Income on the P&amp;L.
+                  </>
+                }
+              >
+                Income Tax Rate %
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -1114,13 +1252,21 @@ function ForecastTab({
                 placeholder="25"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                Tax on your profit. Applied to pre-tax profit (only when positive)
-                and subtracted to reach Net Income on the P&amp;L.
-              </p>
             </div>
             <div id="tour-sales-tax">
-              <label className={labelCls}>Sales Tax Rate %</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Sales Tax Rate %"
+                hint={
+                  <>
+                    Tax you collect from customers and pass through to the state. It
+                    does not change revenue or profit. Your revenue figures here are
+                    shown without sales tax. Set your local rate (0% if none).
+                  </>
+                }
+              >
+                Sales Tax Rate %
+              </LabelWithHint>
               <NumericInput
                 className={inputCls}
                 type="number"
@@ -1132,18 +1278,8 @@ function ForecastTab({
                 placeholder="0"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                Tax you collect from customers and pass through to the state. It
-                does not change revenue or profit. Your revenue figures here are
-                shown without sales tax. Set your local rate (0% if none).
-              </p>
             </div>
           </div>
-          <p className="text-[10px] text-[var(--neutral-cool-500)]">
-            Two different taxes. <strong>Income tax</strong> is your cost and
-            reduces net income. <strong>Sales tax</strong> is collected on sales
-            and remitted to the state: money that passes through you, not income.
-          </p>
         </div>
       </Section>
 
@@ -1152,7 +1288,13 @@ function ForecastTab({
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Starting month</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Starting month"
+                hint="Month-to-month columns, projections, and exports re-index from this month."
+              >
+                Starting month
+              </LabelWithHint>
               <select
                 className={inputCls}
                 value={mp.fiscal_year_start_month ?? 1}
@@ -1166,12 +1308,15 @@ function ForecastTab({
                   <option key={i + 1} value={i + 1}>{name}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                Month-to-month columns, projections, and exports re-index from this month.
-              </p>
             </div>
             <div>
-              <label className={labelCls}>Currency</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Currency"
+                hint="Drives symbol + formatting across the planner, AI assessment, and exports."
+              >
+                Currency
+              </LabelWithHint>
               <select
                 className={inputCls}
                 value={mp.currency_code ?? "USD"}
@@ -1184,22 +1329,26 @@ function ForecastTab({
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                Drives symbol + formatting across the planner, AI assessment, and exports.
-              </p>
             </div>
           </div>
         </div>
       </Section>
 
       {/* Ramp Period */}
-      <Section title="Ramp Period" advanced>
+      <Section
+        title="Ramp Period"
+        advanced
+        hint="Reduced revenue assumptions while you build awareness in the first months."
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
-            Reduced revenue assumptions while you build awareness in the first months.
-          </p>
           <div className="mb-4">
-            <label className={labelCls}>Ramp period (months)</label>
+            <LabelWithHint
+              className={labelCls.replace(" mb-1", "")}
+              hintLabel="Ramp period (months)"
+              hint="0 = no ramp; 1–12 months"
+            >
+              Ramp period (months)
+            </LabelWithHint>
             <NumericInput
               className={`${inputCls} max-w-[120px]`}
               type="number"
@@ -1219,14 +1368,15 @@ function ForecastTab({
               placeholder="0"
               disabled={!canEdit}
             />
-            <p className="text-[10px] text-[var(--dark-grey)] mt-1">0 = no ramp; 1–12 months</p>
           </div>
           {(mp.ramp_months ?? 0) > 0 && (
             <div>
-              <p className="text-xs font-medium text-[var(--muted-foreground)] mb-1">Revenue multiplier per ramp month (%)</p>
-              <p className="text-[10px] text-[var(--dark-grey)] mb-2">
-                Each value is applied to your <strong>base monthly revenue</strong> (the revenue you&apos;d earn at full capacity). 50% means you earn half your projected revenue that month. Example: if your projected revenue is $10,000/month and Month 1 is set to 30%, Month 1 revenue projects to $3,000.
-              </p>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-xs font-medium text-[var(--muted-foreground)]">Revenue multiplier per ramp month (%)</span>
+                <InfoTip label="Revenue multiplier per ramp month">
+                  Each value is applied to your <strong>base monthly revenue</strong> (the revenue you&apos;d earn at full capacity). 50% means you earn half your projected revenue that month. Example: if your projected revenue is $10,000/month and Month 1 is set to 30%, Month 1 revenue projects to $3,000.
+                </InfoTip>
+              </div>
               <div
                 className="grid gap-2"
                 style={{ gridTemplateColumns: `repeat(${Math.min(mp.ramp_months ?? 0, 6)}, minmax(0,1fr))` }}
@@ -1284,7 +1434,13 @@ function ForecastTab({
 
           {(mp.growth_mode ?? "simple") === "simple" ? (
             <div>
-              <label className={labelCls}>Monthly growth %</label>
+              <LabelWithHint
+                className={labelCls.replace(" mb-1", "")}
+                hintLabel="Monthly growth %"
+                hint="Compounded monthly after ramp period ends. 2% / month ≈ 27% annually."
+              >
+                Monthly growth %
+              </LabelWithHint>
               <NumericInput
                 className={`${inputCls} max-w-[140px]`}
                 type="number"
@@ -1296,15 +1452,15 @@ function ForecastTab({
                 placeholder="2"
                 disabled={!canEdit}
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                Compounded monthly after ramp period ends. 2% / month ≈ 27% annually.
-              </p>
             </div>
           ) : (
             <div>
-              <p className="text-xs text-[var(--muted-foreground)] mb-3">
-                Per-month growth % after ramp ends. Month 1 is the first post-ramp month.
-              </p>
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="text-xs text-[var(--muted-foreground)]">Per-month growth %</span>
+                <InfoTip label="Per-month growth %">
+                  Per-month growth % after ramp ends. Month 1 is the first post-ramp month.
+                </InfoTip>
+              </div>
               <div className="grid grid-cols-6 gap-2">
                 {Array.from({ length: 12 }).map((_, i) => {
                   const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
