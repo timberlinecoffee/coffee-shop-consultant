@@ -8,12 +8,14 @@ import {
   setPersonaPrimary,
 } from "@/lib/concept";
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface PersonaCardProps {
   persona: CustomerPersona;
   allPersonas: CustomerPersona[];
   canEdit: boolean;
-  onEdit: (persona: CustomerPersona) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
   onUpdatePersonas: (personas: CustomerPersona[]) => void;
 }
 
@@ -21,7 +23,8 @@ export function PersonaCard({
   persona,
   allPersonas,
   canEdit,
-  onEdit,
+  isExpanded,
+  onToggleExpand,
   onUpdatePersonas,
 }: PersonaCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,7 +48,6 @@ export function PersonaCard({
       return;
     }
     const remaining = allPersonas.filter((p) => p.id !== persona.id);
-    // Ensure someone is still primary
     if (remaining.length > 0 && !remaining.some((p) => p.isPrimary)) {
       remaining[0] = { ...remaining[0], isPrimary: true };
     }
@@ -53,12 +55,16 @@ export function PersonaCard({
   }
 
   return (
-    <div className="relative rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-      {/* Top bar */}
+    <div className="relative">
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-3">
-          {/* Avatar + name */}
-          <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none flex-1"
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? `Collapse ${persona.name}` : `Expand ${persona.name}`}
+          >
             <div
               className="w-9 h-9 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-sm font-bold flex-shrink-0"
               aria-hidden="true"
@@ -82,18 +88,10 @@ export function PersonaCard({
                 </p>
               )}
             </div>
-          </div>
+          </button>
 
-          {/* Actions */}
-          {canEdit && (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => onEdit(persona)}
-                className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors"
-              >
-                Edit
-              </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {canEdit && (
               <div className="relative">
                 <button
                   type="button"
@@ -145,11 +143,18 @@ export function PersonaCard({
                   </>
                 )}
               </div>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-label={isExpanded ? "Collapse" : "Expand"}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
+            >
+              {isExpanded ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+            </button>
+          </div>
         </div>
 
-        {/* Values chips */}
         {shownValues.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap mb-3">
             {shownValues.map((v) => (
@@ -166,7 +171,6 @@ export function PersonaCard({
           </div>
         )}
 
-        {/* Habits line */}
         {hasHabit && (
           <p className="text-xs text-[var(--muted-foreground)]">
             {[
@@ -178,8 +182,7 @@ export function PersonaCard({
           </p>
         )}
 
-        {/* Why they visit snippet */}
-        {persona.whyTheyVisit.trim() && (
+        {!isExpanded && persona.whyTheyVisit.trim() && (
           <p className="mt-2 text-xs text-[var(--muted-foreground)] leading-relaxed line-clamp-2 italic">
             {persona.whyTheyVisit.trim()}
           </p>

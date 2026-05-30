@@ -13,8 +13,11 @@ import {
 import { PersonaCard } from "./PersonaCard";
 import { PersonaEditor } from "./PersonaEditor";
 
+const NEW_PERSONA_ID = "__new__";
+const EXAMPLE_PERSONA_ID = "__example__";
+
 const EXAMPLE_PERSONA: CustomerPersona = {
-  id: "__example__",
+  id: EXAMPLE_PERSONA_ID,
   name: "The Morning Regular",
   isPrimary: true,
   createdAt: "",
@@ -37,14 +40,15 @@ interface PersonaSectionProps {
 }
 
 export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionProps) {
-  const [editingPersona, setEditingPersona] = useState<CustomerPersona | null>(null);
-  const [showExample, setShowExample] = useState(false);
+  // expandedId: a persona id, NEW_PERSONA_ID, EXAMPLE_PERSONA_ID, or null
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [newDraft, setNewDraft] = useState<CustomerPersona | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   function openNew() {
     const now = new Date().toISOString();
     const isFirst = personas.length === 0;
-    setEditingPersona({
+    setNewDraft({
       id: createPersonaId(),
       name: "",
       isPrimary: isFirst,
@@ -52,6 +56,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
       updatedAt: now,
       whyTheyVisit: "",
     });
+    setExpandedId(NEW_PERSONA_ID);
   }
 
   function handleSave(updated: CustomerPersona, nextPersonas: CustomerPersona[]) {
@@ -61,7 +66,6 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
       result = nextPersonas;
     } else {
       result = [...personas, updated];
-      // Enforce single primary
       if (updated.isPrimary) {
         result = setPersonaPrimary(result, updated.id);
       } else if (!result.some((p) => p.isPrimary)) {
@@ -69,7 +73,8 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
       }
     }
     onUpdate(result);
-    setEditingPersona(null);
+    setNewDraft(null);
+    setExpandedId(null);
   }
 
   function handleDelete(id: string) {
@@ -78,11 +83,15 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
       remaining[0] = { ...remaining[0], isPrimary: true };
     }
     onUpdate(remaining);
-    setEditingPersona(null);
+    setExpandedId(null);
+  }
+
+  function closeExpansion() {
+    setNewDraft(null);
+    setExpandedId(null);
   }
 
   function handleAddLikeExample() {
-    setShowExample(false);
     openNew();
   }
 
@@ -108,10 +117,12 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
           <p className="text-xs">
             <button
               type="button"
-              onClick={() => setShowExample(true)}
+              onClick={() =>
+                setExpandedId(expandedId === EXAMPLE_PERSONA_ID ? null : EXAMPLE_PERSONA_ID)
+              }
               className="text-[var(--teal)] hover:underline focus-visible:outline-none"
             >
-              See an example
+              {expandedId === EXAMPLE_PERSONA_ID ? "Hide example" : "See an example"}
             </button>
           </p>
           <p className="text-[10px] text-[var(--dark-grey)] mt-4">
@@ -119,22 +130,23 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
           </p>
         </div>
 
-        {showExample && (
-          <ExampleDrawer
-            onClose={() => setShowExample(false)}
-            onAdd={handleAddLikeExample}
-          />
+        {expandedId === EXAMPLE_PERSONA_ID && (
+          <div className="mt-3 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+            <ExamplePersonaPreview onAdd={handleAddLikeExample} onClose={closeExpansion} />
+          </div>
         )}
 
-        {editingPersona && (
-          <PersonaEditor
-            persona={editingPersona}
-            allPersonas={personas}
-            canEdit={canEdit}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onClose={() => setEditingPersona(null)}
-          />
+        {expandedId === NEW_PERSONA_ID && newDraft && (
+          <div className="mt-3 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+            <PersonaEditor
+              persona={newDraft}
+              allPersonas={personas}
+              canEdit={canEdit}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onClose={closeExpansion}
+            />
+          </div>
         )}
       </>
     );
@@ -159,18 +171,54 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
         </div>
       )}
 
-      {/* Card grid */}
-      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {personas.map((p) => (
-          <PersonaCard
-            key={p.id}
-            persona={p}
-            allPersonas={personas}
-            canEdit={canEdit}
-            onEdit={setEditingPersona}
-            onUpdatePersonas={onUpdate}
-          />
-        ))}
+      {/* Card list with inline accordion expansion */}
+      <div className="mt-2 space-y-3">
+        {personas.map((p) => {
+          const isExpanded = expandedId === p.id;
+          return (
+            <div
+              key={p.id}
+              className={`rounded-xl border bg-white overflow-hidden transition-colors ${
+                isExpanded ? "border-[var(--teal)]" : "border-[var(--border)]"
+              }`}
+            >
+              <PersonaCard
+                persona={p}
+                allPersonas={personas}
+                canEdit={canEdit}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setExpandedId(isExpanded ? null : p.id)}
+                onUpdatePersonas={onUpdate}
+              />
+              {isExpanded && (
+                <PersonaEditor
+                  persona={p}
+                  allPersonas={personas}
+                  canEdit={canEdit}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onClose={closeExpansion}
+                />
+              )}
+            </div>
+          );
+        })}
+
+        {expandedId === NEW_PERSONA_ID && newDraft && (
+          <div className="rounded-xl border border-[var(--teal)] bg-white overflow-hidden">
+            <div className="px-5 pt-5 pb-3 border-b border-[var(--border)]">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Add a new persona</p>
+            </div>
+            <PersonaEditor
+              persona={newDraft}
+              allPersonas={personas}
+              canEdit={canEdit}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onClose={closeExpansion}
+            />
+          </div>
+        )}
       </div>
 
       {/* Add button or cap */}
@@ -180,7 +228,8 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
             <button
               type="button"
               onClick={openNew}
-              className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
+              disabled={expandedId === NEW_PERSONA_ID}
+              className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
             >
               + Add another persona
             </button>
@@ -191,131 +240,99 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
           )}
         </div>
       )}
-
-      {/* Example drawer */}
-      {showExample && (
-        <ExampleDrawer
-          onClose={() => setShowExample(false)}
-          onAdd={handleAddLikeExample}
-        />
-      )}
-
-      {/* Persona editor */}
-      {editingPersona && (
-        <PersonaEditor
-          persona={editingPersona}
-          allPersonas={personas}
-          canEdit={canEdit}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onClose={() => setEditingPersona(null)}
-        />
-      )}
     </>
   );
 }
 
-function ExampleDrawer({
-  onClose,
+function ExamplePersonaPreview({
   onAdd,
+  onClose,
 }: {
-  onClose: () => void;
   onAdd: () => void;
+  onClose: () => void;
 }) {
   const p = EXAMPLE_PERSONA;
   return (
-    <>
-      <div className="fixed inset-0 z-30 bg-black/20" onClick={onClose} aria-hidden="true" />
-      <div
-        className="fixed inset-y-0 right-0 z-40 w-full sm:w-[380px] bg-white shadow-xl flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Example persona"
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Example</p>
-            <h2 className="text-sm font-semibold text-[var(--foreground)]">Sample Persona</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
-          >
-            <span aria-hidden="true" className="text-sm">&#x2715;</span>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-base font-bold flex-shrink-0">
-              {p.name.charAt(0)}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{p.name}</p>
-              <p className="text-xs text-[var(--dark-grey)]">
-                {[p.occupation, p.ageRange].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-          </div>
-
-          <Row label="Why they visit" value={p.whyTheyVisit} />
-          {p.painPoints && <Row label="Pain points" value={p.painPoints} />}
-          {p.dailyContext && <Row label="Daily context" value={p.dailyContext} />}
-
-          {p.values && p.values.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-1.5">
-                Values
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {p.values.map((v) => (
-                  <span
-                    key={v}
-                    className="text-[10px] font-medium text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] rounded-full px-2 py-0.5"
-                  >
-                    {PERSONA_VALUE_LABELS[v]}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-4">
-            {p.visitFrequency && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-0.5">Visits</p>
-                <p className="text-xs text-[var(--foreground)]">{PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency]}</p>
-              </div>
-            )}
-            {p.spendPerVisit && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-0.5">Spend</p>
-                <p className="text-xs text-[var(--foreground)]">{PERSONA_SPEND_LABELS[p.spendPerVisit]} per visit</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={onAdd}
-            className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
-          >
-            Add a persona like this
-          </button>
+    <div
+      className="border-t-0 border-[var(--border)] bg-[var(--warm-1050)]"
+      role="region"
+      aria-label="Example persona"
+    >
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Example</p>
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">Sample Persona</h2>
         </div>
       </div>
-    </>
+
+      <div className="px-5 py-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-base font-bold flex-shrink-0">
+            {p.name.charAt(0)}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[var(--foreground)]">{p.name}</p>
+            <p className="text-xs text-[var(--dark-grey)]">
+              {[p.occupation, p.ageRange].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+        </div>
+
+        <Row label="Why they visit" value={p.whyTheyVisit} />
+        {p.painPoints && <Row label="Pain points" value={p.painPoints} />}
+        {p.dailyContext && <Row label="Daily context" value={p.dailyContext} />}
+
+        {p.values && p.values.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-1.5">
+              Values
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {p.values.map((v) => (
+                <span
+                  key={v}
+                  className="text-[10px] font-medium text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] rounded-full px-2 py-0.5"
+                >
+                  {PERSONA_VALUE_LABELS[v]}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-4">
+          {p.visitFrequency && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-0.5">Visits</p>
+              <p className="text-xs text-[var(--foreground)]">{PERSONA_VISIT_FREQUENCY_LABELS[p.visitFrequency]}</p>
+            </div>
+          )}
+          {p.spendPerVisit && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-0.5">Spend</p>
+              <p className="text-xs text-[var(--foreground)]">{PERSONA_SPEND_LABELS[p.spendPerVisit]} per visit</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          Close
+        </button>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
+        >
+          Add a persona like this
+        </button>
+      </div>
+    </div>
   );
 }
 
