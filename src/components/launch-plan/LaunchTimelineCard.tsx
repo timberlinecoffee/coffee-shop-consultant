@@ -561,7 +561,7 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
     updateItem,
     removeItem,
     clearError,
-  } = useLaunchPlanRows<TimelineItem>("/api/launch-plan/timeline");
+  } = useLaunchPlanRows<TimelineItem>("/api/opening-month-plan/timeline");
 
   const sorted = [...items].sort((a, b) => a.order_index - b.order_index);
 
@@ -605,7 +605,7 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
       );
 
       // Batch persist
-      await fetch("/api/launch-plan/timeline", {
+      await fetch("/api/opening-month-plan/timeline", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ updates }),

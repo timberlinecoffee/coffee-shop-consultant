@@ -27,7 +27,6 @@ export const MUTABLE_WORKSPACE_KEYS = new Set([
   'menu_pricing',
   'buildout_equipment',
   'inventory',
-  'opening_milestones',
   'opening_month_plan',
   'hiring',
   'marketing',

@@ -50,7 +50,7 @@ function parseDollarsToCents(input: string): number | null {
 
 export function HiringPlanCard() {
   const { loading, items, error, paywall, addItem, updateItem, removeItem } =
-    useLaunchPlanRows<HiringRole>("/api/launch-plan/hiring-plan");
+    useLaunchPlanRows<HiringRole>("/api/opening-month-plan/hiring-plan");
 
   const totalPayrollCents = items.reduce(
     (sum, r) => sum + (r.monthly_cost_cents ?? 0) * r.headcount,

@@ -31,11 +31,10 @@ const WORKSPACE_LABELS: Record<string, string> = {
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
   buildout_equipment: "Build-out & Equipment",
-  opening_milestones: "Opening Milestones",
   opening_month_plan: "Opening Month Plan",
 }
 
-const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrepreneurs using the My Coffee Shop Consultant platform. Analyze the provided workspace data across the seven workspaces below and produce a structured readiness report.
+const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrepreneurs using the My Coffee Shop Consultant platform. Analyze the provided workspace data across the six workspaces below and produce a structured readiness report.
 
 ## Grading Rubric
 - GREEN: Substantively complete. All critical elements are present and coherent.
@@ -54,9 +53,7 @@ const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrep
 
 **Build-out & Equipment**: GREEN if equipment list is populated and build-out plan exists. RED if no equipment listed.
 
-**Opening Milestones**: GREEN if there are dated gating milestones across the tracks (lease, permits, build-out, equipment, hiring, training, soft-open dates) and each has an owner and target date.
-
-**Opening Month Plan**: GREEN if the tactical playbook covers pre-open weeks, opening week, and the first 30 days with specific tasks, owners, and dates (training schedule, supplier first-orders, friends-and-family soft open, grand-open staffing, daily/weekly rituals).
+**Opening Month Plan**: GREEN when BOTH halves are populated: (a) dated gating milestones across the tracks (lease, permits, build-out, equipment, hiring, training, soft-open dates) with owners and target dates, AND (b) the tactical playbook covers pre-open weeks, opening week, and the first 30 days with specific tasks, owners, and dates (training schedule, supplier first-orders, friends-and-family soft open, grand-open staffing, daily/weekly rituals). YELLOW if only one half is populated. RED if both are empty.
 
 ## Output Format
 Output ONLY valid JSON — no markdown, no prose, no code fences — matching this exact schema:
@@ -64,7 +61,7 @@ Output ONLY valid JSON — no markdown, no prose, no code fences — matching th
   "overall": "green" | "yellow" | "red",
   "perWorkspace": [
     {
-      "key": "concept" | "location_lease" | "financials" | "menu_pricing" | "buildout_equipment" | "opening_milestones" | "opening_month_plan",
+      "key": "concept" | "location_lease" | "financials" | "menu_pricing" | "buildout_equipment" | "opening_month_plan",
       "status": "green" | "yellow" | "red",
       "blockers": ["string (max 3)"],
       "topNextActions": ["string (2-3 concrete actions)"]
@@ -81,7 +78,7 @@ Output ONLY valid JSON — no markdown, no prose, no code fences — matching th
 
 Rules:
 - overall: red if ANY workspace is red; yellow if any is yellow but none are red; green only if ALL are green.
-- perWorkspace: include ALL 7 workspace keys in this exact order: concept, location_lease, financials, menu_pricing, buildout_equipment, opening_milestones, opening_month_plan.
+- perWorkspace: include ALL 6 workspace keys in this exact order: concept, location_lease, financials, menu_pricing, buildout_equipment, opening_month_plan.
 - blockers: max 3 items per workspace. If workspace has "No data entered", use ["No data entered yet"]. Name the specific gap — not a generic phrase.
 - topNextActions: 2-3 entries. EVERY blocker you listed must be matched by at least one specific next action here that fixes it. Each action is concrete: a single, named thing the owner can do this week, with a target ("Email landlord X about a 6-month TI allowance" — not "consider talking to the landlord"). No vague verbs ("consider", "explore", "look into").
 - criticalPath: top 5 most time-sensitive or blocking actions across all workspaces, ordered by urgency. Each action: who does it (owner) and a target due date if implied by the data.

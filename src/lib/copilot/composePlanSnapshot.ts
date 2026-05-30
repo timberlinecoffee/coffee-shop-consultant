@@ -18,7 +18,6 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   menu_pricing: "Menu & Pricing",
   buildout_equipment: "Build Out & Equipment",
   inventory: "Inventory",
-  opening_milestones: "Opening Milestones",
   opening_month_plan: "Opening Month Plan",
   hiring: "Hiring & Onboarding",
   marketing: "Marketing",
