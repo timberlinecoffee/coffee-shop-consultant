@@ -10,6 +10,7 @@ import { menuCardTemplate } from "./menu-card"
 import { businessPlanTemplate } from "./business-plan"
 import { jobDescriptionTemplate } from "./job-description"
 import { scorecardBlankTemplate } from "./interview-scorecard"
+import { scorecardWorksheetTemplate } from "./interview-scorecard-worksheet"
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- V2: competencyCompletedTemplate deferred (TIM-1419)
 import { competencyBlankTemplate, competencyCompletedTemplate } from "./competency-form"
 
@@ -19,6 +20,7 @@ registerTemplate("menu_card_with_cost_analysis", menuCardTemplate as PdfTemplate
 registerTemplate("business_plan_full", businessPlanTemplate as PdfTemplate) // TIM-1037
 registerTemplate("hiring_job_description", jobDescriptionTemplate as PdfTemplate)
 registerTemplate("hiring_scorecard_blank", scorecardBlankTemplate as PdfTemplate)
+registerTemplate("hiring_scorecard_worksheet", scorecardWorksheetTemplate as PdfTemplate) // TIM-1482
 registerTemplate("hiring_competency_blank", competencyBlankTemplate as PdfTemplate)
 // V2: hiring_competency_completed deferred (TIM-1419) — per-staff fill removed from V1.
 // Restore when Operations Management Suite ships.
