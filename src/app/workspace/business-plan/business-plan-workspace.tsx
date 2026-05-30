@@ -2,13 +2,15 @@
 
 // TIM-1037: Business Plan Generator workspace — main client component.
 // TIM-1225: adds Cover & Branding panel above section list.
+// TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
+import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 
 interface Props {
@@ -338,6 +340,7 @@ export function BusinessPlanWorkspace({
               key={section.key}
               section={section}
               canEdit={canEdit}
+              exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
               isStreaming={streamingKey === section.key}
               onToggleVisible={() => toggleVisibility(section.key, section.isVisible)}
               onToggleExpand={() => updateSection(section.key, { isExpanded: !section.isExpanded })}
@@ -383,6 +386,7 @@ export function BusinessPlanWorkspace({
 interface SectionCardProps {
   section: SectionState;
   canEdit: boolean;
+  exampleContent: string | null;
   isStreaming: boolean;
   onToggleVisible: () => void;
   onToggleExpand: () => void;
@@ -422,6 +426,7 @@ function MarkdownContent({ content }: { content: string }) {
 function SectionCard({
   section,
   canEdit,
+  exampleContent,
   isStreaming,
   onToggleVisible,
   onToggleExpand,
@@ -433,6 +438,7 @@ function SectionCard({
   onGenerateExec,
   onImprove,
 }: SectionCardProps) {
+  const [showExample, setShowExample] = useState(false);
   const hasUserOverride = section.userContent !== null;
   const displayContent = section.isEditing
     ? section.editBuffer
@@ -507,6 +513,20 @@ function SectionCard({
               className="p-1.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {exampleContent && section.isExpanded && (
+            <button
+              onClick={() => setShowExample((v) => !v)}
+              title={showExample ? "Hide example" : "See a worked example"}
+              className={`p-1.5 rounded-lg transition-colors ${
+                showExample
+                  ? "text-[var(--teal)] bg-[var(--teal-50,#f0fdfa)]"
+                  : "text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)]"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
             </button>
           )}
 
@@ -590,6 +610,33 @@ function SectionCard({
               </div>
             )}
           </div>
+
+          {/* Worked example panel */}
+          {showExample && exampleContent && (
+            <div className="mt-4 rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50,#f9fafb)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-100,#f3f4f6)]">
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[var(--neutral-cool-600)]" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-[var(--neutral-cool-700,#374151)]">
+                    Summit Street Coffee
+                  </span>
+                  <span className="text-[10px] text-[var(--neutral-cool-500,#6b7280)] font-normal">
+                    (sample plan)
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowExample(false)}
+                  className="p-0.5 rounded text-[var(--neutral-cool-500)] hover:text-[var(--foreground)] transition-colors"
+                  aria-label="Close example"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="px-4 py-3">
+                <MarkdownContent content={exampleContent} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
