@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { loadPlanContext } from "@/lib/plan-context";
 import { buildPlanSnapshotForExecutiveSummary, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import {
   assembleCompanyConcept,
@@ -127,6 +128,11 @@ export async function POST(request: NextRequest) {
   const shopName = plan.plan_name ?? "this coffee shop";
   const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
 
+  // TIM-1418: Pull location from the live tables instead of the frozen
+  // onboarding snapshot. Budget / stage live nowhere else, so they stay on
+  // onboarding_data for now.
+  const planContext = await loadPlanContext(supabase, user.id);
+
   const targetSection = sections.find((s) => s.key === sectionKey);
   const sectionAutoContent = targetSection?.autoContent ?? "";
   const sectionTitle = targetSection?.title ?? sectionKey;
@@ -154,7 +160,7 @@ ${sharedRules}
 
 Founder context:
 - Budget: ${String(onboarding?.budget ?? "not specified")}
-- Location: ${String(onboarding?.location ?? "not specified")}
+- Location: ${planContext.location_country ?? "not specified"}
 - Stage: ${String(onboarding?.stage ?? "not specified")}
 
 Plan data:
