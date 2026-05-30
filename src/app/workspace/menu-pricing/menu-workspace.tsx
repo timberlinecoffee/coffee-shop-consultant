@@ -1181,7 +1181,7 @@ function RecipeLineRow({
 
   return (
     <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2">
-      <span className="flex-1 text-xs font-medium text-[var(--foreground)] truncate">
+      <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
         {ingredient?.name ?? "Unknown"}
       </span>
       <input
@@ -1518,7 +1518,7 @@ function DefaultLineRow({
 
   return (
     <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2">
-      <span className="flex-1 text-xs font-medium text-[var(--foreground)] truncate">
+      <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
         {ingredient?.name ?? "Unknown ingredient"}
       </span>
       <input
@@ -1956,7 +1956,7 @@ function CategoryHeader({
           <button
             type="button"
             onClick={() => canEdit && startEdit()}
-            className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted truncate"
+            className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted text-left break-words"
             title={canEdit ? "Click to rename" : undefined}
           >
             {category.name}
@@ -2281,7 +2281,7 @@ function InsightsTab({
               return (
                 <div key={n.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--foreground)] truncate">
+                    <p className="text-sm font-medium text-[var(--foreground)] break-words">
                       {n.name || <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>}
                     </p>
                     <p className="text-[11px] text-[var(--neutral-cool-650)]">
@@ -2341,7 +2341,7 @@ function QuadrantCell({
           {items.map((it) => (
             <span
               key={it.id}
-              className="text-[11px] bg-white/70 border border-white text-[var(--foreground)] rounded-md px-1.5 py-0.5 truncate max-w-full"
+              className="text-[11px] bg-white/70 border border-white text-[var(--foreground)] rounded-md px-1.5 py-0.5 break-words max-w-full"
             >
               {it.name || "Unnamed"}
             </span>
