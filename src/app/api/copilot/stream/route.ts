@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import { loadPlanContext } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -69,6 +70,7 @@ function buildDynamicPrompt(
   planSnapshot: string,
   // TIM-1149: null = general (workspace-less) conversation.
   currentWorkspace: WorkspaceKey | null,
+  locationCountry: string | null,
 ): string {
   const shopType = Array.isArray(onboarding?.shop_type)
     ? (onboarding.shop_type as string[]).join(", ")
@@ -80,7 +82,7 @@ function buildDynamicPrompt(
 
   return `## User Profile
 - **Budget**: ${String(onboarding?.budget ?? "not specified")}
-- **Location**: ${String(onboarding?.location ?? "not specified")}
+- **Location**: ${locationCountry ?? "not specified"}
 - **Stage**: ${String(onboarding?.stage ?? "not specified")}
 - **Motivation**: ${String(onboarding?.motivation ?? "not specified")}
 - **Coffee experience**: ${String(onboarding?.coffee_experience ?? "not specified")}
@@ -228,13 +230,17 @@ export async function POST(request: NextRequest) {
   const svcClient = createServiceClient()
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = await composePlanSnapshot(
-    planId,
-    workspaceKey,
-    svcClient,
-  )
+  // TIM-1418: Location is read live from plan_hiring_settings + location_candidates
+  // instead of the frozen onboarding snapshot. Other onboarding fields here
+  // (budget, stage, motivation, coffee_experience, timeline, shop_type) have no
+  // live workspace equivalent and stay on onboarding_data.
+  const [snapshotResult, planContext] = await Promise.all([
+    composePlanSnapshot(planId, workspaceKey, svcClient),
+    loadPlanContext(svcClient, user.id),
+  ])
+  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = snapshotResult
 
-  const dynamicPrompt = buildDynamicPrompt(onboarding, planSnapshot, workspaceKey)
+  const dynamicPrompt = buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country)
 
   // ── Model routing ────────────────────────────────────────────────────────────
   // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
