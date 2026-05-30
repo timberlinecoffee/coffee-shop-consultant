@@ -10,6 +10,7 @@ import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare, Eye } from 
 import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
@@ -41,16 +42,6 @@ type SaveState =
   | { kind: "saving" }
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
-
-function formatTimestamp(iso: string | null): string {
-  if (!iso) return "Not saved yet";
-  try {
-    const d = new Date(iso);
-    return `Saved ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-  } catch {
-    return "Saved";
-  }
-}
 
 function SeedBanner({
   canEdit,
@@ -318,15 +309,6 @@ export function BuildoutEquipmentWorkspace({
   const lastSavedAt =
     saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null;
 
-  const saveLabel =
-    saveState.kind === "saving"
-      ? "Saving..."
-      : saveState.kind === "dirty"
-      ? "Unsaved changes"
-      : saveState.kind === "error"
-      ? saveState.message
-      : formatTimestamp(lastSavedAt);
-
   const equipmentSections = sections.filter((s) => s.list_type === "equipment");
   const hasAiEquipment = equipment.some((i) => i.source === "ai_suggested");
 
@@ -469,9 +451,14 @@ export function BuildoutEquipmentWorkspace({
               </div>
             )}
           </div>
-          <span className={`text-xs ml-auto ${saveState.kind === "error" ? "text-[var(--error)]" : "text-[var(--dark-grey)]"}`}>
-            {saveLabel}
-          </span>
+          <SaveIndicator
+            saving={saveState.kind === "saving"}
+            savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+            error={saveState.kind === "error" ? saveState.message : null}
+            unsaved={saveState.kind === "dirty"}
+            onRetry={handleManualSave}
+            className="ml-auto"
+          />
           {canEdit && (
             <button
               type="button"

@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { SaveIndicator } from "@/components/ui/save-indicator";
+import { SectionHelp } from "@/components/ui/section-help";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -187,7 +189,7 @@ export function OperationsPlaybookWorkspace({
             team needs before opening day. Edit anything.
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
-            <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
+            <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
           </div>
         </header>
 
@@ -271,32 +273,7 @@ export function OperationsPlaybookWorkspace({
   );
 }
 
-// ── Save status ──────────────────────────────────────────────────────────────
-
-function SaveStatus({
-  saving,
-  savedAt,
-  canEdit,
-}: {
-  saving: boolean;
-  savedAt: string | null;
-  canEdit: boolean;
-}) {
-  if (!canEdit) return <span className="italic">Read-only preview</span>;
-  if (saving) return <span>Saving…</span>;
-  if (savedAt) {
-    const ts = new Date(savedAt);
-    const hh = ts.getHours().toString().padStart(2, "0");
-    const mm = ts.getMinutes().toString().padStart(2, "0");
-    return (
-      <span className="flex items-center gap-1">
-        <Check className="w-3 h-3 text-[var(--teal)]" />
-        Saved {hh}:{mm}
-      </span>
-    );
-  }
-  return <span>Autosaves as you type.</span>;
-}
+// ── Save status — see SaveIndicator in @/components/ui/save-indicator ────────
 
 // ── Section tabs ─────────────────────────────────────────────────────────────
 
@@ -560,9 +537,9 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-start justify-between gap-4 mb-4">
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex items-center gap-1">
         <h2 className={sectionLabelCls}>{label}</h2>
-        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{tagline}</p>
+        <SectionHelp title={label}>{tagline}</SectionHelp>
       </div>
       <button
         type="button"
@@ -723,12 +700,11 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
   return (
     <section className={`${cardCls} p-6`}>
       <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-1">
           <h2 className={sectionLabelCls}>Drink Recipes</h2>
-          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-            Read-only view of the recipes you build in the Menu workspace. Edit
-            a recipe by opening the menu item.
-          </p>
+          <SectionHelp title="Drink Recipes">
+            Read-only view of the recipes you build in the Menu workspace. Edit a recipe by opening the menu item.
+          </SectionHelp>
         </div>
         <Link
           href="/workspace/menu-pricing"

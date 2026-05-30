@@ -12,6 +12,8 @@ import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProv
 import { NumericInput } from "@/components/ui/numeric-input";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { InfoTip } from "@/components/ui/info-tip";
+import { SaveIndicator } from "@/components/ui/save-indicator";
+import { SectionHelp } from "@/components/ui/section-help";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -252,16 +254,6 @@ interface Props {
 }
 
 
-function formatTimestamp(iso: string | null): string {
-  if (!iso) return "Not saved yet";
-  try {
-    const d = new Date(iso);
-    return `Saved ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-  } catch {
-    return "Saved";
-  }
-}
-
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
 function Sparkline({ values }: { values: number[] }) {
@@ -412,14 +404,14 @@ function Section({
   title,
   defaultOpen = false,
   advanced = false,
-  hint,
+  help,
   children,
 }: {
   id?: string;
   title: string;
   defaultOpen?: boolean;
   advanced?: boolean;
-  hint?: React.ReactNode;
+  help?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -436,32 +428,21 @@ function Section({
   }, [id]);
   return (
     <div id={id}>
-      <div className="w-full flex items-center justify-between mb-3 group">
-        <span className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)] rounded"
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
-              {title}
-            </span>
-          </button>
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex items-center gap-2 group"
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
+            {title}
+          </span>
           {advanced && (
             <span className="text-[9px] font-medium uppercase tracking-wide text-[var(--dark-grey)] bg-[var(--gray-300)] rounded px-1.5 py-0.5">
               Advanced
             </span>
           )}
-          {hint && <InfoTip label={title}>{hint}</InfoTip>}
-        </span>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
-          className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)] rounded"
-        >
           <ChevronDown
             size={15}
             className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
@@ -470,6 +451,7 @@ function Section({
             aria-hidden="true"
           />
         </button>
+        {help && <SectionHelp title={title}>{help}</SectionHelp>}
       </div>
       {open && children}
     </div>
@@ -626,12 +608,7 @@ function ForecastTab({
       )}
 
       {/* Customer Flow */}
-      <Section
-        id="section-customer-flow"
-        title="Customer Flow by Day"
-        defaultOpen
-        hint="Estimated customers per open day. Closed days are excluded from revenue calculations."
-      >
+      <Section id="section-customer-flow" title="Customer Flow by Day" defaultOpen help="Estimated customers per open day. Closed days are excluded from revenue calculations.">
         <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
             {DAY_KEYS.map((day) => {
@@ -758,18 +735,7 @@ function ForecastTab({
       </Section>
 
       {/* Primary Revenue Streams (TIM-1245) — was "Revenue Drivers" */}
-      <Section
-        id="section-revenue"
-        title="Primary Revenue Streams"
-        defaultOpen
-        hint={
-          <>
-            Your day-to-day food &amp; beverage sales. Customers per day (above) ×
-            average sale is your primary revenue. Keep it as one number, or split it
-            into beverage and food to plan each separately.
-          </>
-        }
-      >
+      <Section id="section-revenue" title="Primary Revenue Streams" defaultOpen help="Your day-to-day food & beverage sales. Customers per day (above) × average sale is your primary revenue. Keep it as one number, or split it into beverage and food to plan each separately.">
         <div id="tour-revenue" className="rounded-xl border border-[var(--border)] bg-white p-4">
           {(baseRevenueOverrides > 0 || baseRevenueManual) && (
             <div className="mb-4 rounded-lg border border-[var(--teal-bg-950)] bg-[var(--teal-bg-subtle)] px-3 py-2.5 flex items-start justify-between gap-3 flex-wrap">
@@ -942,17 +908,7 @@ function ForecastTab({
       </Section>
 
       {/* Additional Revenue Streams (TIM-1245) — promoted to a first-class section */}
-      <Section
-        title="Additional Revenue Streams"
-        defaultOpen
-        hint={
-          <>
-            Income beyond your primary food &amp; beverage sales. Use the quick-add
-            chips to start a common stream, or add your own. Each line can be a fixed
-            monthly amount; click the arrow to expand a line and ramp it up or grow it over time.
-          </>
-        }
-      >
+      <Section title="Additional Revenue Streams" defaultOpen help="Income beyond your primary food & beverage sales. Use the quick-add chips to start a common stream, or add your own. Each line can be a fixed monthly amount; click the arrow to expand a line and ramp it up or grow it over time.">
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <ForecastLinesEditor
             lines={mp.forecast_lines}
@@ -972,22 +928,7 @@ function ForecastTab({
       </Section>
 
       {/* Costs & Expenses — COGS / Overhead / Capex */}
-      <Section
-        id="section-costs"
-        title="Costs & Expenses"
-        defaultOpen
-        hint={
-          <>
-            Add, rename, or remove any line. For COGS lines, toggle{" "}
-            <span className="font-semibold">$</span> (static monthly amount) or{" "}
-            <span className="font-semibold">%</span> (percent of revenue). For operating
-            expenses, pick the basis from the <span className="font-semibold">% of</span>{" "}
-            dropdown: a fixed monthly amount, percent of overall revenue, or percent of a
-            specific revenue stream. Click the arrow to expand a line and configure a
-            ramp-up period or month-over-month growth.
-          </>
-        }
-      >
+      <Section id="section-costs" title="Costs & Expenses" defaultOpen help={<>Add, rename, or remove any line. For COGS lines, toggle <strong>$</strong> (static monthly amount) or <strong>%</strong> (percent of revenue). For operating expenses, pick the basis from the <strong>% of</strong> dropdown: a fixed monthly amount, percent of overall revenue, or percent of a specific revenue stream. Click the arrow to expand a line and configure a ramp-up period or month-over-month growth.</>}>
         <div id="tour-costs" className="rounded-xl border border-[var(--border)] bg-white p-4">
           <ForecastLinesEditor
             lines={mp.forecast_lines}
@@ -1043,16 +984,7 @@ function ForecastTab({
       </Section>
 
       {/* Other Operating Costs — TIM-1180 */}
-      <Section
-        title="Other Operating Costs"
-        advanced
-        hint={
-          <>
-            Costs that scale with sales but aren&apos;t line items above. These flow into your
-            P&amp;L, break-even, and ratios.
-          </>
-        }
-      >
+      <Section title="Other Operating Costs" advanced help="Costs that scale with sales but aren't line items above. These flow into your P&L, break-even, and ratios.">
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -1126,16 +1058,7 @@ function ForecastTab({
       </Section>
 
       {/* Owner Activity — TIM-1169 */}
-      <Section
-        title="Owner Activity"
-        advanced
-        hint={
-          <>
-            Money you (the owner) take out of the business each month, plus any extra cash you put back in
-            later on. These move equity and cash without touching net income.
-          </>
-        }
-      >
+      <Section title="Owner Activity" advanced help="Money you (the owner) take out of the business each month, plus any extra cash you put back in later on. These move equity and cash without touching net income.">
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -1218,13 +1141,7 @@ function ForecastTab({
         id="section-taxes"
         title="Taxes"
         defaultOpen
-        hint={
-          <>
-            Two different taxes. <strong>Income tax</strong> is your cost and
-            reduces net income. <strong>Sales tax</strong> is collected on sales
-            and remitted to the state: money that passes through you, not income.
-          </>
-        }
+        help={<>Two different taxes. <strong>Income tax</strong> is your cost and reduces net income. <strong>Sales tax</strong> is collected on sales and remitted to the state: money that passes through you, not income.</>}
       >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1335,11 +1252,7 @@ function ForecastTab({
       </Section>
 
       {/* Ramp Period */}
-      <Section
-        title="Ramp Period"
-        advanced
-        hint="Reduced revenue assumptions while you build awareness in the first months."
-      >
+      <Section title="Ramp Period" advanced help="Reduced revenue assumptions while you build awareness in the first months.">
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="mb-4">
             <LabelWithHint
@@ -2223,15 +2136,6 @@ export function FinancialsWorkspace({
     setTourOpen(false);
   }
 
-  const saveLabel =
-    saveState.kind === "saving"
-      ? "Saving..."
-      : saveState.kind === "dirty"
-      ? "Unsaved changes"
-      : saveState.kind === "error"
-      ? saveState.message
-      : formatTimestamp(lastSavedAt);
-
   const tabs: { id: Tab; label: string }[] = [
     { id: "forecast", label: "Forecast Inputs" },
     { id: "personnel", label: "Salaries" },
@@ -2302,11 +2206,13 @@ export function FinancialsWorkspace({
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <span
-              className={`text-xs ${saveState.kind === "error" ? "text-[var(--error)]" : "text-[var(--dark-grey)]"}`}
-            >
-              {saveLabel}
-            </span>
+            <SaveIndicator
+              saving={saveState.kind === "saving"}
+              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+              error={saveState.kind === "error" ? saveState.message : null}
+              unsaved={saveState.kind === "dirty"}
+              onRetry={handleManualSave}
+            />
             {canEdit && (
               <button
                 type="button"

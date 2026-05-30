@@ -13,6 +13,7 @@ import { Lightbulb, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
+import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { ReadinessRing } from "@/components/workspace/ReadinessRing";
 import {
@@ -45,16 +46,6 @@ interface ConceptWorkspaceProps {
   initialUpdatedAt: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
-}
-
-function formatTimestamp(iso: string | null): string {
-  if (!iso) return "Not saved yet";
-  try {
-    const d = new Date(iso);
-    return `Saved ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-  } catch {
-    return "Saved";
-  }
 }
 
 export function ConceptWorkspace({
@@ -234,19 +225,6 @@ export function ConceptWorkspace({
     });
   }
 
-  let saveStatusCopy = formatTimestamp(lastSavedAt);
-  let saveStatusTone = "text-[var(--dark-grey)]";
-  if (saveState.kind === "saving") {
-    saveStatusCopy = "Saving...";
-    saveStatusTone = "text-[var(--teal)]";
-  } else if (saveState.kind === "dirty") {
-    saveStatusCopy = "Unsaved";
-    saveStatusTone = "text-[var(--muted-foreground)]";
-  } else if (saveState.kind === "error") {
-    saveStatusCopy = saveState.message;
-    saveStatusTone = "text-[var(--error)]";
-  }
-
   const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
@@ -288,13 +266,14 @@ export function ConceptWorkspace({
                 {progress.filled} of {progress.total} sections filled
               </span>
             )}
-            <span
-              className={`text-xs shrink-0 ${saveStatusTone}`}
-              role="status"
-              aria-live="polite"
-            >
-              {saveStatusCopy}
-            </span>
+            <SaveIndicator
+              saving={saveState.kind === "saving"}
+              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+              error={saveState.kind === "error" ? saveState.message : null}
+              unsaved={saveState.kind === "dirty"}
+              canEdit={canEdit}
+              className="shrink-0"
+            />
           </div>
         </header>
 
@@ -543,10 +522,8 @@ export function ConceptWorkspace({
               {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
             </p>
           )}
-          {complete && (saveState.kind === "saved" || saveState.kind === "idle") ? (
+          {complete && (saveState.kind === "saved" || saveState.kind === "idle") && (
             <ConceptUnlockBanner />
-          ) : (
-            <p className="text-xs text-[var(--dark-grey)] mt-3">Autosaves as you type.</p>
           )}
         </div>
       </div>

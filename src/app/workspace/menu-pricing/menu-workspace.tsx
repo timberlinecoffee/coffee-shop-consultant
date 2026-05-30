@@ -43,6 +43,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { SectionHelp } from "@/components/ui/section-help";
 import {
   type MenuItemWithCogs,
   type MenuIngredient,
@@ -670,10 +671,10 @@ function IngredientsTab({
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">Ingredients</p>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically.
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Ingredients</p>
+                <SectionHelp title="Ingredients">Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically.</SectionHelp>
+              </div>
             </div>
             <span className="text-xs text-[var(--dark-grey)] shrink-0 mt-0.5 whitespace-nowrap">
               {ingredients.length} {ingredients.length === 1 ? "ingredient" : "ingredients"}
@@ -2114,12 +2115,8 @@ function InsightsTab({
         <div className="flex items-center gap-2 mb-1">
           <LayoutGrid className="w-4 h-4 text-[var(--teal)]" />
           <h2 className="text-base font-semibold text-[var(--foreground)]">What To Serve</h2>
+          <SectionHelp title="What To Serve">Every item is sorted by two things: how profitable it is (your gross margin) and how popular you expect it to be. We split each one at your own menu average, so this is always relative to the rest of your menu.</SectionHelp>
         </div>
-        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed max-w-2xl">
-          Every item is sorted by two things: how profitable it is (your gross
-          margin) and how popular you expect it to be. We split each one at your
-          own menu average, so this is always relative to the rest of your menu.
-        </p>
       </div>
 
       {/* Quadrant matrix */}
@@ -2188,11 +2185,8 @@ function InsightsTab({
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="w-4 h-4 text-[var(--teal)]" />
           <h2 className="text-base font-semibold text-[var(--foreground)]">Margin Ranking</h2>
+          <SectionHelp title="Margin Ranking">Your items from most to least profitable. Set each item&apos;s expected popularity here to place it on the grid above.</SectionHelp>
         </div>
-        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mb-3">
-          Your items from most to least profitable. Set each item&rsquo;s expected
-          popularity here to place it on the grid above.
-        </p>
 
         {ranking.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-5 py-4 text-xs text-[var(--muted-foreground)]">

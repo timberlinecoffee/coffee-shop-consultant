@@ -31,6 +31,7 @@ import {
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
+import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
@@ -332,11 +333,9 @@ function OrgTab({
       {/* Role table */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-          <div>
+          <div className="flex items-center gap-1">
             <p className="text-sm font-semibold text-[var(--foreground)]">Roles</p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-              Define every role you plan to hire for.
-            </p>
+            <SectionHelp title="Roles">Define every role you plan to hire for.</SectionHelp>
           </div>
           {canEdit && (
             <button
@@ -380,10 +379,10 @@ function OrgTab({
       {roles.length > 0 && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)]">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Org Chart</p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-              Set "Reports to" on each role to build the hierarchy.
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Org Chart</p>
+              <SectionHelp title="Org Chart">Set &quot;Reports to&quot; on each role to build the hierarchy.</SectionHelp>
+            </div>
           </div>
           <div className="px-5 py-4">
             {rootRoles.length === 0 ? (
@@ -1372,10 +1371,10 @@ function InterviewTab({
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                Template questions and weights for this scorecard.
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
+                <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
+              </div>
             </div>
             {canEdit && (
               <button
@@ -2180,12 +2179,10 @@ function CompetencyTab({
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">
-              Competency Framework
-            </p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-              Shared skills and rubric for all staff evaluations.
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Competency Framework</p>
+              <SectionHelp title="Competency Framework">Shared skills and rubric for all staff evaluations.</SectionHelp>
+            </div>
           </div>
           {canEdit && (
             <button
@@ -2351,12 +2348,14 @@ function RequirementsTab({
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                {settings.hiring_country
-                  ? "Override set. Requirement set sourced from your selection."
-                  : "Auto-detected from your signed or primary location candidate."}
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
+                <SectionHelp title="Hiring Jurisdiction">
+                  {settings.hiring_country
+                    ? "Override set. Requirement set sourced from your selection."
+                    : "Auto-detected from your signed or primary location candidate."}
+                </SectionHelp>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Globe size={14} className="text-[var(--muted-foreground)]" />
