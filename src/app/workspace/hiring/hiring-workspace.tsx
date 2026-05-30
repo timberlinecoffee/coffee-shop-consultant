@@ -2391,11 +2391,11 @@ function RequirementsTab({
         )}
       </div>
 
-      {/* Content gap notice */}
+      {/* Standing legal disclaimer */}
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-        <p className="text-xs font-semibold text-amber-800 mb-1">Content in Progress</p>
+        <p className="text-xs font-semibold text-amber-800 mb-1">General Guidance Only</p>
         <p className="text-xs text-amber-700 leading-relaxed">
-          Requirement bodies are placeholders pending review by a qualified Legal Analyst. Do not rely on this content for compliance decisions. Verified text will be added once the Legal Analyst role is staffed.
+          Not legal advice. Requirements and rates change frequently. Verify current obligations with a licensed professional in your jurisdiction before acting.
         </p>
       </div>
 
