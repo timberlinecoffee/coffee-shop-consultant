@@ -65,7 +65,7 @@ import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/wo
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
 import { formatCurrencyAmount } from "@/lib/currency";
-import { type VendorCandidate, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
+import { type VendorCandidate, type VendorCategoryKey, VENDOR_CATEGORY_KEYS, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
 
 // ── Column definitions ────────────────────────────────────────────────────────
@@ -499,6 +499,306 @@ function VendorLinkedInput({
   );
 }
 
+// ── Add Vendor modal (TIM-1447) ───────────────────────────────────────────────
+// Lightweight modal mirroring the Suppliers & Vendors create flow. Captures the
+// fields the inline Suppliers row supports (name, category, contact, notes) and
+// posts to /api/workspaces/suppliers/candidates. Title-casing is handled at the
+// API boundary, so we send raw user input.
+
+function AddVendorModal({
+  initialName,
+  onClose,
+  onCreated,
+}: {
+  initialName: string;
+  onClose: () => void;
+  onCreated: (candidate: VendorCandidate) => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [category, setCategory] = useState<VendorCategoryKey>("other");
+  const [contact, setContact] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const firstInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (submitting) return;
+    if (!name.trim()) {
+      setError("Vendor name is required.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/workspaces/suppliers/candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          category,
+          contact: contact.trim() || null,
+          notes: notes.trim() || null,
+          status: "researching",
+          source: "user_added",
+        }),
+      });
+      if (res.status === 402) {
+        setError("A paid subscription is required to add vendors.");
+        return;
+      }
+      if (!res.ok) {
+        setError("Could not add vendor. Please try again.");
+        return;
+      }
+      const created = (await res.json()) as VendorCandidate;
+      onCreated(created);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-vendor-title"
+      onClick={onClose}
+    >
+      <form
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-[var(--border)] overflow-hidden"
+      >
+        <div className="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-start justify-between gap-3">
+          <div>
+            <h2 id="add-vendor-title" className="text-base font-semibold text-[var(--foreground)]">
+              Add new vendor
+            </h2>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+              Saved to Suppliers &amp; Vendors and selected on this row.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-3">
+          <label className="block">
+            <span className="text-xs font-semibold text-[var(--foreground)]">Name</span>
+            <input
+              ref={firstInputRef}
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Vendor name"
+              className="mt-1 w-full text-sm text-[var(--foreground)] bg-white border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 outline-none focus:border-[var(--teal)]"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-[var(--foreground)]">Category</span>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as VendorCategoryKey)}
+              className="mt-1 w-full text-sm text-[var(--foreground)] bg-white border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 outline-none focus:border-[var(--teal)]"
+            >
+              {VENDOR_CATEGORY_KEYS.map((k) => (
+                <option key={k} value={k}>{VENDOR_CATEGORY_LABELS[k]}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-[var(--foreground)]">Contact</span>
+            <input
+              type="text"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="Email, phone, or site"
+              className="mt-1 w-full text-sm text-[var(--foreground)] bg-white border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 outline-none focus:border-[var(--teal)]"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-[var(--foreground)]">Notes</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Anything worth remembering"
+              className="mt-1 w-full text-sm text-[var(--foreground)] bg-white border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 outline-none focus:border-[var(--teal)] resize-y"
+            />
+          </label>
+          {error && <p className="text-xs text-[var(--error)]">{error}</p>}
+        </div>
+
+        <div className="px-5 py-3 bg-[var(--neutral-cool-50)] border-t border-[var(--border)] flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting || !name.trim()}
+            className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-1.5 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60"
+          >
+            {submitting ? "Adding..." : "Add vendor"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ── Supplies vendor dropdown (TIM-1447) ───────────────────────────────────────
+// Replaces the free-text Vendor input in Inventory rows. Dropdown is sourced
+// from Suppliers & Vendors candidates; "+ Add new" opens AddVendorModal which
+// mirrors the Suppliers create flow.
+
+function SuppliesVendorDropdown({
+  name,
+  candidates,
+  disabled,
+  onCommit,
+  onRequestAdd,
+}: {
+  name: string;
+  candidates: VendorCandidate[];
+  disabled: boolean;
+  onCommit: (name: string) => void;
+  onRequestAdd: (draft: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setDraft(name); }, [name]);
+
+  const filtered = useMemo(() => {
+    if (!draft.trim()) return candidates;
+    const q = draft.toLowerCase();
+    return candidates.filter((c) => c.name.toLowerCase().includes(q));
+  }, [candidates, draft]);
+
+  function handleSelect(candidate: VendorCandidate) {
+    setEditing(false);
+    setShowDropdown(false);
+    setDraft(candidate.name);
+    onCommit(candidate.name);
+  }
+
+  function handleBlur() {
+    setTimeout(() => {
+      setEditing(false);
+      setShowDropdown(false);
+      const trimmed = draft.trim();
+      if (trimmed !== name) onCommit(trimmed);
+    }, 150);
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-1 w-full min-w-0">
+        <span
+          className={`block truncate text-xs cursor-text flex-1 ${
+            name ? "text-[var(--foreground)]" : "text-[var(--neutral-cool-400)]"
+          }`}
+          onClick={() => !disabled && setEditing(true)}
+        >
+          {name || "Vendor"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full">
+      <input
+        ref={inputRef}
+        type="text"
+        autoFocus
+        className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
+        value={draft}
+        placeholder="Search vendor..."
+        onChange={(e) => { setDraft(e.target.value); setShowDropdown(true); }}
+        onFocus={() => setShowDropdown(true)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setEditing(false); setShowDropdown(false); setDraft(name); }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (filtered.length > 0) handleSelect(filtered[0]);
+            else if (draft.trim()) {
+              setEditing(false);
+              setShowDropdown(false);
+              onRequestAdd(draft.trim());
+            }
+          }
+        }}
+      />
+      {showDropdown && (
+        <div className="absolute left-0 top-full mt-0.5 z-30 bg-white border border-[var(--neutral-cool-200)] rounded-lg shadow-md min-w-[220px] max-h-[220px] overflow-y-auto">
+          {filtered.length === 0 && (
+            <div className="px-3 py-2 text-[11px] text-[var(--muted-foreground)] italic">
+              No matches in Suppliers &amp; Vendors.
+            </div>
+          )}
+          {filtered.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className="w-full text-left px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--teal-tint-500)] flex items-center gap-2"
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(c); }}
+            >
+              <span className="truncate flex-1">{c.name}</span>
+              <span className="text-[10px] text-[var(--dark-grey)] shrink-0">
+                {VENDOR_CATEGORY_LABELS[c.category as keyof typeof VENDOR_CATEGORY_LABELS] ?? c.category}
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className="w-full text-left px-3 py-1.5 text-xs text-[var(--teal)] hover:bg-[var(--teal-tint-500)] font-medium border-t border-[var(--neutral-cool-150)]"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setEditing(false);
+              setShowDropdown(false);
+              onRequestAdd(draft.trim());
+            }}
+          >
+            + Add new vendor
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Column picker row (TIM-1215) ──────────────────────────────────────────────
 // Rendered inside the Columns dropdown. Uses GripHorizontal (horizontal grip)
 // so it is visually distinct from the row-reorder GripVertical handles in the table body.
@@ -598,6 +898,7 @@ function SortableRow({
   showAiMarkings,
   onUpdate,
   onDelete,
+  onRequestAddVendor,
   isDragOverlay,
 }: {
   item: AnyItem;
@@ -611,6 +912,7 @@ function SortableRow({
   showAiMarkings?: boolean;
   onUpdate: (id: string, patch: Partial<AnyItem>) => void;
   onDelete: (id: string) => void;
+  onRequestAddVendor: (itemId: string, draft: string) => void;
   isDragOverlay?: boolean;
 }) {
   const {
@@ -677,6 +979,21 @@ function SortableRow({
       }
 
       case "vendor":
+        // TIM-1447: Supplies vendor sources from Suppliers & Vendors via dropdown
+        // with "+ Add new". Equipment keeps the free-text Brand field.
+        if (sup) {
+          return (
+            <td key="vendor" className={cellCls} style={{ width: colWidths.get("vendor") }}>
+              <SuppliesVendorDropdown
+                name={sup.vendor ?? ""}
+                candidates={vendorCandidates}
+                disabled={!canEdit}
+                onCommit={(v) => onUpdate(item.id, { vendor: v || null } as Partial<AnyItem>)}
+                onRequestAdd={(draft) => onRequestAddVendor(item.id, draft)}
+              />
+            </td>
+          );
+        }
         return (
           <td key="vendor" className={cellCls} style={{ width: colWidths.get("vendor") }}>
             <TextInput
@@ -1088,15 +1405,20 @@ export function SectionedListGrid({
   const cols = listType === "equipment" ? EQUIPMENT_COLS : SUPPLIES_COLS;
   const defaultColOrder = useMemo(() => cols.map((c) => c.id), [cols]);
 
-  // TIM-1174: Vendor candidates for autocomplete in equipment Vendor column
+  // TIM-1174: Vendor candidates for autocomplete in equipment Supplier column.
+  // TIM-1447: Also loaded for supplies so the Inventory Vendor dropdown can
+  // source from Suppliers & Vendors.
   const [vendorCandidates, setVendorCandidates] = useState<VendorCandidate[]>([]);
   useEffect(() => {
-    if (listType !== "equipment") return;
     fetch("/api/workspaces/suppliers/candidates")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: VendorCandidate[]) => setVendorCandidates(data))
       .catch(() => {});
   }, [listType]);
+
+  // TIM-1447: Inventory "+ Add new vendor" modal state. itemId tracks which row
+  // initiated the modal so the created vendor's name is written back onto it.
+  const [addVendorFor, setAddVendorFor] = useState<{ itemId: string; draft: string } | null>(null);
 
   // Column widths
   const [colWidths, setColWidths] = useState<Map<string, number>>(() => new Map(cols.map((c) => [c.id, c.defaultWidth])));
@@ -1401,6 +1723,11 @@ export function SectionedListGrid({
   function updateItem(id: string, patch: Partial<AnyItem>) {
     onItemsChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
     scheduleItemSave(id, patch as Record<string, unknown>);
+  }
+
+  // TIM-1447: Triggered by the supplies vendor dropdown "+ Add new" entry.
+  function handleRequestAddVendor(itemId: string, draft: string) {
+    setAddVendorFor({ itemId, draft });
   }
 
   function deleteItem(id: string) {
@@ -2000,6 +2327,7 @@ export function SectionedListGrid({
                               showAiMarkings={showAiMarkings}
                               onUpdate={updateItem}
                               onDelete={deleteItem}
+                              onRequestAddVendor={handleRequestAddVendor}
                             />
                           ))}
                           {costVisible && sectionItems.length > 0 && (() => {
@@ -2053,6 +2381,7 @@ export function SectionedListGrid({
                       showAiMarkings={showAiMarkings}
                       onUpdate={updateItem}
                       onDelete={deleteItem}
+                      onRequestAddVendor={handleRequestAddVendor}
                     />
                   ))}
                   {unsectionedItems.length === 0 && activeId !== null && sections.length > 0 && (
@@ -2114,6 +2443,7 @@ export function SectionedListGrid({
                       showAiMarkings={showAiMarkings}
                       onUpdate={() => {}}
                       onDelete={() => {}}
+                      onRequestAddVendor={() => {}}
                       isDragOverlay
                     />
 
@@ -2146,6 +2476,23 @@ export function SectionedListGrid({
             Add item
           </button>
         </div>
+      )}
+
+      {/* TIM-1447: Inventory "+ Add new vendor" modal. Mirrors the Suppliers
+          create flow and writes the resulting vendor name onto the row. */}
+      {addVendorFor && (
+        <AddVendorModal
+          initialName={addVendorFor.draft}
+          onClose={() => setAddVendorFor(null)}
+          onCreated={(candidate) => {
+            setVendorCandidates((prev) => {
+              if (prev.some((c) => c.id === candidate.id)) return prev;
+              return [...prev, candidate];
+            });
+            updateItem(addVendorFor.itemId, { vendor: candidate.name } as Partial<AnyItem>);
+            setAddVendorFor(null);
+          }}
+        />
       )}
     </div>
   );

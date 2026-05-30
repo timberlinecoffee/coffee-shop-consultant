@@ -1,8 +1,11 @@
 // TIM-1171: Inventory workspace — supplies list. Supplies moved from
 // Build Out & Equipment (tab) to standalone workspace.
+// TIM-1447: Pass currency_code so per-section + grand totals render in the
+// founder's chosen currency, matching Build-Out & Equipment.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
+import { normalizeCurrencyCode } from "@/lib/currency";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import { InventoryWorkspace } from "./inventory-workspace";
 
@@ -26,7 +29,7 @@ export default async function InventoryPage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [suppliesResult, sectionsResult, profileResult] = await Promise.all([
+  const [suppliesResult, sectionsResult, modelResult, profileResult] = await Promise.all([
     supabase
       .from("buildout_supplies_items")
       .select("*")
@@ -39,6 +42,11 @@ export default async function InventoryPage() {
       .eq("plan_id", plan.id)
       .eq("list_type", "supplies")
       .order("position"),
+    supabase
+      .from("financial_models")
+      .select("forecast_inputs")
+      .eq("plan_id", plan.id)
+      .maybeSingle(),
     supabase
       .from("users")
       .select("subscription_status, subscription_tier, copilot_trial_messages_used")
@@ -54,6 +62,9 @@ export default async function InventoryPage() {
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawCurrencyCode = (modelResult.data?.forecast_inputs as any)?.currency_code;
+  const initialCurrencyCode = normalizeCurrencyCode(rawCurrencyCode ?? "USD");
 
   return (
     <InventoryWorkspace
@@ -62,6 +73,7 @@ export default async function InventoryPage() {
       initialSections={sections}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      initialCurrencyCode={initialCurrencyCode}
     />
   );
 }

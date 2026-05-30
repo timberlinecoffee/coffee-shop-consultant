@@ -1,12 +1,15 @@
 "use client";
 
 // TIM-1171: Inventory workspace — supplies list (cups, lids, dairy, beans,
-// syrups, cleaning supplies). v1 = simple list. No tracking, depletion, or
-// reorder logic in v1. Suppliers reference points to Suppliers & Vendors.
+// syrups, cleaning supplies). v1 = simple list.
+// TIM-1447: Cohesion with Build-Out & Equipment — sticky grand-total banner,
+// View toolbar (AI markings toggle), section totals via SectionedListGrid.
+// Vendor field uses the new Suppliers-sourced dropdown (with + Add new).
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Package, X } from "lucide-react";
+import { Package, X, Eye } from "lucide-react";
+import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
@@ -21,6 +24,7 @@ interface Props {
   initialSections: ListSection[];
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  initialCurrencyCode?: string;
 }
 
 function SeedBanner({
@@ -89,12 +93,50 @@ export function InventoryWorkspace({
   initialSections,
   canEdit,
   initialTrialMessagesUsed,
+  initialCurrencyCode = "USD",
 }: Props) {
   const [supplies, setSupplies] = useState<SuppliesItem[]>(initialSupplies);
   const [sections, setSections] = useState<ListSection[]>(initialSections);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [showAiMarkings, setShowAiMarkings] = useState(true);
+  const viewOptionsRef = useRef<HTMLDivElement>(null);
 
   const hasAiSupplies = supplies.some((i) => i.source === "ai_suggested");
+
+  useEffect(() => {
+    async function loadViewPrefs() {
+      try {
+        const res = await fetch("/api/ui-prefs/inventory-show-ai-markings");
+        if (res.ok) {
+          const { data } = (await res.json()) as { data: boolean | null };
+          if (data !== null) setShowAiMarkings(data);
+        }
+      } catch { /* non-blocking */ }
+    }
+    void loadViewPrefs();
+  }, []);
+
+  useEffect(() => {
+    if (!viewOptionsOpen) return;
+    function handler(e: MouseEvent) {
+      if (viewOptionsRef.current && !viewOptionsRef.current.contains(e.target as Node)) {
+        setViewOptionsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [viewOptionsOpen]);
+
+  function toggleAiMarkings() {
+    const next = !showAiMarkings;
+    setShowAiMarkings(next);
+    fetch("/api/ui-prefs/inventory-show-ai-markings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    }).catch(() => {});
+  }
 
   async function seedSupplies() {
     const res = await fetch("/api/workspaces/buildout/supplies/seed", { method: "POST" });
@@ -119,8 +161,45 @@ export function InventoryWorkspace({
 
   const suppliesSections = sections.filter((s) => s.list_type === "supplies");
 
+  const activeSupplies = supplies.filter((i) => !i.archived);
+  const grandTotalCents = useMemo(
+    () => activeSupplies.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0),
+    [activeSupplies]
+  );
+  const sectionCount = suppliesSections.length;
+  const itemCount = activeSupplies.length;
+
   return (
     <div className="bg-[var(--background)] min-h-screen">
+      {/* Sticky grand total summary — parity with Build-Out & Equipment (TIM-1447) */}
+      {grandTotalCents > 0 && (
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[var(--teal-bg-ultra)] shadow-sm">
+          <div className="px-6 py-3 flex items-center gap-6">
+            <div>
+              <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Startup Total</p>
+              <p className="text-xl font-bold text-[var(--teal)]">{formatCurrencyAmount(grandTotalCents / 100, initialCurrencyCode)}</p>
+            </div>
+            {sectionCount > 0 && (
+              <>
+                <div className="h-9 w-px bg-[var(--border)]" aria-hidden="true" />
+                <div>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Sections</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{sectionCount}</p>
+                </div>
+              </>
+            )}
+            {itemCount > 0 && (
+              <>
+                <div className="h-9 w-px bg-[var(--border)]" aria-hidden="true" />
+                <div>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Items</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{itemCount}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="px-6 pt-8 pb-16">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -139,12 +218,37 @@ export function InventoryWorkspace({
           </p>
         </header>
 
-        {/* v2 backlog notice */}
-        <div className="mb-5 rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50)] px-4 py-3">
-          <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Roadmap note</p>
-          <p className="text-xs text-[var(--neutral-cool-600)] leading-relaxed">
-            v2 will add inventory tracking (counts, reorder thresholds, depletion logic) — do not build in v1.
-          </p>
+        {/* View toolbar — parity with Build-Out & Equipment (TIM-1447) */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="relative" ref={viewOptionsRef}>
+            <button
+              type="button"
+              onClick={() => setViewOptionsOpen((o) => !o)}
+              className={`flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 transition-colors ${
+                !showAiMarkings
+                  ? "text-[var(--teal)] border-[var(--teal)]/50 bg-[var(--teal)]/5"
+                  : "text-[var(--muted-foreground)] border-[var(--neutral-cool-200)] hover:bg-[var(--background)]"
+              }`}
+              aria-label="View options"
+            >
+              <Eye size={12} aria-hidden="true" />
+              View
+            </button>
+            {viewOptionsOpen && (
+              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
+                <p className="px-3 py-1 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Show in workspace</p>
+                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[var(--background)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-[var(--teal)] cursor-pointer shrink-0"
+                    checked={showAiMarkings}
+                    onChange={toggleAiMarkings}
+                  />
+                  <span className="text-xs text-[var(--foreground)]">AI markings</span>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
         <SeedBanner
@@ -161,6 +265,8 @@ export function InventoryWorkspace({
           items={supplies as AnyItem[]}
           onItemsChange={handleSuppliesChange}
           onSectionsChange={handleSectionsChange}
+          showAiMarkings={showAiMarkings}
+          currencyCode={initialCurrencyCode}
         />
       </div>
 
