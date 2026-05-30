@@ -13,6 +13,7 @@ import { COVER_TEMPLATES, type CoverTemplateId } from "@/lib/pdf/business-plan/c
 export interface CoverSettings {
   template_id: CoverTemplateId;
   accent_color: string | null;
+  color_pack_id: string | null;
   logo_path: string | null;
   tagline: string | null;
   prepared_for: string | null;
@@ -30,13 +31,21 @@ interface Props {
 const PRESET_SWATCHES = ["#E8C24A", "#1F7A80", "#2563EB", "#EF4444", "#7C3AED"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
+// Each pack: [primary, secondary, supporting, neutral]
 const COLOR_PACKS = [
-  { id: "ocean",  label: "Ocean",  accent: "#1F7A80", description: "Teal, professional" },
-  { id: "slate",  label: "Slate",  accent: "#475569", description: "Neutral, refined" },
-  { id: "ember",  label: "Ember",  accent: "#C2410C", description: "Warm, energetic" },
-  { id: "forest", label: "Forest", accent: "#15803D", description: "Natural, grounded" },
-  { id: "berry",  label: "Berry",  accent: "#7C3AED", description: "Bold, creative" },
+  { id: "coastal",    label: "Coastal",    colors: ["#1F7A80", "#155E63", "#5EADB3", "#E8F4F5"] as const, description: "Teal ocean tones, professional" },
+  { id: "espresso",   label: "Espresso",   colors: ["#3C1A0E", "#6B2D0F", "#C2794A", "#FBF4EE"] as const, description: "Deep brown warmth, inviting" },
+  { id: "slate",      label: "Slate",      colors: ["#334155", "#1E293B", "#64748B", "#F8FAFC"] as const, description: "Blue-gray neutral, refined" },
+  { id: "ember",      label: "Ember",      colors: ["#C2410C", "#7C2D12", "#F97316", "#FFF7ED"] as const, description: "Warm orange energy" },
+  { id: "sage",       label: "Sage",       colors: ["#4A7C59", "#2D5A3D", "#86EFAC", "#F0F7F4"] as const, description: "Natural green, organic" },
+  { id: "midnight",   label: "Midnight",   colors: ["#1E3A5F", "#0F2240", "#4A90C4", "#EEF4FF"] as const, description: "Deep navy, sophisticated" },
+  { id: "berry",      label: "Berry",      colors: ["#6D28D9", "#4C1D95", "#C084FC", "#F5F3FF"] as const, description: "Bold purple, creative" },
+  { id: "terracotta", label: "Terracotta", colors: ["#B45309", "#78350F", "#FBBF24", "#FFFBEB"] as const, description: "Golden earth tones" },
+  { id: "steel",      label: "Steel",      colors: ["#0369A1", "#0C4A6E", "#38BDF8", "#F0F9FF"] as const, description: "Sky blue, modern tech" },
+  { id: "mauve",      label: "Mauve",      colors: ["#9D174D", "#701A3D", "#F9A8D4", "#FDF2F8"] as const, description: "Rose, classic and refined" },
 ] as const;
+
+type ColorPackId = typeof COLOR_PACKS[number]["id"];
 
 // ── Color conversion helpers ───────────────────────────────────────────────────
 
@@ -110,6 +119,10 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
   const _initRgb = hexToRgb(initialHex) ?? { r: 31, g: 122, b: 128 };
   const [rgbInputs, setRgbInputs] = useState(_initRgb);
   const [cmykInputs, setCmykInputs] = useState(rgbToCmyk(_initRgb.r, _initRgb.g, _initRgb.b));
+
+  const [colorPackId, setColorPackId] = useState<ColorPackId | null>(
+    (initialSettings.color_pack_id as ColorPackId | null) ?? null
+  );
 
   const [bodyFont, setBodyFont] = useState(initialSettings.body_font ?? "inter");
   const [tagline, setTagline] = useState(initialSettings.tagline ?? "");
@@ -188,8 +201,18 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
     if (!HEX_RE.test(hex)) { setHexError(true); return; }
     setHexError(false);
     setAccentColor(hex);
+    setColorPackId(null);
     syncDerivedInputs(hex);
-    await save({ accent_color: hex });
+    await save({ accent_color: hex, color_pack_id: null });
+  }, [save, syncDerivedInputs]);
+
+  const applyColorPack = useCallback(async (pack: typeof COLOR_PACKS[number]) => {
+    const primary = pack.colors[0];
+    setAccentColor(primary);
+    setColorPackId(pack.id as ColorPackId);
+    syncDerivedInputs(primary);
+    setHexError(false);
+    await save({ accent_color: primary, color_pack_id: pack.id });
   }, [save, syncDerivedInputs]);
 
   const handleSwatchClick = useCallback((hex: string) => {
@@ -333,13 +356,22 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                       />
                       {/* Placeholder logo + title overlay */}
                       <div className="absolute inset-0 flex flex-col justify-between p-[6px] pointer-events-none select-none">
-                        <div
-                          className="w-5 h-5 rounded-[3px] flex-shrink-0"
-                          style={{ backgroundColor: accentColor, opacity: 0.92 }}
-                        />
+                        {/* Stylized monogram icon — accent fill, white glyph */}
+                        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" className="flex-shrink-0" style={{ opacity: 0.95 }}>
+                          <rect width="22" height="22" rx="4" fill={accentColor} />
+                          {/* Cup body */}
+                          <path d="M6 14.5C6 15.88 7.12 17 8.5 17H13.5C14.88 17 16 15.88 16 14.5V10H6V14.5Z" fill="white" fillOpacity="0.92"/>
+                          {/* Handle */}
+                          <path d="M16 11.5C17.1 11.5 18 12.4 18 13.5C18 14.6 17.1 15.5 16 15.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" fill="none" strokeOpacity="0.92"/>
+                          {/* Saucer line */}
+                          <rect x="6" y="9" width="10" height="1.5" rx="0.75" fill="white" fillOpacity="0.92"/>
+                          {/* Steam lines */}
+                          <path d="M9 7.5 C9 6.5 10 6.5 10 5.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.7"/>
+                          <path d="M12 7.5 C12 6.5 13 6.5 13 5.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.7"/>
+                        </svg>
                         <div>
-                          <p className="text-white text-[6.5px] font-bold leading-tight drop-shadow-sm">The Coffee Shop</p>
-                          <p className="text-white/75 text-[5.5px] leading-tight drop-shadow-sm">Business Plan</p>
+                          <p className="text-white text-[10px] font-bold leading-tight drop-shadow" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>EVERLY COFFEE CO</p>
+                          <p className="text-white/80 text-[8px] leading-tight drop-shadow" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>Business Plan</p>
                         </div>
                       </div>
                     </div>
@@ -360,15 +392,15 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
           <div>
             <p className="text-xs text-[var(--gray-medium)] mb-2">Accent color</p>
 
-            {/* Color packs */}
+            {/* Color packs — 10 palettes, 2 rows of 5 */}
             <div className="grid grid-cols-5 gap-1 mb-3">
               {COLOR_PACKS.map((pack) => {
-                const packActive = accentColor.toLowerCase() === pack.accent.toLowerCase();
+                const packActive = colorPackId === pack.id;
                 return (
                   <button
                     key={pack.id}
                     type="button"
-                    onClick={() => applyColor(pack.accent)}
+                    onClick={() => applyColorPack(pack)}
                     className={`flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg border transition-all ${
                       packActive
                         ? "border-[var(--success)] bg-[var(--teal-bg-faint)]"
@@ -376,11 +408,17 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                     }`}
                     title={pack.description}
                   >
-                    <span
-                      className="w-5 h-5 rounded-[3px] flex-shrink-0"
-                      style={{ backgroundColor: pack.accent }}
-                    />
-                    <span className={`text-[9px] leading-tight ${packActive ? "text-[var(--success)] font-semibold" : "text-[var(--gray-slate)]"}`}>
+                    {/* 4-color horizontal strip */}
+                    <div className="flex gap-[2px] flex-shrink-0">
+                      {pack.colors.map((c) => (
+                        <span
+                          key={c}
+                          className="w-[10px] h-[10px] rounded-[2px] flex-shrink-0"
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                    <span className={`text-[8px] leading-tight truncate w-full text-center ${packActive ? "text-[var(--success)] font-semibold" : "text-[var(--gray-slate)]"}`}>
                       {pack.label}
                     </span>
                   </button>
