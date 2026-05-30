@@ -281,9 +281,11 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   },
   {
     id: "differentiation",
+    // TIM-1476: reframed from "what can't a competitor copy" to the
+    // customer-behavior framing the founder requested.
     label: "Differentiation",
-    hint: "Name one or two things competitors in this market cannot easily copy. Supplier relationships, people, atmosphere, or expertise that takes years to build beat anything you can advertise.",
-    emptyPrompt: "What will make customers choose you over the place down the street? Think supplier relationships, people, atmosphere, expertise. Things that take years to copy.",
+    hint: "What makes customers walk past other coffee shops to come to yours? Think about something specific to you: a relationship, an atmosphere, a sourcing choice, a person. The answer should feel like a story, not a strategy.",
+    emptyPrompt: "What makes customers walk past the other coffee shops to come to yours? Think about the thing that's specific to you: a relationship, an atmosphere, a person.",
     multiline: true,
     rows: 3,
     deferrable: false,
@@ -300,16 +302,18 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "location",
     label: "Location",
-    hint: "Neighbourhood, foot traffic, and what drew you there. Even a rough area or building type now will make the lease, buildout, and operations workspaces sharper later.",
+    hint: "Neighbourhood, foot traffic, and what drew you there. Even a rough area or building type now will make the lease, buildout, and operations workspaces sharper later. You can skip this for now and come back.",
     emptyPrompt: "Where are you thinking of opening? Neighbourhood, street corner, or building type. Early detail is better than none.",
     multiline: true,
     rows: 3,
+    // deferrable keeps the In doc / Skip toggle so users can exclude it from
+    // the printed doc; TIM-1476 removed the visual dimming separately.
     deferrable: true,
   },
   {
     id: "offering",
     label: "Offering",
-    hint: "Core menu focus, price point, and what you will and will not serve. A tight focus (espresso and slow bar only, no food) is as useful as a long list.",
+    hint: "Core menu focus, price point, and what you will and will not serve. A tight focus (espresso and slow bar only, no food) is as useful as a long list. Leave blank and return when you are ready.",
     emptyPrompt: "What will you serve? A tight menu focus (espresso and slow bar only, no food) is as useful as a long list.",
     multiline: true,
     rows: 3,
@@ -491,8 +495,12 @@ export function buildImprovePrompt(
   currentContent: string,
   context: { shopName: string; vision: string; targetCustomer: string }
 ): string {
-  return `You are helping a coffee shop owner sharpen their business concept document.
+  const differentiationNote = componentId === "differentiation"
+    ? "\nFor the Differentiation field: the framing is what makes customers walk past other coffee shops to come to this one. Rewrite through that lens, not from a competitive-strategy angle.\n"
+    : "";
 
+  return `You are helping a coffee shop owner sharpen their business concept document.
+${differentiationNote}
 Component: ${componentLabel}
 Current content: "${currentContent}"
 

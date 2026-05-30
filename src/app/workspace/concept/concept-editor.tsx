@@ -317,19 +317,15 @@ export function ConceptWorkspace({
           {CONCEPT_COMPONENTS_V2.map((meta) => {
             const comp = doc.components[meta.id];
             const isEmpty = !comp.content.trim();
-            const isExcluded = !comp.included;
             const isActivated = activatedCards.has(meta.id);
-            const showField = !isExcluded && (!isEmpty || isActivated);
+            // TIM-1476: showField no longer factors in comp.included; the
+            // In doc / Skip toggle only affects print inclusion, not the editor.
+            const showField = !isEmpty || isActivated;
 
             return (
               <div
                 key={meta.id}
-                className={`group rounded-xl border transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30 ${
-                  isExcluded
-                    ? "border-dashed border-[var(--gray-700)] bg-white"
-                    : "border-[var(--border)] bg-white"
-                }`}
-                style={isExcluded ? { opacity: 0.55 } : undefined}
+                className="group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30"
               >
                 <div className="px-5 pt-5 pb-4">
                   {/* Card header row */}
@@ -342,11 +338,6 @@ export function ConceptWorkspace({
                         {/* TIM-1476: helper one-liner moved from inline <p> to a "?" popup
                             next to the question label, mirroring Financial Suite's pattern. */}
                         <InfoTip label={meta.label}>{meta.hint}</InfoTip>
-                        {meta.deferrable && (
-                          <span className="text-[10px] font-medium text-[var(--dark-grey)] border border-[var(--border-medium)] rounded-full px-2 py-0.5 leading-none">
-                            Optional
-                          </span>
-                        )}
                       </div>
                       {/* TIM-1408: lightbulb icon demoted to a quieter text link */}
                       <button
@@ -403,7 +394,7 @@ export function ConceptWorkspace({
                   </div>
 
                   {/* Example panel — inline, between card header and field */}
-                  {openExampleId === meta.id && !isExcluded && (() => {
+                  {openExampleId === meta.id && (() => {
                     const examples = FIELD_EXAMPLES[meta.id as FieldExampleKey] ?? [];
                     const ex = examples[exampleIdx % Math.max(examples.length, 1)];
                     if (!ex) return null;
@@ -457,11 +448,7 @@ export function ConceptWorkspace({
                   })()}
 
                   {/* Card body */}
-                  {isExcluded ? (
-                    <p className="mt-2 text-sm text-[var(--dark-grey)] italic">
-                      Not included in your document. Toggle on when you&apos;re ready to add {meta.label}.
-                    </p>
-                  ) : meta.id === "target_customer" ? (
+                  {meta.id === "target_customer" ? (
                     <PersonaSection
                       personas={doc.personas ?? []}
                       canEdit={canEdit}
@@ -570,35 +557,31 @@ export function ConceptWorkspace({
 function ConceptUnlockBanner() {
   return (
     <div
-      className="mt-4 bg-[var(--teal)]/[0.08] border border-[var(--teal)]/20 rounded-xl px-5 py-4 transition-opacity duration-300"
+      className="mt-4 bg-[var(--teal)]/[0.08] border border-[var(--teal)]/20 rounded-xl px-5 py-4 transition-opacity duration-300 text-center"
       role="status"
     >
-      <div className="flex items-start gap-3">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--teal)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 mt-0.5"
-          aria-hidden="true"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-        <div>
-          <p className="text-sm font-semibold text-[var(--teal)]">Your concept is set.</p>
-          <p className="text-xs text-[var(--teal)]/80 mt-0.5">Every other workspace is now open.</p>
-          <Link
-            href="/dashboard"
-            className="text-xs font-medium text-[var(--teal)] hover:underline mt-1.5 inline-block"
-          >
-            See all modules
-          </Link>
-        </div>
-      </div>
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--teal)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="mx-auto mb-2"
+        aria-hidden="true"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+      <p className="text-sm font-semibold text-[var(--teal)]">Your concept is set.</p>
+      <p className="text-xs text-[var(--teal)]/80 mt-0.5">Every other workspace is now open.</p>
+      <Link
+        href="/dashboard"
+        className="text-xs font-medium text-[var(--teal)] hover:underline mt-1.5 inline-block"
+      >
+        See all modules
+      </Link>
     </div>
   );
 }
