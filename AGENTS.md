@@ -113,3 +113,13 @@ The reopen comment contains the exact `gh pr create` / `git merge` command. Run 
 
 **Cross-chain limitation:** the sweeper runs as CTO. If your issue is assigned to an agent outside the CTO chain, the reopen PATCH returns 403 and the digest lists it under "BLOCKED — needs CEO reopen". CEO triages on next briefing.
 <!-- END:merge-verification-sweeper -->
+
+<!-- BEGIN:pillar1-pillar4-docs -->
+# Ship standards — docs and scripts (TIM-1428)
+
+- **`DONE.md`** — single source of truth for what "done" means on a ship issue. Read it before closing any issue.
+- **`UI-QUALITY-CHECKLIST.md`** — required checklist for every UI ship. QA Lead signs off; Product Developer closes.
+- **`AI-CONTENT-NORMALIZATION.md`** — where to call `src/lib/normalize.ts`, why boundary beats display layer, and the allowlist.
+- **`scripts/done-gate.sh`** — run before PATCHing a ship issue to `done`. Asserts merge + prod-200 + Playwright smoke.
+- **`scripts/safe-delete-branch.sh`** — wraps `git branch -d`; refuses delete if branch has unmerged commits (TIM-987).
+<!-- END:pillar1-pillar4-docs -->
