@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import type {
   ActivityEntry,
   NextStepSuggestion,
@@ -117,7 +118,7 @@ function RecentActivityCard({ entries, now }: { entries: ActivityEntry[]; now: D
           {entries.map((entry) => (
             <li key={`${entry.moduleNumber}-${entry.at}`} className="py-2.5 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-[var(--foreground)] truncate">{entry.summary}</p>
+                <TruncatedText text={entry.summary} className="text-sm text-[var(--foreground)] block" />
                 <p className="text-xs text-[var(--dark-grey)]">{formatRelative(entry.at, now)}</p>
               </div>
               <Link

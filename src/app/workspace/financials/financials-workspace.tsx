@@ -10,6 +10,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -929,9 +930,10 @@ function ForecastTab({
                       key={item.id}
                       className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-[var(--teal-tint-500)] text-xs"
                     >
-                      <span className="font-medium text-[var(--foreground)] truncate min-w-0 flex-1">
-                        {item.name || "Unnamed asset"}
-                      </span>
+                      <TruncatedText
+                        text={item.name || "Unnamed asset"}
+                        className="font-medium text-[var(--foreground)] flex-1"
+                      />
                       <span className="text-[var(--muted-foreground)] shrink-0">
                         {formatCurrency((item.unit_cost_cents * item.quantity) / 100)}
                       </span>
