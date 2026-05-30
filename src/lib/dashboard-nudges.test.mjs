@@ -101,7 +101,8 @@ test("pickNextStep returns null when every shipped workspace is complete", () =>
     "location_lease",
     "menu_pricing",
     "buildout_equipment",
-    "launch_plan",
+    "opening_milestones",
+    "opening_month_plan",
     "hiring",
     "business_plan",
     "marketing",
@@ -163,7 +164,7 @@ test("buildRecentActivity orders entries newest-first and respects limit", () =>
     ["financials", isoDaysAgo(1)],
     ["menu_pricing", isoDaysAgo(2)],
     ["buildout_equipment", isoDaysAgo(3)],
-    ["launch_plan", isoDaysAgo(4)],
+    ["opening_milestones", isoDaysAgo(4)],
     ["hiring", isoDaysAgo(0)],
   ]);
   const activity = buildRecentActivity(touched, 5);
@@ -203,7 +204,8 @@ test("pickWeakestWorkspace returns null when nothing remains", () => {
     "location_lease",
     "menu_pricing",
     "buildout_equipment",
-    "launch_plan",
+    "opening_milestones",
+    "opening_month_plan",
     "hiring",
     "business_plan",
     "marketing",

@@ -39,6 +39,7 @@ export type NavIcon =
   | "users"
   | "megaphone"
   | "file-text"
+  | "clipboard-list"
   | "package";
 
 interface NudgeManifestEntry {
@@ -58,9 +59,10 @@ const NUDGE_MANIFEST: ReadonlyArray<NudgeManifestEntry> = [
   { moduleNumber: 2, workspaceKey: "financials",         label: "Financials",            href: "/workspace/financials",         icon: "bar-chart",  isShipped: true },
   { moduleNumber: 3, workspaceKey: "location_lease",     label: "Location & Lease",      href: "/workspace/location-lease",     icon: "map-pin",    isShipped: true },
   { moduleNumber: 4, workspaceKey: "menu_pricing",       label: "Menu & Pricing",        href: "/workspace/menu-pricing",       icon: "utensils",   isShipped: true },
-  { moduleNumber: 5, workspaceKey: "buildout_equipment", label: "Build Out & Equipment", href: "/workspace/buildout-equipment", icon: "wrench",     isShipped: true },
-  { moduleNumber: 6, workspaceKey: "launch_plan",        label: "Launch Plan",           href: "/workspace/launch-plan",        icon: "rocket",     isShipped: true },
-  { moduleNumber: 7, workspaceKey: "hiring",             label: "Hiring & Onboarding",   href: "/workspace/hiring",             icon: "users",      isShipped: true },
+  { moduleNumber: 5, workspaceKey: "buildout_equipment", label: "Build Out & Equipment", href: "/workspace/buildout-equipment", icon: "wrench",         isShipped: true },
+  { moduleNumber: 6, workspaceKey: "opening_milestones", label: "Opening Milestones",    href: "/workspace/opening-milestones", icon: "rocket",         isShipped: true },
+  { moduleNumber: 14,workspaceKey: "opening_month_plan", label: "Opening Month Plan",    href: "/workspace/opening-month-plan", icon: "clipboard-list", isShipped: true },
+  { moduleNumber: 7, workspaceKey: "hiring",             label: "Hiring & Onboarding",   href: "/workspace/hiring",             icon: "users",          isShipped: true },
   { moduleNumber: 8, workspaceKey: "business_plan",      label: "Business Plan",         href: "/workspace/business-plan",      icon: "file-text",  isShipped: true },
   { moduleNumber: 9, workspaceKey: "marketing",          label: "Marketing",             href: "/workspace/marketing",          icon: "megaphone",  isShipped: true },
   { moduleNumber: 13,workspaceKey: "inventory",          label: "Inventory",             href: "/workspace/inventory",          icon: "package",    isShipped: true },
@@ -78,7 +80,8 @@ export const RECOMMENDATION_ORDER: ReadonlyArray<number> = [
   3, // Location & Lease
   4, // Menu & Pricing
   5, // Build Out & Equipment
-  6, // Launch Plan
+  6, // Opening Milestones
+  14, // Opening Month Plan
   7, // Hiring & Onboarding
   8, // Business Plan
   9, // Marketing
@@ -264,7 +267,14 @@ const NEXT_STEP_COPY: Record<number, NextStepCopy> = {
     startBody:
       "Once an opening date is on the calendar, every other workspace gets a deadline. Pick a realistic one.",
     continueBody:
-      "Walk the milestones. Adjust dates so the launch plan actually fits build-out and hiring.",
+      "Walk the opening milestones. Adjust dates so the gating items actually fit build-out and hiring.",
+  },
+  14: {
+    headline: "Plan the opening month.",
+    startBody:
+      "Walk through the weeks before opening, opening week itself, and the first 30 days. Block out training, supplier first-orders, and the soft-open run.",
+    continueBody:
+      "Tighten the opening month playbook. Lock the friends-and-family date and the grand-open staffing.",
   },
   7: {
     headline: "Sketch the opening team.",

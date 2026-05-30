@@ -1,9 +1,9 @@
 "use client";
 
-// TIM-1040: Launch Plan workspace — backward scheduling, AI generation,
-// list + calendar views, regenerate-when-stale banner.
-// TIM-1057: UX cohesion fix (platform hex tokens, rounded-xl cards, in-page header)
-//           + generate fix (AbortController timeout, consumeSseFrames, Toast on error).
+// TIM-1411: Opening Milestones workspace — backward-scheduled gating milestones
+// with AI generation, list + calendar views, regenerate-when-stale banner.
+// (Renamed from LaunchPlanWorkspace in TIM-1411; tactical week-by-week content
+// moved out to Opening Month Plan.)
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -531,7 +531,7 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
 
 // ── Main workspace ─────────────────────────────────────────────────────────────
 
-export function LaunchPlanWorkspace({
+export function OpeningMilestonesWorkspace({
   planId, initialMilestones, initialConfig, initialSourcesUpdatedAt, canEdit, initialTrialMessagesUsed,
 }: Props) {
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
@@ -722,10 +722,10 @@ export function LaunchPlanWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Rocket className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">Launch Plan</h1>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">Opening Milestones</h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Backward-planned milestones from your target opening day.
+            The dated, gating milestones that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates.
           </p>
         </header>
 
@@ -876,9 +876,9 @@ export function LaunchPlanWorkspace({
 
       {/* CoPilot */}
       <CoPilotDrawer
-        workspaceKey="launch_plan"
+        workspaceKey="opening_milestones"
         planId={planId}
-        currentFocus={{ anchor: "launch_plan", label: "Launch Plan" }}
+        currentFocus={{ anchor: "opening_milestones", label: "Opening Milestones" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
 

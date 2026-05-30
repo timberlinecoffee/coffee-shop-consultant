@@ -1,15 +1,17 @@
-// TIM-1040: Launch Plan workspace — backward-scheduled milestones, AI generation,
-// regenerate-when-stale banner, list + calendar views.
+// TIM-1411: Opening Milestones workspace — backward-scheduled milestones with
+// AI generation, regenerate-when-stale banner, list + calendar views.
+// (Renamed from the old Launch Plan workspace; tactical week-by-week content
+// now lives in Opening Month Plan at /workspace/opening-month-plan.)
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan";
-import { LaunchPlanWorkspace } from "./launch-plan-workspace";
+import { OpeningMilestonesWorkspace } from "./opening-milestones-workspace";
 import type { Milestone } from "@/lib/launch-plan";
 
 export const dynamic = "force-dynamic";
 
-export default async function LaunchPlanWorkspacePage() {
+export default async function OpeningMilestonesWorkspacePage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,14 +47,14 @@ export default async function LaunchPlanWorkspacePage() {
       .from("workspace_documents")
       .select("content, updated_at")
       .eq("plan_id", planId)
-      .eq("workspace_key", "launch_plan")
+      .eq("workspace_key", "opening_milestones")
       .maybeSingle(),
     supabase
       .from("users")
       .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
       .eq("id", user.id)
       .maybeSingle(),
-    // Source workspaces that inform the plan — we track their latest update to detect stale plans.
+    // Source workspaces that inform the milestones — track their latest update to detect stale plans.
     supabase
       .from("workspace_documents")
       .select("workspace_key, updated_at")
@@ -62,7 +64,6 @@ export default async function LaunchPlanWorkspacePage() {
 
   const config = normalizeLaunchPlanConfig(configDoc?.content);
 
-  // sourcesUpdatedAt: latest updated_at across the source workspaces.
   const sourcesUpdatedAt =
     sourceDocs && sourceDocs.length > 0
       ? sourceDocs.reduce<string | null>((max, d) => {
@@ -81,7 +82,7 @@ export default async function LaunchPlanWorkspacePage() {
       : undefined;
 
   return (
-    <LaunchPlanWorkspace
+    <OpeningMilestonesWorkspace
       planId={planId}
       initialMilestones={(milestonesData ?? []) as Milestone[]}
       initialConfig={config}
