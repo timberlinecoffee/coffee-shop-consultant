@@ -2,6 +2,7 @@
 
 import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } from "@/lib/financial-projection";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { InfoTip } from "@/components/ui/info-tip";
 
 interface Props {
   startupCosts: StartupCosts;
@@ -329,10 +330,15 @@ export function StartupTab({
             {EDITABLE_FIELDS.map((fld) => (
               <tr key={fld.key} className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-5 pr-4">
-                  <label htmlFor={`startup-${fld.key}`} className="text-[var(--foreground)]">
-                    {fld.label}
-                  </label>
-                  {fld.hint && <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{fld.hint}</p>}
+                  {/* TIM-1477: inline helper one-liner moved into a "?" popup
+                      beside the question label, matching the Financial Suite /
+                      Concept Suite pattern. */}
+                  <span className="inline-flex items-center gap-1.5">
+                    <label htmlFor={`startup-${fld.key}`} className="text-[var(--foreground)]">
+                      {fld.label}
+                    </label>
+                    {fld.hint && <InfoTip label={fld.label}>{fld.hint}</InfoTip>}
+                  </span>
                 </td>
                 <td className="py-3 pr-5 text-right align-top">
                   <div className="flex items-center justify-end gap-1.5">
