@@ -12,6 +12,7 @@ import { Package, X, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
@@ -101,6 +102,12 @@ export function InventoryWorkspace({
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [showAiMarkings, setShowAiMarkings] = useState(true);
   const viewOptionsRef = useRef<HTMLDivElement>(null);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once any inventory items exist.
+  useEffect(() => {
+    if (supplies.length > 0) promoteOnEdit("inventory");
+  }, [supplies.length, promoteOnEdit]);
 
   const hasAiSupplies = supplies.some((i) => i.source === "ai_suggested");
 

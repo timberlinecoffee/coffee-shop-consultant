@@ -1,16 +1,13 @@
 "use client";
 
-// TIM-1147: 3-state status pill control. Rendered in the workspace top bar
-// (one per workspace) so the founder can manually mark every workspace +
-// component as Not Started / In Progress / Complete. Disabled when the
-// active route isn't a workspace.
+// TIM-1450: Status badge with auto-advance + explicit completion.
+// - not_started → in_progress: automatic on first save (see promoteOnEdit in WorkspaceProgressProvider)
+// - in_progress → complete: manual "Mark Complete" button (single click, no modal)
+// - complete → in_progress: manual "Reopen" link
+// Replaces the previous 3-button pill (TIM-1147) where all states were clickable.
 
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import {
-  WORKSPACE_STATUS_LABEL,
-  WORKSPACE_STATUS_VALUES,
-  type WorkspaceStatus,
-} from "@/lib/workspace-status";
+import type { WorkspaceStatus } from "@/lib/workspace-status";
 
 export function WorkspaceStatusControl({
   componentKey,
@@ -23,59 +20,82 @@ export function WorkspaceStatusControl({
   const current = statusByKey.get(componentKey) ?? "not_started";
 
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex items-center gap-2">
       {label && (
         <span className="hidden sm:inline text-[11px] text-[var(--muted-foreground)] font-medium">
           {label}:
         </span>
       )}
-      <div
-        role="group"
-        aria-label={label ? `${label} status` : "Component status"}
-        className="inline-flex rounded-full border border-[var(--warm-700)] bg-white p-0.5"
-      >
-        {WORKSPACE_STATUS_VALUES.map((value) => (
-          <StatusButton
-            key={value}
-            value={value}
-            current={current}
-            onSelect={() => {
-              if (current !== value) void setStatus(componentKey, value);
-            }}
-          />
-        ))}
-      </div>
+      <StatusBadge status={current} />
+      <StatusAction
+        status={current}
+        onMarkComplete={() => void setStatus(componentKey, "complete")}
+        onReopen={() => void setStatus(componentKey, "in_progress")}
+      />
     </div>
   );
 }
 
-function StatusButton({
-  value,
-  current,
-  onSelect,
-}: {
-  value: WorkspaceStatus;
-  current: WorkspaceStatus;
-  onSelect: () => void;
-}) {
-  const active = value === current;
-  const styles = active ? activeStyleFor(value) : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)]";
+function StatusBadge({ status }: { status: WorkspaceStatus }) {
+  const styles = badgeStyleFor(status);
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onSelect}
-      className={`text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors leading-none ${styles}`}
+    <span
+      className={`text-[11px] font-medium px-2.5 py-1 rounded-full leading-none ${styles}`}
     >
-      {WORKSPACE_STATUS_LABEL[value]}
-    </button>
+      {labelFor(status)}
+    </span>
   );
 }
 
-function activeStyleFor(value: WorkspaceStatus): string {
-  switch (value) {
+function StatusAction({
+  status,
+  onMarkComplete,
+  onReopen,
+}: {
+  status: WorkspaceStatus;
+  onMarkComplete: () => void;
+  onReopen: () => void;
+}) {
+  if (status === "in_progress") {
+    return (
+      <button
+        type="button"
+        onClick={onMarkComplete}
+        className="text-[11px] font-medium text-[var(--teal)] hover:underline leading-none"
+      >
+        Mark Complete
+      </button>
+    );
+  }
+  if (status === "complete") {
+    return (
+      <button
+        type="button"
+        onClick={onReopen}
+        className="text-[11px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:underline leading-none"
+      >
+        Reopen
+      </button>
+    );
+  }
+  return null;
+}
+
+function labelFor(status: WorkspaceStatus): string {
+  switch (status) {
     case "not_started":
-      return "bg-[var(--border)] text-[var(--foreground)]";
+      return "Not Started";
+    case "in_progress":
+      return "In Progress";
+    case "complete":
+      return "Complete";
+  }
+}
+
+function badgeStyleFor(status: WorkspaceStatus): string {
+  switch (status) {
+    case "not_started":
+      return "border border-[var(--warm-700)] text-[var(--muted-foreground)] bg-white";
     case "in_progress":
       return "bg-amber-100 text-amber-800";
     case "complete":

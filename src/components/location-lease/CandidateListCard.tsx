@@ -3,7 +3,7 @@
 // Per-location info (intake, scorecard, lease terms, AI feedback) lives inside LocationCard.
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X } from 'lucide-react'
 import {
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { LocationCard } from './LocationCard'
 import { TradeoffPanel } from './TradeoffPanel'
 import { CoPilotDrawer } from './CoPilotDrawer'
+import { useWorkspaceStatus } from '@/components/workspace/WorkspaceProgressProvider'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,12 @@ export function CandidateListCard({
   const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates)
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [adding, setAdding] = useState(false)
+
+  const { promoteOnEdit } = useWorkspaceStatus()
+  // Auto-promote not_started → in_progress once any location candidates exist.
+  useEffect(() => {
+    if (candidates.length > 0) promoteOnEdit('location_lease')
+  }, [candidates.length, promoteOnEdit])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [tradeoffOpen, setTradeoffOpen] = useState(false)
   const [view, setView] = useState<ViewMode>('all')

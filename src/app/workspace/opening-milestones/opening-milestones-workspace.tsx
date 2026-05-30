@@ -13,6 +13,7 @@ import {
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { consumeSseFrames } from "@/components/copilot/sse";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -539,6 +540,12 @@ export function OpeningMilestonesWorkspace({
   const [sourcesUpdatedAt] = useState<string | null>(initialSourcesUpdatedAt);
   const [view, setView] = useState<"list" | "calendar">(initialConfig.viewPreference);
   const [generating, setGenerating] = useState(false);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress once milestones exist.
+  useEffect(() => {
+    if (milestones.length > 0) promoteOnEdit("opening_milestones");
+  }, [milestones.length, promoteOnEdit]);
   const [launchDateInput, setLaunchDateInput] = useState(initialConfig.targetLaunchDate ?? "");
   const [editModal, setEditModal] = useState<{ milestone: Partial<Milestone> & { track: TrackKey }; isNew: boolean } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);

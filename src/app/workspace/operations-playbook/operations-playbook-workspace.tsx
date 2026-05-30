@@ -20,6 +20,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
+import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -84,6 +85,12 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
+
+  const { promoteOnEdit } = useWorkspaceStatus();
+  // Auto-promote not_started → in_progress on first successful save.
+  useEffect(() => {
+    if (savedAt) promoteOnEdit("operations_playbook");
+  }, [savedAt, promoteOnEdit]);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);
@@ -163,7 +170,8 @@ export function OperationsPlaybookWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
+      <div className="max-w-5xl mx-auto px-6 pt-8 pb-12">
+        {/* Header spans full width above the 2-col grid */}
         <header className="mb-6">
           <div className="flex items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -193,67 +201,84 @@ export function OperationsPlaybookWorkspace({
           </div>
         </header>
 
-        <SectionTabs
-          active={active}
-          onChange={setActive}
-          doc={doc}
-          recipeCount={initialRecipeCards.length}
-        />
+        {/* Mobile: horizontal scroll nav above content */}
+        <div className="md:hidden mb-4">
+          <SectionNavMobile
+            active={active}
+            onChange={setActive}
+            doc={doc}
+            recipeCount={initialRecipeCards.length}
+          />
+        </div>
 
-        <div className="mt-6 space-y-6">
-          {SOP_CATEGORY_KEYS.includes(active as SopCategoryKey) && (
-            <CategoryEditor
-              key={active}
-              categoryKey={active as SopCategoryKey}
-              label={activeLabel}
-              tagline={operationsSectionTagline(active)}
-              canEdit={canEdit}
-              doc={doc}
-              updateDoc={updateDoc}
-              onGenerate={() => handleGenerate(active as SopCategoryKey)}
-              generating={generating === active}
-            />
-          )}
+        {/* Desktop: 2-col grid — sticky sidebar + content */}
+        <div className="md:grid md:grid-cols-[240px_minmax(0,1fr)] md:gap-8 md:items-start">
+          <aside className="hidden md:block">
+            <div className="sticky top-6">
+              <SectionNavSidebar
+                active={active}
+                onChange={setActive}
+                doc={doc}
+                recipeCount={initialRecipeCards.length}
+              />
+            </div>
+          </aside>
 
-          {active === RECIPES_SECTION_KEY && (
-            <RecipesPanel cards={initialRecipeCards} />
-          )}
+          <div className="space-y-6">
+            {SOP_CATEGORY_KEYS.includes(active as SopCategoryKey) && (
+              <CategoryEditor
+                key={active}
+                categoryKey={active as SopCategoryKey}
+                label={activeLabel}
+                tagline={operationsSectionTagline(active)}
+                canEdit={canEdit}
+                doc={doc}
+                updateDoc={updateDoc}
+                onGenerate={() => handleGenerate(active as SopCategoryKey)}
+                generating={generating === active}
+              />
+            )}
 
-          {active === "roles" && (
-            <RolesEditor
-              label={activeLabel}
-              tagline={operationsSectionTagline(active)}
-              canEdit={canEdit}
-              doc={doc}
-              updateDoc={updateDoc}
-              onGenerate={() => handleGenerate("roles")}
-              generating={generating === "roles"}
-            />
-          )}
+            {active === RECIPES_SECTION_KEY && (
+              <RecipesPanel cards={initialRecipeCards} />
+            )}
 
-          {active === "vendor_contacts" && (
-            <VendorContactsEditor
-              label={activeLabel}
-              tagline={operationsSectionTagline(active)}
-              canEdit={canEdit}
-              doc={doc}
-              updateDoc={updateDoc}
-              onGenerate={() => handleGenerate("vendor_contacts")}
-              generating={generating === "vendor_contacts"}
-            />
-          )}
+            {active === "roles" && (
+              <RolesEditor
+                label={activeLabel}
+                tagline={operationsSectionTagline(active)}
+                canEdit={canEdit}
+                doc={doc}
+                updateDoc={updateDoc}
+                onGenerate={() => handleGenerate("roles")}
+                generating={generating === "roles"}
+              />
+            )}
 
-          {active === "training" && (
-            <TrainingEditor
-              label={activeLabel}
-              tagline={operationsSectionTagline(active)}
-              canEdit={canEdit}
-              doc={doc}
-              updateDoc={updateDoc}
-              onGenerate={() => handleGenerate("training")}
-              generating={generating === "training"}
-            />
-          )}
+            {active === "vendor_contacts" && (
+              <VendorContactsEditor
+                label={activeLabel}
+                tagline={operationsSectionTagline(active)}
+                canEdit={canEdit}
+                doc={doc}
+                updateDoc={updateDoc}
+                onGenerate={() => handleGenerate("vendor_contacts")}
+                generating={generating === "vendor_contacts"}
+              />
+            )}
+
+            {active === "training" && (
+              <TrainingEditor
+                label={activeLabel}
+                tagline={operationsSectionTagline(active)}
+                canEdit={canEdit}
+                doc={doc}
+                updateDoc={updateDoc}
+                onGenerate={() => handleGenerate("training")}
+                generating={generating === "training"}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -273,62 +298,109 @@ export function OperationsPlaybookWorkspace({
   );
 }
 
-// ── Save status — see SaveIndicator in @/components/ui/save-indicator ────────
+// ── Section nav shared helpers ────────────────────────────────────────────────
 
-// ── Section tabs ─────────────────────────────────────────────────────────────
-
-function SectionTabs({
-  active,
-  onChange,
-  doc,
-  recipeCount,
-}: {
-  active: OperationsSectionKey;
-  onChange: (k: OperationsSectionKey) => void;
-  doc: OperationsPlaybookDocument;
-  recipeCount: number;
-}) {
-  const filledMap = useMemo<Record<OperationsSectionKey, boolean>>(() => {
+function useFilledMap(
+  doc: OperationsPlaybookDocument,
+  recipeCount: number,
+): Record<OperationsSectionKey, boolean> {
+  return useMemo<Record<OperationsSectionKey, boolean>>(() => {
     const out = {} as Record<OperationsSectionKey, boolean>;
     for (const k of SOP_CATEGORY_KEYS) out[k] = doc[k].items.length > 0;
     for (const k of PLANNING_SECTION_KEYS) out[k] = doc[k].items.length > 0;
     out[RECIPES_SECTION_KEY] = recipeCount > 0;
     return out;
   }, [doc, recipeCount]);
+}
+
+interface SectionNavProps {
+  active: OperationsSectionKey;
+  onChange: (k: OperationsSectionKey) => void;
+  doc: OperationsPlaybookDocument;
+  recipeCount: number;
+}
+
+// ── Desktop sidebar nav ───────────────────────────────────────────────────────
+
+function SectionNavSidebar({ active, onChange, doc, recipeCount }: SectionNavProps) {
+  const filledMap = useFilledMap(doc, recipeCount);
+  const filledCount = OPERATIONS_SECTION_KEYS.filter((k) => filledMap[k]).length;
 
   return (
-    <div className={cardCls}>
-      <div
-        role="tablist"
-        aria-label="Operations Playbook sections"
-        className="flex flex-wrap gap-1 p-1"
-      >
+    <nav aria-label="Operations Playbook sections">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)] px-4 mb-2">
+        {filledCount} of {OPERATIONS_SECTION_KEYS.length} filled
+      </p>
+      <ul role="tablist" aria-label="Operations Playbook sections">
         {OPERATIONS_SECTION_KEYS.map((key) => {
           const isActive = active === key;
           const filled = filledMap[key];
           return (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={isActive}
-              type="button"
-              onClick={() => onChange(key)}
-              className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl transition-colors ${
-                isActive
-                  ? "bg-[var(--teal)] text-white"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--background)]"
-              }`}
-            >
-              {filled && (
-                <Check
-                  className={`w-3 h-3 ${isActive ? "text-white" : "text-[var(--teal)]"}`}
-                />
-              )}
-              {operationsSectionLabel(key)}
-            </button>
+            <li key={key}>
+              <button
+                role="tab"
+                aria-selected={isActive}
+                type="button"
+                onClick={() => onChange(key)}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "border-l-2 border-[var(--teal)] bg-[var(--teal-bg-f0f8)] text-[var(--teal)]"
+                    : "border-l-2 border-transparent text-[var(--muted-foreground)] hover:bg-[var(--background)]"
+                }`}
+              >
+                {filled ? (
+                  <Check className="w-3.5 h-3.5 flex-shrink-0 text-[var(--teal)]" />
+                ) : (
+                  <span className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center">
+                    <span className="w-1 h-1 rounded-full bg-[var(--border-medium)]" />
+                  </span>
+                )}
+                {operationsSectionLabel(key)}
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
+    </nav>
+  );
+}
+
+// ── Mobile horizontal scroll nav ─────────────────────────────────────────────
+
+function SectionNavMobile({ active, onChange, doc, recipeCount }: SectionNavProps) {
+  const filledMap = useFilledMap(doc, recipeCount);
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Operations Playbook sections"
+      className="flex overflow-x-auto scrollbar-none gap-1 pb-1"
+    >
+      {OPERATIONS_SECTION_KEYS.map((key) => {
+        const isActive = active === key;
+        const filled = filledMap[key];
+        return (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={isActive}
+            type="button"
+            onClick={() => onChange(key)}
+            className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl whitespace-nowrap transition-colors ${
+              isActive
+                ? "bg-[var(--teal)] text-white"
+                : "text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] hover:border-[var(--teal)]/40"
+            }`}
+          >
+            {filled && (
+              <Check
+                className={`w-3 h-3 flex-shrink-0 ${isActive ? "text-white" : "text-[var(--teal)]"}`}
+              />
+            )}
+            {operationsSectionLabel(key)}
+          </button>
+        );
+      })}
     </div>
   );
 }
