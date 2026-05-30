@@ -1,9 +1,14 @@
-// TIM-1061: AI "Improve" endpoint for a single Operations Playbook SOP category.
-// Returns the FULL updated playbook document (only the requested category is rewritten),
-// so the client can replace state in one assignment and let the existing autosave persist.
+// TIM-1061: AI "Improve" endpoint for a single Operations Playbook section.
+// TIM-1416: V1 binder — handles SOP categories plus the three planning
+// sections (roles, vendor contacts, training). Drink recipes are sourced from
+// the Menu workspace and are not generated here.
+// Returns the FULL updated playbook document (only the requested section is
+// rewritten), so the client can replace state in one assignment and let the
+// existing autosave persist.
 //
-// Per AGENTS.md / TIM-1002: Title Case is applied at the API boundary for label-shaped
-// fields (station names) via titleCaseSopCategory(). Sentence-form copy stays as-is.
+// Per AGENTS.md / TIM-1002: Title Case is applied at the API boundary for
+// label-shaped fields (station names, role labels, vendor labels, contact
+// names) via the titleCase*Section() helpers. Sentence-form copy stays as-is.
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -18,24 +23,38 @@ import {
   type SopCategoryKey,
   type SopChecklistItem,
   type SopCadence,
+  type RolesSection,
+  type RoleAssignment,
+  type VendorContactsSection,
+  type VendorContact,
+  type TrainingSection,
+  type TrainingItem,
+  type TrainingPhase,
   SOP_CATEGORY_KEYS,
   SOP_CATEGORY_LABELS,
   EMPTY_OPERATIONS_PLAYBOOK,
   normalizeOperationsPlaybook,
   titleCaseSopCategory,
+  titleCaseRolesSection,
+  titleCaseVendorContactsSection,
+  titleCaseTrainingSection,
 } from "@/lib/operations-playbook";
 import { normalizeConceptV2 } from "@/lib/concept";
 
 const anthropic = new Anthropic();
 
+type GeneratableSection = SopCategoryKey | "roles" | "vendor_contacts" | "training";
+
+function isGeneratableSection(v: unknown): v is GeneratableSection {
+  if (typeof v !== "string") return false;
+  if ((SOP_CATEGORY_KEYS as string[]).includes(v)) return true;
+  return v === "roles" || v === "vendor_contacts" || v === "training";
+}
+
 function paywallReason(status: string): "no_subscription" | "paused" | "expired" {
   if (status === "cancelled") return "paused";
   if (status === "expired") return "expired";
   return "no_subscription";
-}
-
-function isCategoryKey(v: unknown): v is SopCategoryKey {
-  return typeof v === "string" && (SOP_CATEGORY_KEYS as string[]).includes(v);
 }
 
 function localId() {
@@ -87,7 +106,9 @@ function summarizeMenu(items: MenuItemRow[] | null): string {
   return lines.length > 0 ? lines.join("\n") : "No menu items yet.";
 }
 
-function buildPrompt(
+// ── SOP prompt ──────────────────────────────────────────────────────────────
+
+function buildSopPrompt(
   categoryKey: SopCategoryKey,
   categoryLabel: string,
   current: SopCategory,
@@ -108,9 +129,8 @@ function buildPrompt(
     opening: `Pre-open routine. Order steps so longest-lead-time tasks (espresso machine warm-up) start first. Include grinder calibration, pastry case stock, register float, music/lights, sandwich board.`,
     closing: `Post-close routine. Espresso machine backflush, milk fridge wipe, register Z-report, cash count, alarm, deposit bag prep, walk-in temp check.`,
     cleaning: `Daily, weekly, and monthly tasks split by station. Cover bar, retail floor, restroom, walk-in, and dish stations. Daily items are per-shift; weekly items have a fixed day; monthly items live on the manager's calendar.`,
-    cash_handling: `Opening float amount and break-down (small bills + coin), mid-day drop threshold, end-of-day reconciliation, variance threshold ($5 is a common default), deposit cadence (e.g. Tuesday and Friday), two-person rule when feasible.`,
-    drink_recipes: `Espresso ratio (e.g. 18g in / 36g out / 25-30s), milk temps (140-150°F for textured milk, 130°F for cortado), signature drink builds. Include cappuccino, latte, cortado, Americano, drip, pour-over, cold brew at minimum. Reference the menu items the owner has actually listed when relevant.`,
-    food_safety: `Allergen matrix posted in kitchen. Dedicated allergen kit. Hand-washing protocol. Glove change between raw and ready-to-eat. Pastry case temp logged at open/mid-day/close (34-40°F). Walk-in temp logged at open/close. Date-labeling. Sanitizer concentration (quat 200ppm or chlorine 50ppm) with test strip check.`,
+    cash_handling: `Opening float amount and break-down (small bills + coin), mid-day drop threshold, end-of-day reconciliation, variance threshold ($5 is a common default), deposit cadence (e.g. Tuesday and Friday), two-person rule when feasible. Describe the policy, not the daily log entry.`,
+    food_safety: `Allergen matrix posted in kitchen. Dedicated allergen kit. Hand-washing protocol. Glove change between raw and ready-to-eat. Temperature targets for the pastry case and walk-in (34-40°F) and the out-of-range escalation. Date-labeling. Sanitizer concentration (quat 200ppm or chlorine 50ppm) with test-strip verification. Describe the protocol, not the daily log entry.`,
   };
 
   const conceptLines: string[] = [];
@@ -121,7 +141,7 @@ function buildPrompt(
   const conceptBlock =
     conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
 
-  return `You are a senior coffee shop operations consultant. The owner is preparing the "${categoryLabel}" Standard Operating Procedure for their shop. Improve the current SOP using their concept and menu context.
+  return `You are a senior coffee shop operations consultant. The owner is preparing the "${categoryLabel}" Standard Operating Procedure for their shop. This is a planning binder for opening day — policies and templates, not a daily-execution log. Improve the current SOP using their concept and menu context.
 
 Shop context:
 ${conceptBlock}
@@ -155,6 +175,7 @@ ${cadenceGuidance}
 ${durationGuidance}
 - 6-16 items. Concrete, not generic.
 - No emojis.
+- Steps describe the policy or template, not a daily log entry. Do not include language like "record on the log" or "enter today's count".
 - "text" is full sentence-form copy. Do NOT title-case.
 - "station" values MUST be one of "Bar", "Retail Floor", "Restroom", "Walk-In", "Dish" (already Title Case).
 - Reference the shop's specific concept and menu when it makes the step better; do not invent equipment the owner didn't mention.`;
@@ -204,6 +225,228 @@ function parseAiCategory(raw: string): SopCategory | null {
   }
 }
 
+// ── Roles prompt ────────────────────────────────────────────────────────────
+
+function buildRolesPrompt(
+  current: RolesSection,
+  concept: { shop_identity: string; city: string },
+  menuSummary: string,
+): string {
+  const conceptLines: string[] = [];
+  if (concept.shop_identity) conceptLines.push(`- Shop identity: ${concept.shop_identity}`);
+  if (concept.city) conceptLines.push(`- City: ${concept.city}`);
+  const conceptBlock =
+    conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
+
+  return `You are a senior coffee shop operations consultant. The owner is defining the roles and shift responsibilities for their shop. This is a planning binder — who-does-what on every shift, not a per-shift assignment log.
+
+Shop context:
+${conceptBlock}
+
+Menu (top items by category):
+${menuSummary}
+
+Current roles:
+${current.items.length === 0 ? "(none)" : current.items.map((r) => `- ${r.role}: ${r.responsibilities}`).join("\n")}
+
+Return ONLY a JSON object — no preamble, no markdown fences:
+{
+  "intro": "1-2 sentences explaining how roles work on a shift. Sentence case.",
+  "items": [
+    {
+      "role": "Role label in Title Case (e.g. Bar, Register, Manager On Duty)",
+      "responsibilities": "What this role owns on a shift, sentence-form."
+    }
+  ]
+}
+
+Rules:
+- 4-7 roles. Cover bar, register/front of house, food/pastry, floor, manager on duty at minimum.
+- No emojis.
+- "role" is a Title Case label.
+- "responsibilities" is sentence-form prose, two or three sentences max.`;
+}
+
+function parseAiRoles(raw: string): RolesSection | null {
+  try {
+    const trimmed = raw.trim();
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    const obj = JSON.parse(trimmed.slice(start, end + 1)) as {
+      intro?: unknown;
+      items?: unknown;
+    };
+    const intro = typeof obj.intro === "string" ? normalizeAIOutput(obj.intro) : "";
+    const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
+    const items: RoleAssignment[] = itemsRaw
+      .map((r) => {
+        if (!r || typeof r !== "object") return null;
+        const rec = r as Record<string, unknown>;
+        const role = typeof rec.role === "string" ? rec.role.trim() : "";
+        const responsibilities =
+          typeof rec.responsibilities === "string"
+            ? normalizeAIOutput(rec.responsibilities)
+            : "";
+        if (!role && !responsibilities) return null;
+        return { id: localId(), role, responsibilities } satisfies RoleAssignment;
+      })
+      .filter((it): it is RoleAssignment => it !== null);
+    return { intro, items, last_generated_at: new Date().toISOString() };
+  } catch {
+    return null;
+  }
+}
+
+// ── Vendor contacts prompt ──────────────────────────────────────────────────
+
+function buildVendorContactsPrompt(
+  current: VendorContactsSection,
+  concept: { shop_identity: string; city: string },
+): string {
+  const conceptLines: string[] = [];
+  if (concept.shop_identity) conceptLines.push(`- Shop identity: ${concept.shop_identity}`);
+  if (concept.city) conceptLines.push(`- City: ${concept.city}`);
+  const conceptBlock =
+    conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
+
+  return `You are a senior coffee shop operations consultant. The owner is preparing the vendor and emergency contacts quick-reference card for their shop. The owner will fill in names and numbers; you supply the rows and the helpful notes.
+
+Shop context:
+${conceptBlock}
+
+Current contacts:
+${current.items.length === 0 ? "(none)" : current.items.map((c) => `- ${c.label}: ${c.contact_name || "(no name)"} / ${c.phone || "(no phone)"} — ${c.notes || ""}`).join("\n")}
+
+Return ONLY a JSON object — no preamble, no markdown fences:
+{
+  "intro": "1-2 sentences explaining how the contact card is used. Sentence case.",
+  "items": [
+    {
+      "label": "Role or type, Title Case (e.g. Espresso Tech, Plumber, Alarm Company, Milk Supplier, Landlord, Insurance, Health Inspector)",
+      "contact_name": "",
+      "phone": "",
+      "email": "",
+      "notes": "Why you'd call this contact and what info to have ready."
+    }
+  ]
+}
+
+Rules:
+- 6-10 rows. Include espresso tech, plumber, alarm company, milk supplier, landlord, insurance carrier, and at least one local-utility / inspector row appropriate to a coffee shop.
+- "contact_name", "phone", "email" should be empty strings — the owner fills these in.
+- "notes" is a short helpful hint, one sentence.
+- No emojis.
+- "label" is Title Case.`;
+}
+
+function parseAiVendorContacts(raw: string): VendorContactsSection | null {
+  try {
+    const trimmed = raw.trim();
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    const obj = JSON.parse(trimmed.slice(start, end + 1)) as {
+      intro?: unknown;
+      items?: unknown;
+    };
+    const intro = typeof obj.intro === "string" ? normalizeAIOutput(obj.intro) : "";
+    const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
+    const items: VendorContact[] = itemsRaw
+      .map((r) => {
+        if (!r || typeof r !== "object") return null;
+        const rec = r as Record<string, unknown>;
+        const label = typeof rec.label === "string" ? rec.label.trim() : "";
+        if (!label) return null;
+        return {
+          id: localId(),
+          label,
+          contact_name: typeof rec.contact_name === "string" ? rec.contact_name : "",
+          phone: typeof rec.phone === "string" ? rec.phone : "",
+          email: typeof rec.email === "string" ? rec.email : "",
+          notes: typeof rec.notes === "string" ? normalizeAIOutput(rec.notes) : "",
+        } satisfies VendorContact;
+      })
+      .filter((it): it is VendorContact => it !== null);
+    return { intro, items, last_generated_at: new Date().toISOString() };
+  } catch {
+    return null;
+  }
+}
+
+// ── Training prompt ─────────────────────────────────────────────────────────
+
+function buildTrainingPrompt(
+  current: TrainingSection,
+  concept: { shop_identity: string; city: string },
+): string {
+  const conceptLines: string[] = [];
+  if (concept.shop_identity) conceptLines.push(`- Shop identity: ${concept.shop_identity}`);
+  if (concept.city) conceptLines.push(`- City: ${concept.city}`);
+  const conceptBlock =
+    conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
+
+  return `You are a senior coffee shop operations consultant. The owner is preparing the new-hire training checklist for their shop, broken into Day 1, Week 1, and Month 1 milestones.
+
+Shop context:
+${conceptBlock}
+
+Current milestones:
+${current.items.length === 0 ? "(none)" : current.items.map((t) => `- ${t.phase}: ${t.text}`).join("\n")}
+
+Return ONLY a JSON object — no preamble, no markdown fences:
+{
+  "intro": "1-2 sentences explaining how the checklist is used. Sentence case.",
+  "items": [
+    {
+      "phase": "day_1 | week_1 | month_1",
+      "text": "Specific milestone the trainer signs off on."
+    }
+  ]
+}
+
+Rules:
+- 9-15 milestones total, spread across all three phases.
+- Day 1 covers tour, paperwork, shadowing.
+- Week 1 covers register, drinks, allergens, shift fundamentals.
+- Month 1 covers solo bar, cross-training, 30-day check-in.
+- "phase" must be exactly "day_1", "week_1", or "month_1".
+- "text" is sentence-form, concrete enough that the trainer can verify it.
+- No emojis.`;
+}
+
+function parseAiTraining(raw: string): TrainingSection | null {
+  try {
+    const trimmed = raw.trim();
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    const obj = JSON.parse(trimmed.slice(start, end + 1)) as {
+      intro?: unknown;
+      items?: unknown;
+    };
+    const intro = typeof obj.intro === "string" ? normalizeAIOutput(obj.intro) : "";
+    const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
+    const items: TrainingItem[] = itemsRaw
+      .map((r) => {
+        if (!r || typeof r !== "object") return null;
+        const rec = r as Record<string, unknown>;
+        const phaseRaw = rec.phase;
+        const phase: TrainingPhase =
+          phaseRaw === "week_1" || phaseRaw === "month_1" ? phaseRaw : "day_1";
+        const text = typeof rec.text === "string" ? normalizeAIOutput(rec.text) : "";
+        if (!text) return null;
+        return { id: localId(), phase, text } satisfies TrainingItem;
+      })
+      .filter((it): it is TrainingItem => it !== null);
+    return { intro, items, last_generated_at: new Date().toISOString() };
+  } catch {
+    return null;
+  }
+}
+
+// ── Route handler ───────────────────────────────────────────────────────────
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -238,7 +481,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!isCategoryKey(body.section)) {
+  if (!isGeneratableSection(body.section)) {
     return Response.json({ error: "Invalid section" }, { status: 400 });
   }
   const section = body.section;
@@ -281,13 +524,24 @@ export async function POST(request: Request) {
   const concept = extractConceptContext(conceptDoc?.content, plan.plan_name ?? null);
   const menuSummary = summarizeMenu(menuItems as MenuItemRow[] | null);
 
-  const prompt = buildPrompt(
-    section,
-    SOP_CATEGORY_LABELS[section],
-    current[section],
-    concept,
-    menuSummary,
-  );
+  // Build the section-specific prompt, dispatch to Anthropic, parse the
+  // category-shaped JSON, and merge back into the full document.
+  let prompt: string;
+  if (section === "roles") {
+    prompt = buildRolesPrompt(current.roles, concept, menuSummary);
+  } else if (section === "vendor_contacts") {
+    prompt = buildVendorContactsPrompt(current.vendor_contacts, concept);
+  } else if (section === "training") {
+    prompt = buildTrainingPrompt(current.training, concept);
+  } else {
+    prompt = buildSopPrompt(
+      section,
+      SOP_CATEGORY_LABELS[section],
+      current[section],
+      concept,
+      menuSummary,
+    );
+  }
 
   let aiText: string;
   try {
@@ -303,26 +557,73 @@ export async function POST(request: Request) {
     return Response.json({ error: "AI generation failed" }, { status: 502 });
   }
 
-  const parsedCategory = parseAiCategory(aiText);
-  if (!parsedCategory) {
-    console.error(
-      "[operations_playbook/generate] parse failed, len=",
-      aiText.length,
-    );
-    return Response.json({ error: "AI response could not be parsed" }, { status: 502 });
+  let updated: OperationsPlaybookDocument;
+
+  if (section === "roles") {
+    const parsed = parseAiRoles(aiText);
+    if (!parsed) {
+      console.error("[operations_playbook/generate] roles parse failed");
+      return Response.json({ error: "AI response could not be parsed" }, { status: 502 });
+    }
+    const merged: RolesSection = {
+      intro: parsed.intro || current.roles.intro || EMPTY_OPERATIONS_PLAYBOOK.roles.intro,
+      items: parsed.items,
+      last_generated_at: parsed.last_generated_at,
+    };
+    updated = { ...current, roles: titleCaseRolesSection(merged) };
+  } else if (section === "vendor_contacts") {
+    const parsed = parseAiVendorContacts(aiText);
+    if (!parsed) {
+      console.error("[operations_playbook/generate] vendor_contacts parse failed");
+      return Response.json({ error: "AI response could not be parsed" }, { status: 502 });
+    }
+    const merged: VendorContactsSection = {
+      intro:
+        parsed.intro ||
+        current.vendor_contacts.intro ||
+        EMPTY_OPERATIONS_PLAYBOOK.vendor_contacts.intro,
+      items: parsed.items,
+      last_generated_at: parsed.last_generated_at,
+    };
+    updated = {
+      ...current,
+      vendor_contacts: titleCaseVendorContactsSection(merged),
+    };
+  } else if (section === "training") {
+    const parsed = parseAiTraining(aiText);
+    if (!parsed) {
+      console.error("[operations_playbook/generate] training parse failed");
+      return Response.json({ error: "AI response could not be parsed" }, { status: 502 });
+    }
+    const merged: TrainingSection = {
+      intro:
+        parsed.intro ||
+        current.training.intro ||
+        EMPTY_OPERATIONS_PLAYBOOK.training.intro,
+      items: parsed.items,
+      last_generated_at: parsed.last_generated_at,
+    };
+    updated = { ...current, training: titleCaseTrainingSection(merged) };
+  } else {
+    const parsedCategory = parseAiCategory(aiText);
+    if (!parsedCategory) {
+      console.error(
+        "[operations_playbook/generate] parse failed, len=",
+        aiText.length,
+      );
+      return Response.json({ error: "AI response could not be parsed" }, { status: 502 });
+    }
+    // Preserve existing intro if AI returned empty.
+    const merged: SopCategory = {
+      intro:
+        parsedCategory.intro ||
+        current[section].intro ||
+        EMPTY_OPERATIONS_PLAYBOOK[section].intro,
+      items: parsedCategory.items,
+      last_generated_at: parsedCategory.last_generated_at,
+    };
+    updated = { ...current, [section]: titleCaseSopCategory(merged) };
   }
-
-  // Preserve existing intro if AI returned empty.
-  const merged: SopCategory = {
-    intro: parsedCategory.intro || current[section].intro || EMPTY_OPERATIONS_PLAYBOOK[section].intro,
-    items: parsedCategory.items,
-    last_generated_at: parsedCategory.last_generated_at,
-  };
-
-  const updated: OperationsPlaybookDocument = {
-    ...current,
-    [section]: titleCaseSopCategory(merged),
-  };
 
   const { error: upsertErr } = await supabase
     .from("workspace_documents")

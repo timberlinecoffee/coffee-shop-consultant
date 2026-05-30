@@ -1,6 +1,7 @@
 // TIM-1061: Operations Playbook (SOPs) workspace page.
-// Six SOP categories: Opening, Closing, Cleaning, Cash, Drink Recipes, Food Safety.
-// Storage: workspace_documents.content jsonb where workspace_key='operations_playbook'.
+// TIM-1416: V1 binder — SOPs (opening, closing, cleaning, cash, food safety),
+// recipes pulled read-only from Menu, plus roles, vendor contacts, and
+// training. Daily-execution logs are out of scope (V2).
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -10,6 +11,7 @@ import {
   seededPlaybook,
   isPlaybookEmpty,
 } from "@/lib/operations-playbook";
+import { loadOperationsRecipeCards } from "@/lib/operations-recipes";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { OperationsPlaybookWorkspace } from "./operations-playbook-workspace";
 
@@ -37,6 +39,7 @@ export default async function OperationsPlaybookPage() {
     { data: doc },
     { data: conceptDoc },
     { data: profile },
+    recipeCards,
   ] = await Promise.all([
     supabase
       .from("workspace_documents")
@@ -55,10 +58,9 @@ export default async function OperationsPlaybookPage() {
       .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
       .eq("id", user.id)
       .maybeSingle(),
+    loadOperationsRecipeCards(supabase, planId),
   ]);
 
-  // Seed defaults the first time the user lands on the workspace — they get a
-  // working SOP they can edit rather than an empty shell.
   const stored = normalizeOperationsPlaybook(doc?.content);
   const initialDoc = isPlaybookEmpty(stored) ? seededPlaybook() : stored;
 
@@ -83,6 +85,7 @@ export default async function OperationsPlaybookPage() {
       initialDoc={initialDoc}
       conceptShopIdentity={conceptShopIdentity}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      initialRecipeCards={recipeCards}
     />
   );
 }

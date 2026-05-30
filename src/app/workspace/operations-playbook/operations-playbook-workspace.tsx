@@ -1,8 +1,8 @@
 "use client";
 
-// TIM-1061: Operations Playbook workspace — 6 SOP tabs, editable intro + checklist items.
-// Each item is reorderable (up/down), editable inline, deletable. AI Improve button per
-// SOP calls /api/workspaces/operations_playbook/generate?section=<key>.
+// TIM-1061: Operations Playbook workspace — SOP tabs plus the V1 binder
+// sections added in TIM-1416 (Menu-sourced recipes, roles, vendor contacts,
+// training checklist).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import {
   Plus,
   Sparkles,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -22,10 +23,22 @@ import {
   type SopCategoryKey,
   type SopChecklistItem,
   type SopCadence,
+  type RoleAssignment,
+  type VendorContact,
+  type TrainingItem,
+  type TrainingPhase,
+  type OperationsSectionKey,
   SOP_CATEGORY_KEYS,
-  SOP_CATEGORY_LABELS,
-  SOP_CATEGORY_TAGLINES,
+  PLANNING_SECTION_KEYS,
+  TRAINING_PHASE_KEYS,
+  TRAINING_PHASE_LABELS,
+  RECIPES_SECTION_KEY,
+  OPERATIONS_SECTION_KEYS,
+  operationsSectionLabel,
+  operationsSectionTagline,
 } from "@/lib/operations-playbook";
+import type { OperationsRecipeCard } from "@/lib/operations-recipes";
+import { groupRecipeCardsByCategory } from "@/lib/operations-recipes";
 
 // ── Shared styles — match Concept / Marketing tokens ────────────────────────
 
@@ -49,22 +62,26 @@ interface Props {
   initialDoc: OperationsPlaybookDocument;
   conceptShopIdentity: string;
   initialTrialMessagesUsed?: number;
+  initialRecipeCards: OperationsRecipeCard[];
 }
+
+type GeneratableSection = SopCategoryKey | "roles" | "vendor_contacts" | "training";
 
 export function OperationsPlaybookWorkspace({
   planId,
   canEdit,
   initialDoc,
   initialTrialMessagesUsed,
+  initialRecipeCards,
 }: Props) {
   const [doc, setDoc] = useState<OperationsPlaybookDocument>(initialDoc);
-  const [active, setActive] = useState<SopCategoryKey>("opening");
+  const [active, setActive] = useState<OperationsSectionKey>("opening");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [paywallReason, setPaywallReason] = useState<
     "no_subscription" | "paused" | "expired" | null
   >(null);
-  const [generating, setGenerating] = useState<SopCategoryKey | null>(null);
+  const [generating, setGenerating] = useState<GeneratableSection | null>(null);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);
@@ -117,7 +134,7 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
-  async function handleGenerate(section: SopCategoryKey) {
+  async function handleGenerate(section: GeneratableSection) {
     if (!canEdit || generating) return;
     setGenerating(section);
     try {
@@ -140,7 +157,7 @@ export function OperationsPlaybookWorkspace({
     }
   }
 
-  const activeLabel = SOP_CATEGORY_LABELS[active];
+  const activeLabel = operationsSectionLabel(active);
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
@@ -166,28 +183,75 @@ export function OperationsPlaybookWorkspace({
             </Link>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            The standard operating procedures your team runs every day. Edit
-            anything. These are templates, not rules from on high.
+            Your planning binder — the policies, schedules, and templates your
+            team needs before opening day. Edit anything.
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
             <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
           </div>
         </header>
 
-        <SectionTabs active={active} onChange={setActive} doc={doc} />
+        <SectionTabs
+          active={active}
+          onChange={setActive}
+          doc={doc}
+          recipeCount={initialRecipeCards.length}
+        />
 
         <div className="mt-6 space-y-6">
-          <CategoryEditor
-            key={active}
-            categoryKey={active}
-            label={activeLabel}
-            tagline={SOP_CATEGORY_TAGLINES[active]}
-            canEdit={canEdit}
-            doc={doc}
-            updateDoc={updateDoc}
-            onGenerate={() => handleGenerate(active)}
-            generating={generating === active}
-          />
+          {SOP_CATEGORY_KEYS.includes(active as SopCategoryKey) && (
+            <CategoryEditor
+              key={active}
+              categoryKey={active as SopCategoryKey}
+              label={activeLabel}
+              tagline={operationsSectionTagline(active)}
+              canEdit={canEdit}
+              doc={doc}
+              updateDoc={updateDoc}
+              onGenerate={() => handleGenerate(active as SopCategoryKey)}
+              generating={generating === active}
+            />
+          )}
+
+          {active === RECIPES_SECTION_KEY && (
+            <RecipesPanel cards={initialRecipeCards} />
+          )}
+
+          {active === "roles" && (
+            <RolesEditor
+              label={activeLabel}
+              tagline={operationsSectionTagline(active)}
+              canEdit={canEdit}
+              doc={doc}
+              updateDoc={updateDoc}
+              onGenerate={() => handleGenerate("roles")}
+              generating={generating === "roles"}
+            />
+          )}
+
+          {active === "vendor_contacts" && (
+            <VendorContactsEditor
+              label={activeLabel}
+              tagline={operationsSectionTagline(active)}
+              canEdit={canEdit}
+              doc={doc}
+              updateDoc={updateDoc}
+              onGenerate={() => handleGenerate("vendor_contacts")}
+              generating={generating === "vendor_contacts"}
+            />
+          )}
+
+          {active === "training" && (
+            <TrainingEditor
+              label={activeLabel}
+              tagline={operationsSectionTagline(active)}
+              canEdit={canEdit}
+              doc={doc}
+              updateDoc={updateDoc}
+              onGenerate={() => handleGenerate("training")}
+              generating={generating === "training"}
+            />
+          )}
         </div>
       </div>
 
@@ -240,18 +304,20 @@ function SectionTabs({
   active,
   onChange,
   doc,
+  recipeCount,
 }: {
-  active: SopCategoryKey;
-  onChange: (k: SopCategoryKey) => void;
+  active: OperationsSectionKey;
+  onChange: (k: OperationsSectionKey) => void;
   doc: OperationsPlaybookDocument;
+  recipeCount: number;
 }) {
-  const filledMap = useMemo<Record<SopCategoryKey, boolean>>(() => {
-    const out = {} as Record<SopCategoryKey, boolean>;
-    for (const k of SOP_CATEGORY_KEYS) {
-      out[k] = doc[k].items.length > 0;
-    }
+  const filledMap = useMemo<Record<OperationsSectionKey, boolean>>(() => {
+    const out = {} as Record<OperationsSectionKey, boolean>;
+    for (const k of SOP_CATEGORY_KEYS) out[k] = doc[k].items.length > 0;
+    for (const k of PLANNING_SECTION_KEYS) out[k] = doc[k].items.length > 0;
+    out[RECIPES_SECTION_KEY] = recipeCount > 0;
     return out;
-  }, [doc]);
+  }, [doc, recipeCount]);
 
   return (
     <div className={cardCls}>
@@ -260,7 +326,7 @@ function SectionTabs({
         aria-label="Operations Playbook sections"
         className="flex flex-wrap gap-1 p-1"
       >
-        {SOP_CATEGORY_KEYS.map((key) => {
+        {OPERATIONS_SECTION_KEYS.map((key) => {
           const isActive = active === key;
           const filled = filledMap[key];
           return (
@@ -281,7 +347,7 @@ function SectionTabs({
                   className={`w-3 h-3 ${isActive ? "text-white" : "text-[var(--teal)]"}`}
                 />
               )}
-              {SOP_CATEGORY_LABELS[key]}
+              {operationsSectionLabel(key)}
             </button>
           );
         })}
@@ -290,7 +356,7 @@ function SectionTabs({
   );
 }
 
-// ── Category editor (shared shape for all six SOPs) ─────────────────────────
+// ── Category editor (shared shape for SOPs) ─────────────────────────────────
 
 interface CategoryEditorProps {
   categoryKey: SopCategoryKey;
@@ -380,24 +446,13 @@ function CategoryEditor({
 
   return (
     <section className={`${cardCls} p-6`}>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0">
-          <h2 className={sectionLabelCls}>{label}</h2>
-          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{tagline}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Improving…" : "Improve with AI"}
-        </button>
-        <span className="sr-only" role="status">
-          {generating ? `Improving the ${label} section with AI…` : ""}
-        </span>
-      </div>
+      <SectionHeader
+        label={label}
+        tagline={tagline}
+        canEdit={canEdit}
+        generating={generating}
+        onGenerate={onGenerate}
+      />
 
       <div className="mb-5">
         <label className={labelCls}>How this SOP works</label>
@@ -416,13 +471,7 @@ function CategoryEditor({
           {category.items.length} {category.items.length === 1 ? "step" : "steps"}
         </span>
         {category.last_generated_at && (
-          <span className="text-[10px] text-[var(--dark-grey)]">
-            AI improved{" "}
-            {new Date(category.last_generated_at).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
+          <LastGeneratedAt at={category.last_generated_at} />
         )}
       </div>
 
@@ -493,6 +542,53 @@ function CategoryEditor({
         asking questions.
       </p>
     </section>
+  );
+}
+
+function SectionHeader({
+  label,
+  tagline,
+  canEdit,
+  generating,
+  onGenerate,
+}: {
+  label: string;
+  tagline: string;
+  canEdit: boolean;
+  generating: boolean;
+  onGenerate: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="flex-1 min-w-0">
+        <h2 className={sectionLabelCls}>{label}</h2>
+        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{tagline}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onGenerate}
+        disabled={!canEdit || generating}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        {generating ? "Improving…" : "Improve with AI"}
+      </button>
+      <span className="sr-only" role="status">
+        {generating ? `Improving the ${label} section with AI…` : ""}
+      </span>
+    </div>
+  );
+}
+
+function LastGeneratedAt({ at }: { at: string }) {
+  return (
+    <span className="text-[10px] text-[var(--dark-grey)]">
+      AI improved{" "}
+      {new Date(at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })}
+    </span>
   );
 }
 
@@ -616,5 +712,688 @@ function ChecklistItemRow({
         <Trash2 className="w-3.5 h-3.5" />
       </button>
     </li>
+  );
+}
+
+// ── Recipes panel (read-only, Menu-sourced) ─────────────────────────────────
+
+function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
+  const grouped = useMemo(() => groupRecipeCardsByCategory(cards), [cards]);
+
+  return (
+    <section className={`${cardCls} p-6`}>
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex-1 min-w-0">
+          <h2 className={sectionLabelCls}>Drink Recipes</h2>
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+            Read-only view of the recipes you build in the Menu workspace. Edit
+            a recipe by opening the menu item.
+          </p>
+        </div>
+        <Link
+          href="/workspace/menu-pricing"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Open Menu workspace
+        </Link>
+      </div>
+
+      {cards.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-[var(--border-medium)] bg-[var(--background)] p-6 text-center">
+          <p className="text-sm text-[var(--muted-foreground)] mb-2">
+            No menu items yet.
+          </p>
+          <p className="text-xs text-[var(--dark-grey)] mb-4">
+            Recipes live in the Menu workspace. Add your drinks and food there,
+            and they will show up here as printable recipe cards.
+          </p>
+          <Link
+            href="/workspace/menu-pricing"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:underline"
+          >
+            Add recipes in Menu workspace
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {grouped.map(({ category, cards: catCards }) => (
+            <div key={category}>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
+                {category}
+              </h3>
+              <div className="space-y-3">
+                {catCards.map((card) => (
+                  <RecipeCardRow key={card.menu_item_id} card={card} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className={`${helperCls} mt-4`}>
+        Tip: Add the prep notes and ingredients on each menu item in the Menu
+        workspace. They print here for the bar.
+      </p>
+    </section>
+  );
+}
+
+function RecipeCardRow({ card }: { card: OperationsRecipeCard }) {
+  return (
+    <article className="rounded-lg border border-[var(--border-medium)] bg-white p-4">
+      <header className="flex items-start justify-between gap-3 mb-2">
+        <h4 className="text-sm font-semibold text-[var(--foreground)]">{card.name}</h4>
+        <Link
+          href={`/workspace/menu-pricing?item=${card.menu_item_id}`}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--teal)] hover:underline flex-shrink-0"
+        >
+          Edit recipe
+          <ExternalLink className="w-3 h-3" />
+        </Link>
+      </header>
+      {card.ingredients.length > 0 && (
+        <div className="mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
+            Ingredients
+          </p>
+          <ul className="text-xs text-[var(--foreground)] space-y-0.5">
+            {card.ingredients.map((ing, idx) => (
+              <li key={`${card.menu_item_id}-${idx}`} className="leading-snug">
+                {ing.amount} {ing.unit} · {ing.ingredient_name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {card.notes && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
+            Method
+          </p>
+          <p className="text-xs text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
+            {card.notes}
+          </p>
+        </div>
+      )}
+      {card.ingredients.length === 0 && !card.notes && (
+        <p className="text-xs text-[var(--dark-grey)] italic">
+          No recipe details yet. Add ingredients or prep notes in the Menu
+          workspace.
+        </p>
+      )}
+    </article>
+  );
+}
+
+// ── Roles & shift responsibilities editor ───────────────────────────────────
+
+function RolesEditor({
+  label,
+  tagline,
+  canEdit,
+  doc,
+  updateDoc,
+  onGenerate,
+  generating,
+}: {
+  label: string;
+  tagline: string;
+  canEdit: boolean;
+  doc: OperationsPlaybookDocument;
+  updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  const section = doc.roles;
+
+  function patch(idx: number, p: Partial<RoleAssignment>) {
+    updateDoc((d) => {
+      const items = d.roles.items.map((it, i) => (i === idx ? { ...it, ...p } : it));
+      return { ...d, roles: { ...d.roles, items } };
+    });
+  }
+  function move(idx: number, delta: -1 | 1) {
+    updateDoc((d) => {
+      const items = d.roles.items.slice();
+      const next = idx + delta;
+      if (next < 0 || next >= items.length) return d;
+      [items[idx], items[next]] = [items[next], items[idx]];
+      return { ...d, roles: { ...d.roles, items } };
+    });
+  }
+  function remove(idx: number) {
+    updateDoc((d) => ({
+      ...d,
+      roles: { ...d.roles, items: d.roles.items.filter((_, i) => i !== idx) },
+    }));
+  }
+  function add() {
+    updateDoc((d) => ({
+      ...d,
+      roles: {
+        ...d.roles,
+        items: [
+          ...d.roles.items,
+          { id: localId(), role: "", responsibilities: "" },
+        ],
+      },
+    }));
+  }
+  function setIntro(intro: string) {
+    updateDoc((d) => ({ ...d, roles: { ...d.roles, intro } }));
+  }
+
+  return (
+    <section className={`${cardCls} p-6`}>
+      <SectionHeader
+        label={label}
+        tagline={tagline}
+        canEdit={canEdit}
+        generating={generating}
+        onGenerate={onGenerate}
+      />
+
+      <div className="mb-5">
+        <label className={labelCls}>How roles work in your shop</label>
+        <textarea
+          className={textareaCls}
+          rows={3}
+          value={section.intro}
+          onChange={(e) => setIntro(e.target.value)}
+          disabled={!canEdit}
+          placeholder="A one-line description for your team."
+        />
+      </div>
+
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          {section.items.length} {section.items.length === 1 ? "role" : "roles"}
+        </span>
+        {section.last_generated_at && (
+          <LastGeneratedAt at={section.last_generated_at} />
+        )}
+      </div>
+
+      <ol className="space-y-3">
+        {section.items.map((item, idx) => (
+          <li key={item.id} className="flex items-start gap-2">
+            <div className="flex flex-col gap-0.5 pt-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => move(idx, -1)}
+                disabled={!canEdit || idx === 0}
+                aria-label="Move role up"
+                className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ArrowUp className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(idx, 1)}
+                disabled={!canEdit || idx === section.items.length - 1}
+                aria-label="Move role down"
+                className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ArrowDown className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <input
+                className={inputCls}
+                value={item.role}
+                onChange={(e) => patch(idx, { role: e.target.value })}
+                disabled={!canEdit}
+                placeholder="Role (e.g. Bar, Register, Manager On Duty)"
+                aria-label="Role name"
+              />
+              <textarea
+                rows={3}
+                className={textareaCls}
+                value={item.responsibilities}
+                onChange={(e) => patch(idx, { responsibilities: e.target.value })}
+                disabled={!canEdit}
+                placeholder="What this role owns on the shift."
+                aria-label="Responsibilities"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => remove(idx)}
+              disabled={!canEdit}
+              aria-label="Remove role"
+              className="text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 mt-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      {section.items.length === 0 && (
+        <p className="text-xs text-[var(--dark-grey)] italic py-4 text-center">
+          No roles yet. Add your first role below or let AI draft a starter
+          set.
+        </p>
+      )}
+
+      {canEdit && (
+        <button
+          type="button"
+          onClick={add}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add role
+        </button>
+      )}
+    </section>
+  );
+}
+
+// ── Vendor & emergency contacts editor ──────────────────────────────────────
+
+function VendorContactsEditor({
+  label,
+  tagline,
+  canEdit,
+  doc,
+  updateDoc,
+  onGenerate,
+  generating,
+}: {
+  label: string;
+  tagline: string;
+  canEdit: boolean;
+  doc: OperationsPlaybookDocument;
+  updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  const section = doc.vendor_contacts;
+
+  function patch(idx: number, p: Partial<VendorContact>) {
+    updateDoc((d) => {
+      const items = d.vendor_contacts.items.map((it, i) =>
+        i === idx ? { ...it, ...p } : it,
+      );
+      return { ...d, vendor_contacts: { ...d.vendor_contacts, items } };
+    });
+  }
+  function move(idx: number, delta: -1 | 1) {
+    updateDoc((d) => {
+      const items = d.vendor_contacts.items.slice();
+      const next = idx + delta;
+      if (next < 0 || next >= items.length) return d;
+      [items[idx], items[next]] = [items[next], items[idx]];
+      return { ...d, vendor_contacts: { ...d.vendor_contacts, items } };
+    });
+  }
+  function remove(idx: number) {
+    updateDoc((d) => ({
+      ...d,
+      vendor_contacts: {
+        ...d.vendor_contacts,
+        items: d.vendor_contacts.items.filter((_, i) => i !== idx),
+      },
+    }));
+  }
+  function add() {
+    updateDoc((d) => ({
+      ...d,
+      vendor_contacts: {
+        ...d.vendor_contacts,
+        items: [
+          ...d.vendor_contacts.items,
+          {
+            id: localId(),
+            label: "",
+            contact_name: "",
+            phone: "",
+            email: "",
+            notes: "",
+          },
+        ],
+      },
+    }));
+  }
+  function setIntro(intro: string) {
+    updateDoc((d) => ({ ...d, vendor_contacts: { ...d.vendor_contacts, intro } }));
+  }
+
+  return (
+    <section className={`${cardCls} p-6`}>
+      <SectionHeader
+        label={label}
+        tagline={tagline}
+        canEdit={canEdit}
+        generating={generating}
+        onGenerate={onGenerate}
+      />
+
+      <div className="mb-5">
+        <label className={labelCls}>How to use this card</label>
+        <textarea
+          className={textareaCls}
+          rows={3}
+          value={section.intro}
+          onChange={(e) => setIntro(e.target.value)}
+          disabled={!canEdit}
+          placeholder="A one-line description."
+        />
+      </div>
+
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          {section.items.length} {section.items.length === 1 ? "contact" : "contacts"}
+        </span>
+        {section.last_generated_at && (
+          <LastGeneratedAt at={section.last_generated_at} />
+        )}
+      </div>
+
+      <ol className="space-y-3">
+        {section.items.map((item, idx) => (
+          <li
+            key={item.id}
+            className="rounded-lg border border-[var(--border-medium)] p-3"
+          >
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex flex-col gap-0.5 pt-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => move(idx, -1)}
+                  disabled={!canEdit || idx === 0}
+                  aria-label="Move contact up"
+                  className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(idx, 1)}
+                  disabled={!canEdit || idx === section.items.length - 1}
+                  aria-label="Move contact down"
+                  className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className={labelCls}>Role / type</label>
+                  <input
+                    className={inputCls}
+                    value={item.label}
+                    onChange={(e) => patch(idx, { label: e.target.value })}
+                    disabled={!canEdit}
+                    placeholder="Espresso Tech"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Contact name</label>
+                  <input
+                    className={inputCls}
+                    value={item.contact_name}
+                    onChange={(e) => patch(idx, { contact_name: e.target.value })}
+                    disabled={!canEdit}
+                    placeholder="Person or company"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Phone</label>
+                  <input
+                    className={inputCls}
+                    type="tel"
+                    value={item.phone}
+                    onChange={(e) => patch(idx, { phone: e.target.value })}
+                    disabled={!canEdit}
+                    placeholder="555-555-5555"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <input
+                    className={inputCls}
+                    type="email"
+                    value={item.email}
+                    onChange={(e) => patch(idx, { email: e.target.value })}
+                    disabled={!canEdit}
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Notes</label>
+                  <textarea
+                    className={textareaCls}
+                    rows={2}
+                    value={item.notes}
+                    onChange={(e) => patch(idx, { notes: e.target.value })}
+                    disabled={!canEdit}
+                    placeholder="Account number, after-hours line, contract reference."
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => remove(idx)}
+                disabled={!canEdit}
+                aria-label="Remove contact"
+                className="text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 mt-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      {section.items.length === 0 && (
+        <p className="text-xs text-[var(--dark-grey)] italic py-4 text-center">
+          No contacts yet. Add your first below or let AI draft a starter set.
+        </p>
+      )}
+
+      {canEdit && (
+        <button
+          type="button"
+          onClick={add}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add contact
+        </button>
+      )}
+    </section>
+  );
+}
+
+// ── New-hire training editor ────────────────────────────────────────────────
+
+function TrainingEditor({
+  label,
+  tagline,
+  canEdit,
+  doc,
+  updateDoc,
+  onGenerate,
+  generating,
+}: {
+  label: string;
+  tagline: string;
+  canEdit: boolean;
+  doc: OperationsPlaybookDocument;
+  updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  const section = doc.training;
+
+  function patch(idx: number, p: Partial<TrainingItem>) {
+    updateDoc((d) => {
+      const items = d.training.items.map((it, i) => (i === idx ? { ...it, ...p } : it));
+      return { ...d, training: { ...d.training, items } };
+    });
+  }
+  function move(idx: number, delta: -1 | 1) {
+    updateDoc((d) => {
+      const items = d.training.items.slice();
+      const next = idx + delta;
+      if (next < 0 || next >= items.length) return d;
+      [items[idx], items[next]] = [items[next], items[idx]];
+      return { ...d, training: { ...d.training, items } };
+    });
+  }
+  function remove(idx: number) {
+    updateDoc((d) => ({
+      ...d,
+      training: { ...d.training, items: d.training.items.filter((_, i) => i !== idx) },
+    }));
+  }
+  function add(phase: TrainingPhase) {
+    updateDoc((d) => ({
+      ...d,
+      training: {
+        ...d.training,
+        items: [...d.training.items, { id: localId(), phase, text: "" }],
+      },
+    }));
+  }
+  function setIntro(intro: string) {
+    updateDoc((d) => ({ ...d, training: { ...d.training, intro } }));
+  }
+
+  const groupedByPhase = useMemo(() => {
+    const map: Record<TrainingPhase, { item: TrainingItem; idx: number }[]> = {
+      day_1: [],
+      week_1: [],
+      month_1: [],
+    };
+    section.items.forEach((item, idx) => {
+      map[item.phase].push({ item, idx });
+    });
+    return map;
+  }, [section.items]);
+
+  return (
+    <section className={`${cardCls} p-6`}>
+      <SectionHeader
+        label={label}
+        tagline={tagline}
+        canEdit={canEdit}
+        generating={generating}
+        onGenerate={onGenerate}
+      />
+
+      <div className="mb-5">
+        <label className={labelCls}>How training works in your shop</label>
+        <textarea
+          className={textareaCls}
+          rows={3}
+          value={section.intro}
+          onChange={(e) => setIntro(e.target.value)}
+          disabled={!canEdit}
+          placeholder="A one-line description for trainers and new hires."
+        />
+      </div>
+
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          {section.items.length}{" "}
+          {section.items.length === 1 ? "milestone" : "milestones"}
+        </span>
+        {section.last_generated_at && (
+          <LastGeneratedAt at={section.last_generated_at} />
+        )}
+      </div>
+
+      <div className="space-y-5">
+        {TRAINING_PHASE_KEYS.map((phase) => {
+          const entries = groupedByPhase[phase];
+          return (
+            <div key={phase}>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
+                {TRAINING_PHASE_LABELS[phase]}
+              </h3>
+              <ol className="space-y-2">
+                {entries.map(({ item, idx }) => (
+                  <li key={item.id} className="flex items-start gap-2">
+                    <div className="flex flex-col gap-0.5 pt-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => move(idx, -1)}
+                        disabled={!canEdit || idx === 0}
+                        aria-label="Move milestone up"
+                        className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => move(idx, 1)}
+                        disabled={!canEdit || idx === section.items.length - 1}
+                        aria-label="Move milestone down"
+                        className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <textarea
+                        rows={2}
+                        className={textareaCls}
+                        value={item.text}
+                        onChange={(e) => patch(idx, { text: e.target.value })}
+                        disabled={!canEdit}
+                        placeholder="Specific milestone a new hire should hit."
+                      />
+                      <select
+                        className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                        value={item.phase}
+                        onChange={(e) =>
+                          patch(idx, { phase: e.target.value as TrainingPhase })
+                        }
+                        disabled={!canEdit}
+                        aria-label="Training phase"
+                      >
+                        {TRAINING_PHASE_KEYS.map((p) => (
+                          <option key={p} value={p}>
+                            {TRAINING_PHASE_LABELS[p]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => remove(idx)}
+                      disabled={!canEdit}
+                      aria-label="Remove milestone"
+                      className="text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 mt-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => add(phase)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-lg transition-colors"
+                >
+                  <Plus className="w-3 h-3" /> Add to {TRAINING_PHASE_LABELS[phase]}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {section.items.length === 0 && (
+        <p className="text-xs text-[var(--dark-grey)] italic py-4 text-center">
+          No milestones yet. Add one above or let AI draft a starter checklist.
+        </p>
+      )}
+    </section>
   );
 }
