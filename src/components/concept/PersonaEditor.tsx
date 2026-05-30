@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
 import {
   type CustomerPersona,
   type PersonaValue,
@@ -125,38 +124,13 @@ export function PersonaEditor({
   const isNew = !allPersonas.some((p) => p.id === persona.id);
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-30 bg-black/20"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Drawer */}
-      <div
-        className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] bg-white shadow-xl flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        aria-label={isNew ? "Add persona" : "Edit persona"}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <h2 className="text-sm font-semibold text-[var(--foreground)]">
-            {isNew ? "Add persona" : "Edit persona"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+    <div
+      className="border-t border-[var(--border)] bg-[var(--warm-1050)]"
+      role="region"
+      aria-label={isNew ? "Add persona" : "Edit persona"}
+    >
+      {/* Body */}
+      <div className="px-5 py-5 space-y-5">
           {/* Name */}
           <div>
             <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-name">
@@ -482,8 +456,7 @@ export function PersonaEditor({
               </button>
             )}
           </div>
-        </div>
       </div>
-    </>
+    </div>
   );
 }
