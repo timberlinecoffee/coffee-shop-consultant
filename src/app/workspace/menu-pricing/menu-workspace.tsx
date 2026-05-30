@@ -1131,13 +1131,13 @@ function RecipeTabContent({
         </p>
       )}
 
-      {/* Ingredients — recipe-page treatment: light hierarchy, name + qty + unit */}
+      {/* Ingredients */}
       <section>
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+        <h3 className="text-[15px] font-semibold text-[var(--foreground)] tracking-tight mb-4">
           Ingredients
         </h3>
         {recipeLines.length > 0 ? (
-          <ul className="space-y-2 mb-3">
+          <ul className="space-y-1 mb-4">
             {recipeLines.map((line) => {
               const ing = ingredients.find((i) => i.id === line.ingredient_id);
               const lineCost = ing ? line.amount * costPerUnit(ing) : null;
@@ -1156,7 +1156,7 @@ function RecipeTabContent({
             })}
           </ul>
         ) : (
-          <p className="text-xs text-[var(--dark-grey)] mb-3 italic">
+          <p className="text-sm text-[var(--muted-foreground)] mb-4 italic">
             No ingredients yet. Add one below to build the recipe and compute COGS.
           </p>
         )}
@@ -1174,36 +1174,41 @@ function RecipeTabContent({
         )}
       </section>
 
-      {/* Preparation steps — ordered list, recipe-page treatment */}
-      <section>
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+      {/* Preparation steps */}
+      <section className="border-t border-[var(--border-subtle)] pt-2">
+        <h3 className="text-[15px] font-semibold text-[var(--foreground)] tracking-tight mb-4">
           Preparation
         </h3>
         {steps.length === 0 ? (
-          <p className="text-xs text-[var(--dark-grey)] mb-3 italic">
-            No preparation steps yet. {canEdit && "Click \"Suggest prep steps with AI\" above, or add steps manually."}
+          <p className="text-sm text-[var(--muted-foreground)] mb-3 italic">
+            No preparation steps yet.{canEdit && " Click \"Suggest prep steps with AI\" above, or add steps manually."}
           </p>
         ) : (
-          <ol className="space-y-2 mb-3">
+          <ol className="space-y-4 mb-3">
             {steps.map((step, idx) => (
               <li key={idx} className="flex items-start gap-3">
-                <span className="mt-2 shrink-0 w-6 h-6 rounded-full bg-[var(--teal)] text-white text-xs font-bold flex items-center justify-center">
+                <span className="mt-0.5 shrink-0 w-7 h-7 rounded-full bg-[var(--teal)] text-white text-xs font-bold flex items-center justify-center">
                   {idx + 1}
                 </span>
-                <textarea
-                  className={inputCls + " resize-none flex-1"}
-                  rows={2}
-                  value={step}
-                  disabled={!canEdit}
-                  onChange={(e) => updateStep(idx, e.target.value)}
-                  onBlur={() => {
-                    const cleaned = steps
-                      .map((s) => s.trim())
-                      .filter((s) => s.length > 0);
-                    onUpdateItem({ preparation_steps: cleaned });
-                  }}
-                  placeholder="Step instructions…"
-                />
+                {canEdit ? (
+                  <textarea
+                    className={inputCls + " resize-none flex-1"}
+                    rows={2}
+                    value={step}
+                    onChange={(e) => updateStep(idx, e.target.value)}
+                    onBlur={() => {
+                      const cleaned = steps
+                        .map((s) => s.trim())
+                        .filter((s) => s.length > 0);
+                      onUpdateItem({ preparation_steps: cleaned });
+                    }}
+                    placeholder="Step instructions…"
+                  />
+                ) : (
+                  <p className="text-sm text-[var(--foreground)] leading-relaxed flex-1 pt-0.5">
+                    {step}
+                  </p>
+                )}
                 {canEdit && (
                   <div className="flex flex-col gap-0.5 mt-1 shrink-0">
                     <button
@@ -1250,20 +1255,29 @@ function RecipeTabContent({
         )}
       </section>
 
-      {/* Notes — prep notes, seasonal availability, variations */}
-      <section>
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+      {/* Notes */}
+      <section className="border-t border-[var(--border-subtle)] pt-2">
+        <h3 className="text-[15px] font-semibold text-[var(--foreground)] tracking-tight mb-4">
           Notes
         </h3>
-        <textarea
-          className={inputCls + " resize-none"}
-          rows={3}
-          value={notes}
-          disabled={!canEdit}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={onNotesBlur}
-          placeholder="Prep notes, variations, seasonal availability…"
-        />
+        {canEdit ? (
+          <textarea
+            className={inputCls + " resize-none"}
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={onNotesBlur}
+            placeholder="Prep notes, variations, seasonal availability…"
+          />
+        ) : notes.trim() ? (
+          <p className="text-sm text-[var(--foreground)] leading-relaxed italic">
+            {notes}
+          </p>
+        ) : (
+          <p className="text-sm text-[var(--muted-foreground)] italic">
+            No notes added.
+          </p>
+        )}
       </section>
     </div>
   );
@@ -1534,6 +1548,33 @@ function RecipeLineRow({
   // chip pointing the owner to the Ingredients tab instead.
   const needsCost = ingredient !== null && ingredient.package_cost_cents === 0;
 
+  if (!canEdit) {
+    return (
+      <div className="flex items-baseline gap-3 py-1.5">
+        <span className="flex-1 min-w-0 text-sm font-medium text-[var(--foreground)] break-words">
+          {ingredient?.name ?? "Unknown"}
+        </span>
+        <span className="text-sm text-[var(--muted-foreground)] shrink-0">
+          {line.amount} {line.unit}
+        </span>
+        {needsCost ? (
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider text-[var(--warning-text)] bg-[var(--warning-bg)] border border-[var(--warning-amber)] rounded px-1.5 py-0.5 shrink-0"
+            title="No package cost set yet. Add one in the Ingredients tab and this line's cost will flow into COGS."
+          >
+            Needs cost
+          </span>
+        ) : (
+          lineCost !== null && (
+            <span className="text-xs text-[var(--muted-foreground)] shrink-0 tabular-nums">
+              ${lineCost.toFixed(4)}
+            </span>
+          )
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2">
       <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
@@ -1543,7 +1584,6 @@ function RecipeLineRow({
         type="number"
         className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={amount}
-        disabled={!canEdit}
         onChange={(e) => setAmount(e.target.value)}
         onBlur={handleAmountBlur}
         min={0}
@@ -1552,7 +1592,6 @@ function RecipeLineRow({
       <select
         className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
         value={line.unit}
-        disabled={!canEdit}
         onChange={handleUnitChange}
       >
         {UNIT_OPTIONS.map((u) => (
@@ -1573,15 +1612,13 @@ function RecipeLineRow({
           </span>
         )
       )}
-      {canEdit && (
-        <button
-          type="button"
-          onClick={onDelete}
-          className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors shrink-0"
-        >
-          <X size={12} />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onDelete}
+        className="text-[var(--neutral-cool-350)] hover:text-[var(--error-accent)] transition-colors shrink-0"
+      >
+        <X size={12} />
+      </button>
     </div>
   );
 }
