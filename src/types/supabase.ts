@@ -8,7 +8,6 @@ export type WorkspaceKey =
   | 'menu_pricing'
   | 'buildout_equipment'
   | 'inventory'
-  | 'opening_milestones'
   | 'opening_month_plan'
   | 'hiring'
   | 'marketing'

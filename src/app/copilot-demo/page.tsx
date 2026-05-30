@@ -12,7 +12,6 @@ const WORKSPACE_KEYS: WorkspaceKey[] = [
   "financials",
   "menu_pricing",
   "buildout_equipment",
-  "opening_milestones",
   "opening_month_plan",
 ];
 

@@ -204,14 +204,13 @@ const MODULE_TO_KEY: Record<number, string> = {
   3: "location_lease",
   4: "menu_pricing",
   5: "buildout_equipment",
-  6: "opening_milestones",
+  6: "opening_month_plan",
   7: "hiring",
   8: "business_plan",
   9: "marketing",
   10: "suppliers",
   11: "operations_playbook",
   13: "inventory",
-  14: "opening_month_plan",
 };
 
 export function workspaceKeyForModule(moduleNumber: number): string {

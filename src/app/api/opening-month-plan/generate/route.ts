@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
           .from("workspace_documents")
           .select("content")
           .eq("plan_id", planId)
-          .eq("workspace_key", "opening_milestones")
+          .eq("workspace_key", "opening_month_plan")
           .maybeSingle()
 
         const config = normalizeLaunchPlanConfig(existingDoc?.content)
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
         await supabase
           .from("workspace_documents")
           .upsert(
-            { plan_id: planId, workspace_key: "opening_milestones", content: config },
+            { plan_id: planId, workspace_key: "opening_month_plan", content: config },
             { onConflict: "plan_id,workspace_key" }
           )
 
