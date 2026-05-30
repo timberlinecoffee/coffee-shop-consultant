@@ -17,6 +17,7 @@ import {
 } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
+import { CoPilotBeacon } from "@/components/workspace/CoPilotBeacon";
 import {
   isWorkspaceStatus,
   type WorkspaceStatus,
@@ -184,6 +185,8 @@ export function WorkspaceProgressProvider({
           <WorkspaceTopBar items={navItems} />
           <main className="flex-1">{children}</main>
         </div>
+        {/* TIM-1408: single global Co-pilot entry point */}
+        <CoPilotBeacon />
       </div>
     </WorkspaceStatusContext.Provider>
   );
@@ -201,14 +204,14 @@ const MODULE_TO_KEY: Record<number, string> = {
   3: "location_lease",
   4: "menu_pricing",
   5: "buildout_equipment",
-  6: "launch_plan",
+  6: "opening_milestones",
   7: "hiring",
   8: "business_plan",
   9: "marketing",
   10: "suppliers",
   11: "operations_playbook",
-  12: "marketing_pre_launch",
   13: "inventory",
+  14: "opening_month_plan",
 };
 
 export function workspaceKeyForModule(moduleNumber: number): string {

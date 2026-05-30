@@ -34,7 +34,7 @@ const TIERS: Tier[] = [
     highlight: false,
     features: [
       "All Course Modules",
-      "25 AI Coaching Credits/Month",
+      "25 AI Planning Credits/Month",
       "Complete Every Exercise",
       "BRD and Financial Model Generation",
       "Export to PDF",
@@ -60,7 +60,7 @@ const TIERS: Tier[] = [
     highlight: true,
     features: [
       "Everything in Starter",
-      "100 AI Coaching Credits/Month",
+      "100 AI Planning Credits/Month",
       "Weekly Async Q&A with Trent",
       "Financial Model Stress-Testing",
       "Priority Support",
@@ -82,7 +82,7 @@ const TIERS: Tier[] = [
     highlight: false,
     features: [
       "Everything in Growth",
-      "500 AI Coaching Credits/Month",
+      "500 AI Planning Credits/Month",
       "Equipment Sourcing Assistance",
       "Roaster Matching Recommendations",
       "30-Min 1-on-1 Call at BRD Completion",
@@ -103,8 +103,8 @@ const FAQ = [
     a: "Annual plans are charged as a single payment at the start of each year. You save roughly two months compared with paying monthly.",
   },
   {
-    q: "What counts as an AI coaching credit?",
-    a: "Each message you send to the AI coach uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
+    q: "What counts as an AI planning credit?",
+    a: "Each message you send to the AI planning co-pilot uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
   },
   {
     q: "What is the weekly async Q&A?",
@@ -112,7 +112,7 @@ const FAQ = [
   },
   {
     q: "Is there a free trial?",
-    a: "Yes — new accounts get 5 free Copilot messages to try the AI co-pilot before subscribing. You can also cancel within 7 days of your first payment for a full refund, no questions asked.",
+    a: "New accounts get 5 free AI planning messages to try the co-pilot before subscribing. No credit card is required for the preview, and your account will not be charged unless you start a paid subscription. After subscribing, you can cancel within 7 days of your first payment for a full refund, no questions asked.",
   },
   {
     q: "What payment methods do you accept?",
@@ -256,14 +256,40 @@ function PricingPageInner() {
                   </div>
 
                   {interval === "annual" && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>
-                        {tier.annualBilled}
-                      </span>
-                      <span className="text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
-                        {tier.annualSavings}
-                      </span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-xs ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>
+                          {tier.annualBilled}
+                        </span>
+                        <span className="text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
+                          {tier.annualSavings}
+                        </span>
+                      </div>
+                      <p className={`text-xs mb-2 ${tier.highlight ? "text-white/70" : "text-[var(--dark-grey)]"}`}>
+                        Billed once at $
+                        {tier.annualBilled.replace(/[^0-9,]/g, "")}{" "}
+                        for 12 months. 7-day money-back guarantee; non-refundable after. Cancel anytime; access continues through the paid year. See{" "}
+                        <a
+                          href="/subscription-terms"
+                          className={`underline ${tier.highlight ? "text-white" : "text-[var(--teal)]"}`}
+                        >
+                          Subscription Terms
+                        </a>
+                        .
+                      </p>
+                    </>
+                  )}
+                  {interval === "monthly" && (
+                    <p className={`text-xs mb-2 ${tier.highlight ? "text-white/70" : "text-[var(--dark-grey)]"}`}>
+                      Renews monthly. 7-day money-back on first payment; non-refundable after. Cancel anytime. See{" "}
+                      <a
+                        href="/subscription-terms"
+                        className={`underline ${tier.highlight ? "text-white" : "text-[var(--teal)]"}`}
+                      >
+                        Subscription Terms
+                      </a>
+                      .
+                    </p>
                   )}
 
                   <p className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>

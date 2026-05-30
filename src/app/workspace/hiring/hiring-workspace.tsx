@@ -30,29 +30,30 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import {
   type OrgRole,
-  type InterviewCandidate,
+  type InterviewCandidate, // V2: candidate tracking
   type InterviewQuestion,
-  type InterviewScore,
+  type InterviewScore, // V2: per-candidate scores
   type InterviewScorecard,
   type CompetencyFormTemplate,
   type OnboardingPlanInstance,
   type OnboardingTask,
   type StaffCompetency,
-  type StaffFile,
-  type CompetencyEvaluation,
+  type StaffFile, // V2: per-staff files
+  type CompetencyEvaluation, // V2: per-staff evaluations
   type HiringRoleStatus,
-  type CandidateStatus,
+  type CandidateStatus, // V2: candidate status
   type OnboardingPhase,
   type HiringCountry,
   type PlanHiringSettings,
   type HiringRequirementSet,
-  CANDIDATE_STATUS_CONFIG,
-  CANDIDATE_STATUS_ORDER,
+  CANDIDATE_STATUS_CONFIG, // V2: candidate status config
+  CANDIDATE_STATUS_ORDER, // V2: candidate status ordering
   ROLE_STATUS_CONFIG,
   PHASE_LABELS,
   PHASE_ORDER,
@@ -155,6 +156,8 @@ function HiringPdfButton({
 
 // ── Status pill ───────────────────────────────────────────────────────────────
 
+// V2: CandidatePill deferred (TIM-1419) — per-candidate tracking removed from V1.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CandidatePill({
   status,
   onClick,
@@ -188,10 +191,10 @@ function RolePill({ status }: { status: HiringRoleStatus }) {
 // ── Shared input styles ───────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-4";
 
 // ── Org Structure tab ─────────────────────────────────────────────────────────
 
@@ -303,9 +306,14 @@ function OrgTab({
           )}
           <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2 min-w-0">
             <Users size={14} className="text-[var(--teal)] shrink-0" />
-            <span className="text-sm font-medium text-[var(--foreground)] truncate">
-              {role.role_title || <span className="text-[var(--dark-grey)] font-normal">Unnamed role</span>}
-            </span>
+            {role.role_title ? (
+              <TruncatedText
+                text={role.role_title}
+                className="text-sm font-medium text-[var(--foreground)]"
+              />
+            ) : (
+              <span className="text-sm font-medium text-[var(--dark-grey)] font-normal">Unnamed role</span>
+            )}
             <span className="text-xs text-[var(--muted-foreground)] shrink-0">
               ×{role.headcount}
             </span>
@@ -588,11 +596,16 @@ function RoleRow({
       {/* Role header row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-[var(--foreground)] truncate block">
-            {role.role_title || (
-              <span className="text-[var(--dark-grey)] font-normal">Unnamed role</span>
-            )}
-          </span>
+          {role.role_title ? (
+            <TruncatedText
+              text={role.role_title}
+              className="text-sm font-medium text-[var(--foreground)] block"
+            />
+          ) : (
+            <span className="text-sm font-medium text-[var(--dark-grey)] font-normal block">
+              Unnamed role
+            </span>
+          )}
           <span className="text-xs text-[var(--muted-foreground)]">
             {role.headcount} headcount
             {role.monthly_cost_cents
@@ -649,8 +662,11 @@ function RoleRow({
 
         {jdOpen && (
           <div className="px-4 pb-4 space-y-4 bg-[var(--background)] border-t border-[var(--neutral-cool-150)]">
+            <span className="sr-only" role="status">
+              {improvingField ? "Improving job description field with AI…" : ""}
+            </span>
             {jdLoading ? (
-              <p className="text-sm text-[var(--dark-grey)] pt-3">Loading...</p>
+              <p className="text-sm text-[var(--dark-grey)] pt-3" role="status">Loading...</p>
             ) : (
               <>
                 <div className="pt-3 space-y-4">
@@ -765,18 +781,7 @@ function RoleRow({
                 )}
               </select>
             </div>
-            <div>
-              <label className={labelCls}>Start date</label>
-              <input
-                className={inputCls}
-                type="date"
-                value={role.start_date ?? ""}
-                onChange={(e) =>
-                  onUpdate({ start_date: e.target.value || null })
-                }
-                disabled={!canEdit}
-              />
-            </div>
+            {/* V2: start_date / hiring date removed from Hiring suite (TIM-1419). Field preserved in DB; target start date is now on Financial Suite employee load. */}
             {/* Compensation framework (TIM-1303) */}
             <div className="sm:col-span-2 border border-[var(--neutral-cool-200)] rounded-lg p-3 bg-white">
               <div className="flex items-center justify-between mb-2">
@@ -1053,7 +1058,7 @@ function RoleHubPanel({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <ClipboardCheck size={14} className="text-[var(--teal)]" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Scorecards</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">Scorecards</p>
                   </div>
                   {canEdit && (
                     <button
@@ -1075,7 +1080,7 @@ function RoleHubPanel({
                           <>
                             <input
                               autoFocus
-                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
+                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -1142,7 +1147,7 @@ function RoleHubPanel({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BookOpen size={14} className="text-[var(--teal)]" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Competency Form</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">Competency Form</p>
                   </div>
                   {canEdit && (
                     <button
@@ -1164,7 +1169,7 @@ function RoleHubPanel({
                           <>
                             <input
                               autoFocus
-                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus:outline-none focus:border-[var(--teal)]"
+                              className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
                               value={renameFormValue}
                               onChange={(e) => setRenameFormValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -1221,159 +1226,78 @@ function RoleHubPanel({
 }
 
 // ── Interview Scorecard tab ───────────────────────────────────────────────────
+// V1: template-only view. Per-candidate scorecard fill deferred to V2 (TIM-1419).
+// V2 will restore: candidate list, per-candidate score entry, weighted-score total.
 
 function InterviewTab({
   planId,
   canEdit,
   roles,
-  candidates,
   questions,
-  scores,
-  onCandidatesChange,
   onQuestionsChange,
-  onScoresChange,
 }: {
   planId: string;
   canEdit: boolean;
   roles: OrgRole[];
-  candidates: InterviewCandidate[];
   questions: InterviewQuestion[];
-  scores: InterviewScore[];
-  onCandidatesChange: (c: InterviewCandidate[]) => void;
   onQuestionsChange: (q: InterviewQuestion[]) => void;
-  onScoresChange: (s: InterviewScore[]) => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(
-    candidates[0]?.id ?? null
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(
+    roles[0]?.id ?? null
   );
   const [roleScorecards, setRoleScorecards] = useState<InterviewScorecard[]>([]);
   const [selectedScorecardId, setSelectedScorecardId] = useState<string | null>(null);
+  const [loadingScorecards, setLoadingScorecards] = useState(false);
 
-  const selected = candidates.find((c) => c.id === selectedId) ?? null;
-
-  // Fetch scorecards for the selected candidate's role, auto-select default.
+  // Load scorecards when selected role changes.
   useEffect(() => {
-    if (!selected?.role_id) {
+    if (!selectedRoleId) {
       setRoleScorecards([]);
       setSelectedScorecardId(null);
       return;
     }
-    fetch(`/api/workspaces/hiring/scorecards?role_id=${selected.role_id}`)
+    setLoadingScorecards(true);
+    fetch(`/api/workspaces/hiring/scorecards?role_id=${selectedRoleId}`)
       .then((r) => r.json())
       .then((sc: unknown) => {
         const list = Array.isArray(sc) ? (sc as InterviewScorecard[]) : [];
         setRoleScorecards(list);
         const def = list.find((s) => s.is_default) ?? list[0] ?? null;
         setSelectedScorecardId(def?.id ?? null);
-      });
+      })
+      .finally(() => setLoadingScorecards(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.role_id]);
+  }, [selectedRoleId]);
 
-  // Filter questions by active scorecard when one is selected.
+  // Template questions for the selected scorecard / role.
   const roleQuestions = questions.filter((q) => {
     if (selectedScorecardId) return q.scorecard_id === selectedScorecardId;
-    return (q.role_id === selected?.role_id || q.role_id === null) && !q.scorecard_id;
+    return (q.role_id === selectedRoleId || q.role_id === null) && !q.scorecard_id;
   });
-
-  // Compute weighted score across all scored questions for a candidate.
-  function candidateWeightedScore(candidateId: string): number | null {
-    let ws = 0, tw = 0;
-    for (const s of scores) {
-      if (s.candidate_id !== candidateId || s.score <= 0) continue;
-      const q = questions.find((q) => q.id === s.question_id);
-      if (!q) continue;
-      ws += s.score * q.weight;
-      tw += q.weight * 5;
-    }
-    return tw === 0 ? null : Math.round((ws / tw) * 100);
-  }
-
-  async function addCandidate() {
-    const optimistic: InterviewCandidate = {
-      id: makeLocalId(),
-      plan_id: planId,
-      role_id: null,
-      name: "",
-      contact: null,
-      status: "applied",
-      notes: null,
-      position: candidates.length,
-    };
-    onCandidatesChange([...candidates, optimistic]);
-    setSelectedId(optimistic.id);
-
-    const res = await fetch(
-      `/api/workspaces/hiring/candidates?planId=${planId}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan_id: planId,
-          name: "",
-          status: "applied",
-          position: candidates.length,
-        }),
-      }
-    );
-    if (res.ok) {
-      const created = (await res.json()) as InterviewCandidate;
-      onCandidatesChange(candidates.map((c) => (c.id === optimistic.id ? created : c)));
-      setSelectedId(created.id);
-    } else {
-      onCandidatesChange(candidates.filter((c) => c.id !== optimistic.id));
-    }
-  }
-
-  async function updateCandidate(
-    id: string,
-    patch: Partial<InterviewCandidate>
-  ) {
-    onCandidatesChange(candidates.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-    await fetch(`/api/workspaces/hiring/candidates?planId=${planId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...patch }),
-    });
-  }
-
-  async function deleteCandidate(id: string) {
-    const prev = candidates;
-    onCandidatesChange(candidates.filter((c) => c.id !== id));
-    if (selectedId === id) setSelectedId(candidates.find((c) => c.id !== id)?.id ?? null);
-    const res = await fetch(
-      `/api/workspaces/hiring/candidates?planId=${planId}&id=${id}`,
-      { method: "DELETE" }
-    );
-    if (!res.ok) onCandidatesChange(prev);
-  }
 
   async function addQuestion() {
     const optimistic: InterviewQuestion = {
       id: makeLocalId(),
       plan_id: planId,
-      role_id: selected?.role_id ?? null,
+      role_id: selectedRoleId,
       scorecard_id: selectedScorecardId,
       prompt: "",
       weight: 3,
       order_index: questions.length,
     };
     onQuestionsChange([...questions, optimistic]);
-
-    const res = await fetch(
-      `/api/workspaces/hiring/questions?planId=${planId}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan_id: planId,
-          role_id: selected?.role_id ?? null,
-          scorecard_id: selectedScorecardId,
-          prompt: "",
-          weight: 3,
-          order_index: questions.length,
-        }),
-      }
-    );
+    const res = await fetch(`/api/workspaces/hiring/questions?planId=${planId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan_id: planId,
+        role_id: selectedRoleId,
+        scorecard_id: selectedScorecardId,
+        prompt: "",
+        weight: 3,
+        order_index: questions.length,
+      }),
+    });
     if (res.ok) {
       const created = (await res.json()) as InterviewQuestion;
       onQuestionsChange(questions.map((q) => (q.id === optimistic.id ? created : q)));
@@ -1382,10 +1306,7 @@ function InterviewTab({
     }
   }
 
-  async function updateQuestion(
-    id: string,
-    patch: Partial<InterviewQuestion>
-  ) {
+  async function updateQuestion(id: string, patch: Partial<InterviewQuestion>) {
     onQuestionsChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
     await fetch(`/api/workspaces/hiring/questions?planId=${planId}`, {
       method: "PATCH",
@@ -1397,374 +1318,140 @@ function InterviewTab({
   async function deleteQuestion(id: string) {
     const prev = questions;
     onQuestionsChange(questions.filter((q) => q.id !== id));
-    const res = await fetch(
-      `/api/workspaces/hiring/questions?planId=${planId}&id=${id}`,
-      { method: "DELETE" }
-    );
+    const res = await fetch(`/api/workspaces/hiring/questions?planId=${planId}&id=${id}`, { method: "DELETE" });
     if (!res.ok) onQuestionsChange(prev);
   }
 
-  async function upsertScore(
-    candidateId: string,
-    questionId: string,
-    score: number,
-    notes: string | null
-  ) {
-    const existing = scores.find(
-      (s) => s.candidate_id === candidateId && s.question_id === questionId
-    );
-    const updated: InterviewScore = existing
-      ? { ...existing, score, notes }
-      : { id: makeLocalId(), candidate_id: candidateId, question_id: questionId, scorecard_id: selectedScorecardId, score, notes };
-    onScoresChange(
-      existing
-        ? scores.map((s) =>
-            s.candidate_id === candidateId && s.question_id === questionId
-              ? updated
-              : s
-          )
-        : [...scores, updated]
-    );
-    await fetch(`/api/workspaces/hiring/scores?planId=${planId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidate_id: candidateId, question_id: questionId, scorecard_id: selectedScorecardId, score, notes }),
-    });
-  }
-
-  function cycleStatus(candidate: InterviewCandidate) {
-    const idx = CANDIDATE_STATUS_ORDER.indexOf(candidate.status);
-    const next =
-      CANDIDATE_STATUS_ORDER[(idx + 1) % CANDIDATE_STATUS_ORDER.length];
-    updateCandidate(candidate.id, { status: next });
-  }
-
-  // Weighted total for selected candidate
-  const weightedTotal = useMemo(() => {
-    if (!selected) return null;
-    let weightedSum = 0;
-    let totalWeight = 0;
-    for (const q of roleQuestions) {
-      const s = scores.find(
-        (sc) => sc.candidate_id === selected.id && sc.question_id === q.id
-      );
-      if (s && s.score > 0) {
-        weightedSum += s.score * q.weight;
-        totalWeight += q.weight * 5;
-      }
-    }
-    if (totalWeight === 0) return null;
-    return ((weightedSum / totalWeight) * 100).toFixed(0);
-  }, [selected, roleQuestions, scores]);
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      {/* Left: candidate list */}
-      <div className="lg:col-span-1 space-y-3">
+    <div className="space-y-4">
+      {/* Role + scorecard selector */}
+      <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Role</label>
+            <select
+              className={inputCls}
+              value={selectedRoleId ?? ""}
+              onChange={(e) => setSelectedRoleId(e.target.value || null)}
+              disabled={roles.length === 0}
+            >
+              {roles.length === 0 && <option value="">No roles yet</option>}
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.role_title || "Unnamed role"}
+                </option>
+              ))}
+            </select>
+          </div>
+          {roleScorecards.length > 0 && (
+            <div>
+              <label className={labelCls}>Scorecard variant</label>
+              <select
+                className={inputCls}
+                value={selectedScorecardId ?? ""}
+                onChange={(e) => setSelectedScorecardId(e.target.value || null)}
+              >
+                {roleScorecards.map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    {sc.name}{sc.is_default ? " (Default)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        {selectedRoleId && (
+          <p className="text-[10px] text-[var(--muted-foreground)] mt-2">
+            Manage scorecard variants (new / rename / duplicate) from the Role Hub on the Org Structure tab.
+          </p>
+        )}
+      </div>
+
+      {/* Question template */}
+      {selectedRoleId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Candidates</p>
+          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                Template questions and weights for this scorecard.
+              </p>
+            </div>
             {canEdit && (
               <button
                 type="button"
-                onClick={addCandidate}
-                className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
+                onClick={addQuestion}
+                className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] shrink-0"
               >
                 <Plus size={13} />
-                Add
+                Add question
               </button>
             )}
           </div>
-          {candidates.length === 0 ? (
+
+          {loadingScorecards ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-[var(--dark-grey)]">No candidates yet.</p>
+              <p className="text-sm text-[var(--dark-grey)]">Loading…</p>
+            </div>
+          ) : roleQuestions.length === 0 ? (
+            <div className="py-8 text-center px-5">
+              <p className="text-sm text-[var(--dark-grey)]">
+                {selectedScorecardId
+                  ? "No questions in this scorecard yet. Add one above."
+                  : "No questions yet. Add interview questions above."}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-[var(--neutral-cool-100)]">
-              {candidates.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setSelectedId(c.id)}
-                  className={`w-full text-left px-4 py-3 flex items-center gap-2 transition-colors ${
-                    selectedId === c.id
-                      ? "bg-[var(--teal-tint-500)]"
-                      : "hover:bg-[var(--background)]"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                      {c.name || (
-                        <span className="text-[var(--dark-grey)] font-normal">
-                          New candidate
-                        </span>
+              {roleQuestions.map((q) => (
+                <div key={q.id} className="px-5 py-4">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <input
+                        className="w-full text-sm text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent"
+                        value={q.prompt}
+                        onChange={(e) => updateQuestion(q.id, { prompt: e.target.value })}
+                        placeholder="Interview question..."
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] text-[var(--muted-foreground)]">Weight</span>
+                      <select
+                        className="text-xs border border-[var(--border-medium)] rounded px-1 py-0.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)]"
+                        value={q.weight}
+                        onChange={(e) => updateQuestion(q.id, { weight: parseInt(e.target.value, 10) })}
+                        disabled={!canEdit}
+                      >
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => deleteQuestion(q.id)}
+                          className="text-[var(--dark-grey)] hover:text-[var(--error)] p-0.5"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       )}
-                    </p>
-                    <p className="text-[10px] text-[var(--muted-foreground)] truncate">
-                      {roles.find((r) => r.id === c.role_id)?.role_title ?? "No role"}
-                    </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {(() => {
-                      const pct = candidateWeightedScore(c.id);
-                      return pct !== null ? (
-                        <span className="text-[10px] font-bold text-[var(--teal)]">{pct}%</span>
-                      ) : null;
-                    })()}
-                    <CandidatePill status={c.status} />
-                  </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Right: scorecard */}
-      <div className="lg:col-span-2 space-y-4">
-        {!selected ? (
-          <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-16 text-center">
-            <p className="text-sm text-[var(--dark-grey)]">Select a candidate to view their scorecard.</p>
-          </div>
-        ) : (
-          <>
-            {/* Candidate detail */}
-            <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <p className={sectionLabelCls}>Candidate details</p>
-                <div className="flex items-center gap-2">
-                  <CandidatePill
-                    status={selected.status}
-                    onClick={canEdit ? () => cycleStatus(selected) : undefined}
-                  />
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => deleteCandidate(selected.id)}
-                      className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Name</label>
-                  <input
-                    className={inputCls}
-                    value={selected.name}
-                    onChange={(e) =>
-                      updateCandidate(selected.id, { name: e.target.value })
-                    }
-                    placeholder="Full name"
-                    disabled={!canEdit}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Contact (email / phone)</label>
-                  <input
-                    className={inputCls}
-                    value={selected.contact ?? ""}
-                    onChange={(e) =>
-                      updateCandidate(selected.id, {
-                        contact: e.target.value || null,
-                      })
-                    }
-                    placeholder="contact@email.com"
-                    disabled={!canEdit}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Applying for</label>
-                  <select
-                    className={inputCls}
-                    value={selected.role_id ?? ""}
-                    onChange={(e) =>
-                      updateCandidate(selected.id, {
-                        role_id: e.target.value || null,
-                      })
-                    }
-                    disabled={!canEdit}
-                  >
-                    <option value="">— No role —</option>
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.role_title || "Unnamed role"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Notes</label>
-                  <input
-                    className={inputCls}
-                    value={selected.notes ?? ""}
-                    onChange={(e) =>
-                      updateCandidate(selected.id, {
-                        notes: e.target.value || null,
-                      })
-                    }
-                    placeholder="Brief notes"
-                    disabled={!canEdit}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Questions + scores */}
-            <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-              <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Interview Scorecard</p>
-                  {roleScorecards.length > 0 && (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[10px] text-[var(--muted-foreground)]">Scoring with:</span>
-                      <select
-                        className="text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] bg-white"
-                        value={selectedScorecardId ?? ""}
-                        onChange={(e) => setSelectedScorecardId(e.target.value || null)}
-                      >
-                        {roleScorecards.map((sc) => (
-                          <option key={sc.id} value={sc.id}>{sc.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={addQuestion}
-                    className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] shrink-0"
-                  >
-                    <Plus size={13} />
-                    Add question
-                  </button>
-                )}
-              </div>
-
-              {roleQuestions.length === 0 ? (
-                <div className="py-8 text-center px-5">
-                  <p className="text-sm text-[var(--dark-grey)]">
-                    {selectedScorecardId
-                      ? "No questions in this scorecard yet. Add one above."
-                      : "No questions yet. Add interview questions above."}
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-[var(--neutral-cool-100)]">
-                  {roleQuestions.map((q) => {
-                    const scoreEntry = scores.find(
-                      (s) =>
-                        s.candidate_id === selected.id &&
-                        s.question_id === q.id
-                    );
-                    return (
-                      <div key={q.id} className="px-5 py-4 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-1 min-w-0">
-                            <input
-                              className="w-full text-sm text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus:outline-none py-0.5 disabled:hover:border-transparent"
-                              value={q.prompt}
-                              onChange={(e) =>
-                                updateQuestion(q.id, { prompt: e.target.value })
-                              }
-                              placeholder="Interview question..."
-                              disabled={!canEdit}
-                            />
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span className="text-[10px] text-[var(--muted-foreground)]">
-                              Weight
-                            </span>
-                            <select
-                              className="text-xs border border-[var(--border-medium)] rounded px-1 py-0.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)]"
-                              value={q.weight}
-                              onChange={(e) =>
-                                updateQuestion(q.id, {
-                                  weight: parseInt(e.target.value, 10),
-                                })
-                              }
-                              disabled={!canEdit}
-                            >
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <option key={n} value={n}>
-                                  {n}
-                                </option>
-                              ))}
-                            </select>
-                            {canEdit && (
-                              <button
-                                type="button"
-                                onClick={() => deleteQuestion(q.id)}
-                                className="text-[var(--dark-grey)] hover:text-[var(--error)] p-0.5"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <button
-                                key={n}
-                                type="button"
-                                disabled={!canEdit}
-                                onClick={() =>
-                                  upsertScore(
-                                    selected.id,
-                                    q.id,
-                                    n,
-                                    scoreEntry?.notes ?? null
-                                  )
-                                }
-                                className={`w-7 h-7 rounded-full text-xs font-semibold border transition-colors ${
-                                  scoreEntry && scoreEntry.score >= n
-                                    ? "bg-[var(--teal)] text-white border-[var(--teal)]"
-                                    : "bg-white text-[var(--dark-grey)] border-[var(--border-medium)] hover:border-[var(--teal)]"
-                                } disabled:opacity-50`}
-                              >
-                                {n}
-                              </button>
-                            ))}
-                          </div>
-                          <input
-                            className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
-                            value={scoreEntry?.notes ?? ""}
-                            onChange={(e) =>
-                              upsertScore(
-                                selected.id,
-                                q.id,
-                                scoreEntry?.score ?? 0,
-                                e.target.value || null
-                              )
-                            }
-                            placeholder="Score notes..."
-                            disabled={!canEdit}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {weightedTotal !== null && (
-                <div className="px-5 py-3 border-t border-[var(--border)] bg-[var(--teal-tint-500)]">
-                  <span className="text-xs text-[var(--muted-foreground)]">
-                    Weighted score:{" "}
-                    <span className="font-bold text-[var(--teal)]">
-                      {weightedTotal}%
-                    </span>
-                  </span>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+      {!selectedRoleId && roles.length === 0 && (
+        <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-16 text-center">
+          <p className="text-sm text-[var(--dark-grey)]">
+            Add roles on the Org Structure tab first, then build their scorecard templates here.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -2176,7 +1863,7 @@ function OnboardingTab({
 
                                 <div className="flex-1 min-w-0">
                                   <input
-                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus:outline-none py-0.5 disabled:hover:border-transparent ${
+                                    className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent ${
                                       t.completed_at
                                         ? "line-through text-[var(--dark-grey)]"
                                         : "text-[var(--foreground)]"
@@ -2195,7 +1882,7 @@ function OnboardingTab({
                                   <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                     <span className="whitespace-nowrap">Due: Day</span>
                                     <input
-                                      className="w-12 text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] text-center focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
+                                      className="w-12 text-xs border border-[var(--border-medium)] rounded px-1.5 py-0.5 text-[var(--foreground)] text-center focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
                                       type="number"
                                       value={t.due_offset_days ?? ""}
                                       onChange={(e) =>
@@ -2249,7 +1936,7 @@ function OnboardingTab({
                                 <div className="ml-7 rounded-lg bg-[var(--warm-1050)] border border-[var(--neutral-cool-200)] p-3 space-y-2">
                                   {canEdit ? (
                                     <textarea
-                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus:outline-none placeholder-[var(--neutral-cool-400)]"
+                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus-visible:outline-none placeholder-[var(--neutral-cool-400)]"
                                       rows={3}
                                       value={t.detail ?? ""}
                                       onChange={(e) =>
@@ -2558,7 +2245,7 @@ function CompetencyTab({
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-[var(--muted-foreground)]">Wt</span>
                         <select
-                          className="text-xs border border-[var(--border-medium)] rounded px-1 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)]"
+                          className="text-xs border border-[var(--border-medium)] rounded px-1 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)]"
                           value={comp.weight}
                           onChange={(e) =>
                             updateCompetency(comp.id, {
@@ -2591,268 +2278,8 @@ function CompetencyTab({
         )}
       </div>
 
-      {/* Staff list + scorecard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left: staff list */}
-        <div className="lg:col-span-1">
-          <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Staff</p>
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={addStaffFile}
-                  className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
-                >
-                  <Plus size={13} />
-                  Add
-                </button>
-              )}
-            </div>
-            {staffFiles.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-[var(--dark-grey)]">No staff files yet.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[var(--neutral-cool-100)]">
-                {staffFiles.map((s) => {
-                  const staffEvals = evaluations.filter((e) => e.staff_file_id === s.id);
-                  const isSelected = selectedStaffId === s.id;
-                  return (
-                    <div
-                      key={s.id}
-                      className={`flex items-center gap-1 transition-colors ${
-                        isSelected ? "bg-[var(--teal-tint-500)]" : "hover:bg-[var(--background)]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStaffId(s.id)}
-                        className="flex-1 text-left px-4 py-3 min-w-0"
-                      >
-                        <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                          {s.name || (
-                            <span className="text-[var(--dark-grey)] font-normal">
-                              New staff
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-[10px] text-[var(--muted-foreground)]">
-                          {roles.find((r) => r.id === s.role_id)?.role_title ?? "No role"}
-                          {s.hire_date ? ` · ${s.hire_date}` : ""}
-                        </p>
-                      </button>
-                      {isSelected && staffEvals.length > 0 && (
-                        <HiringPdfButton
-                          templateId="hiring_competency_completed"
-                          queryParams={{ staff_file_id: s.id }}
-                          label=""
-                          iconTitle="Download completed evaluation PDF"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: evaluation scorecard */}
-        <div className="lg:col-span-2">
-          {!selectedStaff ? (
-            <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-16 text-center">
-              <p className="text-sm text-[var(--dark-grey)]">
-                Select a staff member to view their evaluation.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Staff detail */}
-              <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className={sectionLabelCls}>Staff file</p>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href="/workspace/hiring/report/print"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-[var(--teal)] hover:underline"
-                    >
-                      Print Report <ExternalLink size={11} />
-                    </a>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => deleteStaffFile(selectedStaff.id)}
-                        className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className={labelCls}>Name</label>
-                    <input
-                      className={inputCls}
-                      value={selectedStaff.name}
-                      onChange={(e) =>
-                        updateStaffFile(selectedStaff.id, { name: e.target.value })
-                      }
-                      placeholder="Full name"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Hire date</label>
-                    <input
-                      className={inputCls}
-                      type="date"
-                      value={selectedStaff.hire_date ?? ""}
-                      onChange={(e) =>
-                        updateStaffFile(selectedStaff.id, {
-                          hire_date: e.target.value || null,
-                        })
-                      }
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Role</label>
-                    <select
-                      className={inputCls}
-                      value={selectedStaff.role_id ?? ""}
-                      onChange={(e) =>
-                        updateStaffFile(selectedStaff.id, {
-                          role_id: e.target.value || null,
-                        })
-                      }
-                      disabled={!canEdit}
-                    >
-                      <option value="">— No role —</option>
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.role_title || "Unnamed role"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Competency scores */}
-              <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-                <div className="px-5 py-4 border-b border-[var(--border)]">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">
-                    Competency Scores
-                  </p>
-                </div>
-                {competencies.length === 0 ? (
-                  <div className="py-8 text-center px-5">
-                    <p className="text-sm text-[var(--dark-grey)]">
-                      No competencies defined in the framework above.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-[var(--neutral-cool-100)]">
-                    {competencies
-                      .sort((a, b) => a.order_index - b.order_index)
-                      .map((comp) => {
-                        const ev = evaluations.find(
-                          (e) =>
-                            e.staff_file_id === selectedStaff.id &&
-                            e.competency_id === comp.id
-                        );
-                        return (
-                          <div key={comp.id} className="px-5 py-4 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-medium text-[var(--foreground)]">
-                                  {comp.skill || (
-                                    <span className="text-[var(--dark-grey)]">Unnamed skill</span>
-                                  )}
-                                </p>
-                                {comp.rubric && (
-                                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                                    {comp.rubric}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-[10px] text-[var(--dark-grey)] shrink-0">
-                                Weight: {comp.weight}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1">
-                                {[1, 2, 3, 4, 5].map((n) => (
-                                  <button
-                                    key={n}
-                                    type="button"
-                                    disabled={!canEdit}
-                                    onClick={() =>
-                                      upsertEvaluation(
-                                        selectedStaff.id,
-                                        comp.id,
-                                        n,
-                                        ev?.notes ?? null
-                                      )
-                                    }
-                                    className={`w-7 h-7 rounded-full text-xs font-semibold border transition-colors ${
-                                      ev && ev.score >= n
-                                        ? "bg-[var(--teal)] text-white border-[var(--teal)]"
-                                        : "bg-white text-[var(--dark-grey)] border-[var(--border-medium)] hover:border-[var(--teal)]"
-                                    } disabled:opacity-50`}
-                                  >
-                                    {n}
-                                  </button>
-                                ))}
-                              </div>
-                              <input
-                                className="flex-1 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
-                                value={ev?.notes ?? ""}
-                                onChange={(e) =>
-                                  upsertEvaluation(
-                                    selectedStaff.id,
-                                    comp.id,
-                                    ev?.score ?? 0,
-                                    e.target.value || null
-                                  )
-                                }
-                                placeholder="Evaluation notes..."
-                                disabled={!canEdit}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-
-                {weightedAvg !== null && (
-                  <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--teal-tint-500)]">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-[var(--muted-foreground)]">
-                        Weighted average:{" "}
-                        <span className="font-bold text-[var(--teal)]">
-                          {weightedAvg.toFixed(0)}%
-                        </span>
-                      </span>
-                      <div className="flex-1 h-2 bg-[var(--neutral-cool-200)] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[var(--teal)] rounded-full transition-all"
-                          style={{ width: `${weightedAvg}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* V2: per-staff files and competency evaluation removed from V1 (TIM-1419).
+           DB + API preserved. Restore in Operations Management Suite V2. */}
     </div>
   );
 }
@@ -2937,7 +2364,7 @@ function RequirementsTab({
                 value={settings.hiring_country ?? ""}
                 onChange={(e) => changeCountry(e.target.value as HiringCountry | "")}
                 disabled={saving}
-                className="text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60"
+                className="text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60"
               >
                 <option value="">Auto-detect</option>
                 {HIRING_COUNTRY_OPTIONS.map((o) => (
@@ -2964,11 +2391,11 @@ function RequirementsTab({
         )}
       </div>
 
-      {/* Content gap notice */}
+      {/* Standing legal disclaimer */}
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-        <p className="text-xs font-semibold text-amber-800 mb-1">Content in Progress</p>
+        <p className="text-xs font-semibold text-amber-800 mb-1">General Guidance Only</p>
         <p className="text-xs text-amber-700 leading-relaxed">
-          Requirement bodies are placeholders pending review by a qualified Legal Analyst. Do not rely on this content for compliance decisions. Verified text will be added once the Legal Analyst role is staffed.
+          Not legal advice. Requirements and rates change frequently. Verify current obligations with a licensed professional in your jurisdiction before acting.
         </p>
       </div>
 
@@ -3088,7 +2515,7 @@ export function HiringWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Users className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Hiring &amp; Onboarding
             </h1>
           </div>
@@ -3126,16 +2553,13 @@ export function HiringWorkspace({
           />
         )}
         {activeTab === "interview" && (
+          // V2: candidates, scores, onCandidatesChange, onScoresChange deferred (TIM-1419)
           <InterviewTab
             planId={planId}
             canEdit={canEdit}
             roles={roles}
-            candidates={candidates}
             questions={questions}
-            scores={scores}
-            onCandidatesChange={handleCandidatesChange}
             onQuestionsChange={handleQuestionsChange}
-            onScoresChange={handleScoresChange}
           />
         )}
         {activeTab === "onboarding" && (

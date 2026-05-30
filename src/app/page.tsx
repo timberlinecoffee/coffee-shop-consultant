@@ -17,11 +17,11 @@ import PricingCard, { type PricingPlan } from "./_components/PricingCard";
 export const metadata: Metadata = {
   title: "Groundwork: From Coffee Shop Idea to Open Sign.",
   description:
-    "Run a successful coffee shop without a business background. Groundwork guides every decision, benchmarks your plan, and turns it into action.",
+    "Build your coffee shop plan, even without a business background. Groundwork shows you what to plan next, checks it against real shops, and points to your next move.",
   openGraph: {
     title: "Groundwork: From Coffee Shop Idea to Open Sign.",
     description:
-      "Run a successful coffee shop without a business background. Groundwork fills the gaps.",
+      "Build your coffee shop plan, even without a business background. Groundwork fills the gaps.",
     siteName: "Groundwork",
   },
 };
@@ -49,11 +49,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "AI-Guided Planning",
     oneLiner:
-      "Walks you through every decision a coffee-shop owner has to make, in the right order.",
+      "Walks you through every owner decision in the right order.",
     bullets: [
-      "Concept, location, menu, financials, staffing, build-out, launch: eight planning modules in sequence",
-      "Prompts you for the inputs that matter and skips the ones that don't",
-      "Saves your answers and shows what's left so you always know what to work on next",
+      "Concept, location, menu, financials, staffing, build-out, launch: eight modules in sequence",
+      "Asks for the inputs that matter, skips the ones that don't",
+      "Saves your answers and shows what's left",
     ],
   },
   {
@@ -65,11 +65,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Real Benchmarking",
     oneLiner:
-      "Compares your numbers against what working coffee shops actually look like.",
+      "Holds your numbers up against what real coffee shops look like.",
     bullets: [
-      "Startup cost, rent ratios, COGS, labor and margin all flagged when they drift out of range",
-      "Benchmarks are built from real operators, not generic small-business templates",
-      "Updates live as you change your plan, so you can stress-test before you sign anything",
+      "Startup cost, rent, COGS, labor and margin flagged when they drift",
+      "Modeled from coffee-shop research and operator-reported data, not generic templates",
+      "Updates live so you can stress-test before you sign anything",
     ],
   },
   {
@@ -81,11 +81,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Action at Every Step",
     oneLiner:
-      "Turns every planning module into a specific next thing to do this week.",
+      "Turns every module into a clear next thing to do this week.",
     bullets: [
-      "Generates a launch-plan milestone list tied to your open date",
-      "Surfaces the single 'next action' at every step so you don't stall in research mode",
-      "Tracks what you've completed and what's still outstanding",
+      "Milestone list tied to your open date",
+      "One next action at every step, so you don't stall in research mode",
+      "Tracks what's done and what's outstanding",
     ],
   },
   {
@@ -97,11 +97,11 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Complete Planning Suite",
     oneLiner:
-      "Everything you'd usually piece together from eight different tools, in one place.",
+      "What you'd piece together from eight tools, in one place.",
     bullets: [
-      "Financial model, menu pricing, staffing, build-out and launch plan all share the same plan inputs",
+      "Financial model, menu pricing, staffing, build-out and launch plan share the same inputs",
       "Change one assumption and every downstream module updates",
-      "Export-ready outputs for landlords, lenders and partners",
+      "Exportable summaries for landlord and lender conversations (not a CPA-prepared package)",
     ],
   },
   {
@@ -113,7 +113,7 @@ const SUITE_ITEMS: AccordionItem[] = [
     ),
     title: "Operational Tools",
     oneLiner:
-      "Carries through to opening day, not just the pre-open paperwork.",
+      "Goes past pre-open paperwork through opening day.",
     bullets: [
       "Hiring, onboarding and shift planning ready for week one",
       "Menu pricing and recipe costing you can update as suppliers change",
@@ -128,11 +128,11 @@ const BENCHMARK_STEPS: AccordionItem[] = [
     accent: "teal",
     title: "Get Guided Through Every Decision",
     oneLiner:
-      "Stop wondering what you're supposed to be working on this week.",
+      "Stop wondering what you should be working on this week.",
     bullets: [
-      "Eight sequenced modules walk you through the full plan",
-      "Each module asks for the inputs that matter and shows what's still missing",
-      "The next-best action is always visible, so you don't sit staring at a blank page",
+      "Eight modules walk you through the full plan",
+      "Each module asks for what matters and shows what's missing",
+      "The next action stays visible so you don't sit staring at a blank page",
     ],
   },
   {
@@ -140,11 +140,11 @@ const BENCHMARK_STEPS: AccordionItem[] = [
     accent: "sage",
     title: "See How Your Plan Compares",
     oneLiner:
-      "Know whether your numbers are realistic before a landlord or lender does.",
+      "Know if your numbers are realistic before a landlord or lender does.",
     bullets: [
-      "Startup cost, rent ratio, COGS and labor benchmarked against real coffee shops",
-      "Drift-out-of-range flags tell you exactly which assumption is breaking the model",
-      "Re-run with new numbers as soon as you change a lease term or supplier price",
+      "Startup cost, rent, COGS and labor benchmarked against real shops",
+      "Drift flags tell you which assumption is breaking the model",
+      "Re-run as soon as a lease term or supplier price changes",
     ],
   },
   {
@@ -162,88 +162,82 @@ const BENCHMARK_STEPS: AccordionItem[] = [
 ];
 
 const FOUNDER_QUOTE = {
-  body: "Most people who open a coffee shop don't have a business background. Run a successful coffee shop without one. Groundwork fills the gaps and gives you the ability to intentionally and thoughtfully run your business.",
+  body: "Most people who open a coffee shop don't have a business background. Build your plan thoughtfully, even without one. Groundwork fills the gaps so you can plan your shop intentionally.",
   attribution: "Trent Rollings",
   role: "Founder, Timberline Coffee School",
 };
 
-const TESTIMONIALS = [
+const PROOF_TILES = [
   {
-    quote:
-      "I had a business plan from a consultant that cost me $8,000. Groundwork found three gaps that plan missed, and I hadn't paid a subscription yet.",
-    name: "Daniela Reyes",
-    city: "Portland, OR",
-    initial: "D",
+    eyebrow: "Built by an Operator",
+    title: "Authored by a Working Coffee Shop Owner",
+    body: "Groundwork is built by Trent Rollings, founder of Timberline Coffee School, drawing on day-to-day specialty coffee operations rather than generic business templates.",
   },
   {
-    quote:
-      "The financial model updated every time I changed my lease terms. I went into negotiations knowing exactly what I could afford.",
-    name: "James Okafor",
-    city: "Chicago, IL",
-    initial: "J",
+    eyebrow: "Plan Coverage",
+    title: "Every Module a Lender Expects",
+    body: "Concept, market, location, menu, equipment, hiring, financials, and launch plan are all wired to the same source of truth, so updates in one module flow through the rest.",
   },
   {
-    quote:
-      "I've been in coffee for twelve years. I still learned things I didn't know I didn't know.",
-    name: "Sarah Kim",
-    city: "Seattle, WA",
-    initial: "S",
+    eyebrow: "Financial Model",
+    title: "Stress-Test Lease and Pricing Scenarios",
+    body: "Adjust rent, opening date, ticket size, or daily transactions and the projection refreshes immediately. Outputs are planning estimates only; review with a licensed accountant before signing.",
   },
 ];
 
 const PRICING: PricingPlan[] = [
   {
-    name: "Free",
-    price: "$0",
-    period: "",
-    note: "No credit card required",
-    features: [
-      "Complete onboarding questionnaire",
-      "Access your planning dashboard",
-      "Preview planning modules",
-      "See your full plan outline",
-    ],
-    cta: "Start for Free",
-    href: "/login",
-    recommended: false,
-    accent: false,
-  },
-  {
-    name: "Builder",
-    price: "$49",
+    name: "Starter",
+    price: "$39",
     period: "/month",
-    note: "$39/mo billed annually",
+    note: "$25/mo billed annually ($299/year). 7-day money-back; non-refundable after; cancel anytime.",
     features: [
-      "Full access to all planning modules",
-      "Startup cost estimator",
-      "12-month financial model",
-      "Benchmarking against industry standards",
-      "50 AI consultant sessions per month",
+      "All planning modules",
+      "25 AI planning credits per month",
+      "Complete every exercise",
+      "Business plan and financial model generation",
+      "Export to PDF",
       "Email support",
     ],
-    cta: "Start Your Plan",
-    href: "/login?plan=builder",
+    cta: "Start Building",
+    href: "/pricing",
     recommended: false,
     accent: false,
   },
   {
-    name: "Accelerator",
+    name: "Growth",
     price: "$99",
     period: "/month",
-    note: "$79/mo billed annually",
+    note: "$67/mo billed annually ($799/year). 7-day money-back; non-refundable after; cancel anytime.",
     features: [
-      "Everything in Builder",
-      "500 AI coaching credits/month",
-      "Weekly expert Q&A",
+      "Everything in Starter",
+      "100 AI planning credits per month",
+      "Weekly async Q&A with Trent",
       "Financial model stress-testing",
-      "Equipment sourcing guidance",
-      "Strategy call at plan completion",
       "Priority support",
     ],
-    cta: "Get the Full Plan",
-    href: "/login?plan=accelerator",
+    cta: "Start With Growth",
+    href: "/pricing",
     recommended: true,
     accent: true,
+  },
+  {
+    name: "Pro",
+    price: "$199",
+    period: "/month",
+    note: "$133/mo billed annually ($1,599/year). 7-day money-back; non-refundable after; cancel anytime.",
+    features: [
+      "Everything in Growth",
+      "500 AI planning credits per month",
+      "Equipment sourcing assistance",
+      "Roaster matching recommendations",
+      "30-min 1-on-1 call at plan completion",
+      "White-glove onboarding",
+    ],
+    cta: "Start With Pro",
+    href: "/pricing",
+    recommended: false,
+    accent: false,
   },
 ];
 
@@ -252,9 +246,9 @@ const FOOTER_COLS = [
     heading: "Product",
     links: [
       { label: "How It Works", href: "#how-it-works" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Pricing", href: "/pricing" },
       { label: "Sign In", href: "/login" },
-      { label: "Start Your Plan", href: "/login?plan=builder" },
+      { label: "Start Your Plan", href: "/signup" },
     ],
   },
   {
@@ -300,17 +294,17 @@ export default function LandingPage() {
             {[
               {
                 title: "Guided Through Every Decision",
-                body: "Eight sequenced modules tell you what to plan next, so you never sit staring at a blank page.",
+                body: "Eight modules in order. You always know what to plan next.",
                 color: "teal" as const,
               },
               {
                 title: "Benchmarked Against Real Shops",
-                body: "Your numbers live next to what working coffee shops actually look like, not a generic business template.",
+                body: "Your numbers sit next to what real coffee shops actually look like.",
                 color: "sage" as const,
               },
               {
                 title: "An AI Co-Pilot in Your Corner",
-                body: "Ask coffee-specific questions about your lease, menu or equipment and get answers tied to your own plan.",
+                body: "Ask about your lease, menu, or equipment. Get answers tied to your plan.",
                 color: "teal" as const,
               },
             ].map((item) => (
@@ -319,14 +313,14 @@ export default function LandingPage() {
                   <p
                     className="font-semibold mb-2"
                     style={{
-                      fontSize: "16px",
+                      fontSize: "17px",
                       color: item.color === "sage" ? "var(--sage)" : "var(--teal)",
                       lineHeight: 1.3,
                     }}
                   >
                     {item.title}
                   </p>
-                  <p className="text-neutral-600" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  <p className="text-neutral-600" style={{ fontSize: "16px", lineHeight: 1.6 }}>
                     {item.body}
                   </p>
                 </div>
@@ -357,18 +351,12 @@ export default function LandingPage() {
             >
               A Guided Suite for the Whole Journey
             </h2>
-            <p
-              className="mx-auto mt-4 text-neutral-600"
-              style={{ fontSize: "15px", lineHeight: 1.6, maxWidth: "560px" }}
-            >
-              Tap any card to see what&apos;s inside.
-            </p>
           </FadeUp>
           <FeatureAccordion items={SUITE_ITEMS} layout="icon" columns={3} />
         </div>
       </section>
 
-      {/* ── AI consultant companion ───────────────────────────────────────────────
+      {/* ── AI planning co-pilot companion ────────────────────────────────────────
           Sage-tinted bg. Left: copy with benchmarking angle. Right: chat mockup.
       ─────────────────────────────────────────────────────────────────────────── */}
       <section
@@ -383,7 +371,7 @@ export default function LandingPage() {
                   className="font-semibold uppercase mb-4"
                   style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
                 >
-                  AI Consultant
+                  AI Planning Co-Pilot
                 </p>
                 <h2
                   className="font-bold mb-5"
@@ -396,10 +384,9 @@ export default function LandingPage() {
                 >
                   Your Coffee-Specific Co-Pilot, Always in Your Corner
                 </h2>
-                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1rem" }}>
-                  Ask about your market, lease terms, or equipment choices and get coffee-specific
-                  answers tied to your own plan, not generic small-business advice. Built for the
-                  owner-operator who didn&apos;t come from a business background.
+                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
+                  Ask about your market, lease, or equipment. Get coffee-specific answers tied
+                  to your plan, not generic small-business advice.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {[
@@ -419,6 +406,14 @@ export default function LandingPage() {
                     </span>
                   ))}
                 </div>
+                <p
+                  className="mt-6 text-neutral-500 italic"
+                  style={{ fontSize: "12px", lineHeight: 1.5, maxWidth: "460px" }}
+                >
+                  AI responses are planning support, not professional advice.
+                  Verify any financial, legal, or regulatory output with a
+                  licensed advisor before acting on it.
+                </p>
               </FadeUp>
             </div>
 
@@ -453,7 +448,7 @@ export default function LandingPage() {
             </h2>
             <p
               className="mx-auto mt-4 text-neutral-600"
-              style={{ fontSize: "15px", lineHeight: 1.6, maxWidth: "560px" }}
+              style={{ fontSize: "17px", lineHeight: 1.55, maxWidth: "560px" }}
             >
               Three habits the platform builds into your week.
             </p>
@@ -511,7 +506,7 @@ export default function LandingPage() {
               <FeatureAccordion items={BENCHMARK_STEPS} layout="step" columns={1} />
               <FadeUp delay={0.2}>
                 <Link
-                  href="/login?plan=builder"
+                  href="/signup"
                   className="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg font-semibold text-sm text-white transition-all mt-2"
                   style={{ background: "var(--teal)" }}
                 >
@@ -651,7 +646,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ──────────────────────────────────────────────────────── */}
+      {/* ── Why Groundwork ────────────────────────────────────────────────────── */}
       <section style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -659,7 +654,7 @@ export default function LandingPage() {
               className="font-semibold uppercase mb-3"
               style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
             >
-              From People Who Used It
+              Why Groundwork
             </p>
             <h2
               className="font-bold"
@@ -669,8 +664,8 @@ export default function LandingPage() {
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <StaggerItem key={t.name} className="h-full">
+            {PROOF_TILES.map((tile, i) => (
+              <StaggerItem key={tile.title} className="h-full">
                 <div
                   className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-teal/30 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
                   style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
@@ -679,35 +674,32 @@ export default function LandingPage() {
                     className="w-8 h-0.5 mb-5"
                     style={{ background: i % 2 === 0 ? "var(--teal)" : "var(--sage)" }}
                   />
-                  <blockquote
-                    className="text-neutral-700 mb-5 flex-1"
+                  <p
+                    className="font-semibold uppercase mb-3"
+                    style={{
+                      fontSize: "11px",
+                      letterSpacing: "0.12em",
+                      color: i % 2 === 0 ? "var(--teal)" : "var(--sage)",
+                    }}
+                  >
+                    {tile.eyebrow}
+                  </p>
+                  <h3
+                    className="font-semibold mb-3 text-neutral-900"
+                    style={{ fontSize: "1.05rem", lineHeight: 1.35, fontWeight: 600 }}
+                  >
+                    {tile.title}
+                  </h3>
+                  <p
+                    className="text-neutral-700 flex-1"
                     style={{
                       fontSize: "0.95rem",
                       lineHeight: 1.6,
                       fontWeight: 400,
                     }}
                   >
-                    &ldquo;{t.quote}&rdquo;
-                  </blockquote>
-                  <div className="flex items-center gap-3 mt-auto">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0"
-                      style={{ background: i % 2 === 0 ? "var(--teal)" : "var(--sage)", fontSize: "13px" }}
-                    >
-                      {t.initial}
-                    </div>
-                    <div>
-                      <p
-                        className="font-semibold"
-                        style={{ fontSize: "13px", color: i % 2 === 0 ? "var(--teal)" : "var(--sage)" }}
-                      >
-                        {t.name}
-                      </p>
-                      <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
-                        {t.city}
-                      </p>
-                    </div>
-                  </div>
+                    {tile.body}
+                  </p>
                 </div>
               </StaggerItem>
             ))}
@@ -743,15 +735,15 @@ export default function LandingPage() {
                 maxWidth: "520px",
               }}
             >
-              Open a Coffee Shop Without a Business Background
+              Build Your Coffee Shop Plan, Even Without a Business Background
             </h2>
-            <p style={{ color: "rgba(255,255,255,0.78)", fontSize: "1rem", lineHeight: 1.65, maxWidth: "520px" }}>
-              Groundwork fills the gaps so you can run your shop intentionally and thoughtfully.
+            <p style={{ color: "rgba(255,255,255,0.82)", fontSize: "1.0625rem", lineHeight: 1.6, maxWidth: "520px" }}>
+              Groundwork fills the gaps so you can plan your shop intentionally.
             </p>
           </FadeUp>
           <FadeUp delay={0.15}>
             <Link
-              href="/login?plan=builder"
+              href="/signup"
               className="flex-shrink-0 inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm transition-all"
               style={{
                 background: "white",
@@ -796,7 +788,11 @@ export default function LandingPage() {
           </StaggerContainer>
           <FadeUp delay={0.3}>
             <p className="text-center text-neutral-500 mt-8" style={{ fontSize: "13px" }}>
-              All plans include access to the planning framework. Free plan has no time limit.
+              New accounts get 5 free AI planning messages to try the co-pilot before subscribing. No credit card required for the preview. See{" "}
+              <Link href="/subscription-terms" className="underline">
+                Subscription Terms
+              </Link>{" "}
+              for billing details.
             </p>
           </FadeUp>
         </div>
@@ -837,15 +833,28 @@ export default function LandingPage() {
             ))}
           </div>
           <div
-            className="border-t pt-8 flex flex-col sm:flex-row justify-between gap-3"
+            className="border-t pt-8 flex flex-col gap-4"
             style={{ borderColor: "var(--neutral-800)" }}
           >
-            <p style={{ color: "var(--neutral-600)", fontSize: "13px" }}>
-              &copy; {new Date().getFullYear()} Timberline Coffee School. All rights reserved.
+            <p
+              className="italic"
+              style={{ color: "var(--neutral-500)", fontSize: "12px", lineHeight: 1.55 }}
+            >
+              Groundwork uses AI to help you plan a coffee shop. AI outputs are
+              planning estimates and educational support, not financial, legal,
+              tax, or investment advice. Verify any financial, regulatory, or
+              contractual decisions with a licensed professional before acting.
+              Past results in other markets do not guarantee outcomes for your
+              shop.
             </p>
-            <p style={{ color: "var(--neutral-600)", fontSize: "13px" }}>
-              Groundwork is a product of Timberline Coffee School.
-            </p>
+            <div className="flex flex-col sm:flex-row justify-between gap-3">
+              <p style={{ color: "var(--neutral-600)", fontSize: "13px" }}>
+                &copy; {new Date().getFullYear()} Timberline Coffee School. All rights reserved.
+              </p>
+              <p style={{ color: "var(--neutral-600)", fontSize: "13px" }}>
+                Groundwork is a product of Timberline Coffee School.
+              </p>
+            </div>
           </div>
         </div>
       </footer>
@@ -906,10 +915,10 @@ function AIChatMockup() {
         </div>
         <div>
           <p className="font-semibold" style={{ fontSize: "13px", color: "var(--teal)" }}>
-            AI Coffee Consultant
+            AI Coffee Planning Co-Pilot
           </p>
           <p style={{ color: "var(--neutral-500)", fontSize: "11px" }}>
-            Specialty-specific guidance, benchmarked
+            Specialty-specific planning support, benchmarked
           </p>
         </div>
         <div className="ml-auto w-2 h-2 rounded-full" style={{ background: "var(--success-text)", flexShrink: 0 }} />

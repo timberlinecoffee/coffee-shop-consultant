@@ -69,7 +69,7 @@ export function FeatureAccordionCard({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="w-full text-left p-5 flex items-start gap-4 rounded-xl focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+        className="w-full text-left p-5 flex items-start gap-4 rounded-xl focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
         style={
           {
             outlineColor: accentColor,

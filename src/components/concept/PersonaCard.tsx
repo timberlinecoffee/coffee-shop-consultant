@@ -53,7 +53,7 @@ export function PersonaCard({
   }
 
   return (
-    <div className="relative rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+    <div className="relative rounded-xl border border-[var(--border)] bg-white overflow-hidden">
       {/* Top bar */}
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -102,7 +102,7 @@ export function PersonaCard({
                     setConfirmDelete(false);
                   }}
                   aria-label="More options"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
                 >
                   <span aria-hidden="true" className="text-base leading-none tracking-tighter">
                     ...

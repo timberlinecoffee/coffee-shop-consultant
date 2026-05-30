@@ -8,12 +8,12 @@ export type WorkspaceKey =
   | 'menu_pricing'
   | 'buildout_equipment'
   | 'inventory'
-  | 'launch_plan'
+  | 'opening_milestones'
+  | 'opening_month_plan'
   | 'hiring'
   | 'marketing'
   | 'suppliers'
   | 'operations_playbook'
-  | 'marketing_pre_launch'
 
 export type LaunchItemStatus = 'pending' | 'in_progress' | 'done' | 'at_risk'
 

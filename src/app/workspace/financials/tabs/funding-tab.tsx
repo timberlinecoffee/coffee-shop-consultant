@@ -83,7 +83,7 @@ interface LineRowProps {
 function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const inputCls =
-    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
     <div className="border border-[var(--border)] rounded-xl bg-white p-3">
@@ -231,7 +231,7 @@ function CategorySection({
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="text-sm font-semibold text-[var(--foreground)]">{meta.label}</h3>
         <span className="text-sm font-semibold text-[var(--teal)] tabular-nums">{fmt(subtotal, currencyCode)}</span>
@@ -311,7 +311,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
 
   return (
     <div className="space-y-4" id="tour-funding">
-      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
+      <div className="rounded-xl border border-[var(--border)] bg-white p-5">
         <p className="text-sm font-semibold text-[var(--foreground)]">Where The Money Comes From</p>
         <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
           Add every dollar funding the launch — your own cash, loans, investor checks, and grants. Loans
@@ -350,7 +350,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
       />
 
       {/* Reconciliation: Sources vs. Uses */}
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
           <p className="text-sm font-semibold text-[var(--foreground)]">Sources Vs. Uses</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">
@@ -403,7 +403,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
       </div>
 
       {/* Capital structure context */}
-      <div className="rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+      <div className="rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
         <div className="space-y-2 text-sm text-[var(--teal-deeper)] leading-relaxed">
           {loanTotal > 0 && (

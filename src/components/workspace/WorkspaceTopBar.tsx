@@ -42,10 +42,6 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
     window.dispatchEvent(new CustomEvent("workspace-sidebar-open"));
   }
 
-  function openCopilot() {
-    window.dispatchEvent(new CustomEvent("workspace-copilot-open"));
-  }
-
   return (
     <div className="sticky top-0 z-20 h-12 bg-white border-b border-[var(--border)] flex items-center px-4 gap-3">
       <button
@@ -59,19 +55,10 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
         {currentName}
       </span>
       {isWorkspacePage && (
-        <>
-          {/* TIM-1147: Manual workspace status control. */}
-          <WorkspaceStatusControl
-            componentKey={activeItem!.workspaceKey}
-            label="Workspace"
-          />
-          <button
-            onClick={openCopilot}
-            className="text-xs text-[var(--teal)] font-medium border border-[var(--teal)]/30 px-3 py-1 rounded-full hover:bg-[var(--teal)]/5 transition-colors flex-shrink-0"
-          >
-            Co-pilot
-          </button>
-        </>
+        <WorkspaceStatusControl
+          componentKey={activeItem!.workspaceKey}
+          label="Workspace"
+        />
       )}
     </div>
   );

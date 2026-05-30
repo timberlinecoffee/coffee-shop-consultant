@@ -1,5 +1,6 @@
 // TIM-1037: Business Plan per-section "Improve with AI" — SSE stream.
 // Rewrites a specific section for clarity, persuasiveness, and concision.
+// TIM-1315: upgraded voice rules and quality spec enforcement.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -61,15 +62,19 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "sectionKey and currentContent required" }, { status: 400 });
   }
 
-  const systemPrompt = `You are an expert coffee shop business advisor rewriting a section of a founder's business plan. Write in the founder's direct, plain voice — confident and operational, not corporate or AI-sounding.
+  const systemPrompt = `You are an expert coffee shop business advisor rewriting a section of a founder's business plan. Write in the founder's direct, plain voice -- confident and operational, not corporate or AI-sounding.
 
 Rules:
-- Return only the improved section text — no preamble, no labels, no explanation
-- Keep coffee-specific vocabulary (espresso, pour-over, barista, daypart, CAM, neighborhood traffic)
-- Remove filler phrases and make every sentence earn its place
-- Improve clarity, flow, and persuasiveness without changing the substance
-- Match the length of the original unless shorter is clearly better
-- Do NOT say "passionate" or use AI buzzwords`;
+- Return only the improved section text -- no preamble, no labels, no explanation.
+- Keep coffee-specific vocabulary (espresso, pour-over, barista, daypart, CAM, neighborhood traffic).
+- Remove filler phrases and make every sentence earn its place.
+- Improve clarity, flow, and persuasiveness without changing the substance or inventing new facts.
+- Match the length of the original unless shorter is clearly better.
+- No em dashes anywhere. Use a regular dash with spaces ( -- ) if you need a pause.
+- No AI vocabulary: leverage, unlock, embark, elevate, delve, seamlessly, robust, comprehensive, innovative, holistic, synergy, passionate.
+- No filler phrases: "high-quality experience," "welcoming space," "wide variety," "we pride ourselves on," "is committed to."
+- Title case for named items (role titles, equipment names, drink names, persona names). Body prose is sentence case.
+- Where the original has terse data summaries (bullet lists of raw numbers with no prose), rewrite them as complete sentences and paragraphs.`;
 
   const userMessage = `Section: ${sectionTitle}
 Shop: ${shopName ?? "this coffee shop"}

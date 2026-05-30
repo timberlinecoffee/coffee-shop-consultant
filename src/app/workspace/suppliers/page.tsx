@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
-import type { VendorCandidate, VendorDecision } from "@/lib/suppliers";
+import type { VendorCandidate, VendorCustomCategory, VendorDecision } from "@/lib/suppliers";
 import { SuppliersWorkspace } from "./suppliers-workspace";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function SuppliersWorkspacePage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [candidatesRes, decisionsRes, profileRes] = await Promise.all([
+  const [candidatesRes, decisionsRes, customCatsRes, profileRes] = await Promise.all([
     supabase
       .from("vendor_candidates")
       .select("*")
@@ -39,6 +39,12 @@ export default async function SuppliersWorkspacePage() {
       .eq("plan_id", plan.id)
       .eq("is_current", true)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("vendor_custom_categories")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true }),
     supabase
       .from("users")
       .select("subscription_status, subscription_tier, copilot_trial_messages_used")
@@ -59,6 +65,7 @@ export default async function SuppliersWorkspacePage() {
       canEdit={canEdit}
       initialCandidates={(candidatesRes.data ?? []) as VendorCandidate[]}
       initialDecisions={(decisionsRes.data ?? []) as VendorDecision[]}
+      initialCustomCategories={(customCatsRes.data ?? []) as VendorCustomCategory[]}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
     />
   );

@@ -6,10 +6,11 @@ import { motion } from "framer-motion";
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 
-/* Ketut Subiyanto (Pexels License) — same photographer used in the lower benefit
-   sections. The "We Are Open" sign scene ties directly to the hero headline. */
+/* Ketut Subiyanto (Pexels License) — same photographer as the lower benefit
+   sections, but a distinct image used nowhere else on the page: a happy owner
+   standing at her open shop door, the picture of running a coffee shop well. */
 const HERO_PHOTO =
-  "https://images.pexels.com/photos/4473398/pexels-photo-4473398.jpeg?auto=compress&cs=tinysrgb&w=900";
+  "https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&cs=tinysrgb&w=900";
 
 function BrowserMockup() {
   const sidebarItems = [
@@ -254,9 +255,9 @@ export default function HomepageHero() {
           <motion.p
             className="mb-9 text-white"
             style={{
-              fontSize: "1.125rem",
-              lineHeight: "1.65",
-              opacity: 0.78,
+              fontSize: "1.1875rem",
+              lineHeight: "1.6",
+              opacity: 0.82,
               fontWeight: 400,
               maxWidth: "460px",
             }}
@@ -264,9 +265,9 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.28, ease: EASE }}
           >
-            Run a successful coffee shop without a business background.
-            Groundwork guides every decision, benchmarks your plan, and turns
-            it into the next action you need to take.
+            Build your coffee shop plan, even without a business background.
+            Groundwork shows you what to plan next, checks it against real
+            shops, and points to your next move.
           </motion.p>
 
           <motion.div
@@ -276,7 +277,7 @@ export default function HomepageHero() {
             transition={{ duration: 0.48, delay: 0.38, ease: EASE }}
           >
             <Link
-              href="/login?plan=builder"
+              href="/signup"
               className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg font-semibold text-sm transition-all"
               style={{
                 background: "white",
@@ -303,8 +304,8 @@ export default function HomepageHero() {
             transition={{ duration: 0.5, delay: 0.52, ease: "easeOut" }}
           >
             {[
-              "Guided suite from concept to grand opening",
-              "Benchmarks built from real coffee-shop operators",
+              "Guided suite from concept to opening day",
+              "Benchmarks from real coffee shops, not generic templates",
               "AI co-pilot that fills the business-background gap",
             ].map((feature) => (
               <li key={feature} className="flex items-start gap-2.5">
@@ -355,8 +356,8 @@ export default function HomepageHero() {
               sections, with the screenshot as the anchor and the photo as the
               smaller floating element. */}
           <motion.div
-            className="absolute -bottom-10 -left-8 sm:-left-12 z-20"
-            style={{ width: "190px", transform: "rotate(-5deg)" }}
+            className="absolute -bottom-12 -left-10 sm:-left-16 z-20"
+            style={{ width: "248px", maxWidth: "55vw", transform: "rotate(-5deg)" }}
             initial={{ opacity: 0, y: 24, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
@@ -370,12 +371,12 @@ export default function HomepageHero() {
             >
               <Image
                 src={HERO_PHOTO}
-                alt="Cafe owner holding a wooden 'Welcome We Are Open' sign at her shop door"
+                alt="Smiling coffee shop owner in an apron standing at her open shop door"
                 fill
                 priority
                 className="object-cover"
-                style={{ objectPosition: "center 35%" }}
-                sizes="190px"
+                style={{ objectPosition: "center 30%" }}
+                sizes="248px"
               />
               {/* Warm overlay matches the lower benefit-section photos */}
               <div

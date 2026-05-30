@@ -39,7 +39,7 @@ export default function HomeNav() {
             Sign In
           </Link>
           <Link
-            href="/login?plan=builder"
+            href="/signup"
             className={`text-sm font-semibold px-4 py-2 rounded-md transition-colors duration-200 ${
               scrolled
                 ? "bg-teal text-white hover:bg-teal-dark"

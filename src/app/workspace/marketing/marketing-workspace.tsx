@@ -1,727 +1,783 @@
 "use client";
 
-// TIM-1036: Marketing Suite — 5-tab workspace.
+// TIM-1417: Marketing planning workspace. Four tabs: Overview, Channels,
+// Story And Brand, Pre-launch Plan. Autosaves to workspace_documents under
+// workspace_key='marketing'. AI seed pulls from concept + onboarding answers.
 
-import { useState, useRef } from "react";
-import { Megaphone, Plus, Trash2, ExternalLink, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  Megaphone,
+  Check,
+  Sparkles,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import type {
-  MarketingBrand, DigitalPresenceRow, ContentPost, MarketingCampaign, MarketingBudgetLine,
-  PresenceStatus, PostFormat, PostStatus, CampaignObjective, CampaignStatus,
-} from "@/lib/marketing";
 import {
-  PRESENCE_STATUS_CONFIG, PRESENCE_STATUS_ORDER,
-  POST_FORMAT_OPTIONS, POST_STATUS_CONFIG, CADENCE_TEMPLATES,
-  CAMPAIGN_OBJECTIVE_OPTIONS, CAMPAIGN_OBJECTIVE_LABELS, CAMPAIGN_STATUS_CONFIG,
-  totalBudgetCents, formatCents,
+  type MarketingDocument,
+  type MarketingSectionKey,
+  type MarketingMilestone,
+  type MarketingChannelEntry,
+  MARKETING_SECTION_KEYS,
+  MARKETING_SECTION_LABELS,
+  MARKETING_SECTION_TAGLINES,
+  MARKETING_CHANNEL_OPTIONS,
+  defaultPreLaunchMilestones,
 } from "@/lib/marketing";
 
-// ── Shared styles ─────────────────────────────────────────────────────────────
-
-const inputCls = "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const inputCls =
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
-const sectionLabelCls = "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
+// TIM-1408: section eyebrow + card radius normalized to global tokens
+const sectionLabelCls =
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-2";
+const cardCls = "rounded-xl border border-[var(--border)] bg-white";
+const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
-function makeLocalId() { return `local_${Math.random().toString(36).slice(2, 10)}`; }
-
-// ── StatusPill ────────────────────────────────────────────────────────────────
-
-function StatusPill<T extends string>({ status, config, onClick }: {
-  status: T;
-  config: Record<string, { label: string; className: string }>;
-  onClick?: (e: React.MouseEvent) => void;
-}) {
-  const cfg = config[status] ?? { label: status, className: "bg-[var(--neutral-cool-100)] text-[var(--neutral-cool-600)] border-[var(--border-medium)]" };
-  return (
-    <button type="button" onClick={onClick}
-      className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.className} ${onClick ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}>
-      {cfg.label}
-    </button>
-  );
+function localId(): string {
+  return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
-
-// ── BrandTab ──────────────────────────────────────────────────────────────────
-
-function BrandTab({ canEdit, brand, onBrandChange, conceptBrandVoice, conceptShopIdentity }: {
-  canEdit: boolean;
-  brand: MarketingBrand;
-  onBrandChange: (b: MarketingBrand) => void;
-  conceptBrandVoice: string;
-  conceptShopIdentity: string;
-}) {
-  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function handleChange(field: keyof MarketingBrand, value: string) {
-    const updated = { ...brand, [field]: value };
-    onBrandChange(updated);
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(async () => {
-      await fetch("/api/workspaces/marketing/brand", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
-      });
-    }, 600);
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
-        <div className="flex items-center justify-between mb-4">
-          <span className={sectionLabelCls}>From Your Concept</span>
-          <a href="/workspace/concept" className="flex items-center gap-1 text-xs text-[var(--teal)] hover:underline">
-            Edit in Concept <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <span className={labelCls}>Shop identity</span>
-            <p className="text-sm text-[var(--foreground)] leading-relaxed">
-              {conceptShopIdentity || <span className="text-[var(--neutral-cool-400)]">Not set in Concept yet.</span>}
-            </p>
-          </div>
-          <div>
-            <span className={labelCls}>Brand voice</span>
-            <p className="text-sm text-[var(--foreground)] leading-relaxed">
-              {conceptBrandVoice || <span className="text-[var(--neutral-cool-400)]">Not set in Concept yet.</span>}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-[var(--border)] bg-white p-5 space-y-4">
-        <span className={sectionLabelCls}>Marketing Brand</span>
-        <div>
-          <label className={labelCls}>Positioning statement</label>
-          <textarea className={inputCls} rows={2} disabled={!canEdit}
-            placeholder="One sentence: who you serve, what you do, why it matters."
-            value={brand.positioning_statement} onChange={(e) => handleChange("positioning_statement", e.target.value)} />
-          <p className="text-[10px] text-[var(--dark-grey)] mt-1">Keep it to one sentence. It becomes the lens for every marketing decision.</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {(["brand_pillar_1", "brand_pillar_2", "brand_pillar_3"] as const).map((field, i) => (
-            <div key={field}>
-              <label className={labelCls}>Brand pillar {i + 1}</label>
-              <input type="text" className={inputCls} disabled={!canEdit}
-                placeholder={["The neighborhood table", "Honest coffee", "The regulars"][i]}
-                value={brand[field]} onChange={(e) => handleChange(field, e.target.value)} />
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Do say</label>
-            <textarea className={inputCls} rows={3} disabled={!canEdit}
-              placeholder="Words and phrases that fit your voice"
-              value={brand.do_say} onChange={(e) => handleChange("do_say", e.target.value)} />
-          </div>
-          <div>
-            <label className={labelCls}>{"Don't say"}</label>
-            <textarea className={inputCls} rows={3} disabled={!canEdit}
-              placeholder="Words to avoid: 'artisanal', 'handcrafted'"
-              value={brand.dont_say} onChange={(e) => handleChange("dont_say", e.target.value)} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── DigitalPresenceTab ────────────────────────────────────────────────────────
-
-function DigitalPresenceTab({ canEdit, rows, onRowsChange }: {
-  canEdit: boolean;
-  rows: DigitalPresenceRow[];
-  onRowsChange: (r: DigitalPresenceRow[] | ((prev: DigitalPresenceRow[]) => DigitalPresenceRow[])) => void;
-}) {
-  const [newChannel, setNewChannel] = useState("");
-  const [adding, setAdding] = useState(false);
-
-  async function cycleStatus(row: DigitalPresenceRow) {
-    if (!canEdit) return;
-    const idx = PRESENCE_STATUS_ORDER.indexOf(row.status);
-    const next = PRESENCE_STATUS_ORDER[(idx + 1) % PRESENCE_STATUS_ORDER.length] as PresenceStatus;
-    onRowsChange((prev) => prev.map((r) => r.id === row.id ? { ...r, status: next } : r));
-    await fetch("/api/workspaces/marketing/digital-presence", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: row.id, status: next, last_updated_at: new Date().toISOString().slice(0, 10) }),
-    });
-  }
-
-  function updateField(row: DigitalPresenceRow, field: "url_or_handle" | "owner", value: string) {
-    onRowsChange((prev) => prev.map((r) => r.id === row.id ? { ...r, [field]: value } : r));
-  }
-
-  async function saveField(row: DigitalPresenceRow, field: "url_or_handle" | "owner") {
-    await fetch("/api/workspaces/marketing/digital-presence", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: row.id, [field]: row[field] }),
-    });
-  }
-
-  async function addChannel() {
-    if (!newChannel.trim() || adding) return;
-    setAdding(true);
-    const res = await fetch("/api/workspaces/marketing/digital-presence", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel_name: newChannel.trim() }),
-    });
-    if (res.ok) { const row = await res.json(); onRowsChange((prev) => [...prev, row]); setNewChannel(""); }
-    setAdding(false);
-  }
-
-  async function deleteRow(row: DigitalPresenceRow) {
-    onRowsChange((prev) => prev.filter((r) => r.id !== row.id));
-    await fetch(`/api/workspaces/marketing/digital-presence?id=${row.id}`, { method: "DELETE" });
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 px-4 py-2 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-          <span>Channel</span><span>Status</span><span>URL / Handle</span><span>Owner</span><span />
-        </div>
-        {rows.map((row) => (
-          <div key={row.id} className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0">
-            <div>
-              <span className="text-sm text-[var(--foreground)] truncate block">{row.channel_name}</span>
-              {row.last_updated_at && (
-                <span className="text-[10px] text-[var(--dark-grey)]">Updated {row.last_updated_at}</span>
-              )}
-            </div>
-            <StatusPill status={row.status} config={PRESENCE_STATUS_CONFIG} onClick={() => cycleStatus(row)} />
-            <input type="text" disabled={!canEdit}
-              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
-              placeholder="https://..." value={row.url_or_handle ?? ""}
-              onChange={(e) => updateField(row, "url_or_handle", e.target.value)}
-              onBlur={() => saveField(row, "url_or_handle")} />
-            <input type="text" disabled={!canEdit}
-              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
-              placeholder="Name" value={row.owner ?? ""}
-              onChange={(e) => updateField(row, "owner", e.target.value)}
-              onBlur={() => saveField(row, "owner")} />
-            <button type="button" disabled={!canEdit} onClick={() => deleteRow(row)}
-              className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
-      {canEdit && (
-        <div className="flex gap-2">
-          <input type="text" className={`${inputCls} flex-1`} placeholder="Add a channel (e.g. LinkedIn, Nextdoor)"
-            value={newChannel} onChange={(e) => setNewChannel(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addChannel()} />
-          <button type="button" onClick={addChannel} disabled={adding || !newChannel.trim()}
-            className="flex items-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg transition-colors">
-            <Plus className="w-4 h-4" /> Add
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── ContentCalendarTab ────────────────────────────────────────────────────────
-
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-interface PostDrawerState { mode: "new" | "edit"; date?: string; post?: ContentPost; }
-
-function ContentCalendarTab({ canEdit, posts, onPostsChange }: {
-  canEdit: boolean;
-  posts: ContentPost[];
-  onPostsChange: (p: ContentPost[] | ((prev: ContentPost[]) => ContentPost[])) => void;
-}) {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-  const [drawer, setDrawer] = useState<PostDrawerState | null>(null);
-  const [showTemplates, setShowTemplates] = useState(false);
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: Array<number | null> = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  function getPostsForDay(day: number) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return posts.filter((p) => p.post_date === dateStr);
-  }
-
-  async function applyTemplate(idx: number) {
-    const template = CADENCE_TEMPLATES[idx];
-    const created: ContentPost[] = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dow = new Date(year, month, day).getDay();
-      const match = template.posts.find((tp) => tp.dayOfWeek === dow);
-      if (match) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        const res = await fetch("/api/workspaces/marketing/content-posts", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ post_date: dateStr, theme: match.theme, format: match.format, status: "planned", channels: [], caption_draft: "" }),
-        });
-        if (res.ok) created.push(await res.json());
-      }
-    }
-    if (created.length > 0) onPostsChange((prev) => [...prev, ...created]);
-    setShowTemplates(false);
-  }
-
-  async function deletePost(post: ContentPost) {
-    onPostsChange((prev) => prev.filter((p) => p.id !== post.id));
-    await fetch(`/api/workspaces/marketing/content-posts?id=${post.id}`, { method: "DELETE" });
-  }
-
-  function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); }
-  function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[var(--neutral-cool-150)]"><ChevronLeft className="w-4 h-4 text-[var(--muted-foreground)]" /></button>
-          <span className="text-sm font-semibold text-[var(--foreground)] w-36 text-center">{MONTH_NAMES[month]} {year}</span>
-          <button type="button" onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[var(--neutral-cool-150)]"><ChevronRight className="w-4 h-4 text-[var(--muted-foreground)]" /></button>
-        </div>
-        {canEdit && (
-          <button type="button" onClick={() => setShowTemplates(!showTemplates)}
-            className="text-xs font-medium text-[var(--teal)] border border-[var(--teal)]/30 px-3 py-1.5 rounded-lg hover:bg-[var(--teal)]/5">
-            Use template
-          </button>
-        )}
-      </div>
-
-      {showTemplates && (
-        <div className="rounded-xl border border-[var(--border)] bg-white p-4 space-y-3">
-          <span className={sectionLabelCls}>Recurring Cadence Templates</span>
-          {CADENCE_TEMPLATES.map((t, i) => (
-            <div key={i} className="flex items-start justify-between gap-4 pb-3 border-b border-[var(--neutral-cool-100)] last:border-0 last:pb-0">
-              <div>
-                <p className="text-sm font-semibold text-[var(--foreground)]">{t.name}</p>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{t.description}</p>
-              </div>
-              <button type="button" onClick={() => applyTemplate(i)}
-                className="flex-shrink-0 text-xs font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] px-3 py-1.5 rounded-lg">Apply</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-[var(--border)]">
-          {DAY_NAMES.map((d) => (
-            <div key={d} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {cells.map((day, i) => {
-            const dayPosts = day ? getPostsForDay(day) : [];
-            const dateStr = day ? `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` : "";
-            return (
-              <div key={i}
-                className={`min-h-[72px] border-r border-b border-[var(--neutral-cool-100)] p-1.5 ${day && canEdit ? "cursor-pointer hover:bg-[var(--background)]" : ""} ${!day ? "bg-[var(--neutral-cool-50)]" : ""}`}
-                onClick={() => { if (!day || !canEdit) return; setDrawer({ mode: "new", date: dateStr }); }}>
-                {day && (
-                  <>
-                    <span className="text-[10px] text-[var(--dark-grey)] font-medium block mb-1">{day}</span>
-                    {dayPosts.map((post) => (
-                      <div key={post.id}
-                        className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-[var(--teal)]/10 text-[var(--teal)] mb-0.5 cursor-pointer truncate"
-                        onClick={(e) => { e.stopPropagation(); setDrawer({ mode: "edit", post }); }}>
-                        {post.theme || post.format}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {drawer && (
-        <PostDrawerModal canEdit={canEdit} drawer={drawer}
-          onClose={() => setDrawer(null)}
-          onSaved={(post) => {
-            if (drawer.mode === "new") onPostsChange((prev) => [...prev, post]);
-            else onPostsChange((prev) => prev.map((p) => p.id === post.id ? post : p));
-            setDrawer(null);
-          }}
-          onDelete={(post) => { deletePost(post); setDrawer(null); }}
-        />
-      )}
-    </div>
-  );
-}
-
-function PostDrawerModal({ canEdit, drawer, onClose, onSaved, onDelete }: {
-  canEdit: boolean; drawer: PostDrawerState;
-  onClose: () => void; onSaved: (post: ContentPost) => void; onDelete: (post: ContentPost) => void;
-}) {
-  const existing = drawer.post;
-  const [date, setDate] = useState(existing?.post_date ?? drawer.date ?? "");
-  const [theme, setTheme] = useState(existing?.theme ?? "");
-  const [format, setFormat] = useState<PostFormat>(existing?.format ?? "photo");
-  const [channelsRaw, setChannelsRaw] = useState((existing?.channels ?? []).join(", "));
-  const [caption, setCaption] = useState(existing?.caption_draft ?? "");
-  const [status, setStatus] = useState<PostStatus>(existing?.status ?? "planned");
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    setSaving(true);
-    const body = { post_date: date, theme, format, channels: channelsRaw.split(",").map((s) => s.trim()).filter(Boolean), caption_draft: caption, status };
-    if (drawer.mode === "edit" && existing) {
-      const res = await fetch("/api/workspaces/marketing/content-posts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: existing.id, ...body }) });
-      if (res.ok) onSaved(await res.json());
-    } else {
-      const res = await fetch("/api/workspaces/marketing/content-posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) onSaved(await res.json());
-    }
-    setSaving(false);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-[var(--foreground)]">{drawer.mode === "edit" ? "Edit post" : "New post"}</span>
-          <button type="button" onClick={onClose} className="text-[var(--dark-grey)] hover:text-[var(--foreground)]"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelCls}>Date</label><input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} disabled={!canEdit} /></div>
-          <div><label className={labelCls}>Format</label>
-            <select className={inputCls} value={format} onChange={(e) => setFormat(e.target.value as PostFormat)} disabled={!canEdit}>
-              {POST_FORMAT_OPTIONS.map((f) => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
-            </select>
-          </div>
-        </div>
-        <div><label className={labelCls}>Theme / topic</label><input type="text" className={inputCls} value={theme} onChange={(e) => setTheme(e.target.value)} disabled={!canEdit} placeholder="Menu Feature, Behind the Scenes..." /></div>
-        <div><label className={labelCls}>Channels</label><input type="text" className={inputCls} value={channelsRaw} onChange={(e) => setChannelsRaw(e.target.value)} disabled={!canEdit} placeholder="Instagram, TikTok" /><p className="text-[10px] text-[var(--dark-grey)] mt-0.5">Comma-separated</p></div>
-        <div><label className={labelCls}>Caption draft</label><textarea className={inputCls} rows={3} value={caption} onChange={(e) => setCaption(e.target.value)} disabled={!canEdit} placeholder="Write your caption..." /></div>
-        <div><label className={labelCls}>Status</label>
-          <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as PostStatus)} disabled={!canEdit}>
-            {(Object.entries(POST_STATUS_CONFIG) as [PostStatus, { label: string }][]).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </div>
-        {canEdit && (
-          <div className="flex gap-2 pt-1">
-            <button type="button" onClick={save} disabled={saving || !date}
-              className="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg">
-              <Check className="w-4 h-4" />{saving ? "Saving..." : "Save"}
-            </button>
-            {drawer.mode === "edit" && existing && (
-              <button type="button" onClick={() => onDelete(existing)}
-                className="flex items-center gap-1 text-sm font-medium text-red-500 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── CampaignTab ───────────────────────────────────────────────────────────────
-
-function CampaignTab({ canEdit, campaigns, onCampaignsChange }: {
-  canEdit: boolean;
-  campaigns: MarketingCampaign[];
-  onCampaignsChange: (c: MarketingCampaign[] | ((prev: MarketingCampaign[]) => MarketingCampaign[])) => void;
-}) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [newRow, setNewRow] = useState<Partial<MarketingCampaign> | null>(null);
-
-  function emptyNew(): Partial<MarketingCampaign> {
-    return { id: makeLocalId(), name: "", objective: "awareness", channels: [], start_date: null, end_date: null, budget_cents: 0, actual_spend_cents: 0, status: "planned", key_results: "" };
-  }
-
-  async function saveNew(fields: Partial<MarketingCampaign>) {
-    const merged = { ...newRow, ...fields };
-    if (!merged.name?.trim()) return;
-    const res = await fetch("/api/workspaces/marketing/campaigns", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...merged, channels: Array.isArray(merged.channels) ? merged.channels : (merged.channels as unknown as string ?? "").split(",").map((s: string) => s.trim()).filter(Boolean) }),
-    });
-    if (res.ok) { const created = await res.json(); onCampaignsChange((prev) => [...prev, created]); setNewRow(null); }
-  }
-
-  async function savePatch(id: string, fields: Partial<MarketingCampaign>) {
-    const res = await fetch("/api/workspaces/marketing/campaigns", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...fields }) });
-    if (res.ok) { const updated = await res.json(); onCampaignsChange((prev) => prev.map((c) => c.id === id ? updated : c)); }
-    setEditingId(null);
-  }
-
-  async function deleteCampaign(id: string) {
-    onCampaignsChange((prev) => prev.filter((c) => c.id !== id));
-    await fetch(`/api/workspaces/marketing/campaigns?id=${id}`, { method: "DELETE" });
-  }
-
-  function cycleCampaignStatus(c: MarketingCampaign) {
-    const order: CampaignStatus[] = ["planned", "running", "completed"];
-    const next = order[(order.indexOf(c.status) + 1) % order.length];
-    onCampaignsChange((prev) => prev.map((x) => x.id === c.id ? { ...x, status: next } : x));
-    savePatch(c.id, { status: next });
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-          <span>Campaign</span><span>Objective</span><span>Dates</span><span>Budget</span><span>Spent</span><span>Status</span><span />
-        </div>
-        {campaigns.map((c) =>
-          editingId === c.id ? (
-            <CampaignEditRow key={c.id} campaign={c} onSave={(fields) => savePatch(c.id, fields)} onCancel={() => setEditingId(null)} />
-          ) : (
-            <div key={c.id}
-              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0 hover:bg-[var(--background)] cursor-pointer"
-              onClick={() => canEdit && setEditingId(c.id)}>
-              <div>
-                <p className="text-sm font-medium text-[var(--foreground)] truncate">{c.name}</p>
-                {c.key_results && <p className="text-[10px] text-[var(--muted-foreground)] truncate">{c.key_results}</p>}
-              </div>
-              <span className="text-xs text-[var(--muted-foreground)]">{CAMPAIGN_OBJECTIVE_LABELS[c.objective]}</span>
-              <span className="text-xs text-[var(--muted-foreground)]">{c.start_date ? c.start_date.slice(0, 7) : "—"}</span>
-              <span className="text-xs text-[var(--foreground)]">{formatCents(c.budget_cents)}</span>
-              <span className="text-xs text-[var(--foreground)]">{formatCents(c.actual_spend_cents)}</span>
-              <StatusPill status={c.status} config={CAMPAIGN_STATUS_CONFIG} onClick={(e) => { e.stopPropagation(); cycleCampaignStatus(c); }} />
-              <button type="button" disabled={!canEdit} onClick={(e) => { e.stopPropagation(); deleteCampaign(c.id); }}
-                className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-            </div>
-          )
-        )}
-        {newRow && <CampaignEditRow key="new" campaign={newRow as MarketingCampaign} onSave={saveNew} onCancel={() => setNewRow(null)} />}
-      </div>
-      {canEdit && !newRow && (
-        <button type="button" onClick={() => setNewRow(emptyNew())}
-          className="flex items-center gap-1.5 text-sm font-medium text-[var(--teal)] border border-[var(--teal)]/30 hover:bg-[var(--teal)]/5 px-4 py-2 rounded-lg">
-          <Plus className="w-4 h-4" /> Add campaign
-        </button>
-      )}
-    </div>
-  );
-}
-
-function CampaignEditRow({ campaign, onSave, onCancel }: {
-  campaign: MarketingCampaign; onSave: (fields: Partial<MarketingCampaign>) => void; onCancel: () => void;
-}) {
-  const [name, setName] = useState(campaign.name);
-  const [objective, setObjective] = useState<CampaignObjective>(campaign.objective);
-  const [channelsRaw, setChannelsRaw] = useState((campaign.channels ?? []).join(", "));
-  const [startDate, setStartDate] = useState(campaign.start_date ?? "");
-  const [endDate, setEndDate] = useState(campaign.end_date ?? "");
-  const [budget, setBudget] = useState(String(campaign.budget_cents / 100));
-  const [spent, setSpent] = useState(String(campaign.actual_spend_cents / 100));
-  const [status, setStatus] = useState<CampaignStatus>(campaign.status);
-  const [keyResults, setKeyResults] = useState(campaign.key_results);
-
-  function handleSave() {
-    onSave({
-      name, objective, channels: channelsRaw.split(",").map((s) => s.trim()).filter(Boolean),
-      start_date: startDate || null, end_date: endDate || null,
-      budget_cents: Math.round(parseFloat(budget || "0") * 100),
-      actual_spend_cents: Math.round(parseFloat(spent || "0") * 100),
-      status, key_results: keyResults,
-    });
-  }
-
-  return (
-    <div className="px-4 py-3 border-b border-[var(--neutral-cool-100)] bg-[var(--teal-tint-50)] space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="col-span-2"><label className={labelCls}>Name</label><input type="text" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Campaign name" autoFocus /></div>
-        <div><label className={labelCls}>Objective</label>
-          <select className={inputCls} value={objective} onChange={(e) => setObjective(e.target.value as CampaignObjective)}>
-            {CAMPAIGN_OBJECTIVE_OPTIONS.map((o) => <option key={o} value={o}>{CAMPAIGN_OBJECTIVE_LABELS[o]}</option>)}
-          </select>
-        </div>
-        <div><label className={labelCls}>Status</label>
-          <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as CampaignStatus)}>
-            {(Object.entries(CAMPAIGN_STATUS_CONFIG) as [CampaignStatus, { label: string }][]).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div><label className={labelCls}>Start date</label><input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
-        <div><label className={labelCls}>End date</label><input type="date" className={inputCls} value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
-        <div><label className={labelCls}>Budget ($)</label><input type="number" min="0" className={inputCls} value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
-        <div><label className={labelCls}>Actual spend ($)</label><input type="number" min="0" className={inputCls} value={spent} onChange={(e) => setSpent(e.target.value)} /></div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label className={labelCls}>Channels</label><input type="text" className={inputCls} value={channelsRaw} onChange={(e) => setChannelsRaw(e.target.value)} placeholder="Instagram, Google Ads" /></div>
-        <div><label className={labelCls}>Key results / notes</label><input type="text" className={inputCls} value={keyResults} onChange={(e) => setKeyResults(e.target.value)} placeholder="e.g. 200 new follows" /></div>
-      </div>
-      <div className="flex gap-2">
-        <button type="button" onClick={handleSave} disabled={!name.trim()}
-          className="flex items-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg">
-          <Check className="w-4 h-4" /> Save
-        </button>
-        <button type="button" onClick={onCancel} className="text-sm font-medium text-[var(--muted-foreground)] border border-[var(--border-medium)] hover:bg-[var(--neutral-cool-100)] px-4 py-2 rounded-lg">Cancel</button>
-      </div>
-    </div>
-  );
-}
-
-// ── BudgetTab ─────────────────────────────────────────────────────────────────
-
-function BudgetTab({ canEdit, lines, onLinesChange, avgMonthlyRevenueCents }: {
-  canEdit: boolean;
-  lines: MarketingBudgetLine[];
-  onLinesChange: (l: MarketingBudgetLine[] | ((prev: MarketingBudgetLine[]) => MarketingBudgetLine[])) => void;
-  avgMonthlyRevenueCents: number;
-}) {
-  const [newChannel, setNewChannel] = useState("");
-  const [adding, setAdding] = useState(false);
-  const saveTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-
-  const total = totalBudgetCents(lines);
-  const pctOfRevenue = avgMonthlyRevenueCents > 0 ? ((total / avgMonthlyRevenueCents) * 100).toFixed(1) : null;
-
-  function updateAmount(line: MarketingBudgetLine, dollarStr: string) {
-    const cents = Math.round(parseFloat(dollarStr || "0") * 100);
-    onLinesChange((prev) => prev.map((l) => l.id === line.id ? { ...l, monthly_cents: cents } : l));
-    if (saveTimeouts.current.has(line.id)) clearTimeout(saveTimeouts.current.get(line.id)!);
-    saveTimeouts.current.set(line.id, setTimeout(async () => {
-      await fetch("/api/workspaces/marketing/budget-lines", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: line.id, monthly_cents: cents }) });
-    }, 600));
-  }
-
-  async function addLine() {
-    if (!newChannel.trim() || adding) return;
-    setAdding(true);
-    const res = await fetch("/api/workspaces/marketing/budget-lines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel_name: newChannel.trim(), monthly_cents: 0 }) });
-    if (res.ok) { const line = await res.json(); onLinesChange((prev) => [...prev, line]); setNewChannel(""); }
-    setAdding(false);
-  }
-
-  async function deleteLine(line: MarketingBudgetLine) {
-    onLinesChange((prev) => prev.filter((l) => l.id !== line.id));
-    await fetch(`/api/workspaces/marketing/budget-lines?id=${line.id}`, { method: "DELETE" });
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
-        <div className="flex items-end justify-between">
-          <div><span className={sectionLabelCls}>Monthly total</span><p className="text-3xl font-bold text-[var(--foreground)]">{formatCents(total)}</p></div>
-          {pctOfRevenue !== null && (
-            <div className="text-right">
-              <span className={sectionLabelCls}>% of projected revenue</span>
-              <p className="text-2xl font-semibold text-[var(--teal)]">{pctOfRevenue}%</p>
-              <p className="text-[10px] text-[var(--dark-grey)]">based on your Financials forecast</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_auto] gap-4 px-4 py-2 bg-[var(--background)] border-b border-[var(--border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-          <span>Channel</span><span>Monthly ($)</span><span />
-        </div>
-        {lines.map((line) => (
-          <div key={line.id} className="grid grid-cols-[2fr_1fr_auto] gap-4 items-center px-4 py-3 border-b border-[var(--neutral-cool-100)] last:border-0">
-            <span className="text-sm text-[var(--foreground)]">{line.channel_name}</span>
-            <input type="number" min="0" disabled={!canEdit}
-              className="text-sm border border-[var(--border-medium)] rounded-md px-2 py-1 focus:outline-none focus:border-[var(--teal)] disabled:bg-transparent disabled:border-transparent w-full"
-              value={line.monthly_cents / 100} onChange={(e) => updateAmount(line, e.target.value)} />
-            <button type="button" disabled={!canEdit} onClick={() => deleteLine(line)}
-              className="text-[var(--neutral-cool-400)] hover:text-red-400 disabled:opacity-30 p-1"><X className="w-3.5 h-3.5" /></button>
-          </div>
-        ))}
-      </div>
-
-      {canEdit && (
-        <div className="flex gap-2">
-          <input type="text" className={`${inputCls} flex-1`} placeholder="Add a channel (e.g. Podcast Sponsorship)"
-            value={newChannel} onChange={(e) => setNewChannel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addLine()} />
-          <button type="button" onClick={addLine} disabled={adding || !newChannel.trim()}
-            className="flex items-center gap-1.5 text-sm font-medium text-white bg-[var(--teal)] hover:bg-[var(--teal-820)] disabled:opacity-50 px-4 py-2 rounded-lg">
-            <Plus className="w-4 h-4" /> Add
-          </button>
-        </div>
-      )}
-      <p className="text-xs text-[var(--dark-grey)]">This total updates the Marketing line in your Financials forecast automatically.</p>
-    </div>
-  );
-}
-
-// ── MarketingWorkspace ────────────────────────────────────────────────────────
-
-type Tab = "brand" | "presence" | "calendar" | "campaigns" | "budget";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "brand",     label: "Brand & Positioning" },
-  { id: "presence",  label: "Digital Presence" },
-  { id: "calendar",  label: "Content Calendar" },
-  { id: "campaigns", label: "Campaign Tracker" },
-  { id: "budget",    label: "Marketing Budget" },
-];
 
 interface Props {
-  planId: string; canEdit: boolean; initialTrialMessagesUsed?: number;
-  initialBrand: MarketingBrand | null;
-  conceptBrandVoice: string; conceptShopIdentity: string;
-  initialPresence: DigitalPresenceRow[];
-  initialPosts: ContentPost[];
-  initialCampaigns: MarketingCampaign[];
-  initialBudgetLines: MarketingBudgetLine[];
-  avgMonthlyRevenueCents: number;
+  planId: string;
+  canEdit: boolean;
+  initialDoc: MarketingDocument;
+  conceptShopIdentity: string;
+  conceptBrandVoice: string;
+  targetOpeningDate: string | null;
+  initialTrialMessagesUsed?: number;
 }
 
 export function MarketingWorkspace({
-  planId, canEdit, initialTrialMessagesUsed,
-  initialBrand, conceptBrandVoice, conceptShopIdentity,
-  initialPresence, initialPosts, initialCampaigns, initialBudgetLines, avgMonthlyRevenueCents,
+  planId,
+  canEdit,
+  initialDoc,
+  initialTrialMessagesUsed,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("brand");
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [doc, setDoc] = useState<MarketingDocument>(initialDoc);
+  const [active, setActive] = useState<MarketingSectionKey>("overview");
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [paywallReason, setPaywallReason] = useState<
+    "no_subscription" | "paused" | "expired" | null
+  >(null);
+  const [generating, setGenerating] = useState<MarketingSectionKey | null>(null);
 
-  const [brand, setBrand] = useState<MarketingBrand>(initialBrand ?? {
-    id: "", plan_id: planId, positioning_statement: "", brand_pillar_1: "", brand_pillar_2: "", brand_pillar_3: "", do_say: "", dont_say: "", created_at: "", updated_at: "",
-  });
-  const [presence, setPresence] = useState<DigitalPresenceRow[]>(initialPresence);
-  const [posts, setPosts] = useState<ContentPost[]>(initialPosts);
-  const [campaigns, setCampaigns] = useState<MarketingCampaign[]>(initialCampaigns);
-  const [budgetLines, setBudgetLines] = useState<MarketingBudgetLine[]>(initialBudgetLines);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const docRef = useRef(doc);
+  useEffect(() => {
+    docRef.current = doc;
+  }, [doc]);
 
-  function guardEdit(fn: () => void) { if (!canEdit) { setShowPaywall(true); return; } fn(); }
+  const save = useCallback(async () => {
+    if (!canEdit) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/workspaces/marketing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: docRef.current }),
+      });
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason(
+          (body?.reason as "no_subscription" | "paused" | "expired") ??
+            "no_subscription",
+        );
+        return;
+      }
+      if (res.ok) {
+        setSavedAt(new Date().toISOString());
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [canEdit]);
+
+  const initialMount = useRef(true);
+  useEffect(() => {
+    if (initialMount.current) {
+      initialMount.current = false;
+      return;
+    }
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      void save();
+    }, 700);
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    };
+  }, [doc, save]);
+
+  const updateDoc = useCallback(
+    (mut: (d: MarketingDocument) => MarketingDocument) => setDoc((prev) => mut(prev)),
+    [],
+  );
+
+  async function handleGenerate(section: MarketingSectionKey) {
+    if (!canEdit || generating) return;
+    setGenerating(section);
+    try {
+      const res = await fetch("/api/workspaces/marketing/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section }),
+      });
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason(
+          (body?.reason as "no_subscription" | "paused" | "expired") ??
+            "no_subscription",
+        );
+        return;
+      }
+      if (!res.ok) return;
+      const body = (await res.json()) as { content: MarketingDocument };
+      setDoc(body.content);
+      setSavedAt(new Date().toISOString());
+    } finally {
+      setGenerating(null);
+    }
+  }
+
+  const activeLabel = MARKETING_SECTION_LABELS[active];
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
+      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Megaphone className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>Marketing</h1>
+          <div className="flex items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <Megaphone
+                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
+                aria-hidden="true"
+              />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+                Marketing
+              </h1>
+            </div>
+            <Link
+              href="/workspace/marketing/print"
+              className="hidden sm:inline-block text-xs font-medium text-[var(--teal)] hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Print view
+            </Link>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Track your brand, channels, content schedule, campaigns, and monthly spend from one place.
+            Plan the story, channels, and milestones that get the right people
+            through the door. This is your plan, in your own words.
           </p>
+          <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
+            <SaveStatus saving={saving} savedAt={savedAt} canEdit={canEdit} />
+          </div>
         </header>
 
-        <div className="flex gap-1 mb-6 border-b border-[var(--border)] overflow-x-auto">
-          {TABS.map((t) => (
-            <button key={t.id} type="button" onClick={() => setActiveTab(t.id)}
-              className={`flex-shrink-0 text-sm font-medium px-4 py-2.5 border-b-2 transition-colors ${activeTab === t.id ? "border-[var(--teal)] text-[var(--teal)]" : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}>
-              {t.label}
+        <SectionTabs active={active} onChange={setActive} doc={doc} />
+
+        <div className="mt-6 space-y-6">
+          <SectionEditor
+            key={active}
+            sectionKey={active}
+            label={activeLabel}
+            tagline={MARKETING_SECTION_TAGLINES[active]}
+            canEdit={canEdit}
+            doc={doc}
+            updateDoc={updateDoc}
+            onGenerate={() => handleGenerate(active)}
+            generating={generating === active}
+          />
+        </div>
+      </div>
+
+      <CoPilotDrawer
+        planId={planId}
+        workspaceKey="marketing"
+        currentFocus={{ label: activeLabel }}
+        initialTrialMessagesUsed={initialTrialMessagesUsed}
+      />
+
+      <PaywallModal
+        open={paywallReason !== null}
+        reason={paywallReason ?? "no_subscription"}
+        onClose={() => setPaywallReason(null)}
+      />
+    </div>
+  );
+}
+
+// ── Save status ─────────────────────────────────────────────────────────────
+
+function SaveStatus({
+  saving,
+  savedAt,
+  canEdit,
+}: {
+  saving: boolean;
+  savedAt: string | null;
+  canEdit: boolean;
+}) {
+  if (!canEdit) return <span className="italic">Read-only preview</span>;
+  if (saving) return <span>Saving…</span>;
+  if (savedAt) {
+    const ts = new Date(savedAt);
+    const hh = ts.getHours().toString().padStart(2, "0");
+    const mm = ts.getMinutes().toString().padStart(2, "0");
+    return (
+      <span className="flex items-center gap-1">
+        <Check className="w-3 h-3 text-[var(--teal)]" />
+        Saved {hh}:{mm}
+      </span>
+    );
+  }
+  return <span>Autosaves as you type.</span>;
+}
+
+// ── Section tabs ────────────────────────────────────────────────────────────
+
+function SectionTabs({
+  active,
+  onChange,
+  doc,
+}: {
+  active: MarketingSectionKey;
+  onChange: (k: MarketingSectionKey) => void;
+  doc: MarketingDocument;
+}) {
+  const filledMap: Record<MarketingSectionKey, boolean> = {
+    overview: doc.overview.narrative.trim().length > 0,
+    channels: doc.channels.selected.length > 0,
+    story:
+      doc.story.founder_story.trim().length > 0 ||
+      doc.story.origin.trim().length > 0 ||
+      doc.story.differentiator.trim().length > 0 ||
+      doc.story.target_customer.trim().length > 0,
+    pre_launch: doc.pre_launch.milestones.length > 0,
+  };
+
+  return (
+    <div className={cardCls}>
+      <div
+        role="tablist"
+        aria-label="Marketing sections"
+        className="flex flex-wrap gap-1 p-1"
+      >
+        {MARKETING_SECTION_KEYS.map((key) => {
+          const isActive = active === key;
+          const filled = filledMap[key];
+          return (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={isActive}
+              type="button"
+              onClick={() => onChange(key)}
+              className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl transition-colors ${
+                isActive
+                  ? "bg-[var(--teal)] text-white"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--background)]"
+              }`}
+            >
+              {filled && (
+                <Check
+                  className={`w-3 h-3 ${
+                    isActive ? "text-white" : "text-[var(--teal)]"
+                  }`}
+                />
+              )}
+              {MARKETING_SECTION_LABELS[key]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Section editor (dispatches by section key) ──────────────────────────────
+
+interface SectionEditorProps {
+  sectionKey: MarketingSectionKey;
+  label: string;
+  tagline: string;
+  canEdit: boolean;
+  doc: MarketingDocument;
+  updateDoc: (mut: (d: MarketingDocument) => MarketingDocument) => void;
+  onGenerate: () => void;
+  generating: boolean;
+}
+
+function SectionEditor(props: SectionEditorProps) {
+  const { sectionKey, label, tagline, canEdit, onGenerate, generating } = props;
+  return (
+    <section className={`${cardCls} p-6`}>
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex-1 min-w-0">
+          <h2 className={sectionLabelCls}>{label}</h2>
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+            {tagline}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!canEdit || generating}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          {generating ? "Drafting…" : "Draft with AI"}
+        </button>
+        <span className="sr-only" role="status">
+          {generating ? `Drafting the ${label} section with AI…` : ""}
+        </span>
+      </div>
+
+      {sectionKey === "overview" && <OverviewEditor {...props} />}
+      {sectionKey === "channels" && <ChannelsEditor {...props} />}
+      {sectionKey === "story" && <StoryEditor {...props} />}
+      {sectionKey === "pre_launch" && <PreLaunchEditor {...props} />}
+    </section>
+  );
+}
+
+function OverviewEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
+  return (
+    <div>
+      <label className={labelCls}>How you plan to market the shop</label>
+      <textarea
+        className={textareaCls}
+        rows={10}
+        value={doc.overview.narrative}
+        onChange={(e) =>
+          updateDoc((d) => ({ ...d, overview: { narrative: e.target.value } }))
+        }
+        disabled={!canEdit}
+        placeholder="A few paragraphs in your own voice. How will people hear about this shop in the lead-up to opening, and after? What feels right for the neighborhood, the concept, the kind of regular you want?"
+      />
+      <p className={helperCls}>
+        Tip: Write it like you would say it to a friend. The voice that comes
+        through here feeds every other surface.
+      </p>
+    </div>
+  );
+}
+
+function ChannelsEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
+  const selected = doc.channels.selected;
+  const selectedNames = new Set(selected.map((c) => c.name.toLowerCase()));
+
+  function addChannel(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (selectedNames.has(trimmed.toLowerCase())) return;
+    updateDoc((d) => ({
+      ...d,
+      channels: {
+        selected: [...d.channels.selected, { name: trimmed, notes: "" }],
+      },
+    }));
+  }
+
+  function removeChannel(idx: number) {
+    updateDoc((d) => ({
+      ...d,
+      channels: {
+        selected: d.channels.selected.filter((_, i) => i !== idx),
+      },
+    }));
+  }
+
+  function patchChannel(idx: number, patch: Partial<MarketingChannelEntry>) {
+    updateDoc((d) => ({
+      ...d,
+      channels: {
+        selected: d.channels.selected.map((c, i) =>
+          i === idx ? { ...c, ...patch } : c,
+        ),
+      },
+    }));
+  }
+
+  function move(idx: number, delta: -1 | 1) {
+    updateDoc((d) => {
+      const next = idx + delta;
+      if (next < 0 || next >= d.channels.selected.length) return d;
+      const arr = d.channels.selected.slice();
+      [arr[idx], arr[next]] = [arr[next], arr[idx]];
+      return { ...d, channels: { selected: arr } };
+    });
+  }
+
+  const availablePresets = MARKETING_CHANNEL_OPTIONS.filter(
+    (name) => !selectedNames.has(name.toLowerCase()),
+  );
+
+  return (
+    <div>
+      <div className="mb-4">
+        <label className={labelCls}>Add a channel</label>
+        <div className="flex flex-wrap gap-1.5">
+          {availablePresets.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => addChannel(name)}
+              disabled={!canEdit}
+              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border-medium)] text-[var(--muted-foreground)] hover:border-[var(--teal)] hover:text-[var(--teal)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Plus className="w-3 h-3 inline mr-1" />
+              {name}
             </button>
           ))}
         </div>
-
-        {activeTab === "brand" && <BrandTab canEdit={canEdit} brand={brand} onBrandChange={(b) => guardEdit(() => setBrand(b))} conceptBrandVoice={conceptBrandVoice} conceptShopIdentity={conceptShopIdentity} />}
-        {activeTab === "presence" && <DigitalPresenceTab canEdit={canEdit} rows={presence} onRowsChange={(u) => guardEdit(() => setPresence(typeof u === "function" ? u(presence) : u))} />}
-        {activeTab === "calendar" && <ContentCalendarTab canEdit={canEdit} posts={posts} onPostsChange={(u) => guardEdit(() => setPosts(typeof u === "function" ? u(posts) : u))} />}
-        {activeTab === "campaigns" && <CampaignTab canEdit={canEdit} campaigns={campaigns} onCampaignsChange={(u) => guardEdit(() => setCampaigns(typeof u === "function" ? u(campaigns) : u))} />}
-        {activeTab === "budget" && <BudgetTab canEdit={canEdit} lines={budgetLines} onLinesChange={(u) => guardEdit(() => setBudgetLines(typeof u === "function" ? u(budgetLines) : u))} avgMonthlyRevenueCents={avgMonthlyRevenueCents} />}
+        <CustomChannelInput onAdd={addChannel} canEdit={canEdit} />
       </div>
 
-      {showPaywall && <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} />}
+      {selected.length === 0 ? (
+        <p className="text-xs text-[var(--dark-grey)] italic py-4 text-center">
+          Pick the channels you can keep up with. Two or three you actually
+          maintain beats a long list of dormant accounts.
+        </p>
+      ) : (
+        <ol className="space-y-3">
+          {selected.map((c, idx) => (
+            <li
+              key={`${c.name}-${idx}`}
+              className="rounded-xl border border-[var(--border)] p-3 bg-[var(--background)]"
+            >
+              <div className="flex items-start gap-2 mb-2">
+                <div className="flex flex-col gap-0.5 pt-1 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => move(idx, -1)}
+                    disabled={!canEdit || idx === 0}
+                    aria-label="Move channel up"
+                    className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ArrowUp className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(idx, 1)}
+                    disabled={!canEdit || idx === selected.length - 1}
+                    aria-label="Move channel down"
+                    className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ArrowDown className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[var(--foreground)]">
+                    {c.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeChannel(idx)}
+                  disabled={!canEdit}
+                  aria-label={`Remove ${c.name}`}
+                  className="text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <textarea
+                rows={2}
+                className={textareaCls}
+                value={c.notes}
+                onChange={(e) => patchChannel(idx, { notes: e.target.value })}
+                disabled={!canEdit}
+                placeholder="Why this channel? Who runs it? What kind of post or moment shows up here?"
+              />
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
 
-      <CoPilotDrawer planId={planId} workspaceKey="marketing"
-        currentFocus={{ label: `Marketing: ${TABS.find((t) => t.id === activeTab)?.label ?? ""}` }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed} />
+function CustomChannelInput({
+  onAdd,
+  canEdit,
+}: {
+  onAdd: (name: string) => void;
+  canEdit: boolean;
+}) {
+  const [value, setValue] = useState("");
+  function submit() {
+    if (!value.trim()) return;
+    onAdd(value);
+    setValue("");
+  }
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        disabled={!canEdit}
+        placeholder="Add another channel"
+        className={`${inputCls} max-w-xs`}
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!canEdit || !value.trim()}
+        className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors"
+      >
+        Add
+      </button>
+    </div>
+  );
+}
+
+function StoryEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
+  function set<K extends keyof MarketingDocument["story"]>(
+    key: K,
+    value: MarketingDocument["story"][K],
+  ) {
+    updateDoc((d) => ({ ...d, story: { ...d.story, [key]: value } }));
+  }
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className={labelCls}>Founder story</label>
+        <textarea
+          className={textareaCls}
+          rows={4}
+          value={doc.story.founder_story}
+          onChange={(e) => set("founder_story", e.target.value)}
+          disabled={!canEdit}
+          placeholder="How did you get here? A few sentences a customer could read in your bio and feel like they already know you."
+        />
+      </div>
+      <div>
+        <label className={labelCls}>Origin of the shop</label>
+        <textarea
+          className={textareaCls}
+          rows={4}
+          value={doc.story.origin}
+          onChange={(e) => set("origin", e.target.value)}
+          disabled={!canEdit}
+          placeholder="Why this shop, why this neighborhood, why now. The reason it should exist."
+        />
+      </div>
+      <div>
+        <label className={labelCls}>What makes this shop different</label>
+        <textarea
+          className={textareaCls}
+          rows={4}
+          value={doc.story.differentiator}
+          onChange={(e) => set("differentiator", e.target.value)}
+          disabled={!canEdit}
+          placeholder="The one or two things competitors in this market cannot easily copy. Supplier relationships, people, atmosphere, expertise."
+        />
+      </div>
+      <div>
+        <label className={labelCls}>Who it is for</label>
+        <textarea
+          className={textareaCls}
+          rows={4}
+          value={doc.story.target_customer}
+          onChange={(e) => set("target_customer", e.target.value)}
+          disabled={!canEdit}
+          placeholder="The real person you are making decisions for. Their week, their morning, what brings them in."
+        />
+      </div>
+    </div>
+  );
+}
+
+function PreLaunchEditor({
+  canEdit,
+  doc,
+  updateDoc,
+}: SectionEditorProps) {
+  const milestones = doc.pre_launch.milestones;
+
+  function patch(idx: number, patch: Partial<MarketingMilestone>) {
+    updateDoc((d) => ({
+      ...d,
+      pre_launch: {
+        milestones: d.pre_launch.milestones.map((m, i) =>
+          i === idx ? { ...m, ...patch } : m,
+        ),
+      },
+    }));
+  }
+
+  function move(idx: number, delta: -1 | 1) {
+    updateDoc((d) => {
+      const next = idx + delta;
+      if (next < 0 || next >= d.pre_launch.milestones.length) return d;
+      const arr = d.pre_launch.milestones.slice();
+      [arr[idx], arr[next]] = [arr[next], arr[idx]];
+      return { ...d, pre_launch: { milestones: arr } };
+    });
+  }
+
+  function remove(idx: number) {
+    updateDoc((d) => ({
+      ...d,
+      pre_launch: {
+        milestones: d.pre_launch.milestones.filter((_, i) => i !== idx),
+      },
+    }));
+  }
+
+  function addMilestone() {
+    updateDoc((d) => ({
+      ...d,
+      pre_launch: {
+        milestones: [
+          ...d.pre_launch.milestones,
+          {
+            id: localId(),
+            label: "",
+            target_date: null,
+            notes: "",
+            completed: false,
+          },
+        ],
+      },
+    }));
+  }
+
+  function loadDefaults() {
+    updateDoc((d) => ({
+      ...d,
+      pre_launch: { milestones: defaultPreLaunchMilestones() },
+    }));
+  }
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          {milestones.length}{" "}
+          {milestones.length === 1 ? "milestone" : "milestones"}
+        </span>
+        {milestones.length === 0 && canEdit && (
+          <button
+            type="button"
+            onClick={loadDefaults}
+            className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2.5 py-1.5 rounded-lg transition-colors"
+          >
+            Load suggested milestones
+          </button>
+        )}
+      </div>
+
+      <ol className="space-y-2">
+        {milestones.map((m, idx) => (
+          <li
+            key={m.id}
+            className="rounded-xl border border-[var(--border)] p-3 bg-[var(--background)]"
+          >
+            <div className="flex items-start gap-2 mb-2">
+              <div className="flex flex-col gap-0.5 pt-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => move(idx, -1)}
+                  disabled={!canEdit || idx === 0}
+                  aria-label="Move milestone up"
+                  className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(idx, 1)}
+                  disabled={!canEdit || idx === milestones.length - 1}
+                  aria-label="Move milestone down"
+                  className="text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+              </div>
+              <input
+                type="checkbox"
+                checked={m.completed}
+                onChange={(e) => patch(idx, { completed: e.target.checked })}
+                disabled={!canEdit}
+                aria-label={`Mark "${m.label || "milestone"}" complete`}
+                className="mt-2 accent-[var(--teal)] flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0 space-y-2">
+                <input
+                  type="text"
+                  className={inputCls}
+                  value={m.label}
+                  onChange={(e) => patch(idx, { label: e.target.value })}
+                  disabled={!canEdit}
+                  placeholder="Milestone name"
+                />
+                <div className="flex items-center gap-2 text-xs">
+                  <label className="text-[var(--muted-foreground)] whitespace-nowrap">
+                    Target date
+                  </label>
+                  <input
+                    type="date"
+                    className={`${inputCls} max-w-[180px]`}
+                    value={m.target_date ?? ""}
+                    onChange={(e) =>
+                      patch(idx, { target_date: e.target.value || null })
+                    }
+                    disabled={!canEdit}
+                  />
+                </div>
+                <textarea
+                  rows={2}
+                  className={textareaCls}
+                  value={m.notes}
+                  onChange={(e) => patch(idx, { notes: e.target.value })}
+                  disabled={!canEdit}
+                  placeholder="What happens here? Who shows up, what gets tested, what would make it feel right?"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => remove(idx)}
+                disabled={!canEdit}
+                aria-label="Remove milestone"
+                className="text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 mt-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      {milestones.length === 0 && (
+        <p className="text-xs text-[var(--dark-grey)] italic py-4 text-center">
+          No milestones yet. Add your first one below or load a suggested set
+          you can edit.
+        </p>
+      )}
+
+      {canEdit && (
+        <button
+          type="button"
+          onClick={addMilestone}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add milestone
+        </button>
+      )}
     </div>
   );
 }

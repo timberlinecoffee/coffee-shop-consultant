@@ -44,7 +44,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
         aria-expanded={open}
         aria-label="See a sample answer from a fictional coffee shop"
         title="See a sample answer"
-        className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--teal)] ${
+        className={`inline-flex items-center justify-center w-5 h-5 rounded transition-colors focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] ${
           open
             ? "text-[var(--teal)]"
             : "text-[var(--warm-900)] hover:text-[var(--teal)]"
@@ -72,7 +72,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close example"
-              className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus:outline-none focus:text-[var(--foreground)] ml-2 shrink-0"
+              className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none focus:text-[var(--foreground)] ml-2 shrink-0"
             >
               <X size={13} aria-hidden="true" />
             </button>
@@ -87,7 +87,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
               <button
                 type="button"
                 onClick={nextExample}
-                className="text-xs text-[var(--teal)] hover:underline focus:outline-none focus:text-[var(--teal-dark)]"
+                className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none focus:text-[var(--teal-dark)]"
               >
                 See another shop
               </button>
@@ -97,7 +97,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus:outline-none"
+              className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus-visible:outline-none"
             >
               Got it
             </button>

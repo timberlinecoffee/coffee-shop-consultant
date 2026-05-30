@@ -219,7 +219,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                   placeholder="e.g. Two-group La Marzocco, two EK43 grinders, a Modbar pour-over for the slow bar, a small pastry case, POS on two iPads…"
                   rows={6}
                   maxLength={4000}
-                  className="w-full text-sm text-[var(--foreground)] border border-[var(--neutral-cool-350)] rounded-xl px-4 py-3 focus:border-[var(--teal)] focus:outline-none resize-none leading-relaxed placeholder:text-[var(--neutral-cool-400)]"
+                  className="w-full text-sm text-[var(--foreground)] border border-[var(--neutral-cool-350)] rounded-xl px-4 py-3 focus:border-[var(--teal)] focus-visible:outline-none resize-none leading-relaxed placeholder:text-[var(--neutral-cool-400)]"
                 />
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-[10px] text-[var(--dark-grey)]">
@@ -444,7 +444,7 @@ function PreviewRow({
           value={row.name}
           onChange={(e) => onChange({ name: e.target.value })}
           disabled={skipped}
-          className="w-full min-w-[160px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full min-w-[160px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -455,7 +455,7 @@ function PreviewRow({
             value={row.section_name}
             onChange={(e) => onChange({ section_name: e.target.value })}
             disabled={skipped}
-            className="w-full min-w-[130px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none appearance-none pr-5 transition-colors disabled:pointer-events-none"
+            className="w-full min-w-[130px] text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none appearance-none pr-5 transition-colors disabled:pointer-events-none"
           >
             {stationOptions.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -476,7 +476,7 @@ function PreviewRow({
           onChange={(e) => onChange({ vendor: e.target.value })}
           disabled={skipped}
           placeholder="Brand"
-          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 
@@ -487,7 +487,7 @@ function PreviewRow({
           value={centsToDollarString(row.unit_cost_cents)}
           onChange={(e) => onChange({ unit_cost_cents: dollarStringToCents(e.target.value) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -499,7 +499,7 @@ function PreviewRow({
           value={row.quantity}
           onChange={(e) => onChange({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 
@@ -511,7 +511,7 @@ function PreviewRow({
           onChange={(e) => onChange({ notes: e.target.value })}
           disabled={skipped}
           placeholder="Notes"
-          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
+          className="w-full text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none placeholder:text-[var(--neutral-cool-400)]"
         />
       </td>
 

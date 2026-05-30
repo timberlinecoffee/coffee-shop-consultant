@@ -295,6 +295,18 @@ export function OnboardingFlow({
   const router = useRouter();
   const supabase = createClient();
 
+  // WCAG 2.4.3 Focus Order: move focus to the step container on each advance so
+  // AT users land at the new step instead of being stranded on the old Next button.
+  const stepContainerRef = useRef<HTMLElement>(null);
+  const isFirstStepRender = useRef(true);
+  useEffect(() => {
+    if (isFirstStepRender.current) {
+      isFirstStepRender.current = false;
+      return;
+    }
+    stepContainerRef.current?.focus();
+  }, [step]);
+
   useEffect(() => {
     const draft = readDraft();
     const hasContent =
@@ -430,6 +442,35 @@ export function OnboardingFlow({
         );
       if (conceptError) throw conceptError;
 
+      // TIM-1417: brand_pillars from onboarding flow feed the Marketing
+      // workspace's Story And Brand section on first open. Persist as part of
+      // the marketing workspace_document under workspace_key='marketing'.
+      const brandPillars = Array.isArray(wizardState.answers.brand_pillars)
+        ? (wizardState.answers.brand_pillars as string[])
+        : [];
+      if (brandPillars.length > 0) {
+        const differentiator = brandPillars.filter(Boolean).join(", ");
+        await supabase.from("workspace_documents").upsert(
+          {
+            plan_id: planId,
+            workspace_key: "marketing",
+            content: {
+              overview: { narrative: "" },
+              channels: { selected: [] },
+              story: {
+                founder_story: "",
+                origin: "",
+                differentiator,
+                target_customer: "",
+              },
+              pre_launch: { milestones: [] },
+              last_generated_at: null,
+            },
+          },
+          { onConflict: "plan_id,workspace_key" },
+        );
+      }
+
       await supabase.from("milestones").insert([
         {
           plan_id: planId,
@@ -532,7 +573,7 @@ export function OnboardingFlow({
         )}
       </header>
 
-      <main className="flex-1 px-6 py-8 flex flex-col">
+      <main ref={stepContainerRef} tabIndex={-1} style={{ outline: "none" }} className="flex-1 px-6 py-8 flex flex-col">
         {currentStep.type === "welcome" && (
           <div className="flex-1 flex flex-col justify-center">
             <div className="relative w-full rounded-2xl overflow-hidden mb-6" style={{ height: "180px" }}>
@@ -658,7 +699,7 @@ export function OnboardingFlow({
                     }
                     onChange={(e) => handleSelect(e.target.value)}
                     placeholder={(currentStep as { placeholder: string }).placeholder}
-                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white"
+                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white"
                   />
                 </>
               )}
@@ -688,7 +729,7 @@ export function OnboardingFlow({
                     onChange={(e) => handleSelect(e.target.value)}
                     placeholder={(currentStep as { placeholder: string }).placeholder}
                     rows={4}
-                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
                   />
                   {(currentStep as { minChars?: number }).minChars ? (
                     <p className="text-xs text-[var(--dark-grey)] mt-2">
@@ -913,7 +954,7 @@ function CityAutocompleteInput({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Type a city name..."
-          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white pr-10"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white pr-10"
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { buildNavItems } from "@/lib/workspace-manifest";
+import { buildLaunchReadiness } from "@/lib/launch-readiness";
 import { capitalizeFirst } from "@/lib/format";
 import {
   buildRecentActivity,
@@ -20,6 +21,7 @@ import {
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { ProgressDashboard } from "./_components/progress-dashboard";
 import { DashboardHero } from "./_components/dashboard-hero";
+import { LaunchReadinessCard } from "./_components/launch-readiness";
 import { WorkspaceNav } from "./_components/workspace-nav";
 
 export const dynamic = 'force-dynamic';
@@ -95,6 +97,11 @@ export default async function DashboardPage() {
   // TIM-1268: workspace nav grouped by category, mirroring the sidebar. Uses
   // the shared manifest source of truth so the grouping cannot drift.
   const navItems = buildNavItems(statusByKey);
+
+  // TIM-1373: Launch Readiness ring + per-workspace chips. Same denominator as
+  // the workspace nav (unlocked workspaces only) so the headline percent and
+  // the chips can't disagree.
+  const launchReadiness = buildLaunchReadiness(statusByKey);
 
   // Show milestones once opening date is set OR Workspace 1 is complete
   const showMilestones = !!targetTimeline || w1Completed;
@@ -172,7 +179,7 @@ export default async function DashboardPage() {
               )}
             </p>
             <Link
-              href="/workspace/launch-plan"
+              href="/workspace/opening-milestones"
               className={`text-xs font-semibold flex-shrink-0 hover:underline ${READINESS_COLORS[readinessOverall].text}`}
             >
               View results →
@@ -182,6 +189,10 @@ export default async function DashboardPage() {
 
         {/* TIM-1268: personable hero — time-of-day greeting + rotating fact. */}
         <DashboardHero firstName={firstName} />
+
+        {/* TIM-1373: Launch Readiness — overall progress ring + per-workspace
+            chips that double as a next-best-action nav affordance. */}
+        <LaunchReadinessCard readiness={launchReadiness} />
 
         {/* TIM-1268: workspace display grouped by category, mirroring the
             sidebar. Replaces the old numbered "Start Here" + "Coming Up" lists. */}
@@ -199,7 +210,8 @@ export default async function DashboardPage() {
         />
 
         {/* Quick links */}
-        <h2 className="font-semibold text-lg text-[var(--foreground)] mb-4">Quick Links</h2>
+        {/* TIM-1408: section heading normalized to standard h2 token */}
+        <h2 className="text-base font-semibold text-[var(--foreground)] mb-4">Quick Links</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           {[
             {
@@ -231,7 +243,7 @@ export default async function DashboardPage() {
             },
             ...(showMilestones ? [{
               label: "Milestones",
-              href: "/workspace/launch-plan",
+              href: "/workspace/opening-milestones",
               icon: (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>

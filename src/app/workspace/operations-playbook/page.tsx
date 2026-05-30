@@ -10,6 +10,7 @@ import {
   seededPlaybook,
   isPlaybookEmpty,
 } from "@/lib/operations-playbook";
+import { normalizeConceptV2 } from "@/lib/concept";
 import { OperationsPlaybookWorkspace } from "./operations-playbook-workspace";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function OperationsPlaybookPage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -61,10 +62,10 @@ export default async function OperationsPlaybookPage() {
   const stored = normalizeOperationsPlaybook(doc?.content);
   const initialDoc = isPlaybookEmpty(stored) ? seededPlaybook() : stored;
 
-  const conceptContent = conceptDoc?.content as Record<string, unknown> | null;
-  const conceptComponents =
-    (conceptContent?.components as Record<string, { content: string }> | null) ?? null;
-  const conceptShopIdentity = conceptComponents?.shop_identity?.content ?? "";
+  // TIM-1406: shop name comes from coffee_shop_plans.plan_name (SoT); concept
+  // jsonb is the V2 shadow read via normalizer for V1/V2 safety.
+  const concept = normalizeConceptV2(conceptDoc?.content);
+  const conceptShopIdentity = (plan.plan_name?.trim() ?? "") || concept.components.shop_identity.content;
 
   const canEdit =
     isSubscriptionActive(profile?.subscription_status ?? "free_trial") ||

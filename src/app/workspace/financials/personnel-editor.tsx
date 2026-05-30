@@ -40,7 +40,7 @@ const PAY_BASIS_LABEL: Record<PersonnelPayBasis, string> = {
 };
 
 const inputCls =
-  "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const fieldLabelCls = "block text-[10px] font-medium text-[var(--muted-foreground)] mb-1";
 
 interface RowProps {
@@ -266,6 +266,22 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
 
       {expanded && (
         <div className="px-3 pb-3 pt-3 border-t border-[var(--neutral-cool-100)] bg-[var(--neutral-cool-50)] space-y-3">
+          {/* TIM-1419: target starting date — owned by Financial Suite, does not write back to Hiring */}
+          <div>
+            <label className={fieldLabelCls}>Target starting date</label>
+            <input
+              type="date"
+              value={line.target_start_date ?? ""}
+              disabled={!canEdit}
+              onChange={(e) => onChange({ ...line, target_start_date: e.target.value || null })}
+              className={`${inputCls} w-40`}
+              aria-label="Target starting date for this role"
+            />
+            <p className="text-[10px] text-[var(--dark-grey)] mt-1">
+              Planned hire date for financial planning. Stays in Financial Suite.
+            </p>
+          </div>
+
           {/* Fixed per-head benefits */}
           <div>
             <label className={fieldLabelCls}>Fixed benefits ({sym} per person / month)</label>
@@ -589,19 +605,19 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
         <div className="rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Total Headcount</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Total Headcount</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{totalHeadcount}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Loaded Payroll / Month</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Loaded Payroll / Month</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{fmt(totalLoaded, currencyCode)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Direct Labor (COGS)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Direct Labor (COGS)</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{fmt(cogsLoaded, currencyCode)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)]">Overhead Labor</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)]">Overhead Labor</p>
               <p className="text-lg font-bold text-[var(--foreground)]">{fmt(overheadLoaded, currencyCode)}</p>
             </div>
           </div>

@@ -79,7 +79,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
 
   if (!result) {
     return (
-      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-8 text-center text-sm text-[var(--dark-grey)]">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-8 text-center text-sm text-[var(--dark-grey)]">
         Enter your revenue assumptions in the Inputs tab to see break-even analysis.
       </div>
     );
@@ -115,19 +115,19 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
     <div className="space-y-4">
       {/* Primary metrics */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4">
           <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Break-Even Transactions / Month</p>
           <p className="text-3xl font-bold text-[var(--foreground)]">{isFinite(breakEvenTransactions) ? breakEvenTransactions.toLocaleString() : "N/A"}</p>
           <p className="text-xs text-[var(--dark-grey)] mt-1">
             {isFinite(daysToBreakEven) ? `${daysToBreakEven.toFixed(1)} days of foot traffic` : ""}
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-4">
+        <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4">
           <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Break-Even Revenue / Month</p>
           <p className="text-3xl font-bold text-[var(--foreground)]">{isFinite(breakEvenRevenue) ? fmt(breakEvenRevenue, currencyCode) : "N/A"}</p>
           <p className="text-xs text-[var(--dark-grey)] mt-1">Contribution margin {(contributionMarginPct * 100).toFixed(1)}%</p>
         </div>
-        <div className={`rounded-2xl border px-5 py-4 col-span-2 sm:col-span-1 ${transactionSurplus >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+        <div className={`rounded-xl border px-5 py-4 col-span-2 sm:col-span-1 ${transactionSurplus >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
           <p className={`text-xs uppercase tracking-wide mb-1 ${transactionSurplus >= 0 ? "text-green-700" : "text-red-700"}`}>
             {transactionSurplus >= 0 ? "Projected Surplus" : "Projected Shortfall"}
           </p>
@@ -141,7 +141,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
       </div>
 
       {/* Visual bar */}
-      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-5">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-5">
         <p className="text-sm font-semibold text-[var(--foreground)] mb-4">Monthly Transactions vs. Break-Even</p>
         <div className="space-y-3">
           <div>
@@ -175,7 +175,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
       </div>
 
       {/* Sensitivity table */}
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-x-auto">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <div className="px-5 pt-5 pb-2">
           <p className="text-sm font-semibold text-[var(--foreground)]">Sensitivity Analysis</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">How does break-even shift if key variables change?</p>
@@ -218,7 +218,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
       </div>
 
       {/* Critique */}
-      <div className="rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+      <div className="rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <BreakEvenCritique
           breakEvenTransactions={breakEvenTransactions}

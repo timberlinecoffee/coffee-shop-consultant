@@ -9,6 +9,7 @@ export const maxDuration = 30;
 
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
 
@@ -112,9 +113,9 @@ Rules:
       : [];
 
     return Response.json({
-      rewrite: normalizeAIOutput(parsed.rewrite ?? ""),
+      rewrite: normalizeAIOutput(String(parsed.rewrite ?? "")),
       gaps,
-      competitorNote: parsed.competitorNote ?? null,
+      competitorNote: parsed.competitorNote ? normalizeAIOutput(String(parsed.competitorNote)) : null,
     });
   } catch {
     return Response.json({ error: "AI improvement failed" }, { status: 500 });

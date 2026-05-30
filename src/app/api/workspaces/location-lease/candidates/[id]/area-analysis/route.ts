@@ -5,6 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
 import { normalizeAIOutput } from "@/lib/normalize"
 
@@ -208,8 +209,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     })
 
     const block = response.content.find((b) => b.type === "text")
-    const text = block && "text" in block ? block.text.trim() : ""
-    const normalizedText = normalizeAIOutput(text)
+    const normalizedText = block && "text" in block ? normalizeAIOutput(block.text.trim()) : ""
 
     if (!normalizedText) {
       return Response.json({ error: "Area analysis returned empty." }, { status: 502 })

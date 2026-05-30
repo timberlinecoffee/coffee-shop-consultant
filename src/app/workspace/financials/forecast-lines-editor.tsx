@@ -20,6 +20,7 @@ import type {
 } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
@@ -95,7 +96,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
   const [expanded, setExpanded] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const inputCls =
-    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   const isCapex = line.category === "capex";
   const isCogs = line.category === "cogs";
@@ -481,7 +482,9 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                         <tbody className="divide-y divide-[var(--teal-bg-e8f)]">
                           {menuCogsItems.map((it, i) => (
                             <tr key={i}>
-                              <td className="py-1 pr-2 text-[var(--foreground)] truncate max-w-[120px]">{it.name}</td>
+                              <td className="py-1 pr-2 text-[var(--foreground)]" style={{ maxWidth: 120 }}>
+                                <TruncatedText text={it.name} />
+                              </td>
                               <td className="py-1 text-right text-[var(--muted-foreground)]">{it.expected_mix_pct.toFixed(0)}%</td>
                               <td className="py-1 text-right font-medium text-[var(--teal)]">{it.cogs_pct.toFixed(1)}%</td>
                             </tr>
@@ -725,7 +728,7 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
     <div>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">{meta.label}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">{meta.label}</p>
           <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{meta.hint}</p>
         </div>
         {canEdit && (

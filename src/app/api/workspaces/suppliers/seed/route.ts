@@ -1,7 +1,10 @@
 // TIM-1059: Suppliers & Vendors — AI seed + per-category improve.
+// TIM-1414: Persistent "more suggestions" button — append mode adds new AI
+// rows without wiping prior ones; supports custom categories.
 //
-// POST /api/workspaces/suppliers/seed { category }   → 3 ai_suggested candidates
-// POST /api/workspaces/suppliers/seed { mode: "all" } → seeds every category
+// POST /api/workspaces/suppliers/seed { category }                  → 3 ai_suggested candidates (replaces existing AI rows)
+// POST /api/workspaces/suppliers/seed { category, mode: "append" }  → 3 fresh AI rows appended; existing rows untouched
+// POST /api/workspaces/suppliers/seed { mode: "all" }               → seeds every seeded category (replaces existing AI rows)
 //
 // Uses the Concept document (city, vibe, menu) to bias suggestions. Vendor
 // names land in Title Case at the API boundary (TIM-1002).
@@ -18,9 +21,13 @@ import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
   VENDOR_CATEGORY_SUBTITLES,
-  isVendorCategoryKey,
+  isCustomCategoryKey,
+  isSeededCategoryKey,
+  isVendorCategoryId,
+  type VendorCategoryId,
   type VendorCategoryKey,
 } from "@/lib/suppliers";
+import { normalizeConceptV2 } from "@/lib/concept";
 
 const anthropic = new Anthropic();
 
@@ -33,30 +40,34 @@ type AiCandidate = {
   notes?: string;
 };
 
+// TIM-1406: V1/V2-safe via normalizer so the digest is non-empty for fresh-
+// from-onboarding plans where workspace_documents still holds the V1 shape.
 function conceptSummary(concept: unknown): string {
-  if (!concept || typeof concept !== "object") return "An independent specialty coffee shop.";
-  const c = concept as { components?: Record<string, { content?: string } | undefined> };
-  const get = (key: string) =>
-    typeof c.components?.[key]?.content === "string" ? (c.components![key]!.content as string).trim() : "";
-  const vision = get("vision");
-  const offering = get("offering");
-  const location = get("location");
-  const personas = get("personas");
+  const doc = normalizeConceptV2(concept);
+  const vision = doc.components.vision.content.trim();
+  const offering = doc.components.offering.content.trim();
+  const location = doc.components.location.content.trim();
+  const targetCustomer = doc.components.target_customer.content.trim();
   const parts = [
     vision && `Vision: ${vision}`,
     offering && `Offering: ${offering}`,
     location && `Location/city: ${location}`,
-    personas && `Customers: ${personas}`,
+    targetCustomer && `Customers: ${targetCustomer}`,
   ].filter(Boolean);
   return parts.join("\n") || "An independent specialty coffee shop.";
 }
 
 async function generateCategoryCandidates(
-  category: VendorCategoryKey,
-  conceptDigest: string
+  category: VendorCategoryId,
+  label: string,
+  subtitle: string,
+  conceptDigest: string,
+  existingNames: string[] = []
 ): Promise<AiCandidate[]> {
-  const label = VENDOR_CATEGORY_LABELS[category];
-  const subtitle = VENDOR_CATEGORY_SUBTITLES[category];
+  void category;
+  const avoidLine = existingNames.length
+    ? `\n- Do NOT repeat any of these vendors (already in the list): ${existingNames.slice(0, 20).join(", ")}.`
+    : "";
 
   const prompt = `You are helping an independent specialty coffee shop owner draft a starting shortlist of ${label} vendors to research.
 
@@ -65,7 +76,7 @@ ${conceptDigest}
 
 Category: ${label} — ${subtitle}
 
-Suggest 3 candidate vendors to research. Mix one well-known national/regional option, one specialty/local pick that fits the vibe, and one budget/utility option. Use placeholder text in fields the owner will fill in (e.g. "Request quote", "TBD by region"). Do NOT invent fake phone numbers or websites.
+Suggest 3 candidate vendors to research. Mix one well-known national/regional option, one specialty/local pick that fits the vibe, and one budget/utility option. Use placeholder text in fields the owner will fill in (e.g. "Request quote", "TBD by region"). Do NOT invent fake phone numbers or websites.${avoidLine}
 
 Respond with JSON only (no markdown fences), shape:
 {
@@ -138,30 +149,79 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle();
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 });
+  const planId: string = plan.id;
 
   let body: { category?: string; mode?: string };
   try { body = await request.json(); } catch { body = {}; }
 
-  const conceptDigest = await loadConceptDigest(supabase, plan.id);
+  const conceptDigest = await loadConceptDigest(supabase, planId);
+  const append = body.mode === "append";
 
-  const categoriesToSeed: VendorCategoryKey[] =
+  // Resolve label/subtitle for custom categories from the DB.
+  async function resolveMeta(cat: VendorCategoryId): Promise<{ label: string; subtitle: string } | null> {
+    if (isSeededCategoryKey(cat)) {
+      return { label: VENDOR_CATEGORY_LABELS[cat], subtitle: VENDOR_CATEGORY_SUBTITLES[cat] };
+    }
+    const { data } = await supabase
+      .from("vendor_custom_categories")
+      .select("label")
+      .eq("plan_id", planId)
+      .eq("key", cat)
+      .maybeSingle();
+    if (!data) return null;
+    return { label: data.label as string, subtitle: `Custom category for your shop.` };
+  }
+
+  const categoriesToSeed: VendorCategoryId[] =
     body.mode === "all"
       ? [...VENDOR_CATEGORY_KEYS]
-      : isVendorCategoryKey(body.category)
-        ? [body.category]
+      : isVendorCategoryId(body.category)
+        ? [body.category as VendorCategoryId]
         : [];
 
   if (categoriesToSeed.length === 0) {
     return Response.json({ error: "Provide category or mode: 'all'" }, { status: 400 });
   }
 
+  // Validate custom keys belong to this plan.
+  for (const c of categoriesToSeed) {
+    if (isCustomCategoryKey(c) && !isSeededCategoryKey(c)) {
+      const { data } = await supabase
+        .from("vendor_custom_categories")
+        .select("id")
+        .eq("plan_id", planId)
+        .eq("key", c)
+        .maybeSingle();
+      if (!data) return Response.json({ error: "Unknown custom category" }, { status: 400 });
+    }
+  }
+
   let totalInserted = 0;
-  const results: { category: VendorCategoryKey; count: number }[] = [];
+  const results: { category: VendorCategoryId; count: number }[] = [];
 
   for (const category of categoriesToSeed) {
+    const meta = await resolveMeta(category);
+    if (!meta) {
+      results.push({ category, count: 0 });
+      continue;
+    }
+
+    // For append mode, fetch existing names so the prompt can avoid duplicates.
+    let existingNames: string[] = [];
+    if (append) {
+      const { data: rows } = await supabase
+        .from("vendor_candidates")
+        .select("name")
+        .eq("plan_id", planId)
+        .eq("category", category);
+      existingNames = (rows ?? [])
+        .map((r) => (r.name as string) ?? "")
+        .filter((n) => n.trim().length > 0);
+    }
+
     let candidates: AiCandidate[];
     try {
-      candidates = await generateCategoryCandidates(category, conceptDigest);
+      candidates = await generateCategoryCandidates(category, meta.label, meta.subtitle, conceptDigest, existingNames);
     } catch {
       results.push({ category, count: 0 });
       continue;
@@ -171,24 +231,26 @@ export async function POST(request: Request) {
       continue;
     }
 
-    // Archive prior ai_suggested rows in this category before re-seeding so
-    // re-seeding is idempotent and never duplicates AI output.
-    await supabase
-      .from("vendor_candidates")
-      .delete()
-      .eq("plan_id", plan.id)
-      .eq("category", category)
-      .eq("source", "ai_suggested");
+    if (!append) {
+      // Replace prior ai_suggested rows in this category before re-seeding so
+      // re-seeding is idempotent and never duplicates AI output.
+      await supabase
+        .from("vendor_candidates")
+        .delete()
+        .eq("plan_id", planId)
+        .eq("category", category)
+        .eq("source", "ai_suggested");
+    }
 
     const { count } = await supabase
       .from("vendor_candidates")
       .select("id", { count: "exact", head: true })
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("category", category);
 
     const baseIndex = count ?? 0;
     const rows = candidates.map((c, idx) => ({
-      plan_id: plan.id,
+      plan_id: planId,
       category,
       name: c.name,
       contact: c.contact ?? null,

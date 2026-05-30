@@ -142,21 +142,28 @@ Rules: no emojis, no AI language, no commentary outside the JSON. Quantities mus
     return Response.json({ error: "Could not generate a recipe for this item" }, { status: 422 })
   }
 
-  // ── Resolve each suggested line to a library ingredient, creating missing
-  //    ones, then attach as recipe lines (skipping ingredients already on the
-  //    item so we never duplicate or clobber the owner's existing rows). ──────
-  const { data: existingIngredients } = await supabase
+  // ── TIM-1409: Resolve every suggested line to a library ingredient row.
+  //    Either link to an existing match (case-insensitive on the trimmed name,
+  //    per the Title-Case rule in TIM-1002) or create a new row with the
+  //    suggested unit and a $0 cost so the owner can price it. Never persist
+  //    an unlinked recipe line — if resolution or insert fails for any reason,
+  //    surface the error rather than silently writing an orphan row. ─────────
+  const { data: existingIngredients, error: existingErr } = await supabase
     .from("menu_ingredients")
     .select("*")
     .eq("plan_id", planId)
+  if (existingErr) {
+    console.error("suggest-recipe ingredient read error:", existingErr)
+    return Response.json({ error: "Failed to load ingredient library" }, { status: 500 })
+  }
   const byName = new Map<string, MenuIngredient>()
   for (const ing of (existingIngredients ?? []) as MenuIngredient[]) {
     byName.set(ing.name.trim().toLowerCase(), ing)
   }
 
-  // Create any ingredients that don't already exist. Recipe line unit follows
-  // the ingredient's package unit (matching the existing combobox add flow),
-  // so the COGS math (amount × cost-per-package-unit) stays coherent.
+  // Create the ingredients that don't exist yet. Recipe line unit follows the
+  // ingredient's package unit (matching the existing combobox add flow), so
+  // the COGS math (amount × cost-per-package-unit) stays coherent.
   const toCreate = lines.filter((l) => !byName.has(l.name.toLowerCase()))
   if (toCreate.length > 0) {
     const rows = toCreate.map((l) => ({
@@ -179,11 +186,35 @@ Rules: no emojis, no AI language, no commentary outside the JSON. Quantities mus
     }
   }
 
-  // Ingredients already attached to this item — don't add a second row for them.
-  const { data: existingLines } = await supabase
+  // Hard invariant: every suggested line must now resolve to an ingredient
+  // row. If any don't, abort — the alternative is an orphan recipe row that
+  // breaks the COGS contract.
+  const resolved: { line: typeof lines[number]; ingredient: MenuIngredient }[] = []
+  const unresolved: string[] = []
+  for (const l of lines) {
+    const ing = byName.get(l.name.toLowerCase())
+    if (ing) resolved.push({ line: l, ingredient: ing })
+    else unresolved.push(l.name)
+  }
+  if (unresolved.length > 0) {
+    console.error("suggest-recipe unresolved lines:", unresolved)
+    return Response.json(
+      { error: `Couldn't link these ingredients: ${unresolved.join(", ")}` },
+      { status: 500 }
+    )
+  }
+
+  // Skip ingredients already on this item so we don't duplicate or clobber
+  // owner-edited rows. These still count as "linked" for acceptance — the
+  // pre-existing row is the linkage.
+  const { data: existingLines, error: existingLinesErr } = await supabase
     .from("menu_item_ingredients")
     .select("ingredient_id")
     .eq("menu_item_id", body.item_id)
+  if (existingLinesErr) {
+    console.error("suggest-recipe item-ingredient read error:", existingLinesErr)
+    return Response.json({ error: "Failed to load existing recipe lines" }, { status: 500 })
+  }
   const alreadyOnItem = new Set(
     ((existingLines ?? []) as { ingredient_id: string }[]).map((r) => r.ingredient_id)
   )
@@ -194,16 +225,15 @@ Rules: no emojis, no AI language, no commentary outside the JSON. Quantities mus
     amount: number
     unit: IngredientUnit
   }[] = []
-  for (const l of lines) {
-    const ing = byName.get(l.name.toLowerCase())
-    if (!ing || alreadyOnItem.has(ing.id)) continue
+  for (const r of resolved) {
+    if (alreadyOnItem.has(r.ingredient.id)) continue
     lineRows.push({
       menu_item_id: body.item_id,
-      ingredient_id: ing.id,
-      amount: l.amount,
-      unit: ing.package_unit, // follow package unit (no unit conversion in COGS)
+      ingredient_id: r.ingredient.id,
+      amount: r.line.amount,
+      unit: r.ingredient.package_unit, // follow package unit (no unit conversion in COGS)
     })
-    alreadyOnItem.add(ing.id)
+    alreadyOnItem.add(r.ingredient.id)
   }
 
   if (lineRows.length > 0) {

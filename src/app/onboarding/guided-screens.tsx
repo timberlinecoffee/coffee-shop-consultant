@@ -174,7 +174,7 @@ export function ShopVisionScreen({
               }
               placeholder="They walked in, ordered fast, and made it to work on time."
               rows={3}
-              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
 
@@ -232,7 +232,7 @@ export function ShopVisionScreen({
           onChange={(e) => onSynthesizedChange(e.target.value)}
           placeholder="Run a two-window drive-thru in Frisco that gets teachers and nurses their drinks in under three minutes, five days a week, before the 7:45 school bell."
           rows={3}
-          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
         />
       </div>
     </div>
@@ -319,7 +319,7 @@ export function TargetCustomerScreen({
               }
               placeholder="A lot of commuters heading downtown, some families, a few apartment buildings with young professionals."
               rows={2}
-              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
 
@@ -336,7 +336,7 @@ export function TargetCustomerScreen({
               }
               placeholder="The nurse coming off a night shift who just needs one good thing before she sleeps."
               rows={2}
-              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
 
@@ -356,7 +356,7 @@ export function TargetCustomerScreen({
               }
               placeholder="They drop the kids at school, then come to us before heading to the office."
               rows={2}
-              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -379,7 +379,7 @@ export function TargetCustomerScreen({
           onChange={(e) => onSynthesizedChange(e.target.value)}
           placeholder="Frisco parents on the school drop-off run, nurses clocking in at 7am at Baylor Scott, and the construction crew that's been on Eldorado Pkwy for six months. They know their order before they reach the window."
           rows={3}
-          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
         />
       </div>
     </div>
@@ -516,7 +516,7 @@ export function DifferentiationScreen({
             placeholder="Every shop was quiet and a little cold. Nobody made me feel welcome when I walked in."
             rows={2}
             disabled={!step2Unlocked}
-            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
+            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
           />
         </div>
 
@@ -537,7 +537,7 @@ export function DifferentiationScreen({
             placeholder="Ritual on Valencia. Great coffee, but it feels cold and the staff turnover shows."
             rows={2}
             disabled={!step2Unlocked}
-            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
+            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
           />
         </div>
 
@@ -558,7 +558,7 @@ export function DifferentiationScreen({
             placeholder="The only shop open past 9pm on the east side."
             rows={2}
             disabled={!step2Unlocked}
-            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
+            className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed disabled:bg-[var(--warm-300)]"
           />
         </div>
       </div>
@@ -579,7 +579,7 @@ export function DifferentiationScreen({
           onChange={(e) => update({ synthesized: e.target.value })}
           placeholder="Only drive-thru in a five-mile radius pulling real espresso — not a pod machine. We cap the menu at 12 drinks so every barista can nail each one and the line stays under three minutes at 8am peak."
           rows={3}
-          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-white resize-none leading-relaxed"
         />
       </div>
     </div>

@@ -6,6 +6,8 @@
 // TIM-1321 recipe suggestion and TIM-1020 price suggestion.
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { normalizeAIOutput } from "@/lib/normalize"
+import { toTitleCase } from "@/lib/text"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { parseSuggestedItems, resolveCategoryId } from "@/lib/menu-suggest"
 
@@ -135,10 +137,10 @@ Rules: no commentary outside the JSON. Every category value must match a listed 
     const categoryId = resolveCategoryId(s.category, categories) ?? fallbackId
     const categoryName = categories.find((c) => c.id === categoryId)?.name ?? s.category
     return {
-      name: s.name,
+      name: toTitleCase(s.name),
       category_id: categoryId,
       category_name: categoryName,
-      rationale: s.rationale ?? null,
+      rationale: s.rationale ? normalizeAIOutput(s.rationale) : null,
     }
   })
 

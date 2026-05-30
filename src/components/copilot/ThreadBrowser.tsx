@@ -28,12 +28,12 @@ export const WORKSPACE_ORDER: WorkspaceKey[] = [
   "financials",
   "menu_pricing",
   "buildout_equipment",
-  "launch_plan",
+  "opening_milestones",
+  "opening_month_plan",
   "hiring",
   "marketing",
   "suppliers",
   "operations_playbook",
-  "marketing_pre_launch",
 ]
 
 export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
@@ -43,12 +43,12 @@ export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   menu_pricing: "Menu & Pricing",
   buildout_equipment: "Build Out & Equipment",
   inventory: "Inventory",
-  launch_plan: "Launch Plan",
+  opening_milestones: "Opening Milestones",
+  opening_month_plan: "Opening Month Plan",
   hiring: "Hiring & Onboarding",
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
   operations_playbook: "Operations Playbook",
-  marketing_pre_launch: "Marketing & Pre-Launch",
 }
 
 export function scopeLabel(scope: ConversationScope): string {
@@ -201,12 +201,12 @@ export function ThreadBrowser({
       menu_pricing: [],
       buildout_equipment: [],
       inventory: [],
-      launch_plan: [],
+      opening_milestones: [],
+      opening_month_plan: [],
       hiring: [],
       marketing: [],
       suppliers: [],
       operations_playbook: [],
-      marketing_pre_launch: [],
     }
     for (const item of filteredItems) {
       const key: GroupKey = item.workspace_key ?? GENERAL_GROUP_KEY

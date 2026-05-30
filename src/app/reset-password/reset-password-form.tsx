@@ -63,7 +63,7 @@ export function ResetPasswordForm() {
           minLength={8}
           autoComplete="new-password"
           placeholder="••••••••"
-          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
         />
       </div>
       <div>
@@ -77,12 +77,12 @@ export function ResetPasswordForm() {
           minLength={8}
           autoComplete="new-password"
           placeholder="••••••••"
-          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus:outline-none focus:border-[var(--teal)] transition-colors"
+          className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
         />
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+        <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
 
       <button

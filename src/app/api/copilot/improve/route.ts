@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
 import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { loadPlanContext } from "@/lib/plan-context";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
 
@@ -35,6 +36,7 @@ function buildImproveSystemPrompt(
   workspaceKey: string,
   planSnapshot: string,
   onboarding: Record<string, unknown>,
+  locationCountry: string | null,
 ): string {
   const shopType = Array.isArray(onboarding?.shop_type)
     ? (onboarding.shop_type as string[]).join(", ")
@@ -48,7 +50,7 @@ Return only the improved text for that field — no preamble, no explanation, no
 
 ## Founder profile
 - Budget: ${String(onboarding?.budget ?? "not specified")}
-- Location: ${String(onboarding?.location ?? "not specified")}
+- Location: ${locationCountry ?? "not specified"}
 - Stage: ${String(onboarding?.stage ?? "not specified")}
 - Shop type: ${shopType}
 
@@ -170,11 +172,13 @@ export async function POST(request: NextRequest) {
   const svcClient = createServiceClient();
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {};
 
-  const { snapshot: planSnapshot } = await composePlanSnapshot(
-    planId,
-    workspaceKey,
-    svcClient,
-  );
+  // TIM-1418: Location now comes from the live plan_hiring_settings + location_candidates
+  // tables instead of the frozen onboarding snapshot. Other onboarding fields below
+  // (budget, stage, shop_type) have no live workspace equivalent and stay as-is.
+  const [{ snapshot: planSnapshot }, planContext] = await Promise.all([
+    composePlanSnapshot(planId, workspaceKey, svcClient),
+    loadPlanContext(svcClient, user.id),
+  ]);
 
   // Map fieldKey to a human-readable label (best-effort; the component passes fieldLabel separately)
   const fieldLabel = fieldKey.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -185,6 +189,7 @@ export async function POST(request: NextRequest) {
     workspaceKey,
     planSnapshot,
     onboarding,
+    planContext.location_country,
   );
 
   // Build user message from draft + instruction.

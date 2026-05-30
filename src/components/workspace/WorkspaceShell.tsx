@@ -33,10 +33,7 @@ export function WorkspaceShell({
               className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
               aria-hidden="true"
             />
-            <h1
-              className="font-bold text-[var(--foreground)]"
-              style={{ fontSize: "28px" }}
-            >
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               {title}
             </h1>
           </div>
@@ -45,8 +42,8 @@ export function WorkspaceShell({
           </p>
         </header>
 
-        {/* Placeholder content card — matches Concept card design */}
-        <div className="rounded-2xl border border-[var(--border)] bg-white">
+        {/* Placeholder content card — matches Concept card design (TIM-1408: rounded-xl) */}
+        <div className="rounded-xl border border-[var(--border)] bg-white">
           <div className="px-5 pt-5 pb-4">
             <div className="mb-2">
               <span className="text-sm font-semibold text-[var(--foreground)]">

@@ -167,6 +167,9 @@ export interface PersonnelLine {
   // (hiring_plan_roles.id). Set when this line is linked to the org chart so
   // bi-directional sync matches on id rather than fuzzy role-name matching.
   org_role_id?: string;
+  // TIM-1419: target starting date (YYYY-MM-DD) for financial projection.
+  // Sourced and owned by Financial Suite; does NOT write back to Hiring.
+  target_start_date?: string | null;
 }
 
 // TIM-1243: LivePlan-style manual control. Two layers, both resolved at compute
@@ -883,6 +886,10 @@ function normalizePersonnelLine(raw: unknown, fallbackId: string): PersonnelLine
   // TIM-1259: preserve the org-structure link if present.
   if (typeof r.org_role_id === "string" && r.org_role_id.length > 0) {
     line.org_role_id = r.org_role_id;
+  }
+  // TIM-1419: preserve target starting date if present (YYYY-MM-DD string).
+  if (typeof r.target_start_date === "string" && r.target_start_date.length > 0) {
+    line.target_start_date = r.target_start_date;
   }
   return line;
 }

@@ -10,6 +10,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -303,7 +304,7 @@ function OwnerContributionsEditor({
   onChange: (next: { month_index: number; amount_cents: number }[]) => void;
 }) {
   const rowCls =
-    "text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]";
+    "text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]";
   function update(idx: number, patch: Partial<{ month_index: number; amount_cents: number }>) {
     const next = contributions.map((c, i) => (i === idx ? { ...c, ...patch } : c));
     onChange(next);
@@ -541,7 +542,7 @@ function ForecastTab({
   }
 
   const inputCls =
-    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
   // TIM-1352: the per-line "customized" pill is the single canonical indicator
@@ -604,7 +605,7 @@ function ForecastTab({
                     type="number"
                     min={0}
                     max={999}
-                    className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1 px-0 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                    className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1 px-0 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                     value={val || ""}
                     onChange={(e) => updateFlow(day, parseInt(e.target.value, 10) || 0)}
                     placeholder="0"
@@ -664,7 +665,7 @@ function ForecastTab({
                             value={sched.open_time}
                             onChange={(e) => updateScheduleDay(day, { open_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
+                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
                           <span className="text-sm text-[var(--neutral-cool-400)]">Closed</span>
@@ -677,7 +678,7 @@ function ForecastTab({
                             value={sched.close_time}
                             onChange={(e) => updateScheduleDay(day, { close_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
+                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
                           <span className="text-sm text-[var(--neutral-cool-400)]"></span>
@@ -829,7 +830,7 @@ function ForecastTab({
 
           {splitOn && (
             <div className="mt-3 rounded-lg border border-[var(--teal-bg-e8f)] bg-[var(--teal-bg-muted)] px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
                 Average sales per day {avgCustomersPerDay > 0 ? `(at ~${avgCustomersPerDay} customers/day)` : ""}
               </p>
               {avgCustomersPerDay > 0 ? (
@@ -918,7 +919,7 @@ function ForecastTab({
               schedule without re-typing. Editing happens in the other workspace. */}
           {equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0).length > 0 && (
             <div className="mt-4 border-t border-[var(--border)] pt-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
                 Asset Purchases from Build-Out &amp; Equipment
               </p>
               <div className="space-y-1">
@@ -929,9 +930,10 @@ function ForecastTab({
                       key={item.id}
                       className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-[var(--teal-tint-500)] text-xs"
                     >
-                      <span className="font-medium text-[var(--foreground)] truncate min-w-0 flex-1">
-                        {item.name || "Unnamed asset"}
-                      </span>
+                      <TruncatedText
+                        text={item.name || "Unnamed asset"}
+                        className="font-medium text-[var(--foreground)] flex-1"
+                      />
                       <span className="text-[var(--muted-foreground)] shrink-0">
                         {formatCurrency((item.unit_cost_cents * item.quantity) / 100)}
                       </span>
@@ -1247,7 +1249,7 @@ function ForecastTab({
                           next[i] = v;
                           update({ ramp_multipliers: next });
                         }}
-                        className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1.5 px-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                        className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1.5 px-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                       />
                       <span className="text-[10px] text-[var(--neutral-cool-400)]">%</span>
                     </div>
@@ -1324,7 +1326,7 @@ function ForecastTab({
                           );
                           update({ growth_custom_monthly: next });
                         }}
-                        className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1.5 px-1 text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                        className="w-full text-center text-xs border border-[var(--border-medium)] rounded-md py-1.5 px-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                       />
                       <span className="text-[10px] text-[var(--neutral-cool-400)]">%</span>
                     </div>
@@ -2095,7 +2097,7 @@ export function FinancialsWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <BarChart2 className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Financials
             </h1>
           </div>

@@ -401,7 +401,7 @@ const BENEFITS: Benefit[] = [
     oneLiner:
       "Your P&L, daily sales, and cash position, updated automatically. No accountant required.",
     ctaLabel: "Explore Daily Financials",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4474033),
     photoAlt:
       "Coffee shop owner working across laptop and tablet to track daily business finances",
@@ -414,9 +414,9 @@ const BENEFITS: Benefit[] = [
     key: "menu",
     eyebrow: "Menu Performance",
     headline: "Find Out What Actually Pays the Bills",
-    oneLiner: "See which drinks earn the most and which ones you are better off dropping.",
+    oneLiner: "See which drinks earn the most, and which to drop.",
     ctaLabel: "Explore Menu Analytics",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4349948),
     photoAlt:
       "Barista creating latte art by carefully pouring steamed milk into a takeaway cup",
@@ -430,9 +430,9 @@ const BENEFITS: Benefit[] = [
     eyebrow: "Staff Management",
     headline: "Post Shifts Before Monday Morning Stress Hits",
     oneLiner:
-      "Build the schedule, track hours, and see your labor cost before it hits the payroll.",
+      "Build the schedule, track hours, and see labor cost before payroll.",
     ctaLabel: "Explore Scheduling",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4349746),
     photoAlt:
       "Two baristas in aprons laughing together during a shift in a bright modern coffee shop",
@@ -446,9 +446,9 @@ const BENEFITS: Benefit[] = [
     eyebrow: "Loyal Customers",
     headline: "Turn Today's First-Timer Into Next Week's Regular",
     oneLiner:
-      "A stamp program that runs itself. No apps to download, no confusing points, just customers who come back.",
+      "A stamp program that runs itself. No app, no points. Just regulars who come back.",
     ctaLabel: "Explore Loyalty Tools",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4353585),
     photoAlt: "Barista handing a paper coffee cup across the counter to a customer",
     objectPosition: "center",
@@ -461,9 +461,9 @@ const BENEFITS: Benefit[] = [
     eyebrow: "Opening Checklist",
     headline: "Open Every Day Without Scrambling",
     oneLiner:
-      "Your morning tasks, inventory alerts, and vendor contacts in one spot. Nothing falls through the cracks.",
+      "Morning tasks, inventory alerts, and vendor contacts in one spot.",
     ctaLabel: "Explore Operations Tools",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4473398),
     photoAlt:
       "Cafe owner holding a wooden 'Welcome We Are Open' sign at her shop door",
@@ -477,9 +477,9 @@ const BENEFITS: Benefit[] = [
     eyebrow: "Business Growth",
     headline: "Know When You Are Ready to Grow",
     oneLiner:
-      "Real trends and simple projections so you can add a hire, open a second location, or expand the menu at the right time.",
+      "Real trends and simple projections to time your next hire, second location, or menu expansion.",
     ctaLabel: "Explore Growth Tools",
-    ctaHref: "/login?plan=builder",
+    ctaHref: "/signup",
     photoSrc: pexels(4350061),
     photoAlt:
       "Two cafe owners in aprons collaborating behind the counter of their coffee shop",

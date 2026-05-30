@@ -14,7 +14,6 @@ import {
   Plus,
   Sparkles,
   Check,
-  Printer,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -31,12 +30,13 @@ import {
 // ── Shared styles — match Concept / Marketing tokens ────────────────────────
 
 const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
+// TIM-1408: section eyebrow normalized to global token
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-3";
-const cardCls = "rounded-2xl border border-[var(--border)] bg-white";
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-2";
+const cardCls = "rounded-xl border border-[var(--border)] bg-white";
 const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
 function localId() {
@@ -152,20 +152,17 @@ export function OperationsPlaybookWorkspace({
                 className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
                 aria-hidden="true"
               />
-              <h1
-                className="font-bold text-[var(--foreground)]"
-                style={{ fontSize: "28px" }}
-              >
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
                 Operations Playbook
               </h1>
             </div>
             <Link
               href="/workspace/operations-playbook/print"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:underline"
+              className="hidden sm:inline-block text-xs font-medium text-[var(--teal)] hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Printer className="w-3.5 h-3.5" /> Print view
+              Print view
             </Link>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
@@ -397,6 +394,9 @@ function CategoryEditor({
           <Sparkles className="w-3.5 h-3.5" />
           {generating ? "Improving…" : "Improve with AI"}
         </button>
+        <span className="sr-only" role="status">
+          {generating ? `Improving the ${label} section with AI…` : ""}
+        </span>
       </div>
 
       <div className="mb-5">
@@ -555,7 +555,7 @@ function ChecklistItemRow({
             {useStation && (
               <>
                 <select
-                  className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                  className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                   value={item.station ?? "Bar"}
                   onChange={(e) => onPatch(idx, { station: e.target.value })}
                   disabled={!canEdit}
@@ -568,7 +568,7 @@ function ChecklistItemRow({
                   )}
                 </select>
                 <select
-                  className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                  className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                   value={item.cadence ?? "daily"}
                   onChange={(e) =>
                     onPatch(idx, { cadence: e.target.value as SopCadence })
@@ -588,7 +588,7 @@ function ChecklistItemRow({
                   type="number"
                   min={0}
                   max={120}
-                  className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--foreground)] text-right focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+                  className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--foreground)] text-right focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
                   value={item.duration_min ?? ""}
                   onChange={(e) =>
                     onPatch(idx, {

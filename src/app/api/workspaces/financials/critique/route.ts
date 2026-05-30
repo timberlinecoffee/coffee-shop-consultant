@@ -14,6 +14,7 @@ export const maxDuration = 45;
 
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { FinancialProjections } from "@/lib/financial-projection";
 import { formatCurrency } from "@/lib/financial-projection";

@@ -425,7 +425,7 @@ function MobileEquipmentList({
                       <input
                         type="number"
                         min={0}
-                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--teal)]"
+                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
                         value={item.unit_cost_cents > 0 ? item.unit_cost_cents / 100 : ""}
                         placeholder={placeholder}
                         disabled={!canEdit}
@@ -436,7 +436,7 @@ function MobileEquipmentList({
                     ) : (
                       <input
                         type="text"
-                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--teal)]"
+                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
                         value={(item[key] as string | null) ?? ""}
                         placeholder={placeholder}
                         disabled={!canEdit}
@@ -451,7 +451,7 @@ function MobileEquipmentList({
                   <div>
                     <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Category</label>
                     <select
-                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[var(--teal)]"
+                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
                       value={item.category}
                       disabled={!canEdit}
                       onChange={(e) => onUpdate(item.id, { category: e.target.value as EquipmentCategory })}
@@ -464,7 +464,7 @@ function MobileEquipmentList({
                   <div>
                     <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Financing</label>
                     <select
-                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[var(--teal)]"
+                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
                       value={item.financing_method}
                       disabled={!canEdit}
                       onChange={(e) => onUpdate(item.id, { financing_method: e.target.value as FinancingMethod })}
@@ -1282,7 +1282,7 @@ export function EquipmentGrid({
                     <td key={header.id} className={`px-2 py-1 bg-[var(--background)] ${getStickyColCls(header.id, "bg-[var(--background)]")}`}>
                       <input
                         type="text"
-                        className="w-full text-[10px] bg-white border border-[var(--neutral-cool-200)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-350)] focus:outline-none focus:border-[var(--teal)]"
+                        className="w-full text-[10px] bg-white border border-[var(--neutral-cool-200)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-350)] focus-visible:outline-none focus:border-[var(--teal)]"
                         placeholder="Filter…"
                         value={(col.getFilterValue() as string) ?? ""}
                         onChange={(e) => col.setFilterValue(e.target.value || undefined)}

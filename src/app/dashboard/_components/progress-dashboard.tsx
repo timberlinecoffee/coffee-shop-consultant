@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { TruncatedText } from "@/components/ui/TruncatedText";
 import type {
   ActivityEntry,
   NextStepSuggestion,
@@ -54,7 +55,7 @@ export function ProgressDashboard({
 function NextStepCard({ step }: { step: NextStepSuggestion }) {
   return (
     <div className="mb-4">
-      <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-[0.1em] mb-2">
         Your Next Step
       </p>
       <div className="bg-white rounded-xl border border-[var(--teal)]/30 p-6 flex flex-col sm:flex-row gap-4 sm:items-center">
@@ -79,7 +80,7 @@ function NextStepCard({ step }: { step: NextStepSuggestion }) {
 function StaleNudgeList({ nudges }: { nudges: StaleNudge[] }) {
   return (
     <div className="mb-4">
-      <p className="text-xs font-semibold text-amber-700 uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-[0.1em] mb-2">
         Worth a Few Minutes
       </p>
       <ul className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100">
@@ -105,7 +106,7 @@ function StaleNudgeList({ nudges }: { nudges: StaleNudge[] }) {
 function RecentActivityCard({ entries, now }: { entries: ActivityEntry[]; now: Date }) {
   return (
     <div className="bg-white rounded-xl border border-[var(--border)] p-4 h-full">
-      <p className="text-xs font-semibold text-[var(--dark-grey)] uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-[0.1em] mb-2">
         Recent Activity
       </p>
       {entries.length === 0 ? (
@@ -117,7 +118,7 @@ function RecentActivityCard({ entries, now }: { entries: ActivityEntry[]; now: D
           {entries.map((entry) => (
             <li key={`${entry.moduleNumber}-${entry.at}`} className="py-2.5 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-[var(--foreground)] truncate">{entry.summary}</p>
+                <TruncatedText text={entry.summary} className="text-sm text-[var(--foreground)] block" />
                 <p className="text-xs text-[var(--dark-grey)]">{formatRelative(entry.at, now)}</p>
               </div>
               <Link
@@ -139,7 +140,7 @@ function RecentActivityCard({ entries, now }: { entries: ActivityEntry[]; now: D
 function QuickActionsCard({ weakest }: { weakest: WorkspaceProgressSnapshot | null }) {
   return (
     <div className="bg-white rounded-xl border border-[var(--border)] p-4 h-full">
-      <p className="text-xs font-semibold text-[var(--dark-grey)] uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-[0.1em] mb-2">
         Quick Actions
       </p>
       <div className="flex flex-col gap-2">

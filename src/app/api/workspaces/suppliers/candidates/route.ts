@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import {
-  isVendorCategoryKey,
+  isCustomCategoryKey,
+  isSeededCategoryKey,
+  isVendorCategoryId,
   isVendorStatus,
   type VendorCandidate,
 } from "@/lib/suppliers";
@@ -64,8 +66,18 @@ export async function POST(request: NextRequest) {
   }
 
   const category = body.category;
-  if (!isVendorCategoryKey(category)) {
+  if (!isVendorCategoryId(category)) {
     return Response.json({ error: "Invalid category" }, { status: 400 });
+  }
+  // TIM-1414: custom keys must reference a real custom category for this plan.
+  if (isCustomCategoryKey(category) && !isSeededCategoryKey(category)) {
+    const { data: cat } = await supabase
+      .from("vendor_custom_categories")
+      .select("id")
+      .eq("plan_id", plan.id)
+      .eq("key", category)
+      .maybeSingle();
+    if (!cat) return Response.json({ error: "Unknown custom category" }, { status: 400 });
   }
 
   const status = body.status;

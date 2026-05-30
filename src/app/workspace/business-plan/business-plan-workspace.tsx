@@ -2,13 +2,15 @@
 
 // TIM-1037: Business Plan Generator workspace — main client component.
 // TIM-1225: adds Cover & Branding panel above section list.
+// TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
+import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 
 interface Props {
@@ -280,7 +282,7 @@ export function BusinessPlanWorkspace({
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Business Plan
             </h1>
           </div>
@@ -338,6 +340,7 @@ export function BusinessPlanWorkspace({
               key={section.key}
               section={section}
               canEdit={canEdit}
+              exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
               isStreaming={streamingKey === section.key}
               onToggleVisible={() => toggleVisibility(section.key, section.isVisible)}
               onToggleExpand={() => updateSection(section.key, { isExpanded: !section.isExpanded })}
@@ -383,6 +386,7 @@ export function BusinessPlanWorkspace({
 interface SectionCardProps {
   section: SectionState;
   canEdit: boolean;
+  exampleContent: string | null;
   isStreaming: boolean;
   onToggleVisible: () => void;
   onToggleExpand: () => void;
@@ -422,6 +426,7 @@ function MarkdownContent({ content }: { content: string }) {
 function SectionCard({
   section,
   canEdit,
+  exampleContent,
   isStreaming,
   onToggleVisible,
   onToggleExpand,
@@ -433,6 +438,7 @@ function SectionCard({
   onGenerateExec,
   onImprove,
 }: SectionCardProps) {
+  const [showExample, setShowExample] = useState(false);
   const hasUserOverride = section.userContent !== null;
   const displayContent = section.isEditing
     ? section.editBuffer
@@ -510,6 +516,20 @@ function SectionCard({
             </button>
           )}
 
+          {exampleContent && section.isExpanded && (
+            <button
+              onClick={() => setShowExample((v) => !v)}
+              title={showExample ? "Hide example" : "See a worked example"}
+              className={`p-1.5 rounded-lg transition-colors ${
+                showExample
+                  ? "text-[var(--teal)] bg-[var(--teal-50,#f0fdfa)]"
+                  : "text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)]"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           <button
             onClick={onToggleVisible}
             title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
@@ -529,8 +549,8 @@ function SectionCard({
         <div className="px-5 pb-5">
           <div className="border-t border-[var(--neutral-cool-150)] pt-4">
             {(isStreaming || section.isGenerating) && !section.editBuffer && (
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex gap-1">
+              <div className="flex items-center gap-2 mb-3" role="status">
+                <div className="flex gap-1" aria-hidden="true">
                   {[0, 1, 2].map((i) => (
                     <span
                       key={i}
@@ -548,7 +568,7 @@ function SectionCard({
                 <textarea
                   value={section.editBuffer}
                   onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
+                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
                   placeholder="Add content for this section..."
                   disabled={section.isGenerating && !section.editBuffer}
                 />
@@ -590,6 +610,33 @@ function SectionCard({
               </div>
             )}
           </div>
+
+          {/* Worked example panel */}
+          {showExample && exampleContent && (
+            <div className="mt-4 rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50,#f9fafb)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-100,#f3f4f6)]">
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[var(--neutral-cool-600)]" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-[var(--neutral-cool-700,#374151)]">
+                    Summit Street Coffee
+                  </span>
+                  <span className="text-[10px] text-[var(--neutral-cool-500,#6b7280)] font-normal">
+                    (sample plan)
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowExample(false)}
+                  className="p-0.5 rounded text-[var(--neutral-cool-500)] hover:text-[var(--foreground)] transition-colors"
+                  aria-label="Close example"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="px-4 py-3">
+                <MarkdownContent content={exampleContent} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -6,7 +6,7 @@
 import type { WorkspaceKey } from "@/types/supabase"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { formatConceptV2ForAI, normalizeConceptV2 } from "@/lib/concept"
-import { formatMarketingPreLaunchForAI, normalizeMarketingPreLaunch } from "@/lib/marketing-pre-launch"
+import { formatMarketingForAI, normalizeMarketing } from "@/lib/marketing"
 
 const TOKEN_CHARS = 4 // rough chars-per-token
 const MAX_CHARS_PER_WORKSPACE = 600 * TOKEN_CHARS // ~600 tokens
@@ -18,20 +18,20 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   menu_pricing: "Menu & Pricing",
   buildout_equipment: "Build Out & Equipment",
   inventory: "Inventory",
-  launch_plan: "Launch Plan",
+  opening_milestones: "Opening Milestones",
+  opening_month_plan: "Opening Month Plan",
   hiring: "Hiring & Onboarding",
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
   operations_playbook: "Operations Playbook",
-  marketing_pre_launch: "Marketing & Pre-Launch",
 }
 
 function renderContent(workspaceKey: WorkspaceKey, content: unknown): string {
   if (workspaceKey === "concept") {
     return formatConceptV2ForAI(normalizeConceptV2(content))
   }
-  if (workspaceKey === "marketing_pre_launch") {
-    return formatMarketingPreLaunchForAI(normalizeMarketingPreLaunch(content))
+  if (workspaceKey === "marketing") {
+    return formatMarketingForAI(normalizeMarketing(content))
   }
   const raw = JSON.stringify(content)
   if (!raw || raw === "{}" || raw === "null") return "_no content yet_"

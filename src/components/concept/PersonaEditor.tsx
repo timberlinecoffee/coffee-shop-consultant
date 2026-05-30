@@ -149,7 +149,7 @@ export function PersonaEditor({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus:outline-none"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
           >
             <X size={14} aria-hidden="true" />
           </button>
@@ -173,7 +173,7 @@ export function PersonaEditor({
               disabled={!canEdit}
               maxLength={40}
               placeholder="e.g. The Morning Regular"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
                 nameError ? "border-[var(--error)]" : "border-[var(--border)] focus:border-[var(--teal)]"
               }`}
             />
@@ -203,7 +203,7 @@ export function PersonaEditor({
               disabled={!canEdit}
               rows={3}
               placeholder="What brings this person in? What are they hoping for?"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
                 whyError ? "border-[var(--error)]" : "border-[var(--border)] focus:border-[var(--teal)]"
               }`}
             />
@@ -233,7 +233,7 @@ export function PersonaEditor({
               disabled={!canEdit}
               rows={3}
               placeholder="What frustrates them about existing coffee shops?"
-              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
             />
           </div>
 
@@ -267,7 +267,7 @@ export function PersonaEditor({
             <button
               type="button"
               onClick={() => setAboutOpen((v) => !v)}
-              className="flex items-center gap-2 text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors focus:outline-none"
+              className="flex items-center gap-2 text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none"
               aria-expanded={aboutOpen}
             >
               <span className="text-[10px] leading-none">{aboutOpen ? "▾" : "▸"}</span>
@@ -310,7 +310,7 @@ export function PersonaEditor({
                     onChange={(e) => setField("occupation", e.target.value || undefined)}
                     disabled={!canEdit}
                     placeholder="e.g. Nurse, designer, student..."
-                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                   />
                 </div>
 
@@ -348,7 +348,7 @@ export function PersonaEditor({
                     disabled={!canEdit}
                     rows={2}
                     placeholder="What does their day look like? Where are they going before or after?"
-                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
                   />
                 </div>
               </div>
@@ -423,7 +423,7 @@ export function PersonaEditor({
               disabled={!canEdit}
               rows={3}
               placeholder="Any other notes about this customer..."
-              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
             />
           </div>
 

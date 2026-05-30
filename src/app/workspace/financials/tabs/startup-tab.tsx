@@ -193,13 +193,13 @@ export function StartupTab({
   const totalMonthlyLoanPayment = loanLines.reduce((acc, l) => acc + monthlyPaymentFor(l), 0);
 
   const inputCls =
-    "w-32 text-sm text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-32 text-sm text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
     <div className="space-y-4">
       {/* Equipment-first guidance — only when nothing entered at all */}
       {nothingEntered && (
-        <div className="rounded-2xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-5 py-4">
+        <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-5 py-4">
           <p className="text-sm font-semibold text-[var(--foreground)]">Start with your equipment.</p>
           <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
             Your espresso machine, grinders, fridge and POS are usually the biggest part of
@@ -218,7 +218,7 @@ export function StartupTab({
 
       {/* Legacy migration hint — shown when only lump-sum data exists */}
       {hasLegacyLumpSums && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4">
           <p className="text-sm font-semibold text-amber-800">Upgrade to per-asset tracking</p>
           <p className="text-xs text-amber-700 mt-1 leading-relaxed">
             Your build-out and equipment are saved as lump sums. Add individual assets in the{" "}
@@ -233,7 +233,7 @@ export function StartupTab({
       {/* Startup cost table */}
       {/* tour-startup-capital-assets is on this always-rendered card so the guided tour
           lands even when a new user has no capex lines yet (TIM-1267) */}
-      <div id="tour-startup-capital-assets" className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+      <div id="tour-startup-capital-assets" className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
           <p className="text-sm font-semibold text-[var(--foreground)]">What It Takes To Open The Door</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">
@@ -362,7 +362,7 @@ export function StartupTab({
       </div>
 
       {/* Funding sources — edited in the Funding tab, reflected here */}
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2 flex items-baseline justify-between">
           <p className="text-sm font-semibold text-[var(--foreground)]">Funding Sources</p>
           <p className="text-xs text-[var(--dark-grey)]">Edit in the Funding tab</p>
@@ -416,7 +416,7 @@ export function StartupTab({
       {/* Funding gap */}
       {!nothingEntered && (
         <div
-          className={`rounded-2xl border px-5 py-4 ${
+          className={`rounded-xl border px-5 py-4 ${
             fundingGap <= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
           }`}
         >
@@ -453,7 +453,7 @@ export function StartupTab({
       )}
 
       {/* Helpful context */}
-      <div className="rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+      <div className="rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-2">A Few Things Worth Knowing</p>
         <div className="space-y-2 text-sm text-[var(--teal-deeper)] leading-relaxed">
           <p>The working capital reserve and opening cash buffer are not spent — they sit in your bank account as a cushion. Banks and lenders like to see 3 months of fixed costs in reserve before you open.</p>
