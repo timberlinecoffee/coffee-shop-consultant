@@ -5,7 +5,6 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import Image from "next/image";
 import { COVER_TEMPLATES, type CoverTemplateId } from "@/lib/pdf/business-plan/covers";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -346,34 +345,60 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                         : "border border-[var(--gray-slate-4)] hover:border-[var(--sage-tint)] hover:shadow-sm"
                     }`}
                   >
-                    <div className="w-full" style={{ aspectRatio: "3/4", position: "relative" }}>
-                      <Image
-                        src={`/images/business-plan-covers/thumbnail-${t.id}.png`}
-                        alt={t.label}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      {/* Placeholder logo + title overlay */}
-                      <div className="absolute inset-0 flex flex-col justify-between p-[6px] pointer-events-none select-none">
-                        {/* Stylized monogram icon — accent fill, white glyph */}
-                        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" className="flex-shrink-0" style={{ opacity: 0.95 }}>
-                          <rect width="22" height="22" rx="4" fill={accentColor} />
-                          {/* Cup body */}
-                          <path d="M6 14.5C6 15.88 7.12 17 8.5 17H13.5C14.88 17 16 15.88 16 14.5V10H6V14.5Z" fill="white" fillOpacity="0.92"/>
-                          {/* Handle */}
-                          <path d="M16 11.5C17.1 11.5 18 12.4 18 13.5C18 14.6 17.1 15.5 16 15.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" fill="none" strokeOpacity="0.92"/>
-                          {/* Saucer line */}
-                          <rect x="6" y="9" width="10" height="1.5" rx="0.75" fill="white" fillOpacity="0.92"/>
-                          {/* Steam lines */}
-                          <path d="M9 7.5 C9 6.5 10 6.5 10 5.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.7"/>
-                          <path d="M12 7.5 C12 6.5 13 6.5 13 5.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.7"/>
-                        </svg>
-                        <div>
-                          <p className="text-white text-[10px] font-bold leading-tight drop-shadow" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>EVERLY COFFEE CO</p>
-                          <p className="text-white/80 text-[8px] leading-tight drop-shadow" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>Business Plan</p>
+                    {/* Pure-CSS chip — no placeholder images, per-template layout */}
+                    <div className="w-full pointer-events-none select-none" style={{ aspectRatio: "3/4", position: "relative", overflow: "hidden" }}>
+                      {t.id === "editorial" ? (
+                        /* Editorial: full-bleed colored header (~55%) + white body */
+                        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+                          <div style={{ flex: "0 0 55%", backgroundColor: accentColor, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4px 5px", gap: 2 }}>
+                            {/* EC brand badge */}
+                            <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 2, flexShrink: 0 }}>
+                              <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>EC</span>
+                            </div>
+                            <p style={{ color: "white", fontSize: 11, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>EVERLY</p>
+                            <p style={{ color: "white", fontSize: 9, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 1 }}>COFFEE CO</p>
+                            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 7.5, textAlign: "center", lineHeight: 1.2, margin: 0, letterSpacing: "0.5px" }}>BUSINESS PLAN</p>
+                          </div>
+                          {/* White body with faint content lines */}
+                          <div style={{ flex: 1, backgroundColor: "#fff", padding: "5px 7px" }}>
+                            <div style={{ height: 1.5, backgroundColor: "#e5e7eb", borderRadius: 1, marginBottom: 3 }} />
+                            <div style={{ height: 1.5, backgroundColor: "#e5e7eb", borderRadius: 1, marginBottom: 3, width: "78%" }} />
+                            <div style={{ height: 1.5, backgroundColor: "#e5e7eb", borderRadius: 1, width: "55%" }} />
+                          </div>
                         </div>
-                      </div>
+                      ) : t.id === "classic" ? (
+                        /* Classic: white page, centered serif — logo + name centered, bottom bar */
+                        <div style={{ position: "absolute", inset: 0, backgroundColor: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px" }}>
+                          {/* Circle EC monogram */}
+                          <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${accentColor}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 5, flexShrink: 0 }}>
+                            <span style={{ color: accentColor, fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>EC</span>
+                          </div>
+                          <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>EVERLY</p>
+                          <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 4 }}>COFFEE CO</p>
+                          {/* Accent rule */}
+                          <div style={{ width: 28, height: 1.5, backgroundColor: accentColor, marginBottom: 4 }} />
+                          <p style={{ color: "#6b7280", fontSize: 8, textAlign: "center", margin: 0 }}>Business Plan</p>
+                          {/* Bottom accent bar */}
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, backgroundColor: accentColor }} />
+                        </div>
+                      ) : (
+                        /* Modern: white with left accent stripe, flush-left title block */
+                        <div style={{ position: "absolute", inset: 0, backgroundColor: "#fff", display: "flex", flexDirection: "row" }}>
+                          {/* Left stripe */}
+                          <div style={{ width: 4, backgroundColor: accentColor, flexShrink: 0 }} />
+                          <div style={{ flex: 1, padding: "9px 6px", display: "flex", flexDirection: "column" }}>
+                            <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>EVERLY</p>
+                            <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, lineHeight: 1.15, margin: 0, marginBottom: 3 }}>COFFEE CO</p>
+                            <p style={{ color: "#9ca3af", fontSize: 8, margin: 0, marginBottom: 4 }}>Business Plan</p>
+                            <div style={{ width: "100%", height: 1.5, backgroundColor: accentColor }} />
+                            <div style={{ flex: 1 }} />
+                            {/* EC badge bottom-left */}
+                            <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: accentColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>EC</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <span
                       className={`text-[11px] py-1 ${
