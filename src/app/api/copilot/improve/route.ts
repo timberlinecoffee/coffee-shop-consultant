@@ -1,6 +1,8 @@
 // TIM-881: Single-field AI improvement endpoint.
 // SSE stream — same event format as /api/copilot/stream (text, thinking, error, done).
 // Does NOT create a thread record. Quota spend: 1 message unit per call.
+// TIM-1365 normalization: pure stream — no server-side text assembly. Client normalizes the
+// assembled field value via normalizeAIOutput() after stream ends. *.delta.text is exempt from the ESLint gate.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;

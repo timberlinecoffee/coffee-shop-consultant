@@ -7,6 +7,7 @@
 // asks the AI to rewrite the category using the plan's Concept and Menu.
 
 import { toTitleCase } from "@/lib/text";
+import { normalizeAIOutput } from "@/lib/normalize";
 
 // ── Shared shapes ────────────────────────────────────────────────────────────
 
@@ -305,10 +306,11 @@ export function isPlaybookEmpty(doc: OperationsPlaybookDocument): boolean {
 // Item text is full-sentence guidance — sentence case stays untouched.
 export function titleCaseSopCategory(cat: SopCategory): SopCategory {
   return {
-    intro: cat.intro,
+    intro: cat.intro ? normalizeAIOutput(cat.intro) : cat.intro,
     last_generated_at: cat.last_generated_at,
     items: cat.items.map((item) => ({
       ...item,
+      text: normalizeAIOutput(item.text),
       station: item.station ? toTitleCase(item.station) : null,
     })),
   };

@@ -1,6 +1,8 @@
 // TIM-1040: AI-generate launch milestones personalized to concept / location / equipment / hiring / financials.
 // TIM-1057: Fix-forward — switched to streaming Anthropic call with TTFT (8s) and gap (25s) timers
 // to prevent Lambda timeout leaving client in infinite-spinner state.
+// TIM-1365 normalization: streaming route — tokens arrive as *.delta.text (ESLint exempt). JSON is
+// assembled server-side; normalizeAIOutput/toTitleCase applied to text fields at persist-time (see inserts map).
 export const runtime = "nodejs"
 export const maxDuration = 60
 
@@ -13,6 +15,7 @@ import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
+import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 
 const TTFT_MS = 8_000
 const GAP_MS = 25_000

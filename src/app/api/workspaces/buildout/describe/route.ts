@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
 import type { NextRequest } from "next/server";
 import type { ParsedRow } from "../import/route";
@@ -176,9 +177,9 @@ Return ONLY valid JSON — no markdown, no explanation:
     quantity: typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1,
     unit_cost_cents:
       typeof item.unit_cost_cents === "number" ? Math.round(item.unit_cost_cents) : 0,
-    notes: [item.notes, item.price_band ? `Price band: ${item.price_band}` : ""]
+    notes: normalizeAIOutput([item.notes, item.price_band ? `Price band: ${item.price_band}` : ""]
       .filter(Boolean)
-      .join(" · "),
+      .join(" · ")),
     category: item.category ?? "miscellaneous",
     skip: false,
   }));

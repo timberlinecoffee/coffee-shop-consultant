@@ -7,6 +7,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
+import { normalizeAIOutput } from "@/lib/normalize"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -208,19 +209,19 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     })
 
     const block = response.content.find((b) => b.type === "text")
-    const text = block && "text" in block ? normalizeAIOutput(block.text.trim()) : ""
+    const normalizedText = block && "text" in block ? normalizeAIOutput(block.text.trim()) : ""
 
-    if (!text) {
+    if (!normalizedText) {
       return Response.json({ error: "Area analysis returned empty." }, { status: 502 })
     }
 
     await supabase
       .from("location_candidates")
-      .update({ area_analysis: text, area_analysis_at: new Date().toISOString() })
+      .update({ area_analysis: normalizedText, area_analysis_at: new Date().toISOString() })
       .eq("id", candidateId)
 
     const nearbyCount = Object.values(counts).reduce((a, b) => a + b, 0)
-    return Response.json({ text, nearbyCount, generatedAt: new Date().toISOString() })
+    return Response.json({ text: normalizedText, nearbyCount, generatedAt: new Date().toISOString() })
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Area analysis failed."
     return Response.json({ error: msg }, { status: 502 })

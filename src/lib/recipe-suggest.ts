@@ -8,6 +8,7 @@
 // returns (with amount conversion where the conversion is well-defined).
 
 import { toTitleCase } from "./text.ts"
+import { normalizeAIOutput } from "./normalize.ts"
 import type { IngredientUnit } from "./menu"
 
 export const ALLOWED_UNITS: IngredientUnit[] = ["g", "ml", "oz", "each", "piece"]
@@ -174,7 +175,7 @@ function extractLines(candidate: string): SuggestedRecipeLine[] | null {
     seen.add(dedupeKey)
 
     const { unit, amount } = normalizeUnitAndAmount(r.unit, r.amount)
-    const note = typeof r.note === "string" && r.note.trim() ? r.note.trim() : undefined
+    const note = typeof r.note === "string" && r.note.trim() ? normalizeAIOutput(r.note.trim()) : undefined
 
     lines.push({ name, amount, unit, note })
     if (lines.length >= MAX_LINES) break

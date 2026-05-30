@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import { normalizeAIOutput } from "@/lib/normalize"
 import { loadPlanContext } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
@@ -404,7 +405,8 @@ export async function POST(request: NextRequest) {
             : existingQuery.eq("workspace_key", workspaceKey)
           ).maybeSingle()
 
-          const updatedMessages = [...messages, { role: "assistant", content: fullText }]
+          // Normalize at persist-time (TIM-1365): tokens are streamed raw; normalize the assembled text before storing.
+          const updatedMessages = [...messages, { role: "assistant", content: normalizeAIOutput(fullText) }]
 
           if (existing) {
             await supabase

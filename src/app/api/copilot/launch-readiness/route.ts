@@ -5,6 +5,8 @@
 // Composes compact snapshots from all 6 workspaces, asks Claude to grade each
 // workspace Green/Yellow/Red, and returns a structured JSON verdict.
 // Persists the latest result on coffee_shop_plans.latest_readiness_check.
+// TIM-1365 normalization: streaming route; JSON assembled server-side after stream ends.
+// normalizeAIOutput/toTitleCase applied to text fields in normalizedParsed before persist and send.
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -16,6 +18,7 @@ import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
+import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -313,11 +316,25 @@ export async function POST(request: NextRequest) {
             return
           }
 
+          const normalizedParsed = {
+            ...(parsed as Record<string, unknown>),
+            perWorkspace: ((parsed as Record<string, unknown>).perWorkspace as Array<Record<string, unknown>> ?? []).map((ws) => ({
+              ...ws,
+              blockers: (ws.blockers as string[] ?? []).map((b: string) => normalizeAIOutput(b)),
+              topNextActions: (ws.topNextActions as string[] ?? []).map((a: string) => normalizeAIOutput(a)),
+            })),
+            criticalPath: ((parsed as Record<string, unknown>).criticalPath as Array<Record<string, unknown>> ?? []).map((cp) => ({
+              ...cp,
+              action: normalizeAIOutput(String(cp.action ?? "")),
+              owner: toTitleCase(String(cp.owner ?? "")),
+            })),
+          }
+
           // Persist to coffee_shop_plans
           await svcClient
             .from("coffee_shop_plans")
             .update({
-              latest_readiness_check: parsed as import("@/types/supabase").Json,
+              latest_readiness_check: normalizedParsed as import("@/types/supabase").Json,
               latest_readiness_check_at: new Date().toISOString(),
             })
             .eq("id", planId)
@@ -337,7 +354,7 @@ export async function POST(request: NextRequest) {
             })
           }
 
-          send(sse("result", parsed))
+          send(sse("result", normalizedParsed))
           send(sse("done", { modelUsed: modelId }))
           controller.close()
         }

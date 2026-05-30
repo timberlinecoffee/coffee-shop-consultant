@@ -11,6 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { normalizeAIOutput } from "@/lib/normalize";
 
 const anthropic = new Anthropic();
 
