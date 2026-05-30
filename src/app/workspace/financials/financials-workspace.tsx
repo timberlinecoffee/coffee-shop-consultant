@@ -107,7 +107,7 @@ const TOUR_STEPS: TourStep[] = [
     tab: "startup",
     targetId: "tour-startup-capital-assets",
     title: "Add up your opening costs",
-    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Build-Out & Equipment workspace; add supplies, deposits and other one-time costs directly. The total builds up as you go.",
+    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Equipment & Supplies workspace; add supplies, deposits and other one-time costs directly. The total builds up as you go.",
     hint: "opening a small espresso bar often runs $80k–$250k all in.",
   },
   {
@@ -949,7 +949,7 @@ function ForecastTab({
           {equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0).length > 0 && (
             <div className="mt-4 border-t border-[var(--border)] pt-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-2">
-                Asset Purchases from Build-Out &amp; Equipment
+                Asset Purchases from Equipment &amp; Supplies
               </p>
               <div className="space-y-1">
                 {equipmentItems
@@ -976,7 +976,7 @@ function ForecastTab({
                 href="/workspace/buildout-equipment"
                 className="mt-2 inline-block text-xs font-medium text-[var(--teal)] hover:underline"
               >
-                Edit in Build-Out &amp; Equipment →
+                Edit in Equipment &amp; Supplies →
               </a>
             </div>
           )}

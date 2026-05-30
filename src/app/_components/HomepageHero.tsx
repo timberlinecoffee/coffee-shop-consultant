@@ -20,7 +20,7 @@ function BrowserMockup() {
     { label: "Financials", pct: 67, active: true },
     { label: "Operations", pct: 20 },
     { label: "Staffing", pct: 40 },
-    { label: "Build-Out", pct: 0 },
+    { label: "Equipment", pct: 0 },
     { label: "Menu", pct: 0 },
     { label: "Marketing", pct: 0 },
     { label: "Launch", pct: 12 },

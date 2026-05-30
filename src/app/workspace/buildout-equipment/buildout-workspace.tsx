@@ -16,6 +16,7 @@ import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
 import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
+import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
@@ -349,17 +350,20 @@ export function BuildoutEquipmentWorkspace({
         </div>
       )}
       <div className="px-6 pt-8 pb-16">
-        <header className="mb-6">
+        <header className="mb-4">
           <div className="flex items-center gap-2 mb-1">
             <Wrench className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
             <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Build Out &amp; Equipment
+              Equipment &amp; Supplies
             </h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Track hard assets — espresso machines, grinders, fridges, furniture, and fixtures. Consumables and supplies live in the Inventory workspace.
+            Plan the gear that goes on the bar — espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page.
           </p>
         </header>
+
+        {/* TIM-1458: Sub-nav between the two pages in this suite. */}
+        <EquipmentSuppliesSubNav active="equipment" />
 
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
@@ -526,7 +530,7 @@ export function BuildoutEquipmentWorkspace({
       <CoPilotDrawer
         planId={planId}
         workspaceKey="buildout_equipment"
-        currentFocus={{ label: "Build Out & Equipment" }}
+        currentFocus={{ label: "Equipment & Supplies — Equipment" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
