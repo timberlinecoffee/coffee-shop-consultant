@@ -7,6 +7,7 @@
 // ingredients (amortized disposables), 'piece' unit, badge-styled category UX on item card.
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Utensils,
   Plus,
@@ -2537,8 +2538,17 @@ export function MenuWorkspace({
   const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(initialItemIngredients);
   const [categories, setCategories] = useState<MenuCategory[]>(initialCategories);
   const [categoryDefaults, setCategoryDefaults] = useState<CategoryDefaultIngredient[]>(initialCategoryDefaults);
+  // TIM-1416: Operations Playbook recipes panel deep-links into a specific menu
+  // item via ?item=<id>. Honor the param on first render so the editor opens
+  // directly — initial state, not an effect, to avoid cascading renders.
+  const searchParams = useSearchParams();
+  const deepLinkItemId = searchParams?.get("item") ?? null;
   const [activeTab, setActiveTab] = useState<Tab>("menu");
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(() =>
+    deepLinkItemId && initialItems.some((it) => it.id === deepLinkItemId)
+      ? deepLinkItemId
+      : null,
+  );
   const [expandedDefaultsCatId, setExpandedDefaultsCatId] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
