@@ -1,7 +1,7 @@
 // TIM-1037: Business Plan Generator v1 — types, section keys, assemblers.
 
 import { normalizeConceptV2 } from "@/lib/concept";
-import { normalizeMonthlyProjections, computeMonthlyProjections, totalCapexCents, type EquipmentSummary } from "@/lib/financial-projection";
+import { normalizeMonthlyProjections, computeMonthlySlices, totalCapexCents, type EquipmentSummary } from "@/lib/financial-projection";
 
 // ── Section keys ─────────────────────────────────────────────────────────────
 
@@ -355,54 +355,82 @@ export function assembleFinancialPlan(
     financed_cost_cents: Math.round(totalEquipCostUsd * 100),
   };
 
-  const monthRows = computeMonthlyProjections(projections, equipSummary);
+  const slices = computeMonthlySlices(projections, equipSummary);
   const lines: string[] = [];
 
-  // Year 1 summary
-  if (monthRows.length > 0) {
-    const y1 = monthRows.slice(0, 12);
-    const totalRevenueCents = y1.reduce((s, r) => s + r.revenue_cents, 0);
-    const totalCogsCents = y1.reduce((s, r) => s + r.cogs_cents, 0);
-    const totalLaborCents = y1.reduce((s, r) => s + r.labor_cents, 0);
-    const totalOpexCents = y1.reduce((s, r) => s + r.total_opex_cents, 0);
-    const totalNetCents = y1.reduce((s, r) => s + r.net_income_cents, 0);
-
-    const rev = totalRevenueCents / 100;
-    const cogs = totalCogsCents / 100;
-    const labor = totalLaborCents / 100;
-    const opex = totalOpexCents / 100;
-    const net = totalNetCents / 100;
-
-    lines.push("Year 1 Projections");
-    lines.push(`- Revenue: $${rev.toLocaleString()}`);
-    lines.push(`- COGS: $${cogs.toLocaleString()} (${rev > 0 ? Math.round((cogs / rev) * 100) : 0}%)`);
-    lines.push(`- Labor: $${labor.toLocaleString()}`);
-    lines.push(`- Operating Expenses: $${opex.toLocaleString()}`);
-    lines.push(`- Net Income: $${net.toLocaleString()}`);
-
-    // Quarterly revenue
-    lines.push("\nQuarterly Revenue");
-    const quarters = [
-      { label: "Q1", months: y1.slice(0, 3) },
-      { label: "Q2", months: y1.slice(3, 6) },
-      { label: "Q3", months: y1.slice(6, 9) },
-      { label: "Q4", months: y1.slice(9, 12) },
-    ];
-    for (const q of quarters) {
-      const qRev = q.months.reduce((s, r) => s + r.revenue_cents, 0) / 100;
-      if (qRev > 0) lines.push(`- ${q.label}: $${qRev.toLocaleString()}`);
-    }
+  const y1 = slices.filter((s) => s.year === 1);
+  if (y1.length === 0) {
+    return "Complete the Financials workspace to populate this section.";
   }
 
-  // Capital assets — use the unified capex ForecastLines (TIM-1255)
+  // Year 1 income statement
+  const totalRevCents = y1.reduce((s, r) => s + r.net_revenue_cents, 0);
+  const totalCogsCents = y1.reduce((s, r) => s + r.total_cogs_cents, 0);
+  const grossProfitCents = totalRevCents - totalCogsCents;
+  const totalOpexCents = y1.reduce((s, r) => s + r.total_opex_cents, 0);
+  const ebitdaCents = y1.reduce((s, r) => s + r.operating_income_cents, 0);
+  const totalDeprecCents = y1.reduce((s, r) => s + r.depreciation_cents, 0);
+  const totalInterestCents = y1.reduce((s, r) => s + r.interest_cents, 0);
+  const totalTaxesCents = y1.reduce((s, r) => s + r.taxes_cents, 0);
+  const netIncomeCents = y1.reduce((s, r) => s + r.net_income_cents, 0);
+  const endingCashY1 = y1[y1.length - 1].cash_cents;
+
+  const grossMarginPct = totalRevCents > 0 ? Math.round((grossProfitCents / totalRevCents) * 100) : 0;
+  const ebitdaMarginPct = totalRevCents > 0 ? Math.round((ebitdaCents / totalRevCents) * 100) : 0;
+
+  lines.push("Year 1 Income Statement");
+  lines.push(`Revenue:           ${centsToUsd(totalRevCents)}`);
+  lines.push(`COGS:              ${centsToUsd(totalCogsCents)} (${totalRevCents > 0 ? Math.round((totalCogsCents / totalRevCents) * 100) : 0}%)`);
+  lines.push(`Gross Profit:      ${centsToUsd(grossProfitCents)} (${grossMarginPct}% margin)`);
+  lines.push(`Operating Exp:     ${centsToUsd(totalOpexCents)}`);
+  lines.push(`EBITDA:            ${centsToUsd(ebitdaCents)} (${ebitdaMarginPct}% margin)`);
+  lines.push(`Depreciation:      ${centsToUsd(totalDeprecCents)}`);
+  lines.push(`Interest:          ${centsToUsd(totalInterestCents)}`);
+  lines.push(`Income Tax:        ${centsToUsd(totalTaxesCents)}`);
+  lines.push(`Net Income:        ${centsToUsd(netIncomeCents)}`);
+  lines.push(`Ending Cash:       ${centsToUsd(endingCashY1)}`);
+
+  // Quarterly revenue
+  lines.push("\nQuarterly Revenue (Year 1)");
+  const quarters = [
+    { label: "Q1", months: y1.slice(0, 3) },
+    { label: "Q2", months: y1.slice(3, 6) },
+    { label: "Q3", months: y1.slice(6, 9) },
+    { label: "Q4", months: y1.slice(9, 12) },
+  ];
+  for (const q of quarters) {
+    const qRev = q.months.reduce((s, r) => s + r.net_revenue_cents, 0);
+    if (qRev > 0) lines.push(`${q.label}: ${centsToUsd(qRev)}`);
+  }
+
+  // 5-year summary
+  lines.push("\n5-Year Summary");
+  for (let yr = 1; yr <= 5; yr++) {
+    const yrSlices = slices.filter((s) => s.year === yr);
+    if (yrSlices.length === 0) continue;
+    const yrRev = yrSlices.reduce((s, r) => s + r.net_revenue_cents, 0);
+    const yrNet = yrSlices.reduce((s, r) => s + r.net_income_cents, 0);
+    const yrEndCash = yrSlices[yrSlices.length - 1].cash_cents;
+    lines.push(
+      `Year ${yr}: Revenue ${centsToUsd(yrRev)}, Net ${centsToUsd(yrNet)}, Ending Cash ${centsToUsd(yrEndCash)}`
+    );
+  }
+
+  // Capital assets
   const capexTotal = totalCapexCents(projections);
   if (capexTotal > 0) {
-    lines.push(`\nCapital Assets`);
-    const capexLines = projections.forecast_lines.filter((l) => l.category === "capex" && l.mode === "flat" && l.value > 0);
+    lines.push("\nCapital Assets");
+    const capexLines = projections.forecast_lines.filter(
+      (l) => l.category === "capex" && l.mode === "flat" && l.value > 0
+    );
     for (const l of capexLines) {
       lines.push(`- ${l.label}: ${centsToUsd(l.value)} (${l.useful_life_years ?? 7}yr life)`);
     }
   }
+
+  lines.push(
+    "\nFull monthly P&L, cash flow, and balance sheet statements are included in the Financial Appendix of this document."
+  );
 
   return lines.join("\n").trim() || "Complete the Financials workspace to populate this section.";
 }
