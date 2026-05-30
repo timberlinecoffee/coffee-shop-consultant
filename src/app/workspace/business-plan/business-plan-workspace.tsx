@@ -280,7 +280,7 @@ export function BusinessPlanWorkspace({
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Business Plan
             </h1>
           </div>

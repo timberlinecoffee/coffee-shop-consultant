@@ -2,7 +2,7 @@
 
 // TIM-1040: Launch Plan workspace — backward scheduling, AI generation,
 // list + calendar views, regenerate-when-stale banner.
-// TIM-1057: UX cohesion fix (platform hex tokens, rounded-2xl cards, in-page header)
+// TIM-1057: UX cohesion fix (platform hex tokens, rounded-xl cards, in-page header)
 //           + generate fix (AbortController timeout, consumeSseFrames, Toast on error).
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -247,7 +247,7 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
   return (
     <div className="space-y-4">
       {/* Progress */}
-      <div className="bg-white rounded-2xl border border-[var(--border)] px-4 py-3 flex items-center gap-4">
+      <div className="bg-white rounded-xl border border-[var(--border)] px-4 py-3 flex items-center gap-4">
         <div className="flex-1">
           <div className="h-2 bg-[var(--neutral-cool-100)] rounded-full overflow-hidden">
             <div
@@ -272,7 +272,7 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
         const doneInTrack = items.filter((m) => m.status === "done").length;
 
         return (
-          <div key={track} className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden">
+          <div key={track} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
             <button
               className={`w-full flex items-center gap-3 px-4 py-3 ${trackColor.bg} border-b ${trackColor.border} text-left`}
               onClick={() => toggleTrack(track)}
@@ -343,7 +343,7 @@ function CalendarView({ milestones, targetLaunchDate, onMilestoneClick }: Calend
   return (
     <div className="space-y-8">
       {months.map((month) => (
-        <div key={`${month.year}-${month.month}`} className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div key={`${month.year}-${month.month}`} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--neutral-cool-100)]">
             <h3 className="text-base font-semibold text-[var(--foreground)]">
               {MONTH_NAMES[month.month]} {month.year}
@@ -722,7 +722,7 @@ export function LaunchPlanWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Rocket className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>Launch Plan</h1>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">Launch Plan</h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Backward-planned milestones from your target opening day.
@@ -758,14 +758,14 @@ export function LaunchPlanWorkspace({
         <div className="space-y-4">
           {/* First-visit copy */}
           {milestones.length === 0 && !config.lastGeneratedAt && (
-            <div className="rounded-2xl bg-white border border-[var(--border)] px-5 py-4 text-sm text-[var(--muted-foreground)]">
+            <div className="rounded-xl bg-white border border-[var(--border)] px-5 py-4 text-sm text-[var(--muted-foreground)]">
               Complete your Concept, Location, and Equipment sections first. Your launch plan will be much more accurate.
             </div>
           )}
 
           {/* Stale banner */}
           {showStaleBanner && (
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
+            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
               <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-amber-800">
@@ -789,7 +789,7 @@ export function LaunchPlanWorkspace({
 
           {/* Lead-time conflict warnings */}
           {conflicts.length > 0 && (
-            <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 space-y-1">
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 space-y-1">
               <p className="text-sm font-semibold text-red-700">Lead-time conflicts detected:</p>
               {conflicts.map((c) => (
                 <p key={c.milestoneId} className="text-xs text-red-600">
@@ -800,7 +800,7 @@ export function LaunchPlanWorkspace({
           )}
 
           {/* Target date + generate */}
-          <div className="bg-white rounded-2xl border border-[var(--border)] px-4 sm:px-5 py-4">
+          <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">

@@ -597,7 +597,7 @@ export function PLTab({
           </ChartCard>
         </div>
       ) : (
-      <div className="rounded-2xl border border-[var(--border)] bg-white overflow-x-auto">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">
@@ -752,7 +752,7 @@ export function PLTab({
         </p>
       )}
 
-      <div className="mt-4 rounded-2xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
+      <div className="mt-4 rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <PLCritique slices={slices} year={year} />
       </div>

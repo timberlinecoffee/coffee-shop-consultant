@@ -421,7 +421,7 @@ export function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
+    <div className="rounded-xl border border-[var(--border)] bg-white p-5">
       <div className="mb-3">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide">{title}</p>
         {description && <p className="text-xs text-[var(--muted-foreground)] mt-1">{description}</p>}

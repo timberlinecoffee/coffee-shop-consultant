@@ -68,7 +68,7 @@ function ReadinessRing({ pct }: { pct: number }) {
         <span className="text-3xl font-bold tracking-tight text-[var(--foreground)] tabular-nums">
           {clamped}%
         </span>
-        <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--muted-foreground)]">
+        <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
           Ready
         </span>
       </div>
@@ -123,7 +123,7 @@ export function LaunchReadinessCard({ readiness }: { readiness: LaunchReadiness 
 
   return (
     <section aria-label="Launch readiness" className="mb-10">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--teal)]">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">
         Launch Readiness
       </p>
 
@@ -132,10 +132,10 @@ export function LaunchReadinessCard({ readiness }: { readiness: LaunchReadiness 
           <ReadinessRing pct={pct} />
 
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <h2 className="text-xl font-bold tracking-tight text-[var(--foreground)]">
+            <h2 className="text-base font-semibold text-[var(--foreground)]">
               {headline}
             </h2>
-            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[var(--muted-foreground)]">
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--muted-foreground)]">
               {subline}
             </p>
             {isEmpty && (

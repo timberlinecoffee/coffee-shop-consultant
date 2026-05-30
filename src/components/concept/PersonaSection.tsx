@@ -89,7 +89,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
   if (personas.length === 0) {
     return (
       <>
-        <div className="mt-2 rounded-2xl border border-dashed border-[var(--gray-700)] bg-[var(--background)] px-6 py-8 text-center">
+        <div className="mt-2 rounded-xl border border-dashed border-[var(--gray-700)] bg-[var(--background)] px-6 py-8 text-center">
           <p className="text-sm font-medium text-[var(--foreground)] mb-1">
             Who is your shop for?
           </p>

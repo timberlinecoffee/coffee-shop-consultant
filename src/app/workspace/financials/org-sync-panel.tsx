@@ -130,7 +130,7 @@ export function OrgSyncPanel({
             <Link2Off size={15} className="text-[var(--dark-grey)] mt-0.5 shrink-0" aria-hidden="true" />
           )}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">
               Org Structure Link
             </p>
             <p className="text-[10px] text-[var(--dark-grey)] mt-0.5 max-w-md">

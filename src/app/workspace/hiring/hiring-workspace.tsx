@@ -194,7 +194,7 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 const sectionLabelCls =
-  "text-xs font-semibold uppercase tracking-wider text-[var(--teal)] mb-4";
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-4";
 
 // ── Org Structure tab ─────────────────────────────────────────────────────────
 
@@ -1058,7 +1058,7 @@ function RoleHubPanel({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <ClipboardCheck size={14} className="text-[var(--teal)]" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Scorecards</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">Scorecards</p>
                   </div>
                   {canEdit && (
                     <button
@@ -1147,7 +1147,7 @@ function RoleHubPanel({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BookOpen size={14} className="text-[var(--teal)]" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Competency Form</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">Competency Form</p>
                   </div>
                   {canEdit && (
                     <button
@@ -2515,7 +2515,7 @@ export function HiringWorkspace({
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Users className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="font-bold text-[var(--foreground)]" style={{ fontSize: "28px" }}>
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
               Hiring &amp; Onboarding
             </h1>
           </div>

@@ -257,7 +257,7 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
   const v = ratio.value;
 
   return (
-    <div className={`rounded-2xl border px-5 py-4 ${styles.wrap}`}>
+    <div className={`rounded-xl border px-5 py-4 ${styles.wrap}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--foreground)]">{ratio.label}</p>
@@ -308,7 +308,7 @@ export function RatiosTab({ slices }: Props) {
 
   if (ratios.length === 0) {
     return (
-      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-8 text-center text-sm text-[var(--dark-grey)]">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-8 text-center text-sm text-[var(--dark-grey)]">
         Enter your inputs to see ratio analysis.
       </div>
     );
@@ -348,7 +348,7 @@ export function RatiosTab({ slices }: Props) {
   return (
     <div className="space-y-4">
       {/* Summary banner */}
-      <div className={`rounded-2xl border px-5 py-4 ${summaryStyles.wrap}`}>
+      <div className={`rounded-xl border px-5 py-4 ${summaryStyles.wrap}`}>
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${summaryStyles.dot}`} />
           <p className="text-sm font-semibold text-[var(--foreground)]">{summary.title}</p>
@@ -357,7 +357,7 @@ export function RatiosTab({ slices }: Props) {
       </div>
 
       {/* How to read this */}
-      <div className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-3">
         <p className="text-[11px] uppercase tracking-wide text-[var(--gray-1050)] font-semibold">
           How to read this
         </p>
