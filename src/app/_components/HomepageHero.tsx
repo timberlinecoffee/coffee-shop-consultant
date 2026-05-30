@@ -252,34 +252,9 @@ export default function HomepageHero() {
             From <span style={{ whiteSpace: "nowrap" }}>Coffee Shop Idea</span>
             <br />
             to{" "}
-            <motion.span
-              style={{
-                whiteSpace: "nowrap",
-                color: "#ffd28a",
-                fontStyle: "italic",
-                fontFamily:
-                  "'Brush Script MT', 'Lucida Handwriting', 'Snell Roundhand', cursive",
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                textShadow: [
-                  "0 0 4px rgba(255,210,138,0.95)",
-                  "0 0 10px rgba(255,180,90,0.85)",
-                  "0 0 22px rgba(255,150,70,0.70)",
-                  "0 0 42px rgba(255,130,60,0.45)",
-                ].join(", "),
-              }}
-              animate={{ opacity: [1, 1, 0.82, 1, 1, 0.92, 1] }}
-              transition={{
-                duration: 5.6,
-                times: [0, 0.42, 0.45, 0.5, 0.78, 0.82, 1],
-                repeat: Infinity,
-                repeatDelay: 2.4,
-                ease: "easeInOut",
-              }}
-              aria-label="Open Sign"
-            >
+            <span style={{ whiteSpace: "nowrap", color: "var(--sage)" }}>
               Open Sign
-            </motion.span>
+            </span>
             .
           </motion.h1>
 
