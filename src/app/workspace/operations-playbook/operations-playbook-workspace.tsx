@@ -49,9 +49,9 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
-// TIM-1408: section eyebrow normalized to global token
+// TIM-1353 v2: 14px / bold / wider tracking — read as section headers.
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-2";
+  "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
 const cardCls = "rounded-xl border border-[var(--border)] bg-white";
 const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 
@@ -528,7 +528,7 @@ function CategoryEditor({
         <div className="space-y-5">
           {grouped.map(([station, indexes]) => (
             <div key={station}>
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
+              <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
                 {station}
               </h3>
               <ol className="space-y-2">
@@ -808,7 +808,7 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
         <div className="space-y-6">
           {grouped.map(({ category, cards: catCards }) => (
             <div key={category}>
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
+              <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
                 {category}
               </h3>
               <div className="space-y-3">
@@ -844,7 +844,7 @@ function RecipeCardRow({ card }: { card: OperationsRecipeCard }) {
       </header>
       {card.ingredients.length > 0 && (
         <div className="mb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)] mb-2">
             Ingredients
           </p>
           <ul className="text-xs text-[var(--foreground)] space-y-0.5">
@@ -858,7 +858,7 @@ function RecipeCardRow({ card }: { card: OperationsRecipeCard }) {
       )}
       {card.notes && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)] mb-2">
             Method
           </p>
           <p className="text-xs text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
@@ -1360,7 +1360,7 @@ function TrainingEditor({
           const entries = groupedByPhase[phase];
           return (
             <div key={phase}>
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
+              <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
                 {TRAINING_PHASE_LABELS[phase]}
               </h3>
               <ol className="space-y-2">

@@ -142,7 +142,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
 
       {/* Visual bar */}
       <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-5">
-        <p className="text-sm font-semibold text-[var(--foreground)] mb-4">Monthly Transactions vs. Break-Even</p>
+        <p className="text-base font-bold text-[var(--foreground)] mb-4 leading-tight">Monthly Transactions vs. Break-Even</p>
         <div className="space-y-3">
           <div>
             <div className="flex justify-between text-xs text-[var(--muted-foreground)] mb-1">
@@ -177,7 +177,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
       {/* Sensitivity table */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <div className="px-5 pt-5 pb-2">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Sensitivity Analysis</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">Sensitivity Analysis</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">How does break-even shift if key variables change?</p>
         </div>
         <table className="w-full border-collapse text-sm">

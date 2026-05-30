@@ -235,7 +235,7 @@ function CategorySection({
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
       <div className="flex items-baseline justify-between mb-3">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-semibold text-[var(--foreground)]">{meta.label}</h3>
+          <h3 className="text-base font-bold text-[var(--foreground)] leading-tight">{meta.label}</h3>
           <InfoTip label={meta.label}>{meta.hint}</InfoTip>
         </div>
         <span className="text-sm font-semibold text-[var(--teal)] tabular-nums">{fmt(subtotal, currencyCode)}</span>
@@ -315,7 +315,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
   return (
     <div className="space-y-4" id="tour-funding">
       <div className="rounded-xl border border-[var(--border)] bg-white p-5">
-        <p className="text-sm font-semibold text-[var(--foreground)]">Where The Money Comes From</p>
+        <p className="text-base font-bold text-[var(--foreground)] leading-tight">Where The Money Comes From</p>
         <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
           Add every dollar funding the launch — your own cash, loans, investor checks, and grants. Loans
           generate monthly principal payments on Cash Flow; equity sources land on the Equity side of the
@@ -355,14 +355,14 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
       {/* Reconciliation: Sources vs. Uses */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Sources Vs. Uses</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">Sources Vs. Uses</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">
             Total funding should cover total startup costs. Surplus becomes additional opening cash.
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Sources</p>
+            <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)] mb-3">Sources</p>
             <ul className="space-y-1.5 text-sm">
               <li className="flex justify-between"><span>Founder Equity</span><span className="tabular-nums">{fmt(byKind.founder_equity.reduce((s, l) => s + l.amount_cents, 0), currencyCode)}</span></li>
               <li className="flex justify-between"><span>Loans</span><span className="tabular-nums">{fmt(loanTotal, currencyCode)}</span></li>
@@ -372,7 +372,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
             </ul>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Uses</p>
+            <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)] mb-3">Uses</p>
             <ul className="space-y-1.5 text-sm">
               <li className="flex justify-between"><span>Build-Out</span><span className="tabular-nums">{fmt(inputs.buildout_cost_cents, currencyCode)}</span></li>
               <li className="flex justify-between"><span>Equipment</span><span className="tabular-nums">{fmt(inputs.equipment_cost_cents, currencyCode)}</span></li>

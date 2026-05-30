@@ -692,7 +692,7 @@ export function SuppliersWorkspace({
               <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-base font-semibold text-[var(--foreground)]">
+                    <h2 className="text-lg font-bold text-[var(--foreground)] leading-tight">
                       <TruncatedText text={labelFor(activeCategory)} />
                     </h2>
                     <p className="text-xs text-[var(--dark-grey)] mt-0.5">

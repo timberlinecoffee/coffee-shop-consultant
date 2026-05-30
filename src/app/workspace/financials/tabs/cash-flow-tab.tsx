@@ -408,7 +408,7 @@ function LoanAmortizationSchedule({
     <div className="mt-4 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
       <div className="px-5 pt-4 pb-2 flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-[var(--foreground)]">Loan Amortization Schedule</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">Loan Amortization Schedule</p>
           <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
             Month-by-month split of each loan payment into interest and principal. This is the schedule your banker will ask for.
           </p>

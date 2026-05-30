@@ -123,11 +123,11 @@ export function WorkspaceNav({ items }: { items: WorkspaceNavItem[] }) {
           if (groupItems.length === 0) return null;
           return (
             <section key={category}>
-              <div className="mb-2.5 px-1">
-                <h2 className="text-sm font-semibold text-[var(--foreground)]">
+              <div className="mb-3 px-1">
+                <h2 className="text-base font-bold text-[var(--foreground)] leading-tight">
                   {WORKSPACE_CATEGORY_LABEL[category]}
                 </h2>
-                <p className="text-xs text-[var(--neutral-cool-650)]">{CATEGORY_BLURB[category]}</p>
+                <p className="text-xs text-[var(--neutral-cool-650)] mt-1">{CATEGORY_BLURB[category]}</p>
               </div>
               <div className="divide-y divide-[var(--warm-500)] overflow-hidden rounded-xl border border-[var(--warm-550)] bg-white">
                 {groupItems.map((item) => (

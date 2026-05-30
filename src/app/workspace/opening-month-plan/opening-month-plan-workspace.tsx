@@ -323,7 +323,7 @@ export function OpeningMonthPlanWorkspace({
           {grouped.map(({ bucket, rows }) => (
             <section key={bucket.key} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
               <header className="px-4 py-3 border-b border-[var(--neutral-cool-100)]">
-                <h2 className="text-base font-semibold text-[var(--foreground)]">{bucket.label}</h2>
+                <h2 className="text-lg font-bold text-[var(--foreground)] leading-tight">{bucket.label}</h2>
                 <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{bucket.description}</p>
               </header>
 

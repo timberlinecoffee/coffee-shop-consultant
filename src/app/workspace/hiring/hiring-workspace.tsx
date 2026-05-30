@@ -195,8 +195,9 @@ function RolePill({ status }: { status: HiringRoleStatus }) {
 const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
+// TIM-1353 v2: 14px / bold / wider tracking — read as section headers.
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-4";
+  "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
 
 // ── Org Structure tab ─────────────────────────────────────────────────────────
 
@@ -1058,7 +1059,7 @@ function RoleHubPanel({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <ClipboardCheck size={14} className="text-[var(--teal)]" />
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">Scorecards</p>
+                    <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Scorecards</p>
                   </div>
                   {canEdit && (
                     <button
@@ -1147,7 +1148,7 @@ function RoleHubPanel({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BookOpen size={14} className="text-[var(--teal)]" />
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">Competency Form</p>
+                    <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Competency Form</p>
                   </div>
                   {canEdit && (
                     <button

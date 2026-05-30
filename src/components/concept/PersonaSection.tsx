@@ -234,7 +234,7 @@ function ExampleDrawer({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">Example</p>
+            <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Example</p>
             <h2 className="text-sm font-semibold text-[var(--foreground)]">Sample Persona</h2>
           </div>
           <button

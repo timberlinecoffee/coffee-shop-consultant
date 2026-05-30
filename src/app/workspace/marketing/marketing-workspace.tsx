@@ -36,9 +36,10 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
-// TIM-1408: section eyebrow + card radius normalized to global tokens
+// TIM-1353 v2: section headers parse as structural headers (14px / bold / wider
+// tracking + more bottom space), not floating eyebrow tags.
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-2";
+  "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
 const cardCls = "rounded-xl border border-[var(--border)] bg-white";
 const helperCls = "text-[10px] text-[var(--dark-grey)] mt-1";
 

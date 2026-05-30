@@ -92,8 +92,9 @@ function makeLocalId() {
 const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
+// TIM-1353 v2: 14px / bold / wider tracking — read as section headers.
 const sectionLabelCls =
-  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)] mb-4";
+  "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
 
 // TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
 // so the ingredient grid stays flat and scannable.
@@ -2115,7 +2116,7 @@ function InsightsTab({
       <div>
         <div className="flex items-center gap-2 mb-1">
           <LayoutGrid className="w-4 h-4 text-[var(--teal)]" />
-          <h2 className="text-base font-semibold text-[var(--foreground)]">What To Serve</h2>
+          <h2 className="text-lg font-bold text-[var(--foreground)] leading-tight">What To Serve</h2>
           <SectionHelp title="What To Serve">Every item is sorted by two things: how profitable it is (your gross margin) and how popular you expect it to be. We split each one at your own menu average, so this is always relative to the rest of your menu.</SectionHelp>
         </div>
       </div>
@@ -2185,7 +2186,7 @@ function InsightsTab({
       <div>
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="w-4 h-4 text-[var(--teal)]" />
-          <h2 className="text-base font-semibold text-[var(--foreground)]">Margin Ranking</h2>
+          <h2 className="text-lg font-bold text-[var(--foreground)] leading-tight">Margin Ranking</h2>
           <SectionHelp title="Margin Ranking">Your items from most to least profitable. Set each item&apos;s expected popularity here to place it on the grid above.</SectionHelp>
         </div>
 
@@ -2266,7 +2267,7 @@ function InsightsTab({
       {/* Needs info */}
       {needsInfo.length > 0 && (
         <div>
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)] mb-2">
+          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)] mb-3">
             Not Enough Info Yet ({needsInfo.length})
           </h3>
           <div className="rounded-xl border border-[var(--border)] bg-white divide-y divide-[var(--gray-200)]">
@@ -2406,7 +2407,7 @@ function SuggestItemsModal({
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[var(--teal)]" aria-hidden="true" />
             <div>
-              <h2 className="text-sm font-bold text-[var(--foreground)]">Suggested menu items</h2>
+              <h2 className="text-base font-bold text-[var(--foreground)] leading-tight">Suggested menu items</h2>
               <p className="text-xs text-[var(--muted-foreground)]">Tap to add any that fit. You can edit prices and recipes after.</p>
             </div>
           </div>

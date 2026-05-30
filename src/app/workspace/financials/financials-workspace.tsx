@@ -435,7 +435,7 @@ function Section({
           aria-expanded={open}
           className="flex items-center gap-2 group"
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
+          <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
             {title}
           </span>
           {advanced && (
@@ -1660,7 +1660,7 @@ function ProjectionsTab({
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">AI Assessment</p>
+            <p className="text-base font-bold text-[var(--foreground)] leading-tight">AI Assessment</p>
             <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Benchmarked against comparable independent coffee shops.
             </p>

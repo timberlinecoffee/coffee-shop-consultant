@@ -235,7 +235,7 @@ export function StartupTab({
           lands even when a new user has no capex lines yet (TIM-1267) */}
       <div id="tour-startup-capital-assets" className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2">
-          <p className="text-sm font-semibold text-[var(--foreground)]">What It Takes To Open The Door</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">What It Takes To Open The Door</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">
             Enter each one-time cost below. The total adds itself up as you go.
           </p>
@@ -364,7 +364,7 @@ export function StartupTab({
       {/* Funding sources — edited in the Funding tab, reflected here */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 pt-5 pb-2 flex items-baseline justify-between">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Funding Sources</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">Funding Sources</p>
           <p className="text-xs text-[var(--dark-grey)]">Edit in the Funding tab</p>
         </div>
         <table className="w-full border-collapse text-sm">

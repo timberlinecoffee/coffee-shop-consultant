@@ -58,7 +58,7 @@ export function SectionHelp({ title, children }: SectionHelpProps) {
         >
           {title && (
             <div className="mb-1.5 flex items-start justify-between gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">
+              <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
                 {title}
               </span>
               <button

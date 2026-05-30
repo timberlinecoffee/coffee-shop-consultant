@@ -567,7 +567,7 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
           <div className="flex items-center gap-2">
             <Users size={15} className="text-[var(--teal)]" aria-hidden="true" />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)]">Staff & Salaries</p>
+              <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Staff & Salaries</p>
               <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                 Each role drives labor cost on your P&amp;L, cash flow, and break-even. Mark baristas
                 and other hands-on staff as Direct Labor; managers and back-office roles as Overhead.

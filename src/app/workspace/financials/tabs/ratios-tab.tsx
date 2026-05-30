@@ -260,7 +260,7 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
     <div className={`rounded-xl border px-5 py-4 ${styles.wrap}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[var(--foreground)]">{ratio.label}</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">{ratio.label}</p>
           <p className="text-xs text-[var(--gray-mid)] mt-1 leading-snug">
             {ratio.plainEnglish}
           </p>
@@ -351,7 +351,7 @@ export function RatiosTab({ slices }: Props) {
       <div className={`rounded-xl border px-5 py-4 ${summaryStyles.wrap}`}>
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${summaryStyles.dot}`} />
-          <p className="text-sm font-semibold text-[var(--foreground)]">{summary.title}</p>
+          <p className="text-base font-bold text-[var(--foreground)] leading-tight">{summary.title}</p>
         </div>
         <p className="text-xs text-[var(--gray-1300)] mt-1 leading-relaxed">{summary.body}</p>
       </div>

@@ -369,7 +369,7 @@ export function AIAssistCallout({
               </div>
 
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--teal)] mb-2">
+                <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
                   Suggested version
                 </p>
                 <div

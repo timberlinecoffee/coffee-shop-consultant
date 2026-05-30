@@ -377,17 +377,27 @@ body {
   outline: none;
 }
 
-/* Section header tokens (TIM-1353)
-   Use .section-eyebrow for uppercase teal category labels inside workspace cards.
-   The canonical Tailwind equivalent: text-xs font-semibold uppercase tracking-wider
-   text-[var(--teal)] — 12px base is the minimum for accessible all-caps labels. */
+/* Section header tokens (TIM-1353 v2 — founder feedback after v1: still read like
+   10px). Pushes hierarchy on four axes (size, weight, spacing, contrast) so
+   section labels parse as structural headers, not floating tags.
+     - .section-eyebrow: the canonical uppercase teal section header
+     - .section-eyebrow--divider: opt-in border-top + top padding for opening a
+       new visual block without adding heavy chrome
+   Tailwind equivalent of base: text-sm font-bold uppercase tracking-[0.08em]
+   text-[var(--teal)] mb-3. */
 @layer components {
   .section-eyebrow {
-    font-size: 0.75rem; /* 12px — was 10px */
-    font-weight: 600;
+    font-size: 0.875rem; /* 14px — was 12px (v1) and 10px (original) */
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: var(--teal);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.2;
+  }
+  .section-eyebrow--divider {
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border);
   }
 }

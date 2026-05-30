@@ -630,10 +630,10 @@ function ConceptBriefInline({
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-0.5">
+          <p className="text-sm font-bold tracking-[0.08em] uppercase text-[var(--teal)] mb-1 leading-tight">
             Section 5
           </p>
-          <h2 className="text-base font-semibold text-[var(--foreground)]">
+          <h2 className="text-lg font-bold text-[var(--foreground)] leading-tight">
             Concept Brief
           </h2>
         </div>
