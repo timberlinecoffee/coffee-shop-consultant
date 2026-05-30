@@ -156,6 +156,98 @@ function HiringPdfButton({
   );
 }
 
+// ── Scorecard worksheet download button (TIM-1482) ────────────────────────────
+// Inline candidate-name input before downloading the multi-column worksheet PDF.
+
+function ScorecardWorksheetButton({ scorecardId }: { scorecardId: string }) {
+  const [open, setOpen] = useState(false);
+  const [names, setNames] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [paywalled, setPaywalled] = useState(false);
+  const { guardedFetch, paywallReason, dismissPaywall } = usePaywallGuard();
+
+  const download = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ scorecard_id: scorecardId });
+      if (names.trim()) params.set("candidates", names.trim());
+      const res = await guardedFetch(`/api/pdf/hiring_scorecard_worksheet?${params}`);
+      if (!res) { setPaywalled(true); return; }
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const disp = res.headers.get("Content-Disposition") ?? "";
+      const m = /filename="([^"]+)"/.exec(disp);
+      const filename = m?.[1] ?? `groundwork-scorecard-worksheet.pdf`;
+      const urlObj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlObj;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(urlObj);
+      setOpen(false);
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, guardedFetch, scorecardId, names]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        title="Print interview worksheet (with candidate columns)"
+        onClick={() => setOpen(true)}
+        className="text-[var(--dark-grey)] hover:text-[var(--teal)] p-1"
+      >
+        <FileText size={12} />
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          className="text-xs border border-[var(--border-medium)] rounded px-2 py-0.5 w-36 focus-visible:outline-none focus:border-[var(--teal)]"
+          placeholder="Alice, Bob, Carol"
+          value={names}
+          onChange={(e) => setNames(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") download();
+            if (e.key === "Escape") setOpen(false);
+          }}
+        />
+        <button
+          type="button"
+          onClick={download}
+          disabled={exporting}
+          title="Download worksheet"
+          className="flex items-center gap-0.5 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] disabled:opacity-50"
+        >
+          <Download size={11} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-0.5"
+        >
+          <X size={11} />
+        </button>
+      </div>
+      {paywalled && (
+        <PaywallModal
+          open={paywalled}
+          reason={paywallReason}
+          onClose={() => { setPaywalled(false); dismissPaywall(); }}
+        />
+      )}
+    </>
+  );
+}
+
 // ── Status pill ───────────────────────────────────────────────────────────────
 
 // V2: CandidatePill deferred (TIM-1419) — per-candidate tracking removed from V1.
@@ -927,6 +1019,7 @@ function RoleRow({
                                     label=""
                                     iconTitle="Print blank scorecard"
                                   />
+                                  <ScorecardWorksheetButton scorecardId={sc.id} />
                                   <button
                                     type="button"
                                     title="Delete"
