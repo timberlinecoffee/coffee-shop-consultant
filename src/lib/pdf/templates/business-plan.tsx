@@ -4,7 +4,7 @@
 
 import React from "react";
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import { BRAND, registerFonts } from "../brand";
+import { BRAND, PDF_BODY_FONT_MAP, registerFonts } from "../brand";
 import { PdfDocument } from "../components/PdfDocument";
 import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
@@ -49,6 +49,7 @@ export interface BusinessPlanCoverData {
   tagline: string | null;
   prepared_for: string | null;
   author_name: string | null;
+  body_font: string | null;
   logo?: { data: Buffer; format: "png" | "jpg" }; // react-pdf uses "jpg" not "jpeg"
 }
 
@@ -457,10 +458,10 @@ function FinancialAppendixPages({
 
 // ── Components ────────────────────────────────────────────────────────────────
 
-function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionData[]; shopName: string; date: string }) {
+function TocPage({ sections, shopName, date, bodyFontFamily }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; bodyFontFamily: string }) {
   const visible = sections.filter((s) => s.isVisible);
   return (
-    <Page size={BRAND.page.size} style={S.page}>
+    <Page size={BRAND.page.size} style={[S.page, { fontFamily: bodyFontFamily }]}>
       <PdfHeader shopName={shopName} workspaceName="Business Plan" />
       <Text style={S.tocTitle}>Table of Contents</Text>
       {visible.map((section, i) => (
@@ -478,16 +479,18 @@ function SectionPage({
   section,
   shopName,
   date,
+  bodyFontFamily,
 }: {
   section: BusinessPlanSectionData;
   shopName: string;
   date: string;
+  bodyFontFamily: string;
 }) {
   const content = section.userContent ?? section.autoContent;
   const isEmpty = !content || content.includes("workspace to populate");
 
   return (
-    <Page size={BRAND.page.size} style={S.page}>
+    <Page size={BRAND.page.size} style={[S.page, { fontFamily: bodyFontFamily }]}>
       <PdfHeader shopName={shopName} workspaceName={section.title} />
       <View style={{ marginBottom: 8 }}>
         <Text style={S.sectionTitle}>{section.title}</Text>
@@ -513,6 +516,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
+    const bodyFontFamily = PDF_BODY_FONT_MAP[cover.body_font ?? "inter"] ?? BRAND.fonts.sans;
 
     return (
       <PdfDocument>
@@ -525,9 +529,9 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           accentColor: cover.accent_color ?? undefined,
           logo: cover.logo,
         })}
-        <TocPage sections={sections} shopName={displayName} date={date} />
+        <TocPage sections={sections} shopName={displayName} date={date} bodyFontFamily={bodyFontFamily} />
         {visible.map((section) => (
-          <SectionPage key={section.key} section={section} shopName={displayName} date={date} />
+          <SectionPage key={section.key} section={section} shopName={displayName} date={date} bodyFontFamily={bodyFontFamily} />
         ))}
         {financialData && (
           <FinancialAppendixPages
@@ -568,7 +572,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
       supabase.from("financial_models").select("forecast_inputs, monthly_projections, startup_costs").eq("plan_id", planId).maybeSingle(),
       supabase.from("business_plan_sections").select("section_key, user_content, is_visible").eq("plan_id", planId),
-      supabase.from("business_plan_cover").select("template_id, accent_color, logo_path, tagline, prepared_for, author_name").eq("plan_id", planId).maybeSingle(),
+      supabase.from("business_plan_cover").select("template_id, accent_color, logo_path, tagline, prepared_for, author_name, body_font").eq("plan_id", planId).maybeSingle(),
     ]);
 
     const savedMap = new Map(
@@ -620,6 +624,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       tagline: coverRow?.tagline ?? null,
       prepared_for: coverRow?.prepared_for ?? null,
       author_name: coverRow?.author_name ?? null,
+      body_font: (coverRow as { body_font?: string | null } | null)?.body_font ?? null,
       logo: logoData,
     };
 

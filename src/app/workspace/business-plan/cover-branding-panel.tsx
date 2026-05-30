@@ -23,6 +23,7 @@ export interface CoverSettings {
 interface Props {
   initialSettings: CoverSettings;
   logoPublicUrl: string | null;
+  onBodyFontChange?: (fontId: string) => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -86,6 +87,15 @@ const BODY_FONTS = [
   { id: "nunito", label: "Nunito", description: "Friendly, community feel" },
 ] as const;
 
+export const BODY_FONT_MAP: Record<string, string> = {
+  inter: "Inter, sans-serif",
+  "dm-sans": '"DM Sans", sans-serif',
+  lato: "Lato, sans-serif",
+  "source-serif-4": '"Source Serif 4", serif',
+  "libre-baskerville": '"Libre Baskerville", serif',
+  nunito: "Nunito, sans-serif",
+};
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -99,7 +109,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // ── Panel ──────────────────────────────────────────────────────────────────────
 
-export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl }: Props) {
+export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl, onBodyFontChange }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [template, setTemplate] = useState<CoverTemplateId>(initialSettings.template_id);
   const initialHex = initialSettings.accent_color ?? "#1F7A80";
@@ -214,8 +224,9 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
 
   const handleBodyFontSelect = useCallback(async (id: string) => {
     setBodyFont(id);
+    onBodyFontChange?.(id);
     await save({ body_font: id });
-  }, [save]);
+  }, [save, onBodyFontChange]);
 
   // ── Logo upload ────────────────────────────────────────────────────────────
 

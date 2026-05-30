@@ -11,7 +11,7 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
 import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
-import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
+import { CoverBrandingPanel, BODY_FONT_MAP, type CoverSettings } from "./cover-branding-panel";
 
 interface Props {
   planId: string;
@@ -119,6 +119,8 @@ export function BusinessPlanWorkspace({
       isSaving: false,
     }))
   );
+
+  const [bodyFont, setBodyFont] = useState(initialCoverSettings.body_font ?? "inter");
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -331,10 +333,11 @@ export function BusinessPlanWorkspace({
         <CoverBrandingPanel
           initialSettings={initialCoverSettings}
           logoPublicUrl={logoPublicUrl}
+          onBodyFontChange={setBodyFont}
         />
 
         {/* Sections */}
-        <div className="space-y-4">
+        <div className="space-y-4" style={{ fontFamily: BODY_FONT_MAP[bodyFont] ?? BODY_FONT_MAP.inter }}>
           {sections.map((section) => (
             <SectionCard
               key={section.key}
