@@ -35,7 +35,7 @@ export default async function MenuPricingWorkspacePage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id")
+    .select("id, target_gross_margin")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -44,6 +44,15 @@ export default async function MenuPricingWorkspacePage() {
   if (!plan) redirect("/onboarding");
 
   const planId = plan.id;
+  // TIM-1471: workspace-level target gross margin drives MSRP in the Cost of
+  // Goods tab. Column is non-null default 0.75 in the DB, but a numeric column
+  // can come back as a string from PostgREST, so normalize.
+  const targetGrossMargin =
+    typeof plan.target_gross_margin === "number"
+      ? plan.target_gross_margin
+      : typeof plan.target_gross_margin === "string"
+        ? Number(plan.target_gross_margin)
+        : 0.75;
 
   // Auto-seed default categories if this plan has none yet. Belt-and-braces:
   // the migration seeded all plans that existed at the time, this covers any
@@ -167,6 +176,7 @@ export default async function MenuPricingWorkspacePage() {
       initialItemIngredients={(itemIngredientsData ?? []) as MenuItemIngredient[]}
       initialCategories={(categoriesData ?? []) as MenuCategory[]}
       initialCategoryDefaults={cleanedDefaults}
+      initialTargetGrossMargin={Number.isFinite(targetGrossMargin) ? targetGrossMargin : 0.75}
       conceptContext={conceptContext}
     />
   );
