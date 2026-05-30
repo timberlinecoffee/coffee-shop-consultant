@@ -7,10 +7,12 @@ import { motion } from "framer-motion";
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 
 /* Ketut Subiyanto (Pexels License) — same photographer as the lower benefit
-   sections, but a distinct image used nowhere else on the page: a happy owner
-   standing at her open shop door, the picture of running a coffee shop well. */
+   sections. Three baristas in green aprons laughing in a bright, airy cafe.
+   Founder feedback (TIM-1444): hero must show the green-apron + lighter-cafe
+   vibe from the Ketut Subiyanto shoot, not the moodier dark-cafe shot.
+   Distinct image used nowhere else on the page. */
 const HERO_PHOTO =
-  "https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&cs=tinysrgb&w=900";
+  "https://images.pexels.com/photos/4349916/pexels-photo-4349916.jpeg?auto=compress&cs=tinysrgb&w=900";
 
 function BrowserMockup() {
   const sidebarItems = [
@@ -371,11 +373,11 @@ export default function HomepageHero() {
             >
               <Image
                 src={HERO_PHOTO}
-                alt="Smiling coffee shop owner in an apron standing at her open shop door"
+                alt="Three baristas in green aprons laughing together during a break in a bright modern coffee shop. Photo: Ketut Subiyanto / Pexels."
                 fill
                 priority
                 className="object-cover"
-                style={{ objectPosition: "center 30%" }}
+                style={{ objectPosition: "center 40%" }}
                 sizes="248px"
               />
               {/* Warm overlay matches the lower benefit-section photos */}
