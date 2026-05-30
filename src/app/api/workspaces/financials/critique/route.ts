@@ -19,7 +19,6 @@ import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { FinancialProjections } from "@/lib/financial-projection";
 import { formatCurrency } from "@/lib/financial-projection";
 import { getCurrencyMeta, normalizeCurrencyCode } from "@/lib/currency";
-import { normalizeAIOutput } from "@/lib/normalize";
 
 const anthropic = new Anthropic();
 

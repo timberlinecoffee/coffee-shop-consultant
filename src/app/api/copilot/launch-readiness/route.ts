@@ -16,9 +16,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
-import { normalizeAIOutput } from "@/lib/normalize"
-import type { NextRequest } from "next/server"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
+import type { NextRequest } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -7,7 +7,6 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
-import { normalizeAIOutput } from "@/lib/normalize"
 
 export const runtime = "nodejs"
 export const maxDuration = 60

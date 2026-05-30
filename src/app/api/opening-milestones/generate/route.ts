@@ -9,13 +9,12 @@ export const maxDuration = 60
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
-import { normalizeAIOutput } from "@/lib/normalize"
+import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
-import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 
 const TTFT_MS = 8_000
 const GAP_MS = 25_000
