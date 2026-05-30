@@ -209,7 +209,7 @@ export function InventoryWorkspace({
             </h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Track consumables and supplies — cups, lids, dairy, beans, syrups, and cleaning supplies.
+            Track consumables and supplies: cups, lids, dairy, beans, syrups, and cleaning supplies.
             Vendors live in{" "}
             <Link href="/workspace/suppliers" className="text-[var(--teal)] underline decoration-dotted hover:decoration-solid">
               Suppliers &amp; Vendors
