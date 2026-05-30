@@ -215,7 +215,7 @@ export function SuppliesWorkspace({
             </h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Plan the consumables you&apos;ll buy for opening day — cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
+            Plan the consumables you&apos;ll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
           </p>
         </header>
 
