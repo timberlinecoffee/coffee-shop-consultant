@@ -357,22 +357,14 @@ function RowDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30"
       role="dialog"
       aria-modal="true"
       aria-labelledby="rdf-dialog-title"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Backdrop */}
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/30"
-        onClick={onClose}
-        aria-label="Close drawer"
-        tabIndex={-1}
-      />
-
-      {/* Drawer panel */}
-      <div ref={panelRef} className="relative ml-auto w-full max-w-md bg-white h-full shadow-xl overflow-y-auto flex flex-col">
+      {/* Dialog panel */}
+      <div ref={panelRef} className="relative w-full max-w-md bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <h2 id="rdf-dialog-title" className="font-semibold text-[var(--foreground)]">
             {mode.kind === "add" ? "Add milestone" : "Edit milestone"}

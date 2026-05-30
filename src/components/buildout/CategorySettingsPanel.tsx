@@ -198,6 +198,14 @@ export function CategorySettingsPanel({
 
   const [adding, setAdding] = useState(false);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   function itemCount(sectionId: string) {
     return items.filter((i) => i.section_id === sectionId && !i.archived).length;
   }
@@ -286,20 +294,22 @@ export function CategorySettingsPanel({
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-30 bg-black/20"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/30"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      aria-label="Manage Stations"
+    >
       {/* Panel */}
-      <div className="fixed right-0 top-0 z-40 h-full w-[360px] max-w-full bg-white shadow-xl flex flex-col">
+      <div
+        className="w-full max-w-sm bg-white rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="csp-dialog-title"
+      >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)]">
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-bold text-[var(--foreground)]">Manage Stations</h2>
+            <h2 id="csp-dialog-title" className="text-sm font-bold text-[var(--foreground)]">Manage Stations</h2>
             <p className="text-[11px] text-[var(--dark-grey)] mt-0.5 leading-snug">
               Drag to reorder. Click a name to rename.
             </p>
@@ -308,7 +318,7 @@ export function CategorySettingsPanel({
             type="button"
             onClick={onClose}
             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0"
-            aria-label="Close panel"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
@@ -353,6 +363,6 @@ export function CategorySettingsPanel({
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
