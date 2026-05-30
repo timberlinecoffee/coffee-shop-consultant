@@ -10,6 +10,7 @@ import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
 import type { PdfTemplate } from "../registry";
 import type { BusinessPlanSectionData } from "@/lib/business-plan";
+import { buildFinancialDocVisibility, type FinancialDocumentVisibility } from "@/lib/business-plan-financials";
 import { renderCover } from "@/lib/pdf/business-plan/covers";
 import {
   assembleCompanyConcept,
@@ -56,6 +57,7 @@ export interface BusinessPlanPdfContent {
   sections: BusinessPlanSectionData[];
   cover: BusinessPlanCoverData;
   financialData?: { mp: MonthlyProjections; equipment: EquipmentSummary };
+  financialDocVisibility?: FinancialDocumentVisibility;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -365,11 +367,13 @@ function FinancialAppendixPages({
   equipment,
   shopName,
   date,
+  visibility,
 }: {
   mp: MonthlyProjections;
   equipment: EquipmentSummary;
   shopName: string;
   date: string;
+  visibility: FinancialDocumentVisibility;
 }) {
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
@@ -415,65 +419,77 @@ function FinancialAppendixPages({
     bold: true,
   };
 
+  const showPl = visibility.profit_and_loss !== false;
+  const showCf = visibility.cash_flow !== false;
+  const showBs = visibility.balance_sheet !== false;
+
+  if (!showPl && !showCf && !showBs) return null;
+
   return (
     <>
       {/* Annual summary + Year 1 P&L (landscape) */}
-      <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
-        <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
-        <View style={FA.headingBar}>
-          <Text style={FA.heading}>5-Year Financial Summary</Text>
-        </View>
-        <FinancialMonthTable
-          headers={years}
-          rows={[annualRevRow, annualEbitdaRow, annualNetRow, annualCashRow]}
-          showTotal={false}
-          totalLabel=""
-          code={code}
-        />
-        <View style={FA.headingBar}>
-          <Text style={FA.heading}>Year 1: Monthly Profit & Loss</Text>
-        </View>
-        <FinancialMonthTable
-          headers={months}
-          rows={plRows}
-          showTotal={true}
-          totalLabel="Year 1"
-          code={code}
-        />
-        <PdfFooter generatedDate={date} />
-      </Page>
+      {showPl && (
+        <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
+          <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
+          <View style={FA.headingBar}>
+            <Text style={FA.heading}>5-Year Financial Summary</Text>
+          </View>
+          <FinancialMonthTable
+            headers={years}
+            rows={[annualRevRow, annualEbitdaRow, annualNetRow, annualCashRow]}
+            showTotal={false}
+            totalLabel=""
+            code={code}
+          />
+          <View style={FA.headingBar}>
+            <Text style={FA.heading}>Year 1: Monthly Profit & Loss</Text>
+          </View>
+          <FinancialMonthTable
+            headers={months}
+            rows={plRows}
+            showTotal={true}
+            totalLabel="Year 1"
+            code={code}
+          />
+          <PdfFooter generatedDate={date} />
+        </Page>
+      )}
 
       {/* Year 1 Cash Flow (landscape) */}
-      <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
-        <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
-        <View style={FA.headingBar}>
-          <Text style={FA.heading}>Year 1: Monthly Cash Flow</Text>
-        </View>
-        <FinancialMonthTable
-          headers={months}
-          rows={cfRows}
-          showTotal={true}
-          totalLabel="Year 1"
-          code={code}
-        />
-        <PdfFooter generatedDate={date} />
-      </Page>
+      {showCf && (
+        <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
+          <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
+          <View style={FA.headingBar}>
+            <Text style={FA.heading}>Year 1: Monthly Cash Flow</Text>
+          </View>
+          <FinancialMonthTable
+            headers={months}
+            rows={cfRows}
+            showTotal={true}
+            totalLabel="Year 1"
+            code={code}
+          />
+          <PdfFooter generatedDate={date} />
+        </Page>
+      )}
 
       {/* Year 1 Balance Sheet (landscape) */}
-      <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
-        <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
-        <View style={FA.headingBar}>
-          <Text style={FA.heading}>Year 1: Monthly Balance Sheet (End of Month)</Text>
-        </View>
-        <FinancialMonthTable
-          headers={months}
-          rows={bsRows}
-          showTotal={false}
-          totalLabel=""
-          code={code}
-        />
-        <PdfFooter generatedDate={date} />
-      </Page>
+      {showBs && (
+        <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
+          <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
+          <View style={FA.headingBar}>
+            <Text style={FA.heading}>Year 1: Monthly Balance Sheet (End of Month)</Text>
+          </View>
+          <FinancialMonthTable
+            headers={months}
+            rows={bsRows}
+            showTotal={false}
+            totalLabel=""
+            code={code}
+          />
+          <PdfFooter generatedDate={date} />
+        </Page>
+      )}
     </>
   );
 }
@@ -587,7 +603,7 @@ function SectionPage({
 export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
   workspace_key: "concept", // fallback; dataLoader is used
   render({ content }) {
-    const { shopName, sections, cover, financialData } = content;
+    const { shopName, sections, cover, financialData, financialDocVisibility } = content;
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
@@ -613,6 +629,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
             equipment={financialData.equipment}
             shopName={displayName}
             date={date}
+            visibility={financialDocVisibility ?? { profit_and_loss: true, cash_flow: true, balance_sheet: true }}
           />
         )}
       </PdfDocument>
@@ -635,6 +652,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       { data: financialModel },
       { data: savedSections },
       { data: coverRow },
+      { data: financialDocRows },
     ] = await Promise.all([
       supabase.from("coffee_shop_plans").select("id, plan_name").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
@@ -647,6 +665,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       supabase.from("financial_models").select("forecast_inputs, monthly_projections, startup_costs").eq("plan_id", planId).maybeSingle(),
       supabase.from("business_plan_sections").select("section_key, user_content, is_visible").eq("plan_id", planId),
       supabase.from("business_plan_cover").select("template_id, accent_color, logo_path, tagline, prepared_for, author_name").eq("plan_id", planId).maybeSingle(),
+      supabase.from("business_plan_financial_documents").select("document_key, is_visible").eq("plan_id", planId),
     ]);
 
     const savedMap = new Map(
@@ -732,11 +751,16 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       financialData = { mp, equipment };
     }
 
+    const financialDocVisibility = buildFinancialDocVisibility(
+      (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
+    );
+
     return {
       shopName: plan?.plan_name ?? null,
       sections,
       cover,
       financialData,
+      financialDocVisibility,
     };
   },
 };
