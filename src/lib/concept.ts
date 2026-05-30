@@ -138,6 +138,10 @@ export interface CustomerPersona {
   dailyContext?: string;
   whyTheyVisit: string;
   painPoints?: string;
+  // TIM-1476: what this persona typically orders when they visit. Free text,
+  // captures drink + food/pastry behavior so the menu and pricing decisions
+  // have a real customer behavior to point at.
+  typicalOrder?: string;
   values?: PersonaValue[];
   visitFrequency?: PersonaVisitFrequency;
   spendPerVisit?: PersonaSpendPerVisit;
@@ -252,7 +256,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "shop_identity",
     label: "Shop identity",
-    hint: "Working title is fine. You can change it later.",
+    hint: "Working title is fine. You can change it later, but pick something specific enough that it points at a real shop instead of a placeholder.",
     emptyPrompt: "What are you thinking of calling it? A working name is enough to start.",
     multiline: false,
     deferrable: false,
@@ -260,7 +264,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "vision",
     label: "Vision",
-    hint: "What does this shop exist to do? One or two sentences.",
+    hint: "What does this shop exist to do? One or two sentences. Not the menu, not the buildout, the reason a customer should care it exists at all.",
     emptyPrompt: "What is this shop for? Not the menu or the location. The reason it should exist.",
     multiline: true,
     rows: 3,
@@ -269,7 +273,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "target_customer",
     label: "Target Customer Personas",
-    hint: "The clearer you are about who you serve, the better every decision gets.",
+    hint: "Personas are the real people you are making decisions for. The clearer they are, the easier every menu, pricing, and hours call gets.",
     emptyPrompt: "Add your first customer persona to describe the real person you are making decisions for.",
     multiline: true,
     rows: 3,
@@ -278,7 +282,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "differentiation",
     label: "Differentiation",
-    hint: "Name the one or two things competitors in this market cannot easily copy.",
+    hint: "Name one or two things competitors in this market cannot easily copy. Supplier relationships, people, atmosphere, or expertise that takes years to build beat anything you can advertise.",
     emptyPrompt: "What will make customers choose you over the place down the street? Think supplier relationships, people, atmosphere, expertise. Things that take years to copy.",
     multiline: true,
     rows: 3,
@@ -287,7 +291,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "brand_voice",
     label: "Brand voice",
-    hint: "How does the brand sound? A handful of words that should always come through.",
+    hint: "How should the brand sound? A handful of words that should always come through in your signs, menu copy, and the way you greet a regular.",
     emptyPrompt: "Think about a few words your regulars might use to describe you. Or describe the shop you wish existed when you were just a customer.",
     multiline: true,
     rows: 3,
@@ -296,7 +300,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "location",
     label: "Location",
-    hint: "Neighbourhood, foot traffic, what drew you there.",
+    hint: "Neighbourhood, foot traffic, and what drew you there. Even a rough area or building type now will make the lease, buildout, and operations workspaces sharper later.",
     emptyPrompt: "Where are you thinking of opening? Neighbourhood, street corner, or building type. Early detail is better than none.",
     multiline: true,
     rows: 3,
@@ -305,7 +309,7 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   {
     id: "offering",
     label: "Offering",
-    hint: "Core menu focus, price point, what you will and will not serve.",
+    hint: "Core menu focus, price point, and what you will and will not serve. A tight focus (espresso and slow bar only, no food) is as useful as a long list.",
     emptyPrompt: "What will you serve? A tight menu focus (espresso and slow bar only, no food) is as useful as a long list.",
     multiline: true,
     rows: 3,
@@ -446,6 +450,7 @@ export function formatConceptV2ForAI(doc: ConceptDocumentV2): string {
         doc.personas.forEach((p, i) => {
           lines.push(`  ${i + 1}. ${p.name}${p.isPrimary ? " (primary)" : ""}`);
           if (p.whyTheyVisit.trim()) lines.push(`     - Why they come: ${p.whyTheyVisit}`);
+          if (p.typicalOrder?.trim()) lines.push(`     - Typical order: ${p.typicalOrder.trim()}`);
           if (p.values && p.values.length > 0) {
             lines.push(`     - Values: ${p.values.map((v) => PERSONA_VALUE_LABELS[v]).join(", ")}`);
           }

@@ -14,6 +14,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { SaveIndicator } from "@/components/ui/save-indicator";
+import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { ReadinessRing } from "@/components/workspace/ReadinessRing";
 import {
@@ -338,13 +339,15 @@ export function ConceptWorkspace({
                         <span className="text-sm font-semibold text-[var(--foreground)]">
                           {meta.label}
                         </span>
+                        {/* TIM-1476: helper one-liner moved from inline <p> to a "?" popup
+                            next to the question label, mirroring Financial Suite's pattern. */}
+                        <InfoTip label={meta.label}>{meta.hint}</InfoTip>
                         {meta.deferrable && (
                           <span className="text-[10px] font-medium text-[var(--dark-grey)] border border-[var(--border-medium)] rounded-full px-2 py-0.5 leading-none">
                             Optional
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-[var(--dark-grey)]">{meta.hint}</p>
                       {/* TIM-1408: lightbulb icon demoted to a quieter text link */}
                       <button
                         type="button"

@@ -211,6 +211,22 @@ export function PersonaEditor({
             />
           </div>
 
+          {/* TIM-1476: Typical order */}
+          <div>
+            <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-order">
+              What do they typically order?
+            </label>
+            <textarea
+              id="persona-order"
+              value={draft.typicalOrder ?? ""}
+              onChange={(e) => setField("typicalOrder", e.target.value || undefined)}
+              disabled={!canEdit}
+              rows={2}
+              placeholder="e.g. Oat milk cortado plus an almond croissant on weekday mornings."
+              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+            />
+          </div>
+
           {/* Values chips */}
           <div>
             <p className="text-xs font-semibold text-[var(--foreground)] mb-2">What They Value</p>

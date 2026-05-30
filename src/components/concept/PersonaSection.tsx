@@ -28,6 +28,7 @@ const EXAMPLE_PERSONA: CustomerPersona = {
   dailyContext: "Commutes to an office, stops in before 9am most days.",
   whyTheyVisit: "They want a reliable cup they can count on without having to think. The ritual matters as much as the coffee.",
   painPoints: "Chains feel impersonal; specialty shops feel slow and precious. They want craft without fuss.",
+  typicalOrder: "Oat Milk Cortado plus a Butter Croissant most weekdays. Drip coffee on Saturdays when they have more time.",
   values: ["craft", "consistency", "speed"],
   visitFrequency: "daily",
   spendPerVisit: "6-10",
@@ -280,6 +281,7 @@ function ExamplePersonaPreview({
 
         <Row label="Why they visit" value={p.whyTheyVisit} />
         {p.painPoints && <Row label="Pain points" value={p.painPoints} />}
+        {p.typicalOrder && <Row label="Typical order" value={p.typicalOrder} />}
         {p.dailyContext && <Row label="Daily context" value={p.dailyContext} />}
 
         {p.values && p.values.length > 0 && (
