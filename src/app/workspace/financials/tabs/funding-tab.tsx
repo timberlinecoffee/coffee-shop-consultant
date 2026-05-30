@@ -14,6 +14,7 @@ import type {
 import { fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const KIND_META: Record<FundingKind, { label: string; hint: string }> = {
   founder_equity: {
@@ -232,11 +233,13 @@ function CategorySection({
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-      <div className="flex items-baseline justify-between mb-1">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">{meta.label}</h3>
+      <div className="flex items-baseline justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-[var(--foreground)]">{meta.label}</h3>
+          <InfoTip label={meta.label}>{meta.hint}</InfoTip>
+        </div>
         <span className="text-sm font-semibold text-[var(--teal)] tabular-nums">{fmt(subtotal, currencyCode)}</span>
       </div>
-      <p className="text-xs text-[var(--muted-foreground)] mb-3">{meta.hint}</p>
       <div className="space-y-2">
         {lines.map((l) => (
           <LineRow

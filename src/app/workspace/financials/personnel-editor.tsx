@@ -12,6 +12,7 @@ import type { PersonnelLine, PersonnelPayBasis, PersonnelSeasonal } from "@/lib/
 import { personnelLoadedMonthlyCents, fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { InfoTip } from "@/components/ui/info-tip";
 
 // TIM-1260: calendar months (1=Jan) and common-season quick picks for the
 // recurring seasonal staffing pattern.
@@ -268,7 +269,12 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
         <div className="px-3 pb-3 pt-3 border-t border-[var(--neutral-cool-100)] bg-[var(--neutral-cool-50)] space-y-3">
           {/* TIM-1419: target starting date — owned by Financial Suite, does not write back to Hiring */}
           <div>
-            <label className={fieldLabelCls}>Target starting date</label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className={fieldLabelCls.replace(" mb-1", "")}>Target starting date</label>
+              <InfoTip label="Target starting date">
+                Planned hire date for financial planning. Stays in Financial Suite.
+              </InfoTip>
+            </div>
             <input
               type="date"
               value={line.target_start_date ?? ""}
@@ -277,14 +283,16 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
               className={`${inputCls} w-40`}
               aria-label="Target starting date for this role"
             />
-            <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-              Planned hire date for financial planning. Stays in Financial Suite.
-            </p>
           </div>
 
           {/* Fixed per-head benefits */}
           <div>
-            <label className={fieldLabelCls}>Fixed benefits ({sym} per person / month)</label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className={fieldLabelCls.replace(" mb-1", "")}>Fixed benefits ({sym} per person / month)</label>
+              <InfoTip label="Fixed benefits">
+                A flat per-head amount on top of the percentage (e.g. a fixed health stipend).
+              </InfoTip>
+            </div>
             <div className="relative w-40">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
                 {sym}
@@ -304,9 +312,6 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
                 placeholder="0"
               />
             </div>
-            <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-              A flat per-head amount on top of the percentage (e.g. a fixed health stipend).
-            </p>
           </div>
 
           {/* Phased hiring */}

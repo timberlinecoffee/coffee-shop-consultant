@@ -21,6 +21,7 @@ import type {
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { TruncatedText } from "@/components/ui/TruncatedText";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
@@ -376,9 +377,14 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
         <div className="px-3 pb-3 border-t border-[var(--neutral-cool-100)] pt-3 space-y-3 bg-[var(--neutral-cool-50)]">
           {isCapex && (
             <div>
-              <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-1">
-                Useful life (years)
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-[10px] font-medium text-[var(--muted-foreground)]">
+                  Useful life (years)
+                </label>
+                <InfoTip label="Useful life (years)">
+                  Spreads the cost on your P&amp;L over this many years. Common defaults: POS hardware 3y, espresso &amp; equipment 5–7y, vehicles 5y, build-out &amp; furniture 10–15y.
+                </InfoTip>
+              </div>
               <NumericInput
                 type="number"
                 min={1}
@@ -396,16 +402,20 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                 className={inputCls + " w-full max-w-[140px]"}
                 aria-label="Useful life in years"
               />
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                Spreads the cost on your P&amp;L over this many years. Common defaults: POS hardware 3y, espresso & equipment 5–7y, vehicles 5y, build-out & furniture 10–15y.
-              </p>
             </div>
           )}
           {isCogs && (
             <div>
-              <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-1">
-                Applies to revenue stream
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-[10px] font-medium text-[var(--muted-foreground)]">
+                  Applies to revenue stream
+                </label>
+                <InfoTip label="Applies to revenue stream">
+                  {line.mode === "flat"
+                    ? "Stream selection applies to % mode only. Flat $ COGS doesn't scale with revenue."
+                    : "By default, COGS is % of the linked revenue stream."}
+                </InfoTip>
+              </div>
               <select
                 className={inputCls + " w-full max-w-xs"}
                 value={streamId}
@@ -425,35 +435,32 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1">
-                {line.mode === "flat"
-                  ? "Stream selection applies to % mode only. Flat $ COGS doesn't scale with revenue."
-                  : "By default, COGS is % of the linked revenue stream."}
-              </p>
-              <label className="flex items-center gap-2 cursor-pointer mt-3">
-                <input
-                  type="checkbox"
-                  checked={menuLinked}
-                  disabled={!canEdit || !hasMenuData}
-                  onChange={(e) => {
-                    onChange({
-                      ...line,
-                      menu_linked: e.target.checked ? true : undefined,
-                      // When turning on, force pct mode so the menu rate has a base.
-                      mode: e.target.checked ? "pct" : line.mode,
-                    });
-                  }}
-                  className="w-3.5 h-3.5 accent-[var(--teal)] disabled:opacity-50"
-                />
-                <span className="text-xs font-medium text-[var(--foreground)]">
-                  Link to menu: derive COGS from menu item costs × volume
-                </span>
-              </label>
-              <p className="text-[10px] text-[var(--dark-grey)] mt-1 ml-6">
-                {hasMenuData
-                  ? `Blended menu COGS: ${(menuBlendedCogsPct as number).toFixed(1)}% of priced items.`
-                  : "Add menu items with prices and expected mix to enable this."}
-              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={menuLinked}
+                    disabled={!canEdit || !hasMenuData}
+                    onChange={(e) => {
+                      onChange({
+                        ...line,
+                        menu_linked: e.target.checked ? true : undefined,
+                        // When turning on, force pct mode so the menu rate has a base.
+                        mode: e.target.checked ? "pct" : line.mode,
+                      });
+                    }}
+                    className="w-3.5 h-3.5 accent-[var(--teal)] disabled:opacity-50"
+                  />
+                  <span className="text-xs font-medium text-[var(--foreground)]">
+                    Link to menu: derive COGS from menu item costs × volume
+                  </span>
+                </label>
+                <InfoTip label="Link to menu">
+                  {hasMenuData
+                    ? `Blended menu COGS: ${(menuBlendedCogsPct as number).toFixed(1)}% of priced items.`
+                    : "Add menu items with prices and expected mix to enable this."}
+                </InfoTip>
+              </div>
 
               {/* TIM-1168: "How is this calculated?" breakdown */}
               {menuLinked && menuCogsItems.length > 0 && (
@@ -727,9 +734,9 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <div>
+        <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--teal)]">{meta.label}</p>
-          <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{meta.hint}</p>
+          <InfoTip label={meta.label}>{meta.hint}</InfoTip>
         </div>
         {canEdit && (
           <button
