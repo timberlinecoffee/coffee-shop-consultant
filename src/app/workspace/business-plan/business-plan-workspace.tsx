@@ -12,6 +12,7 @@ import rehypeSanitize from "rehype-sanitize";
 import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
 import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
+import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
   initialTrialMessagesUsed?: number;
   initialCoverSettings: CoverSettings;
   logoPublicUrl: string | null;
+  initialFinancialDocuments: FinancialDocumentState[];
 }
 
 interface SectionState extends BusinessPlanSectionData {
@@ -109,6 +111,7 @@ export function BusinessPlanWorkspace({
   canEdit,
   initialCoverSettings,
   logoPublicUrl,
+  initialFinancialDocuments,
 }: Props) {
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
@@ -340,6 +343,9 @@ export function BusinessPlanWorkspace({
           initialSettings={initialCoverSettings}
           logoPublicUrl={logoPublicUrl}
         />
+
+        {/* Financial documents panel */}
+        <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
 
         {/* Sections */}
         <div className="space-y-4">
