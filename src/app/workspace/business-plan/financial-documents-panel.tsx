@@ -1,16 +1,18 @@
 "use client";
 
-// TIM-1483: Financial documents panel — per-document include/exclude picker for the financial appendix.
+// TIM-1483: Financial documents panel — per-document include/exclude picker.
+// TIM-1496: Grouped by sub-block (Forecast / Financing / Statements / Appendix).
 
 import { useState, useCallback } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { FinancialDocumentKey } from "@/lib/business-plan-financials";
-import { FINANCIAL_DOCUMENTS } from "@/lib/business-plan-financials";
+import { FINANCIAL_DOCUMENTS, FINANCIAL_SUB_BLOCKS } from "@/lib/business-plan-financials";
 
 export interface FinancialDocumentState {
   key: FinancialDocumentKey;
   title: string;
   source: string;
+  subBlock: string;
   is_visible: boolean;
 }
 
@@ -39,7 +41,6 @@ export function FinancialDocumentsPanel({ initialDocuments }: Props) {
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch {
-      // revert optimistic update
       setDocuments((prev) =>
         prev.map((d) => (d.key === key ? { ...d, is_visible: current } : d))
       );
@@ -72,29 +73,43 @@ export function FinancialDocumentsPanel({ initialDocuments }: Props) {
 
       {expanded && (
         <div className="border-t border-[var(--gray-slate-5)] px-5 py-4">
-          <p className="text-xs text-[var(--gray-medium)] mb-3">
+          <p className="text-xs text-[var(--gray-medium)] mb-4">
             Choose which financial documents appear in your plan and PDF export.
           </p>
-          <div className="space-y-2">
-            {documents.map((doc) => (
-              <label
-                key={doc.key}
-                className="flex items-center gap-3 cursor-pointer group"
-              >
-                <input
-                  type="checkbox"
-                  checked={doc.is_visible}
-                  onChange={() => toggle(doc.key, doc.is_visible)}
-                  className="w-4 h-4 rounded border-gray-300 text-[var(--teal)] focus:ring-[var(--teal)] cursor-pointer"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-[var(--foreground)] group-hover:text-[var(--teal)] transition-colors">
-                    {doc.title}
+
+          <div className="space-y-5">
+            {FINANCIAL_SUB_BLOCKS.map((subBlock) => {
+              const blockDocs = documents.filter((d) => d.subBlock === subBlock.key);
+              if (blockDocs.length === 0) return null;
+              return (
+                <div key={subBlock.key}>
+                  <p className="text-[11px] font-semibold text-[var(--gray-slate-2)] uppercase tracking-wide mb-2">
+                    {subBlock.title}
                   </p>
-                  <p className="text-[11px] text-[var(--gray-medium)]">{doc.source}</p>
+                  <div className="space-y-2 pl-1">
+                    {blockDocs.map((doc) => (
+                      <label
+                        key={doc.key}
+                        className="flex items-center gap-3 cursor-pointer group"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={doc.is_visible}
+                          onChange={() => toggle(doc.key, doc.is_visible)}
+                          className="w-4 h-4 rounded border-gray-300 text-[var(--teal)] focus:ring-[var(--teal)] cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-[var(--foreground)] group-hover:text-[var(--teal)] transition-colors">
+                            {doc.title}
+                          </p>
+                          <p className="text-[11px] text-[var(--gray-medium)]">{doc.source}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </label>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -107,10 +122,25 @@ export function buildInitialFinancialDocuments(
   savedRows: { document_key: string; is_visible: boolean }[]
 ): FinancialDocumentState[] {
   const saved = new Map(savedRows.map((r) => [r.document_key, r.is_visible]));
+
+  // Also handle legacy key names for pre-migration rows.
+  const legacyMap: Record<string, string> = {
+    profit_and_loss: "monthly_pl",
+    cash_flow:       "monthly_cash_flow",
+    balance_sheet:   "monthly_balance_sheet",
+  };
+  for (const r of savedRows) {
+    const newKey = legacyMap[r.document_key];
+    if (newKey && !saved.has(newKey)) {
+      saved.set(newKey, r.is_visible);
+    }
+  }
+
   return FINANCIAL_DOCUMENTS.map((doc) => ({
     key: doc.key,
     title: doc.title,
     source: doc.source,
+    subBlock: doc.subBlock,
     is_visible: saved.has(doc.key) ? saved.get(doc.key)! : doc.defaultVisible,
   }));
 }
