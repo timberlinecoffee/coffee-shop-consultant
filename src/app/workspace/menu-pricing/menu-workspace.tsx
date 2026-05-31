@@ -2335,7 +2335,7 @@ function MenuTab(props: MenuTabProps) {
                             onDelete={() => onDeleteItem(item.id)}
                           />
                           {isExpanded && (
-                            <div className="bg-[var(--warm-1050)] border-t border-[var(--neutral-cool-200)]">
+                            <div className="bg-[var(--warm-1050)] border-t border-b-2 border-[var(--neutral-cool-200)] pb-4 mb-3">
                               <ItemEditorPanel
                                 item={item}
                                 category={cat}
