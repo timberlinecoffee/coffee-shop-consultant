@@ -120,7 +120,7 @@ export function DepreciationTab({
   return (
     <div className="space-y-6">
       <ChartCard
-        title="Monthly Depreciation Expense — Year 1"
+        title="Monthly Depreciation Expense: Year 1"
         description="Straight-line depreciation charged to the P&L each month across all capital assets."
       >
         <FinancialBarChart
@@ -142,7 +142,7 @@ export function DepreciationTab({
             (fixed assets, net).
           </li>
           <li>
-            <strong>Cash Flow:</strong> depreciation is non-cash — it is added back in operating
+            <strong>Cash Flow:</strong> depreciation is non-cash; it is added back in operating
             activities.
           </li>
         </ul>
