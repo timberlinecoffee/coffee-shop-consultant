@@ -71,7 +71,11 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   { moduleNumber: 10, workspaceKey: "suppliers",            label: "Suppliers & Vendors",    href: "/workspace/suppliers",            icon: "truck",          category: "setup",   blurb: "Line up the roasters and vendors behind your bar." },
   { moduleNumber: 7,  workspaceKey: "hiring",               label: "Hiring & Onboarding",    href: "/workspace/hiring",               icon: "users",          category: "launch",  blurb: "Define roles, screen candidates, and train your first team." },
   { moduleNumber: 9,  workspaceKey: "marketing",            label: "Marketing",              href: "/workspace/marketing",            icon: "megaphone",      category: "launch",  blurb: "Plan the story, channels, and milestones that get people in the door." },
-  { moduleNumber: 6,  workspaceKey: "opening_month_plan",   label: "Opening Month Plan",     href: "/workspace/opening-month-plan",   icon: "rocket",         category: "launch",  blurb: "Track the dated milestones to opening day and the tactical plan for the weeks around it." },
+  // TIM-1521: renamed "Opening Month Plan" → "Launch Plan" umbrella; the
+  // umbrella page links out to Launch Milestones + Opening Month sub-pages.
+  // workspace_key stays `opening_month_plan` so workspace_documents/status
+  // rows + RLS keep working without a migration.
+  { moduleNumber: 6,  workspaceKey: "opening_month_plan",   label: "Launch Plan",            href: "/workspace/launch-plan",          icon: "rocket",         category: "launch",  blurb: "Map the dated milestones to opening day and the tactical playbook for your first month." },
   { moduleNumber: 11, workspaceKey: "operations_playbook",  label: "Operations Playbook",    href: "/workspace/operations-playbook",  icon: "clipboard-list", category: "operate", blurb: "Document the daily routines that keep the shop running." },
 ];
 
