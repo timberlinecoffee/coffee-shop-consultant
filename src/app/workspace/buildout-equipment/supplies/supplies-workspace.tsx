@@ -276,7 +276,7 @@ export function SuppliesWorkspace({
       <CoPilotDrawer
         planId={planId}
         workspaceKey="buildout_equipment"
-        currentFocus={{ label: "Equipment & Supplies — Supplies" }}
+        currentFocus={{ label: "Equipment & Supplies: Supplies" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>

@@ -358,7 +358,7 @@ export function BuildoutEquipmentWorkspace({
             </h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Plan the gear that goes on the bar — espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page.
+            Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page.
           </p>
         </header>
 
@@ -530,7 +530,7 @@ export function BuildoutEquipmentWorkspace({
       <CoPilotDrawer
         planId={planId}
         workspaceKey="buildout_equipment"
-        currentFocus={{ label: "Equipment & Supplies — Equipment" }}
+        currentFocus={{ label: "Equipment & Supplies: Equipment" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
