@@ -712,18 +712,21 @@ export function OpeningMonthPlanWorkspace({
 
     let milestonesUpdated = 0;
     let paywallHit = false;
+    let seedFailed = false;
 
     try {
-      // Kick off playbook seed in parallel; ignore "already_seeded".
+      // Kick off playbook seed in parallel.
       const seedPromise = fetch("/api/opening-month-plan/seed", { method: "POST" })
         .then(async (res) => {
           if (res.status === 402) { paywallHit = true; return; }
-          if (!res.ok) throw new Error("seed_failed");
+          if (!res.ok) {
+            seedFailed = true;
+            return;
+          }
           await reloadPlaybook();
         })
         .catch(() => {
-          // Non-fatal: milestones can still succeed. Surface a soft warning.
-          showToast("error", "Couldn't seed the playbook. Milestones may still generate.");
+          seedFailed = true;
         });
 
       const res = await fetch("/api/opening-month-plan/generate", {
@@ -779,6 +782,14 @@ export function OpeningMonthPlanWorkspace({
 
       if (paywallHit) {
         setPaywallOpen(true);
+      } else if (seedFailed) {
+        // Deterministic: the playbook seed errored. Don't claim partial
+        // success — the founder needs to know to retry, not guess what
+        // landed (TIM-1518).
+        showToast(
+          "error",
+          "Couldn't generate the Opening Month Plan. Try again or contact support.",
+        );
       } else if (milestonesUpdated > 0) {
         showToast("success", "Opening Month Plan generated. Edit anything that doesn't fit your shop.");
       }
@@ -787,8 +798,8 @@ export function OpeningMonthPlanWorkspace({
       showToast(
         "error",
         isAbort
-          ? "Generation timed out — try again or contact support."
-          : "Couldn't generate plan — try again or contact support."
+          ? "Generation timed out. Try again or contact support."
+          : "Couldn't generate plan. Try again or contact support.",
       );
     } finally {
       clearTimeout(timeoutId);
