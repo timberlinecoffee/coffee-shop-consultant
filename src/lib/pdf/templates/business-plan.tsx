@@ -1,6 +1,7 @@
 // TIM-1037: Business Plan Generator PDF template.
 // TIM-1225: wires in branded cover (renderCover) and logo bytes via dataLoader.
 // TIM-1316: financial appendix pages (P&L, cash flow, balance sheet).
+// TIM-1496: YYC-matched Financial Plan sub-blocks (Forecast / Financing / Statements / Appendix).
 
 import React from "react";
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
@@ -12,6 +13,7 @@ import type { PdfTemplate } from "../registry";
 import type { BusinessPlanSectionData } from "@/lib/business-plan";
 import { buildFinancialDocVisibility, type FinancialDocumentVisibility } from "@/lib/business-plan-financials";
 import { renderCover } from "@/lib/pdf/business-plan/covers";
+import { FinancialPlanPages } from "@/lib/pdf/business-plan/financial-plan-pages";
 import {
   assembleCompanyConcept,
   assembleTargetMarket,
@@ -31,13 +33,9 @@ import {
 } from "@/lib/business-plan";
 import {
   normalizeMonthlyProjections,
-  computeMonthlySlices,
-  fiscalYearMonthLabels,
   type MonthlyProjections,
-  type MonthlySlice,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
-import { formatMinorUnits } from "@/lib/currency";
 
 registerFonts();
 
@@ -151,348 +149,6 @@ const S = StyleSheet.create({
   },
 });
 
-// ── Financial appendix styles ─────────────────────────────────────────────────
-
-const FA = StyleSheet.create({
-  pageLandscape: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: 28,
-    paddingBottom: 44,
-    paddingLeft: 28,
-    paddingRight: 28,
-  },
-  headingBar: {
-    backgroundColor: BRAND.colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    marginBottom: 10,
-  },
-  heading: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 11,
-    color: BRAND.colors.paper,
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    marginBottom: 10,
-  },
-  tableHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: BRAND.colors.rule,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-  },
-  tableRowAlt: {
-    backgroundColor: "#F8F9F8",
-  },
-  tableRowBold: {
-    backgroundColor: "#EEF3EE",
-  },
-  labelCell: {
-    padding: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    width: 140,
-  },
-  labelCellBold: {
-    fontWeight: 700,
-  },
-  valueCell: {
-    padding: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    flex: 1,
-    textAlign: "right",
-  },
-  valueCellBold: {
-    fontWeight: 700,
-  },
-  valueCellNeg: {
-    color: "#B04040",
-  },
-  totalCell: {
-    fontWeight: 700,
-    backgroundColor: "#DDE8DD",
-  },
-});
-
-// ── Financial appendix helpers ────────────────────────────────────────────────
-
-type ApxRow = {
-  label: string;
-  values: number[];
-  bold?: boolean;
-  negative?: boolean;
-};
-
-function fiscalReorder<T>(items: T[], fiscalStart: number): T[] {
-  const s = Math.min(12, Math.max(1, Math.round(fiscalStart || 1))) - 1;
-  return Array.from({ length: items.length }, (_, i) => items[(s + i) % 12]);
-}
-
-function buildApxPlRows(year1: MonthlySlice[], fiscalStart: number): ApxRow[] {
-  const ordered = fiscalReorder(year1, fiscalStart);
-  return [
-    { label: "Net revenue", values: ordered.map((s) => s.net_revenue_cents), bold: true },
-    { label: "COGS", values: ordered.map((s) => -s.total_cogs_cents), negative: true },
-    { label: "Gross profit", values: ordered.map((s) => s.net_revenue_cents - s.total_cogs_cents), bold: true },
-    { label: "Labor", values: ordered.map((s) => -s.labor_cents), negative: true },
-    { label: "Rent", values: ordered.map((s) => -s.rent_cents), negative: true },
-    { label: "Marketing", values: ordered.map((s) => -s.marketing_cents), negative: true },
-    { label: "Utilities", values: ordered.map((s) => -s.utilities_cents), negative: true },
-    { label: "Insurance", values: ordered.map((s) => -s.insurance_cents), negative: true },
-    { label: "Tech / software", values: ordered.map((s) => -s.tech_cents), negative: true },
-    { label: "Maintenance", values: ordered.map((s) => -s.maintenance_cents), negative: true },
-    { label: "Supplies", values: ordered.map((s) => -s.supplies_cents), negative: true },
-    { label: "Other operating", values: ordered.map((s) => -s.other_opex_cents), negative: true },
-    { label: "Total opex", values: ordered.map((s) => -s.total_opex_cents), bold: true, negative: true },
-    { label: "EBITDA", values: ordered.map((s) => s.operating_income_cents), bold: true },
-    { label: "Depreciation", values: ordered.map((s) => -s.depreciation_cents), negative: true },
-    { label: "EBIT", values: ordered.map((s) => s.ebit_cents), bold: true },
-    { label: "Interest", values: ordered.map((s) => -s.interest_cents), negative: true },
-    { label: "Income tax", values: ordered.map((s) => -s.taxes_cents), negative: true },
-    { label: "Net income", values: ordered.map((s) => s.net_income_cents), bold: true },
-  ];
-}
-
-function buildApxCashFlowRows(year1: MonthlySlice[], fiscalStart: number): ApxRow[] {
-  const ordered = fiscalReorder(year1, fiscalStart);
-  return [
-    { label: "Net income", values: ordered.map((s) => s.net_income_cents) },
-    { label: "Depreciation (add back)", values: ordered.map((s) => s.depreciation_cents) },
-    { label: "Operating cash flow", values: ordered.map((s) => s.net_income_cents + s.depreciation_cents), bold: true },
-    { label: "Capital expenditures", values: ordered.map((s) => -s.capex_cents), negative: true },
-    { label: "Loan repayment", values: ordered.map((s) => -s.loan_repayment_cents), negative: true },
-    { label: "Net cash flow", values: ordered.map((s) => s.net_cash_cents), bold: true },
-    { label: "Ending cash balance", values: ordered.map((s) => s.cash_cents), bold: true },
-  ];
-}
-
-function buildApxBalanceSheetRows(year1: MonthlySlice[], fiscalStart: number): ApxRow[] {
-  const ordered = fiscalReorder(year1, fiscalStart);
-  return [
-    { label: "Cash", values: ordered.map((s) => s.cash_cents) },
-    { label: "Accounts receivable", values: ordered.map((s) => s.accounts_receivable_cents) },
-    { label: "Inventory", values: ordered.map((s) => s.inventory_cents) },
-    { label: "Net fixed assets", values: ordered.map((s) => s.net_fixed_assets_cents) },
-    { label: "Total assets", values: ordered.map((s) => s.total_assets_cents), bold: true },
-    { label: "Accounts payable", values: ordered.map((s) => s.accounts_payable_cents) },
-    { label: "Current debt", values: ordered.map((s) => s.current_debt_cents) },
-    { label: "Long-term debt", values: ordered.map((s) => s.long_term_debt_cents) },
-    { label: "Total liabilities", values: ordered.map((s) => s.total_liabilities_cents), bold: true },
-    { label: "Owner equity", values: ordered.map((s) => s.owner_equity_cents) },
-    { label: "Retained earnings", values: ordered.map((s) => s.retained_earnings_cents) },
-    { label: "Total equity", values: ordered.map((s) => s.total_equity_cents), bold: true },
-    { label: "Liabilities + equity", values: ordered.map((s) => s.total_liabilities_and_equity_cents), bold: true },
-  ];
-}
-
-function FinancialMonthTable({
-  headers,
-  rows,
-  showTotal,
-  totalLabel,
-  code,
-}: {
-  headers: string[];
-  rows: ApxRow[];
-  showTotal: boolean;
-  totalLabel: string;
-  code: string;
-}) {
-  return (
-    <View style={FA.table}>
-      <View style={FA.tableHeaderRow}>
-        <Text style={[FA.labelCell, FA.labelCellBold]}>Line item</Text>
-        {headers.map((h, i) => (
-          <Text key={`${h}-${i}`} style={[FA.valueCell, FA.valueCellBold]}>{h}</Text>
-        ))}
-        {showTotal && (
-          <Text style={[FA.valueCell, FA.valueCellBold]}>{totalLabel}</Text>
-        )}
-      </View>
-      {rows.map((row, i) => {
-        const total = row.values.reduce((s, v) => s + v, 0);
-        return (
-          <View
-            key={`${row.label}-${i}`}
-            style={[
-              FA.tableRow,
-              row.bold ? FA.tableRowBold : i % 2 === 1 ? FA.tableRowAlt : {},
-            ]}
-          >
-            <Text style={[FA.labelCell, row.bold ? FA.labelCellBold : {}]}>
-              {row.label}
-            </Text>
-            {row.values.map((v, j) => (
-              <Text
-                key={`v-${j}`}
-                style={[
-                  FA.valueCell,
-                  row.bold ? FA.valueCellBold : {},
-                  (row.negative || v < 0) ? FA.valueCellNeg : {},
-                ]}
-              >
-                {formatMinorUnits(v, code)}
-              </Text>
-            ))}
-            {showTotal && (
-              <Text
-                style={[
-                  FA.valueCell,
-                  FA.totalCell,
-                  (row.negative || total < 0) ? FA.valueCellNeg : {},
-                ]}
-              >
-                {formatMinorUnits(total, code)}
-              </Text>
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function FinancialAppendixPages({
-  mp,
-  equipment,
-  shopName,
-  date,
-  visibility,
-}: {
-  mp: MonthlyProjections;
-  equipment: EquipmentSummary;
-  shopName: string;
-  date: string;
-  visibility: FinancialDocumentVisibility;
-}) {
-  const code = mp.currency_code ?? "USD";
-  const fiscalStart = mp.fiscal_year_start_month ?? 1;
-  const months = fiscalYearMonthLabels(fiscalStart);
-
-  const slices = computeMonthlySlices(mp, equipment, {});
-  const year1 = slices.filter((s) => s.year === 1);
-  if (year1.length === 0) return null;
-
-  const plRows = buildApxPlRows(year1, fiscalStart);
-  const cfRows = buildApxCashFlowRows(year1, fiscalStart);
-  const bsRows = buildApxBalanceSheetRows(year1, fiscalStart);
-
-  // 5-year annual summary rows
-  const years = ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"];
-  const annualRevRow: ApxRow = {
-    label: "Net revenue",
-    values: [1, 2, 3, 4, 5].map((y) =>
-      slices.filter((s) => s.year === y).reduce((acc, s) => acc + s.net_revenue_cents, 0)
-    ),
-    bold: true,
-  };
-  const annualNetRow: ApxRow = {
-    label: "Net income",
-    values: [1, 2, 3, 4, 5].map((y) =>
-      slices.filter((s) => s.year === y).reduce((acc, s) => acc + s.net_income_cents, 0)
-    ),
-    bold: true,
-  };
-  const annualCashRow: ApxRow = {
-    label: "Ending cash",
-    values: [1, 2, 3, 4, 5].map((y) => {
-      const ys = slices.filter((s) => s.year === y);
-      return ys.length > 0 ? ys[ys.length - 1].cash_cents : 0;
-    }),
-    bold: true,
-  };
-  const annualEbitdaRow: ApxRow = {
-    label: "EBITDA",
-    values: [1, 2, 3, 4, 5].map((y) =>
-      slices.filter((s) => s.year === y).reduce((acc, s) => acc + s.operating_income_cents, 0)
-    ),
-    bold: true,
-  };
-
-  const showPl = visibility.profit_and_loss !== false;
-  const showCf = visibility.cash_flow !== false;
-  const showBs = visibility.balance_sheet !== false;
-
-  if (!showPl && !showCf && !showBs) return null;
-
-  return (
-    <>
-      {/* Annual summary + Year 1 P&L (landscape) */}
-      {showPl && (
-        <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
-          <View style={FA.headingBar}>
-            <Text style={FA.heading}>5-Year Financial Summary</Text>
-          </View>
-          <FinancialMonthTable
-            headers={years}
-            rows={[annualRevRow, annualEbitdaRow, annualNetRow, annualCashRow]}
-            showTotal={false}
-            totalLabel=""
-            code={code}
-          />
-          <View style={FA.headingBar}>
-            <Text style={FA.heading}>Year 1: Monthly Profit & Loss</Text>
-          </View>
-          <FinancialMonthTable
-            headers={months}
-            rows={plRows}
-            showTotal={true}
-            totalLabel="Year 1"
-            code={code}
-          />
-          <PdfFooter generatedDate={date} />
-        </Page>
-      )}
-
-      {/* Year 1 Cash Flow (landscape) */}
-      {showCf && (
-        <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
-          <View style={FA.headingBar}>
-            <Text style={FA.heading}>Year 1: Monthly Cash Flow</Text>
-          </View>
-          <FinancialMonthTable
-            headers={months}
-            rows={cfRows}
-            showTotal={true}
-            totalLabel="Year 1"
-            code={code}
-          />
-          <PdfFooter generatedDate={date} />
-        </Page>
-      )}
-
-      {/* Year 1 Balance Sheet (landscape) */}
-      {showBs && (
-        <Page size="A4" orientation="landscape" style={FA.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Financial Appendix" />
-          <View style={FA.headingBar}>
-            <Text style={FA.heading}>Year 1: Monthly Balance Sheet (End of Month)</Text>
-          </View>
-          <FinancialMonthTable
-            headers={months}
-            rows={bsRows}
-            showTotal={false}
-            totalLabel=""
-            code={code}
-          />
-          <PdfFooter generatedDate={date} />
-        </Page>
-      )}
-    </>
-  );
-}
 
 // ── Components ────────────────────────────────────────────────────────────────
 
@@ -624,12 +280,17 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           <SectionPage key={section.key} section={section} shopName={displayName} date={date} />
         ))}
         {financialData && (
-          <FinancialAppendixPages
+          <FinancialPlanPages
             mp={financialData.mp}
             equipment={financialData.equipment}
             shopName={displayName}
             date={date}
-            visibility={financialDocVisibility ?? { profit_and_loss: true, cash_flow: true, balance_sheet: true }}
+            visibility={financialDocVisibility ?? {
+              key_assumptions: true, revenue_by_month: true, expenses_by_month: true, net_profit_by_year: true,
+              use_of_funds: true, sources_of_funds: true,
+              projected_pl: true, projected_balance_sheet: true, projected_cash_flow: true,
+              monthly_pl: true, monthly_balance_sheet: true, monthly_cash_flow: true,
+            }}
           />
         )}
       </PdfDocument>
