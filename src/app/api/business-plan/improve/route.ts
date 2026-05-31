@@ -54,9 +54,10 @@ export async function POST(request: NextRequest) {
     sectionTitle: string;
     currentContent: string;
     shopName?: string;
+    userInstruction?: string;
   };
 
-  const { sectionKey, sectionTitle, currentContent, shopName } = body;
+  const { sectionKey, sectionTitle, currentContent, shopName, userInstruction } = body;
 
   if (!sectionKey || !currentContent) {
     return Response.json({ error: "sectionKey and currentContent required" }, { status: 400 });
@@ -78,7 +79,7 @@ Rules:
 
   const userMessage = `Section: ${sectionTitle}
 Shop: ${shopName ?? "this coffee shop"}
-
+${userInstruction ? `\nSpecific improvement request: ${userInstruction}\n` : ""}
 Improve this section:
 ${currentContent}`;
 

@@ -3,6 +3,7 @@
 // TIM-1037: Business Plan Generator workspace — main client component.
 // TIM-1225: adds Cover & Branding panel above section list.
 // TIM-1315: adds worked example reference panel per section.
+// TIM-1529: AI Improve moved to a dedicated panel modal (no longer inline in plan field).
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
@@ -134,6 +135,12 @@ export function BusinessPlanWorkspace({
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
+  // TIM-1529: Improve panel state — null when closed.
+  const [improvePanel, setImprovePanel] = useState<{
+    key: BusinessPlanSectionKey;
+    title: string;
+    currentContent: string;
+  } | null>(null);
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any section has user content.
@@ -234,32 +241,18 @@ export function BusinessPlanWorkspace({
     await runStream("/api/business-plan/generate", { sectionKey: key }, key);
   }, [runStream]);
 
-  const handleImprove = useCallback(async (key: BusinessPlanSectionKey) => {
+  // TIM-1529: Opens the dedicated Improve panel — does not stream inline.
+  const handleImprove = useCallback((key: BusinessPlanSectionKey) => {
     const section = sections.find((s) => s.key === key);
     if (!section) return;
-    const content = section.userContent ?? section.autoContent;
-    await runStream("/api/business-plan/improve", {
-      sectionKey: key,
-      sectionTitle: section.title,
-      currentContent: content,
-      shopName,
-    }, key);
-  }, [sections, runStream, shopName]);
+    const currentContent = section.userContent ?? section.autoContent ?? "";
+    setImprovePanel({ key, title: section.title, currentContent });
+  }, [sections]);
 
-  // After AI finishes editing, auto-save the result
-  const handleSaveAfterImprove = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
-    await fetch(`/api/business-plan/sections/${key}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_content: content }),
-    });
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.key !== key) return s;
-        return { ...s, userContent: content };
-      })
-    );
-  }, []);
+  // Called when user clicks Accept in the Improve panel.
+  const handleImproveAccept = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
+    await saveSection(key, content);
+  }, [saveSection]);
 
   // ── PDF export ─────────────────────────────────────────────────────────────
 
@@ -379,7 +372,8 @@ export function BusinessPlanWorkspace({
           onEditChange={(key, val) => updateSection(key, { editBuffer: val })}
           onEditSave={(key, buf, isGenerating) => {
             if (isGenerating) {
-              handleSaveAfterImprove(key, buf);
+              // Save the mid-stream Generate output and exit edit mode.
+              saveSection(key, buf || null);
               updateSection(key, { isEditing: false, isGenerating: false });
             } else {
               saveSection(key, buf || null);
@@ -399,6 +393,21 @@ export function BusinessPlanWorkspace({
           onImprove={(key) => handleImprove(key)}
         />
       </div>
+
+      {/* TIM-1529: Dedicated Improve panel — renders outside the section list so AI output never mixes into the plan field. */}
+      {improvePanel && (
+        <ImprovePanel
+          sectionKey={improvePanel.key}
+          sectionTitle={improvePanel.title}
+          currentContent={improvePanel.currentContent}
+          shopName={shopName}
+          onAccept={(key, text) => {
+            handleImproveAccept(key, text);
+            setImprovePanel(null);
+          }}
+          onClose={() => setImprovePanel(null)}
+        />
+      )}
     </div>
   );
 }
@@ -776,6 +785,217 @@ function SectionCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── ImprovePanel (TIM-1529) ────────────────────────────────────────────────────
+// Dedicated modal for AI Improve flow. AI output never touches the plan field
+// until the user explicitly clicks Accept.
+
+interface ImprovePanelProps {
+  sectionKey: BusinessPlanSectionKey;
+  sectionTitle: string;
+  currentContent: string;
+  shopName: string;
+  onAccept: (key: BusinessPlanSectionKey, text: string) => void;
+  onClose: () => void;
+}
+
+function ImprovePanel({
+  sectionKey,
+  sectionTitle,
+  currentContent,
+  shopName,
+  onAccept,
+  onClose,
+}: ImprovePanelProps) {
+  const [instruction, setInstruction] = useState("");
+  const [preview, setPreview] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasPreview, setHasPreview] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const bufRef = useRef("");
+
+  async function handleGenerate() {
+    if (abortRef.current) abortRef.current.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    bufRef.current = "";
+    setPreview("");
+    setError(null);
+    setIsGenerating(true);
+    setHasPreview(false);
+
+    try {
+      await fetchSse(
+        "/api/business-plan/improve",
+        {
+          sectionKey,
+          sectionTitle,
+          currentContent,
+          shopName,
+          userInstruction: instruction.trim() || undefined,
+        },
+        (chunk) => {
+          bufRef.current += chunk;
+          setPreview(bufRef.current);
+        },
+        (full) => {
+          setIsGenerating(false);
+          setPreview(full);
+          setHasPreview(true);
+        },
+        (msg) => {
+          setIsGenerating(false);
+          setError(msg);
+        },
+        ctrl.signal
+      );
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        setError(err.message);
+      }
+      setIsGenerating(false);
+    }
+  }
+
+  function handleAccept() {
+    if (preview) onAccept(sectionKey, preview);
+    onClose();
+  }
+
+  function handleClose() {
+    if (abortRef.current) abortRef.current.abort();
+    onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--neutral-cool-200)]">
+          <div className="flex items-center gap-2">
+            <Wand2 className="w-4 h-4 text-[var(--teal)]" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-[var(--foreground)]">AI Improve</h2>
+            <span className="text-sm text-[var(--neutral-cool-600)]">— {sectionTitle}</span>
+          </div>
+          <button
+            onClick={handleClose}
+            aria-label="Close"
+            className="p-1 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            <X className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* Current content — read-only context */}
+          <div>
+            <p className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wide mb-1.5">
+              Current content
+            </p>
+            <div className="rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50,#f9fafb)] px-4 py-3 max-h-40 overflow-y-auto">
+              {currentContent ? (
+                <p className="text-sm text-[var(--neutral-cool-700,#374151)] leading-relaxed whitespace-pre-wrap">
+                  {currentContent}
+                </p>
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)] italic">No content yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Instruction input */}
+          <div>
+            <label
+              htmlFor="improve-instruction"
+              className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wide mb-1.5 block"
+            >
+              Improvement instructions{" "}
+              <span className="normal-case font-normal">(optional)</span>
+            </label>
+            <textarea
+              id="improve-instruction"
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              disabled={isGenerating}
+              placeholder='e.g. "Make the tone more formal" or "Add a paragraph about weekend hours"'
+              rows={3}
+              className="w-full text-sm border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-none focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed disabled:opacity-50"
+            />
+          </div>
+
+          {/* AI suggestion preview — only shown once generation starts */}
+          {(isGenerating || preview) && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Wand2 className="w-3.5 h-3.5 text-[var(--teal)]" aria-hidden="true" />
+                <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide">
+                  AI suggestion
+                </p>
+                {isGenerating && (
+                  <div className="flex gap-1 ml-1" aria-hidden="true" role="status" aria-label="Generating">
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] animate-bounce"
+                        style={{ animationDelay: `${i * 0.15}s` }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-xl border border-[var(--teal)] bg-[var(--teal-50,#f0fdfa)] px-4 py-3 min-h-[80px]">
+                {preview ? (
+                  <MarkdownContent content={preview} />
+                ) : (
+                  <p className="text-sm text-[var(--muted-foreground)] italic">Generating…</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-[var(--neutral-cool-200)] flex items-center justify-between gap-3">
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-850)] transition-colors disabled:opacity-50"
+          >
+            <Wand2 className="w-3.5 h-3.5" aria-hidden="true" />
+            {isGenerating ? "Generating…" : hasPreview ? "Regenerate" : "Generate improvement"}
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleClose}
+              className="px-4 py-2 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-sm font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              Discard
+            </button>
+            {hasPreview && !isGenerating && (
+              <button
+                onClick={handleAccept}
+                className="px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-850)] transition-colors"
+              >
+                Accept
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
