@@ -690,7 +690,7 @@ export function ExpensesByMonthPage({
           { label: "Marketing", values: ordered.map((s) => s.marketing_cents), bold: false },
           { label: "Utilities", values: ordered.map((s) => s.utilities_cents), bold: false },
           { label: "Insurance", values: ordered.map((s) => s.insurance_cents), bold: false },
-          { label: "Tech / Website", values: ordered.map((s) => s.tech_cents), bold: false },
+          { label: "Website", values: ordered.map((s) => s.tech_cents), bold: false },
           { label: "Maintenance", values: ordered.map((s) => s.maintenance_cents), bold: false },
           { label: "Supplies", values: ordered.map((s) => s.supplies_cents), bold: false },
           { label: "Other Operating", values: ordered.map((s) => s.other_opex_cents), bold: false },
@@ -976,13 +976,14 @@ export function ProjectedPLPage({
     { label: "Revenue",               values: rev,       bold: true },
     { label: "Direct Costs",          values: cogs.map((v) => -v) as [number,number,number] },
     { label: "Gross Profit",          values: gross,     bold: true },
-    { label: "Gross Margin",          values: gross,     isPct: true, pctBase: rev, muted: true },
+    { label: "Gross Margin (%)",       values: gross,     isPct: true, pctBase: rev, muted: true },
     { label: "Operating Expenses",    values: null },
     { label: "Salaries & Wages",           values: labor.map((v) => -v) as [number,number,number], indent: true },
     { label: "Other Employee Taxes & Benefits", values: [0, 0, 0], indent: true, muted: true },
     { label: "Monthly Rent",          values: rent.map((v) => -v) as [number,number,number], indent: true },
-    { label: "Website & Technology",  values: tech.map((v) => -v) as [number,number,number], indent: true },
+    { label: "Website",               values: tech.map((v) => -v) as [number,number,number], indent: true },
     { label: "Marketing",             values: mktg.map((v) => -v) as [number,number,number], indent: true },
+    { label: "Subscriptions",         values: [0, 0, 0],                                     indent: true, muted: true },
     { label: "Utilities",             values: utils.map((v) => -v) as [number,number,number], indent: true },
     { label: "Insurance",             values: ins.map((v) => -v) as [number,number,number], indent: true },
     { label: "Maintenance",           values: maint.map((v) => -v) as [number,number,number], indent: true },
@@ -991,12 +992,12 @@ export function ProjectedPLPage({
     { label: "Total Operating Expenses", values: totalOpex.map((v) => -v) as [number,number,number], bold: true },
     { label: "Operating Income",      values: opIncome,  bold: true },
     { label: "Interest Incurred",     values: interest.map((v) => -v) as [number,number,number] },
-    { label: "Depreciation & Amortization", values: deprec.map((v) => -v) as [number,number,number] },
+    { label: "Depreciation and Amortization", values: deprec.map((v) => -v) as [number,number,number] },
     { label: "Gain or Loss from Sale of Assets", values: [0, 0, 0], muted: true },
     { label: "Income Taxes",          values: taxes.map((v) => -v) as [number,number,number] },
     { label: "Total Expenses",        values: totalExp.map((v) => -v) as [number,number,number], bold: true },
     { label: "Net Profit",            values: netProfit, bold: true },
-    { label: "Net Profit Margin",     values: netProfit, isPct: true, pctBase: rev, muted: true },
+    { label: "Net Profit Margin (%)",  values: netProfit, isPct: true, pctBase: rev, muted: true },
   ];
 
   return (
@@ -1268,7 +1269,7 @@ export function FinancialPlanPages({
     { label: "Marketing", values: ordered1.map((s) => -s.marketing_cents), negative: true },
     { label: "Utilities", values: ordered1.map((s) => -s.utilities_cents), negative: true },
     { label: "Insurance", values: ordered1.map((s) => -s.insurance_cents), negative: true },
-    { label: "Tech / software", values: ordered1.map((s) => -s.tech_cents), negative: true },
+    { label: "Website", values: ordered1.map((s) => -s.tech_cents), negative: true },
     { label: "Maintenance", values: ordered1.map((s) => -s.maintenance_cents), negative: true },
     { label: "Supplies", values: ordered1.map((s) => -s.supplies_cents), negative: true },
     { label: "Other operating", values: ordered1.map((s) => -s.other_opex_cents), negative: true },
@@ -1359,23 +1360,6 @@ export function FinancialPlanPages({
         </Page>
       )}
 
-      {visibility.monthly_cash_flow !== false && (
-        <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Appendix" />
-          <View style={SP.headingBar}>
-            <Text style={SP.heading}>Monthly Cash Flow (Year 1)</Text>
-          </View>
-          <MonthlyApxTable
-            headers={months}
-            rows={cfRows}
-            showTotal={true}
-            totalLabel="Year 1"
-            code={code}
-          />
-          <PdfFooter generatedDate={date} />
-        </Page>
-      )}
-
       {visibility.monthly_balance_sheet !== false && (
         <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
           <PdfHeader shopName={shopName} workspaceName="Appendix" />
@@ -1387,6 +1371,23 @@ export function FinancialPlanPages({
             rows={bsRows}
             showTotal={false}
             totalLabel=""
+            code={code}
+          />
+          <PdfFooter generatedDate={date} />
+        </Page>
+      )}
+
+      {visibility.monthly_cash_flow !== false && (
+        <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
+          <PdfHeader shopName={shopName} workspaceName="Appendix" />
+          <View style={SP.headingBar}>
+            <Text style={SP.heading}>Monthly Cash Flow (Year 1)</Text>
+          </View>
+          <MonthlyApxTable
+            headers={months}
+            rows={cfRows}
+            showTotal={true}
+            totalLabel="Year 1"
             code={code}
           />
           <PdfFooter generatedDate={date} />
