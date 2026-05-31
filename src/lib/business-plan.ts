@@ -1,44 +1,97 @@
 // TIM-1037: Business Plan Generator v1 — types, section keys, assemblers.
+// TIM-1498: Two-level taxonomy (parent groups + subsections) per YYC Coffee
+// School reference outline. Group keys are stable; subsection keys are stored
+// in `business_plan_sections.section_key` and used by the AI generator route.
 
 import { normalizeConceptV2 } from "@/lib/concept";
 import { normalizeMarketing } from "@/lib/marketing";
 import { normalizeMonthlyProjections, computeMonthlySlices, totalCapexCents, type EquipmentSummary } from "@/lib/financial-projection";
 
+// ── Group keys (parent rows in the two-level nav) ─────────────────────────────
+
+export type BusinessPlanGroupKey =
+  | "opportunity"
+  | "execution"
+  | "company"
+  | "financial-plan"
+  | "appendix";
+
+export interface BusinessPlanGroupMeta {
+  key: BusinessPlanGroupKey;
+  title: string;
+}
+
+// Display order is the array order.
+export const BUSINESS_PLAN_GROUPS: BusinessPlanGroupMeta[] = [
+  { key: "opportunity",    title: "Opportunity" },
+  { key: "execution",      title: "Execution" },
+  { key: "company",        title: "Company" },
+  { key: "financial-plan", title: "Financial Plan" },
+  { key: "appendix",       title: "Appendix" },
+];
+
 // ── Section keys ─────────────────────────────────────────────────────────────
 
 export type BusinessPlanSectionKey =
-  | "executive_summary"
-  | "company_concept"
-  | "market_analysis"
-  | "location_real_estate"
-  | "buildout_equipment"
-  | "menu_pricing"
-  | "marketing_plan"
-  | "operations_launch"
-  | "team_hiring"
-  | "financial_plan"
-  | "funding_request";
+  | "executive-summary"
+  | "opportunity-problem-solution"
+  | "opportunity-target-market"
+  | "opportunity-competition"
+  | "execution-marketing-sales"
+  | "execution-operations"
+  | "execution-milestones-metrics"
+  | "company-overview"
+  | "company-team"
+  | "financial-plan-forecast"
+  | "financial-plan-financing"
+  | "financial-plan-statements"
+  | "appendix-monthly-statements";
 
 export interface BusinessPlanSectionMeta {
   key: BusinessPlanSectionKey;
   title: string;
+  // null = top-level (no parent group). Executive Summary is the only such row.
+  groupKey: BusinessPlanGroupKey | null;
   defaultVisible: boolean;
   sourceLabel: string;
 }
 
+// Display order is the array order; ordering within a group is implicit.
 export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
-  { key: "executive_summary",   title: "Executive Summary",              defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
-  { key: "company_concept",     title: "Company & Concept",              defaultVisible: true,  sourceLabel: "Concept workspace" },
-  { key: "market_analysis",     title: "Market Analysis",                defaultVisible: true,  sourceLabel: "Concept workspace" },
-  { key: "location_real_estate",title: "Location & Real Estate",         defaultVisible: true,  sourceLabel: "Location & Lease workspace" },
-  { key: "buildout_equipment",  title: "Equipment & Supplies",           defaultVisible: true,  sourceLabel: "Equipment & Supplies workspace" },
-  { key: "menu_pricing",        title: "Menu & Pricing",                 defaultVisible: true,  sourceLabel: "Menu & Pricing workspace" },
-  { key: "marketing_plan",      title: "Marketing Plan",                 defaultVisible: true,  sourceLabel: "Marketing workspace" },
-  { key: "operations_launch",   title: "Operations & Launch Timeline",   defaultVisible: true,  sourceLabel: "Launch Plan workspace" },
-  { key: "team_hiring",         title: "Team & Hiring",                  defaultVisible: true,  sourceLabel: "Hiring workspace" },
-  { key: "financial_plan",      title: "Financial Plan",                 defaultVisible: true,  sourceLabel: "Financials workspace" },
-  { key: "funding_request",     title: "Funding Request",                defaultVisible: false, sourceLabel: "Your inputs" },
+  { key: "executive-summary",              title: "Executive Summary",      groupKey: null,             defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+
+  { key: "opportunity-problem-solution",   title: "Problem & Solution",     groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "opportunity-target-market",      title: "Target Market",          groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Concept workspace" },
+  { key: "opportunity-competition",        title: "Competition",            groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+
+  { key: "execution-marketing-sales",      title: "Marketing & Sales",      groupKey: "execution",      defaultVisible: true,  sourceLabel: "Menu & Pricing + Marketing workspaces" },
+  { key: "execution-operations",           title: "Operations",             groupKey: "execution",      defaultVisible: true,  sourceLabel: "Location & Equipment workspaces" },
+  { key: "execution-milestones-metrics",   title: "Milestones & Metrics",   groupKey: "execution",      defaultVisible: true,  sourceLabel: "Launch Plan workspace" },
+
+  { key: "company-overview",               title: "Overview",               groupKey: "company",        defaultVisible: true,  sourceLabel: "Concept workspace" },
+  { key: "company-team",                   title: "Team",                   groupKey: "company",        defaultVisible: true,  sourceLabel: "Hiring workspace" },
+
+  // TIM-1496 owns Financial Plan subsection content/structure. Stubbed here so
+  // the taxonomy is complete and the UI/PDF render the group with placeholder
+  // subsections that route handlers can fill in.
+  { key: "financial-plan-forecast",        title: "Forecast",               groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
+  { key: "financial-plan-financing",       title: "Financing",              groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Your inputs" },
+  { key: "financial-plan-statements",      title: "Statements",             groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
+
+  { key: "appendix-monthly-statements",    title: "Monthly Statements",     groupKey: "appendix",       defaultVisible: true,  sourceLabel: "Financials workspace" },
 ];
+
+// Convenience: subsections grouped by their parent group, in display order.
+export function getSectionsByGroup(): Array<{ group: BusinessPlanGroupMeta; sections: BusinessPlanSectionMeta[] }> {
+  return BUSINESS_PLAN_GROUPS.map((group) => ({
+    group,
+    sections: BUSINESS_PLAN_SECTIONS.filter((s) => s.groupKey === group.key),
+  }));
+}
+
+export function getTopLevelSections(): BusinessPlanSectionMeta[] {
+  return BUSINESS_PLAN_SECTIONS.filter((s) => s.groupKey === null);
+}
 
 // ── Assembled section data ────────────────────────────────────────────────────
 
@@ -165,7 +218,9 @@ export function assembleCompanyConcept(conceptContent: unknown): string {
   return lines.join("\n").trim() || "Add your concept details in the Concept workspace to populate this section.";
 }
 
-export function assembleMarketAnalysis(conceptContent: unknown): string {
+// TIM-1498: Target Market is the Concept workspace's target-customer narrative
+// plus personas. (Competition lives in its own AI-generated subsection now.)
+export function assembleTargetMarket(conceptContent: unknown): string {
   const doc = normalizeConceptV2(conceptContent);
   const lines: string[] = [];
 
@@ -476,12 +531,68 @@ export function assembleFinancialPlan(
   return lines.join("\n").trim() || "Complete the Financials workspace to populate this section.";
 }
 
+// ── Two-level merged assemblers ───────────────────────────────────────────────
+
+// TIM-1498: Execution > Operations merges Location & Real Estate + Equipment &
+// Supplies, with each previous section preserved under a heading separator.
+export function assembleExecutionOperations(
+  candidates: BpLocationCandidate[],
+  equipment: BpEquipmentItem[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  financialModel: any,
+): string {
+  const blocks: string[] = [];
+
+  const locationBlock = assembleLocationSection(candidates);
+  if (locationBlock && !locationBlock.startsWith("Add location candidates")) {
+    blocks.push(`## Location & Real Estate\n${locationBlock}`);
+  }
+
+  const equipmentBlock = assembleBuildoutEquipment(equipment, financialModel);
+  if (equipmentBlock && !equipmentBlock.startsWith("Add equipment in the")) {
+    blocks.push(`## Equipment & Supplies\n${equipmentBlock}`);
+  }
+
+  if (blocks.length === 0) {
+    return "Add location candidates and equipment in the Location & Lease and Equipment & Supplies workspaces to populate this section.";
+  }
+  return blocks.join("\n\n").trim();
+}
+
+// TIM-1498: Execution > Marketing & Sales merges Menu & Pricing + Marketing.
+export function assembleExecutionMarketingSales(
+  menuItems: BpMenuItem[],
+  planning: BpMarketingPlanning | null,
+): string {
+  const blocks: string[] = [];
+
+  const menuBlock = assembleMenuPricing(menuItems);
+  if (menuBlock && !menuBlock.startsWith("Add menu items")) {
+    blocks.push(`## Menu & Pricing\n${menuBlock}`);
+  }
+
+  const marketingBlock = assembleMarketingPlan(planning);
+  if (marketingBlock && !marketingBlock.startsWith("Complete the Marketing")) {
+    blocks.push(`## Marketing Plan\n${marketingBlock}`);
+  }
+
+  if (blocks.length === 0) {
+    return "Add menu items in Menu & Pricing and complete the Marketing workspace to populate this section.";
+  }
+  return blocks.join("\n\n").trim();
+}
+
 // ── AI snapshot for executive summary generation ──────────────────────────────
 
 export function buildPlanSnapshotForExecutiveSummary(sections: BusinessPlanSectionData[]): string {
   const relevant: BusinessPlanSectionKey[] = [
-    "company_concept", "market_analysis", "location_real_estate",
-    "menu_pricing", "operations_launch", "team_hiring", "financial_plan",
+    "company-overview",
+    "opportunity-target-market",
+    "execution-operations",
+    "execution-marketing-sales",
+    "execution-milestones-metrics",
+    "company-team",
+    "financial-plan-statements",
   ];
 
   return relevant

@@ -13,15 +13,14 @@ import type { BusinessPlanSectionData } from "@/lib/business-plan";
 import { renderCover } from "@/lib/pdf/business-plan/covers";
 import {
   assembleCompanyConcept,
-  assembleMarketAnalysis,
-  assembleLocationSection,
-  assembleBuildoutEquipment,
-  assembleMenuPricing,
-  assembleMarketingPlan,
+  assembleTargetMarket,
+  assembleExecutionOperations,
+  assembleExecutionMarketingSales,
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
   BUSINESS_PLAN_SECTIONS,
+  BUSINESS_PLAN_GROUPS,
   type BpLocationCandidate,
   type BpEquipmentItem,
   type BpMenuItem,
@@ -90,6 +89,30 @@ const S = StyleSheet.create({
   tocLabel: {
     fontSize: 10,
     color: BRAND.colors.ink,
+  },
+  tocGroupRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.colors.rule,
+  },
+  tocGroupLabel: {
+    fontFamily: BRAND.fonts.serif,
+    fontSize: 11,
+    fontWeight: 700,
+    color: BRAND.colors.ink,
+  },
+  tocSubRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 4,
+    paddingLeft: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.colors.rule,
   },
   tocNumber: {
     fontSize: 10,
@@ -457,18 +480,73 @@ function FinancialAppendixPages({
 
 // ── Components ────────────────────────────────────────────────────────────────
 
+// TIM-1498: two-level TOC. Top-level sections (Executive Summary) appear in
+// their own row. Grouped subsections appear under a bold group header with
+// indented child rows. Page numbers are per subsection.
 function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionData[]; shopName: string; date: string }) {
   const visible = sections.filter((s) => s.isVisible);
+  const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
+
+  // TOC content starts on page 2 (cover is page 1); first visible section page
+  // is 3. Each visible subsection occupies one page in the current layout.
+  const visibleWithPages = visible.map((section, idx) => ({
+    section,
+    pageNumber: 3 + idx,
+  }));
+
+  type TocRow =
+    | { kind: "section"; section: BusinessPlanSectionData; page: number }
+    | { kind: "group"; title: string }
+    | { kind: "sub"; section: BusinessPlanSectionData; page: number };
+
+  const rows: TocRow[] = [];
+  const seenGroups = new Set<string>();
+
+  for (const { section, pageNumber } of visibleWithPages) {
+    const meta = sectionMetaByKey.get(section.key as never);
+    const groupKey = meta?.groupKey ?? null;
+    if (groupKey === null) {
+      rows.push({ kind: "section", section, page: pageNumber });
+      continue;
+    }
+    if (!seenGroups.has(groupKey)) {
+      const groupMeta = BUSINESS_PLAN_GROUPS.find((g) => g.key === groupKey);
+      if (groupMeta) {
+        rows.push({ kind: "group", title: groupMeta.title });
+        seenGroups.add(groupKey);
+      }
+    }
+    rows.push({ kind: "sub", section, page: pageNumber });
+  }
+
   return (
     <Page size={BRAND.page.size} style={S.page}>
       <PdfHeader shopName={shopName} workspaceName="Business Plan" />
       <Text style={S.tocTitle}>Table of Contents</Text>
-      {visible.map((section, i) => (
-        <View key={section.key} style={S.tocRow}>
-          <Text style={S.tocLabel}>{i + 1}. {section.title}</Text>
-          <Text style={S.tocNumber}>{i + 2}</Text>
-        </View>
-      ))}
+      {rows.map((row, i) => {
+        if (row.kind === "group") {
+          return (
+            <View key={`g-${row.title}-${i}`} style={S.tocGroupRow}>
+              <Text style={S.tocGroupLabel}>{row.title}</Text>
+              <Text style={S.tocNumber} />
+            </View>
+          );
+        }
+        if (row.kind === "sub") {
+          return (
+            <View key={`s-${row.section.key}-${i}`} style={S.tocSubRow}>
+              <Text style={S.tocLabel}>{row.section.title}</Text>
+              <Text style={S.tocNumber}>{row.page}</Text>
+            </View>
+          );
+        }
+        return (
+          <View key={`t-${row.section.key}-${i}`} style={S.tocRow}>
+            <Text style={S.tocLabel}>{row.section.title}</Text>
+            <Text style={S.tocNumber}>{row.page}</Text>
+          </View>
+        );
+      })}
       <PdfFooter generatedDate={date} />
     </Page>
   );
@@ -575,18 +653,32 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       (savedSections ?? []).map((s: { section_key: string; user_content: string | null; is_visible: boolean }) => [s.section_key, s])
     );
 
+    // TIM-1498: two-level taxonomy autoContent map.
     const autoContent: Record<string, string> = {
-      executive_summary: (savedMap.get("executive_summary") as { user_content: string | null } | undefined)?.user_content ?? "Complete the other sections and generate an executive summary.",
-      company_concept: assembleCompanyConcept(conceptDoc?.content),
-      market_analysis: assembleMarketAnalysis(conceptDoc?.content),
-      location_real_estate: assembleLocationSection((locationRows ?? []) as BpLocationCandidate[]),
-      buildout_equipment: assembleBuildoutEquipment((equipmentRows ?? []) as BpEquipmentItem[], financialModel),
-      menu_pricing: assembleMenuPricing((menuRows ?? []) as BpMenuItem[]),
-      marketing_plan: assembleMarketingPlan(toBpMarketingPlanning(marketingDoc?.content)),
-      operations_launch: assembleOperationsLaunch((launchRows ?? []) as BpLaunchItem[]),
-      team_hiring: assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-      financial_plan: assembleFinancialPlan(financialModel, equipmentRows ?? []),
-      funding_request: "",
+      "executive-summary":
+        (savedMap.get("executive-summary") as { user_content: string | null } | undefined)?.user_content
+        ?? "Complete the other sections and generate an executive summary.",
+      "opportunity-problem-solution": "",
+      "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
+      "opportunity-competition": "",
+      "execution-marketing-sales": assembleExecutionMarketingSales(
+        (menuRows ?? []) as BpMenuItem[],
+        toBpMarketingPlanning(marketingDoc?.content),
+      ),
+      "execution-operations": assembleExecutionOperations(
+        (locationRows ?? []) as BpLocationCandidate[],
+        (equipmentRows ?? []) as BpEquipmentItem[],
+        financialModel,
+      ),
+      "execution-milestones-metrics": assembleOperationsLaunch(
+        (launchRows ?? []) as BpLaunchItem[],
+      ),
+      "company-overview": assembleCompanyConcept(conceptDoc?.content),
+      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+      "financial-plan-financing": "",
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+      "appendix-monthly-statements": "Monthly P&L, cash flow, and balance sheet statements appear in the Financial Appendix pages that follow.",
     };
 
     const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => {

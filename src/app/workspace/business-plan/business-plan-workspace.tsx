@@ -4,12 +4,17 @@
 // TIM-1225: adds Cover & Branding panel above section list.
 // TIM-1315: adds worked example reference panel per section.
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import type { BusinessPlanSectionData, BusinessPlanSectionKey } from "@/lib/business-plan";
+import type {
+  BusinessPlanSectionData,
+  BusinessPlanSectionKey,
+  BusinessPlanGroupKey,
+} from "@/lib/business-plan";
+import { BUSINESS_PLAN_GROUPS, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -124,6 +129,8 @@ export function BusinessPlanWorkspace({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
+  // TIM-1498: Default state -- all groups expanded; user can collapse per group.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any section has user content.
@@ -341,50 +348,166 @@ export function BusinessPlanWorkspace({
           logoPublicUrl={logoPublicUrl}
         />
 
-        {/* Sections */}
-        <div className="space-y-4">
-          {sections.map((section) => (
-            <SectionCard
-              key={section.key}
-              section={section}
-              canEdit={canEdit}
-              exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
-              isStreaming={streamingKey === section.key}
-              onToggleVisible={() => toggleVisibility(section.key, section.isVisible)}
-              onToggleExpand={() => updateSection(section.key, { isExpanded: !section.isExpanded })}
-              onEditStart={() =>
-                updateSection(section.key, {
-                  isEditing: true,
-                  editBuffer: section.userContent ?? section.autoContent,
-                })
-              }
-              onEditChange={(val) => updateSection(section.key, { editBuffer: val })}
-              onEditSave={() => {
-                const buf = section.editBuffer;
-                if (section.isGenerating) {
-                  // accept AI result
-                  handleSaveAfterImprove(section.key, buf);
-                  updateSection(section.key, { isEditing: false, isGenerating: false });
-                } else {
-                  saveSection(section.key, buf || null);
+        {/* TIM-1498: Two-level taxonomy. Top-level rows (Executive Summary)
+            render as standalone cards; grouped subsections render under a
+            collapsible group header. Cards remain inline -- no right-side
+            drawers/sheets per platform rule. */}
+        <SectionTree
+          sections={sections}
+          canEdit={canEdit}
+          streamingKey={streamingKey}
+          collapsedGroups={collapsedGroups}
+          onToggleGroup={(g) =>
+            setCollapsedGroups((prev) => {
+              const next = new Set(prev);
+              if (next.has(g)) next.delete(g);
+              else next.add(g);
+              return next;
+            })
+          }
+          onToggleVisibility={(key, current) => toggleVisibility(key, current)}
+          onToggleExpand={(key, current) => updateSection(key, { isExpanded: !current })}
+          onEditStart={(key, content) =>
+            updateSection(key, { isEditing: true, editBuffer: content })
+          }
+          onEditChange={(key, val) => updateSection(key, { editBuffer: val })}
+          onEditSave={(key, buf, isGenerating) => {
+            if (isGenerating) {
+              handleSaveAfterImprove(key, buf);
+              updateSection(key, { isEditing: false, isGenerating: false });
+            } else {
+              saveSection(key, buf || null);
+            }
+          }}
+          onEditCancel={(key, fallback) => {
+            if (abortRef.current) abortRef.current.abort();
+            setStreamingKey(null);
+            updateSection(key, {
+              isEditing: false,
+              isGenerating: false,
+              editBuffer: fallback,
+            });
+          }}
+          onResetToAuto={(key) => saveSection(key, null)}
+          onGenerateExec={(key) => handleGenerate(key)}
+          onImprove={(key) => handleImprove(key)}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── SectionTree (two-level group + subsection renderer) ──────────────────────
+
+interface SectionTreeProps {
+  sections: SectionState[];
+  canEdit: boolean;
+  streamingKey: BusinessPlanSectionKey | null;
+  collapsedGroups: Set<BusinessPlanGroupKey>;
+  onToggleGroup: (group: BusinessPlanGroupKey) => void;
+  onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
+  onToggleExpand: (key: BusinessPlanSectionKey, current: boolean) => void;
+  onEditStart: (key: BusinessPlanSectionKey, content: string) => void;
+  onEditChange: (key: BusinessPlanSectionKey, val: string) => void;
+  onEditSave: (key: BusinessPlanSectionKey, buf: string, isGenerating: boolean) => void;
+  onEditCancel: (key: BusinessPlanSectionKey, fallback: string) => void;
+  onResetToAuto: (key: BusinessPlanSectionKey) => void;
+  onGenerateExec: (key: BusinessPlanSectionKey) => void;
+  onImprove: (key: BusinessPlanSectionKey) => void;
+}
+
+function SectionTree(props: SectionTreeProps) {
+  const sectionMetaByKey = useMemo(
+    () => new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m])),
+    [],
+  );
+  const sectionsByKey = useMemo(
+    () => new Map(props.sections.map((s) => [s.key, s])),
+    [props.sections],
+  );
+
+  function renderCard(section: SectionState) {
+    return (
+      <SectionCard
+        key={section.key}
+        section={section}
+        canEdit={props.canEdit}
+        exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
+        isStreaming={props.streamingKey === section.key}
+        onToggleVisible={() => props.onToggleVisibility(section.key, section.isVisible)}
+        onToggleExpand={() => props.onToggleExpand(section.key, section.isExpanded)}
+        onEditStart={() => props.onEditStart(section.key, section.userContent ?? section.autoContent)}
+        onEditChange={(val) => props.onEditChange(section.key, val)}
+        onEditSave={() => props.onEditSave(section.key, section.editBuffer, section.isGenerating)}
+        onEditCancel={() => props.onEditCancel(section.key, section.userContent ?? section.autoContent)}
+        onResetToAuto={() => props.onResetToAuto(section.key)}
+        onGenerateExec={() => props.onGenerateExec(section.key)}
+        onImprove={() => props.onImprove(section.key)}
+      />
+    );
+  }
+
+  const topLevel = props.sections.filter(
+    (s) => sectionMetaByKey.get(s.key)?.groupKey == null,
+  );
+
+  return (
+    <div className="space-y-4">
+      {topLevel.map((s) => renderCard(s))}
+
+      {BUSINESS_PLAN_GROUPS.map((group) => {
+        const groupSections = BUSINESS_PLAN_SECTIONS
+          .filter((m) => m.groupKey === group.key)
+          .map((m) => sectionsByKey.get(m.key))
+          .filter((s): s is SectionState => Boolean(s));
+
+        if (groupSections.length === 0) return null;
+        const collapsed = props.collapsedGroups.has(group.key);
+        const visibleCount = groupSections.filter((s) => s.isVisible).length;
+        const firstKey = groupSections[0]?.key;
+        const groupAnchor = `bp-group-${group.key}`;
+
+        return (
+          <section key={group.key} aria-labelledby={`${groupAnchor}-label`}>
+            <button
+              type="button"
+              id={`${groupAnchor}-label`}
+              onClick={() => {
+                props.onToggleGroup(group.key);
+                if (collapsed && firstKey) {
+                  const el = document.getElementById(`bp-section-${firstKey}`);
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
               }}
-              onEditCancel={() => {
-                if (abortRef.current) abortRef.current.abort();
-                setStreamingKey(null);
-                updateSection(section.key, {
-                  isEditing: false,
-                  isGenerating: false,
-                  editBuffer: section.userContent ?? section.autoContent,
-                });
-              }}
-              onResetToAuto={() => saveSection(section.key, null)}
-              onGenerateExec={() => handleGenerate(section.key)}
-              onImprove={() => handleImprove(section.key)}
-            />
-          ))}
-        </div>
-      </div>
+              aria-expanded={!collapsed}
+              aria-controls={`${groupAnchor}-list`}
+              className="w-full mt-6 mb-2 flex items-center gap-2 px-1 py-2 text-left rounded-lg hover:bg-[var(--neutral-cool-50)] transition-colors"
+            >
+              {collapsed ? (
+                <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+              )}
+              <h2 className="text-base font-semibold text-[var(--foreground)] tracking-tight">
+                {group.title}
+              </h2>
+              <span className="text-[11px] text-[var(--neutral-cool-600)]">
+                {visibleCount} of {groupSections.length} visible
+              </span>
+            </button>
+
+            {!collapsed && (
+              <div id={`${groupAnchor}-list`} className="space-y-3">
+                {groupSections.map((s) => (
+                  <div key={s.key} id={`bp-section-${s.key}`}>
+                    {renderCard(s)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
