@@ -1,6 +1,9 @@
 // TIM-1040: AI-generate launch milestones personalized to concept / location / equipment / hiring / financials.
-// TIM-1057: Fix-forward — switched to streaming Anthropic call with TTFT (8s) and gap (25s) timers
-// to prevent Lambda timeout leaving client in infinite-spinner state.
+// TIM-1057: Fix-forward — switched to streaming Anthropic call with TTFT and gap timers to prevent
+// Lambda timeout leaving client in infinite-spinner state.
+// TIM-1521: TTFT 8s→15s, gap 25s→50s. Sonnet on a cold serverless Lambda regularly took >8s to first
+// token with the full multi-workspace context, and >25s between deltas mid-stream, both firing the
+// abort before the JSON array completed. Founder's milestones came back empty as a result.
 // TIM-1365 normalization: streaming route — tokens arrive as *.delta.text (ESLint exempt). JSON is
 // assembled server-side; normalizeAIOutput/toTitleCase applied to text fields at persist-time (see inserts map).
 export const runtime = "nodejs"
@@ -16,8 +19,8 @@ import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
 
-const TTFT_MS = 8_000
-const GAP_MS = 25_000
+const TTFT_MS = 15_000
+const GAP_MS = 50_000
 const HEARTBEAT_MS = 15_000
 
 function sse(event: string, data: unknown): string {
@@ -127,6 +130,10 @@ export async function POST(request: NextRequest) {
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null
       let ttftTimer: ReturnType<typeof setTimeout> | null = null
       let gapTimer: ReturnType<typeof setTimeout> | null = null
+      const streamStartedAt = Date.now()
+      let firstTokenAt: number | null = null
+      let lastTokenAt: number | null = null
+      let tokenCount = 0
 
       function cleanup() {
         done = true
@@ -141,7 +148,9 @@ export async function POST(request: NextRequest) {
 
       ttftTimer = setTimeout(() => {
         if (!done) {
-          console.error("[launch-plan/generate] TTFT timeout")
+          console.error(
+            `[launch-plan/generate] TTFT timeout plan=${planId} limitMs=${TTFT_MS} elapsedMs=${Date.now() - streamStartedAt}`,
+          )
           cleanup()
           send(sse("error", { code: "timeout", message: "Couldn't generate plan. Try again or contact support." }))
           send(sse("done", {}))
@@ -166,11 +175,15 @@ export async function POST(request: NextRequest) {
             event.type === "content_block_start" ||
             (event.type === "content_block_delta" && event.delta.type === "text_delta")
           ) {
+            if (firstTokenAt === null) firstTokenAt = Date.now()
+            lastTokenAt = Date.now()
             if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null }
             if (gapTimer) clearTimeout(gapTimer)
             gapTimer = setTimeout(() => {
               if (!done) {
-                console.error("[launch-plan/generate] gap timer fired")
+                console.error(
+                  `[launch-plan/generate] gap timeout plan=${planId} limitMs=${GAP_MS} tokens=${tokenCount} textLen=${fullText.length} elapsedSinceLastTokenMs=${lastTokenAt ? Date.now() - lastTokenAt : "n/a"}`,
+                )
                 cleanup()
                 send(sse("error", { code: "timeout", message: "Couldn't generate plan. Try again or contact support." }))
                 send(sse("done", {}))
@@ -181,6 +194,7 @@ export async function POST(request: NextRequest) {
 
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             fullText += event.delta.text
+            tokenCount += 1
           }
         }
 
@@ -189,7 +203,11 @@ export async function POST(request: NextRequest) {
 
         if (done) return
 
-        console.log(`[launch-plan/generate] AI done textLen=${fullText.length}`)
+        const ttftMs = firstTokenAt ? firstTokenAt - streamStartedAt : null
+        const streamMs = Date.now() - streamStartedAt
+        console.log(
+          `[launch-plan/generate] AI done plan=${planId} textLen=${fullText.length} tokens=${tokenCount} ttftMs=${ttftMs} streamMs=${streamMs}`,
+        )
 
         let parsed: Array<{
           title: string
