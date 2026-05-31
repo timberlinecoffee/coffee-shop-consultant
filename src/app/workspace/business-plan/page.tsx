@@ -9,11 +9,9 @@ import type { CoverTemplateId } from "@/lib/pdf/business-plan/covers";
 import {
   BUSINESS_PLAN_SECTIONS,
   assembleCompanyConcept,
-  assembleMarketAnalysis,
-  assembleLocationSection,
-  assembleBuildoutEquipment,
-  assembleMenuPricing,
-  assembleMarketingPlan,
+  assembleTargetMarket,
+  assembleExecutionOperations,
+  assembleExecutionMarketingSales,
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
@@ -125,31 +123,37 @@ export default async function BusinessPlanWorkspacePage() {
     (savedSections ?? []).map((s) => [s.section_key, s])
   );
 
+  // TIM-1498: two-level taxonomy autoContent map.
   const autoContent: Record<string, string> = {
-    executive_summary:
-      (savedMap.get("executive_summary") as { user_content: string | null } | undefined)
+    "executive-summary":
+      (savedMap.get("executive-summary") as { user_content: string | null } | undefined)
         ?.user_content ??
       "Click Generate to create an AI-written executive summary from your completed suite data.",
-    company_concept: assembleCompanyConcept(conceptDoc?.content),
-    market_analysis: assembleMarketAnalysis(conceptDoc?.content),
-    location_real_estate: assembleLocationSection(
-      (locationRows ?? []) as BpLocationCandidate[]
+    "opportunity-problem-solution":
+      "Click Generate to draft this section from your plan data.",
+    "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
+    "opportunity-competition":
+      "Click Generate to identify the most relevant competitors in your catchment area.",
+    "execution-marketing-sales": assembleExecutionMarketingSales(
+      (menuRows ?? []) as BpMenuItem[],
+      toBpMarketingPlanning(marketingDoc?.content),
     ),
-    buildout_equipment: assembleBuildoutEquipment(
+    "execution-operations": assembleExecutionOperations(
+      (locationRows ?? []) as BpLocationCandidate[],
       (equipmentRows ?? []) as BpEquipmentItem[],
-      financialModel
-    ),
-    menu_pricing: assembleMenuPricing((menuRows ?? []) as BpMenuItem[]),
-    marketing_plan: assembleMarketingPlan(toBpMarketingPlanning(marketingDoc?.content)),
-    operations_launch: assembleOperationsLaunch(
-      (launchRows ?? []) as BpLaunchItem[]
-    ),
-    team_hiring: assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    financial_plan: assembleFinancialPlan(
       financialModel,
-      equipmentRows ?? []
     ),
-    funding_request: "",
+    "execution-milestones-metrics": assembleOperationsLaunch(
+      (launchRows ?? []) as BpLaunchItem[],
+    ),
+    "company-overview": assembleCompanyConcept(conceptDoc?.content),
+    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "financial-plan-financing":
+      "Click Generate to draft this section from your plan data.",
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "appendix-monthly-statements":
+      "Monthly P&L, cash flow, and balance sheet statements are rendered in the exported PDF appendix.",
   };
 
   const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => {

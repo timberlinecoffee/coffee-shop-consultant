@@ -7,11 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import {
   BUSINESS_PLAN_SECTIONS,
   assembleCompanyConcept,
-  assembleMarketAnalysis,
-  assembleLocationSection,
-  assembleBuildoutEquipment,
-  assembleMenuPricing,
-  assembleMarketingPlan,
+  assembleTargetMarket,
+  assembleExecutionOperations,
+  assembleExecutionMarketingSales,
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
@@ -107,22 +105,37 @@ export async function GET() {
     (savedSections ?? []).map((s) => [s.section_key, s])
   );
 
+  // TIM-1498: two-level taxonomy. Subsections with no auto-assembled content
+  // (Problem & Solution, Competition, Financing) render the click-to-generate
+  // placeholder and rely on the AI generator route to fill them in.
   const autoContent: Record<string, string> = {
-    executive_summary: savedMap.get("executive_summary")?.user_content ??
+    "executive-summary": savedMap.get("executive-summary")?.user_content ??
       "Click Generate to create an AI-written executive summary from your completed suite data.",
-    company_concept: assembleCompanyConcept(conceptDoc?.content),
-    market_analysis: assembleMarketAnalysis(conceptDoc?.content),
-    location_real_estate: assembleLocationSection((locationRows ?? []) as BpLocationCandidate[]),
-    buildout_equipment: assembleBuildoutEquipment(
-      (equipmentRows ?? []) as BpEquipmentItem[],
-      financialModel
+    "opportunity-problem-solution":
+      "Click Generate to draft this section from your plan data.",
+    "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
+    "opportunity-competition":
+      "Click Generate to identify the most relevant competitors in your catchment area.",
+    "execution-marketing-sales": assembleExecutionMarketingSales(
+      (menuRows ?? []) as BpMenuItem[],
+      toBpMarketingPlanning(marketingDoc?.content),
     ),
-    menu_pricing: assembleMenuPricing((menuRows ?? []) as BpMenuItem[]),
-    marketing_plan: assembleMarketingPlan(toBpMarketingPlanning(marketingDoc?.content)),
-    operations_launch: assembleOperationsLaunch((launchRows ?? []) as BpLaunchItem[]),
-    team_hiring: assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    financial_plan: assembleFinancialPlan(financialModel, equipmentRows ?? []),
-    funding_request: "",
+    "execution-operations": assembleExecutionOperations(
+      (locationRows ?? []) as BpLocationCandidate[],
+      (equipmentRows ?? []) as BpEquipmentItem[],
+      financialModel,
+    ),
+    "execution-milestones-metrics": assembleOperationsLaunch(
+      (launchRows ?? []) as BpLaunchItem[],
+    ),
+    "company-overview": assembleCompanyConcept(conceptDoc?.content),
+    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "financial-plan-financing":
+      "Click Generate to draft this section from your plan data.",
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "appendix-monthly-statements":
+      "Monthly P&L, cash flow, and balance sheet statements are rendered in the exported PDF appendix.",
   };
 
   const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => {
