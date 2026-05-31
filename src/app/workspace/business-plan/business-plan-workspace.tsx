@@ -702,13 +702,18 @@ function SectionCard({
 
             {section.isEditing ? (
               <div>
-                <textarea
-                  value={section.editBuffer}
-                  onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
-                  placeholder="Add content for this section..."
-                  disabled={section.isGenerating && !section.editBuffer}
-                />
+                {section.isGenerating ? (
+                  <div className="min-h-[160px]">
+                    {section.editBuffer && <MarkdownContent content={section.editBuffer} />}
+                  </div>
+                ) : (
+                  <textarea
+                    value={section.editBuffer}
+                    onChange={(e) => onEditChange(e.target.value)}
+                    className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
+                    placeholder="Add content for this section..."
+                  />
+                )}
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={onEditSave}
