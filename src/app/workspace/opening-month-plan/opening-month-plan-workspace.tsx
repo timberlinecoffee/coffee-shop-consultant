@@ -21,7 +21,7 @@ import {
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import { consumeSseFrames } from "@/components/copilot/sse";
+import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -715,10 +715,12 @@ export function OpeningMonthPlanWorkspace({
     await saveConfig({ viewPreference: v });
   }
 
-  // ── Generate Launch Milestones (AI, SSE) ───────────────────────────────────
-  // TIM-1521: was bundled with the playbook seed in handleGenerateAll. Now its
-  // own CTA on the Launch Milestones sub-page so an AI failure can't take the
-  // playbook with it.
+  // ── Generate Launch Milestones (AI) ────────────────────────────────────────
+  // TIM-1521 (round 2): switched to a synchronous JSON POST. The streaming
+  // SSE flow hit the TTFT and gap timers on prod and left founders with
+  // launch_milestones = 0 rows. The server route now runs to completion with
+  // a 120s Vercel maxDuration and returns the inserted milestones in one
+  // response — much simpler error surface, much fewer ways to fail silently.
   async function handleGenerateMilestones() {
     if (!canEdit) { setPaywallOpen(true); return; }
     if (!launchDateInput) return;
@@ -726,10 +728,7 @@ export function OpeningMonthPlanWorkspace({
     setToast(null);
 
     const abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), 90_000);
-
-    let milestonesUpdated = 0;
-    let paywallHit = false;
+    const timeoutId = setTimeout(() => abortController.abort(), 125_000);
 
     try {
       const res = await fetch("/api/opening-month-plan/generate", {
@@ -743,49 +742,33 @@ export function OpeningMonthPlanWorkspace({
         signal: abortController.signal,
       });
 
-      if (!res.body) throw new Error("No response body");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
+      let payload: {
+        code?: string;
+        message?: string;
+        milestones?: Milestone[];
+        lastGeneratedAt?: string;
+      } = {};
+      try {
+        payload = await res.json();
+      } catch { /* non-JSON body — fall through to status-based handling */ }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const { events, rest } = consumeSseFrames(buf);
-        buf = rest;
-
-        for (const { data } of events) {
-          try {
-            const payload = JSON.parse(data);
-            if (payload.code === "paywall") {
-              paywallHit = true;
-              return;
-            }
-            if (
-              payload.code === "error" ||
-              payload.code === "db_error" ||
-              payload.code === "parse_error" ||
-              payload.code === "timeout" ||
-              payload.code === "upstream_error"
-            ) {
-              showToast("error", payload.message ?? "Couldn't generate milestones. Try again or contact support.");
-            }
-            if (payload.milestones) {
-              setMilestones(payload.milestones as Milestone[]);
-              setConfig((c) => ({ ...c, lastGeneratedAt: payload.lastGeneratedAt ?? c.lastGeneratedAt }));
-              setStalesBannerDismissed(false);
-              milestonesUpdated = (payload.milestones as Milestone[]).length;
-            }
-          } catch { /* non-JSON lines */ }
-        }
-      }
-
-      if (paywallHit) {
+      if (res.status === 402 || payload.code === "paywall") {
         setPaywallOpen(true);
-      } else if (milestonesUpdated > 0) {
-        showToast("success", "Launch Milestones generated. Edit anything that doesn't fit your shop.");
+        return;
       }
+
+      if (!res.ok || !payload.milestones) {
+        showToast(
+          "error",
+          payload.message ?? "Couldn't generate milestones. Try again or contact support.",
+        );
+        return;
+      }
+
+      setMilestones(payload.milestones);
+      setConfig((c) => ({ ...c, lastGeneratedAt: payload.lastGeneratedAt ?? c.lastGeneratedAt }));
+      setStalesBannerDismissed(false);
+      showToast("success", "Launch Milestones generated. Edit anything that doesn't fit your shop.");
     } catch (err) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       showToast(
@@ -993,12 +976,10 @@ export function OpeningMonthPlanWorkspace({
     (showMilestones && milestones.length > 0) ||
     (showPlaybook && playbookItems.length > 0);
 
-  // TIM-1521: section-specific header copy + CTAs.
-  const headerTitle =
-    section === "milestones" ? "Launch Milestones"
-      : section === "playbook" ? "Opening Month Plan"
-      : "Opening Month Plan";
-  const headerIcon = section === "playbook" ? ClipboardList : Rocket;
+  // TIM-1521: shared umbrella header ("Launch Plan") + section-specific
+  // subtitle + sub-nav tabs (mirrors the Equipment & Supplies pattern).
+  const headerTitle = "Launch Plan";
+  const headerIcon = Rocket;
   const headerSubtitle =
     section === "milestones"
       ? "The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates. Can be a year or more out."
@@ -1028,8 +1009,9 @@ export function OpeningMonthPlanWorkspace({
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
-        {/* Header */}
-        <header className="mb-6">
+        {/* Header — shared umbrella ("Launch Plan") matches the
+            Equipment & Supplies suite chrome on both sub-pages. */}
+        <header className="mb-4">
           <div className="flex items-center gap-2 mb-1">
             {(() => {
               const HeaderIcon = headerIcon;
@@ -1041,6 +1023,12 @@ export function OpeningMonthPlanWorkspace({
             {headerSubtitle}
           </p>
         </header>
+
+        {/* TIM-1521: Sub-nav between the two pages in this suite (mirrors
+            EquipmentSuppliesSubNav). Hidden on the legacy unified view. */}
+        {section !== "all" && (
+          <LaunchPlanSubNav active={section === "milestones" ? "milestones" : "opening-month"} />
+        )}
 
         <div className="space-y-4">
           {/* First-visit copy — milestones-only (the playbook seed doesn't

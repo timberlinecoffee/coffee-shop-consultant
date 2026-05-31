@@ -1,31 +1,25 @@
 // TIM-1040: AI-generate launch milestones personalized to concept / location / equipment / hiring / financials.
-// TIM-1057: Fix-forward — switched to streaming Anthropic call with TTFT and gap timers to prevent
-// Lambda timeout leaving client in infinite-spinner state.
-// TIM-1521: TTFT 8s→15s, gap 25s→50s. Sonnet on a cold serverless Lambda regularly took >8s to first
-// token with the full multi-workspace context, and >25s between deltas mid-stream, both firing the
-// abort before the JSON array completed. Founder's milestones came back empty as a result.
-// TIM-1365 normalization: streaming route — tokens arrive as *.delta.text (ESLint exempt). JSON is
-// assembled server-side; normalizeAIOutput/toTitleCase applied to text fields at persist-time (see inserts map).
+// TIM-1057: Streaming Anthropic call with TTFT + gap timers to avoid leaving the client in a spinner.
+// TIM-1521 (round 1): widened TTFT 8s→15s, gap 25s→50s — still hit the gap timer on prod, no milestones
+// landed for the founder's plan.
+// TIM-1521 (round 2 — this commit): switch to a synchronous, non-streaming POST. Anthropic
+// `messages.create` runs to completion server-side, the JSON parses once, milestones insert, and the
+// client gets a single JSON response. This removes the TTFT/gap timer surface entirely and lifts the
+// Vercel function maxDuration from 60s → 120s (Pro plan) so a slow Sonnet response no longer hits an
+// SSE Lambda timeout mid-stream.
+// TIM-1365 normalization: parsed text fields go through normalizeAIOutput/toTitleCase at persist-time.
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 120
 
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
-import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
+import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
-
-const TTFT_MS = 15_000
-const GAP_MS = 50_000
-const HEARTBEAT_MS = 15_000
-
-function sse(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
-}
 
 const SYSTEM_PROMPT = `You are an expert coffee shop launch consultant. Your job is to generate a personalized launch milestone plan for a new coffee shop owner, working backward from their target launch date.
 
@@ -53,15 +47,30 @@ Rules:
 - Title Case all titles.
 - No emojis. Plain language only.`
 
+type Milestone = {
+  title: string
+  description: string
+  track: TrackKey
+  days_before_launch: number
+  estimated_duration_days: number
+  critical_path: boolean
+  owner: string
+  ai_notes: string
+}
+
+function jsonResponse(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return new Response(sse("error", { code: "unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "text/event-stream" },
-    })
+    return jsonResponse(401, { code: "unauthorized" })
   }
 
   let planId: string
@@ -74,17 +83,11 @@ export async function POST(request: NextRequest) {
     targetLaunchDate = body.targetLaunchDate
     existingMilestones = body.existingMilestones ?? []
   } catch {
-    return new Response(sse("error", { code: "bad_request" }), {
-      status: 400,
-      headers: { "Content-Type": "text/event-stream" },
-    })
+    return jsonResponse(400, { code: "bad_request" })
   }
 
   if (!planId || !targetLaunchDate) {
-    return new Response(sse("error", { code: "bad_request", message: "planId and targetLaunchDate required" }), {
-      status: 400,
-      headers: { "Content-Type": "text/event-stream" },
-    })
+    return jsonResponse(400, { code: "bad_request", message: "planId and targetLaunchDate required" })
   }
 
   const { data: profile } = await supabase
@@ -94,13 +97,9 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
-    return new Response(sse("error", { code: "paywall", reason: "no_subscription", tier_required: "starter" }), {
-      status: 402,
-      headers: { "Content-Type": "text/event-stream" },
-    })
+    return jsonResponse(402, { code: "paywall", reason: "no_subscription", tier_required: "starter" })
   }
 
-  // Compose workspace context before opening the stream so errors here surface as HTTP errors.
   const svcClient = createServiceClient()
   const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
 
@@ -117,226 +116,131 @@ export async function POST(request: NextRequest) {
   }
 
   const userPrompt = contextParts.join("\n")
+  const startedAt = Date.now()
 
   console.log(`[launch-plan/generate] start plan=${planId} user=${user.id} contextChars=${userPrompt.length}`)
 
-  const encoder = new TextEncoder()
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-  const streamBody = new ReadableStream({
-    async start(controller) {
-      const send = (chunk: string) => controller.enqueue(encoder.encode(chunk))
-      let done = false
-      let heartbeatTimer: ReturnType<typeof setInterval> | null = null
-      let ttftTimer: ReturnType<typeof setTimeout> | null = null
-      let gapTimer: ReturnType<typeof setTimeout> | null = null
-      const streamStartedAt = Date.now()
-      let firstTokenAt: number | null = null
-      let lastTokenAt: number | null = null
-      let tokenCount = 0
+  let fullText: string
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8_000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userPrompt }],
+    })
+    fullText = message.content
+      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+    console.log(
+      `[launch-plan/generate] AI done plan=${planId} textLen=${fullText.length} elapsedMs=${Date.now() - startedAt}`,
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    console.error("[launch-plan/generate] upstream error:", msg)
+    return jsonResponse(502, {
+      code: "upstream_error",
+      message: "Couldn't generate plan. Try again or contact support.",
+    })
+  }
 
-      function cleanup() {
-        done = true
-        if (heartbeatTimer) clearInterval(heartbeatTimer)
-        if (ttftTimer) clearTimeout(ttftTimer)
-        if (gapTimer) clearTimeout(gapTimer)
-      }
+  let parsed: Milestone[]
+  try {
+    const trimmed = fullText.trim()
+    const start = trimmed.indexOf("[")
+    const end = trimmed.lastIndexOf("]")
+    parsed = JSON.parse(trimmed.slice(start, end + 1))
+  } catch {
+    console.error("[launch-plan/generate] JSON parse failed")
+    return jsonResponse(502, {
+      code: "parse_error",
+      message: "Couldn't generate plan. Try again or contact support.",
+    })
+  }
 
-      heartbeatTimer = setInterval(() => {
-        if (!done) send(`: ping\n\n`)
-      }, HEARTBEAT_MS)
+  const launch = new Date(targetLaunchDate)
 
-      ttftTimer = setTimeout(() => {
-        if (!done) {
-          console.error(
-            `[launch-plan/generate] TTFT timeout plan=${planId} limitMs=${TTFT_MS} elapsedMs=${Date.now() - streamStartedAt}`,
-          )
-          cleanup()
-          send(sse("error", { code: "timeout", message: "Couldn't generate plan. Try again or contact support." }))
-          send(sse("done", {}))
-          controller.close()
-        }
-      }, TTFT_MS)
+  const userEditedIds = existingMilestones
+    .filter((m) => m.user_edited)
+    .map((m) => m.id)
 
-      try {
-        const aiStream = anthropic.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 8_000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userPrompt }],
-        })
+  const toDelete = existingMilestones
+    .filter((m) => !m.user_edited)
+    .map((m) => m.id)
 
-        let fullText = ""
+  if (toDelete.length > 0) {
+    await supabase
+      .from("launch_milestones")
+      .delete()
+      .in("id", toDelete)
+      .eq("plan_id", planId)
+  }
 
-        for await (const event of aiStream) {
-          if (done) break
-
-          if (
-            event.type === "content_block_start" ||
-            (event.type === "content_block_delta" && event.delta.type === "text_delta")
-          ) {
-            if (firstTokenAt === null) firstTokenAt = Date.now()
-            lastTokenAt = Date.now()
-            if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null }
-            if (gapTimer) clearTimeout(gapTimer)
-            gapTimer = setTimeout(() => {
-              if (!done) {
-                console.error(
-                  `[launch-plan/generate] gap timeout plan=${planId} limitMs=${GAP_MS} tokens=${tokenCount} textLen=${fullText.length} elapsedSinceLastTokenMs=${lastTokenAt ? Date.now() - lastTokenAt : "n/a"}`,
-                )
-                cleanup()
-                send(sse("error", { code: "timeout", message: "Couldn't generate plan. Try again or contact support." }))
-                send(sse("done", {}))
-                controller.close()
-              }
-            }, GAP_MS)
-          }
-
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            fullText += event.delta.text
-            tokenCount += 1
-          }
-        }
-
-        if (gapTimer) { clearTimeout(gapTimer); gapTimer = null }
-        if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null }
-
-        if (done) return
-
-        const ttftMs = firstTokenAt ? firstTokenAt - streamStartedAt : null
-        const streamMs = Date.now() - streamStartedAt
-        console.log(
-          `[launch-plan/generate] AI done plan=${planId} textLen=${fullText.length} tokens=${tokenCount} ttftMs=${ttftMs} streamMs=${streamMs}`,
-        )
-
-        let parsed: Array<{
-          title: string
-          description: string
-          track: TrackKey
-          days_before_launch: number
-          estimated_duration_days: number
-          critical_path: boolean
-          owner: string
-          ai_notes: string
-        }>
-
-        try {
-          const trimmed = fullText.trim()
-          const start = trimmed.indexOf("[")
-          const end = trimmed.lastIndexOf("]")
-          parsed = JSON.parse(trimmed.slice(start, end + 1))
-        } catch {
-          console.error("[launch-plan/generate] JSON parse failed")
-          cleanup()
-          send(sse("error", { code: "parse_error", message: "Couldn't generate plan. Try again or contact support." }))
-          send(sse("done", {}))
-          controller.close()
-          return
-        }
-
-        const launch = new Date(targetLaunchDate)
-
-        const userEditedIds = existingMilestones
-          .filter((m) => m.user_edited)
-          .map((m) => m.id)
-
-        const toDelete = existingMilestones
-          .filter((m) => !m.user_edited)
-          .map((m) => m.id)
-
-        if (toDelete.length > 0) {
-          await supabase
-            .from("launch_milestones")
-            .delete()
-            .in("id", toDelete)
-            .eq("plan_id", planId)
-        }
-
-        const inserts = parsed.map((m, idx) => {
-          const targetDate = new Date(launch)
-          targetDate.setDate(targetDate.getDate() - (m.days_before_launch ?? 0))
-          return {
-            plan_id: planId,
-            title: normalizeAIOutput(m.title ?? "Untitled Milestone"),
-            description: m.description ? normalizeAIOutput(m.description) : null,
-            track: m.track,
-            target_date: targetDate.toISOString().slice(0, 10),
-            status: "not_started" as const,
-            estimated_duration_days: m.estimated_duration_days ?? null,
-            depends_on_milestone_ids: [],
-            critical_path: m.critical_path ?? false,
-            owner: m.owner ?? "founder",
-            ai_notes: m.ai_notes ? normalizeAIOutput(m.ai_notes) : null,
-            user_edited: false,
-            source: "ai_generated" as const,
-            order_index: userEditedIds.length + idx,
-          }
-        })
-
-        console.log(`[launch-plan/generate] inserting ${inserts.length} milestones`)
-
-        const { data: inserted, error: insertErr } = await supabase
-          .from("launch_milestones")
-          .insert(inserts)
-          .select("*")
-
-        if (insertErr) {
-          console.error("[launch-plan/generate] insert error:", insertErr.message)
-          cleanup()
-          send(sse("error", { code: "db_error", message: "Couldn't save the plan. Try again or contact support." }))
-          send(sse("done", {}))
-          controller.close()
-          return
-        }
-
-        const now = new Date().toISOString()
-        const { data: existingDoc } = await supabase
-          .from("workspace_documents")
-          .select("content")
-          .eq("plan_id", planId)
-          .eq("workspace_key", "opening_month_plan")
-          .maybeSingle()
-
-        const config = normalizeLaunchPlanConfig(existingDoc?.content)
-        config.lastGeneratedAt = now
-        config.sourcesSnapshotAt = now
-
-        await supabase
-          .from("workspace_documents")
-          .upsert(
-            { plan_id: planId, workspace_key: "opening_month_plan", content: config },
-            { onConflict: "plan_id,workspace_key" }
-          )
-
-        console.log(`[launch-plan/generate] done inserted=${inserted?.length ?? 0} preserved=${userEditedIds.length}`)
-
-        cleanup()
-        send(sse("done", {
-          inserted: inserted?.length ?? 0,
-          preserved: userEditedIds.length,
-          lastGeneratedAt: now,
-          milestones: inserted ?? [],
-        }))
-        controller.close()
-      } catch (err) {
-        if (!done) {
-          const msg = err instanceof Error ? err.message : "Unknown error"
-          console.error("[launch-plan/generate] unhandled error:", msg)
-          cleanup()
-          send(sse("error", { code: "upstream_error", message: "Couldn't generate plan. Try again or contact support." }))
-          send(sse("done", {}))
-          controller.close()
-        }
-      }
-    },
+  const inserts = parsed.map((m, idx) => {
+    const targetDate = new Date(launch)
+    targetDate.setDate(targetDate.getDate() - (m.days_before_launch ?? 0))
+    return {
+      plan_id: planId,
+      title: normalizeAIOutput(m.title ?? "Untitled Milestone"),
+      description: m.description ? normalizeAIOutput(m.description) : null,
+      track: m.track,
+      target_date: targetDate.toISOString().slice(0, 10),
+      status: "not_started" as const,
+      estimated_duration_days: m.estimated_duration_days ?? null,
+      depends_on_milestone_ids: [],
+      critical_path: m.critical_path ?? false,
+      owner: m.owner ?? "founder",
+      ai_notes: m.ai_notes ? normalizeAIOutput(m.ai_notes) : null,
+      user_edited: false,
+      source: "ai_generated" as const,
+      order_index: userEditedIds.length + idx,
+    }
   })
 
-  return new Response(streamBody, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
+  console.log(`[launch-plan/generate] inserting ${inserts.length} milestones`)
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from("launch_milestones")
+    .insert(inserts)
+    .select("*")
+
+  if (insertErr) {
+    console.error("[launch-plan/generate] insert error:", insertErr.message)
+    return jsonResponse(500, {
+      code: "db_error",
+      message: "Couldn't save the plan. Try again or contact support.",
+    })
+  }
+
+  const now = new Date().toISOString()
+  const { data: existingDoc } = await supabase
+    .from("workspace_documents")
+    .select("content")
+    .eq("plan_id", planId)
+    .eq("workspace_key", "opening_month_plan")
+    .maybeSingle()
+
+  const config = normalizeLaunchPlanConfig(existingDoc?.content)
+  config.lastGeneratedAt = now
+  config.sourcesSnapshotAt = now
+
+  await supabase
+    .from("workspace_documents")
+    .upsert(
+      { plan_id: planId, workspace_key: "opening_month_plan", content: config },
+      { onConflict: "plan_id,workspace_key" }
+    )
+
+  console.log(
+    `[launch-plan/generate] done plan=${planId} inserted=${inserted?.length ?? 0} preserved=${userEditedIds.length} elapsedMs=${Date.now() - startedAt}`,
+  )
+
+  return jsonResponse(200, {
+    inserted: inserted?.length ?? 0,
+    preserved: userEditedIds.length,
+    lastGeneratedAt: now,
+    milestones: inserted ?? [],
   })
 }
