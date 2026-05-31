@@ -130,6 +130,7 @@ export function BusinessPlanWorkspace({
   );
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isPrintingPdf, setIsPrintingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
@@ -261,7 +262,32 @@ export function BusinessPlanWorkspace({
     );
   }, []);
 
-  // ── PDF export ─────────────────────────────────────────────────────────────
+  // ── PDF export / print ──────────────────────────────────────────────────────
+
+  // TIM-1551: Both Print and Export drive through the same React-PDF renderer.
+  // Print opens the PDF in a new tab so the user can print from the browser viewer.
+  const handlePrintPlan = useCallback(async () => {
+    setIsPrintingPdf(true);
+    try {
+      const res = await fetch("/api/pdf/business_plan_full");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+        if (res.status === 402) {
+          setGlobalError("PDF export requires a paid subscription.");
+        } else {
+          setGlobalError((j.error as string) ?? "PDF generation failed");
+        }
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      // Revoke after a brief delay so the new tab has time to load the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } finally {
+      setIsPrintingPdf(false);
+    }
+  }, []);
 
   const handleExportPdf = useCallback(async () => {
     setIsExportingPdf(true);
@@ -315,16 +341,15 @@ export function BusinessPlanWorkspace({
             {visibleCount} of {sections.length} sections visible
           </p>
           <div className="flex items-center gap-2">
-            {/* TIM-1062: HTML print bundles every workspace into one printable doc */}
-            <a
-              href="/workspace/business-plan/print"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors"
+            {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
+            <button
+              onClick={handlePrintPlan}
+              disabled={isPrintingPdf || !canEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FileText className="w-3.5 h-3.5" />
-              Print full plan
-            </a>
+              {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
+            </button>
             <button
               onClick={handleExportPdf}
               disabled={isExportingPdf || !canEdit}
