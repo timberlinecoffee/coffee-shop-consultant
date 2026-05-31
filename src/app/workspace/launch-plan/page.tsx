@@ -42,7 +42,7 @@ export default async function LaunchPlanUmbrellaPage() {
     {
       href: "/workspace/launch-plan/milestones",
       title: "Launch Milestones",
-      blurb: "The dated, gating steps that get you to opening day — lease, permits, build-out, equipment, hiring, training, soft-open dates. Can be a year or more out.",
+      blurb: "The dated, gating steps to opening day: lease, permits, build-out, equipment, hiring, training, soft-open dates. Can be a year or more out.",
       icon: Rocket,
       count: milestonesCount ?? 0,
       countLabel: (n: number) => (n === 1 ? "1 milestone" : `${n} milestones`),
