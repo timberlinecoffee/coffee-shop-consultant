@@ -1,10 +1,12 @@
 // TIM-1037: Business Plan Generator workspace page.
 // TIM-1225: loads cover settings + signed logo URL for CoverBrandingPanel.
+// TIM-1483: loads financial document visibility for FinancialDocumentsPanel.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { BusinessPlanWorkspace } from "./business-plan-workspace";
 import type { CoverSettings } from "./cover-branding-panel";
+import { buildInitialFinancialDocuments } from "./financial-documents-panel";
 import type { CoverTemplateId } from "@/lib/pdf/business-plan/covers";
 import {
   BUSINESS_PLAN_SECTIONS,
@@ -58,6 +60,7 @@ export default async function BusinessPlanWorkspacePage() {
     { data: savedSections },
     { data: profile },
     { data: coverRow },
+    { data: financialDocRows },
   ] = await Promise.all([
     supabase
       .from("workspace_documents")
@@ -117,6 +120,10 @@ export default async function BusinessPlanWorkspacePage() {
       .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name, body_font")
       .eq("plan_id", planId)
       .maybeSingle(),
+    supabase
+      .from("business_plan_financial_documents")
+      .select("document_key, is_visible")
+      .eq("plan_id", planId),
   ]);
 
   const savedMap = new Map(
@@ -187,6 +194,10 @@ export default async function BusinessPlanWorkspacePage() {
     body_font: (coverRow as { body_font?: string | null } | null)?.body_font ?? null,
   };
 
+  const initialFinancialDocuments = buildInitialFinancialDocuments(
+    (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
+  );
+
   // Get a signed URL for the logo preview (1 hour).
   let logoPublicUrl: string | null = null;
   if (coverRow?.logo_path) {
@@ -205,6 +216,7 @@ export default async function BusinessPlanWorkspacePage() {
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCoverSettings={initialCoverSettings}
       logoPublicUrl={logoPublicUrl}
+      initialFinancialDocuments={initialFinancialDocuments}
     />
   );
 }
