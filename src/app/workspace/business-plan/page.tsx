@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { BusinessPlanWorkspace } from "./business-plan-workspace";
 import type { CoverSettings } from "./cover-branding-panel";
-import { buildInitialFinancialDocuments } from "./financial-documents-panel";
+import { buildInitialFinancialDocuments } from "@/lib/business-plan-financials";
 import type { CoverTemplateId } from "@/lib/pdf/business-plan/covers";
 import {
   BUSINESS_PLAN_SECTIONS,

@@ -91,3 +91,37 @@ export function buildFinancialDocVisibility(
 export function getDocumentsBySubBlock(subBlock: FinancialSubBlock): FinancialDocumentMeta[] {
   return FINANCIAL_DOCUMENTS.filter((d) => d.subBlock === subBlock);
 }
+
+// ── Panel state type (used by page.tsx server component + client panel) ───────
+// Kept here (not in financial-documents-panel.tsx) so Server Components can
+// import it without crossing a "use client" boundary.
+
+export interface FinancialDocumentState {
+  key: FinancialDocumentKey;
+  title: string;
+  source: string;
+  subBlock: string;
+  is_visible: boolean;
+}
+
+export function buildInitialFinancialDocuments(
+  savedRows: { document_key: string; is_visible: boolean }[]
+): FinancialDocumentState[] {
+  const saved = new Map(savedRows.map((r) => [r.document_key, r.is_visible]));
+
+  // Handle legacy key names for pre-migration rows.
+  for (const r of savedRows) {
+    const newKey = LEGACY_KEY_MAP[r.document_key as keyof typeof LEGACY_KEY_MAP];
+    if (newKey && !saved.has(newKey)) {
+      saved.set(newKey, r.is_visible);
+    }
+  }
+
+  return FINANCIAL_DOCUMENTS.map((doc) => ({
+    key: doc.key,
+    title: doc.title,
+    source: doc.source,
+    subBlock: doc.subBlock,
+    is_visible: saved.has(doc.key) ? saved.get(doc.key)! : doc.defaultVisible,
+  }));
+}

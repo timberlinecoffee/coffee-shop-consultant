@@ -5,16 +5,10 @@
 
 import { useState, useCallback } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { FinancialDocumentKey } from "@/lib/business-plan-financials";
+import type { FinancialDocumentKey, FinancialDocumentState } from "@/lib/business-plan-financials";
 import { FINANCIAL_DOCUMENTS, FINANCIAL_SUB_BLOCKS } from "@/lib/business-plan-financials";
 
-export interface FinancialDocumentState {
-  key: FinancialDocumentKey;
-  title: string;
-  source: string;
-  subBlock: string;
-  is_visible: boolean;
-}
+export type { FinancialDocumentState };
 
 interface Props {
   initialDocuments: FinancialDocumentState[];
@@ -117,30 +111,3 @@ export function FinancialDocumentsPanel({ initialDocuments }: Props) {
   );
 }
 
-// Build initial state from server-loaded data, merging with registry defaults.
-export function buildInitialFinancialDocuments(
-  savedRows: { document_key: string; is_visible: boolean }[]
-): FinancialDocumentState[] {
-  const saved = new Map(savedRows.map((r) => [r.document_key, r.is_visible]));
-
-  // Also handle legacy key names for pre-migration rows.
-  const legacyMap: Record<string, string> = {
-    profit_and_loss: "monthly_pl",
-    cash_flow:       "monthly_cash_flow",
-    balance_sheet:   "monthly_balance_sheet",
-  };
-  for (const r of savedRows) {
-    const newKey = legacyMap[r.document_key];
-    if (newKey && !saved.has(newKey)) {
-      saved.set(newKey, r.is_visible);
-    }
-  }
-
-  return FINANCIAL_DOCUMENTS.map((doc) => ({
-    key: doc.key,
-    title: doc.title,
-    source: doc.source,
-    subBlock: doc.subBlock,
-    is_visible: saved.has(doc.key) ? saved.get(doc.key)! : doc.defaultVisible,
-  }));
-}
