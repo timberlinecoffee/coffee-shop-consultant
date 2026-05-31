@@ -1,6 +1,10 @@
 // TIM-1061: Operations Playbook — print view.
 // TIM-1416: V1 binder prints SOPs, recipes pulled read-only from Menu, plus
 // roles, vendor contacts, and training. No daily-execution log surfaces.
+// TIM-1501: per-document printing — `?doc=<key>` renders only that document;
+// each document is a standalone artifact with shop name header + date footer;
+// "Print all" places a page break between documents so the printed output is
+// a clean stack rather than one flowing doc.
 //
 // Plain, high-contrast layout meant to be printed and posted in the shop.
 // Server-rendered — no nav, no AI panel, no editing.
@@ -24,6 +28,7 @@ import {
   type RolesSection,
   type VendorContactsSection,
   type TrainingSection,
+  type SopCategoryKey,
 } from "@/lib/operations-playbook";
 import {
   loadOperationsRecipeCards,
@@ -34,7 +39,35 @@ import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
 
-export default async function OperationsPlaybookPrintPage() {
+// TIM-1501: union of every printable document key. Matches the per-card
+// "Print" buttons in the workspace.
+const PRINT_DOC_KEYS = [
+  ...SOP_CATEGORY_KEYS,
+  "recipes",
+  "roles",
+  "vendor_contacts",
+  "training",
+] as const;
+type PrintDocKey = (typeof PRINT_DOC_KEYS)[number];
+
+type SearchParams = { [key: string]: string | string[] | undefined };
+
+function parseDocKey(params: SearchParams): PrintDocKey | null {
+  const raw = params.doc;
+  const flat = Array.isArray(raw) ? raw[0] : raw;
+  if (!flat) return null;
+  return (PRINT_DOC_KEYS as readonly string[]).includes(flat)
+    ? (flat as PrintDocKey)
+    : null;
+}
+
+export default async function OperationsPlaybookPrintPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const docKey = parseDocKey(params);
   const supabase = await createClient();
   const {
     data: { user },
@@ -43,7 +76,7 @@ export default async function OperationsPlaybookPrintPage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id")
+    .select("id, plan_name")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -63,94 +96,41 @@ export default async function OperationsPlaybookPrintPage() {
   const stored = normalizeOperationsPlaybook(doc?.content);
   const playbook = isPlaybookEmpty(stored) ? seededPlaybook() : stored;
   const updatedAt = doc?.updated_at ?? null;
+  const shopName = plan.plan_name?.trim() || "Your Coffee Shop";
+
+  // Render every document by default; when `?doc=` is set, render only that one.
+  const docsToRender: PrintDocKey[] = docKey ? [docKey] : [...PRINT_DOC_KEYS];
 
   return (
     <div className="bg-white min-h-screen text-[var(--foreground)]">
       <div className="max-w-3xl mx-auto px-8 py-10 print:py-0 print:px-0">
         <div className="flex items-center justify-between mb-8 print:hidden">
-          <h1 className="text-2xl font-bold">Operations Playbook</h1>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {docKey ? labelForDoc(docKey) : "Operations Playbook"}
+            </h1>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+              {shopName}
+              {docKey
+                ? " · Single document"
+                : ` · ${docsToRender.length} documents`}
+            </p>
+          </div>
           <PrintButton />
         </div>
 
-        <header className="mb-8 print:mb-6">
-          <h1 className="hidden print:block text-3xl font-bold mb-1">
-            Operations Playbook
-          </h1>
-          {updatedAt && (
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Last updated{" "}
-              {new Date(updatedAt).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-          )}
-        </header>
-
-        <div className="space-y-10">
-          {SOP_CATEGORY_KEYS.map((key) => {
-            const cat = playbook[key];
-            return (
-              <section
-                key={key}
-                className="break-inside-avoid-page print:break-after-page"
-              >
-                <h2 className="text-xl font-bold mb-1 border-b-2 border-[var(--teal)] pb-1">
-                  {SOP_CATEGORY_LABELS[key]}
-                </h2>
-                <p className="text-xs text-[var(--muted-foreground)] mb-2 italic">
-                  {SOP_CATEGORY_TAGLINES[key]}
-                </p>
-                {cat.intro && (
-                  <p className="text-sm text-[var(--foreground)] leading-relaxed mb-4">
-                    {cat.intro}
-                  </p>
-                )}
-                <CategoryItems items={cat.items} groupByStation={key === "cleaning"} />
-              </section>
-            );
-          })}
-
-          <section className="break-inside-avoid-page print:break-after-page">
-            <h2 className="text-xl font-bold mb-1 border-b-2 border-[var(--teal)] pb-1">
-              {RECIPES_SECTION_LABEL}
-            </h2>
-            <p className="text-xs text-[var(--muted-foreground)] mb-2 italic">
-              {RECIPES_SECTION_TAGLINE}
-            </p>
-            <RecipeCards cards={recipeCards} />
-          </section>
-
-          <section className="break-inside-avoid-page print:break-after-page">
-            <h2 className="text-xl font-bold mb-1 border-b-2 border-[var(--teal)] pb-1">
-              {PLANNING_SECTION_LABELS.roles}
-            </h2>
-            <p className="text-xs text-[var(--muted-foreground)] mb-2 italic">
-              {PLANNING_SECTION_TAGLINES.roles}
-            </p>
-            <RolesSectionPrint section={playbook.roles} />
-          </section>
-
-          <section className="break-inside-avoid-page print:break-after-page">
-            <h2 className="text-xl font-bold mb-1 border-b-2 border-[var(--teal)] pb-1">
-              {PLANNING_SECTION_LABELS.vendor_contacts}
-            </h2>
-            <p className="text-xs text-[var(--muted-foreground)] mb-2 italic">
-              {PLANNING_SECTION_TAGLINES.vendor_contacts}
-            </p>
-            <VendorContactsPrint section={playbook.vendor_contacts} />
-          </section>
-
-          <section className="break-inside-avoid-page print:break-after-page">
-            <h2 className="text-xl font-bold mb-1 border-b-2 border-[var(--teal)] pb-1">
-              {PLANNING_SECTION_LABELS.training}
-            </h2>
-            <p className="text-xs text-[var(--muted-foreground)] mb-2 italic">
-              {PLANNING_SECTION_TAGLINES.training}
-            </p>
-            <TrainingPrint section={playbook.training} />
-          </section>
+        <div>
+          {docsToRender.map((key, i) => (
+            <PrintDocument
+              key={key}
+              docKey={key}
+              isFirst={i === 0}
+              shopName={shopName}
+              updatedAt={updatedAt}
+              playbook={playbook}
+              recipeCards={recipeCards}
+            />
+          ))}
         </div>
       </div>
 
@@ -162,6 +142,148 @@ export default async function OperationsPlaybookPrintPage() {
       `}</style>
     </div>
   );
+}
+
+// ── One printable document ────────────────────────────────────────────────────
+
+function PrintDocument({
+  docKey,
+  isFirst,
+  shopName,
+  updatedAt,
+  playbook,
+  recipeCards,
+}: {
+  docKey: PrintDocKey;
+  isFirst: boolean;
+  shopName: string;
+  updatedAt: string | null;
+  playbook: ReturnType<typeof seededPlaybook>;
+  recipeCards: OperationsRecipeCard[];
+}) {
+  const label = labelForDoc(docKey);
+  const tagline = taglineForDoc(docKey);
+
+  return (
+    <article
+      // TIM-1501: each printed document starts on a fresh page in "Print all"
+      // mode so the output reads as a stack of standalone artifacts.
+      className={
+        isFirst
+          ? "break-inside-avoid-page"
+          : "break-inside-avoid-page print:break-before-page mt-12 pt-8 border-t border-[var(--border)] print:mt-0 print:pt-0 print:border-t-0"
+      }
+    >
+      <DocumentHeader
+        title={label}
+        shopName={shopName}
+        tagline={tagline}
+      />
+
+      <div className="mt-4">
+        {(SOP_CATEGORY_KEYS as readonly string[]).includes(docKey) ? (
+          (() => {
+            const key = docKey as SopCategoryKey;
+            const cat = playbook[key];
+            return (
+              <>
+                {cat.intro && (
+                  <p className="text-sm leading-relaxed mb-4">{cat.intro}</p>
+                )}
+                <CategoryItems
+                  items={cat.items}
+                  groupByStation={key === "cleaning"}
+                />
+              </>
+            );
+          })()
+        ) : docKey === "recipes" ? (
+          <RecipeCards cards={recipeCards} />
+        ) : docKey === "roles" ? (
+          <RolesSectionPrint section={playbook.roles} />
+        ) : docKey === "vendor_contacts" ? (
+          <VendorContactsPrint section={playbook.vendor_contacts} />
+        ) : docKey === "training" ? (
+          <TrainingPrint section={playbook.training} />
+        ) : null}
+      </div>
+
+      <DocumentFooter shopName={shopName} updatedAt={updatedAt} />
+    </article>
+  );
+}
+
+function DocumentHeader({
+  title,
+  shopName,
+  tagline,
+}: {
+  title: string;
+  shopName: string;
+  tagline: string;
+}) {
+  return (
+    <header className="mb-2">
+      <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--muted-foreground)] mb-1">
+        {shopName}
+      </p>
+      <h2 className="text-xl font-bold border-b-2 border-[var(--teal)] pb-1">
+        {title}
+      </h2>
+      <p className="text-xs text-[var(--muted-foreground)] mt-1 italic">
+        {tagline}
+      </p>
+    </header>
+  );
+}
+
+function DocumentFooter({
+  shopName,
+  updatedAt,
+}: {
+  shopName: string;
+  updatedAt: string | null;
+}) {
+  const dateLine = updatedAt
+    ? `Last updated ${new Date(updatedAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}`
+    : null;
+  const printedLine = `Printed ${new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })}`;
+  return (
+    <footer className="mt-6 pt-3 border-t border-[var(--border-medium)] flex flex-wrap justify-between gap-2 text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+      <span>{shopName}</span>
+      <span>{dateLine ?? printedLine}</span>
+    </footer>
+  );
+}
+
+// ── Doc-key → display label / tagline ────────────────────────────────────────
+
+function labelForDoc(key: PrintDocKey): string {
+  if ((SOP_CATEGORY_KEYS as readonly string[]).includes(key)) {
+    return SOP_CATEGORY_LABELS[key as SopCategoryKey];
+  }
+  if (key === "recipes") return RECIPES_SECTION_LABEL;
+  if (key === "roles") return PLANNING_SECTION_LABELS.roles;
+  if (key === "vendor_contacts") return PLANNING_SECTION_LABELS.vendor_contacts;
+  return PLANNING_SECTION_LABELS.training;
+}
+
+function taglineForDoc(key: PrintDocKey): string {
+  if ((SOP_CATEGORY_KEYS as readonly string[]).includes(key)) {
+    return SOP_CATEGORY_TAGLINES[key as SopCategoryKey];
+  }
+  if (key === "recipes") return RECIPES_SECTION_TAGLINE;
+  if (key === "roles") return PLANNING_SECTION_TAGLINES.roles;
+  if (key === "vendor_contacts") return PLANNING_SECTION_TAGLINES.vendor_contacts;
+  return PLANNING_SECTION_TAGLINES.training;
 }
 
 function CategoryItems({
@@ -178,20 +300,24 @@ function CategoryItems({
   }
 
   if (!groupByStation) {
+    // TIM-1501: opening/closing print as a real checkbox list so a staff
+    // member can tick rows on paper.
     return (
-      <ol className="space-y-1.5 pl-5 list-decimal text-sm">
+      <ul className="space-y-1.5 text-sm">
         {items.map((item) => (
-          <li key={item.id} className="leading-snug">
-            <span className="inline-block align-top w-3 h-3 border border-[var(--foreground)] rounded-sm mr-2 print:mr-2" />
-            {item.text}
-            {item.duration_min != null && (
-              <span className="text-xs text-[var(--muted-foreground)] ml-2">
-                ({item.duration_min} min)
-              </span>
-            )}
+          <li key={item.id} className="leading-snug flex items-start gap-2">
+            <span className="inline-block w-3.5 h-3.5 border border-[var(--foreground)] rounded-sm flex-shrink-0 mt-0.5" />
+            <span className="flex-1 min-w-0">
+              {item.text}
+              {item.duration_min != null && (
+                <span className="text-xs text-[var(--muted-foreground)] ml-2">
+                  ({item.duration_min} min)
+                </span>
+              )}
+            </span>
           </li>
         ))}
-      </ol>
+      </ul>
     );
   }
 

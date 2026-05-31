@@ -15,6 +15,7 @@ import {
   Sparkles,
   Check,
   ExternalLink,
+  Printer,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -185,11 +186,12 @@ export function OperationsPlaybookWorkspace({
             </div>
             <Link
               href="/workspace/operations-playbook/print"
-              className="hidden sm:inline-block text-xs font-medium text-[var(--teal)] hover:underline"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Print view
+              <Printer className="w-3.5 h-3.5" />
+              Print all
             </Link>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
@@ -434,6 +436,10 @@ function CategoryEditor({
     categoryKey === "opening" ||
     categoryKey === "closing" ||
     categoryKey === "cleaning";
+  // TIM-1501: Opening / Closing surfaces read as a real checklist — checkbox
+  // rows with hairline dividers. Cleaning keeps its station grouping; cash
+  // handling and food safety stay as longer-form prose rows.
+  const checklistStyle = categoryKey === "opening" || categoryKey === "closing";
 
   function patchItem(idx: number, patch: Partial<SopChecklistItem>) {
     updateDoc((d) => {
@@ -501,6 +507,7 @@ function CategoryEditor({
         canEdit={canEdit}
         generating={generating}
         onGenerate={onGenerate}
+        printDocKey={categoryKey}
       />
 
       <div className="mb-5">
@@ -560,6 +567,22 @@ function CategoryEditor({
             </div>
           ))}
         </div>
+      ) : checklistStyle ? (
+        <ol className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
+          {category.items.map((item, idx) => (
+            <ChecklistRow
+              key={item.id}
+              item={item}
+              idx={idx}
+              total={category.items.length}
+              canEdit={canEdit}
+              useDuration={useDuration}
+              onPatch={patchItem}
+              onMove={move}
+              onRemove={remove}
+            />
+          ))}
+        </ol>
       ) : (
         <ol className="space-y-2">
           {category.items.map((item, idx) => (
@@ -607,12 +630,14 @@ function SectionHeader({
   canEdit,
   generating,
   onGenerate,
+  printDocKey,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   generating: boolean;
   onGenerate: () => void;
+  printDocKey?: string;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 mb-4">
@@ -620,15 +645,29 @@ function SectionHeader({
         <h2 className={sectionLabelCls}>{label}</h2>
         <SectionHelp title={label}>{tagline}</SectionHelp>
       </div>
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={!canEdit || generating}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-      >
-        <Sparkles className="w-3.5 h-3.5" />
-        {generating ? "Improving…" : "Improve with AI"}
-      </button>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {printDocKey && (
+          <Link
+            href={`/workspace/operations-playbook/print?doc=${printDocKey}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+            aria-label={`Print ${label}`}
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Print
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!canEdit || generating}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          {generating ? "Improving…" : "Improve with AI"}
+        </button>
+      </div>
       <span className="sr-only" role="status">
         {generating ? `Improving the ${label} section with AI…` : ""}
       </span>
@@ -771,6 +810,109 @@ function ChecklistItemRow({
   );
 }
 
+// TIM-1501: Compact "feels like a checklist" row used by opening / closing.
+// Local checkbox state (planning surface — not a daily execution log; see
+// TIM-1413 charter). Single-line text input, hairline-divided rows, and
+// move/delete affordances revealed on row hover.
+interface ChecklistRowProps {
+  item: SopChecklistItem;
+  idx: number;
+  total: number;
+  canEdit: boolean;
+  useDuration: boolean;
+  onPatch: (idx: number, patch: Partial<SopChecklistItem>) => void;
+  onMove: (idx: number, delta: -1 | 1) => void;
+  onRemove: (idx: number) => void;
+}
+
+function ChecklistRow({
+  item,
+  idx,
+  total,
+  canEdit,
+  useDuration,
+  onPatch,
+  onMove,
+  onRemove,
+}: ChecklistRowProps) {
+  const [checked, setChecked] = useState(false);
+  const checkboxId = `chk_${item.id}`;
+  return (
+    <li className="group flex items-center gap-3 py-2">
+      <input
+        id={checkboxId}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => setChecked(e.target.checked)}
+        className="h-4 w-4 flex-shrink-0 rounded border-[var(--border-medium)] text-[var(--teal)] accent-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+        aria-label={`Mark step ${idx + 1} done`}
+      />
+      <label htmlFor={checkboxId} className="sr-only">
+        Mark step {idx + 1} done
+      </label>
+      <input
+        type="text"
+        className={`flex-1 min-w-0 text-sm bg-transparent border-0 px-0 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:ring-0 disabled:text-[var(--dark-grey)] ${checked ? "line-through text-[var(--muted-foreground)]" : ""}`}
+        value={item.text}
+        onChange={(e) => onPatch(idx, { text: e.target.value })}
+        disabled={!canEdit}
+        placeholder="What does your team do at this step?"
+        aria-label="Step description"
+      />
+      {useDuration && (
+        <div className="inline-flex items-center gap-1 text-[11px] text-[var(--muted-foreground)] flex-shrink-0">
+          <input
+            type="number"
+            min={0}
+            max={120}
+            className="w-12 border border-[var(--border-medium)] rounded-md px-1.5 py-0.5 text-[var(--foreground)] text-right focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+            value={item.duration_min ?? ""}
+            onChange={(e) =>
+              onPatch(idx, {
+                duration_min:
+                  e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+            disabled={!canEdit}
+            placeholder="—"
+            aria-label="Duration in minutes"
+          />
+          <span>min</span>
+        </div>
+      )}
+      <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <button
+          type="button"
+          onClick={() => onMove(idx, -1)}
+          disabled={!canEdit || idx === 0}
+          aria-label="Move step up"
+          className="p-1 text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ArrowUp className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onMove(idx, 1)}
+          disabled={!canEdit || idx === total - 1}
+          aria-label="Move step down"
+          className="p-1 text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ArrowDown className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(idx)}
+          disabled={!canEdit}
+          aria-label="Remove step"
+          className="p-1 text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </li>
+  );
+}
+
 // ── Recipes panel (read-only, Menu-sourced) ─────────────────────────────────
 
 function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
@@ -787,13 +929,25 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
             ingredients on each menu item. They print here for the bar.
           </SectionHelp>
         </div>
-        <Link
-          href="/workspace/menu-pricing"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          Open Menu workspace
-        </Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            href="/workspace/operations-playbook/print?doc=recipes"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+            aria-label="Print drink recipes"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Print
+          </Link>
+          <Link
+            href="/workspace/menu-pricing"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Open Menu workspace
+          </Link>
+        </div>
       </div>
 
       {cards.length === 0 ? (
@@ -949,6 +1103,7 @@ function RolesEditor({
         canEdit={canEdit}
         generating={generating}
         onGenerate={onGenerate}
+        printDocKey="roles"
       />
 
       <div className="mb-5">
@@ -1125,6 +1280,7 @@ function VendorContactsEditor({
         canEdit={canEdit}
         generating={generating}
         onGenerate={onGenerate}
+        printDocKey="vendor_contacts"
       />
 
       <div className="mb-5">
@@ -1338,6 +1494,7 @@ function TrainingEditor({
         canEdit={canEdit}
         generating={generating}
         onGenerate={onGenerate}
+        printDocKey="training"
       />
 
       <div className="mb-5">
