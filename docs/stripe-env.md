@@ -14,6 +14,7 @@ All Stripe configuration is stored in environment variables so price or key chan
 | `STRIPE_GROWTH_ANNUAL_PRICE_ID` | Growth plan, annual ($799/year) | `price_...` |
 | `STRIPE_PRO_MONTHLY_PRICE_ID` | Pro plan, monthly ($199/mo) | `price_...` |
 | `STRIPE_PRO_ANNUAL_PRICE_ID` | Pro plan, annual ($1,599/year) | `price_...` |
+| `STRIPE_PAUSE_MONTHLY_PRICE_ID` | Pause plan, monthly ($2.99/mo) | `price_...` |
 
 ## Creating Stripe products (first-time setup)
 
@@ -32,6 +33,9 @@ echo "sk_test_..." | npx vercel env add STRIPE_SECRET_KEY production preview
 echo "whsec_..."   | npx vercel env add STRIPE_WEBHOOK_SECRET production preview
 echo "price_..."   | npx vercel env add STRIPE_STARTER_MONTHLY_PRICE_ID production preview
 # ... repeat for each price ID
+
+# Pause plan (TIM-1542)
+echo "price_..."   | npx vercel env add STRIPE_PAUSE_MONTHLY_PRICE_ID production preview
 ```
 
 ## Revising a price (e.g. Pro rate change)
@@ -50,5 +54,8 @@ Existing subscribers on the old price continue at their original rate until they
 | Starter | $39 | $299 | ~$25 |
 | Growth | $99 | $799 | ~$67 |
 | Pro | $199 | $1,599 | ~$133 |
+| **Pause** | **$2.99** | — | — |
 
 Annual savings: Starter saves $169, Growth saves $389, Pro saves $789 (roughly 2 months free at each tier).
+
+The Pause plan is a reduced-access tier for subscribers who are not actively studying. It does not have an annual option.
