@@ -1,11 +1,17 @@
 "use client";
 
-// TIM-1449: Unified Opening Month Plan workspace. Founder reversed the
-// TIM-1411 split: one suite, two clearly-labeled sections — Milestones
-// (dated, gating; list/calendar/AI generate) and Playbook (tactical
-// week-by-week / first 30 days). A single primary "Generate Opening Month
-// Plan" action runs both flows so the founder isn't toggling between two
-// buttons.
+// TIM-1449: Unified Opening Month Plan workspace combined Milestones +
+// Playbook into one page with one Generate button.
+// TIM-1521: Re-split under the renamed "Launch Plan" umbrella. The component
+// stays a single source of truth, but now takes a `section` prop:
+//   - "milestones": render only the dated, AI-generated launch-milestones
+//     section with its own Generate CTA.
+//   - "playbook":   render only the seed-driven Opening-Month Playbook
+//     with its own Seed CTA.
+//   - "all":        render both sections with the legacy unified CTA
+//     (kept as a defensive fallback; no live page uses this today).
+// Each sub-page owns its own CTA so a failure on one doesn't block the
+// other.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -24,6 +30,8 @@ import {
 } from "@/lib/launch-plan";
 import type { LaunchItemStatus } from "@/types/supabase";
 
+export type WorkspaceSection = "milestones" | "playbook" | "all";
+
 interface Props {
   planId: string;
   initialMilestones: Milestone[];
@@ -31,6 +39,9 @@ interface Props {
   initialSourcesUpdatedAt: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  /** TIM-1521: which half of the suite to render. Defaults to "all" for
+   *  back-compat with the legacy unified page. */
+  section?: WorkspaceSection;
 }
 
 // ── Playbook types / buckets ────────────────────────────────────────────────
@@ -617,7 +628,11 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
 
 export function OpeningMonthPlanWorkspace({
   planId, initialMilestones, initialConfig, initialSourcesUpdatedAt, canEdit, initialTrialMessagesUsed,
+  section = "all",
 }: Props) {
+  const showMilestones = section === "milestones" || section === "all";
+  const showPlaybook = section === "playbook" || section === "all";
+
   // Milestones state
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
   const [config, setConfig] = useState<LaunchPlanConfig>(initialConfig);
@@ -629,9 +644,11 @@ export function OpeningMonthPlanWorkspace({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [stalesBannerDismissed, setStalesBannerDismissed] = useState(false);
 
-  // Playbook state
+  // Playbook state. `playbookLoading` starts false when the playbook section
+  // is hidden (TIM-1521 milestones sub-page), so the empty-state copy
+  // doesn't briefly flash a "Loading…" the user can never resolve.
   const [playbookItems, setPlaybookItems] = useState<PlaybookItem[]>([]);
-  const [playbookLoading, setPlaybookLoading] = useState(true);
+  const [playbookLoading, setPlaybookLoading] = useState(showPlaybook);
 
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -672,8 +689,9 @@ export function OpeningMonthPlanWorkspace({
   }, []);
 
   useEffect(() => {
+    if (!showPlaybook) return;
     reloadPlaybook();
-  }, [reloadPlaybook]);
+  }, [reloadPlaybook, showPlaybook]);
 
   // ── Save config ───────────────────────────────────────────────────────────────
   async function saveConfig(patch: Partial<LaunchPlanConfig>) {
@@ -697,11 +715,11 @@ export function OpeningMonthPlanWorkspace({
     await saveConfig({ viewPreference: v });
   }
 
-  // ── Unified Generate Opening Month Plan ────────────────────────────────────
-  // Runs the milestones SSE generator AND seeds the playbook (the seed
-  // endpoint short-circuits if rows already exist, so re-clicking won't
-  // duplicate playbook tasks).
-  async function handleGenerateAll() {
+  // ── Generate Launch Milestones (AI, SSE) ───────────────────────────────────
+  // TIM-1521: was bundled with the playbook seed in handleGenerateAll. Now its
+  // own CTA on the Launch Milestones sub-page so an AI failure can't take the
+  // playbook with it.
+  async function handleGenerateMilestones() {
     if (!canEdit) { setPaywallOpen(true); return; }
     if (!launchDateInput) return;
     setGenerating(true);
@@ -712,23 +730,8 @@ export function OpeningMonthPlanWorkspace({
 
     let milestonesUpdated = 0;
     let paywallHit = false;
-    let seedFailed = false;
 
     try {
-      // Kick off playbook seed in parallel.
-      const seedPromise = fetch("/api/opening-month-plan/seed", { method: "POST" })
-        .then(async (res) => {
-          if (res.status === 402) { paywallHit = true; return; }
-          if (!res.ok) {
-            seedFailed = true;
-            return;
-          }
-          await reloadPlaybook();
-        })
-        .catch(() => {
-          seedFailed = true;
-        });
-
       const res = await fetch("/api/opening-month-plan/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -766,7 +769,7 @@ export function OpeningMonthPlanWorkspace({
               payload.code === "timeout" ||
               payload.code === "upstream_error"
             ) {
-              showToast("error", payload.message ?? "Couldn't generate plan — try again or contact support.");
+              showToast("error", payload.message ?? "Couldn't generate milestones. Try again or contact support.");
             }
             if (payload.milestones) {
               setMilestones(payload.milestones as Milestone[]);
@@ -778,20 +781,10 @@ export function OpeningMonthPlanWorkspace({
         }
       }
 
-      await seedPromise;
-
       if (paywallHit) {
         setPaywallOpen(true);
-      } else if (seedFailed) {
-        // Deterministic: the playbook seed errored. Don't claim partial
-        // success — the founder needs to know to retry, not guess what
-        // landed (TIM-1518).
-        showToast(
-          "error",
-          "Couldn't generate the Opening Month Plan. Try again or contact support.",
-        );
       } else if (milestonesUpdated > 0) {
-        showToast("success", "Opening Month Plan generated. Edit anything that doesn't fit your shop.");
+        showToast("success", "Launch Milestones generated. Edit anything that doesn't fit your shop.");
       }
     } catch (err) {
       const isAbort = err instanceof Error && err.name === "AbortError";
@@ -799,12 +792,45 @@ export function OpeningMonthPlanWorkspace({
         "error",
         isAbort
           ? "Generation timed out. Try again or contact support."
-          : "Couldn't generate plan. Try again or contact support.",
+          : "Couldn't generate milestones. Try again or contact support.",
       );
     } finally {
       clearTimeout(timeoutId);
       setGenerating(false);
     }
+  }
+
+  // ── Seed Opening Month Playbook (template, no AI) ──────────────────────────
+  // TIM-1521: split out of the unified Generate. Idempotent on the server;
+  // re-clicking won't duplicate rows.
+  async function handleSeedPlaybook() {
+    if (!canEdit) { setPaywallOpen(true); return; }
+    setGenerating(true);
+    setToast(null);
+    try {
+      const res = await fetch("/api/opening-month-plan/seed", { method: "POST" });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        showToast("error", "Couldn't seed the playbook. Try again or contact support.");
+        return;
+      }
+      await reloadPlaybook();
+      showToast("success", "Opening Month Plan seeded. Edit anything that doesn't fit your shop.");
+    } catch {
+      showToast("error", "Couldn't seed the playbook. Try again or contact support.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  // ── Legacy unified handler (defensive fallback for section="all") ──────────
+  async function handleGenerateAll() {
+    if (!canEdit) { setPaywallOpen(true); return; }
+    if (!launchDateInput) return;
+    await Promise.all([handleGenerateMilestones(), handleSeedPlaybook()]);
   }
 
   // ── Milestone CRUD ──────────────────────────────────────────────────────────
@@ -963,7 +989,40 @@ export function OpeningMonthPlanWorkspace({
       .sort((a, b) => a.day_offset - b.day_offset || a.created_at.localeCompare(b.created_at)),
   }));
 
-  const hasContent = milestones.length > 0 || playbookItems.length > 0;
+  const hasContent =
+    (showMilestones && milestones.length > 0) ||
+    (showPlaybook && playbookItems.length > 0);
+
+  // TIM-1521: section-specific header copy + CTAs.
+  const headerTitle =
+    section === "milestones" ? "Launch Milestones"
+      : section === "playbook" ? "Opening Month Plan"
+      : "Opening Month Plan";
+  const headerIcon = section === "playbook" ? ClipboardList : Rocket;
+  const headerSubtitle =
+    section === "milestones"
+      ? "The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates. Can be a year or more out."
+      : section === "playbook"
+      ? "The tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop."
+      : "The dated milestones that gate opening day, plus the tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop.";
+  const ctaLabel =
+    section === "milestones"
+      ? (hasContent ? "Regenerate Launch Milestones" : "Generate Launch Milestones")
+      : section === "playbook"
+      ? (playbookItems.length > 0 ? "Reseed Opening Month Plan" : "Seed Opening Month Plan")
+      : (hasContent ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan");
+  const onCtaClick =
+    section === "milestones" ? handleGenerateMilestones
+      : section === "playbook" ? handleSeedPlaybook
+      : handleGenerateAll;
+  const ctaDisabled =
+    generating ||
+    !canEdit ||
+    (section !== "playbook" && !launchDateInput);
+  const coPilotFocusLabel =
+    section === "milestones" ? "Launch Milestones"
+      : section === "playbook" ? "Opening Month Plan"
+      : "Opening Month Plan";
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
@@ -972,24 +1031,28 @@ export function OpeningMonthPlanWorkspace({
         {/* Header */}
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Rocket className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">Opening Month Plan</h1>
+            {(() => {
+              const HeaderIcon = headerIcon;
+              return <HeaderIcon className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />;
+            })()}
+            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">{headerTitle}</h1>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            The dated milestones that gate opening day, plus the tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop.
+            {headerSubtitle}
           </p>
         </header>
 
         <div className="space-y-4">
-          {/* First-visit copy */}
-          {!hasContent && !config.lastGeneratedAt && !playbookLoading && (
+          {/* First-visit copy — milestones-only (the playbook seed doesn't
+              depend on upstream workspace context). */}
+          {showMilestones && !hasContent && !config.lastGeneratedAt && !playbookLoading && (
             <div className="rounded-xl bg-white border border-[var(--border)] px-5 py-4 text-sm text-[var(--muted-foreground)]">
-              Complete your Concept, Location, and Equipment sections first. Your opening plan will be much more accurate.
+              Complete your Concept, Location, and Equipment sections first. Your launch milestones will be much more accurate.
             </div>
           )}
 
-          {/* Stale banner */}
-          {showStaleBanner && (
+          {/* Stale banner — milestones-only */}
+          {showMilestones && showStaleBanner && (
             <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
               <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -999,8 +1062,8 @@ export function OpeningMonthPlanWorkspace({
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={handleGenerateAll}
-                  disabled={generating || !launchDateInput}
+                  onClick={onCtaClick}
+                  disabled={ctaDisabled}
                   className="text-xs font-medium text-amber-700 hover:text-amber-900 underline disabled:opacity-50"
                 >
                   Regenerate
@@ -1012,8 +1075,8 @@ export function OpeningMonthPlanWorkspace({
             </div>
           )}
 
-          {/* Lead-time conflict warnings */}
-          {conflicts.length > 0 && (
+          {/* Lead-time conflict warnings — milestones-only */}
+          {showMilestones && conflicts.length > 0 && (
             <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 space-y-1">
               <p className="text-sm font-semibold text-red-700">Lead-time conflicts detected:</p>
               {conflicts.map((c) => (
@@ -1024,61 +1087,81 @@ export function OpeningMonthPlanWorkspace({
             </div>
           )}
 
-          {/* Target date + unified generate */}
-          <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">
-                  Target Opening Date
-                </label>
-                <input
-                  type="date"
-                  value={launchDateInput}
-                  onChange={(e) => handleLaunchDateChange(e.target.value)}
-                  disabled={!canEdit}
-                  className="rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:opacity-50 transition-colors"
-                />
-                {launchDateInput && (
-                  <p className="mt-1 text-xs text-[var(--dark-grey)]">
-                    {daysToGo(launchDateInput) > 0
-                      ? `${daysToGo(launchDateInput)} days until opening`
-                      : daysToGo(launchDateInput) === 0
-                      ? "Today is opening day"
-                      : `${Math.abs(daysToGo(launchDateInput))} days past opening`}
-                  </p>
-                )}
+          {/* TIM-1521: section-specific CTA block. */}
+          {section === "playbook" ? (
+            /* Playbook: simple Seed CTA, no date input. */
+            <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+                Seed a starter playbook of pre-open, opening-week, and first-30-day tasks. Edit anything that doesn&apos;t fit your shop.
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 sm:items-end">
                 <button
-                  onClick={handleGenerateAll}
-                  disabled={generating || !launchDateInput || !canEdit}
+                  onClick={onCtaClick}
+                  disabled={ctaDisabled}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-dark)] disabled:opacity-50 transition-colors"
                 >
                   <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-                  {generating
-                    ? "Generating..."
-                    : hasContent
-                    ? "Regenerate Opening Month Plan"
-                    : "Generate Opening Month Plan"}
+                  {generating ? "Seeding..." : ctaLabel}
                 </button>
                 {!canEdit && (
-                  <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to generate</p>
-                )}
-                {milestones.length > 0 && config.lastGeneratedAt && (
-                  <p className="text-xs text-[var(--dark-grey)] text-center">
-                    Generated {formatDate(config.lastGeneratedAt)}
-                  </p>
+                  <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to seed</p>
                 )}
               </div>
             </div>
-            {hasContent && !generating && config.lastGeneratedAt && (
-              <p className="mt-2 text-xs text-[var(--dark-grey)]">
-                Regenerating refreshes milestones and tops up the playbook if it&apos;s empty. Your edits are preserved.
-              </p>
-            )}
-          </div>
+          ) : (
+            /* Milestones / unified: target date + generate. */
+            <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">
+                    Target Opening Date
+                  </label>
+                  <input
+                    type="date"
+                    value={launchDateInput}
+                    onChange={(e) => handleLaunchDateChange(e.target.value)}
+                    disabled={!canEdit}
+                    className="rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:opacity-50 transition-colors"
+                  />
+                  {launchDateInput && (
+                    <p className="mt-1 text-xs text-[var(--dark-grey)]">
+                      {daysToGo(launchDateInput) > 0
+                        ? `${daysToGo(launchDateInput)} days until opening`
+                        : daysToGo(launchDateInput) === 0
+                        ? "Today is opening day"
+                        : `${Math.abs(daysToGo(launchDateInput))} days past opening`}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={onCtaClick}
+                    disabled={ctaDisabled}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-dark)] disabled:opacity-50 transition-colors"
+                  >
+                    <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
+                    {generating ? "Generating..." : ctaLabel}
+                  </button>
+                  {!canEdit && (
+                    <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to generate</p>
+                  )}
+                  {milestones.length > 0 && config.lastGeneratedAt && (
+                    <p className="text-xs text-[var(--dark-grey)] text-center">
+                      Generated {formatDate(config.lastGeneratedAt)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {hasContent && !generating && config.lastGeneratedAt && section === "all" && (
+                <p className="mt-2 text-xs text-[var(--dark-grey)]">
+                  Regenerating refreshes milestones and tops up the playbook if it&apos;s empty. Your edits are preserved.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ── Section 1: Milestones ─────────────────────────────────────── */}
+          {showMilestones && (
           <section aria-labelledby="milestones-heading" className="pt-4">
             <div className="flex items-center gap-2 mb-3">
               <Rocket className="w-4 h-4 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
@@ -1134,9 +1217,11 @@ export function OpeningMonthPlanWorkspace({
               />
             )}
           </section>
+          )}
 
           {/* ── Section 2: Playbook ──────────────────────────────────────── */}
-          <section aria-labelledby="playbook-heading" className="pt-8">
+          {showPlaybook && (
+          <section aria-labelledby="playbook-heading" className={section === "playbook" ? "pt-4" : "pt-8"}>
             <div className="flex items-center gap-2 mb-3">
               <ClipboardList className="w-4 h-4 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
               <h2 id="playbook-heading" className="text-xl font-bold text-[var(--foreground)] leading-tight">
@@ -1153,7 +1238,9 @@ export function OpeningMonthPlanWorkspace({
                   <div>
                     <p className="text-sm text-[var(--foreground)] font-semibold">Start with a tactical playbook</p>
                     <p className="text-sm text-[var(--muted-foreground)]">
-                      Use Generate Opening Month Plan above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn&apos;t fit your shop.
+                      {section === "playbook"
+                        ? "Use the Seed Opening Month Plan button above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."
+                        : "Use Generate Opening Month Plan above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."}
                     </p>
                   </div>
                 </div>
@@ -1268,6 +1355,7 @@ export function OpeningMonthPlanWorkspace({
               {playbookLoading && <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>}
             </div>
           </section>
+          )}
         </div>
       </div>
 
@@ -1275,7 +1363,7 @@ export function OpeningMonthPlanWorkspace({
       <CoPilotDrawer
         workspaceKey="opening_month_plan"
         planId={planId}
-        currentFocus={{ anchor: "opening_month_plan", label: "Opening Month Plan" }}
+        currentFocus={{ anchor: "opening_month_plan", label: coPilotFocusLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
 

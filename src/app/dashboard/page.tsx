@@ -126,7 +126,7 @@ export default async function DashboardPage() {
               )}
             </p>
             <Link
-              href="/workspace/opening-month-plan"
+              href="/workspace/launch-plan"
               className={`text-xs font-semibold flex-shrink-0 hover:underline ${READINESS_COLORS[readinessOverall].text}`}
             >
               View results →
