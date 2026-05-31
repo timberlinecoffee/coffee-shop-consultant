@@ -195,8 +195,8 @@ export function OperationsPlaybookWorkspace({
             </Link>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Your planning binder — the policies, schedules, and templates your
-            team needs before opening day. Edit anything.
+            Your planning binder: policies, schedules, and templates your team
+            needs before opening day. Edit anything.
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
             <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
