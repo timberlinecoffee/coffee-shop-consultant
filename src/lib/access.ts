@@ -4,11 +4,26 @@
 // in `users.subscription_tier`: 'free' | 'starter' | 'growth' | 'pro'.
 //
 // Write-gate rule (TIM-643): workspace mutations require subscription_status === 'active'.
-// free_trial, cancelled, and expired are all read-only.
-export type SubscriptionStatus = 'free_trial' | 'active' | 'cancelled' | 'expired';
+// free_trial, cancelled, expired, and paused are all read-only.
+// TIM-1541: 'paused' added — user keeps tier access for reads but cannot mutate.
+export type SubscriptionStatus = 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused';
 
 export function isSubscriptionActive(status: string | null | undefined): boolean {
   return status === 'active';
+}
+
+// TIM-1541: When a subscription is paused the user retains read access at
+// the tier they were on before pausing.  For all other statuses, the tier
+// stored on the user record is authoritative.
+export function effectiveTierForRead(user: {
+  subscription_status: string | null | undefined;
+  subscription_tier: string | null | undefined;
+  paused_from_tier?: string | null;
+}): string {
+  if (user.subscription_status === 'paused' && user.paused_from_tier) {
+    return user.paused_from_tier;
+  }
+  return normalizeTier(user.subscription_tier);
 }
 
 // TIM-925: Beta waiver bypass — true when betaWaiverUntil is a future timestamp.

@@ -33,7 +33,7 @@ export interface Database {
           full_name: string | null
           avatar_url: string | null
           signup_source: string | null
-          subscription_status: 'free_trial' | 'active' | 'cancelled' | 'expired'
+          subscription_status: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused'
           subscription_tier: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining: number
           copilot_trial_messages_used: number
@@ -51,7 +51,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           signup_source?: string | null
-          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired'
+          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused'
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
@@ -69,7 +69,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           signup_source?: string | null
-          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired'
+          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused'
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
@@ -582,9 +582,11 @@ export interface Database {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           tier: 'starter' | 'growth' | 'pro'
-          status: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          status: 'active' | 'cancelled' | 'past_due' | 'trialing' | 'paused'
           current_period_start: string | null
           current_period_end: string | null
+          paused_from_tier: string | null
+          paused_at: string | null
           created_at: string
           updated_at: string
         }
@@ -594,9 +596,11 @@ export interface Database {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tier: 'starter' | 'growth' | 'pro'
-          status: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          status: 'active' | 'cancelled' | 'past_due' | 'trialing' | 'paused'
           current_period_start?: string | null
           current_period_end?: string | null
+          paused_from_tier?: string | null
+          paused_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -606,9 +610,11 @@ export interface Database {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tier?: 'starter' | 'growth' | 'pro'
-          status?: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          status?: 'active' | 'cancelled' | 'past_due' | 'trialing' | 'paused'
           current_period_start?: string | null
           current_period_end?: string | null
+          paused_from_tier?: string | null
+          paused_at?: string | null
           created_at?: string
           updated_at?: string
         }

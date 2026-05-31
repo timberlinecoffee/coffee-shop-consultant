@@ -8,7 +8,9 @@ import {
   canAccessModule,
   canAccessSection,
   isPaidTier,
+  isSubscriptionActive,
   normalizeTier,
+  effectiveTierForRead,
   FREE_PREVIEW_MODULE,
   FREE_PREVIEW_SECTION_KEYS,
 } from "./access.ts";
@@ -80,6 +82,44 @@ test("free users only see the preview section inside the preview module", () => 
   for (const key of ["startup_costs", "revenue_projections"]) {
     assert.equal(canAccessSection("free", 2, key), false);
   }
+});
+
+// TIM-1541: paused status is read-only (not active).
+test("paused status is not active", () => {
+  assert.equal(isSubscriptionActive("paused"), false);
+  assert.equal(isSubscriptionActive("active"), true);
+  assert.equal(isSubscriptionActive("free_trial"), false);
+  assert.equal(isSubscriptionActive("cancelled"), false);
+  assert.equal(isSubscriptionActive("expired"), false);
+});
+
+// TIM-1541: effectiveTierForRead — paused users use paused_from_tier.
+test("effectiveTierForRead returns paused_from_tier when paused", () => {
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "paused", subscription_tier: "free", paused_from_tier: "growth" }),
+    "growth"
+  );
+});
+
+test("effectiveTierForRead falls back to subscription_tier when paused_from_tier is null", () => {
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "paused", subscription_tier: "pro", paused_from_tier: null }),
+    "pro"
+  );
+});
+
+test("effectiveTierForRead returns subscription_tier for active status", () => {
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "active", subscription_tier: "starter", paused_from_tier: "growth" }),
+    "starter"
+  );
+});
+
+test("effectiveTierForRead normalizes unknown tiers to free", () => {
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "active", subscription_tier: null }),
+    "free"
+  );
 });
 
 test("paid users see every section", () => {
