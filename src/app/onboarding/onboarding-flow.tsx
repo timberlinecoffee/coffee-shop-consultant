@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EMPTY_CONCEPT, type ConceptDocument } from "@/lib/concept";
+import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
   ShopVisionScreen,
   TargetCustomerScreen,
@@ -81,7 +82,7 @@ const STEPS: Step[] = [
     id: "motivation",
     type: "cards",
     question: "What's pulling you toward opening a coffee shop?",
-    hint: "There's no wrong answer here. This shapes how the co-pilot talks to you.",
+    hint: `There's no wrong answer here. This shapes how ${COPILOT_NAME} talks to you.`,
     options: [
       "I love coffee and want to share it",
       "I want to build something of my own",
@@ -117,7 +118,7 @@ const STEPS: Step[] = [
     id: "stage",
     type: "radio",
     question: "Where are you in the process?",
-    hint: "This tells the co-pilot how much scaffolding vs. acceleration to give you.",
+    hint: `This tells ${COPILOT_NAME} how much scaffolding vs. acceleration to give you.`,
     options: ["Just an idea", "Researching", "Actively planning", "Ready to move"],
   },
   {
@@ -475,7 +476,7 @@ export function OnboardingFlow({
         {
           plan_id: planId,
           title: "Complete onboarding",
-          description: "Tell your co-pilot about your vision",
+          description: `Tell ${COPILOT_NAME} about your vision`,
           target_date: new Date().toISOString().split("T")[0],
           completed_at: new Date().toISOString(),
           is_auto_generated: true,
@@ -484,7 +485,7 @@ export function OnboardingFlow({
           plan_id: planId,
           title: "Polish your Concept workspace",
           description:
-            "Refine mission, target customer, differentiation, and brand voice with the co-pilot.",
+            `Refine mission, target customer, differentiation, and brand voice with ${COPILOT_NAME}.`,
           target_date: new Date(
             Date.now() + 7 * 24 * 60 * 60 * 1000,
           )
@@ -591,7 +592,7 @@ export function OnboardingFlow({
             <p className="text-[var(--muted-foreground)] text-base leading-relaxed">
               A few questions and we&apos;ll seed your Concept workspace, the
               home of your mission, your target customer, and your brand voice.
-              The co-pilot reads it across every workspace from this point on.
+              {COPILOT_NAME} reads it across every workspace from this point on.
             </p>
           </div>
         )}

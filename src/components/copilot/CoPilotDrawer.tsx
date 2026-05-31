@@ -12,6 +12,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { Maximize2, Minimize2, Sparkles, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
 import type { WorkspaceKey } from "@/types/supabase";
@@ -597,7 +598,7 @@ export function CoPilotDrawer({
           type="button"
           aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           onClick={openDrawer}
-          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/30 flex items-center gap-2 active:scale-95 transition-transform"
+          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full ai-gradient-bg text-white shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
         >
           <Sparkles aria-hidden className="w-4 h-4" />
           <span className="text-sm font-semibold">{COPILOT_NAME}</span>
@@ -656,7 +657,7 @@ export function CoPilotDrawer({
             )}
 
             <header className="px-4 pt-4 pb-3 border-b border-[var(--border)] flex items-start gap-2">
-              <div className="shrink-0 w-9 h-9 rounded-full bg-[var(--teal)]/10 text-[var(--teal)] flex items-center justify-center mt-0.5">
+              <div className={cn("shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5", isStreaming ? "ai-streaming-avatar" : "bg-[var(--teal)]/10 text-[var(--teal)]")}>
                 <Sparkles aria-hidden className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">

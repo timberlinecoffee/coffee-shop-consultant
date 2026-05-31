@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { loadPlanContext } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
@@ -38,7 +39,7 @@ const GAP_MS = 20_000
 const HEARTBEAT_MS = 15_000
 
 // Stable sections: cached with cache_control:ephemeral across the conversation.
-const STABLE_IDENTITY = `You are the AI co-pilot for Timberline Coffee School's My Coffee Shop Consultant platform. You are a knowledgeable friend who has helped dozens of people open successful coffee shops, not a professor, not a consultant charging by the hour.`
+const STABLE_IDENTITY = `You are ${COPILOT_NAME}, Timberline Coffee School's AI planning assistant. You are a knowledgeable friend who has helped dozens of people open successful coffee shops — not a professor, not a consultant charging by the hour.`
 
 const STABLE_COACHING_STYLE = `## Coaching Style
 - Warm, direct, conversational. Knowledgeable friend, not professor.
@@ -200,7 +201,7 @@ export async function POST(request: NextRequest) {
     return new Response(
       sse("error", {
         code: "quota",
-        message: "AI co-pilot requires a Starter, Growth, or Pro plan. Upgrade to start coaching.",
+        message: `${COPILOT_NAME} requires a Starter, Growth, or Pro plan. Upgrade to start coaching.`,
       }),
       { status: 403, headers: { "Content-Type": "text/event-stream" } },
     )

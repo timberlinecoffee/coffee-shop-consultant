@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { COPILOT_NAME } from "@/lib/copilot/branding";
 
 type SyncState =
   | { phase: "idle" }
@@ -84,7 +85,7 @@ export default function BillingPage() {
               <p className="text-xs text-[var(--dark-grey)]">
                 Plan: <span className="font-medium capitalize">{sync.tier}</span> ·{" "}
                 <span className="capitalize">{sync.status}</span>
-                {sync.creditsAllocated && " · Co-Pilot credits refreshed."}
+                {sync.creditsAllocated && ` · ${COPILOT_NAME} credits refreshed.`}
               </p>
             )}
             {sync.phase === "no_match" && (

@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 :root {
+  /* AI surface gradient tokens (TIM-1563 / TIM-1557 brand spec §3) */
+  --ai-grad-from:     #155e63;
+  --ai-grad-mid:      #3a8a8f;
+  --ai-grad-to:       #76b39d;
+  --ai-grad-duration: 4s;
+  --ai-grad-easing:   ease-in-out;
+
   --teal: #155e63;
   --sage: #76b39d;
   --off-white: #faf9f7;
@@ -400,4 +407,37 @@ body {
     margin-top: 0.5rem;
     border-top: 1px solid var(--border);
   }
+}
+
+/* AI gradient animation (TIM-1563 / TIM-1557 brand spec §3) */
+@keyframes ai-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Invocation button — always-on gradient */
+.ai-gradient-bg {
+  background: linear-gradient(
+    135deg,
+    var(--ai-grad-from),
+    var(--ai-grad-mid),
+    var(--ai-grad-to),
+    var(--ai-grad-from)
+  );
+  background-size: 300% 300%;
+  animation: ai-gradient-shift var(--ai-grad-duration) var(--ai-grad-easing) infinite;
+}
+
+/* Avatar shimmer — active while streaming */
+.ai-streaming-avatar {
+  background: linear-gradient(
+    135deg,
+    var(--ai-grad-from),
+    var(--ai-grad-mid),
+    var(--ai-grad-to)
+  );
+  background-size: 200% 200%;
+  animation: ai-gradient-shift 2s ease-in-out infinite;
+  color: #ffffff;
 }
