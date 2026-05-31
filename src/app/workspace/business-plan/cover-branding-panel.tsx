@@ -110,12 +110,12 @@ function useDebounce<T>(value: T, delay: number): T {
 export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [template, setTemplate] = useState<CoverTemplateId>(initialSettings.template_id);
-  const initialHex = initialSettings.accent_color ?? "#1F7A80";
+  const initialHex = initialSettings.accent_color ?? "#155E63";
   const [accentColor, setAccentColor] = useState(initialHex);
   const [hexInput, setHexInput] = useState(initialHex);
   const [hexError, setHexError] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>("hex");
-  const _initRgb = hexToRgb(initialHex) ?? { r: 31, g: 122, b: 128 };
+  const _initRgb = hexToRgb(initialHex) ?? { r: 21, g: 94, b: 99 };
   const [rgbInputs, setRgbInputs] = useState(_initRgb);
   const [cmykInputs, setCmykInputs] = useState(rgbToCmyk(_initRgb.r, _initRgb.g, _initRgb.b));
 
@@ -523,7 +523,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                 className={`w-24 h-8 rounded-md border text-[12px] px-2 font-mono ${
                   hexError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-[var(--success)]"
                 } focus-visible:outline-none focus:border-2`}
-                placeholder="#1F7A80"
+                placeholder="#155E63"
               />
             )}
 

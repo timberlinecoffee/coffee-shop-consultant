@@ -1,5 +1,5 @@
 // TIM-1225: Business Plan cover-template registry + renderCover().
-// Three templates: Classic (centered serif), Modern (left-band), Editorial (full-bleed green header).
+// Three templates: Classic (centered serif), Modern (left-band), Editorial (full-bleed teal header).
 // Design spec: TIM-1224 spec document.
 
 import React from "react";
@@ -39,7 +39,7 @@ export const COVER_TEMPLATES: CoverTemplate[] = [
   {
     id: "editorial",
     label: "Editorial",
-    description: "Bold full-bleed green header — confident, modern, presentation-ready.",
+    description: "Bold full-bleed header block — confident, modern, presentation-ready.",
   },
 ];
 
@@ -83,7 +83,7 @@ const classicS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 36,
     fontWeight: "bold",
-    color: "var(--success)",
+    color: "#155E63",
     textAlign: "center",
   },
   subtitle: {
@@ -150,7 +150,7 @@ function ClassicCover(props: CoverProps) {
       </View>
 
       {/* Title band */}
-      <Text style={classicS.shopName}>{shopName}</Text>
+      <Text style={[classicS.shopName, { color: ac }]}>{shopName}</Text>
       <View style={classicS.nameGap} />
       <Text style={classicS.subtitle}>Business Plan</Text>
 
@@ -196,7 +196,7 @@ const modernS = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: 6,
-    backgroundColor: "var(--success)",
+    backgroundColor: "#155E63",
   },
   content: {
     flex: 1,
@@ -210,7 +210,7 @@ const modernS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 44,
     fontWeight: "bold",
-    color: "var(--success)",
+    color: "#155E63",
     lineHeight: 1.1,
     marginBottom: 14,
   },
@@ -274,11 +274,11 @@ function ModernCover(props: CoverProps) {
   return (
     <Page size="LETTER" style={modernS.page}>
       {/* Left vertical stripe */}
-      <View style={modernS.stripe} />
+      <View style={[modernS.stripe, { backgroundColor: ac }]} />
 
       {/* Main content area */}
       <View style={modernS.content}>
-        <Text style={modernS.shopName}>{shopName}</Text>
+        <Text style={[modernS.shopName, { color: ac }]}>{shopName}</Text>
         <Text style={modernS.subtitle}>Business Plan</Text>
         {tagline ? <Text style={modernS.tagline}>{tagline}</Text> : null}
 
@@ -328,7 +328,7 @@ const editS = StyleSheet.create({
   greenBlock: {
     width: "100%",
     height: 356,
-    backgroundColor: "var(--success)",
+    backgroundColor: "#155E63",
     padding: 40,
     flexDirection: "column",
     justifyContent: "center",
@@ -401,8 +401,8 @@ function EditorialCover(props: CoverProps) {
 
   return (
     <Page size="LETTER" style={editS.page}>
-      {/* Full-bleed green header */}
-      <View style={editS.greenBlock}>
+      {/* Full-bleed header block */}
+      <View style={[editS.greenBlock, { backgroundColor: ac }]}>
         {logo ? (
           <Image
             src={{ data: logo.data, format: logo.format }}
