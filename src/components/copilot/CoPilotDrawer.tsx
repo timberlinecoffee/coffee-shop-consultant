@@ -176,7 +176,6 @@ export function CoPilotDrawer({
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
-  const creditsLoadedRef = useRef(false);
 
   const {
     isStreaming,
@@ -202,16 +201,15 @@ export function CoPilotDrawer({
   const openDrawer = useCallback(() => {
     setOpen(true);
     setBrowserRefreshKey((n) => n + 1);
-    if (!creditsLoadedRef.current) {
-      creditsLoadedRef.current = true;
-      void fetch("/api/credits", { credentials: "same-origin" })
-        .then(async (res) => {
-          if (!res.ok) return;
-          const data = (await res.json()) as CreditsState & Record<string, unknown>;
-          setCredits(data as CreditsState);
-        })
-        .catch(() => {});
-    }
+    // TIM-1500: always refetch on open so plan upgrades reflect immediately
+    // without a full page reload. Cheap call, no rate concern.
+    void fetch("/api/credits", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as CreditsState & Record<string, unknown>;
+        setCredits(data as CreditsState);
+      })
+      .catch(() => {});
   }, []);
 
   const closeDrawer = useCallback(() => {
