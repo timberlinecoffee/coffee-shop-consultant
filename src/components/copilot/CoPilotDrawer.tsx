@@ -738,7 +738,7 @@ export function CoPilotDrawer({
                   {` · ${activeThreadLabel}`}
                 </p>
               </div>
-              {trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
+              {credits?.mode === "trial" && trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
                 <span
                   className={`text-[11px] font-medium whitespace-nowrap mt-1 ${
                     COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed <= 2
