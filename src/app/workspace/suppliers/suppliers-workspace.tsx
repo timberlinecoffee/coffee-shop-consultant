@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Poi
 import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -152,6 +153,7 @@ export function SuppliersWorkspace({
 }: Props) {
   const [candidates, setCandidates] = useState<VendorCandidate[]>(initialCandidates);
   const [decisions, setDecisions] = useState<VendorDecision[]>(initialDecisions);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [customCategories, setCustomCategories] = useState<VendorCustomCategory[]>(initialCustomCategories);
   const [activeCategory, setActiveCategory] = useState<VendorCategoryId>("coffee_roaster");
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -355,6 +357,8 @@ export function SuppliersWorkspace({
   );
 
   const handleSeed = useCallback(
+    // TIM-1561: captures existing candidates snapshot, seeds new vendors, then
+    // shows only the newly added vendors in the review modal before applying to state.
     async (category: VendorCategoryId, mode: "replace" | "append" = "replace") => {
       if (!canEdit) {
         setPaywallOpen(true);
@@ -362,6 +366,7 @@ export function SuppliersWorkspace({
       }
       setSeedingCategory(category);
       setSeedError(null);
+      const preExistingIds = new Set(candidates.map((c) => c.id));
       try {
         const res = await fetch("/api/workspaces/suppliers/seed", {
           method: "POST",
@@ -374,9 +379,32 @@ export function SuppliersWorkspace({
         }
         if (!res.ok) throw new Error(`seed failed (${res.status})`);
         const reload = await fetch("/api/workspaces/suppliers/candidates");
-        if (reload.ok) {
-          setCandidates((await reload.json()) as VendorCandidate[]);
+        if (!reload.ok) return;
+        const allCandidates = (await reload.json()) as VendorCandidate[];
+        const newCandidates = allCandidates.filter((c) => !preExistingIds.has(c.id) && c.category === category);
+        const existingForCategory = candidates.filter((c) => c.category === category);
+        if (newCandidates.length === 0) {
+          setCandidates(allCandidates);
+          return;
         }
+        openAIReviewModal({
+          suggestions: [
+            {
+              id: `vendors-${category}`,
+              fieldId: category,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              fieldLabel: `${(VENDOR_CATEGORY_LABELS as any)[category] ?? category} Vendors`,
+              originalValue: JSON.stringify(existingForCategory.map((c) => ({ name: c.name, notes: c.notes }))),
+              proposedValue: JSON.stringify(newCandidates.map((c) => ({ name: c.name, notes: c.notes }))),
+              isStructured: true,
+            },
+          ],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          context: { workspace: "Suppliers & Vendors", section: (VENDOR_CATEGORY_LABELS as any)[category] ?? category },
+          onApply: async () => {
+            setCandidates(allCandidates);
+          },
+        });
       } catch {
         setSeedError("Could not generate suggestions. Try again.");
       } finally {
@@ -537,6 +565,8 @@ export function SuppliersWorkspace({
   const activeDecision = decisionsByCategory.get(activeCategory) ?? null;
 
   return (
+    <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
         <header className="mb-6">
@@ -857,6 +887,7 @@ export function SuppliersWorkspace({
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
+    </>
   );
 }
 

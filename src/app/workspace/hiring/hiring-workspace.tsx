@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
@@ -616,6 +617,7 @@ function RoleRow({
   const [jdLoaded, setJdLoaded] = useState(false);
   const [jdDirty, setJdDirty] = useState(false);
   const [improvingField, setImprovingField] = useState<keyof JdFields | null>(null);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   // Scorecard + competency form data (formerly RoleHubPanel)
   const [hubScorecards, setHubScorecards] = useState<InterviewScorecard[]>([]);
@@ -768,6 +770,7 @@ function RoleRow({
     }
   }
 
+  // TIM-1561: routes AI result through unified review modal before applying.
   async function improveJdField(field: keyof JdFields) {
     if (!jdFields) return;
     setImprovingField(field);
@@ -783,8 +786,24 @@ function RoleRow({
       });
       if (res.ok) {
         const data = (await res.json()) as { rewrite: string };
-        setJdFields((prev) => prev ? { ...prev, [field]: data.rewrite } : prev);
-        setJdDirty(true);
+        const fieldLabel = field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        openAIReviewModal({
+          suggestions: [
+            {
+              id: `jd-${role.id}-${field}`,
+              fieldId: field,
+              fieldLabel,
+              originalValue: jdFields[field] ?? "",
+              proposedValue: data.rewrite,
+              isStructured: false,
+            },
+          ],
+          context: { workspace: "Hiring", section: role.role_title },
+          onApply: async () => {
+            setJdFields((prev) => prev ? { ...prev, [field]: data.rewrite } : prev);
+            setJdDirty(true);
+          },
+        });
       }
     } finally {
       setImprovingField(null);
@@ -860,6 +879,8 @@ function RoleRow({
   const parentOptions = roles.filter((r) => r.id !== role.id);
 
   return (
+    <>
+    {AIReviewModalNode}
     <div
       ref={registerRef}
       className={`transition-shadow ${highlighted ? "ring-2 ring-[var(--teal)] ring-inset" : ""}`}
@@ -1353,6 +1374,7 @@ function RoleRow({
         </div>
       )}
     </div>
+    </>
   );
 }
 

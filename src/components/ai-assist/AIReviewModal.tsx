@@ -1,0 +1,673 @@
+"use client";
+
+// TIM-1561: Unified AI proposal review modal.
+// One shared component used by every AI invocation site.
+// Implements §2 (desktop dialog) and §6 (mobile bottom sheet) from the spec.
+// Lazy-loaded by useAIReviewModal so diff-match-patch stays out of the initial bundle.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, X, Pencil, Sparkles, AlertCircle } from "lucide-react";
+import { COPILOT_NAME } from "@/lib/copilot/branding";
+
+// ── Public types ────────────────────────────────────────────────────────────
+
+export interface SuggestionPayload {
+  id: string;
+  fieldId: string;
+  fieldLabel: string;
+  originalValue: string;
+  proposedValue: string;
+  isStructured?: boolean;
+}
+
+export interface ApprovedChange {
+  suggestionId: string;
+  fieldId: string;
+  finalValue: string;
+  wasEdited: boolean;
+}
+
+export interface AIReviewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onApply: (accepted: ApprovedChange[]) => Promise<void>;
+  suggestions: SuggestionPayload[];
+  isStreaming?: boolean;
+  error?: string | null;
+  context: {
+    workspace: string;
+    section?: string;
+  };
+}
+
+// ── Internal card state ─────────────────────────────────────────────────────
+
+type CardStatus = "unreviewed" | "accepted" | "rejected" | "editing";
+
+interface CardState {
+  status: CardStatus;
+  editedValue: string;
+  wasEdited: boolean;
+  applyError: string | null;
+  appliedOk: boolean;
+}
+
+function initialCard(sug: SuggestionPayload): CardState {
+  return {
+    status: "unreviewed",
+    editedValue: sug.proposedValue,
+    wasEdited: false,
+    applyError: null,
+    appliedOk: false,
+  };
+}
+
+// ── Word-diff using diff-match-patch ────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let dmpInstance: any = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getDmp(): Promise<any> {
+  if (dmpInstance) return dmpInstance;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod = await import("diff-match-patch") as any;
+  const DMP = mod.diff_match_patch ?? mod.default;
+  dmpInstance = new DMP();
+  return dmpInstance;
+}
+
+type DiffOp = -1 | 0 | 1;
+type DiffTuple = [DiffOp, string];
+
+function DiffText({ original, proposed }: { original: string; proposed: string }) {
+  const [diffs, setDiffs] = useState<DiffTuple[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getDmp().then((dmp) => {
+      if (cancelled) return;
+      const d = dmp.diff_main(original, proposed) as DiffTuple[];
+      dmp.diff_cleanupSemantic(d);
+      setDiffs(d);
+    });
+    return () => { cancelled = true; };
+  }, [original, proposed]);
+
+  if (!diffs) {
+    return (
+      <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
+        {proposed}
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
+      {diffs.map(([op, text], i) => {
+        if (op === 0) return <span key={i}>{text}</span>;
+        if (op === 1) return (
+          <span key={i} className="bg-[var(--teal-tint-500)] rounded-sm">
+            {text}
+          </span>
+        );
+        return (
+          <span key={i} className="bg-red-50 line-through text-red-600">
+            {text}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+// ── Structured (table) diff ─────────────────────────────────────────────────
+
+function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
+  let origRows: string[] = [];
+  let propRows: string[] = [];
+  try { origRows = (JSON.parse(original) as unknown[]).map((r) => JSON.stringify(r)); } catch { origRows = original.split("\n").filter(Boolean); }
+  try { propRows = (JSON.parse(proposed) as unknown[]).map((r) => JSON.stringify(r)); } catch { propRows = proposed.split("\n").filter(Boolean); }
+
+  const origSet = new Set(origRows);
+  const propSet = new Set(propRows);
+
+  const allRows = [
+    ...propRows.filter((r) => !origSet.has(r)).map((r) => ({ row: r, kind: "added" as const })),
+    ...origRows.filter((r) => !propSet.has(r)).map((r) => ({ row: r, kind: "removed" as const })),
+    ...propRows.filter((r) => origSet.has(r)).map((r) => ({ row: r, kind: "unchanged" as const })),
+  ];
+
+  function parseRow(raw: string): Record<string, string> {
+    try { return JSON.parse(raw) as Record<string, string>; } catch { return { value: raw }; }
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+      <table className="w-full text-xs">
+        <tbody>
+          {allRows.map(({ row, kind }, i) => {
+            const parsed = parseRow(row);
+            const cells = Object.values(parsed).slice(0, 4);
+            return (
+              <tr
+                key={i}
+                className={
+                  kind === "added"
+                    ? "bg-[var(--teal-tint-500)]"
+                    : kind === "removed"
+                    ? "bg-red-50"
+                    : "bg-white"
+                }
+              >
+                {cells.map((cell, j) => (
+                  <td
+                    key={j}
+                    className={`px-3 py-2 border-b border-[var(--border)] ${
+                      kind === "removed" ? "line-through text-[var(--dark-grey)]" : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    {String(cell ?? "")}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Change card ─────────────────────────────────────────────────────────────
+
+function ChangeCard({
+  sug,
+  cardState,
+  isMobile,
+  onAccept,
+  onReject,
+  onEditStart,
+  onEditSave,
+  onEditDiscard,
+  onEditChange,
+}: {
+  sug: SuggestionPayload;
+  cardState: CardState;
+  isMobile: boolean;
+  onAccept: () => void;
+  onReject: () => void;
+  onEditStart: () => void;
+  onEditSave: () => void;
+  onEditDiscard: () => void;
+  onEditChange: (v: string) => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (cardState.status === "editing") textareaRef.current?.focus();
+  }, [cardState.status]);
+
+  const isAccepted = cardState.status === "accepted";
+  const isRejected = cardState.status === "rejected";
+  const isEditing = cardState.status === "editing";
+
+  const cardCls = isAccepted
+    ? "border border-[var(--teal)]/30 bg-[var(--teal-tint-500)] rounded-xl p-4 space-y-3"
+    : isRejected
+    ? "border border-[var(--border)] rounded-xl p-4 space-y-3 opacity-40"
+    : "border border-[var(--border)] rounded-xl p-4 space-y-3 bg-white";
+
+  return (
+    <div className={cardCls}>
+      {/* Field label + accepted badge */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-[var(--dark)]">{sug.fieldLabel}</p>
+        {isAccepted && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-medium text-[var(--teal)] bg-white border border-[var(--teal)]/30 rounded-full px-2 py-0.5">
+              {cardState.wasEdited ? "You edited this" : "Accepted"}
+            </span>
+          </div>
+        )}
+        {cardState.appliedOk && (
+          <span className="text-xs font-medium text-green-700 bg-green-50 rounded-full px-2 py-0.5">Applied</span>
+        )}
+      </div>
+
+      {/* Diff view */}
+      {!isEditing && (
+        isMobile ? (
+          /* Stacked on mobile */
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1">Current</p>
+              <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
+                {sug.isStructured ? (
+                  <p className="text-xs text-[var(--dark-grey)]">{sug.originalValue || <em>Empty</em>}</p>
+                ) : (
+                  <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
+                    {sug.originalValue.trim() || <em className="text-[var(--dark-grey)]">Empty</em>}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1">Suggested</p>
+              <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
+                {sug.isStructured ? (
+                  <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
+                ) : (
+                  <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Side-by-side on desktop */
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1.5">Current</p>
+              <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
+                {sug.isStructured ? (
+                  <p className="text-xs text-[var(--dark-grey)]">{sug.originalValue || <em>Empty</em>}</p>
+                ) : (
+                  <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
+                    {sug.originalValue.trim() || <em className="text-[var(--dark-grey)]">Empty</em>}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1.5">Suggested</p>
+              <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
+                {sug.isStructured ? (
+                  <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
+                ) : (
+                  <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* Edit textarea */}
+      {isEditing && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">Editing suggested text</p>
+          <textarea
+            ref={textareaRef}
+            value={cardState.editedValue}
+            onChange={(e) => onEditChange(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onEditSave();
+              if (e.key === "Escape") onEditDiscard();
+            }}
+            aria-label={`Edit suggested text for ${sug.fieldLabel}`}
+            className="w-full min-h-[80px] border border-[var(--teal)] rounded-lg p-3 text-sm resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+          />
+        </div>
+      )}
+
+      {/* Per-card error */}
+      {cardState.applyError && (
+        <p className="text-xs text-red-600 border border-red-200 rounded-lg px-3 py-2 bg-red-50">
+          {cardState.applyError} <button type="button" className="underline ml-1" onClick={onAccept}>Try again</button>
+        </p>
+      )}
+
+      {/* Controls */}
+      {isEditing ? (
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onEditSave}
+            className="border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-[var(--teal)]/5 transition-colors"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={onEditDiscard}
+            className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Discard
+          </button>
+        </div>
+      ) : isMobile ? (
+        <div className="grid grid-cols-3 border-t border-[var(--border)] -mx-4 -mb-4 mt-1">
+          {[
+            { label: "Accept", icon: <Check size={13} />, action: onAccept, active: isAccepted, activeCls: "bg-[var(--teal)] text-white" },
+            { label: "Reject", icon: <X size={13} />, action: onReject, active: isRejected, activeCls: "bg-red-50 text-red-600" },
+            { label: "Edit", icon: <Pencil size={13} />, action: onEditStart, active: false, activeCls: "" },
+          ].map(({ label, icon, action, active, activeCls }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={action}
+              aria-label={`${label} this suggestion`}
+              className={`flex items-center justify-center gap-1.5 text-sm font-medium py-2.5 transition-colors border-r border-[var(--border)] last:border-r-0 ${
+                active ? activeCls : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--background)]"
+              }`}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onAccept}
+            aria-label="Accept this suggestion"
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+              isAccepted
+                ? "bg-[var(--teal)] text-white"
+                : "border border-[var(--teal)]/50 text-[var(--teal)] hover:bg-[var(--teal)]/5"
+            }`}
+          >
+            <Check size={13} aria-hidden /> Accept
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            aria-label="Reject this suggestion"
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+              isRejected
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : "border border-[var(--border)] text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--background)]"
+            }`}
+          >
+            <X size={13} aria-hidden /> Reject
+          </button>
+          <button
+            type="button"
+            onClick={onEditStart}
+            aria-label="Edit this suggestion"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+          >
+            <Pencil size={13} aria-hidden /> Edit
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main modal ──────────────────────────────────────────────────────────────
+
+export function AIReviewModal({
+  isOpen,
+  onClose,
+  onApply,
+  suggestions,
+  isStreaming = false,
+  error = null,
+  context,
+}: AIReviewModalProps) {
+  const [cardStates, setCardStates] = useState<Map<string, CardState>>(new Map());
+  const [isApplying, setIsApplying] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1280,
+  );
+
+  const isMobile = viewportWidth < 640;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  // Reset card states when suggestions change.
+  useEffect(() => {
+    setCardStates(new Map(suggestions.map((s) => [s.id, initialCard(s)])));
+    setIsApplying(false);
+  }, [suggestions]);
+
+  // Escape key.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isApplying) onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, isApplying, onClose]);
+
+  const updateCard = useCallback((id: string, patch: Partial<CardState>) => {
+    setCardStates((prev) => {
+      const next = new Map(prev);
+      const cur = next.get(id);
+      if (cur) next.set(id, { ...cur, ...patch });
+      return next;
+    });
+  }, []);
+
+  const acceptedCount = useMemo(
+    () => [...cardStates.values()].filter((c) => c.status === "accepted").length,
+    [cardStates],
+  );
+
+  const totalCount = suggestions.length;
+
+  const statusLabel = acceptedCount === 0
+    ? "None accepted yet"
+    : acceptedCount === totalCount
+    ? "All accepted"
+    : `${acceptedCount} of ${totalCount} accepted`;
+
+  const handleApply = useCallback(async () => {
+    if (acceptedCount === 0 || isApplying) return;
+    setIsApplying(true);
+    const accepted: ApprovedChange[] = suggestions
+      .filter((s) => cardStates.get(s.id)?.status === "accepted")
+      .map((s) => {
+        const card = cardStates.get(s.id)!;
+        return {
+          suggestionId: s.id,
+          fieldId: s.fieldId,
+          finalValue: card.editedValue,
+          wasEdited: card.wasEdited,
+        };
+      });
+
+    try {
+      await onApply(accepted);
+    } catch {
+      // Partial failure: individual cards show errors via their own error state.
+    } finally {
+      setIsApplying(false);
+    }
+  }, [acceptedCount, isApplying, suggestions, cardStates, onApply]);
+
+  const subtitleParts = [context.workspace, context.section].filter(Boolean).join(" - ");
+
+  const cardList = (
+    <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+      {isStreaming && suggestions.length === 0 ? (
+        /* Skeleton loaders while streaming */
+        <div className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="border border-[var(--border)] rounded-xl p-4 animate-pulse">
+              <div className="h-3 w-24 bg-[var(--border)] rounded mb-3" />
+              <div className="h-16 bg-[var(--border)] rounded" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+          <AlertCircle className="w-8 h-8 text-[var(--dark-grey)]" />
+          <p className="text-sm text-[var(--dark)]">{error}</p>
+        </div>
+      ) : suggestions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+          <p className="text-sm text-[var(--dark-grey)]">
+            {COPILOT_NAME} didn&apos;t have any suggestions for this.
+          </p>
+          <p className="text-xs text-[var(--dark-grey)]">
+            Try adding more detail to your content first.
+          </p>
+        </div>
+      ) : (
+        suggestions.map((sug) => {
+          const cs = cardStates.get(sug.id) ?? initialCard(sug);
+          return (
+            <ChangeCard
+              key={sug.id}
+              sug={sug}
+              cardState={cs}
+              isMobile={isMobile}
+              onAccept={() => updateCard(sug.id, { status: "accepted" })}
+              onReject={() => updateCard(sug.id, { status: "rejected" })}
+              onEditStart={() => updateCard(sug.id, { status: "editing" })}
+              onEditSave={() =>
+                updateCard(sug.id, {
+                  status: "accepted",
+                  wasEdited: cs.editedValue !== sug.proposedValue,
+                })
+              }
+              onEditDiscard={() =>
+                updateCard(sug.id, {
+                  status: "unreviewed",
+                  editedValue: sug.proposedValue,
+                  wasEdited: false,
+                })
+              }
+              onEditChange={(v) => updateCard(sug.id, { editedValue: v })}
+            />
+          );
+        })
+      )}
+    </div>
+  );
+
+  const header = (
+    <div className="px-6 py-5 border-b border-[var(--border)] flex items-start gap-3">
+      <div
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+          isStreaming ? "ai-streaming-avatar" : "ai-gradient-bg"
+        }`}
+      >
+        <Sparkles size={16} className="text-white" aria-hidden />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h2 className="text-base font-semibold text-[var(--dark)] leading-tight">
+          {isStreaming ? `${COPILOT_NAME} is thinking...` : `Review ${COPILOT_NAME}'s suggestions`}
+        </h2>
+        {subtitleParts && (
+          <p className="text-sm text-[var(--dark-grey)] mt-0.5 truncate">{subtitleParts}</p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={isApplying ? undefined : onClose}
+        disabled={isApplying}
+        aria-label="Close"
+        className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 shrink-0 mt-0.5"
+      >
+        <X size={16} aria-hidden />
+      </button>
+    </div>
+  );
+
+  const footer = (
+    <div className={`px-6 py-4 border-t border-[var(--border)] flex items-center ${isMobile ? "flex-col gap-2" : "justify-between"}`}>
+      <span
+        className={`text-sm font-medium ${
+          acceptedCount === 0
+            ? "text-[var(--dark-grey)]"
+            : acceptedCount === totalCount
+            ? "text-[var(--teal)]"
+            : "text-[var(--teal)]"
+        }`}
+      >
+        {statusLabel}
+      </span>
+      <div className={`flex items-center gap-2 ${isMobile ? "w-full flex-col" : ""}`}>
+        <button
+          type="button"
+          onClick={isApplying ? undefined : onClose}
+          disabled={isApplying}
+          className={`text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 ${isMobile ? "w-full py-2 text-center" : ""}`}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleApply()}
+          disabled={acceptedCount === 0 || isApplying || isStreaming}
+          className={`bg-[var(--teal)] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isMobile ? "w-full" : ""}`}
+        >
+          {isApplying
+            ? "Applying..."
+            : acceptedCount > 0
+            ? `Apply ${acceptedCount} ${acceptedCount === 1 ? "change" : "changes"}`
+            : "Apply changes"}
+        </button>
+      </div>
+    </div>
+  );
+
+  if (!isOpen) return null;
+
+  // ── Desktop: centered dialog ─────────────────────────────────────────────
+  if (!isMobile) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Review ${COPILOT_NAME}'s suggestions`}
+      >
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={isApplying ? undefined : onClose}
+          aria-hidden="true"
+        />
+        <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+          {header}
+          {cardList}
+          {footer}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mobile: bottom sheet ─────────────────────────────────────────────────
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Review ${COPILOT_NAME}'s suggestions`}>
+          <motion.div
+            className="absolute inset-0 bg-black/60"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={isApplying ? undefined : onClose}
+            aria-hidden="true"
+          />
+          <motion.div
+            className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white flex flex-col"
+            style={{ maxHeight: "90vh", minHeight: "60vh" }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-[var(--border)]" />
+            </div>
+            {header}
+            {cardList}
+            {footer}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}

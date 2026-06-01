@@ -22,6 +22,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { consumeSseFrames } from "@/components/copilot/sse";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -639,6 +640,7 @@ export function OpeningMonthPlanWorkspace({
   const [sourcesUpdatedAt] = useState<string | null>(initialSourcesUpdatedAt);
   const [view, setView] = useState<"list" | "calendar">(initialConfig.viewPreference);
   const [generating, setGenerating] = useState(false);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [launchDateInput, setLaunchDateInput] = useState(initialConfig.targetLaunchDate ?? "");
   const [editModal, setEditModal] = useState<{ milestone: Partial<Milestone> & { track: TrackKey }; isNew: boolean } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -772,10 +774,28 @@ export function OpeningMonthPlanWorkspace({
               showToast("error", payload.message ?? "Couldn't generate milestones. Try again or contact support.");
             }
             if (payload.milestones) {
-              setMilestones(payload.milestones as Milestone[]);
-              setConfig((c) => ({ ...c, lastGeneratedAt: payload.lastGeneratedAt ?? c.lastGeneratedAt }));
-              setStalesBannerDismissed(false);
-              milestonesUpdated = (payload.milestones as Milestone[]).length;
+              // TIM-1561: route through review modal before applying to state.
+              const proposedMilestones = payload.milestones as Milestone[];
+              const lastGeneratedAt = payload.lastGeneratedAt as string | undefined;
+              openAIReviewModal({
+                suggestions: [
+                  {
+                    id: "opening-month-milestones",
+                    fieldId: "milestones",
+                    fieldLabel: "Launch Milestones",
+                    originalValue: JSON.stringify(milestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
+                    proposedValue: JSON.stringify(proposedMilestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
+                    isStructured: true,
+                  },
+                ],
+                context: { workspace: "Opening Month Plan", section: "Launch Milestones" },
+                onApply: async () => {
+                  setMilestones(proposedMilestones);
+                  setConfig((c) => ({ ...c, lastGeneratedAt: lastGeneratedAt ?? c.lastGeneratedAt }));
+                  setStalesBannerDismissed(false);
+                },
+              });
+              milestonesUpdated = proposedMilestones.length;
             }
           } catch { /* non-JSON lines */ }
         }
@@ -1025,6 +1045,8 @@ export function OpeningMonthPlanWorkspace({
       : "Opening Month Plan";
 
   return (
+    <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
@@ -1389,5 +1411,6 @@ export function OpeningMonthPlanWorkspace({
         />
       )}
     </div>
+    </>
   );
 }
