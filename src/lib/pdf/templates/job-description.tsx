@@ -1,6 +1,6 @@
 import React from "react"
 import { Document, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
+import { BRAND, pdfDocMeta, brandFilePrefix, type BrandTokens } from "../brand"
 import { LetterPageShell } from "../components/LetterPageShell"
 import type { PdfTemplate } from "../registry"
 import type { OrgRole, JobDescriptionTemplate } from "@/lib/hiring"
@@ -36,50 +36,52 @@ function slugify(s: string | null | undefined): string {
 
 // ── styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  roleTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 22,
-    fontWeight: 600,
-    color: BRAND.colors.ink,
-    marginBottom: 4,
-  },
-  roleMeta: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    marginBottom: 16,
-  },
-  rule: {
-    height: 1,
-    backgroundColor: BRAND.colors.rule,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 10,
-    color: BRAND.colors.primary,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  sectionBody: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    lineHeight: 1.5,
-    marginBottom: 14,
-  },
-  placeholder: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    fontStyle: "italic",
-    lineHeight: 1.5,
-    marginBottom: 14,
-  },
-})
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    roleTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 22,
+      fontWeight: 600,
+      color: brand.colors.ink,
+      marginBottom: 4,
+    },
+    roleMeta: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.muted,
+      marginBottom: 16,
+    },
+    rule: {
+      height: 1,
+      backgroundColor: brand.colors.rule,
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 10,
+      color: brand.colors.primary,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    sectionBody: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      lineHeight: 1.5,
+      marginBottom: 14,
+    },
+    placeholder: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.muted,
+      fontStyle: "italic",
+      lineHeight: 1.5,
+      marginBottom: 14,
+    },
+  })
+}
 
 // ── content type ──────────────────────────────────────────────────────────────
 
@@ -94,11 +96,14 @@ function JobDescriptionPdf({
   content,
   shopName,
   generatedDate,
+  brand,
 }: {
   content: JdContent
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
 }) {
+  const styles = makeStyles(brand)
   const { role, jd } = content
   return (
     <Document {...pdfDocMeta(shopName)}>
@@ -106,6 +111,7 @@ function JobDescriptionPdf({
         shopName={shopName}
         workspaceName="Job Description"
         generatedDate={generatedDate}
+        brand={brand}
       >
         <Text style={styles.roleTitle}>{jd?.title || role.role_title || "Untitled Role"}</Text>
         <Text style={styles.roleMeta}>
@@ -221,6 +227,7 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
         content={ctx.content}
         shopName={ctx.plan.shop_name}
         generatedDate={generatedDate}
+        brand={ctx.brand}
       />
     )
   },

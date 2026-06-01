@@ -4,7 +4,7 @@
 
 import React from "react"
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
+import { BRAND, type BrandTokens } from "../brand"
 import { PdfDocument } from "../components/PdfDocument"
 import { PdfHeader } from "../components/PdfHeader"
 import { PdfFooter } from "../components/PdfFooter"
@@ -186,200 +186,203 @@ function getSoftOpenBucket(dayOffset: number): string {
 
 // ── Page styles ───────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: BRAND.page.margin,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin,
-    paddingRight: BRAND.page.margin,
-  },
-  coverPage: {
-    fontFamily: BRAND.fonts.sans,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    padding: BRAND.page.margin * 1.5,
-    flexDirection: "column",
-    justifyContent: "center",
-  },
-  coverEyebrow: {
-    fontSize: 11,
-    color: BRAND.colors.primary,
-    fontWeight: 700,
-    letterSpacing: 2,
-    marginBottom: 16,
-  },
-  coverTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 36,
-    fontWeight: 600,
-    lineHeight: 1.15,
-    color: BRAND.colors.ink,
-    marginBottom: 12,
-  },
-  coverShop: {
-    fontSize: 18,
-    color: BRAND.colors.ink,
-    marginBottom: 32,
-  },
-  coverRule: {
-    height: 2,
-    backgroundColor: BRAND.colors.primary,
-    width: 64,
-    marginBottom: 24,
-  },
-  coverMetaLabel: {
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  coverMetaValue: {
-    fontSize: 11,
-    color: BRAND.colors.ink,
-    marginBottom: 14,
-  },
-  coverFootnote: {
-    position: "absolute",
-    bottom: BRAND.page.margin,
-    left: BRAND.page.margin * 1.5,
-    right: BRAND.page.margin * 1.5,
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-    paddingTop: 8,
-  },
-  emptyNote: {
-    fontSize: 10,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    padding: 8,
-    backgroundColor: "var(--neutral-cool-f5)",
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  paragraph: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    marginBottom: 6,
-    lineHeight: 1.5,
-  },
-  // Gantt strip
-  ganttContainer: {
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  ganttAxisRow: {
-    flexDirection: "row",
-    marginBottom: 4,
-    height: 14,
-  },
-  ganttAxisLabel: {
-    fontSize: 7,
-    color: BRAND.colors.muted,
-    textAlign: "center",
-  },
-  ganttTrack: {
-    height: 2,
-    backgroundColor: BRAND.colors.rule,
-    marginBottom: 4,
-    position: "relative",
-  },
-  ganttItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 3,
-    height: 14,
-  },
-  ganttDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  ganttItemLabel: {
-    fontSize: 7,
-    color: BRAND.colors.ink,
-    flex: 1,
-    marginLeft: 4,
-  },
-  ganttDotDone: { backgroundColor: BRAND.colors.primary },
-  ganttDotInProgress: { backgroundColor: BRAND.colors.accent },
-  ganttDotAtRisk: { backgroundColor: "var(--rust)" },
-  ganttDotPending: { backgroundColor: BRAND.colors.rule },
-  // Readiness
-  readinessBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  readinessGreen: { backgroundColor: "var(--success-bg-2)" },
-  readinessYellow: { backgroundColor: "var(--warning-bg-2)" },
-  readinessRed: { backgroundColor: "var(--error-bg-8)" },
-  readinessBadgeText: { fontSize: 11, fontWeight: 700 },
-  readinessGreenText: { color: "var(--success-medium)" },
-  readinessYellowText: { color: "var(--warning-text-3)" },
-  readinessRedText: { color: "var(--rust)" },
-  wsRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-    paddingVertical: 4,
-  },
-  wsKey: { width: 120, fontSize: 9, fontWeight: 700, color: BRAND.colors.ink },
-  wsStatus: { width: 60, fontSize: 9 },
-  wsBlocker: { flex: 1, fontSize: 8, color: BRAND.colors.muted },
-  criticalPathRow: {
-    flexDirection: "row",
-    marginBottom: 4,
-  },
-  cpNumber: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: BRAND.colors.primary,
-    color: BRAND.colors.paper,
-    fontSize: 8,
-    fontWeight: 700,
-    textAlign: "center",
-    lineHeight: 1,
-    paddingTop: 3,
-    marginRight: 6,
-    marginTop: 1,
-  },
-  cpAction: { flex: 1, fontSize: 9, color: BRAND.colors.ink, fontWeight: 700 },
-  cpMeta: { fontSize: 8, color: BRAND.colors.muted, marginTop: 1 },
-  payrollFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 2,
-    borderTopColor: BRAND.colors.ink,
-    paddingTop: 6,
-    marginTop: 4,
-  },
-  payrollFooterLabel: { fontSize: 10, fontWeight: 700, color: BRAND.colors.ink },
-  payrollFooterValue: { fontSize: 10, fontWeight: 700, color: BRAND.colors.primary },
-  bucketHeader: {
-    fontSize: 9,
-    fontWeight: 700,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginTop: 6,
-    marginBottom: 3,
-  },
-})
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: brand.page.margin,
+      paddingBottom: brand.page.margin + 20,
+      paddingLeft: brand.page.margin,
+      paddingRight: brand.page.margin,
+    },
+    coverPage: {
+      fontFamily: brand.fonts.sans,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      padding: brand.page.margin * 1.5,
+      flexDirection: "column",
+      justifyContent: "center",
+    },
+    coverEyebrow: {
+      fontSize: 11,
+      color: brand.colors.primary,
+      fontWeight: 700,
+      letterSpacing: 2,
+      marginBottom: 16,
+    },
+    coverTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 36,
+      fontWeight: 600,
+      lineHeight: 1.15,
+      color: brand.colors.ink,
+      marginBottom: 12,
+    },
+    coverShop: {
+      fontSize: 18,
+      color: brand.colors.ink,
+      marginBottom: 32,
+    },
+    coverRule: {
+      height: 2,
+      backgroundColor: brand.colors.primary,
+      width: 64,
+      marginBottom: 24,
+    },
+    coverMetaLabel: {
+      fontSize: 9,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 2,
+    },
+    coverMetaValue: {
+      fontSize: 11,
+      color: brand.colors.ink,
+      marginBottom: 14,
+    },
+    coverFootnote: {
+      position: "absolute",
+      bottom: brand.page.margin,
+      left: brand.page.margin * 1.5,
+      right: brand.page.margin * 1.5,
+      fontSize: 9,
+      color: brand.colors.muted,
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+      paddingTop: 8,
+    },
+    emptyNote: {
+      fontSize: 10,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      padding: 8,
+      backgroundColor: "var(--neutral-cool-f5)",
+      borderRadius: 4,
+      marginBottom: 8,
+    },
+    paragraph: {
+      fontSize: 10,
+      color: brand.colors.ink,
+      marginBottom: 6,
+      lineHeight: 1.5,
+    },
+    // Gantt strip
+    ganttContainer: {
+      marginBottom: 12,
+      marginTop: 4,
+    },
+    ganttAxisRow: {
+      flexDirection: "row",
+      marginBottom: 4,
+      height: 14,
+    },
+    ganttAxisLabel: {
+      fontSize: 7,
+      color: brand.colors.muted,
+      textAlign: "center",
+    },
+    ganttTrack: {
+      height: 2,
+      backgroundColor: brand.colors.rule,
+      marginBottom: 4,
+      position: "relative",
+    },
+    ganttItemRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 3,
+      height: 14,
+    },
+    ganttDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    ganttItemLabel: {
+      fontSize: 7,
+      color: brand.colors.ink,
+      flex: 1,
+      marginLeft: 4,
+    },
+    ganttDotDone: { backgroundColor: brand.colors.primary },
+    ganttDotInProgress: { backgroundColor: brand.colors.accent },
+    ganttDotAtRisk: { backgroundColor: "var(--rust)" },
+    ganttDotPending: { backgroundColor: brand.colors.rule },
+    // Readiness
+    readinessBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      marginBottom: 8,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    readinessGreen: { backgroundColor: "var(--success-bg-2)" },
+    readinessYellow: { backgroundColor: "var(--warning-bg-2)" },
+    readinessRed: { backgroundColor: "var(--error-bg-8)" },
+    readinessBadgeText: { fontSize: 11, fontWeight: 700 },
+    readinessGreenText: { color: "var(--success-medium)" },
+    readinessYellowText: { color: "var(--warning-text-3)" },
+    readinessRedText: { color: "var(--rust)" },
+    wsRow: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+      paddingVertical: 4,
+    },
+    wsKey: { width: 120, fontSize: 9, fontWeight: 700, color: brand.colors.ink },
+    wsStatus: { width: 60, fontSize: 9 },
+    wsBlocker: { flex: 1, fontSize: 8, color: brand.colors.muted },
+    criticalPathRow: {
+      flexDirection: "row",
+      marginBottom: 4,
+    },
+    cpNumber: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: brand.colors.primary,
+      color: brand.colors.paper,
+      fontSize: 8,
+      fontWeight: 700,
+      textAlign: "center",
+      lineHeight: 1,
+      paddingTop: 3,
+      marginRight: 6,
+      marginTop: 1,
+    },
+    cpAction: { flex: 1, fontSize: 9, color: brand.colors.ink, fontWeight: 700 },
+    cpMeta: { fontSize: 8, color: brand.colors.muted, marginTop: 1 },
+    payrollFooter: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      borderTopWidth: 2,
+      borderTopColor: brand.colors.ink,
+      paddingTop: 6,
+      marginTop: 4,
+    },
+    payrollFooterLabel: { fontSize: 10, fontWeight: 700, color: brand.colors.ink },
+    payrollFooterValue: { fontSize: 10, fontWeight: 700, color: brand.colors.primary },
+    bucketHeader: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginTop: 6,
+      marginBottom: 3,
+    },
+  })
+}
 
 // ── Gantt strip (pure layout, no chart library) ───────────────────────────────
 
-function GanttStrip({ items, launchDate }: { items: TimelineItem[]; launchDate: string | null }) {
+function GanttStrip({ items, launchDate, brand }: { items: TimelineItem[]; launchDate: string | null; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   const dated = items.filter((i) => i.target_date != null)
   if (dated.length === 0 || !launchDate) {
     return (
@@ -454,7 +457,7 @@ function GanttStrip({ items, launchDate }: { items: TimelineItem[]; launchDate: 
             top: -4,
             width: 2,
             height: 10,
-            backgroundColor: BRAND.colors.primary,
+            backgroundColor: brand.colors.primary,
           }}
         />
       </View>
@@ -481,7 +484,8 @@ function GanttStrip({ items, launchDate }: { items: TimelineItem[]; launchDate: 
 
 // ── Section renderers ─────────────────────────────────────────────────────────
 
-function CoverPage({ content, generatedDate }: { content: LaunchPlanContent; generatedDate: string }) {
+function CoverPage({ content, generatedDate, brand }: { content: LaunchPlanContent; generatedDate: string; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   const tMinus = computeTMinus(content.targetOpeningDate)
   const launchDateLabel = content.targetOpeningDate
     ? fmtDate(content.targetOpeningDate)
@@ -497,7 +501,7 @@ function CoverPage({ content, generatedDate }: { content: LaunchPlanContent; gen
       : `Launched ${Math.abs(tMinus)} day${Math.abs(tMinus) !== 1 ? "s" : ""} ago`
 
   return (
-    <Page size={BRAND.page.size} style={styles.coverPage}>
+    <Page size={brand.page.size} style={styles.coverPage}>
       <Text style={styles.coverEyebrow}>LAUNCH PLAN</Text>
       <View style={styles.coverRule} />
       <Text style={styles.coverTitle}>Launch plan</Text>
@@ -523,10 +527,11 @@ function CoverPage({ content, generatedDate }: { content: LaunchPlanContent; gen
   )
 }
 
-function TimelineSection({ content }: { content: LaunchPlanContent }) {
+function TimelineSection({ content, brand }: { content: LaunchPlanContent; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   if (content.timeline.length === 0) {
     return (
-      <PdfSection title="Timeline &amp; Milestones">
+      <PdfSection title="Timeline &amp; Milestones" brand={brand}>
         <Text style={styles.emptyNote}>
           No milestones yet. Add milestones in the Launch Plan workspace to populate this section.
         </Text>
@@ -551,18 +556,19 @@ function TimelineSection({ content }: { content: LaunchPlanContent }) {
   }))
 
   return (
-    <PdfSection title="Timeline &amp; Milestones">
+    <PdfSection title="Timeline &amp; Milestones" brand={brand}>
       <PdfTable columns={columns} rows={rows} />
       <Text style={[styles.paragraph, { marginTop: 8 }]}>Gantt strip</Text>
-      <GanttStrip items={content.timeline} launchDate={content.targetOpeningDate} />
+      <GanttStrip items={content.timeline} launchDate={content.targetOpeningDate} brand={brand} />
     </PdfSection>
   )
 }
 
-function SoftOpenSection({ content }: { content: LaunchPlanContent }) {
+function SoftOpenSection({ content, brand }: { content: LaunchPlanContent; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   if (content.softOpen.length === 0) {
     return (
-      <PdfSection title="Soft-Open Plan">
+      <PdfSection title="Soft-Open Plan" brand={brand}>
         <Text style={styles.emptyNote}>
           No soft-open tasks yet. Add tasks in the Launch Plan workspace.
         </Text>
@@ -583,7 +589,7 @@ function SoftOpenSection({ content }: { content: LaunchPlanContent }) {
   ]
 
   return (
-    <PdfSection title="Soft-Open Plan">
+    <PdfSection title="Soft-Open Plan" brand={brand}>
       {bucketed.map((bucket) => (
         <View key={bucket.label}>
           <Text style={styles.bucketHeader}>{bucket.label}</Text>
@@ -602,10 +608,11 @@ function SoftOpenSection({ content }: { content: LaunchPlanContent }) {
   )
 }
 
-function MarketingSection({ content }: { content: LaunchPlanContent }) {
+function MarketingSection({ content, brand }: { content: LaunchPlanContent; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   if (content.marketing.length === 0) {
     return (
-      <PdfSection title="Marketing Kickoff">
+      <PdfSection title="Marketing Kickoff" brand={brand}>
         <Text style={styles.emptyNote}>
           No marketing items yet. Add items in the Launch Plan workspace.
         </Text>
@@ -623,7 +630,7 @@ function MarketingSection({ content }: { content: LaunchPlanContent }) {
   ]
 
   return (
-    <PdfSection title="Marketing Kickoff">
+    <PdfSection title="Marketing Kickoff" brand={brand}>
       {channels.map((ch) => {
         const rows = content.marketing.filter((r) => r.channel === ch)
         return (
@@ -645,10 +652,11 @@ function MarketingSection({ content }: { content: LaunchPlanContent }) {
   )
 }
 
-function HiringPlanSection({ content }: { content: LaunchPlanContent }) {
+function HiringPlanSection({ content, brand }: { content: LaunchPlanContent; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   if (content.hiring.length === 0) {
     return (
-      <PdfSection title="Hiring Plan">
+      <PdfSection title="Hiring Plan" brand={brand}>
         <Text style={styles.emptyNote}>
           No roles yet. Add roles in the Launch Plan workspace.
         </Text>
@@ -679,7 +687,7 @@ function HiringPlanSection({ content }: { content: LaunchPlanContent }) {
   }))
 
   return (
-    <PdfSection title="Hiring Plan">
+    <PdfSection title="Hiring Plan" brand={brand}>
       <PdfTable columns={columns} rows={rows} />
       <View style={styles.payrollFooter}>
         <Text style={styles.payrollFooterLabel}>
@@ -693,11 +701,12 @@ function HiringPlanSection({ content }: { content: LaunchPlanContent }) {
   )
 }
 
-function ReadinessSection({ content }: { content: LaunchPlanContent }) {
+function ReadinessSection({ content, brand }: { content: LaunchPlanContent; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   const r = content.readiness
   if (!r) {
     return (
-      <PdfSection title="AI Readiness Verdict">
+      <PdfSection title="AI Readiness Verdict" brand={brand}>
         <Text style={styles.emptyNote}>
           No readiness check has been run yet. Use the Launch Readiness Check button in the Launch
           Plan workspace to generate a verdict.
@@ -725,7 +734,7 @@ function ReadinessSection({ content }: { content: LaunchPlanContent }) {
     : "Unknown date"
 
   return (
-    <PdfSection title="AI Readiness Verdict">
+    <PdfSection title="AI Readiness Verdict" brand={brand}>
       <Text style={styles.paragraph}>Checked on {checkedAt}</Text>
       <View style={[styles.readinessBadge, badgeStyle]}>
         <Text style={[styles.readinessBadgeText, textStyle]}>
@@ -771,34 +780,35 @@ function ReadinessSection({ content }: { content: LaunchPlanContent }) {
 
 // ── Top-level document ────────────────────────────────────────────────────────
 
-function LaunchPlanPdf({ content, generatedDate }: { content: LaunchPlanContent; generatedDate: string }) {
+function LaunchPlanPdf({ content, generatedDate, brand }: { content: LaunchPlanContent; generatedDate: string; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   const shopName = content.shopName ?? content.planName
   return (
     <PdfDocument shopName={shopName}>
       {/* Page 1: Cover */}
-      <CoverPage content={content} generatedDate={generatedDate} />
+      <CoverPage content={content} generatedDate={generatedDate} brand={brand} />
 
       {/* Page 2: Timeline */}
-      <Page size={BRAND.page.size} style={styles.page}>
-        <PdfHeader shopName={shopName} workspaceName="Launch plan" />
-        <TimelineSection content={content} />
-        <PdfFooter generatedDate={generatedDate} />
+      <Page size={brand.page.size} style={styles.page}>
+        <PdfHeader shopName={shopName} workspaceName="Launch plan" brand={brand} />
+        <TimelineSection content={content} brand={brand} />
+        <PdfFooter generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Page 3: Soft-Open + Marketing */}
-      <Page size={BRAND.page.size} style={styles.page}>
-        <PdfHeader shopName={shopName} workspaceName="Launch plan" />
-        <SoftOpenSection content={content} />
-        <MarketingSection content={content} />
-        <PdfFooter generatedDate={generatedDate} />
+      <Page size={brand.page.size} style={styles.page}>
+        <PdfHeader shopName={shopName} workspaceName="Launch plan" brand={brand} />
+        <SoftOpenSection content={content} brand={brand} />
+        <MarketingSection content={content} brand={brand} />
+        <PdfFooter generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Page 4: Hiring Plan + AI Readiness */}
-      <Page size={BRAND.page.size} style={styles.page}>
-        <PdfHeader shopName={shopName} workspaceName="Launch plan" />
-        <HiringPlanSection content={content} />
-        <ReadinessSection content={content} />
-        <PdfFooter generatedDate={generatedDate} />
+      <Page size={brand.page.size} style={styles.page}>
+        <PdfHeader shopName={shopName} workspaceName="Launch plan" brand={brand} />
+        <HiringPlanSection content={content} brand={brand} />
+        <ReadinessSection content={content} brand={brand} />
+        <PdfFooter generatedDate={generatedDate} brand={brand} />
       </Page>
     </PdfDocument>
   )
@@ -873,6 +883,7 @@ export const launchPlanTemplate: PdfTemplate<LaunchPlanContent> = {
       <LaunchPlanPdf
         content={ctx.content}
         generatedDate={fmtDateLong(new Date())}
+        brand={ctx.brand}
       />
     )
   },

@@ -1,40 +1,54 @@
 import React from "react"
-import { View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-    marginBottom: BRAND.spacing.blockGap,
-  },
-  brandLine: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 14,
-    color: BRAND.colors.primary,
-  },
-  meta: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    textAlign: "right",
-  },
-})
+import { View, Text, Image, StyleSheet } from "@react-pdf/renderer"
+import { BRAND, type BrandTokens } from "../brand"
 
 type Props = {
   shopName: string | null
   workspaceName: string
+  brand?: BrandTokens
 }
 
-export function PdfHeader({ shopName, workspaceName }: Props) {
+export function PdfHeader({ shopName, workspaceName, brand = BRAND }: Props) {
+  const styles = StyleSheet.create({
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+      marginBottom: brand.spacing.blockGap,
+    },
+    brandLine: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 14,
+      color: brand.colors.primary,
+    },
+    logoImage: {
+      maxHeight: 32,
+      maxWidth: 120,
+      objectFit: "contain" as const,
+    },
+    meta: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.muted,
+      textAlign: "right",
+    },
+  })
+
+  const logoSrc = brand.logoBytes
+    ? `data:image/${brand.logoBytes.format === "jpg" ? "jpeg" : "png"};base64,${brand.logoBytes.data.toString("base64")}`
+    : null
+
   return (
     <View style={styles.header} fixed>
-      <Text style={styles.brandLine}>{shopName ?? "Your Coffee Shop"}</Text>
+      {logoSrc ? (
+        <Image src={logoSrc} style={styles.logoImage} />
+      ) : (
+        <Text style={styles.brandLine}>{shopName ?? "Your Coffee Shop"}</Text>
+      )}
       <Text style={styles.meta}>{workspaceName}</Text>
     </View>
   )

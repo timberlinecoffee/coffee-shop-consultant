@@ -18,30 +18,63 @@ export const BRAND = {
   page: { size: "A4" as const, margin: 40 },
 } as const
 
-export type BrandTokens = typeof BRAND
+// Explicit interface so resolveBrand() can return mutable/per-shop values.
+export type BrandTokens = {
+  colors: {
+    ink: string
+    paper: string
+    primary: string
+    accent: string
+    muted: string
+    rule: string
+  }
+  fonts: {
+    sans: string
+    serif: string
+  }
+  spacing: {
+    gutter: number
+    blockGap: number
+  }
+  page: {
+    size: "A4"
+    margin: number
+  }
+  /** Pre-fetched logo bytes for react-pdf image rendering. Null = use text shop name. */
+  logoBytes?: { data: Buffer; format: "png" | "jpg" } | null
+}
+
+/** Per-plan brand overrides loaded from brand_config table. */
+export type BrandConfig = {
+  shopName?: string | null
+  logoBytes?: { data: Buffer; format: "png" | "jpg" } | null
+  colors?: {
+    primary?: string
+    accent?: string
+    ink?: string
+    paper?: string
+    muted?: string
+    rule?: string
+  }
+}
+
+/** Merge per-plan BrandConfig overrides onto the default BRAND tokens. */
+export function resolveBrand(config: BrandConfig): BrandTokens {
+  return {
+    ...BRAND,
+    colors: {
+      ...BRAND.colors,
+      ...(config.colors ?? {}),
+    },
+    logoBytes: config.logoBytes ?? null,
+  }
+}
 
 // ── White-label brand config (TIM-1686) ──────────────────────────────────────
 // Exports must show ONLY the shop owner's brand — never Groundwork/Timberline.
 // Per-shop config (name, logo, colors) is merged over neutral defaults; the
 // full config model + UI lands in follow-up work. These helpers are the single
 // source of truth for the brand strings that appear in every export.
-
-export type BrandConfig = {
-  shopName: string | null
-  logo: string | null
-  colors?: Partial<typeof BRAND.colors>
-}
-
-export type ResolvedBrand = BrandTokens & { shopName: string | null; logo: string | null }
-
-export function resolveBrand(config?: Partial<BrandConfig>): ResolvedBrand {
-  return {
-    ...BRAND,
-    colors: { ...BRAND.colors, ...(config?.colors ?? {}) },
-    shopName: config?.shopName?.trim() || null,
-    logo: config?.logo ?? null,
-  }
-}
 
 // PDF document metadata. Never emit "Timberline Coffee School" — use the shop
 // name when known, otherwise leave the field empty (neutral, no Groundwork).

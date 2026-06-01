@@ -5,7 +5,7 @@
 
 import React from "react";
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import { BRAND, registerFonts } from "../brand";
+import { BRAND, registerFonts, type BrandTokens } from "../brand";
 import { PdfDocument } from "../components/PdfDocument";
 import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
@@ -60,94 +60,96 @@ export interface BusinessPlanPdfContent {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const S = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: BRAND.page.margin,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin,
-    paddingRight: BRAND.page.margin,
-  },
-  tocTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 16,
-    fontWeight: 600,
-    color: BRAND.colors.ink,
-    marginBottom: 16,
-  },
-  tocRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  tocLabel: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-  },
-  tocGroupRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  tocGroupLabel: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 11,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-  },
-  tocSubRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
-    paddingLeft: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  tocNumber: {
-    fontSize: 10,
-    color: BRAND.colors.muted,
-  },
-  sectionTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 18,
-    fontWeight: 600,
-    color: BRAND.colors.primary,
-    marginBottom: 6,
-  },
-  sourceLabel: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginBottom: 14,
-    fontStyle: "italic",
-  },
-  rule: {
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-    marginBottom: 16,
-  },
-  body: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    lineHeight: 1.55,
-    whiteSpace: "pre-wrap",
-  },
-  noContent: {
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    fontStyle: "italic",
-  },
-});
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: brand.page.margin,
+      paddingBottom: brand.page.margin + 20,
+      paddingLeft: brand.page.margin,
+      paddingRight: brand.page.margin,
+    },
+    tocTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 16,
+      fontWeight: 600,
+      color: brand.colors.ink,
+      marginBottom: 16,
+    },
+    tocRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 4,
+      borderBottomWidth: 0.5,
+      borderBottomColor: brand.colors.rule,
+    },
+    tocLabel: {
+      fontSize: 10,
+      color: brand.colors.ink,
+    },
+    tocGroupRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 10,
+      paddingBottom: 4,
+      borderBottomWidth: 0.5,
+      borderBottomColor: brand.colors.rule,
+    },
+    tocGroupLabel: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 11,
+      fontWeight: 700,
+      color: brand.colors.ink,
+    },
+    tocSubRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 4,
+      paddingLeft: 16,
+      borderBottomWidth: 0.5,
+      borderBottomColor: brand.colors.rule,
+    },
+    tocNumber: {
+      fontSize: 10,
+      color: brand.colors.muted,
+    },
+    sectionTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 18,
+      fontWeight: 600,
+      color: brand.colors.primary,
+      marginBottom: 6,
+    },
+    sourceLabel: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginBottom: 14,
+      fontStyle: "italic",
+    },
+    rule: {
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+      marginBottom: 16,
+    },
+    body: {
+      fontSize: 10,
+      color: brand.colors.ink,
+      lineHeight: 1.55,
+      whiteSpace: "pre-wrap",
+    },
+    noContent: {
+      fontSize: 10,
+      color: brand.colors.muted,
+      fontStyle: "italic",
+    },
+  });
+}
 
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -155,7 +157,8 @@ const S = StyleSheet.create({
 // TIM-1498: two-level TOC. Top-level sections (Executive Summary) appear in
 // their own row. Grouped subsections appear under a bold group header with
 // indented child rows. Page numbers are per subsection.
-function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionData[]; shopName: string; date: string }) {
+function TocPage({ sections, shopName, date, brand }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; brand: BrandTokens }) {
+  const S = makeStyles(brand);
   const visible = sections.filter((s) => s.isVisible);
   const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
 
@@ -192,8 +195,8 @@ function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionDa
   }
 
   return (
-    <Page size={BRAND.page.size} style={S.page}>
-      <PdfHeader shopName={shopName} workspaceName="Business Plan" />
+    <Page size={brand.page.size} style={S.page}>
+      <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
       <Text style={S.tocTitle}>Table of Contents</Text>
       {rows.map((row, i) => {
         if (row.kind === "group") {
@@ -219,7 +222,7 @@ function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionDa
           </View>
         );
       })}
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -228,17 +231,20 @@ function SectionPage({
   section,
   shopName,
   date,
+  brand,
 }: {
   section: BusinessPlanSectionData;
   shopName: string;
   date: string;
+  brand: BrandTokens;
 }) {
+  const S = makeStyles(brand);
   const content = section.userContent ?? section.autoContent;
   const isEmpty = !content || content.includes("workspace to populate");
 
   return (
-    <Page size={BRAND.page.size} style={S.page}>
-      <PdfHeader shopName={shopName} workspaceName={section.title} />
+    <Page size={brand.page.size} style={S.page}>
+      <PdfHeader shopName={shopName} workspaceName={section.title} brand={brand} />
       <View style={{ marginBottom: 8 }}>
         <Text style={S.sectionTitle}>{section.title}</Text>
         <Text style={S.sourceLabel}>{section.sourceLabel}</Text>
@@ -249,7 +255,7 @@ function SectionPage({
           <Text style={S.body}>{content}</Text>
         )}
       </View>
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -258,7 +264,9 @@ function SectionPage({
 
 export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
   workspace_key: "concept", // fallback; dataLoader is used
-  render({ content }) {
+  render(ctx) {
+    const { content } = ctx;
+    const brand = ctx.brand;
     const { shopName, sections, cover, financialData, financialDocVisibility } = content;
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -274,10 +282,10 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           date,
           accentColor: cover.accent_color ?? undefined,
           logo: cover.logo,
-        })}
-        <TocPage sections={sections} shopName={displayName} date={date} />
+        }, brand)}
+        <TocPage sections={sections} shopName={displayName} date={date} brand={brand} />
         {visible.map((section) => (
-          <SectionPage key={section.key} section={section} shopName={displayName} date={date} />
+          <SectionPage key={section.key} section={section} shopName={displayName} date={date} brand={brand} />
         ))}
         {financialData && (
           <FinancialPlanPages
@@ -285,6 +293,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
             equipment={financialData.equipment}
             shopName={displayName}
             date={date}
+            brand={brand}
             visibility={financialDocVisibility ?? {
               key_assumptions: true, revenue_by_month: true, expenses_by_month: true, net_profit_by_year: true,
               use_of_funds: true, sources_of_funds: true,

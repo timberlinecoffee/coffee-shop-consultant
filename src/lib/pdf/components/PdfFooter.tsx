@@ -1,37 +1,38 @@
 import React from "react"
 import { View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
-
-const styles = StyleSheet.create({
-  footer: {
-    position: "absolute",
-    bottom: 24,
-    left: BRAND.page.margin,
-    right: BRAND.page.margin,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-    paddingTop: 6,
-  },
-  left: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-  },
-  right: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-  },
-})
+import { BRAND, type BrandTokens } from "../brand"
 
 type Props = {
   generatedDate: string
+  brand?: BrandTokens
 }
 
-export function PdfFooter({ generatedDate }: Props) {
+export function PdfFooter({ generatedDate, brand = BRAND }: Props) {
+  const styles = StyleSheet.create({
+    footer: {
+      position: "absolute",
+      bottom: 24,
+      left: brand.page.margin,
+      right: brand.page.margin,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+      paddingTop: 6,
+    },
+    left: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+    },
+    right: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+    },
+  })
+
   return (
     <View style={styles.footer} fixed>
       <Text style={styles.left}>

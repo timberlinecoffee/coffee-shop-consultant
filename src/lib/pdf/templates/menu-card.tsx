@@ -5,7 +5,7 @@
 
 import React from "react"
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
+import { BRAND, type BrandTokens } from "../brand"
 import { PdfDocument } from "../components/PdfDocument"
 import { PdfHeader } from "../components/PdfHeader"
 import { PdfFooter } from "../components/PdfFooter"
@@ -148,90 +148,92 @@ function groupByCategory(items: MenuItemRow[]): Map<string, MenuItemRow[]> {
 
 // ── styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: BRAND.page.margin,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin,
-    paddingRight: BRAND.page.margin,
-  },
-  emptyNote: {
-    fontSize: 10,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    padding: 8,
-    backgroundColor: "var(--neutral-cool-f5)",
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  categoryLabel: {
-    fontSize: 9,
-    fontWeight: 700,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingBottom: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  publicRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  publicName: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    flex: 1,
-  },
-  publicPrice: {
-    fontSize: 10,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-    textAlign: "right",
-    width: 60,
-  },
-  footerNote: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginTop: 12,
-    fontStyle: "italic",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 10,
-  },
-  summaryCard: {
-    flex: 1,
-    minWidth: 120,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    padding: 8,
-    borderRadius: 4,
-  },
-  summaryLabel: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  summaryValue: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-  },
-})
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: brand.page.margin,
+      paddingBottom: brand.page.margin + 20,
+      paddingLeft: brand.page.margin,
+      paddingRight: brand.page.margin,
+    },
+    emptyNote: {
+      fontSize: 10,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      padding: 8,
+      backgroundColor: "var(--neutral-cool-f5)",
+      borderRadius: 4,
+      marginBottom: 8,
+    },
+    categoryLabel: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginTop: 8,
+      marginBottom: 4,
+      paddingBottom: 3,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    publicRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: 5,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    publicName: {
+      fontSize: 10,
+      color: brand.colors.ink,
+      flex: 1,
+    },
+    publicPrice: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: brand.colors.ink,
+      textAlign: "right",
+      width: 60,
+    },
+    footerNote: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginTop: 12,
+      fontStyle: "italic",
+    },
+    summaryRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 10,
+    },
+    summaryCard: {
+      flex: 1,
+      minWidth: 120,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      padding: 8,
+      borderRadius: 4,
+    },
+    summaryLabel: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    summaryValue: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: brand.colors.ink,
+    },
+  })
+}
 
 // ── Page 1: public menu ──────────────────────────────────────────────────────
 
@@ -239,20 +241,23 @@ function PublicMenuPage({
   items,
   shopName,
   generatedDate,
+  brand,
 }: {
   items: MenuItemRow[]
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
 }) {
+  const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived && i.price_cents > 0)
   const grouped = groupByCategory(active)
 
   return (
-    <Page size={BRAND.page.size} style={styles.page}>
-      <PdfHeader shopName={shopName} workspaceName="Menu" />
+    <Page size={brand.page.size} style={styles.page}>
+      <PdfHeader shopName={shopName} workspaceName="Menu" brand={brand} />
 
       {active.length === 0 ? (
-        <PdfSection title="Menu">
+        <PdfSection title="Menu" brand={brand}>
           <Text style={styles.emptyNote}>
             No priced menu items found. Add items in the Menu &amp; Pricing workspace.
           </Text>
@@ -279,7 +284,7 @@ function PublicMenuPage({
         </>
       )}
 
-      <PdfFooter generatedDate={generatedDate} />
+      <PdfFooter generatedDate={generatedDate} brand={brand} />
     </Page>
   )
 }
@@ -290,11 +295,14 @@ function OperatorPage({
   items,
   shopName,
   generatedDate,
+  brand,
 }: {
   items: MenuItemRow[]
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
 }) {
+  const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived)
   const footer = computeFooter(items)
   const totalMix = footer?.totalMix ?? 0
@@ -346,8 +354,8 @@ function OperatorPage({
   }
 
   return (
-    <Page size={BRAND.page.size} style={styles.page}>
-      <PdfHeader shopName={shopName} workspaceName="Menu — Cost analysis" />
+    <Page size={brand.page.size} style={styles.page}>
+      <PdfHeader shopName={shopName} workspaceName="Menu — Cost analysis" brand={brand} />
 
       {footer && (
         <View style={styles.summaryRow}>
@@ -371,13 +379,13 @@ function OperatorPage({
       )}
 
       {active.length === 0 ? (
-        <PdfSection title="Cost analysis">
+        <PdfSection title="Cost analysis" brand={brand}>
           <Text style={styles.emptyNote}>
             No menu items found. Add items in the Menu &amp; Pricing workspace.
           </Text>
         </PdfSection>
       ) : (
-        <PdfSection title="Item-level cost &amp; margin">
+        <PdfSection title="Item-level cost &amp; margin" brand={brand}>
           <PdfTable columns={columns} rows={rows} totalsRow={totalsRow} />
           <Text style={styles.footerNote}>
             $/100 covers = margin dollars generated per 100 customers at the given mix.{"\n"}
@@ -386,7 +394,7 @@ function OperatorPage({
         </PdfSection>
       )}
 
-      <PdfFooter generatedDate={generatedDate} />
+      <PdfFooter generatedDate={generatedDate} brand={brand} />
     </Page>
   )
 }
@@ -397,16 +405,18 @@ function MenuCardPdf({
   content,
   shopName,
   generatedDate,
+  brand,
 }: {
   content: MenuCardContent
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
 }) {
   const { items } = content
   return (
     <PdfDocument shopName={shopName}>
-      <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} />
-      <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} />
+      <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} />
+      <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} />
     </PdfDocument>
   )
 }
@@ -437,6 +447,7 @@ export const menuCardTemplate: PdfTemplate<MenuCardContent> = {
         content={ctx.content}
         shopName={ctx.plan.shop_name}
         generatedDate={generatedDate}
+        brand={ctx.brand}
       />
     )
   },

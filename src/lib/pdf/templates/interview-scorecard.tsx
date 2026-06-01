@@ -1,6 +1,6 @@
 import React from "react"
 import { Document, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
+import { BRAND, pdfDocMeta, brandFilePrefix, type BrandTokens } from "../brand"
 import { LetterPageShell } from "../components/LetterPageShell"
 import type { PdfTemplate } from "../registry"
 import type { InterviewScorecard, InterviewQuestion, OrgRole } from "@/lib/hiring"
@@ -36,155 +36,157 @@ function slugify(s: string | null | undefined): string {
 
 // ── styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  scorecardTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 20,
-    fontWeight: 600,
-    color: BRAND.colors.ink,
-    marginBottom: 4,
-  },
-  meta: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    marginBottom: 14,
-  },
-  rule: {
-    height: 1,
-    backgroundColor: BRAND.colors.rule,
-    marginBottom: 14,
-  },
-  // Candidate header fields
-  fieldRow: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 14,
-  },
-  fieldBox: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.ink,
-    paddingBottom: 2,
-  },
-  fieldLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  // Question block
-  questionBlock: {
-    marginBottom: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  questionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 6,
-  },
-  questionPrompt: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    flex: 1,
-    lineHeight: 1.4,
-    marginRight: 8,
-  },
-  weightBadge: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 3,
-    flexShrink: 0,
-  },
-  circleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
-  },
-  circleLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginRight: 4,
-  },
-  circle: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-  },
-  circleNumber: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 7,
-    color: BRAND.colors.muted,
-    textAlign: "center",
-    lineHeight: 1,
-    paddingTop: 2,
-  },
-  notesLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginBottom: 2,
-  },
-  notesLine: {
-    height: 1,
-    backgroundColor: BRAND.colors.rule,
-    marginBottom: 1,
-  },
-  // Overall score box
-  overallBox: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    borderRadius: 4,
-    padding: 10,
-    marginTop: 8,
-  },
-  overallTitle: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 10,
-    color: BRAND.colors.primary,
-    marginBottom: 8,
-  },
-  overallScoreLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  overallScoreLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    width: 100,
-  },
-  overallScoreBlank: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.ink,
-    height: 16,
-  },
-  emptyNote: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    padding: 8,
-  },
-})
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    scorecardTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 20,
+      fontWeight: 600,
+      color: brand.colors.ink,
+      marginBottom: 4,
+    },
+    meta: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.muted,
+      marginBottom: 14,
+    },
+    rule: {
+      height: 1,
+      backgroundColor: brand.colors.rule,
+      marginBottom: 14,
+    },
+    // Candidate header fields
+    fieldRow: {
+      flexDirection: "row",
+      gap: 16,
+      marginBottom: 14,
+    },
+    fieldBox: {
+      flex: 1,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.ink,
+      paddingBottom: 2,
+    },
+    fieldLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 8,
+    },
+    // Question block
+    questionBlock: {
+      marginBottom: 14,
+      paddingBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    questionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 6,
+    },
+    questionPrompt: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      flex: 1,
+      lineHeight: 1.4,
+      marginRight: 8,
+    },
+    weightBadge: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      borderRadius: 3,
+      flexShrink: 0,
+    },
+    circleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 6,
+    },
+    circleLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginRight: 4,
+    },
+    circle: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+    },
+    circleNumber: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 7,
+      color: brand.colors.muted,
+      textAlign: "center",
+      lineHeight: 1,
+      paddingTop: 2,
+    },
+    notesLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginBottom: 2,
+    },
+    notesLine: {
+      height: 1,
+      backgroundColor: brand.colors.rule,
+      marginBottom: 1,
+    },
+    // Overall score box
+    overallBox: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      borderRadius: 4,
+      padding: 10,
+      marginTop: 8,
+    },
+    overallTitle: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 10,
+      color: brand.colors.primary,
+      marginBottom: 8,
+    },
+    overallScoreLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    overallScoreLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.ink,
+      width: 100,
+    },
+    overallScoreBlank: {
+      flex: 1,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.ink,
+      height: 16,
+    },
+    emptyNote: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      padding: 8,
+    },
+  })
+}
 
 // ── content type ──────────────────────────────────────────────────────────────
 
@@ -196,23 +198,25 @@ type ScorecardContent = {
 
 // ── PDF component ─────────────────────────────────────────────────────────────
 
-function ScorecardCircle({ filled }: { filled: boolean }) {
+function ScorecardCircle({ filled, brand }: { filled: boolean; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   return (
     <View
       style={[
         styles.circle,
-        filled ? { backgroundColor: BRAND.colors.primary, borderColor: BRAND.colors.primary } : {},
+        filled ? { backgroundColor: brand.colors.primary, borderColor: brand.colors.primary } : {},
       ]}
     />
   )
 }
 
-function RatingCircles({ count = 5, filled = 0 }: { count?: number; filled?: number }) {
+function RatingCircles({ count = 5, filled = 0, brand }: { count?: number; filled?: number; brand: BrandTokens }) {
+  const styles = makeStyles(brand)
   return (
     <View style={styles.circleRow}>
       <Text style={styles.circleLabel}>Rating (1–5):</Text>
       {Array.from({ length: count }, (_, i) => (
-        <ScorecardCircle key={i} filled={i < filled} />
+        <ScorecardCircle key={i} filled={i < filled} brand={brand} />
       ))}
     </View>
   )
@@ -222,11 +226,14 @@ function ScorecardBlankPdf({
   content,
   shopName,
   generatedDate,
+  brand,
 }: {
   content: ScorecardContent
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
 }) {
+  const styles = makeStyles(brand)
   const { scorecard, questions, role } = content
   return (
     <Document {...pdfDocMeta(shopName)}>
@@ -234,6 +241,7 @@ function ScorecardBlankPdf({
         shopName={shopName}
         workspaceName="Interview Scorecard"
         generatedDate={generatedDate}
+        brand={brand}
       >
         <Text style={styles.scorecardTitle}>{scorecard.name}</Text>
         <Text style={styles.meta}>
@@ -268,7 +276,7 @@ function ScorecardBlankPdf({
                 </Text>
                 <Text style={styles.weightBadge}>Weight: {q.weight}</Text>
               </View>
-              <RatingCircles count={5} filled={0} />
+              <RatingCircles count={5} filled={0} brand={brand} />
               <Text style={styles.notesLabel}>Notes:</Text>
               <View style={styles.notesLine} />
               <View style={[styles.notesLine, { marginTop: 10 }]} />
@@ -369,6 +377,7 @@ export const scorecardBlankTemplate: PdfTemplate<ScorecardContent> = {
         content={ctx.content}
         shopName={ctx.plan.shop_name}
         generatedDate={generatedDate}
+        brand={ctx.brand}
       />
     )
   },
