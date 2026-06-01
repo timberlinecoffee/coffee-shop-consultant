@@ -1651,7 +1651,7 @@ function SortableMenuItemRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-5 py-3 transition-colors cursor-pointer hover:bg-[var(--background)] ${
+      className={`flex items-start gap-2 sm:gap-3 px-4 sm:px-5 py-3 transition-colors cursor-pointer hover:bg-[var(--background)] ${
         isSelected
           ? "border-l-2 border-[var(--teal)] bg-[var(--teal-bg-f0f8)]"
           : "border-l-2 border-transparent"
@@ -1661,7 +1661,7 @@ function SortableMenuItemRow({
       {canEdit && (
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-[var(--neutral-cool-400)] hover:text-[var(--neutral-cool-600)] transition-colors shrink-0"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 mt-0.5 text-[var(--neutral-cool-400)] hover:text-[var(--neutral-cool-600)] transition-colors shrink-0"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -1671,6 +1671,9 @@ function SortableMenuItemRow({
         </button>
       )}
 
+      {/* TIM-1674: name + (price/COGS + actions) reflow to two stacked rows on
+          mobile so nothing crowds or overlaps; collapse to one row from sm: up. */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
       <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
         {editingName ? (
           <input
@@ -1699,10 +1702,10 @@ function SortableMenuItemRow({
             </span>
             {/* TIM-1140: explicit "Category:" tag on the row so it isn't
                 mistakable for a subtitle. */}
-            <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 inline-flex items-center gap-1">
-              <Tag size={9} />
-              <span>Category:</span>
-              <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal">
+            <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 flex items-center gap-1 min-w-0">
+              <Tag size={9} className="shrink-0" />
+              <span className="shrink-0">Category:</span>
+              <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal truncate">
                 {category?.name ?? "—"}
               </span>
             </span>
@@ -1710,7 +1713,8 @@ function SortableMenuItemRow({
         )}
       </div>
 
-      <div className="text-right shrink-0">
+      <div className="flex items-center justify-between gap-3 shrink-0 sm:justify-end">
+      <div className="text-left sm:text-right shrink-0">
         {item.price_cents > 0 ? (
           <p className="text-sm font-semibold text-[var(--teal)]">
             {formatCents(item.price_cents)}
@@ -1758,6 +1762,8 @@ function SortableMenuItemRow({
           </button>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }
@@ -2428,7 +2434,8 @@ function CategoryHeader({
   }
 
   return (
-    <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between gap-3">
+    <div className="px-4 sm:px-5 py-3 border-b border-[var(--border)]">
+      <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <FolderOpen size={14} className="text-[var(--teal)] shrink-0" />
         {editing ? (
@@ -2447,14 +2454,18 @@ function CategoryHeader({
           <button
             type="button"
             onClick={() => canEdit && startEdit()}
-            className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted text-left break-words"
+            className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted text-left truncate min-w-0"
             title={canEdit ? "Click to rename" : undefined}
           >
             {category.name}
           </button>
         )}
-        <span className="text-xs text-[var(--dark-grey)]">{itemCount}</span>
-        <CategoryMetrics items={catItems} />
+        <span className="text-xs text-[var(--dark-grey)] shrink-0">{itemCount}</span>
+        {/* TIM-1674: metrics inline beside the title from sm: up; on mobile they
+            drop to their own line below so the gear/+Add/× never collide with GP. */}
+        <span className="hidden sm:inline-flex items-center shrink-0 whitespace-nowrap">
+          <CategoryMetrics items={catItems} />
+        </span>
       </div>
       <div className="flex items-center gap-3 shrink-0">
         {canEdit && (
@@ -2497,6 +2508,11 @@ function CategoryHeader({
             <X size={13} />
           </button>
         )}
+      </div>
+      </div>
+      {/* TIM-1674: COGS/GP metrics on their own line below 640px — no overlap with actions. */}
+      <div className="sm:hidden mt-1.5 pl-6">
+        <CategoryMetrics items={catItems} />
       </div>
     </div>
   );
