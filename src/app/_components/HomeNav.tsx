@@ -22,7 +22,7 @@ export default function HomeNav() {
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="Groundwork home">
-          <Logo variant={scrolled ? "color" : "white"} height={26} priority />
+          <Logo variant={scrolled ? "color" : "white"} height={28} priority />
         </Link>
         <div className="flex items-center gap-4">
           <Link
