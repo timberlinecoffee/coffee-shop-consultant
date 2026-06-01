@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/app/login/login-form";
+import { Logo } from "../_components/Logo";
 
 export const dynamic = 'force-dynamic';
 
@@ -10,11 +11,8 @@ export const metadata = {
 export default function SignupPage() {
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="flex items-center gap-2 mb-10">
-        <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
-          <span className="text-white text-xs font-bold">TCS</span>
-        </div>
-        <span className="font-semibold text-[var(--teal)]">Timberline Coffee School</span>
+      <Link href="/" className="flex items-center mb-10" aria-label="Groundwork home">
+        <Logo variant="color" height={32} priority />
       </Link>
 
       <div className="bg-white rounded-2xl border border-[var(--border)] p-8 w-full max-w-sm shadow-sm">

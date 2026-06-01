@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Logo } from "./Logo";
 
 export default function HomeNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -20,14 +21,8 @@ export default function HomeNav() {
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link
-          href="/"
-          className={`font-semibold text-base tracking-tight transition-colors duration-200 ${
-            scrolled ? "text-teal" : "text-white"
-          }`}
-          style={{ fontFamily: "var(--font-poppins, Poppins), system-ui, sans-serif", fontWeight: 600 }}
-        >
-          Groundwork
+        <Link href="/" className="flex items-center" aria-label="Groundwork home">
+          <Logo variant={scrolled ? "color" : "white"} height={26} priority />
         </Link>
         <div className="flex items-center gap-4">
           <Link

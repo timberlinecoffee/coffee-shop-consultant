@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import HomeNav from "./_components/HomeNav";
+import { Logo } from "./_components/Logo";
 import HomepageHero from "./_components/HomepageHero";
 import FeatureAccordion, { type AccordionItem } from "./_components/FeatureAccordion";
 import BenefitSections from "./_components/BenefitSections";
@@ -801,12 +802,9 @@ export default function LandingPage() {
       {/* ── Footer ────────────────────────────────────────────────────────────── */}
       <footer style={{ background: "var(--neutral-900)", padding: "64px 24px 40px" }}>
         <div className="max-w-6xl mx-auto">
-          <p
-            className="font-semibold mb-10"
-            style={{ color: "var(--neutral-100)", fontSize: "16px" }}
-          >
-            Groundwork
-          </p>
+          <div className="mb-10">
+            <Logo variant="white" height={30} />
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">
             {FOOTER_COLS.map((col) => (
               <div key={col.heading}>

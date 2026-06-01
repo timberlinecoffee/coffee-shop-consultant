@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Logo } from "../_components/Logo";
 import { createClient } from "@/lib/supabase/client";
 
 type BillingInterval = "monthly" | "annual";
@@ -163,11 +164,8 @@ function PricingPageInner() {
     <div className="min-h-screen bg-[var(--background)]">
       <nav className="bg-white border-b border-[var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">TCS</span>
-            </div>
-            <span className="font-semibold text-[var(--teal)] text-sm hidden sm:block">Timberline Coffee School</span>
+          <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center" aria-label="Groundwork home">
+            <Logo variant="color" height={28} />
           </Link>
           <div className="flex items-center gap-4">
             {isLoggedIn ? (

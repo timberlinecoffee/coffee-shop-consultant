@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "../_components/Logo";
 
 export const metadata = {
   title: "Subscription Terms | Groundwork",
@@ -12,11 +13,8 @@ export default function SubscriptionTermsPage() {
     <div className="min-h-screen bg-[var(--background)] flex flex-col">
       <header className="border-b border-[var(--border)] bg-white">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">GW</span>
-            </div>
-            <span className="font-semibold text-[var(--teal)]">Groundwork</span>
+          <Link href="/" className="flex items-center" aria-label="Groundwork home">
+            <Logo variant="color" height={30} />
           </Link>
           <Link href="/" className="text-sm text-[var(--teal)] hover:underline">
             Back to home

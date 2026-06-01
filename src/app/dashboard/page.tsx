@@ -12,6 +12,7 @@ import {
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { DashboardHero } from "./_components/dashboard-hero";
 import { WorkspaceNav } from "./_components/workspace-nav";
+import { Logo } from "../_components/Logo";
 
 export const dynamic = 'force-dynamic';
 
@@ -96,11 +97,8 @@ export default async function DashboardPage() {
       {/* Top bar */}
       <nav className="bg-white border-b border-[var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center">
-              <span className="text-white text-xs font-bold">TCS</span>
-            </div>
-            <span className="font-semibold text-[var(--teal)] text-sm hidden sm:block">My Coffee Shop Consultant</span>
+          <Link href="/" className="flex items-center" aria-label="Groundwork home">
+            <Logo variant="color" height={28} priority />
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/account" className="text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors">Account</Link>
