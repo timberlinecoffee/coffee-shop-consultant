@@ -372,8 +372,8 @@ export function BusinessPlanWorkspace({
           </p>
         </header>
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-between mb-6 gap-3">
+        {/* Toolbar — TIM-1679: flex-col on mobile so buttons don't overflow at ≤480px */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2 sm:gap-3">
           <p className="text-xs text-[var(--neutral-cool-600)]">
             {visibleCount} of {sections.length} sections visible
           </p>
@@ -382,7 +382,7 @@ export function BusinessPlanWorkspace({
             <button
               onClick={handlePrintPlan}
               disabled={isPrintingPdf || !canEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FileText className="w-3.5 h-3.5" />
               {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
@@ -390,7 +390,7 @@ export function BusinessPlanWorkspace({
             <button
               onClick={handleExportPdf}
               disabled={isExportingPdf || !canEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download className="w-3.5 h-3.5" />
               {isExportingPdf ? "Exporting..." : "Export PDF"}
@@ -659,90 +659,116 @@ function SectionCard({
         section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
-      {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <button
-          onClick={onToggleExpand}
-          className="flex-1 flex items-center gap-2 text-left"
-          aria-expanded={section.isExpanded}
-        >
-          {section.isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-          )}
-          <div>
-            <h2 className="text-xl font-semibold text-[var(--foreground)]">{section.title}</h2>
-            <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
-          </div>
-          {hasUserOverride && (
-            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
-              Edited
-            </span>
-          )}
-        </button>
-
-        <div className="flex items-center gap-2">
-          {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (
-            <>
-              {onGenerateExec && (
-                <button
-                  onClick={onGenerateExec}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
-                >
-                  <Wand2 className="w-3 h-3" />
-                  Generate
-                </button>
-              )}
-              {onImprove && (
-                <button
-                  onClick={onImprove}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
-                >
-                  <Wand2 className="w-3 h-3" />
-                  Improve
-                </button>
-              )}
-            </>
-          )}
-
-
-          {canEdit && hasUserOverride && !section.isEditing && section.isExpanded && (
-            <button
-              onClick={onResetToAuto}
-              title="Reset to auto-generated content"
-              className="p-1.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {exampleContent && section.isExpanded && (
-            <button
-              onClick={() => setShowExample((v) => !v)}
-              title={showExample ? "Hide example" : "See a worked example"}
-              className={`p-1.5 rounded-lg transition-colors ${
-                showExample
-                  ? "text-[var(--teal)] bg-[var(--teal-50,#f0fdfa)]"
-                  : "text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)]"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-            </button>
-          )}
-
+      {/* Header — TIM-1679: outer wrapper so AI chips reflow to a second row at <640px */}
+      <div className="px-4 sm:px-5 py-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={onToggleVisible}
-            title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-            className="p-1.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+            onClick={onToggleExpand}
+            className="flex-1 flex items-center gap-2 text-left min-w-0"
+            aria-expanded={section.isExpanded}
           >
-            {section.isVisible ? (
-              <Eye className="w-3.5 h-3.5" />
+            {section.isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
             ) : (
-              <EyeOff className="w-3.5 h-3.5" />
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+            )}
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
+              <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+            </div>
+            {hasUserOverride && (
+              <span className="ml-2 flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
+                Edited
+              </span>
             )}
           </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* AI chips — inline from sm: up only; mobile row rendered below */}
+            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (
+              <div className="hidden sm:flex items-center gap-2">
+                {onGenerateExec && (
+                  <button
+                    onClick={onGenerateExec}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+                  >
+                    <Wand2 className="w-3 h-3" />
+                    Generate
+                  </button>
+                )}
+                {onImprove && (
+                  <button
+                    onClick={onImprove}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+                  >
+                    <Wand2 className="w-3 h-3" />
+                    Improve
+                  </button>
+                )}
+              </div>
+            )}
+
+            {canEdit && hasUserOverride && !section.isEditing && section.isExpanded && (
+              <button
+                onClick={onResetToAuto}
+                title="Reset to auto-generated content"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {exampleContent && section.isExpanded && (
+              <button
+                onClick={() => setShowExample((v) => !v)}
+                title={showExample ? "Hide example" : "See a worked example"}
+                className={`p-1.5 rounded-xl transition-colors ${
+                  showExample
+                    ? "text-[var(--teal)] bg-[var(--teal-50,#f0fdfa)]"
+                    : "text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)]"
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            <button
+              onClick={onToggleVisible}
+              title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
+              className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              {section.isVisible ? (
+                <Eye className="w-3.5 h-3.5" />
+              ) : (
+                <EyeOff className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* TIM-1679: AI chips second row — mobile (<640px) only, mirrors Menu Suite CategoryHeader pattern */}
+        {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (onGenerateExec || onImprove) && (
+          <div className="sm:hidden flex flex-wrap items-center gap-2 mt-2 pl-6">
+            {onGenerateExec && (
+              <button
+                onClick={onGenerateExec}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+              >
+                <Wand2 className="w-3 h-3" />
+                Generate
+              </button>
+            )}
+            {onImprove && (
+              <button
+                onClick={onImprove}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+              >
+                <Wand2 className="w-3 h-3" />
+                Improve
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Body */}
