@@ -17,7 +17,7 @@
 
 import { buildPrompt, NEGATIVE_PROMPT, type PromptSlots } from "./prompt-recipe.ts";
 
-export type IllustrationSlot = "hero" | "recipe-card" | "empty-state" | "lesson";
+export type IllustrationSlot = "hero" | "recipe-card" | "empty-state" | "lesson" | "model-type";
 
 /** Supported output resolutions for the OpenAI image API. */
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536";
@@ -150,6 +150,102 @@ export const RECIPES: IllustrationRecipe[] = [
       strokeWeight: "1.25px",
       variant: "light",
       detail: "high detailed",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
+  // TIM-1697: one line-art mark per coffee-shop model type, wired into the
+  // onboarding "What kind of shop are you imagining?" selection. Lane A only
+  // (deterministic SVG, transparent bg per TIM-1675); rendered by
+  // scripts/render-svg-illustration.mjs, committed under public/images/illustrations/
+  // model-type/, and mapped in lane-a-assets.ts. size/quality below describe the
+  // future gpt-image (Lane B) target only; the served asset is the SVG raster.
+  {
+    id: "model-full-cafe",
+    slot: "model-type",
+    title: "Model Type — Full Cafe With Food",
+    size: "1024x1024",
+    quality: "low",
+    subject: "A place setting (plate flanked by a fork and knife) signalling a sit-down cafe with food.",
+    alt: "Line-art icon of a plate with a fork and knife",
+    promptSlots: {
+      subject: "model-full-cafe",
+      orientation: "centered",
+      strokeWeight: "1.5px",
+      variant: "light",
+      detail: "minimal iconographic",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
+  {
+    id: "model-espresso-bar",
+    slot: "model-type",
+    title: "Model Type — Espresso Bar",
+    size: "1024x1024",
+    quality: "low",
+    subject: "A counter espresso machine with a cup beneath the group head.",
+    alt: "Line-art icon of a counter espresso machine with a cup",
+    promptSlots: {
+      subject: "model-espresso-bar",
+      orientation: "centered",
+      strokeWeight: "1.5px",
+      variant: "light",
+      detail: "minimal iconographic",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
+  {
+    id: "model-roastery-cafe",
+    slot: "model-type",
+    title: "Model Type — Roastery Cafe",
+    size: "1024x1024",
+    quality: "low",
+    subject: "A drum coffee roaster with a bean hopper and two coffee beans.",
+    alt: "Line-art icon of a drum coffee roaster with beans",
+    promptSlots: {
+      subject: "model-roastery-cafe",
+      orientation: "centered",
+      strokeWeight: "1.5px",
+      variant: "light",
+      detail: "minimal iconographic",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
+  {
+    id: "model-drive-thru",
+    slot: "model-type",
+    title: "Model Type — Drive-Through Or Kiosk",
+    size: "1024x1024",
+    quality: "low",
+    subject: "A kiosk with a striped awning, a service window with a to-go cup, and a drive-lane arrow.",
+    alt: "Line-art icon of a kiosk with an awning, service window, and drive-lane arrow",
+    promptSlots: {
+      subject: "model-drive-thru",
+      orientation: "centered",
+      strokeWeight: "1.5px",
+      variant: "light",
+      detail: "minimal iconographic",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
+  {
+    id: "model-mobile-cart",
+    slot: "model-type",
+    title: "Model Type — Mobile Cart Or Pop-Up",
+    size: "1024x1024",
+    quality: "low",
+    subject: "A wheeled mobile coffee cart under a scalloped canopy with a serving window.",
+    alt: "Line-art icon of a wheeled coffee cart with a canopy",
+    promptSlots: {
+      subject: "model-mobile-cart",
+      orientation: "centered",
+      strokeWeight: "1.5px",
+      variant: "light",
+      detail: "minimal iconographic",
       aspectRatio: "1:1 square",
     },
     recipeConfirmed: true,
