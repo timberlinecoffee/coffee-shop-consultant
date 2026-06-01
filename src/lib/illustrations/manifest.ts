@@ -5,7 +5,8 @@
 // asset has not been generated yet, so the caller can fall back gracefully).
 
 import generated from "./manifest.generated.json";
-import { getRecipe, type IllustrationRecipe } from "./recipes";
+import { getRecipe, type IllustrationRecipe } from "./recipes.ts";
+import { LANE_A_ASSETS } from "./lane-a-assets.ts";
 
 export interface GeneratedAsset {
   /** Public path, e.g. /images/illustrations/hero/hero-your-coffee-shop.webp */
@@ -33,9 +34,14 @@ export interface ResolvedIllustration {
 export function getIllustration(recipeId: string): ResolvedIllustration | null {
   const recipe = getRecipe(recipeId);
   if (!recipe) return null;
-  return { recipe, asset: ASSETS[recipeId] ?? null };
+  return { recipe, asset: getAsset(recipeId) };
 }
 
+/**
+ * Prefer a generated Lane B (gpt-image) asset when one exists; otherwise fall back
+ * to the committed Lane A deterministic-SVG asset (TIM-1585). Returns null only when
+ * neither lane has produced an asset, so the UI slot renders its fallback.
+ */
 export function getAsset(recipeId: string): GeneratedAsset | null {
-  return ASSETS[recipeId] ?? null;
+  return ASSETS[recipeId] ?? LANE_A_ASSETS[recipeId] ?? null;
 }

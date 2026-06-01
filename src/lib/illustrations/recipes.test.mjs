@@ -5,11 +5,13 @@ import assert from "node:assert/strict";
 import {
   RECIPES,
   getRecipe,
+  recipeIdForItemName,
   resolvePrompt,
   estimateCostUsd,
   STYLE_SUFFIX,
   OPENAI_IMAGE_MODEL,
 } from "./recipes.ts";
+import { LANE_A_ASSETS, getLaneAAsset } from "./lane-a-assets.ts";
 
 test("every recipe has a unique id and a known slot", () => {
   const slots = new Set(["hero", "recipe-card", "empty-state", "lesson"]);
@@ -52,4 +54,36 @@ test("cost estimate is in the documented gpt-image-1.5 range", () => {
 
 test("recommended model is not the deprecated gpt-image-1", () => {
   assert.equal(OPENAI_IMAGE_MODEL, "gpt-image-1.5");
+});
+
+// --- TIM-1585: Lane A rollout ---
+
+test("the recipe-card recipes wired by the rollout exist", () => {
+  assert.ok(getRecipe("recipe-flat-white"), "flat white recipe missing");
+  assert.ok(getRecipe("recipe-espresso"), "espresso recipe missing");
+  assert.equal(getRecipe("recipe-espresso").slot, "recipe-card");
+});
+
+test("recipeIdForItemName maps known drinks, ignores case/space, else undefined", () => {
+  assert.equal(recipeIdForItemName("Flat White"), "recipe-flat-white");
+  assert.equal(recipeIdForItemName("  espresso "), "recipe-espresso");
+  assert.equal(recipeIdForItemName("Cortado"), undefined);
+  assert.equal(recipeIdForItemName(""), undefined);
+  assert.equal(recipeIdForItemName(null), undefined);
+});
+
+test("every Lane A asset maps to a real recipe and a committed recipe-card/empty-state path", () => {
+  for (const [id, asset] of Object.entries(LANE_A_ASSETS)) {
+    assert.ok(getRecipe(id), `Lane A asset ${id} has no recipe`);
+    assert.equal(asset.costUsd, 0, `Lane A asset ${id} must be $0`);
+    assert.match(asset.path, /^\/images\/illustrations\/(recipe-card|empty-state)\/.+\.png$/);
+  }
+});
+
+test("Lane A assets exist for both recipe-card drinks and the empty state", () => {
+  assert.ok(getLaneAAsset("recipe-flat-white"), "flat white Lane A asset missing");
+  assert.ok(getLaneAAsset("recipe-espresso"), "espresso Lane A asset missing");
+  assert.ok(getLaneAAsset("empty-state-no-data"), "empty-state Lane A asset missing");
+  // Unknown recipe id has no Lane A asset, so the slot falls back to nothing.
+  assert.equal(getLaneAAsset("nope-not-real"), null);
 });
