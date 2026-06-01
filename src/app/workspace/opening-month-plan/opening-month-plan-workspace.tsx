@@ -19,6 +19,7 @@ import {
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { consumeSseFrames } from "@/components/copilot/sse";
@@ -1063,6 +1064,13 @@ export function OpeningMonthPlanWorkspace({
             {headerSubtitle}
           </p>
         </header>
+
+        {/* TIM-1634: standard suite sub-nav between the two pages in this
+            suite, replacing the old two-card landing. Only rendered for the
+            split sub-pages; the legacy unified ("all") page has no sub-nav. */}
+        {section !== "all" && (
+          <LaunchPlanSubNav active={section === "milestones" ? "milestones" : "playbook"} />
+        )}
 
         <div className="space-y-4">
           {/* First-visit copy — milestones-only (the playbook seed doesn't
