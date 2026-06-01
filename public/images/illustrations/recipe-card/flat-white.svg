@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
+  <rect x="0" y="0" width="600" height="800" fill="#faf9f7"/>
+  <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse stroke="#155e63" cx="300" cy="600" rx="232" ry="64"/>
+    <ellipse stroke="#155e63" cx="300" cy="596" rx="150" ry="40"/>
+    <path stroke="#155e63" d="M 120 648 Q 300 700 480 648"/>
+    <ellipse stroke="#155e63" cx="300" cy="372" rx="150" ry="92"/>
+    <ellipse stroke="#155e63" cx="300" cy="372" rx="116" ry="70"/>
+    <path stroke="#155e63" d="M 152 378 C 150 470 196 540 300 548 C 404 540 450 470 448 378"/>
+    <path stroke="#155e63" d="M 222 545 Q 300 568 378 545"/>
+    <path stroke="#155e63" d="M 446 350 C 520 350 532 446 452 458"/>
+    <path stroke="#155e63" d="M 452 372 C 500 376 506 432 452 440"/>
+    <path stroke="#155e63" d="M 300 318 L 300 420"/>
+    <path stroke="#155e63" d="M 300 340 C 268 344 252 360 256 384 C 280 378 296 364 300 348"/>
+    <path stroke="#155e63" d="M 300 340 C 332 344 348 360 344 384 C 320 378 304 364 300 348"/>
+    <path stroke="#155e63" d="M 300 366 C 274 370 262 382 266 402 C 286 396 298 386 300 374"/>
+    <path stroke="#155e63" d="M 300 366 C 326 370 338 382 334 402 C 314 396 302 386 300 374"/>
+    <path stroke="#155e63" d="M 300 392 C 282 396 274 404 277 418 C 291 414 298 408 300 398"/>
+    <path stroke="#155e63" d="M 300 392 C 318 396 326 404 323 418 C 309 414 302 408 300 398"/>
+  </g>
+</svg>
