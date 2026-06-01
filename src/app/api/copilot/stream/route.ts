@@ -4,6 +4,8 @@
 // TIM-1670: web_search server tool wired in so competitor/local-market queries do genuine
 // multi-source research (enumerate→verify→cite) instead of answering from priors; location
 // candidates surfaced for grounding; research queries route to sonnet; `status:searching` event.
+// INVARIANT: the research directive is injected ONLY on isResearch turns (same gate as the
+// web_search tool) — never tell the model it has a tool we didn't register, or it fabricates.
 // Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions OR a research query.
 // Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
 // TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
@@ -77,9 +79,11 @@ When the user explicitly asks you to design, draft, write, generate, name, or co
 
 // TIM-1670: research depth. Local market / competitor / supplier / pricing-benchmark
 // questions cannot be answered from training priors — they go stale and miss obvious
-// local players. Scout has a real web_search tool; this mandates it does genuine,
-// multi-source, enumerate-then-verify research before answering these queries.
-const STABLE_RESEARCH_DIRECTIVE = `## Local & Market Research (use web_search — do NOT answer from memory)
+// local players. INVARIANT: this directive is injected ONLY on turns where the web_search
+// tool is actually registered (isResearch). Telling the model it has a tool it does not
+// have makes it fabricate tool-call-shaped text and answer from priors — the exact failure
+// this issue fixes. Directive presence ⟺ tool presence, always.
+const RESEARCH_DIRECTIVE = `## Local & Market Research (use web_search — do NOT answer from memory)
 You have a \`web_search\` tool. For any question that depends on real-world, location-specific, or current facts you MUST use it instead of answering from training data. This always includes:
 - Competitor / market research ("who are my competitors", "what coffee shops are near me", "what's the market like here").
 - Local suppliers, roasters, distributors, equipment vendors, real estate, or permits for the owner's area.
@@ -90,7 +94,7 @@ Answering with "a couple of competitors" from memory is a failure. Do this inste
 1. **Ground in the owner's actual location and segment.** Use the specific address / neighborhood / city from their plan (see Local Market Context below) and their shop type and target customer. Never research a generic or guessed location.
 2. **Enumerate broadly first.** Run several distinct searches, not one. Vary the angle: "coffee shops in {neighborhood/city}", "best coffee {city}", "cafes near {address}", "{city} specialty coffee roasters", map/directory style queries. Pull a candidate list of every plausible direct competitor — independents and chains both.
 3. **Verify each candidate.** Confirm it actually exists, is currently open, and is genuinely a direct competitor (similar segment and trade area), not a distant or unrelated business.
-4. **Then answer.** Return a reasonably complete list of the primary direct competitors — not just the first two or three. For each, give name, location/neighborhood, and a one-line read on positioning (price tier, specialty vs. grab-and-go, notable strength). Include the source link for each from your searches.
+4. **Then answer.** Return a reasonably complete list of the primary direct competitors — not just the first two or three. For each, give name, location/neighborhood, and a one-line read on positioning (price tier, specialty vs. grab-and-go, notable strength). Cite the actual source URL for each as a clickable markdown link (e.g. \`[Rosso Coffee](https://…)\`) using the real links your web_search returned — not just a site name in brackets.
 5. **Be honest about coverage.** If results are thin for a small or rural area, say so and name what you did find, rather than padding with invented names. Never fabricate a competitor, address, or statistic — if a search did not surface it, do not assert it.
 
 Keep the Problem → Recommendation Rule: after the competitor list, give the owner a concrete positioning takeaway and a named next step.`
@@ -241,7 +245,10 @@ ${planSnapshot}`
 // (b) lengthen the no-data watchdog while web_search runs server-side.
 function isResearchQuestion(messages: Array<{ role: string; content: string }>): boolean {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  return /\b(competitor|competition|market research|market analysis|who else|other (coffee )?shops?|cafes? near|coffee shops? (near|in|around)|local (market|roaster|supplier|vendor)|nearby|in my area|around (me|here)|going rate|market rate|benchmark|average (price|rent|wage))\b/i.test(
+  // NOTE: plurals matter — "who are my competitors" is the single most common phrasing.
+  // An earlier version used `competitor\b`, which failed on the trailing "s" and left
+  // research turns on haiku with no search tool (the model then fabricated tool calls).
+  return /\b(competitors?|competition|competitive|market (research|analysis|landscape|study)|who else|other (coffee )?(shops?|cafes?|roasters?)|(coffee )?(shops?|cafes?|roasters?) (near|around|in)|local (market|roaster|supplier|vendor|competition)|near ?by|in my area|around (me|here)|near me|going rate|market rate|benchmark|average (price|rent|wage|salary))\b/i.test(
     lastUser,
   )
 }
@@ -596,7 +603,11 @@ export async function POST(request: NextRequest) {
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
-            text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}\n\n${STABLE_RESEARCH_DIRECTIVE}`,
+            // TIM-1670: the research directive is injected ONLY when isResearch (so the
+            // web_search tool is also registered below). Never claim a tool we didn't pass.
+            text: isResearch
+              ? `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}\n\n${RESEARCH_DIRECTIVE}`
+              : `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
           },
           {
             type: "text",
