@@ -2,11 +2,14 @@
 // Reads workspace_documents for the plan and renders a per-workspace digest.
 // Concept gets structured bullet formatting so the AI can suggest precise edits;
 // other workspaces fall back to truncated JSON until they ship their formatters.
+// TIM-1638: opening_month_plan now gets a dedicated formatter that surfaces
+// targetLaunchDate explicitly as the authoritative opening date.
 
 import type { WorkspaceKey } from "@/types/supabase"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { formatConceptV2ForAI, normalizeConceptV2 } from "@/lib/concept"
 import { formatMarketingForAI, normalizeMarketing } from "@/lib/marketing"
+import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 
 const TOKEN_CHARS = 4 // rough chars-per-token
 const MAX_CHARS_PER_WORKSPACE = 600 * TOKEN_CHARS // ~600 tokens
@@ -24,12 +27,31 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   operations_playbook: "Operations Playbook",
 }
 
+// TIM-1638: render opening_month_plan config with targetLaunchDate prominently
+// labeled as the authoritative opening date so Scout uses it over stale onboarding values.
+function formatOpeningMonthPlanForAI(content: unknown): string {
+  const config = normalizeLaunchPlanConfig(content)
+  const lines: string[] = []
+  if (config.targetLaunchDate) {
+    lines.push(`Target Launch Date (authoritative): ${config.targetLaunchDate}`)
+    if (config.lastGeneratedAt) {
+      lines.push(`Milestones last generated: ${config.lastGeneratedAt.slice(0, 10)}`)
+    }
+  } else {
+    lines.push(`Target Launch Date: not set`)
+  }
+  return lines.join("\n")
+}
+
 function renderContent(workspaceKey: WorkspaceKey, content: unknown): string {
   if (workspaceKey === "concept") {
     return formatConceptV2ForAI(normalizeConceptV2(content))
   }
   if (workspaceKey === "marketing") {
     return formatMarketingForAI(normalizeMarketing(content))
+  }
+  if (workspaceKey === "opening_month_plan") {
+    return formatOpeningMonthPlanForAI(content)
   }
   const raw = JSON.stringify(content)
   if (!raw || raw === "{}" || raw === "null") return "_no content yet_"
@@ -38,20 +60,31 @@ function renderContent(workspaceKey: WorkspaceKey, content: unknown): string {
     : raw
 }
 
+// TIM-1638: also return the authoritative launch date so the stream route can
+// surface it in the dynamic prompt and detect cross-section inconsistencies.
 export async function composePlanSnapshot(
   planId: string,
   // TIM-1149: null = general conversation; no workspace is marked "current".
   currentWorkspace: WorkspaceKey | null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
-): Promise<{ snapshot: string; estimatedTokens: number }> {
+): Promise<{ snapshot: string; estimatedTokens: number; targetLaunchDate: string | null }> {
   const { data: docs } = await supabase
     .from("workspace_documents")
     .select("workspace_key, content")
     .eq("plan_id", planId)
 
   if (!docs || docs.length === 0) {
-    return { snapshot: "No workspace documents yet.", estimatedTokens: 10 }
+    return { snapshot: "No workspace documents yet.", estimatedTokens: 10, targetLaunchDate: null }
+  }
+
+  // TIM-1638: extract targetLaunchDate from the opening_month_plan doc so the
+  // stream route can use it as the authoritative opening date.
+  let targetLaunchDate: string | null = null
+  const openingDoc = docs.find((d) => d.workspace_key === "opening_month_plan")
+  if (openingDoc) {
+    const config = normalizeLaunchPlanConfig(openingDoc.content)
+    targetLaunchDate = config.targetLaunchDate
   }
 
   const sections: string[] = []
@@ -65,7 +98,7 @@ export async function composePlanSnapshot(
   }
 
   const snapshot = sections.join("\n\n")
-  return { snapshot, estimatedTokens: Math.ceil(snapshot.length / TOKEN_CHARS) }
+  return { snapshot, estimatedTokens: Math.ceil(snapshot.length / TOKEN_CHARS), targetLaunchDate }
 }
 
 export async function composeAllWorkspacesSnapshot(
