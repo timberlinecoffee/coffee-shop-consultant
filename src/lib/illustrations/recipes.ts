@@ -137,6 +137,24 @@ export const RECIPES: IllustrationRecipe[] = [
     recipeConfirmed: true,
   },
   {
+    id: "recipe-espresso",
+    slot: "recipe-card",
+    title: "Recipe Card — Espresso",
+    size: "1024x1024",
+    quality: "medium",
+    subject: "Demitasse espresso cup on a saucer with a thick crema circle, side-on.",
+    alt: "Line-art illustration of a demitasse espresso cup with a crema circle",
+    promptSlots: {
+      subject: "espresso-shot",
+      orientation: "centered",
+      strokeWeight: "1.25px",
+      variant: "light",
+      detail: "high detailed",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
+  {
     id: "empty-state-no-data",
     slot: "empty-state",
     title: "Empty State — No Data",
@@ -158,4 +176,21 @@ export const RECIPES: IllustrationRecipe[] = [
 
 export function getRecipe(id: string): IllustrationRecipe | undefined {
   return RECIPES.find((r) => r.id === id);
+}
+
+/**
+ * TIM-1585: map a menu-item name to its Lane A recipe-card illustration, if the
+ * curated set covers that drink. Returns undefined for drinks we have no on-brand
+ * line-art for yet, so the <Illustration> slot falls back to nothing rather than
+ * showing an off-subject image. Matching is deterministic (no AI at runtime), in
+ * line with the Groundwork governance rule that illustrations never auto-apply.
+ */
+const ITEM_NAME_TO_RECIPE_ID: Record<string, string> = {
+  "flat white": "recipe-flat-white",
+  espresso: "recipe-espresso",
+};
+
+export function recipeIdForItemName(name: string | null | undefined): string | undefined {
+  if (!name) return undefined;
+  return ITEM_NAME_TO_RECIPE_ID[name.trim().toLowerCase()];
 }
