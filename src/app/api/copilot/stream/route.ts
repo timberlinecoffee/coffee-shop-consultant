@@ -491,8 +491,9 @@ export async function POST(request: NextRequest) {
           ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
           : "Your credits reset at the start of next month."
     return new Response(
+      // TIM-1687: distinct code so the client can offer Buy-more-credits alongside Upgrade.
       sse("error", {
-        code: "quota",
+        code: "out_of_credits",
         message: `You're out of Copilot credits for this month. ${upgradeHint}`,
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },

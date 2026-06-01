@@ -91,6 +91,24 @@ export const MONTHLY_CREDITS: Record<Tier, number> = {
 // TIM-1544: Pause plan price — $2.99/mo. Set via STRIPE_PAUSE_MONTHLY_PRICE_ID.
 export const PAUSE_PRICE_ID = process.env.STRIPE_PAUSE_MONTHLY_PRICE_ID ?? "";
 
+// TIM-1687: one-off credit top-up prices. Provision three one-time prices in
+// Stripe (small / medium / large pack — see src/lib/credits/packs.ts for the
+// credit amount and dollar price each must match) and set the IDs in env. The
+// credit catalog itself lives in packs.ts (client-safe); only the Stripe price
+// IDs live here, mirroring the PLANS pattern so a price revision is config-only.
+import type { CreditPackKey } from "@/lib/credits/packs";
+
+export function creditPackPriceId(key: CreditPackKey): string {
+  switch (key) {
+    case "small":
+      return process.env.STRIPE_CREDITS_SMALL_PRICE_ID ?? "";
+    case "medium":
+      return process.env.STRIPE_CREDITS_MEDIUM_PRICE_ID ?? "";
+    case "large":
+      return process.env.STRIPE_CREDITS_LARGE_PRICE_ID ?? "";
+  }
+}
+
 // Returns the monthly price ID for a given tier, or null if not found.
 export function monthlyPriceIdForTier(tier: string): string | null {
   for (const plan of Object.values(PLANS)) {

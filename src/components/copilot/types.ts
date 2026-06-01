@@ -19,6 +19,7 @@ export type CopilotErrorCode =
   | "upstream_error"
   | "timeout"
   | "quota"
+  | "out_of_credits" // TIM-1687: out of monthly credits — offer Buy more credits + Upgrade
   | "trial_exhausted"
   | "unauthorized"
   | "bad_request"

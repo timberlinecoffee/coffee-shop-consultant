@@ -52,6 +52,18 @@ echo "price_1TdIOcCzwciIL0hnXoGapjth" | npx vercel env add STRIPE_PAUSE_MONTHLY_
 # When Stripe goes live: replace production value with live-mode price ID
 ```
 
+## Configured price IDs — Credit top-up packs (TIM-1703 / TIM-1687)
+
+Provisioned 2026-06-01 in **test mode** (`sk_test_…`) via `scripts/stripe-create-credit-packs.js`. One-time prices (`type=one_time`, no `recurring`). All three set in Vercel for Development, Preview, and Production. Same test-mode IDs apply to all envs until Stripe live mode is enabled (see mode note above).
+
+| Pack | Credits | Price | Env var | Price ID |
+|---|---|---|---|---|
+| Small | 25 | $12 | `STRIPE_CREDITS_SMALL_PRICE_ID` | `price_1TdZrbCzwciIL0hnpqDZOZhq` |
+| Medium | 100 | $39 | `STRIPE_CREDITS_MEDIUM_PRICE_ID` | `price_1TdZrcCzwciIL0hnVluh7lNP` |
+| Large | 300 | $99 | `STRIPE_CREDITS_LARGE_PRICE_ID` | `price_1TdZrdCzwciIL0hnVoTz3Qo1` |
+
+Credits/prices are launch defaults flagged for Trent/product calibration before live mode. When Stripe goes live, create live-mode prices and rotate the Production env values.
+
 ## Revising a price (e.g. Pro rate change)
 
 1. In the Stripe Dashboard, create a new price on the existing Pro product.

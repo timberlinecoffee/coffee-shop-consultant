@@ -15,6 +15,7 @@ import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
+import { CreditPacksModal } from "@/components/credit-packs-modal";
 import type { WorkspaceKey } from "@/types/supabase";
 import {
   COPILOT_AI_DISCLAIMER,
@@ -182,13 +183,21 @@ function deriveTitle(messages: CopilotMessage[]): string {
   return trimmed.length > 60 ? `${trimmed.slice(0, 57)}…` : trimmed;
 }
 
-function errorCopy(err: CopilotErrorState): { title: string; cta: string | null; href: string | null } {
+function errorCopy(err: CopilotErrorState): { title: string; cta: string | null; href: string | null; showBuyCredits?: boolean } {
   switch (err.code) {
     case "trial_exhausted":
       return {
         title: `You've used your 5 trial messages — upgrade to keep planning with ${COPILOT_NAME}.`,
         cta: "See plans",
         href: UPGRADE_PATH,
+      };
+    case "out_of_credits":
+      // TIM-1687: spec requires offering BOTH paths when out of credits.
+      return {
+        title: err.message,
+        cta: "Upgrade plan",
+        href: UPGRADE_PATH,
+        showBuyCredits: true,
       };
     case "quota":
       return {
@@ -249,6 +258,7 @@ export function CoPilotDrawer({
   const [open, setOpen] = useState(false);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
+  const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
   // Track the prop separately so a parent-driven workspace switch resets the active
   // workspace without us calling setState inside an effect body.
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
@@ -732,6 +742,8 @@ export function CoPilotDrawer({
         onClose={() => setTrialModalOpen(false)}
         variant="copilot_trial"
       />
+      {/* TIM-1687: one-off credit top-up. */}
+      <CreditPacksModal open={buyCreditsOpen} onClose={() => setBuyCreditsOpen(false)} />
       {!open && (
         <button
           type="button"
@@ -843,6 +855,16 @@ export function CoPilotDrawer({
                         ? `${credits.remaining} of ${credits.monthlyGrant} credits`
                         : `${credits.remaining} credits left`}
                     </span>
+                  )}
+                  {/* TIM-1687: low/out of credits — offer a top-up next to the meter. */}
+                  {credits?.mode === "credits" && credits.remaining <= 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setBuyCreditsOpen(true)}
+                      className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                    >
+                      Top up
+                    </button>
                   )}
                 </div>
                 <p className="text-[11px] text-[var(--neutral-cool-600)] truncate">
@@ -1016,6 +1038,15 @@ export function CoPilotDrawer({
                           {errorBanner.cta}
                         </button>
                       ) : null}
+                      {errorBanner.showBuyCredits && (
+                        <button
+                          type="button"
+                          onClick={() => setBuyCreditsOpen(true)}
+                          className="text-xs font-semibold text-red-800 underline"
+                        >
+                          Buy more credits
+                        </button>
+                      )}
                       {error?.code === "timeout" && (
                         <button
                           type="button"

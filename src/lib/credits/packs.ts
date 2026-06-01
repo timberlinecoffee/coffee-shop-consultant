@@ -1,0 +1,52 @@
+// TIM-1687: one-off credit top-up catalog.
+//
+// Lets a user buy extra credits mid-month instead of waiting for the monthly
+// reset or upgrading tier (spec requires upgrade OR buy-more-credits).
+//
+// This file is the single, CLIENT-SAFE source of truth for pack credits and
+// display price — it imports no server/Stripe SDK, so the purchase modal can
+// render the catalog directly. The Stripe price IDs are layered on top in
+// src/lib/stripe.ts (server only, read from env), and the webhook resolves the
+// granted credit amount from `creditsForPackKey` using our own checkout-session
+// metadata — never from Stripe price metadata. That keeps the grant
+// deterministic and independent of how the prices are provisioned.
+//
+// Credits + prices are LAUNCH DEFAULTS, flagged for Trent/product to calibrate
+// (see TIM-1687). Top-ups are intentionally priced at a per-credit premium over
+// the monthly plans so upgrading tier stays the better value for heavy users.
+
+export type CreditPackKey = "small" | "medium" | "large"
+
+export interface CreditPackDef {
+  key: CreditPackKey
+  /** Title Case label (TIM-1002). */
+  name: string
+  /** Credits granted on purchase. */
+  credits: number
+  /** Display price in cents (matches the Stripe price provisioned for this pack). */
+  amountCents: number
+}
+
+export const CREDIT_PACK_LIST: CreditPackDef[] = [
+  { key: "small", name: "Small Pack", credits: 25, amountCents: 1200 },
+  { key: "medium", name: "Medium Pack", credits: 100, amountCents: 3900 },
+  { key: "large", name: "Large Pack", credits: 300, amountCents: 9900 },
+]
+
+export const CREDIT_PACKS_BY_KEY: Record<CreditPackKey, CreditPackDef> =
+  Object.fromEntries(CREDIT_PACK_LIST.map((p) => [p.key, p])) as Record<CreditPackKey, CreditPackDef>
+
+export function isCreditPackKey(key: string): key is CreditPackKey {
+  return key in CREDIT_PACKS_BY_KEY
+}
+
+/** Credits granted for a pack key, or null if the key is unknown. */
+export function creditsForPackKey(key: string): number | null {
+  return isCreditPackKey(key) ? CREDIT_PACKS_BY_KEY[key].credits : null
+}
+
+/** "$12" / "$39" — whole-dollar packs render without trailing cents. */
+export function formatPackPrice(amountCents: number): string {
+  const dollars = amountCents / 100
+  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
+}
