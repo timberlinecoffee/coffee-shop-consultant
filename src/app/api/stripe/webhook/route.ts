@@ -1,4 +1,4 @@
-import { stripe, tierFromPriceId, MONTHLY_CREDITS } from "@/lib/stripe";
+import { stripe, tierFromPriceId, MONTHLY_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
@@ -88,15 +88,10 @@ export async function POST(request: NextRequest) {
       const updatedItem = subscription.items?.data?.[0];
       const priceId: string = updatedItem?.price?.id ?? "";
       const tier = tierFromPriceId(priceId);
-      const status = subscription.status === "active" ? "active"
-        : subscription.status === "canceled" ? "cancelled"
-        : subscription.status === "past_due" ? "past_due"
-        : subscription.status === "trialing" ? "trialing"
-        : "cancelled";
 
       const { data: sub } = await supabase
         .from("subscriptions")
-        .select("user_id, current_period_end")
+        .select("user_id, current_period_end, tier, status")
         .eq("stripe_subscription_id", subscription.id)
         .single();
 
@@ -106,6 +101,47 @@ export async function POST(request: NextRequest) {
       const rawPeriodEnd = updatedItem?.current_period_end ?? subscription.current_period_end;
       const rawPeriodStart = updatedItem?.current_period_start ?? subscription.current_period_start;
       const newPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000).toISOString() : null;
+
+      // --- Pause: switching to the $2.99 pause price ---
+      if (PAUSE_PRICE_ID && priceId === PAUSE_PRICE_ID) {
+        await supabase.from("subscriptions").update({
+          status: "paused",
+          paused_from_tier: sub.tier, // read before overwrite — preserve original tier
+          paused_at: new Date().toISOString(),
+          // tier is intentionally NOT updated
+        }).eq("stripe_subscription_id", subscription.id);
+
+        await supabase.from("users").update({
+          subscription_status: "paused",
+          // subscription_tier intentionally NOT changed — access.ts reads paused_from_tier
+        }).eq("id", sub.user_id);
+        break;
+      }
+
+      // --- Resume: returning to a real tier from paused ---
+      if (sub.status === "paused" && tier !== "free") {
+        await supabase.from("subscriptions").update({
+          status: "active",
+          tier,
+          paused_from_tier: null,
+          paused_at: null,
+          current_period_start: rawPeriodStart ? new Date(rawPeriodStart * 1000).toISOString() : null,
+          current_period_end: newPeriodEnd,
+        }).eq("stripe_subscription_id", subscription.id);
+
+        await supabase.from("users").update({
+          subscription_status: "active",
+          subscription_tier: tier,
+        }).eq("id", sub.user_id);
+        break;
+      }
+
+      // --- Default: plan change, renewal, status sync ---
+      const status = subscription.status === "active" ? "active"
+        : subscription.status === "canceled" ? "cancelled"
+        : subscription.status === "past_due" ? "past_due"
+        : subscription.status === "trialing" ? "trialing"
+        : "cancelled";
       const isRenewal = newPeriodEnd !== sub.current_period_end;
 
       await supabase.from("subscriptions").update({
@@ -146,8 +182,11 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
+      // Clear pause columns on hard cancel (covers paused → cancelled via failed dunning)
       await supabase.from("subscriptions").update({
         status: "cancelled",
+        paused_from_tier: null,
+        paused_at: null,
       }).eq("stripe_subscription_id", subscription.id);
 
       // Downgrade immediately on hard cancellation
