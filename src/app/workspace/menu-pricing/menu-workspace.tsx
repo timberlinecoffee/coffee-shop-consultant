@@ -98,6 +98,8 @@ type BenchmarkResult = {
   current_price_cents: number;
   verdict: "below" | "in_band" | "above" | "unknown";
   commentary: string;
+  // TIM-1692: "ai_estimated" until real cross-user data crosses the threshold.
+  source?: "ai_estimated" | "platform_data";
 };
 
 function makeLocalId() {
@@ -1440,13 +1442,20 @@ function CostOfGoodsTabContent({
           )}
           {benchmarkResult && (
             <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Local range for{" "}
-                <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
-                <span className="font-semibold text-[var(--foreground)]">
-                  ${(benchmarkResult.low_cents / 100).toFixed(2)} to ${(benchmarkResult.high_cents / 100).toFixed(2)}
-                </span>
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  Local range for{" "}
+                  <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
+                  <span className="font-semibold text-[var(--foreground)]">
+                    ${(benchmarkResult.low_cents / 100).toFixed(2)} to ${(benchmarkResult.high_cents / 100).toFixed(2)}
+                  </span>
+                </p>
+                {(!benchmarkResult.source || benchmarkResult.source === "ai_estimated") && (
+                  <span className="shrink-0 text-[10px] font-medium text-[var(--muted-foreground)] border border-[var(--border)] rounded px-1.5 py-0.5 leading-none">
+                    AI-estimated
+                  </span>
+                )}
+              </div>
               <p className="text-xs">
                 Your price{" "}
                 <span className="font-semibold text-[var(--foreground)]">

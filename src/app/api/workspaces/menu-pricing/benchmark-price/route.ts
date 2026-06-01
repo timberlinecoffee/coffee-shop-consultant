@@ -4,8 +4,12 @@
 // current price is below / within / above the band. Lean v1: text response.
 // Sibling of /suggest-price; that one recommends a price, this one positions
 // the current one against local market reality.
+// TIM-1692: Also captures anonymized price data to menu_price_aggregates for
+// future cross-user percentile calculations. Returns source:"ai_estimated"
+// until real data crosses the threshold (see platform-percentile route).
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 
@@ -22,6 +26,32 @@ interface ConceptContext {
 }
 
 type Verdict = "below" | "in_band" | "above" | "unknown"
+
+// TIM-1692: Normalize an item name for aggregate bucketing.
+// Lossy by design — we want "Oat Milk Latte" and "oat milk latte" to group.
+function normalizeItemName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+// TIM-1692: Derive a coarse region bucket from a free-text location string.
+// Best-effort only; returns null if the location is absent or unrecognized.
+function deriveRegionBucket(location?: string): string | null {
+  if (!location) return null
+  const loc = location.toLowerCase()
+  if (loc.match(/\b(seattle|portland|vancouver|tacoma|olympia)\b/)) return "Pacific Northwest"
+  if (loc.match(/\b(san francisco|los angeles|san diego|oakland|berkeley|sacramento)\b/)) return "California"
+  if (loc.match(/\b(new york|brooklyn|manhattan|queens|bronx|jersey city)\b/)) return "New York Metro"
+  if (loc.match(/\b(chicago|milwaukee|minneapolis)\b/)) return "Midwest"
+  if (loc.match(/\b(denver|boulder|fort collins|salt lake)\b/)) return "Mountain West"
+  if (loc.match(/\b(austin|dallas|houston|san antonio)\b/)) return "Texas"
+  if (loc.match(/\b(miami|orlando|tampa|atlanta|charlotte|raleigh)\b/)) return "Southeast"
+  if (loc.match(/\b(boston|cambridge|providence|new haven)\b/)) return "New England"
+  if (loc.match(/\b(phoenix|tucson|albuquerque|las vegas)\b/)) return "Southwest"
+  if (loc.match(/\b(london|uk|england|scotland|ireland)\b/)) return "UK"
+  if (loc.match(/\b(australia|sydney|melbourne|brisbane)\b/)) return "Australia"
+  if (loc.match(/\b(canada|toronto|montreal|calgary|vancouver bc)\b/)) return "Canada"
+  return "Other"
+}
 
 async function getPlanId(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -86,7 +116,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Name the item before running a benchmark" }, { status: 400 })
   }
 
-  // Verify the item belongs to this plan.
+  // Verify the item belongs to this plan and check aggregate opt-in.
   const { data: menuItem } = await supabase
     .from("menu_items")
     .select("id")
@@ -94,6 +124,14 @@ export async function POST(request: Request) {
     .eq("plan_id", planId)
     .maybeSingle()
   if (!menuItem) return Response.json({ error: "Menu item not found" }, { status: 404 })
+
+  // TIM-1692: Check if this plan is opted in to aggregate capture.
+  const { data: planRow } = await supabase
+    .from("coffee_shop_plans")
+    .select("aggregate_opt_in")
+    .eq("id", planId)
+    .maybeSingle()
+  const aggregateOptIn = planRow?.aggregate_opt_in !== false
 
   const ctx = body.concept_context ?? {}
   const conceptLines: string[] = []
@@ -156,12 +194,32 @@ Return ONLY the JSON object.`
       return Response.json({ error: "AI returned no usable range" }, { status: 500 })
     }
 
+    // TIM-1692: Capture anonymized price data for future cross-user percentiles.
+    // Fire-and-forget; failure must not block the benchmark response.
+    if (aggregateOptIn && currentCents > 0) {
+      const serviceClient = createServiceClient()
+      serviceClient
+        .from("menu_price_aggregates")
+        .insert({
+          item_name_normalized: normalizeItemName(itemName),
+          price_cents: currentCents,
+          region_bucket: deriveRegionBucket(ctx.location),
+        })
+        .then(({ error }) => {
+          if (error) console.warn("menu_price_aggregates insert failed:", error.message)
+        })
+    }
+
     return Response.json({
       low_cents: low,
       high_cents: high,
       current_price_cents: currentCents,
       verdict: deriveVerdict(currentCents, low, high),
       commentary: normalizeAIOutput(String(parsed.commentary ?? "")),
+      // TIM-1692: Always "ai_estimated" until the platform-percentile endpoint
+      // has >= 20 real data points for this item/region. The UI uses this flag
+      // to render the "AI-estimated" disclosure badge.
+      source: "ai_estimated" as const,
     })
   } catch (err) {
     console.error("benchmark-price error:", err)
