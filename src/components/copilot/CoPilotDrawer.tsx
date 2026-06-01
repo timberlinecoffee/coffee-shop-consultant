@@ -178,6 +178,10 @@ export function CoPilotDrawer({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
 
+  // Derived constants — placed before effects so they're stable references in deps arrays.
+  const isMobile = viewportWidth < 640;
+  const sheetOpen = open && isMobile;
+
   const {
     isStreaming,
     isThinking,
@@ -516,15 +520,25 @@ export function CoPilotDrawer({
     };
   }, [isDragging]);
 
-  // TIM-1149: ESC closes the panel.
+  // TIM-1149: ESC closes the desktop panel.
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, closeDrawer]);
+  }, [open, isMobile, closeDrawer]);
+
+  // TIM-1562: ESC must also dismiss the mobile sheet (WAI-ARIA dialog pattern).
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen, closeDrawer]);
 
   // TIM-662: hydrate messages for the restored thread on first mount.
   useEffect(() => {
@@ -584,7 +598,6 @@ export function CoPilotDrawer({
     activeScope === null
       ? GENERAL_CONVERSATION_LABEL
       : WORKSPACE_LABELS[activeScope];
-  const isMobile = viewportWidth < 640;
 
   return (
     <>
@@ -622,9 +635,10 @@ export function CoPilotDrawer({
           />
           <motion.aside
             role="dialog"
+            aria-modal="true"
             aria-label={`${COPILOT_NAME}: ${COPILOT_SUBTITLE}`}
             style={{ width: computedPanelWidth }}
-            className="relative bg-white flex flex-col h-full shadow-xl"
+            className="relative bg-[var(--background)] flex flex-col h-full shadow-xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -835,7 +849,7 @@ export function CoPilotDrawer({
                   placeholder={`Ask ${COPILOT_NAME}…`}
                   rows={1}
                   disabled={isStreaming}
-                  className="flex-1 resize-none rounded-xl border border-[var(--gray-600)] bg-white px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-[var(--teal)]/40 disabled:bg-[var(--surface-warm-50)] disabled:text-[var(--neutral-cool-600)]"
+                  className="flex-1 resize-none rounded-xl border border-[var(--gray-600)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-[var(--teal)]/40 disabled:bg-[var(--surface-warm-50)] disabled:text-[var(--neutral-cool-600)]"
                 />
                 {isStreaming ? (
                   <button

@@ -340,7 +340,7 @@ export function ThreadBrowser({
       </div>
 
       <div className="px-3 pb-2">
-        <div className="flex items-center gap-2 rounded-md border border-[var(--gray-600)] bg-white px-2 py-1 focus-within:ring-2 focus-within:ring-[var(--teal)]/30">
+        <div className="flex items-center gap-2 rounded-md border border-[var(--gray-600)] bg-[var(--background)] px-2 py-1 focus-within:ring-2 focus-within:ring-[var(--teal)]/30">
           <Search aria-hidden className="w-3.5 h-3.5 text-[var(--gray-975)]" />
           <input
             type="search"
@@ -419,7 +419,7 @@ export function ThreadBrowser({
                                   <button
                                     type="button"
                                     onClick={() => setPendingDeleteId(null)}
-                                    className="text-xs px-2 py-1 rounded border border-[var(--gray-600)] bg-white text-[var(--gray-1150)] hover:bg-[var(--surface-warm-50)]"
+                                    className="text-xs px-2 py-1 rounded border border-[var(--gray-600)] bg-[var(--background)] text-[var(--gray-1150)] hover:bg-[var(--surface-warm-50)]"
                                   >
                                     Cancel
                                   </button>
@@ -513,7 +513,7 @@ export function ThreadBrowser({
                                     <div
                                       role="menu"
                                       aria-label="Conversation actions"
-                                      className="absolute right-1 top-7 z-20 min-w-[140px] rounded-md border border-[var(--gray-600)] bg-white shadow-md py-1"
+                                      className="absolute right-1 top-7 z-20 min-w-[140px] rounded-md border border-[var(--gray-600)] bg-[var(--background)] shadow-md py-1"
                                     >
                                       <button
                                         type="button"
