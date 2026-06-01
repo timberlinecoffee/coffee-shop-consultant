@@ -42,6 +42,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import { Illustration } from "@/components/illustrations/Illustration";
+import { recipeIdForItemName } from "@/lib/illustrations/recipes";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -909,6 +911,14 @@ function ItemEditorPanel({
   return (
     <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-start gap-3">
+        {/* TIM-1585: Lane A recipe-card line-art for drinks we have curated art for
+            (e.g. flat white, espresso). Renders nothing for everything else. */}
+        {recipeIdForItemName(name) && (
+          <Illustration
+            recipeId={recipeIdForItemName(name)!}
+            className="w-24 h-32 rounded-lg border border-[var(--border)] object-cover shrink-0 bg-[var(--background)]"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <input
             className={
@@ -2570,7 +2580,12 @@ function InsightsTab({
   if (!hasAnything) {
     return (
       <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-6 py-10 text-center">
-        <LayoutGrid className="w-6 h-6 text-[var(--sage)] mx-auto mb-3" />
+        {/* TIM-1585: Lane A empty-state line-art, with the icon as graceful fallback. */}
+        <Illustration
+          recipeId="empty-state-no-data"
+          className="w-20 h-20 mx-auto mb-6"
+          fallback={<LayoutGrid className="w-6 h-6 text-[var(--sage)] mx-auto mb-3" />}
+        />
         <p className="text-sm font-semibold text-[var(--foreground)] mb-1">No items to analyze yet</p>
         <p className="text-xs text-[var(--muted-foreground)] max-w-md mx-auto leading-relaxed">
           Add a few drinks or food items with a price, a cost, and an expected
