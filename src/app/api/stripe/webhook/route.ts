@@ -1,4 +1,5 @@
 import { stripe, tierFromPriceId, MONTHLY_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
+import { creditsForPackKey } from "@/lib/credits/packs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
@@ -37,6 +38,40 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // TIM-1687: one-off credit top-up. Grant purchased credits into the
+      // balance + ledger. Idempotency is guaranteed by stripe_processed_events
+      // above, so this read-modify-write is safe against Stripe event replays.
+      if (session.mode === "payment" && session.metadata?.kind === "credit_pack") {
+        const userId = session.metadata?.userId;
+        const packKey = session.metadata?.packKey ?? "";
+        const credits = creditsForPackKey(packKey);
+
+        // Only grant on a genuinely paid session; never trust a client-supplied amount.
+        if (!userId || credits === null || credits <= 0) break;
+        if (session.payment_status !== "paid") break;
+
+        const { data: prof } = await supabase
+          .from("users")
+          .select("ai_credits_remaining")
+          .eq("id", userId)
+          .single();
+
+        const current = prof?.ai_credits_remaining ?? 0;
+
+        await supabase.from("users").update({
+          ai_credits_remaining: current + credits,
+        }).eq("id", userId);
+
+        await supabase.from("credit_transactions").insert({
+          user_id: userId,
+          amount: credits,
+          type: "purchase",
+          description: `Credit top-up: ${packKey} pack (+${credits})`,
+        });
+        break;
+      }
+
       if (session.mode !== "subscription") break;
 
       const userId = session.metadata?.userId;
