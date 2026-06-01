@@ -87,3 +87,14 @@ export const MONTHLY_CREDITS: Record<Tier, number> = {
   pro: 500,
   free: 0,
 };
+
+// TIM-1544: Pause plan price — $2.99/mo. Set via STRIPE_PAUSE_MONTHLY_PRICE_ID.
+export const PAUSE_PRICE_ID = process.env.STRIPE_PAUSE_MONTHLY_PRICE_ID ?? "";
+
+// Returns the monthly price ID for a given tier, or null if not found.
+export function monthlyPriceIdForTier(tier: string): string | null {
+  for (const plan of Object.values(PLANS)) {
+    if (plan.tier === tier && plan.interval === "monthly") return plan.priceId || null;
+  }
+  return null;
+}
