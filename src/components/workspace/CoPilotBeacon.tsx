@@ -22,7 +22,7 @@ export function CoPilotBeacon() {
       onClick={open}
       aria-label="Open Co-pilot"
       title="Co-pilot"
-      className="fixed bottom-6 right-6 z-30 w-12 h-12 rounded-full bg-[var(--teal)] text-white shadow-md hover:shadow-lg hover:brightness-105 transition flex items-center justify-center"
+      className="fixed bottom-6 right-6 z-30 w-12 h-12 rounded-full bg-[var(--teal)] text-white shadow-md hover:shadow-lg hover:brightness-105 transition hidden lg:flex items-center justify-center"
     >
       <svg
         width="22"
