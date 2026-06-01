@@ -91,7 +91,18 @@ export const SUBJECT_LIBRARY: Record<string, string> = {
   "empty-module-done":
     "a small coffee bag with a checkmark arc, centered, minimal",
   "section-divider":
-    "a horizontal row of three small coffee-related marks: a coffee ring, a coffee plant sprig, an espresso drip — evenly spaced on a single horizontal baseline",
+    "a horizontal row of three small coffee-related marks: a coffee ring, a coffee plant sprig, an espresso drip, evenly spaced on a single horizontal baseline",
+  // TIM-1697 — coffee-shop model types (onboarding selection). One per archetype.
+  "model-full-cafe":
+    "a place setting with a dinner plate flanked by a fork and a knife, centered, signalling a sit-down cafe that serves food",
+  "model-espresso-bar":
+    "a counter espresso machine with a cup-warmer rail, pressure gauge, group head, and a cup beneath the spout, centered",
+  "model-roastery-cafe":
+    "a drum coffee roaster with a bean hopper on top, a round drum-face door, control knobs, and two coffee beans, centered",
+  "model-drive-thru":
+    "a small kiosk with a striped awning over a service window, a to-go cup on the sill, and a drive-lane arrow beneath",
+  "model-mobile-cart":
+    "a wheeled mobile coffee cart under a scalloped canopy with a serving window, side-on",
 };
 
 /** TIM-1579 §5.5 — appended to every generation. */

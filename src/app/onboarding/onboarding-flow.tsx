@@ -17,6 +17,18 @@ import {
 import type { ObservationEntry } from "@/components/onboarding/observation-tracker";
 import { FieldExamplePopover } from "@/components/ui/field-example-popover";
 import { FIELD_EXAMPLES } from "@/lib/field-examples";
+import Illustration from "@/components/illustrations/Illustration";
+
+// TIM-1697: one line-art mark per coffee-shop model type, shown beside each
+// option in the shop_type multiselect. Keyed by the option label; unmapped
+// options simply render no illustration.
+const SHOP_TYPE_RECIPE: Record<string, string> = {
+  "Full cafe with food": "model-full-cafe",
+  "Espresso bar (drinks only)": "model-espresso-bar",
+  "Roastery cafe": "model-roastery-cafe",
+  "Drive-through or kiosk": "model-drive-thru",
+  "Mobile cart or pop-up": "model-mobile-cart",
+};
 
 // TIM-619: onboarding wizard.
 // TIM-821: mission / target_market / differentiation steps replaced by guided
@@ -782,6 +794,12 @@ export function OnboardingFlow({
                             </span>
                           )}
                         </div>
+                        {SHOP_TYPE_RECIPE[opt] && (
+                          <Illustration
+                            recipeId={SHOP_TYPE_RECIPE[opt]}
+                            className="h-12 w-auto flex-shrink-0"
+                          />
+                        )}
                         {opt}
                       </button>
                     );

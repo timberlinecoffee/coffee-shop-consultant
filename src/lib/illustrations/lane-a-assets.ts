@@ -46,6 +46,48 @@ export const LANE_A_ASSETS: Record<string, GeneratedAsset> = {
     generatedAt: "2026-06-01T00:00:00.000Z",
     costUsd: 0,
   },
+  // TIM-1697: coffee-shop model-type selection icons. 2x raster of a 220x200
+  // transparent-background SVG (TIM-1675); served on the onboarding selection.
+  "model-full-cafe": {
+    path: "/images/illustrations/model-type/model-full-cafe.png",
+    model: LANE_A_MODEL,
+    size: "440x400",
+    quality: "vector",
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    costUsd: 0,
+  },
+  "model-espresso-bar": {
+    path: "/images/illustrations/model-type/model-espresso-bar.png",
+    model: LANE_A_MODEL,
+    size: "440x400",
+    quality: "vector",
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    costUsd: 0,
+  },
+  "model-roastery-cafe": {
+    path: "/images/illustrations/model-type/model-roastery-cafe.png",
+    model: LANE_A_MODEL,
+    size: "440x400",
+    quality: "vector",
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    costUsd: 0,
+  },
+  "model-drive-thru": {
+    path: "/images/illustrations/model-type/model-drive-thru.png",
+    model: LANE_A_MODEL,
+    size: "440x400",
+    quality: "vector",
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    costUsd: 0,
+  },
+  "model-mobile-cart": {
+    path: "/images/illustrations/model-type/model-mobile-cart.png",
+    model: LANE_A_MODEL,
+    size: "440x400",
+    quality: "vector",
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    costUsd: 0,
+  },
 };
 
 export function getLaneAAsset(recipeId: string): GeneratedAsset | null {
