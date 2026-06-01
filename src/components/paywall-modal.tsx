@@ -31,7 +31,17 @@ function getContent(
   }
 
   // variant === "save"
-  if (reason === "paused" || reason === "expired") {
+  if (reason === "paused") {
+    return {
+      title: "Your plan is paused. Resume to keep working.",
+      body: "Your workspace is in read-only mode. Resume your plan to create, edit, and collaborate where you left off.",
+      cta: "Resume my plan",
+      href: "/account/billing",
+      dismiss: "Not now",
+    };
+  }
+
+  if (reason === "expired") {
     return {
       title: "Your plan is paused",
       body: "Reactivate your subscription to pick up where you left off.",
