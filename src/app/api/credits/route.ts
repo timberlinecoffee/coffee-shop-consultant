@@ -1,5 +1,8 @@
 // TIM-866: returns usage state used by the Copilot drawer to show pre-cap indicators.
+// TIM-1671: credit-model accounts also get `monthlyGrant` (the tier's monthly
+// credit cap) so the in-chat meter can render "X of Y credits".
 import { createClient } from "@/lib/supabase/server";
+import { MONTHLY_CREDITS, type Tier } from "@/lib/stripe";
 
 const FREE_TRIAL_COPILOT_LIMIT = 5;
 
@@ -37,6 +40,7 @@ export async function GET() {
   return Response.json({
     mode: "credits",
     remaining: profile.ai_credits_remaining,
+    monthlyGrant: MONTHLY_CREDITS[(profile.subscription_tier as Tier) ?? "free"] ?? 0,
     tier: profile.subscription_tier,
   });
 }

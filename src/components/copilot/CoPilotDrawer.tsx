@@ -59,7 +59,7 @@ const FREE_TRIAL_COPILOT_LIMIT = 5;
 
 type CreditsState =
   | { mode: "trial"; trialUsed: number; trialLimit: number; trialRemaining: number }
-  | { mode: "credits"; remaining: number }
+  | { mode: "credits"; remaining: number; monthlyGrant?: number }
   | null;
 
 export interface CoPilotDrawerProps {
@@ -391,6 +391,14 @@ export function CoPilotDrawer({
         if (newUsed >= COPILOT_FREE_TRIAL_LIMIT) {
           setTrialModalOpen(true);
         }
+      }
+
+      // TIM-1671: live credit meter — reflect the post-turn balance from the
+      // stream's `done` event without a refetch.
+      if (result.creditsRemaining !== null) {
+        setCredits((prev) =>
+          prev?.mode === "credits" ? { ...prev, remaining: result.creditsRemaining! } : prev,
+        );
       }
     },
     [
@@ -728,6 +736,21 @@ export function CoPilotDrawer({
                       }`}
                     >
                       {credits.trialRemaining} of {credits.trialLimit} trial messages left
+                    </span>
+                  )}
+                  {/* TIM-1671: live credit meter — balance updates after each turn. */}
+                  {credits?.mode === "credits" && (
+                    <span
+                      title="Credits are used based on how much work Scout does on each answer."
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                        credits.remaining <= 5
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-[var(--teal)]/10 text-[var(--teal)]"
+                      }`}
+                    >
+                      {credits.monthlyGrant
+                        ? `${credits.remaining} of ${credits.monthlyGrant} credits`
+                        : `${credits.remaining} credits left`}
                     </span>
                   )}
                 </div>

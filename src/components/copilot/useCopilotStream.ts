@@ -32,6 +32,8 @@ interface UseCopilotStreamResult {
   lastThreadId: string | null;
   lastModelUsed: string | null;
   trialRemaining: number | null;
+  // TIM-1671: credit balance after the last turn (null for non-credit accounts).
+  creditsRemaining: number | null;
   // TIM-1561: set when the stream emits a `suggestions` event.
   pendingSuggestions: SuggestionsEvent | null;
   clearSuggestions: () => void;
@@ -40,6 +42,7 @@ interface UseCopilotStreamResult {
     modelUsed: string | null;
     assistant: string;
     trialRemaining: number | null;
+    creditsRemaining: number | null;
   } | null>;
   abort: () => void;
   reset: () => void;
@@ -53,6 +56,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
   const [lastThreadId, setLastThreadId] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [trialRemaining, setTrialRemaining] = useState<number | null>(null);
+  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
   // TIM-1561: populated when the SSE stream emits a `suggestions` event.
   const [pendingSuggestions, setPendingSuggestions] = useState<SuggestionsEvent | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -139,6 +143,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
       let resolvedThreadId = threadId;
       let resolvedModelUsed: string | null = null;
       let resolvedTrialRemaining: number | null = null;
+      let resolvedCreditsRemaining: number | null = null;
       let finalError: CopilotErrorState | null = null;
 
       try {
@@ -197,10 +202,12 @@ export function useCopilotStream(): UseCopilotStreamResult {
                   threadId?: string;
                   modelUsed?: string;
                   trialRemaining?: number | null;
+                  creditsRemaining?: number | null;
                 };
                 if (parsed.threadId) resolvedThreadId = parsed.threadId;
                 if (parsed.modelUsed) resolvedModelUsed = parsed.modelUsed;
                 if (typeof parsed.trialRemaining === "number") resolvedTrialRemaining = parsed.trialRemaining;
+                if (typeof parsed.creditsRemaining === "number") resolvedCreditsRemaining = parsed.creditsRemaining;
               } catch {
                 /* done frame without payload is fine */
               }
@@ -229,12 +236,14 @@ export function useCopilotStream(): UseCopilotStreamResult {
       setLastThreadId(resolvedThreadId);
       setLastModelUsed(resolvedModelUsed);
       if (resolvedTrialRemaining !== null) setTrialRemaining(resolvedTrialRemaining);
+      if (resolvedCreditsRemaining !== null) setCreditsRemaining(resolvedCreditsRemaining);
 
       return {
         threadId: resolvedThreadId,
         modelUsed: resolvedModelUsed,
         assistant,
         trialRemaining: resolvedTrialRemaining,
+        creditsRemaining: resolvedCreditsRemaining,
       };
     },
     [],
@@ -248,6 +257,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
     lastThreadId,
     lastModelUsed,
     trialRemaining,
+    creditsRemaining,
     pendingSuggestions,
     clearSuggestions,
     send,

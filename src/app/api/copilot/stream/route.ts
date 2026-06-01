@@ -21,6 +21,7 @@ import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
 import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
+import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { loadPlanContext } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
@@ -412,14 +413,14 @@ export async function POST(request: NextRequest) {
     const tier = profile.subscription_tier as string
     const upgradeHint =
       tier === "starter"
-        ? "Upgrade to Growth for 100 messages/month, or your credits reset next month."
+        ? "Upgrade to Growth for more monthly credits, or your credits reset next month."
         : tier === "growth"
-          ? "Upgrade to Pro for 500 messages/month, or your credits reset next month."
+          ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
           : "Your credits reset at the start of next month."
     return new Response(
       sse("error", {
         code: "quota",
-        message: `You've used all your Copilot messages for this month. ${upgradeHint}`,
+        message: `You're out of Copilot credits for this month. ${upgradeHint}`,
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
@@ -529,6 +530,7 @@ export async function POST(request: NextRequest) {
       let cacheReadTokens = 0
       let cacheCreateTokens = 0
       let webSearchRequests = 0 // TIM-1670: billed at $10 / 1000 searches
+      let toolCallCount = 0 // TIM-1671: discrete tool actions taken this turn (credit cost input)
 
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null
       let ttftTimer: ReturnType<typeof setTimeout> | null = null
@@ -689,6 +691,7 @@ export async function POST(request: NextRequest) {
             if (block.type === "tool_use") {
               activeToolName = block.name
               toolInputBuffer = ""
+              toolCallCount += 1 // TIM-1671: each tool action adds to the credit charge
             } else if (block.type === "server_tool_use" || block.type === "web_search_tool_result") {
               // TIM-1670: web_search runs server-side BEFORE any text/thinking token.
               // Treat it as first activity so the 8s TTFT watchdog doesn't kill a legit
@@ -780,6 +783,19 @@ export async function POST(request: NextRequest) {
               1_000_000 +
             // TIM-1670: web search billed at $10 per 1,000 requests.
             webSearchRequests * 0.01
+
+          // TIM-1671: variable credit charge. Credits scale with work done this
+          // turn (output volume, model tier, web research, tool actions) rather
+          // than a flat 1-per-message. Cost model + launch-default pricing live
+          // in src/lib/credits/cost.ts (flagged for product calibration).
+          const creditBreakdown = computeCreditCost({
+            modelTier: useComplexModel ? "complex" : "default",
+            outputTokens,
+            webSearchRequests,
+            toolCalls: toolCallCount,
+          })
+          const creditCost = creditBreakdown.credits
+
           const effectiveThreadId = threadId ?? crypto.randomUUID()
 
           const existingQuery = supabase
@@ -800,7 +816,7 @@ export async function POST(request: NextRequest) {
               .from("ai_conversations")
               .update({
                 messages: updatedMessages,
-                credits_used: existing.credits_used + 1,
+                credits_used: existing.credits_used + creditCost,
                 cost_usd: (Number(existing.cost_usd) || 0) + costUsd,
                 last_message_at: new Date().toISOString(),
                 model_used: modelId,
@@ -812,12 +828,17 @@ export async function POST(request: NextRequest) {
               workspace_key: workspaceKey,
               thread_id: effectiveThreadId,
               messages: updatedMessages,
-              credits_used: 1,
+              credits_used: creditCost,
               cost_usd: costUsd,
               last_message_at: new Date().toISOString(),
               model_used: modelId,
             })
           }
+
+          // TIM-1671: track post-turn credit balance so the chat meter can update
+          // live from the `done` event. null when the account is not on the credit
+          // model (trial / beta-waived / unlimited).
+          let creditsRemaining: number | null = null
 
           if (isTrial && !isWaived) {
             await supabase
@@ -825,16 +846,24 @@ export async function POST(request: NextRequest) {
               .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
               .eq("id", user.id)
           } else if (!isUnlimited) {
+            // Floor at 0 — a single heavy turn can cost more than the remaining
+            // balance; we let it finish (already streamed) but never go negative.
+            creditsRemaining = Math.max(0, profile.ai_credits_remaining - creditCost)
             await supabase
               .from("users")
-              .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
+              .update({ ai_credits_remaining: creditsRemaining })
               .eq("id", user.id)
 
             await supabase.from("credit_transactions").insert({
               user_id: user.id,
-              amount: -1,
+              amount: -creditCost,
               type: "usage",
-              description: `Co-pilot: ${workspaceKey ?? "general"}`,
+              description: describeCreditCharge(
+                workspaceKey ?? "general",
+                creditBreakdown,
+                webSearchRequests,
+                toolCallCount,
+              ),
             })
           }
 
@@ -864,7 +893,14 @@ export async function POST(request: NextRequest) {
             ? FREE_TRIAL_COPILOT_LIMIT - ((profile.copilot_trial_messages_used ?? 0) + 1)
             : null
 
-          send(sse("done", { threadId: effectiveThreadId, modelUsed: modelId, trialRemaining }))
+          send(sse("done", {
+            threadId: effectiveThreadId,
+            modelUsed: modelId,
+            trialRemaining,
+            // TIM-1671: live credit meter — what this turn cost and what's left.
+            creditsSpent: creditsRemaining === null ? null : creditCost,
+            creditsRemaining,
+          }))
           controller.close()
         }
       } catch (err: unknown) {
