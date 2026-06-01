@@ -1,6 +1,6 @@
 import React from "react"
 import { Document, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
+import { BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
 import { LetterPageShell } from "../components/LetterPageShell"
 import type { PdfTemplate } from "../registry"
 import type { InterviewScorecard, InterviewQuestion, OrgRole } from "@/lib/hiring"
@@ -229,7 +229,7 @@ function ScorecardBlankPdf({
 }) {
   const { scorecard, questions, role } = content
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       <LetterPageShell
         shopName={shopName}
         workspaceName="Interview Scorecard"
@@ -376,6 +376,6 @@ export const scorecardBlankTemplate: PdfTemplate<ScorecardContent> = {
   filename: (ctx) => {
     const slug = slugify(ctx.content.scorecard.name)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-scorecard-blank-${slug}-${date}.pdf`
+    return `${brandFilePrefix(ctx.plan.shop_name)}-scorecard-blank-${slug}-${date}.pdf`
   },
 }

@@ -120,7 +120,7 @@ function HiringPdfButton({
       const blob = await res.blob();
       const disp = res.headers.get("Content-Disposition") ?? "";
       const m = /filename="([^"]+)"/.exec(disp);
-      const filename = m?.[1] ?? `groundwork-${templateId}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.pdf`;
+      const filename = m?.[1] ?? `${templateId}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.pdf`;
       const urlObj = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = urlObj;
@@ -179,7 +179,7 @@ function ScorecardWorksheetButton({ scorecardId }: { scorecardId: string }) {
       const blob = await res.blob();
       const disp = res.headers.get("Content-Disposition") ?? "";
       const m = /filename="([^"]+)"/.exec(disp);
-      const filename = m?.[1] ?? `groundwork-scorecard-worksheet.pdf`;
+      const filename = m?.[1] ?? `scorecard-worksheet.pdf`;
       const urlObj = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = urlObj;

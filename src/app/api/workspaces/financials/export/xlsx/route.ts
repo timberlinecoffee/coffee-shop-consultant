@@ -115,7 +115,7 @@ export async function GET() {
 
   const slug = slugify(plan.plan_name);
   const date = fmtYyyymmdd(new Date());
-  const filename = `groundwork-financials-${slug}-${date}.xlsx`;
+  const filename = `financials-${slug}-${date}.xlsx`;
 
   return new Response(buffer, {
     status: 200,

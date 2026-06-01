@@ -800,7 +800,7 @@ async function renderCharts(content: FinancialsContent): Promise<{
 function FinancialsPdf(opts: RenderOpts) {
   const { content, shopName, generatedDate, breakEvenPng, burnPng } = opts
   return (
-    <PdfDocument>
+    <PdfDocument shopName={shopName}>
       {renderCoverPage(opts)}
       <Page size={BRAND.page.size} style={styles.page}>
         <PdfHeader
@@ -845,6 +845,6 @@ export const financialsTemplate: PdfTemplate<unknown> = {
   filename: (ctx) => {
     const slug = slugify(ctx.plan.shop_name)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-financials-${slug}-${date}.pdf`
+    return `financials-${slug}-${date}.pdf`
   },
 }

@@ -265,7 +265,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     const visible = sections.filter((s) => s.isVisible);
 
     return (
-      <PdfDocument>
+      <PdfDocument shopName={shopName}>
         {renderCover(cover.template_id, {
           shopName: displayName,
           tagline: cover.tagline ?? undefined,

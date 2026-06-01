@@ -1,6 +1,6 @@
 import React from "react"
 import { Document, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
+import { BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
 import { LetterPageShell } from "../components/LetterPageShell"
 import type { PdfTemplate } from "../registry"
 import type { StaffCompetency, StaffFile, CompetencyEvaluation, OrgRole } from "@/lib/hiring"
@@ -252,7 +252,7 @@ function CompetencyBlankPdf({
   const title = formName ? `${formName} — Competency Form` : "Competency Evaluation Form"
 
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       <LetterPageShell
         shopName={shopName}
         workspaceName="Competency Form"
@@ -354,7 +354,7 @@ function CompetencyCompletedPdf({
   const weightedAvg = totalWeight > 0 ? (weightedSum / totalWeight) * 100 : null
 
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       <LetterPageShell
         shopName={shopName}
         workspaceName="Competency Evaluation"
@@ -474,9 +474,9 @@ export const competencyBlankTemplate: PdfTemplate<BlankContent> = {
     )
   },
 
-  filename: (_ctx) => {
+  filename: (ctx) => {
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-competency-blank-${date}.pdf`
+    return `${brandFilePrefix(ctx.plan.shop_name)}-competency-blank-${date}.pdf`
   },
 }
 
@@ -545,6 +545,6 @@ export const competencyCompletedTemplate: PdfTemplate<CompletedContent> = {
   filename: (ctx) => {
     const slug = slugify(ctx.content.staffFile.name)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-competency-${slug}-${date}.pdf`
+    return `${brandFilePrefix(ctx.plan.shop_name)}-competency-${slug}-${date}.pdf`
   },
 }
