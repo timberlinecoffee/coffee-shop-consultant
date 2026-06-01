@@ -21,6 +21,7 @@ import {
   type BpHiringRole,
   toBpMarketingPlanning,
 } from "@/lib/business-plan";
+import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 
 export async function GET() {
   const supabase = await createClient();
@@ -71,7 +72,11 @@ export async function GET() {
       .order("position"),
     supabase
       .from("menu_items_with_cogs")
-      .select("id, name, category_name, price_cents")
+      // TIM-1694: also select cogs/mix columns so Financials → Cost of Goods can
+      // resolve the blended menu COGS pct (menu→COGS auto-sync on load).
+      .select(
+        "id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived"
+      )
       .eq("plan_id", planId)
       .order("position"),
     supabase
@@ -105,6 +110,11 @@ export async function GET() {
     (savedSections ?? []).map((s) => [s.section_key, s])
   );
 
+  // TIM-1694: menu→COGS sync. Blended pct feeds the Financials section so
+  // menu-linked COGS lines resolve against live menu costing.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+
   // TIM-1498: two-level taxonomy. Subsections with no auto-assembled content
   // (Problem & Solution, Competition, Financing) render the click-to-generate
   // placeholder and rely on the AI generator route to fill them in.
@@ -130,10 +140,10 @@ export async function GET() {
     ),
     "company-overview": assembleCompanyConcept(conceptDoc?.content),
     "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
     "financial-plan-financing":
       "Click Generate to draft this section from your plan data.",
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
     "appendix-monthly-statements":
       "Monthly P&L, cash flow, and balance sheet statements are rendered in the exported PDF appendix.",
   };
