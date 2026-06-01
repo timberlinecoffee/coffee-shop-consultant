@@ -9,10 +9,13 @@
 // and served as static files. They are NOT generated at runtime per shop. See
 // docs/illustrations/PIPELINE.md for the full pathway + integration rationale.
 //
-// Style alignment: every prompt is suffixed with STYLE_SUFFIX, derived from the
-// canonical Groundwork UX/UI Style Guide (TIM-1537). The per-recipe SUBJECT text
-// below is provisional and will be replaced by the canonical prompt recipes from
-// the UX illustration style guide (TIM-1577) once published.
+// Style alignment (TIM-1580): each recipe now carries `promptSlots`, the canonical
+// text-to-image recipe published by the UX/UI Designer in TIM-1579 (illustration
+// style guide §5, encoded in prompt-recipe.ts). resolvePrompt() builds the prompt
+// from that master template + negative prompts. The legacy STYLE_SUFFIX path is
+// retained only as a fallback for ad-hoc inline prompts with no slots.
+
+import { buildPrompt, NEGATIVE_PROMPT, type PromptSlots } from "./prompt-recipe.ts";
 
 export type IllustrationSlot = "hero" | "recipe-card" | "empty-state" | "lesson";
 
@@ -34,7 +37,9 @@ export interface IllustrationRecipe {
   subject: string;
   /** Voice-mandate-compliant alt text for the rendered <img>. */
   alt: string;
-  /** True once the canonical TIM-1577 recipe text has been wired in. */
+  /** Canonical TIM-1579 §5 prompt slots. When present, resolvePrompt() uses these. */
+  promptSlots?: PromptSlots;
+  /** True once the canonical TIM-1579 recipe text has been wired in. */
   recipeConfirmed: boolean;
 }
 
@@ -75,15 +80,24 @@ export function estimateCostUsd(recipe: Pick<IllustrationRecipe, "size" | "quali
   return (tokens * OUTPUT_USD_PER_MTOK) / 1_000_000;
 }
 
-/** The full prompt sent to the image API: subject + shared brand style. */
-export function resolvePrompt(recipe: Pick<IllustrationRecipe, "subject">): string {
+/** The full prompt sent to the image API. Prefers the canonical TIM-1579 recipe
+ *  (promptSlots) and appends the §5.5 negative prompts; falls back to the legacy
+ *  subject + STYLE_SUFFIX for ad-hoc inline prompts that carry no slots. */
+export function resolvePrompt(
+  recipe: Pick<IllustrationRecipe, "subject"> & Partial<Pick<IllustrationRecipe, "promptSlots">>
+): string {
+  if (recipe.promptSlots) {
+    return `${buildPrompt(recipe.promptSlots)}. Avoid: ${NEGATIVE_PROMPT}.`;
+  }
   return `${recipe.subject.trim()} ${STYLE_SUFFIX}`.replace(/\s+/g, " ").trim();
 }
 
 /**
- * Seed recipes. The hero and flat-white entries use prompts authored from the
- * TIM-1537 style guide as a working proof; they are marked recipeConfirmed:false
- * until reconciled with the canonical TIM-1577 prompt library.
+ * Seed recipes. Each entry's `promptSlots` is the canonical TIM-1579 §5 recipe
+ * (subject from the §5.3 library, variant/orientation/detail/ratio per the §4
+ * use-case catalog). `subject` is kept as a human-readable summary; the prompt
+ * actually sent is built from promptSlots. recipeConfirmed:true now that TIM-1579
+ * is published (done).
  */
 export const RECIPES: IllustrationRecipe[] = [
   {
@@ -92,32 +106,53 @@ export const RECIPES: IllustrationRecipe[] = [
     title: "Hero — Your Coffee Shop",
     size: "1536x1024",
     quality: "high",
-    subject:
-      "An inviting independent specialty coffee shop interior at morning light: a small counter with an espresso machine, a few stools, a pour-over station, a window letting warm light cross the floor, one plant. Calm, owner-built, lived-in.",
-    alt: "Illustration of a warm, light-filled independent coffee shop interior in the morning",
-    recipeConfirmed: false,
+    subject: "Coffee shop interior across the counter — espresso machine, pour-over, pendant lamp, window with plants, chalkboard.",
+    alt: "Line-art illustration of a coffee shop interior viewed from across the counter",
+    promptSlots: {
+      subject: "hero-interior",
+      orientation: "landscape panoramic",
+      strokeWeight: "1.5px",
+      variant: "dark",
+      detail: "medium narrative",
+      aspectRatio: "3:2 landscape",
+    },
+    recipeConfirmed: true,
   },
   {
     id: "recipe-flat-white",
     slot: "recipe-card",
     title: "Recipe Card — Flat White",
-    size: "1024x1024",
+    size: "1024x1536",
     quality: "medium",
-    subject:
-      "A flat white coffee in a small ceramic cup on a saucer, viewed slightly from above, with simple latte-art and a faint wisp of steam, a tamped portafilter resting beside it.",
-    alt: "Illustration of a flat white in a ceramic cup beside a portafilter",
-    recipeConfirmed: false,
+    subject: "Flat white in a ceramic cup on a saucer with rosetta latte art, top-down slightly angled.",
+    alt: "Line-art illustration of a flat white in a ceramic cup with latte art",
+    promptSlots: {
+      subject: "flat-white",
+      orientation: "top-down overhead",
+      strokeWeight: "1.25px",
+      variant: "light",
+      detail: "high detailed",
+      aspectRatio: "3:4 portrait",
+    },
+    recipeConfirmed: true,
   },
   {
-    id: "empty-state-getting-started",
+    id: "empty-state-no-data",
     slot: "empty-state",
-    title: "Empty State — Getting Started",
+    title: "Empty State — No Data",
     size: "1024x1024",
-    quality: "medium",
-    subject:
-      "A tidy empty workbench with an open notebook, a pencil, and a single coffee cup, suggesting a fresh start and room to plan.",
-    alt: "Illustration of an open notebook and coffee cup on a clean workbench",
-    recipeConfirmed: false,
+    quality: "low",
+    subject: "A single sheet of paper with a folded corner, centered, minimal.",
+    alt: "Line-art illustration of a sheet of paper with a folded corner",
+    promptSlots: {
+      subject: "empty-no-data",
+      orientation: "centered",
+      strokeWeight: "1px",
+      variant: "muted",
+      detail: "minimal iconographic",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
   },
 ];
 
