@@ -260,14 +260,25 @@ function buildLocalMarketContext(
   locationCountry: string | null,
   shopType: string,
   targetCustomer: string,
+  // TIM-1670: free-text location captured at signup (e.g. "Portland, OR"). Used as a
+  // grounding fallback when no formal site candidate exists — most plans never add one.
+  onboardingLocation: string | null,
 ): string {
   const lines: string[] = ["\n\n## Local Market Context (for web research grounding)"]
   if (candidates.length === 0) {
-    lines.push(
-      locationCountry
-        ? `No specific site is on the plan yet. Country: ${locationCountry}. If the owner asks for competitor/market research, first ask for their target city or neighborhood — a country alone is too broad to find direct competitors.`
-        : `No location is set on the plan yet. If the owner asks for competitor/market research, ask for their target city or neighborhood first — you cannot find direct competitors without it.`,
-    )
+    if (onboardingLocation) {
+      lines.push(
+        `No formal site is shortlisted yet, but the owner's target area (from signup) is: **${onboardingLocation}**. Use this as the location for competitor/market research. If you need a tighter trade area, ask which neighborhood — but research this area first rather than refusing.`,
+      )
+    } else if (locationCountry) {
+      lines.push(
+        `No specific site is on the plan yet. Country: ${locationCountry}. If the owner asks for competitor/market research, first ask for their target city or neighborhood — a country alone is too broad to find direct competitors.`,
+      )
+    } else {
+      lines.push(
+        `No location is set on the plan yet. If the owner asks for competitor/market research, ask for their target city or neighborhood first — you cannot find direct competitors without it.`,
+      )
+    }
   } else {
     lines.push("Research competitors and the local market around these actual site(s) from the owner's plan:")
     for (const c of candidates) {
@@ -479,11 +490,13 @@ export async function POST(request: NextRequest) {
   const shopTypeForCtx = Array.isArray(onboarding?.shop_type)
     ? (onboarding.shop_type as string[]).join(", ")
     : String(onboarding?.shop_type ?? "not specified")
+  const onboardingLocation = String(onboarding?.location ?? "").trim() || null
   const localMarketAddendum = buildLocalMarketContext(
     (locationsResult.data ?? []) as LocationCandidateCtx[],
     planContext.location_country,
     shopTypeForCtx,
     planContext.target_customer,
+    onboardingLocation,
   )
 
   const dynamicPrompt =
