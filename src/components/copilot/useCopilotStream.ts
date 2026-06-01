@@ -7,6 +7,13 @@ import type {
   CopilotErrorState,
   CopilotMessage,
 } from "./types";
+import type { SuggestionPayload } from "@/components/ai-assist/AIReviewModal";
+
+// TIM-1561: typed suggestions payload emitted by the SSE `suggestions` event.
+export interface SuggestionsEvent {
+  suggestions: SuggestionPayload[];
+  context: { workspace: string; section?: string };
+}
 
 interface SendArgs {
   planId: string;
@@ -25,6 +32,9 @@ interface UseCopilotStreamResult {
   lastThreadId: string | null;
   lastModelUsed: string | null;
   trialRemaining: number | null;
+  // TIM-1561: set when the stream emits a `suggestions` event.
+  pendingSuggestions: SuggestionsEvent | null;
+  clearSuggestions: () => void;
   send: (args: SendArgs) => Promise<{
     threadId: string;
     modelUsed: string | null;
@@ -43,13 +53,18 @@ export function useCopilotStream(): UseCopilotStreamResult {
   const [lastThreadId, setLastThreadId] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [trialRemaining, setTrialRemaining] = useState<number | null>(null);
+  // TIM-1561: populated when the SSE stream emits a `suggestions` event.
+  const [pendingSuggestions, setPendingSuggestions] = useState<SuggestionsEvent | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const clearSuggestions = useCallback(() => setPendingSuggestions(null), []);
 
   const reset = useCallback(() => {
     setAssistantBuffer("");
     setError(null);
     setIsThinking(false);
     setIsStreaming(false);
+    setPendingSuggestions(null);
   }, []);
 
   const abort = useCallback(() => {
@@ -168,6 +183,14 @@ export function useCopilotStream(): UseCopilotStreamResult {
                   message: "Stream ended with an unknown error.",
                 };
               }
+            } else if (evt.event === "suggestions") {
+              // TIM-1561: structured suggestions payload — triggers review modal in CoPilotDrawer.
+              try {
+                const parsed = JSON.parse(evt.data) as SuggestionsEvent;
+                if (parsed.suggestions?.length) setPendingSuggestions(parsed);
+              } catch {
+                /* ignore malformed suggestions frame */
+              }
             } else if (evt.event === "done") {
               try {
                 const parsed = JSON.parse(evt.data) as {
@@ -225,6 +248,8 @@ export function useCopilotStream(): UseCopilotStreamResult {
     lastThreadId,
     lastModelUsed,
     trialRemaining,
+    pendingSuggestions,
+    clearSuggestions,
     send,
     abort,
     reset,

@@ -43,6 +43,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SectionHelp } from "@/components/ui/section-help";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -799,7 +800,6 @@ function ItemEditorPanel({
   prepStepsError,
   onSuggestPrice,
   priceLoading,
-  priceSuggestion,
   onBenchmarkPrice,
   benchmarkLoading,
   benchmarkResult,
@@ -832,7 +832,6 @@ function ItemEditorPanel({
   prepStepsError: string | null;
   onSuggestPrice: () => Promise<void>;
   priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
   onBenchmarkPrice: () => Promise<void>;
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
@@ -1014,7 +1013,6 @@ function ItemEditorPanel({
             onUpdateItem={onUpdateItem}
             onSuggestPrice={onSuggestPrice}
             priceLoading={priceLoading}
-            priceSuggestion={priceSuggestion}
             onBenchmarkPrice={onBenchmarkPrice}
             benchmarkLoading={benchmarkLoading}
             benchmarkResult={benchmarkResult}
@@ -1299,7 +1297,6 @@ function CostOfGoodsTabContent({
   onUpdateItem,
   onSuggestPrice,
   priceLoading,
-  priceSuggestion,
   onBenchmarkPrice,
   benchmarkLoading,
   benchmarkResult,
@@ -1318,7 +1315,6 @@ function CostOfGoodsTabContent({
   onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
   onSuggestPrice: () => Promise<void>;
   priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
   onBenchmarkPrice: () => Promise<void>;
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
@@ -1394,7 +1390,7 @@ function CostOfGoodsTabContent({
         </p>
       </section>
 
-      {/* AI suggest retail price (existing TIM-1020) */}
+      {/* AI suggest retail price — TIM-1561: bespoke box replaced by unified modal */}
       {canEdit && (
         <section>
           <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
@@ -1410,45 +1406,6 @@ function CostOfGoodsTabContent({
             <Sparkles size={13} />
             {priceLoading ? "Thinking…" : "Suggest retail price"}
           </button>
-          {priceSuggestion && (
-            <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
-              <div>
-                <p className="text-xs text-[var(--muted-foreground)]">Recommended</p>
-                <p className="text-2xl font-bold text-[var(--teal)]">
-                  ${(priceSuggestion.suggested_price_cents / 100).toFixed(2)}
-                </p>
-              </div>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Market range:{" "}
-                <span className="font-medium text-[var(--foreground)]">
-                  ${(priceSuggestion.low_cents / 100).toFixed(2)} to ${(priceSuggestion.high_cents / 100).toFixed(2)}
-                </span>
-              </p>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Margin at recommended price:{" "}
-                <span className="font-semibold text-[var(--teal)]">
-                  {(priceSuggestion.margin_pct * 100).toFixed(1)}%
-                </span>
-              </p>
-              <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
-                {priceSuggestion.commentary}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setPriceDisplay(
-                    (priceSuggestion.suggested_price_cents / 100).toFixed(2)
-                  );
-                  onUpdateItem({
-                    price_cents: priceSuggestion.suggested_price_cents,
-                  });
-                }}
-                className="text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
-              >
-                Use this price
-              </button>
-            </div>
-          )}
         </section>
       )}
 
@@ -2149,7 +2106,6 @@ interface MenuTabProps {
   prepStepsError: string | null;
   onSuggestPrice: (item: MenuItemWithCogs) => Promise<void>;
   priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
   onBenchmarkPrice: (item: MenuItemWithCogs) => Promise<void>;
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
@@ -2175,7 +2131,7 @@ function MenuTab(props: MenuTabProps) {
     onAddRecipeLine, onUpdateRecipeLine, onDeleteRecipeLine,
     onSuggestRecipe, recipeLoading, recipeError,
     onSuggestPrepSteps, prepStepsLoading, prepStepsError,
-    onSuggestPrice, priceLoading, priceSuggestion,
+    onSuggestPrice, priceLoading,
     onBenchmarkPrice, benchmarkLoading, benchmarkResult, benchmarkError,
     onReorderItems,
     onAddCategory, onRenameCategory, onDeleteCategory,
@@ -2363,7 +2319,6 @@ function MenuTab(props: MenuTabProps) {
                                 prepStepsError={prepStepsError}
                                 onSuggestPrice={() => onSuggestPrice(item)}
                                 priceLoading={priceLoading}
-                                priceSuggestion={priceSuggestion}
                                 onBenchmarkPrice={() => onBenchmarkPrice(item)}
                                 benchmarkLoading={benchmarkLoading}
                                 benchmarkResult={benchmarkResult}
@@ -3074,7 +3029,7 @@ export function MenuWorkspace({
   const [expandedDefaultsCatId, setExpandedDefaultsCatId] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
-  const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
   // TIM-1471: AI preparation-steps generator state.
@@ -3452,7 +3407,6 @@ export function MenuWorkspace({
   // ── AI price suggestion ──────────────────────────────────────────────────
   async function suggestPrice(item: MenuItemWithCogs) {
     setPriceLoading(true);
-    setPriceSuggestion(null);
 
     const recipeLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
     let cogsCents = 0;
@@ -3481,7 +3435,36 @@ export function MenuWorkspace({
       }
       if (res.ok) {
         const data = (await res.json()) as PriceSuggestion;
-        setPriceSuggestion(data);
+        // TIM-1561: route through unified review modal (delete bespoke proposal box).
+        const suggestedDollars = (data.suggested_price_cents / 100).toFixed(2);
+        const currentDollars = item.price_cents > 0
+          ? `$${(item.price_cents / 100).toFixed(2)}`
+          : "Not set";
+        openAIReviewModal({
+          suggestions: [
+            {
+              id: `price-${item.id}`,
+              fieldId: "price_cents",
+              fieldLabel: `${item.name} - Retail Price`,
+              originalValue: currentDollars,
+              proposedValue: `$${suggestedDollars}\n\nMarket range: $${(data.low_cents / 100).toFixed(2)} – $${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
+              isStructured: false,
+            },
+          ],
+          context: { workspace: "Menu & Pricing", section: item.name },
+          onApply: async (accepted) => {
+            if (accepted.length > 0) {
+              await fetch(`/api/workspaces/menu-pricing/items/${item.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ price_cents: data.suggested_price_cents }),
+              });
+              setItems((prev) =>
+                prev.map((i) => i.id === item.id ? { ...i, price_cents: data.suggested_price_cents } : i)
+              );
+            }
+          },
+        });
       }
     } finally {
       setPriceLoading(false);
@@ -3515,14 +3498,37 @@ export function MenuWorkspace({
         ingredients: MenuIngredient[];
         lines: MenuItemIngredient[];
       };
-      // Server reused/created the library ingredients and attached recipe lines.
-      // Replace the ingredient list and this item's lines, then refresh COGS.
-      setIngredients(data.ingredients);
-      setItemIngredients((prev) => [
-        ...prev.filter((ii) => ii.menu_item_id !== item.id),
-        ...data.lines,
-      ]);
-      await refetchItems();
+      // TIM-1561: route through review modal before applying.
+      const currentLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
+      const currentLineNames = currentLines.map((ii) => {
+        const ing = ingredients.find((g) => g.id === ii.ingredient_id);
+        return ing?.name ?? ii.ingredient_id;
+      });
+      const proposedLineNames = data.lines.map((ii) => {
+        const ing = data.ingredients.find((g) => g.id === ii.ingredient_id);
+        return `${ing?.name ?? ii.ingredient_id} (${ii.amount} ${ii.unit})`;
+      });
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `recipe-${item.id}`,
+            fieldId: "recipe",
+            fieldLabel: `${item.name} - Recipe`,
+            originalValue: JSON.stringify(currentLineNames),
+            proposedValue: JSON.stringify(proposedLineNames),
+            isStructured: true,
+          },
+        ],
+        context: { workspace: "Menu & Pricing", section: item.name },
+        onApply: async () => {
+          setIngredients(data.ingredients);
+          setItemIngredients((prev) => [
+            ...prev.filter((ii) => ii.menu_item_id !== item.id),
+            ...data.lines,
+          ]);
+          await refetchItems();
+        },
+      });
     } catch {
       setRecipeError("Couldn't suggest a recipe. Try again in a moment.");
     } finally {
@@ -3562,12 +3568,28 @@ export function MenuWorkspace({
         return;
       }
       const data = (await res.json()) as { steps: string[] };
-      // Persist the AI-generated steps in local state — server already saved them.
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id ? { ...i, preparation_steps: data.steps } : i,
-        ),
-      );
+      // TIM-1561: route through review modal before applying.
+      const currentSteps = item.preparation_steps ?? [];
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `prep-${item.id}`,
+            fieldId: "preparation_steps",
+            fieldLabel: `${item.name} - Preparation Steps`,
+            originalValue: JSON.stringify(currentSteps),
+            proposedValue: JSON.stringify(data.steps),
+            isStructured: true,
+          },
+        ],
+        context: { workspace: "Menu & Pricing", section: item.name },
+        onApply: async () => {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id ? { ...i, preparation_steps: data.steps } : i,
+            ),
+          );
+        },
+      });
     } catch {
       setPrepStepsError("Couldn't suggest steps. Try again in a moment.");
     } finally {
@@ -3706,7 +3728,6 @@ export function MenuWorkspace({
 
   const handleSelectItem = useCallback((id: string | null) => {
     setSelectedItemId(id);
-    setPriceSuggestion(null);
     setRecipeError(null);
     setPrepStepsError(null);
     setBenchmarkResult(null);
@@ -3714,6 +3735,8 @@ export function MenuWorkspace({
   }, []);
 
   return (
+    <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
         <header className="mb-6">
@@ -3777,7 +3800,6 @@ export function MenuWorkspace({
             prepStepsError={prepStepsError}
             onSuggestPrice={suggestPrice}
             priceLoading={priceLoading}
-            priceSuggestion={priceSuggestion}
             onBenchmarkPrice={benchmarkPrice}
             benchmarkLoading={benchmarkLoading}
             benchmarkResult={benchmarkResult}
@@ -3839,5 +3861,6 @@ export function MenuWorkspace({
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
+    </>
   );
 }

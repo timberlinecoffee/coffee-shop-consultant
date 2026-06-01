@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -71,6 +72,7 @@ export function MarketingWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<MarketingSectionKey | null>(null);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
@@ -129,6 +131,7 @@ export function MarketingWorkspace({
     [],
   );
 
+  // TIM-1561: routes AI result through unified review modal before applying.
   async function handleGenerate(section: MarketingSectionKey) {
     if (!canEdit || generating) return;
     setGenerating(section);
@@ -148,8 +151,30 @@ export function MarketingWorkspace({
       }
       if (!res.ok) return;
       const body = (await res.json()) as { content: MarketingDocument };
-      setDoc(body.content);
-      setSavedAt(new Date().toISOString());
+      const sectionLabel = section.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      const currentSectionValue = typeof doc[section as keyof typeof doc] === "string"
+        ? (doc[section as keyof typeof doc] as string)
+        : JSON.stringify(doc[section as keyof typeof doc] ?? "");
+      const proposedValue = typeof body.content[section as keyof typeof body.content] === "string"
+        ? (body.content[section as keyof typeof body.content] as string)
+        : JSON.stringify(body.content[section as keyof typeof body.content] ?? "");
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `marketing-${section}`,
+            fieldId: section,
+            fieldLabel: sectionLabel,
+            originalValue: currentSectionValue,
+            proposedValue,
+            isStructured: false,
+          },
+        ],
+        context: { workspace: "Marketing", section: sectionLabel },
+        onApply: async () => {
+          setDoc(body.content);
+          setSavedAt(new Date().toISOString());
+        },
+      });
     } finally {
       setGenerating(null);
     }
@@ -158,6 +183,8 @@ export function MarketingWorkspace({
   const activeLabel = MARKETING_SECTION_LABELS[active];
 
   return (
+    <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         <header className="mb-6">
@@ -219,6 +246,7 @@ export function MarketingWorkspace({
         onClose={() => setPaywallReason(null)}
       />
     </div>
+    </>
   );
 }
 
