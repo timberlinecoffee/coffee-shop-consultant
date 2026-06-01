@@ -800,7 +800,6 @@ function ItemEditorPanel({
   prepStepsError,
   onSuggestPrice,
   priceLoading,
-  priceSuggestion,
   onBenchmarkPrice,
   benchmarkLoading,
   benchmarkResult,
@@ -833,7 +832,6 @@ function ItemEditorPanel({
   prepStepsError: string | null;
   onSuggestPrice: () => Promise<void>;
   priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
   onBenchmarkPrice: () => Promise<void>;
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
@@ -1015,7 +1013,6 @@ function ItemEditorPanel({
             onUpdateItem={onUpdateItem}
             onSuggestPrice={onSuggestPrice}
             priceLoading={priceLoading}
-            priceSuggestion={priceSuggestion}
             onBenchmarkPrice={onBenchmarkPrice}
             benchmarkLoading={benchmarkLoading}
             benchmarkResult={benchmarkResult}
@@ -1300,7 +1297,6 @@ function CostOfGoodsTabContent({
   onUpdateItem,
   onSuggestPrice,
   priceLoading,
-  priceSuggestion,
   onBenchmarkPrice,
   benchmarkLoading,
   benchmarkResult,
@@ -1319,7 +1315,6 @@ function CostOfGoodsTabContent({
   onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
   onSuggestPrice: () => Promise<void>;
   priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
   onBenchmarkPrice: () => Promise<void>;
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
@@ -2111,7 +2106,6 @@ interface MenuTabProps {
   prepStepsError: string | null;
   onSuggestPrice: (item: MenuItemWithCogs) => Promise<void>;
   priceLoading: boolean;
-  priceSuggestion: PriceSuggestion | null;
   onBenchmarkPrice: (item: MenuItemWithCogs) => Promise<void>;
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
@@ -2137,7 +2131,7 @@ function MenuTab(props: MenuTabProps) {
     onAddRecipeLine, onUpdateRecipeLine, onDeleteRecipeLine,
     onSuggestRecipe, recipeLoading, recipeError,
     onSuggestPrepSteps, prepStepsLoading, prepStepsError,
-    onSuggestPrice, priceLoading, priceSuggestion,
+    onSuggestPrice, priceLoading,
     onBenchmarkPrice, benchmarkLoading, benchmarkResult, benchmarkError,
     onReorderItems,
     onAddCategory, onRenameCategory, onDeleteCategory,
@@ -2325,7 +2319,6 @@ function MenuTab(props: MenuTabProps) {
                                 prepStepsError={prepStepsError}
                                 onSuggestPrice={() => onSuggestPrice(item)}
                                 priceLoading={priceLoading}
-                                priceSuggestion={priceSuggestion}
                                 onBenchmarkPrice={() => onBenchmarkPrice(item)}
                                 benchmarkLoading={benchmarkLoading}
                                 benchmarkResult={benchmarkResult}
@@ -3036,7 +3029,6 @@ export function MenuWorkspace({
   const [expandedDefaultsCatId, setExpandedDefaultsCatId] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
-  const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
@@ -3415,7 +3407,6 @@ export function MenuWorkspace({
   // ── AI price suggestion ──────────────────────────────────────────────────
   async function suggestPrice(item: MenuItemWithCogs) {
     setPriceLoading(true);
-    setPriceSuggestion(null);
 
     const recipeLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
     let cogsCents = 0;
@@ -3737,7 +3728,6 @@ export function MenuWorkspace({
 
   const handleSelectItem = useCallback((id: string | null) => {
     setSelectedItemId(id);
-    setPriceSuggestion(null);
     setRecipeError(null);
     setPrepStepsError(null);
     setBenchmarkResult(null);
@@ -3810,7 +3800,6 @@ export function MenuWorkspace({
             prepStepsError={prepStepsError}
             onSuggestPrice={suggestPrice}
             priceLoading={priceLoading}
-            priceSuggestion={priceSuggestion}
             onBenchmarkPrice={benchmarkPrice}
             benchmarkLoading={benchmarkLoading}
             benchmarkResult={benchmarkResult}
