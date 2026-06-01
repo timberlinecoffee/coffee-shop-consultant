@@ -1,8 +1,10 @@
 // Streaming co-pilot route with thinking, model routing, and SSE.
 // TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
-// SSE event names: text | thinking | error | done
+// SSE event names: text | thinking | suggestions | error | done
 // Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions.
 // Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
+// TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
+// TIM-1638: timeline inconsistency — groundss answers in plan's targetLaunchDate; emits suggestions on mismatch.
 
 export const runtime = "nodejs" // service-role writes (ai_errors) need node; Edge has no advantage here
 export const maxDuration = 60
@@ -153,12 +155,22 @@ function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 }
 
+// TIM-1638: heuristic to detect whether the user's message is about opening
+// timeline or launch date — triggers the cross-plan inconsistency modal.
+function isTimelineQuestion(messages: Array<{ role: string; content: string }>): boolean {
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  return /\b(open(ing)?|launch(ing)?|timeline|when.{0,20}(open|start|launch)|target date|how (long|soon)|schedule)\b/i.test(lastUser)
+}
+
+// TIM-1638: also takes targetLaunchDate (authoritative, from opening_month_plan)
+// so Scout answers timeline questions from the plan, not the stale onboarding field.
 function buildDynamicPrompt(
   onboarding: Record<string, unknown>,
   planSnapshot: string,
   // TIM-1149: null = general (workspace-less) conversation.
   currentWorkspace: WorkspaceKey | null,
   locationCountry: string | null,
+  targetLaunchDate: string | null,
 ): string {
   const shopType = Array.isArray(onboarding?.shop_type)
     ? (onboarding.shop_type as string[]).join(", ")
@@ -168,14 +180,28 @@ function buildDynamicPrompt(
     ? `The user is working in: **${currentWorkspace.replace(/_/g, " ")}**`
     : `The user is in a **general** conversation, not bound to any specific workspace. Help them across the whole plan as needed.`
 
+  // TIM-1638: surface the authoritative opening date prominently. The onboarding
+  // "timeline" field is a stale categorical estimate from signup; the plan date is
+  // what the user set in their Launch Plan and should always be preferred.
+  const authoritativeDateLine = targetLaunchDate
+    ? `**Target Opening Date (authoritative, from Launch Plan)**: ${targetLaunchDate}`
+    : `**Target Opening Date (authoritative, from Launch Plan)**: not set — if the owner asks about their opening timeline, tell them to set it in their Launch Plan`
+
   return `## User Profile
 - **Budget**: ${String(onboarding?.budget ?? "not specified")}
 - **Location**: ${locationCountry ?? "not specified"}
 - **Stage**: ${String(onboarding?.stage ?? "not specified")}
 - **Motivation**: ${String(onboarding?.motivation ?? "not specified")}
 - **Coffee experience**: ${String(onboarding?.coffee_experience ?? "not specified")}
-- **Timeline**: ${String(onboarding?.timeline ?? "not specified")}
+- **Timeline (initial estimate from signup — may be stale)**: ${String(onboarding?.timeline ?? "not specified")}
+- ${authoritativeDateLine}
 - **Shop type**: ${shopType}
+
+## Authoritative Data Rule
+When asked about the opening timeline, target launch date, or when the shop will open:
+- Use ONLY the "Target Opening Date" above — it is set by the owner in their Launch Plan.
+- Do NOT answer from the stale "Timeline (initial estimate)" field.
+- If the Target Opening Date conflicts with anything else in their plan, flag it clearly and recommend they reconcile it.
 
 ## Current Workspace
 ${workspaceLine}
@@ -326,7 +352,18 @@ export async function POST(request: NextRequest) {
     composePlanSnapshot(planId, workspaceKey, svcClient),
     loadPlanContext(svcClient, user.id),
   ])
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = snapshotResult
+  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, targetLaunchDate } = snapshotResult
+
+  // TIM-1638: detect timeline mismatch between the authoritative plan date and
+  // the stale onboarding estimate. Emit the inconsistency suggestion only when
+  // the user's message is about opening timeline — avoids noise on every turn.
+  const onboardingTimeline = String(onboarding?.timeline ?? "").trim()
+  const hasMismatch =
+    !!targetLaunchDate &&
+    !!onboardingTimeline &&
+    onboardingTimeline !== "not specified" &&
+    onboardingTimeline !== "" &&
+    isTimelineQuestion(messages)
 
   // ── Equipment reorganize context (TIM-1637) ───────────────────────────────────
   // Fetch current equipment items + sections when in the buildout_equipment workspace
@@ -358,7 +395,7 @@ export async function POST(request: NextRequest) {
       : ""
 
   const dynamicPrompt =
-    buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country) +
+    buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country, targetLaunchDate) +
     equipmentContextAddendum
 
   // ── Model routing ────────────────────────────────────────────────────────────
@@ -653,6 +690,28 @@ export async function POST(request: NextRequest) {
               type: "usage",
               description: `Co-pilot: ${workspaceKey ?? "general"}`,
             })
+          }
+
+          // TIM-1638: emit a cross-plan inconsistency suggestion when the owner's
+          // authoritative launch date and their stale onboarding timeline both exist
+          // and the user's message is about opening timeline.
+          if (hasMismatch && targetLaunchDate) {
+            send(sse("suggestions", {
+              suggestions: [
+                {
+                  id: `inconsistency-timeline-${crypto.randomUUID()}`,
+                  fieldId: "timeline_mismatch",
+                  fieldLabel: "Opening Timeline Mismatch",
+                  originalValue: `Profile estimate (from signup): "${onboardingTimeline}"`,
+                  proposedValue: `Launch Plan target date: ${targetLaunchDate}`,
+                  isStructured: false,
+                } satisfies SuggestionPayload,
+              ],
+              context: {
+                workspace: "opening_month_plan",
+                section: "Launch Configuration",
+              },
+            }))
           }
 
           const trialRemaining = (isTrial && !isWaived)

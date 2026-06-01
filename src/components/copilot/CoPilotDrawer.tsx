@@ -856,8 +856,13 @@ export function CoPilotDrawer({
                         suggestions,
                         context,
                         onApply: async (accepted: ApprovedChange[]) => {
-                          if (onApplySuggestions && accepted.length > 0) {
-                            await onApplySuggestions(accepted);
+                          // timeline_mismatch is informational — the authoritative
+                          // date already lives in the plan, so no field write on accept.
+                          const actionable = accepted.filter(
+                            (c) => c.fieldId !== "timeline_mismatch"
+                          );
+                          if (onApplySuggestions && actionable.length > 0) {
+                            await onApplySuggestions(actionable);
                           }
                           clearSuggestions();
                         },
