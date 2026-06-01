@@ -159,7 +159,7 @@ function sse(event: string, data: unknown): string {
 // timeline or launch date — triggers the cross-plan inconsistency modal.
 function isTimelineQuestion(messages: Array<{ role: string; content: string }>): boolean {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  return /\b(open(ing)?|launch(ing)?|timeline|when.{0,20}(open|start|launch)|target date|how (long|soon)|schedule|date|month|year)\b/i.test(lastUser)
+  return /\b(open(ing)?|launch(ing)?|timeline|when.{0,20}(open|start|launch)|target date|how (long|soon)|schedule)\b/i.test(lastUser)
 }
 
 // TIM-1638: also takes targetLaunchDate (authoritative, from opening_month_plan)
