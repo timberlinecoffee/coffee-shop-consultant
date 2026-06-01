@@ -10,6 +10,7 @@
 // Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
 // TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
 // TIM-1638: timeline inconsistency — groundss answers in plan's targetLaunchDate; emits suggestions on mismatch.
+// TIM-1648: propose_item tool lets Scout emit a structured menu-item proposal (beverage+recipe) into menu_pricing.
 
 export const runtime = "nodejs" // service-role writes (ai_errors) need node; Edge has no advantage here
 // TIM-1670: multi-search competitor/market research (web_search, up to 8 uses) plus
@@ -238,6 +239,71 @@ ${workspaceLine}
 
 ## Their Plan So Far (all workspaces)
 ${planSnapshot}`
+}
+
+// ── propose_item tool (TIM-1648) ─────────────────────────────────────────────
+// Offered on sonnet when the user's message contains explicit creation intent.
+// Haiku-4-5 tool use is unreliable; model is forced to sonnet when this tool is registered.
+
+const PROPOSE_ITEM_TOOL: Anthropic.Tool = {
+  name: "propose_item",
+  description:
+    "Propose a new menu item (e.g. a beverage with a recipe) to add to the owner's " +
+    "Menu & Pricing workspace. Call this ONLY when the owner explicitly asks you to " +
+    "design, create, or add a specific item (e.g. 'design a lavender latte and add it " +
+    "to my menu'). Do NOT call this for general discussion. After calling this tool, " +
+    "summarise what you proposed in your text response.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      name: {
+        type: "string",
+        description: "Item name in Title Case (e.g. 'Honey Lavender Latte').",
+      },
+      category_name: {
+        type: "string",
+        description:
+          "Menu category to place this in. Match an existing category " +
+          "(e.g. 'Espresso', 'Brewed Coffee', 'Seasonal', 'Food', 'Retail'). " +
+          "If none fits, choose the closest or use 'Seasonal'.",
+      },
+      description: {
+        type: "string",
+        description: "One-sentence description for the owner's internal notes.",
+      },
+      price_cents: {
+        type: "number",
+        description: "Suggested retail price in cents (e.g. 550 for $5.50).",
+      },
+      recipe_ingredients: {
+        type: "array",
+        description: "Ingredients used to make one serving.",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Ingredient name in Title Case" },
+            amount: { type: "number", description: "Amount per serving" },
+            unit: {
+              type: "string",
+              enum: ["g", "ml", "oz", "each", "piece"],
+              description: "Unit of measurement",
+            },
+          },
+          required: ["name", "amount", "unit"],
+        },
+      },
+      rationale: {
+        type: "string",
+        description: "One sentence explaining why this item fits their concept.",
+      },
+    },
+    required: ["name", "category_name"],
+  },
+}
+
+function shouldOfferProposeTool(messages: Array<{ role: string; content: string }>): boolean {
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  return /\b(add|create|design|propose|apply|put|make|build)\b.{0,80}(to (the )?(menu|ingredients?)|into (the )?(menu|ingredients?)|a (latte|espresso|cappuccino|cold brew|pour over|americano|macchiato|mocha|cortado|drink|beverage|item))/i.test(lastUser)
 }
 
 // TIM-1670: detect questions that need real web research (competitors, local market,
@@ -518,10 +584,12 @@ export async function POST(request: NextRequest) {
   // TIM-1670: research questions (competitors/local market) also route to sonnet —
   // they need multi-step web_search + synthesis, which haiku handles poorly.
   // Haiku 4.5 does not support extended thinking; thinking is only enabled for sonnet tier.
+  // TIM-1648: also force sonnet when offering propose_item tool (haiku tool use is unreliable).
   const workspaceMentions = countWorkspaceMentions(messages)
   const isResearch = isResearchQuestion(messages)
+  const offerProposeItemTool = shouldOfferProposeTool(messages)
   const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3 || isResearch
-  const modelId = useComplexModel ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
+  const modelId = (useComplexModel || offerProposeItemTool) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
@@ -679,6 +747,8 @@ export async function POST(request: NextRequest) {
         const tools: Anthropic.ToolUnion[] = [
           ...(isResearch ? [webSearchTool] : []),
           ...(equipmentTool ? [equipmentTool] : []),
+          // TIM-1648: propose_item — offered on creation-intent messages (forces sonnet).
+          ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
         ]
 
         const stream = anthropic.messages.stream({
@@ -739,6 +809,57 @@ export async function POST(request: NextRequest) {
                       },
                     }),
                   )
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            } else if (activeToolName === "propose_item" && toolInputBuffer) {
+              // TIM-1648: emit structured menu-item proposal for the Review modal.
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  name?: string
+                  category_name?: string
+                  description?: string
+                  price_cents?: number
+                  recipe_ingredients?: Array<{ name: string; amount: number; unit: string }>
+                  rationale?: string
+                }
+                if (toolInput.name) {
+                  const ingredientLines = (toolInput.recipe_ingredients ?? [])
+                    .map((i) => `${i.name}: ${i.amount} ${i.unit}`)
+                    .join(", ")
+                  const priceDisplay = toolInput.price_cents
+                    ? `$${(toolInput.price_cents / 100).toFixed(2)}`
+                    : "Not set"
+                  const proposedSummary = [
+                    `Name: ${toolInput.name}`,
+                    `Category: ${toolInput.category_name ?? ""}`,
+                    `Price: ${priceDisplay}`,
+                    toolInput.description ? `Description: ${toolInput.description}` : null,
+                    ingredientLines ? `Ingredients: ${ingredientLines}` : null,
+                    toolInput.rationale ? `Rationale: ${toolInput.rationale}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join("\n")
+                  send(sse("suggestions", {
+                    suggestions: [
+                      {
+                        id: `propose-${crypto.randomUUID()}`,
+                        fieldId: "new_menu_item",
+                        fieldLabel: `New Item: ${toolInput.name}`,
+                        originalValue: "",
+                        proposedValue: JSON.stringify(toolInput),
+                        isStructured: false,
+                        _displayHint: proposedSummary,
+                      },
+                    ],
+                    context: {
+                      workspace: "menu_pricing",
+                      section: toolInput.category_name ?? "Menu",
+                    },
+                  }))
                 }
               } catch {
                 /* malformed tool JSON — skip silently */
