@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -86,6 +87,7 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
@@ -144,6 +146,7 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
+  // TIM-1561: routes AI result through unified review modal before applying.
   async function handleGenerate(section: GeneratableSection) {
     if (!canEdit || generating) return;
     setGenerating(section);
@@ -160,8 +163,26 @@ export function OperationsPlaybookWorkspace({
       }
       if (!res.ok) return;
       const body = (await res.json()) as { content: OperationsPlaybookDocument };
-      setDoc(body.content);
-      setSavedAt(new Date().toISOString());
+      const sectionLabel = section.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      const currentVal = doc[section as keyof OperationsPlaybookDocument];
+      const proposedVal = body.content[section as keyof OperationsPlaybookDocument];
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `playbook-${section}`,
+            fieldId: section,
+            fieldLabel: sectionLabel,
+            originalValue: typeof currentVal === "string" ? currentVal : JSON.stringify(currentVal ?? ""),
+            proposedValue: typeof proposedVal === "string" ? proposedVal : JSON.stringify(proposedVal ?? ""),
+            isStructured: false,
+          },
+        ],
+        context: { workspace: "Operations Playbook", section: sectionLabel },
+        onApply: async () => {
+          setDoc(body.content);
+          setSavedAt(new Date().toISOString());
+        },
+      });
     } finally {
       setGenerating(null);
     }
@@ -170,6 +191,8 @@ export function OperationsPlaybookWorkspace({
   const activeLabel = operationsSectionLabel(active);
 
   return (
+    <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-12">
         {/* Header spans full width above the 2-col grid */}
@@ -297,6 +320,7 @@ export function OperationsPlaybookWorkspace({
         onClose={() => setPaywallReason(null)}
       />
     </div>
+    </>
   );
 }
 

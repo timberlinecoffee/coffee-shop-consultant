@@ -34,6 +34,7 @@ import type {
   CopilotMessage,
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 // TIM-1149 / TIM-1151: Resizable / expandable panel constants.
 // Expanded mode is a true full-width overlay (TIM-1151 founder feedback) —
@@ -183,10 +184,14 @@ export function CoPilotDrawer({
     assistantBuffer,
     error,
     trialRemaining,
+    pendingSuggestions,
+    clearSuggestions,
     send,
     abort,
     reset,
   } = useCopilotStream();
+
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   // Keep local trial count in sync with the server after each message.
   useEffect(() => {
@@ -587,6 +592,8 @@ export function CoPilotDrawer({
 
   return (
     <>
+      {/* TIM-1561: AI review modal for suggestions from chat. */}
+      {AIReviewModalNode}
       <PaywallModal
         open={trialModalOpen}
         onClose={() => setTrialModalOpen(false)}
@@ -772,6 +779,30 @@ export function CoPilotDrawer({
                   {assistantBuffer && (
                     <MessageBubble role="assistant" content={assistantBuffer} streaming />
                   )}
+                </div>
+              )}
+
+              {/* TIM-1561: "Review N suggestions" CTA when Scout emits a suggestions event. */}
+              {pendingSuggestions && !isStreaming && (
+                <div className="flex">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!pendingSuggestions) return;
+                      const { suggestions, context } = pendingSuggestions;
+                      openAIReviewModal({
+                        suggestions,
+                        context,
+                        onApply: async () => {
+                          clearSuggestions();
+                        },
+                      });
+                    }}
+                    className="flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
+                  >
+                    <Sparkles size={14} aria-hidden />
+                    {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
+                  </button>
                 </div>
               )}
 

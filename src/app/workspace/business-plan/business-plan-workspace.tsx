@@ -19,6 +19,7 @@ import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 interface Props {
   planId: string;
@@ -134,6 +135,7 @@ export function BusinessPlanWorkspace({
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any section has user content.
@@ -212,7 +214,40 @@ export function BusinessPlanWorkspace({
         },
         (full) => {
           setStreamingKey(null);
-          updateSection(sectionKey, { isGenerating: false, editBuffer: full });
+          // TIM-1561: route AI result through unified review modal before applying.
+          const sectionMeta = BUSINESS_PLAN_SECTIONS.find((s) => s.key === sectionKey);
+          const currentSection = sections.find((s) => s.key === sectionKey);
+          const originalValue = currentSection?.userContent ?? currentSection?.autoContent ?? "";
+          openAIReviewModal({
+            suggestions: [
+              {
+                id: `bp-${sectionKey}`,
+                fieldId: sectionKey,
+                fieldLabel: sectionMeta?.title ?? sectionKey,
+                originalValue,
+                proposedValue: full,
+                isStructured: false,
+              },
+            ],
+            context: { workspace: "Business Plan", section: sectionMeta?.title },
+            onApply: async () => {
+              // Inline save (avoids hoisting issue with handleSaveAfterImprove ref)
+              await fetch(`/api/business-plan/sections/${sectionKey}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_content: full }),
+              });
+              setSections((prev) =>
+                prev.map((s) => {
+                  if (s.key !== sectionKey) return s;
+                  return { ...s, userContent: full };
+                })
+              );
+              updateSection(sectionKey, { isEditing: false, isGenerating: false });
+            },
+          });
+          // Clear the inline edit buffer — the modal owns the review step.
+          updateSection(sectionKey, { isGenerating: false, isEditing: false, editBuffer: originalValue });
         },
         (msg) => {
           setStreamingKey(null);
@@ -228,7 +263,7 @@ export function BusinessPlanWorkspace({
       setStreamingKey(null);
       updateSection(sectionKey, { isGenerating: false });
     }
-  }, [updateSection]);
+  }, [updateSection, sections, openAIReviewModal, setSections]);
 
   const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
     await runStream("/api/business-plan/generate", { sectionKey: key }, key);
@@ -294,6 +329,8 @@ export function BusinessPlanWorkspace({
   const visibleCount = sections.filter((s) => s.isVisible).length;
 
   return (
+    <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-20">
         {/* Page header */}
@@ -400,6 +437,7 @@ export function BusinessPlanWorkspace({
         />
       </div>
     </div>
+    </>
   );
 }
 

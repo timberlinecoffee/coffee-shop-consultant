@@ -8,12 +8,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSanitize from "rehype-sanitize";
-import type { Components } from "react-markdown";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "@/components/copilot/sse";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 export interface AIAssistCalloutProps {
   open: boolean;
@@ -30,18 +27,8 @@ export interface AIAssistCalloutProps {
 type Phase =
   | { kind: "draft" }
   | { kind: "streaming"; buffer: string }
-  | { kind: "review"; suggested: string }
   | { kind: "quota"; reason?: string }
   | { kind: "error"; message: string };
-
-const MD_COMPONENTS: Components = {
-  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-  strong: ({ children }) => <strong className="font-semibold text-[var(--foreground)]">{children}</strong>,
-  em: ({ children }) => <em className="italic">{children}</em>,
-  ul: ({ children }) => <ul className="list-disc pl-4 mb-2 last:mb-0 space-y-0.5">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 last:mb-0 space-y-0.5">{children}</ol>,
-  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-};
 
 export function AIAssistCallout({
   open,
@@ -58,6 +45,8 @@ export function AIAssistCallout({
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(currentValue);
   const abortRef = useRef<AbortController | null>(null);
+
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   // Reset to draft state when modal opens with a new value.
   useEffect(() => {
@@ -195,9 +184,29 @@ export function AIAssistCallout({
         return;
       }
 
-      setPhase({ kind: "review", suggested: accumulated });
+      // TIM-1561: route through unified review modal instead of inline compare.
+      const suggested = accumulated;
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `ai-assist-${fieldKey}`,
+            fieldId: fieldKey,
+            fieldLabel: fieldLabel,
+            originalValue: currentValue,
+            proposedValue: suggested,
+            isStructured: false,
+          },
+        ],
+        context: { workspace: moduleLabel, section: fieldLabel },
+        onApply: async (accepted) => {
+          if (accepted.length > 0) onApply(accepted[0].finalValue);
+          onClose();
+        },
+      });
+      // Close the draft modal — review modal takes over.
+      onClose();
     },
-    [planId, workspaceKey, fieldKey, draft, instruction],
+    [planId, workspaceKey, fieldKey, draft, instruction, fieldLabel, moduleLabel, currentValue, onApply, onClose, openAIReviewModal],
   );
 
   const handleAbort = useCallback(() => {
@@ -205,12 +214,6 @@ export function AIAssistCallout({
     abortRef.current = null;
     setPhase({ kind: "draft" });
   }, []);
-
-  const handleApply = useCallback(() => {
-    if (phase.kind !== "review") return;
-    onApply(phase.suggested);
-    onClose();
-  }, [phase, onApply, onClose]);
 
   const handleTryAgain = useCallback(() => {
     setPhase({ kind: "draft" });
@@ -221,6 +224,8 @@ export function AIAssistCallout({
   const isStreaming = phase.kind === "streaming";
 
   return (
+    <>
+    {AIReviewModalNode}
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -354,59 +359,6 @@ export function AIAssistCallout({
             </div>
           )}
 
-          {/* ── Review state ─────────────────────────────────── */}
-          {phase.kind === "review" && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dark-grey)] mb-2">
-                  Current version
-                </p>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
-                  <p className="text-sm text-[var(--muted-foreground)] leading-relaxed whitespace-pre-wrap">
-                    {currentValue.trim() || <span className="italic">Empty</span>}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
-                  Suggested version
-                </p>
-                <div
-                  className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3"
-                  aria-live="polite"
-                >
-                  <div className="text-sm text-[var(--foreground)] leading-relaxed">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeSanitize]}
-                      components={MD_COMPONENTS}
-                    >
-                      {phase.suggested}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleApply}
-                  className="flex-1 bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
-                >
-                  Use this version
-                </button>
-                <button
-                  type="button"
-                  onClick={handleTryAgain}
-                  className="flex-1 border border-[var(--gray-700)] text-[var(--muted-foreground)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--gray-200)] transition-colors"
-                >
-                  Try again
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* ── Quota state ──────────────────────────────────── */}
           {phase.kind === "quota" && (
             <div className="space-y-4">
@@ -480,5 +432,6 @@ export function AIAssistCallout({
         </div>
       </div>
     </div>
+    </>
   );
 }
