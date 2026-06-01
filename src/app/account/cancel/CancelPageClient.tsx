@@ -62,7 +62,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">Before You Cancel</h1>
           <p className="mt-1 text-sm text-[var(--dark-grey)]">
-            Keep your {tierDisplayName} plan and everything in it — for just $2.99/month.
+            Keep your {tierDisplayName} plan and everything in it, for just $2.99/month.
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
             <p className="text-3xl font-bold text-[var(--foreground)]">
               $2.99<span className="text-base font-normal text-[var(--dark-grey)]">/month</span>
             </p>
-            <p className="text-sm text-[var(--dark-grey)] mt-0.5">while paused — vs. losing everything</p>
+            <p className="text-sm text-[var(--dark-grey)] mt-0.5">while paused, instead of losing everything</p>
           </div>
 
           <ul className="space-y-2 text-sm text-[var(--foreground)]">
@@ -91,7 +91,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[var(--teal)] mt-0.5">✓</span>
-              No commitment — reactivate or cancel for real at any time.
+              No commitment. Reactivate or cancel for real at any time.
             </li>
           </ul>
 
@@ -113,7 +113,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
           <button
             onClick={handlePause}
             disabled={busy}
-            className="w-full text-sm bg-[var(--teal)] text-white px-5 py-3 rounded-lg font-medium hover:bg-[var(--teal-dark,#0f4a4e)] transition-colors disabled:opacity-50"
+            className="w-full text-sm bg-[var(--teal)] text-white px-5 py-3 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
           >
             {state === "pausing" ? "Pausing subscription…" : "Pause My Subscription for $2.99/mo"}
           </button>
@@ -143,7 +143,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
               "the end of your current billing period"
             )}
             . After that, your account will downgrade to the free plan and your saved data will
-            be retained — but you will lose {tierDisplayName} features.
+            be retained, but you will lose {tierDisplayName} features.
           </p>
           <button
             onClick={handleCancel}
@@ -206,7 +206,7 @@ export function AnnualCancelPageClient({ tierDisplayName, periodEnd }: AnnualPro
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href="/account/billing"
-              className="inline-block text-sm bg-[var(--teal)] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[var(--teal-dark,#0f4a4e)] transition-colors text-center"
+              className="inline-block text-sm bg-[var(--teal)] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors text-center"
             >
               Back to Billing
             </Link>
