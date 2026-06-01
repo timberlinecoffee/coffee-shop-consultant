@@ -2461,31 +2461,33 @@ export function SectionedListGrid({
 
             <DragOverlay>
               {activeItem && (
-                <table className="w-full" style={{ tableLayout: "fixed" }}>
-                  <colgroup>
-                    {visibleCols.map((col) => (
-                      <col key={col.id} style={{ width: colWidths.get(col.id) ?? col.defaultWidth }} />
-                    ))}
-                  </colgroup>
-                  <tbody>
-                    <SortableRow
-                      item={activeItem}
-                      listType={listType}
-                      canEdit={canEdit}
-                      visibleCols={visibleCols}
-                      colWidths={colWidths}
-                      vendorCandidates={vendorCandidates}
-                      showRecommendations={showRecommendations}
-                      showAiMarkings={showAiMarkings}
-                      currencyCode={currencyCode}
-                      onUpdate={() => {}}
-                      onDelete={() => {}}
-                      onRequestAddVendor={() => {}}
-                      isDragOverlay
-                    />
+                <div className="overflow-x-auto">
+                  <table className="w-full" style={{ tableLayout: "fixed", minWidth: visibleCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}>
+                    <colgroup>
+                      {visibleCols.map((col) => (
+                        <col key={col.id} style={{ width: colWidths.get(col.id) ?? col.defaultWidth }} />
+                      ))}
+                    </colgroup>
+                    <tbody>
+                      <SortableRow
+                        item={activeItem}
+                        listType={listType}
+                        canEdit={canEdit}
+                        visibleCols={visibleCols}
+                        colWidths={colWidths}
+                        vendorCandidates={vendorCandidates}
+                        showRecommendations={showRecommendations}
+                        showAiMarkings={showAiMarkings}
+                        currencyCode={currencyCode}
+                        onUpdate={() => {}}
+                        onDelete={() => {}}
+                        onRequestAddVendor={() => {}}
+                        isDragOverlay
+                      />
 
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               )}
             </DragOverlay>
           </DndContext>
