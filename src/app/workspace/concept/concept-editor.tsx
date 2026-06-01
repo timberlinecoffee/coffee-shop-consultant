@@ -182,7 +182,7 @@ export function ConceptWorkspace({
     return () => document.removeEventListener("keydown", onKey);
   }, [openExampleId]);
 
-  function updateContent(id: ConceptComponentId, content: string) {
+  const updateContent = useCallback((id: ConceptComponentId, content: string) => {
     setDoc((prev) => {
       const next: ConceptDocumentV2 = {
         ...prev,
@@ -194,7 +194,7 @@ export function ConceptWorkspace({
       scheduleSave(next);
       return next;
     });
-  }
+  }, [scheduleSave]);
 
   function updatePersonas(personas: CustomerPersona[]) {
     setDoc((prev) => {

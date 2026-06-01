@@ -455,7 +455,8 @@ function shouldOfferProposeTool(messages: Array<{ role: string; content: string 
 
 // TIM-1690: detect when the user wants to update a text field in their plan.
 function shouldOfferTextUpdateTool(messages: Array<{ role: string; content: string }>, ws: WorkspaceKey | null): boolean {
-  if (!ws || ws === "menu_pricing") return false // menu_pricing uses propose_item instead
+  // menu_pricing uses propose_item; financials/buildout_equipment have no apply handler
+  if (!ws || ws === "menu_pricing" || ws === "financials" || ws === "buildout_equipment") return false
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
   return /\b(update|change|rewrite|improve|edit|revise|fix|refine|modify|set|write)\b.{0,100}(my |the |this )?(vision|mission|concept|story|notes?|description|vendor|supplier|candidate|milestone|founder|playbook|strategy|overview|role|narrative|origin|differentiator)/i.test(lastUser)
 }
