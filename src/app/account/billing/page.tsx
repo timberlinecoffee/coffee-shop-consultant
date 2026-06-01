@@ -183,6 +183,11 @@ export default function BillingPage() {
                     {cancelPauseLoading ? "Cancelling…" : "Cancel pause and end subscription"}
                   </button>
                 </div>
+                {billingStatus?.resumePrice && (
+                  <p className="text-xs text-[var(--muted-foreground)] mt-3">
+                    Resuming restores your plan right away. You won&#39;t be charged today. Your {billingStatus.resumePrice}/mo billing resumes on your next billing date.
+                  </p>
+                )}
                 {actionError && (
                   <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                     {actionError}
