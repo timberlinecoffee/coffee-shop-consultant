@@ -43,6 +43,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [cancelPauseLoading, setCancelPauseLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [successParam] = useState<boolean>(readSuccessParam);
   const [pausedParam] = useState<boolean>(readPausedParam);
   const [cancelledParam] = useState<boolean>(readCancelledParam);
@@ -90,13 +91,14 @@ export default function BillingPage() {
 
   async function openPortal() {
     setLoading(true);
+    setActionError(null);
     try {
       const res = await fetch("/api/stripe/create-portal-session", { method: "POST" });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.error ?? "Something went wrong. Please try again.");
+        setActionError(data.error ?? "Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -105,6 +107,7 @@ export default function BillingPage() {
 
   async function resumePlan() {
     setResumeLoading(true);
+    setActionError(null);
     try {
       const res = await fetch("/api/billing/resume", { method: "POST" });
       const data = await res.json();
@@ -113,7 +116,7 @@ export default function BillingPage() {
       } else if (data.ok) {
         window.location.href = "/account/billing?success=1";
       } else {
-        alert(data.error ?? "Something went wrong. Please try again.");
+        setActionError(data.error ?? "Something went wrong. Please try again.");
       }
     } finally {
       setResumeLoading(false);
@@ -122,13 +125,14 @@ export default function BillingPage() {
 
   async function cancelPause() {
     setCancelPauseLoading(true);
+    setActionError(null);
     try {
       const res = await fetch("/api/billing/cancel", { method: "POST" });
       const data = await res.json();
       if (data.ok) {
         window.location.href = "/account/billing?cancelled=1";
       } else {
-        alert(data.error ?? "Something went wrong. Please try again.");
+        setActionError(data.error ?? "Something went wrong. Please try again.");
       }
     } finally {
       setCancelPauseLoading(false);
@@ -147,7 +151,7 @@ export default function BillingPage() {
           <div className="bg-white rounded-xl border border-[var(--border)] p-6">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center mt-0.5">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ stroke: "var(--warning-dark)" }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
                 </svg>
               </div>
@@ -179,6 +183,11 @@ export default function BillingPage() {
                     {cancelPauseLoading ? "Cancelling…" : "Cancel pause and end subscription"}
                   </button>
                 </div>
+                {actionError && (
+                  <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                    {actionError}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -249,6 +258,11 @@ export default function BillingPage() {
                 Cancel subscription
               </Link>
             </div>
+            {actionError && (
+              <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                {actionError}
+              </p>
+            )}
           </div>
         )}
 
