@@ -645,12 +645,11 @@ export function CoPilotDrawer({
           type="button"
           aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           onClick={openDrawer}
-          // TIM-1574: hide on desktop (lg+) unless this consumer has no Beacon;
-          // otherwise it overlaps the CoPilotBeacon at bottom-6 right-6.
-          className={`fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full ai-gradient-bg text-white shadow-lg flex items-center gap-2 active:scale-95 transition-transform ${showDesktopLauncher ? "" : "lg:hidden"}`}
+          // TIM-1574: hide on desktop (lg+) unless this consumer has no Beacon.
+          // TIM-1678: style-guide FAB — bottom-[72px] right-4 z-30 w-14 h-14 rounded-2xl.
+          className={`fixed bottom-[72px] right-4 lg:bottom-6 lg:right-6 z-30 w-14 h-14 rounded-2xl ai-gradient-bg text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform ${showDesktopLauncher ? "" : "lg:hidden"}`}
         >
-          <Sparkles aria-hidden className="w-4 h-4" />
-          <span className="text-sm font-semibold">{COPILOT_NAME}</span>
+          <Sparkles aria-hidden className="w-5 h-5" />
         </button>
       )}
 

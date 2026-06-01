@@ -194,7 +194,7 @@ export function OperationsPlaybookWorkspace({
     <>
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-5xl mx-auto px-6 pt-8 pb-12">
+      <div className="max-w-5xl mx-auto px-6 pt-8 pb-36 sm:pb-12">
         {/* Header spans full width above the 2-col grid */}
         <header className="mb-6">
           <div className="flex items-center justify-between gap-3 mb-1">
@@ -862,76 +862,82 @@ function ChecklistRow({
   const [checked, setChecked] = useState(false);
   const checkboxId = `chk_${item.id}`;
   return (
-    <li className="group flex items-center gap-3 py-2">
-      <input
-        id={checkboxId}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => setChecked(e.target.checked)}
-        className="h-4 w-4 flex-shrink-0 rounded border-[var(--border-medium)] text-[var(--teal)] accent-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
-        aria-label={`Mark step ${idx + 1} done`}
-      />
-      <label htmlFor={checkboxId} className="sr-only">
-        Mark step {idx + 1} done
-      </label>
-      <input
-        type="text"
-        className={`flex-1 min-w-0 text-sm bg-transparent border-0 px-0 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:ring-0 disabled:text-[var(--dark-grey)] ${checked ? "line-through text-[var(--muted-foreground)]" : ""}`}
-        value={item.text}
-        onChange={(e) => onPatch(idx, { text: e.target.value })}
-        disabled={!canEdit}
-        placeholder="What does your team do at this step?"
-        aria-label="Step description"
-      />
-      {useDuration && (
-        <div className="inline-flex items-center gap-1 text-[11px] text-[var(--muted-foreground)] flex-shrink-0">
-          <input
-            type="number"
-            min={0}
-            max={120}
-            className="w-12 border border-[var(--border-medium)] rounded-md px-1.5 py-0.5 text-[var(--foreground)] text-right focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
-            value={item.duration_min ?? ""}
-            onChange={(e) =>
-              onPatch(idx, {
-                duration_min:
-                  e.target.value === "" ? null : Number(e.target.value),
-              })
-            }
-            disabled={!canEdit}
-            placeholder="—"
-            aria-label="Duration in minutes"
-          />
-          <span>min</span>
-        </div>
-      )}
-      <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <button
-          type="button"
-          onClick={() => onMove(idx, -1)}
-          disabled={!canEdit || idx === 0}
-          aria-label="Move step up"
-          className="p-1 text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <ArrowUp className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onMove(idx, 1)}
-          disabled={!canEdit || idx === total - 1}
-          aria-label="Move step down"
-          className="p-1 text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <ArrowDown className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onRemove(idx)}
+    <li className="group flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:gap-3">
+      {/* TIM-1678: full-width text row — label can no longer truncate mid-word */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <input
+          id={checkboxId}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => setChecked(e.target.checked)}
+          className="h-4 w-4 flex-shrink-0 rounded border-[var(--border-medium)] text-[var(--teal)] accent-[var(--teal)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+          aria-label={`Mark step ${idx + 1} done`}
+        />
+        <label htmlFor={checkboxId} className="sr-only">
+          Mark step {idx + 1} done
+        </label>
+        <input
+          type="text"
+          className={`flex-1 min-w-0 text-sm bg-transparent border-0 px-0 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:ring-0 disabled:text-[var(--dark-grey)] ${checked ? "line-through text-[var(--muted-foreground)]" : ""}`}
+          value={item.text}
+          onChange={(e) => onPatch(idx, { text: e.target.value })}
           disabled={!canEdit}
-          aria-label="Remove step"
-          className="p-1 text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+          placeholder="What does your team do at this step?"
+          aria-label="Step description"
+        />
+      </div>
+      {/* TIM-1678: secondary row on mobile — duration + actions indented to align with text */}
+      <div className="flex items-center gap-2 pl-7 sm:pl-0">
+        {useDuration && (
+          <div className="inline-flex items-center gap-1 text-[11px] text-[var(--muted-foreground)]">
+            <input
+              type="number"
+              min={0}
+              max={120}
+              className="w-12 border border-[var(--border-medium)] rounded-md px-1.5 py-0.5 text-[var(--foreground)] text-right focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"
+              value={item.duration_min ?? ""}
+              onChange={(e) =>
+                onPatch(idx, {
+                  duration_min:
+                    e.target.value === "" ? null : Number(e.target.value),
+                })
+              }
+              disabled={!canEdit}
+              placeholder="—"
+              aria-label="Duration in minutes"
+            />
+            <span>min</span>
+          </div>
+        )}
+        <div className="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={() => onMove(idx, -1)}
+            disabled={!canEdit || idx === 0}
+            aria-label="Move step up"
+            className="p-1 text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(idx, 1)}
+            disabled={!canEdit || idx === total - 1}
+            aria-label="Move step down"
+            className="p-1 text-[var(--dark-grey)] hover:text-[var(--teal)] disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove(idx)}
+            disabled={!canEdit}
+            aria-label="Remove step"
+            className="p-1 text-[var(--dark-grey)] hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     </li>
   );
