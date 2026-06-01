@@ -98,8 +98,11 @@ type BenchmarkResult = {
   current_price_cents: number;
   verdict: "below" | "in_band" | "above" | "unknown";
   commentary: string;
-  // TIM-1692: "ai_estimated" until real cross-user data crosses the threshold.
-  source?: "ai_estimated" | "platform_data";
+  // TIM-1698: "industry_benchmark" = curated public dataset (NCA/SCA/Square/BLS).
+  // "platform_data" = cross-user aggregate (future, needs scale).
+  // "ai_estimated" = fallback when no industry record exists for the item.
+  source?: "ai_estimated" | "platform_data" | "industry_benchmark";
+  source_note?: string;
 };
 
 function makeLocalId() {
@@ -1450,6 +1453,14 @@ function CostOfGoodsTabContent({
                     ${(benchmarkResult.low_cents / 100).toFixed(2)} to ${(benchmarkResult.high_cents / 100).toFixed(2)}
                   </span>
                 </p>
+                {benchmarkResult.source === "industry_benchmark" && (
+                  <span
+                    className="shrink-0 text-[10px] font-medium text-[var(--teal)] border border-[var(--teal-bg-750)] rounded px-1.5 py-0.5 leading-none cursor-default"
+                    title={benchmarkResult.source_note ?? "Sourced from publicly available industry data (NCA, SCA, Square, BLS)."}
+                  >
+                    Industry benchmark
+                  </span>
+                )}
                 {(!benchmarkResult.source || benchmarkResult.source === "ai_estimated") && (
                   <span className="shrink-0 text-[10px] font-medium text-[var(--muted-foreground)] border border-[var(--border)] rounded px-1.5 py-0.5 leading-none">
                     AI-estimated

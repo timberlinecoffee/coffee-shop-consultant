@@ -5,13 +5,16 @@
 // Sibling of /suggest-price; that one recommends a price, this one positions
 // the current one against local market reality.
 // TIM-1692: Also captures anonymized price data to menu_price_aggregates for
-// future cross-user percentile calculations. Returns source:"ai_estimated"
-// until real data crosses the threshold (see platform-percentile route).
+// future cross-user percentile calculations.
+// TIM-1698: Checks curated public industry dataset first; falls back to AI only
+// when no industry record exists for the item. Returns source:"industry_benchmark"
+// for items covered by the dataset, "ai_estimated" otherwise.
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { lookupIndustryBenchmark } from "@/lib/menu-pricing/industry-benchmarks"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -134,6 +137,64 @@ export async function POST(request: Request) {
   const aggregateOptIn = planRow?.aggregate_opt_in !== false
 
   const ctx = body.concept_context ?? {}
+  const regionBucket = deriveRegionBucket(ctx.location)
+
+  const currentCents = typeof body.current_price_cents === "number" && body.current_price_cents > 0
+    ? body.current_price_cents
+    : 0
+
+  // TIM-1698: Check curated industry dataset before falling back to AI.
+  const industryData = lookupIndustryBenchmark(itemName, regionBucket)
+  if (industryData) {
+    // Capture aggregate data even for industry-benchmarked items — this builds
+    // the cross-user dataset for future platform_data percentiles.
+    if (aggregateOptIn && currentCents > 0) {
+      const serviceClient = createServiceClient()
+      serviceClient
+        .from("menu_price_aggregates")
+        .insert({
+          item_name_normalized: normalizeItemName(itemName),
+          price_cents: currentCents,
+          region_bucket: regionBucket,
+        })
+        .then(({ error }) => {
+          if (error) console.warn("menu_price_aggregates insert failed:", error.message)
+        })
+    }
+
+    const regionNote = regionBucket && regionBucket !== "Other"
+      ? ` adjusted for the ${regionBucket} market`
+      : ""
+    const verdictText = currentCents > 0
+      ? deriveVerdict(currentCents, industryData.low_cents, industryData.high_cents)
+      : "unknown"
+    const lowDollars = (industryData.low_cents / 100).toFixed(2)
+    const highDollars = (industryData.high_cents / 100).toFixed(2)
+    let commentary = `Industry data from ${industryData.source_label.replace("_", " ")} shows ${itemName} typically priced between $${lowDollars} and $${highDollars} at independent specialty cafés${regionNote}.`
+    if (currentCents > 0) {
+      const currentDollars = (currentCents / 100).toFixed(2)
+      if (verdictText === "below") {
+        commentary += ` At $${currentDollars}, your price is below the typical range — consider whether a modest increase would hurt volume or help margins.`
+      } else if (verdictText === "above") {
+        commentary += ` At $${currentDollars}, your price is above the typical range — make sure your quality, positioning, and shop experience justify the premium.`
+      } else {
+        commentary += ` At $${currentDollars}, you are in line with where most established shops land.`
+      }
+    }
+
+    return Response.json({
+      low_cents: industryData.low_cents,
+      high_cents: industryData.high_cents,
+      current_price_cents: currentCents,
+      verdict: verdictText,
+      commentary,
+      source: "industry_benchmark" as const,
+      source_label: industryData.source_label,
+      source_note: industryData.source_note,
+    })
+  }
+
+  // Fallback: no industry record for this item — use AI estimate.
   const conceptLines: string[] = []
   if (ctx.shop_identity) conceptLines.push(`Shop: ${ctx.shop_identity}`)
   if (ctx.location) conceptLines.push(`Location: ${ctx.location}`)
@@ -143,9 +204,6 @@ export async function POST(request: Request) {
     ? conceptLines.join("\n")
     : "A specialty independent café."
 
-  const currentCents = typeof body.current_price_cents === "number" && body.current_price_cents > 0
-    ? body.current_price_cents
-    : 0
   const currentDollars = currentCents > 0
     ? `$${(currentCents / 100).toFixed(2)}`
     : "no price set yet"
@@ -203,7 +261,7 @@ Return ONLY the JSON object.`
         .insert({
           item_name_normalized: normalizeItemName(itemName),
           price_cents: currentCents,
-          region_bucket: deriveRegionBucket(ctx.location),
+          region_bucket: regionBucket,
         })
         .then(({ error }) => {
           if (error) console.warn("menu_price_aggregates insert failed:", error.message)
@@ -216,9 +274,7 @@ Return ONLY the JSON object.`
       current_price_cents: currentCents,
       verdict: deriveVerdict(currentCents, low, high),
       commentary: normalizeAIOutput(String(parsed.commentary ?? "")),
-      // TIM-1692: Always "ai_estimated" until the platform-percentile endpoint
-      // has >= 20 real data points for this item/region. The UI uses this flag
-      // to render the "AI-estimated" disclosure badge.
+      // TIM-1698: "ai_estimated" only when the item is not in the industry dataset.
       source: "ai_estimated" as const,
     })
   } catch (err) {
