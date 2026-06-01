@@ -140,10 +140,15 @@ function PricingPageInner() {
     const key = `${tier}_${interval}`;
     setLoading(key);
     try {
+      // Forward the Rewardful referral id (set by the tracking script from a
+      // `?via=` link) so Stripe attributes the subscription to the affiliate.
+      // Undefined when there is no referral or the script is not loaded.
+      const referral =
+        typeof window !== "undefined" ? window.Rewardful?.referral : undefined;
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier, interval }),
+        body: JSON.stringify({ tier, interval, referral }),
       });
       const data = await res.json();
       if (data.url) {

@@ -43,11 +43,19 @@ export async function POST(request: NextRequest) {
 
   const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
 
+  // Rewardful affiliate attribution (TIM-1620): the client reads the referral id
+  // from `window.Rewardful.referral` and passes it here. Stripe stores it as
+  // `client_reference_id`, which Rewardful reads off the subscription to attribute
+  // the referral and accrue recurring commission. Omitted when there is no referral.
+  const referral =
+    typeof body.referral === "string" && body.referral.trim() ? body.referral.trim() : undefined;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card"],
     customer: subscription?.stripe_customer_id ?? undefined,
     customer_email: subscription?.stripe_customer_id ? undefined : (profile?.email ?? user.email),
+    client_reference_id: referral,
     line_items: [{ price: plan.priceId, quantity: 1 }],
     success_url: `${origin}/account/billing?success=1`,
     cancel_url: `${origin}/pricing?canceled=1`,
