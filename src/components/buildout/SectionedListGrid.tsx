@@ -138,7 +138,7 @@ const FINANCING_OPTIONS: FinancingMethod[] = [
 const EQUIPMENT_COL_HINTS: Record<string, { label: string; text: string }> = {
   name: {
     label: "Item Name",
-    text: "Be specific enough to distinguish items — e.g., \"La Marzocco Linea Mini\" rather than just \"Espresso Machine\". Clear names make quotes, comparisons, and AI recommendations more useful.",
+    text: "Be specific enough to distinguish items. Use a name like \"La Marzocco Linea Mini\" rather than just \"Espresso Machine\". Clear names make quotes, comparisons, and AI recommendations more useful.",
   },
   vendor: {
     label: "Brand",
