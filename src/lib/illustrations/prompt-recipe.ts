@@ -19,12 +19,16 @@ export type Orientation =
   | "centered"
   | "landscape panoramic"
   | "portrait close-up"
+  | "vertical full-height"
   | "top-down overhead";
 
 export type StrokeWeight = "1.5px" | "1.25px" | "1px" | "0.75px";
 
-/** Brand-token color pairs (TIM-1579 §2.2). Stroke + background are always paired. */
-export type ColorVariant = "dark" | "light" | "muted" | "tonal-dark";
+/** Brand-token color pairs (TIM-1579 §2.2). Stroke + background are always paired.
+ *  `dark-transparent` keeps the §2.2 dark stroke but renders on an alpha background
+ *  (TIM-1675/TIM-1695) so the line art floats directly on the hero gradient with no
+ *  teal box — no post-hoc luminance matte required. */
+export type ColorVariant = "dark" | "light" | "muted" | "tonal-dark" | "dark-transparent";
 
 export type DetailLevel = "minimal iconographic" | "medium narrative" | "high detailed";
 
@@ -32,6 +36,7 @@ export type AspectRatio =
   | "3:2 landscape"
   | "1:1 square"
   | "3:4 portrait"
+  | "2:3 portrait"
   | "10:1 horizontal strip";
 
 interface ColorPair {
@@ -70,12 +75,20 @@ export const COLOR_VARIANTS: Record<ColorVariant, ColorPair> = {
     strokeHex: "#0e4448",
     backgroundHex: "#faf9f7",
   },
+  "dark-transparent": {
+    strokePrompt: "off-white (#faf9f7)",
+    backgroundPrompt: "fully transparent (alpha)",
+    strokeHex: "#faf9f7",
+    backgroundHex: "transparent",
+  },
 };
 
 /** TIM-1579 §5.3 — pre-validated subject strings. Keyed by stable slug. */
 export const SUBJECT_LIBRARY: Record<string, string> = {
   "hero-interior":
     "a coffee shop interior viewed from across the counter, showing an espresso machine, pour-over setup, pendant lamp, window with plants, and a chalkboard menu outline in the background",
+  "hero-interior-tall":
+    "a coffee shop interior viewed across the counter, composed to fill the full vertical frame from floor to ceiling: in the foreground a counter with a large espresso machine and a pour-over station, behind it a tall back-bar of stacked open shelving holding cups and storage jars rising up the frame, two pendant lamps hanging down from the top edge, a leafy potted plant trailing upward beside a tall window, and a framed chalkboard menu on the upper wall — minimal empty space at the very top and bottom",
   "flat-white":
     "a flat white in a ceramic cup on a saucer, with latte art rosettta pattern visible, top-down perspective slightly angled",
   "espresso-shot":

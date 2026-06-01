@@ -68,34 +68,45 @@ function buildJobs(args) {
       quality: r.quality,
       prompt: resolvePrompt(r),
       alt: r.alt,
+      background: r.background ?? "opaque",
     }));
   }
   if (args.recipe) {
     const r = getRecipe(args.recipe);
     if (!r) throw new Error(`Unknown recipe id: ${args.recipe}. Known: ${RECIPES.map((x) => x.id).join(", ")}`);
-    return [{ id: r.id, slot: r.slot, size: r.size, quality: r.quality, prompt: resolvePrompt(r), alt: r.alt }];
+    return [{ id: r.id, slot: r.slot, size: r.size, quality: r.quality, prompt: resolvePrompt(r), alt: r.alt, background: r.background ?? "opaque" }];
   }
   if (args.prompt) {
     const id = args.id || "custom";
     const slot = args.slot || "empty-state";
     const size = args.size || "1024x1024";
     const quality = args.quality || "medium";
-    return [{ id, slot, size, quality, prompt: resolvePrompt({ subject: String(args.prompt) }), alt: id }];
+    const background = args.transparent ? "transparent" : "opaque";
+    return [{ id, slot, size, quality, prompt: resolvePrompt({ subject: String(args.prompt) }), alt: id, background }];
   }
   throw new Error("Provide --recipe <id>, --all, or --prompt \"...\". See --help / docs/illustrations/PIPELINE.md");
 }
 
 async function callOpenAI(job, apiKey) {
+  // TIM-1695: a transparent background must be requested at the API level (and
+  // forces a format that carries alpha). The model then returns off-white strokes
+  // on alpha rather than on a painted teal field, so no luminance matte is needed.
+  const transparent = job.background === "transparent";
+  const body = {
+    model: OPENAI_IMAGE_MODEL,
+    prompt: job.prompt,
+    size: job.size,
+    quality: job.quality,
+    n: 1,
+  };
+  if (transparent) {
+    body.background = "transparent";
+    body.output_format = "png"; // alpha-capable; sharp converts to lossless webp below
+  }
   const res = await fetch(OPENAI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: OPENAI_IMAGE_MODEL,
-      prompt: job.prompt,
-      size: job.size,
-      quality: job.quality,
-      n: 1,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -156,7 +167,13 @@ async function main() {
     console.log(`\nRendering ${j.id} ...`);
     const png = await callOpenAI(j, apiKey);
     const webpPath = path.join(slotDir, `${j.id}.webp`);
-    await sharp(png).webp({ quality: 90 }).toFile(webpPath);
+    // Transparent line art uses near-lossless webp so thin strokes stay crisp at the
+    // alpha edges; opaque rasters stay on the lighter lossy setting.
+    const webpOpts =
+      j.background === "transparent"
+        ? { quality: 95, alphaQuality: 100, nearLossless: true }
+        : { quality: 90 };
+    await sharp(png).webp(webpOpts).toFile(webpPath);
 
     const publicPath = `/images/illustrations/${j.slot}/${j.id}.webp`;
     manifest.assets[j.id] = {
