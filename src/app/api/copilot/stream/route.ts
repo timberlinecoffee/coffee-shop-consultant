@@ -651,17 +651,22 @@ export async function POST(request: NextRequest) {
               }
             : null
 
-        // TIM-1670: Anthropic-hosted web search. Always registered so Scout can do real
-        // multi-source research (the model only invokes it when relevant via tool_choice auto).
-        // max_uses bounds cost ($10/1k searches) and keeps multi-search research inside the
-        // 60s function budget; the directive tells it to run several searches for competitor work.
+        // TIM-1670: Anthropic-hosted web search for real multi-source research.
+        // Registered ONLY on research-classified turns (competitors/local market/benchmarks),
+        // not every turn — this bounds blast radius: if web search is ever disabled at the
+        // org level (a 400 on any request that includes the tool), only research turns are
+        // affected and normal chat keeps working. max_uses bounds cost ($10/1k searches) and
+        // keeps multi-search research inside the function budget.
         const webSearchTool: Anthropic.WebSearchTool20250305 = {
           type: "web_search_20250305",
           name: "web_search",
           max_uses: 8,
         }
 
-        const tools: Anthropic.ToolUnion[] = [webSearchTool, ...(equipmentTool ? [equipmentTool] : [])]
+        const tools: Anthropic.ToolUnion[] = [
+          ...(isResearch ? [webSearchTool] : []),
+          ...(equipmentTool ? [equipmentTool] : []),
+        ]
 
         const stream = anthropic.messages.stream({
           model: modelId,
@@ -670,8 +675,9 @@ export async function POST(request: NextRequest) {
           ...(useComplexModel ? { thinking: { type: "enabled", budget_tokens: 4_000 } } : {}),
           system: systemBlocks as Anthropic.TextBlockParam[],
           messages: anthropicMessages,
-          tools,
-          tool_choice: { type: "auto" },
+          // Only send tools/tool_choice when at least one tool applies — an empty tools
+          // array with tool_choice is rejected by the API.
+          ...(tools.length > 0 ? { tools, tool_choice: { type: "auto" as const } } : {}),
         })
 
         for await (const event of stream) {
