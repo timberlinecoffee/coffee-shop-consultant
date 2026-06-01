@@ -67,6 +67,86 @@ When the user explicitly asks you to design, draft, write, generate, name, or co
 - Keep your coffee judgment: if what you produced has a real weakness, flag it and give the fix per the Problem → Recommendation Rule.
 - Generating is not applying. You present the result for the user to review; saving it into their plan stays a separate, explicit step they accept, edit, or reject.`
 
+// ── Equipment reorganize types / helpers ─────────────────────────────────────
+
+interface EquipmentItemCtx {
+  id: string
+  name: string
+  section_id: string | null
+  position: number
+  category: string
+}
+
+interface SectionCtx {
+  id: string
+  name: string
+  position: number
+}
+
+// Minimal SuggestionPayload — mirrors AIReviewModal.tsx (server-safe copy).
+interface SuggestionPayload {
+  id: string
+  fieldId: string
+  fieldLabel: string
+  originalValue: string
+  proposedValue: string
+  isStructured?: boolean
+}
+
+function formatEquipmentContext(items: EquipmentItemCtx[], sections: SectionCtx[]): string {
+  const sectionMap = new Map(sections.map((s) => [s.id, s]))
+  const lines = [
+    "Sections:",
+    ...sections.map((s) => `  ${s.name} (id: ${s.id})`),
+    "",
+    "Items (ordered by position within their current section):",
+    ...items.map((i) => {
+      const station = i.section_id
+        ? (sectionMap.get(i.section_id)?.name ?? "Unsectioned")
+        : "Unsectioned"
+      return `  - ${i.name} | category: ${i.category} | station: ${station} | section_id: ${i.section_id ?? "null"} | item_id: ${i.id} | position: ${i.position}`
+    }),
+  ]
+  return lines.join("\n")
+}
+
+// fieldId encodes the proposed assignment so onApply can act on it without parsing free-text.
+// Format: "equipment-item:{item_id}:{section_id|null}:{position}"
+// UUIDs contain only hyphens, not colons, so split(":") gives exactly 4 segments.
+function buildReorganizeSuggestions(
+  proposed: { item_id: string; section_id: string | null; position: number }[],
+  items: EquipmentItemCtx[],
+  sections: SectionCtx[],
+): SuggestionPayload[] {
+  const itemMap = new Map(items.map((i) => [i.id, i]))
+  const sectionMap = new Map(sections.map((s) => [s.id, s]))
+  const suggestions: SuggestionPayload[] = []
+
+  for (const p of proposed) {
+    const item = itemMap.get(p.item_id)
+    if (!item) continue
+    if (item.section_id === p.section_id && item.position === p.position) continue
+
+    const oldStation = item.section_id
+      ? (sectionMap.get(item.section_id)?.name ?? "Unsectioned")
+      : "Unsectioned"
+    const newStation = p.section_id
+      ? (sectionMap.get(p.section_id)?.name ?? "Unknown station")
+      : "Unsectioned"
+
+    suggestions.push({
+      id: `eq-reorg-${item.id}`,
+      fieldId: `equipment-item:${item.id}:${p.section_id ?? "null"}:${p.position}`,
+      fieldLabel: item.name,
+      originalValue: `${oldStation} · Position ${item.position + 1}`,
+      proposedValue: `${newStation} · Position ${p.position + 1}`,
+      isStructured: false,
+    })
+  }
+
+  return suggestions
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function sse(event: string, data: unknown): string {
@@ -248,7 +328,38 @@ export async function POST(request: NextRequest) {
   ])
   const { snapshot: planSnapshot, estimatedTokens: snapshotTokens } = snapshotResult
 
-  const dynamicPrompt = buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country)
+  // ── Equipment reorganize context (TIM-1637) ───────────────────────────────────
+  // Fetch current equipment items + sections when in the buildout_equipment workspace
+  // so Scout can emit a reorganize_equipment_list tool call with valid item/section UUIDs.
+  let equipmentItems: EquipmentItemCtx[] = []
+  let equipmentSections: SectionCtx[] = []
+  if (workspaceKey === "buildout_equipment") {
+    const [eqResult, secResult] = await Promise.all([
+      svcClient
+        .from("buildout_equipment_items")
+        .select("id, name, section_id, position, category")
+        .eq("plan_id", planId)
+        .eq("archived", false)
+        .order("position"),
+      svcClient
+        .from("buildout_list_sections")
+        .select("id, name, position")
+        .eq("plan_id", planId)
+        .eq("list_type", "equipment")
+        .order("position"),
+    ])
+    equipmentItems = (eqResult.data ?? []) as EquipmentItemCtx[]
+    equipmentSections = (secResult.data ?? []) as SectionCtx[]
+  }
+
+  const equipmentContextAddendum =
+    workspaceKey === "buildout_equipment" && equipmentItems.length > 0
+      ? `\n\n## Equipment List — Current Arrangement\nThe exact item IDs and section IDs below are required for the \`reorganize_equipment_list\` tool. Use them verbatim.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
+      : ""
+
+  const dynamicPrompt =
+    buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country) +
+    equipmentContextAddendum
 
   // ── Model routing ────────────────────────────────────────────────────────────
   // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
@@ -275,6 +386,10 @@ export async function POST(request: NextRequest) {
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null
       let ttftTimer: ReturnType<typeof setTimeout> | null = null
       let gapTimer: ReturnType<typeof setTimeout> | null = null
+
+      // TIM-1637: track in-flight tool_use block for reorganize_equipment_list.
+      let activeToolName: string | null = null
+      let toolInputBuffer = ""
 
       const clearTimers = () => {
         if (heartbeatTimer) clearInterval(heartbeatTimer)
@@ -346,6 +461,49 @@ export async function POST(request: NextRequest) {
           content: m.content,
         }))
 
+        // TIM-1637: equipment reorganize tool — only registered when items exist.
+        const equipmentTool: Anthropic.Tool | null =
+          workspaceKey === "buildout_equipment" && equipmentItems.length > 0
+            ? {
+                name: "reorganize_equipment_list",
+                description:
+                  "Propose a new arrangement of equipment items across workstation sections. Only call this when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Include ALL items in the output, even those not moving — this is a complete ordering.",
+                input_schema: {
+                  type: "object" as const,
+                  properties: {
+                    rationale: {
+                      type: "string",
+                      description: "1–2 sentences explaining the reorganization logic.",
+                    },
+                    items: {
+                      type: "array",
+                      description:
+                        "Complete proposed arrangement. Position is 0-based within each section.",
+                      items: {
+                        type: "object",
+                        properties: {
+                          item_id: {
+                            type: "string",
+                            description: "Equipment item UUID — verbatim from the equipment list.",
+                          },
+                          section_id: {
+                            type: ["string", "null"],
+                            description: "Section UUID, or null for unsectioned.",
+                          },
+                          position: {
+                            type: "integer",
+                            description: "0-based position within the section.",
+                          },
+                        },
+                        required: ["item_id", "section_id", "position"],
+                      },
+                    },
+                  },
+                  required: ["rationale", "items"],
+                },
+              }
+            : null
+
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 16_000,
@@ -353,13 +511,52 @@ export async function POST(request: NextRequest) {
           ...(useComplexModel ? { thinking: { type: "enabled", budget_tokens: 4_000 } } : {}),
           system: systemBlocks as Anthropic.TextBlockParam[],
           messages: anthropicMessages,
+          ...(equipmentTool ? { tools: [equipmentTool], tool_choice: { type: "auto" } } : {}),
         })
 
         for await (const event of stream) {
           if (closed) break
 
-          if (event.type === "content_block_delta") {
-            if (event.delta.type === "thinking_delta") {
+          // TIM-1637: track tool_use block start/stop for equipment reorganization.
+          if (event.type === "content_block_start") {
+            const block = event.content_block
+            if (block.type === "tool_use") {
+              activeToolName = block.name
+              toolInputBuffer = ""
+            }
+          } else if (event.type === "content_block_stop") {
+            if (activeToolName === "reorganize_equipment_list" && toolInputBuffer) {
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  rationale: string
+                  items: { item_id: string; section_id: string | null; position: number }[]
+                }
+                const suggestions = buildReorganizeSuggestions(
+                  toolInput.items ?? [],
+                  equipmentItems,
+                  equipmentSections,
+                )
+                if (suggestions.length > 0) {
+                  send(
+                    sse("suggestions", {
+                      suggestions,
+                      context: {
+                        workspace: "buildout_equipment",
+                        section: toolInput.rationale,
+                      },
+                    }),
+                  )
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            }
+          } else if (event.type === "content_block_delta") {
+            if (event.delta.type === "input_json_delta") {
+              toolInputBuffer += event.delta.partial_json
+            } else if (event.delta.type === "thinking_delta") {
               if (!firstToken) {
                 firstToken = true
                 if (ttftTimer) clearTimeout(ttftTimer)

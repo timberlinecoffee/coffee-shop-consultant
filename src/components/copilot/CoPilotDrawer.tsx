@@ -35,7 +35,7 @@ import type {
   CopilotMessage,
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 
 // TIM-1149 / TIM-1151: Resizable / expandable panel constants.
 // Expanded mode is a true full-width overlay (TIM-1151 founder feedback) —
@@ -72,6 +72,8 @@ export interface CoPilotDrawerProps {
   // avoid stacking both at bottom-6 right-6. Standalone consumers without a
   // Beacon (e.g. the copilot demo) opt back in by passing `true`.
   showDesktopLauncher?: boolean;
+  // TIM-1637: workspace-specific callback invoked when the user accepts AI suggestions.
+  onApplySuggestions?: (accepted: ApprovedChange[]) => Promise<void>;
 }
 
 function newThreadId(): string {
@@ -150,6 +152,7 @@ export function CoPilotDrawer({
   currentFocus,
   initialTrialMessagesUsed = 0,
   showDesktopLauncher = false,
+  onApplySuggestions,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
@@ -852,7 +855,10 @@ export function CoPilotDrawer({
                       openAIReviewModal({
                         suggestions,
                         context,
-                        onApply: async () => {
+                        onApply: async (accepted: ApprovedChange[]) => {
+                          if (onApplySuggestions && accepted.length > 0) {
+                            await onApplySuggestions(accepted);
+                          }
                           clearSuggestions();
                         },
                       });

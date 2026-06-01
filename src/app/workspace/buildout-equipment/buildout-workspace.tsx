@@ -6,6 +6,7 @@
 // TIM-1179: AI equipment recommendations + referral cards.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
@@ -283,6 +284,36 @@ export function BuildoutEquipmentWorkspace({
     setSaveState({ kind: "saved", at: new Date().toISOString() });
   }
 
+  // TIM-1637: apply Scout's accepted equipment reorganization suggestions.
+  // fieldId encodes the proposal: "equipment-item:{item_id}:{section_id|null}:{position}"
+  const handleAIApplySuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    const items: { item_id: string; section_id: string | null; position: number }[] = [];
+    for (const change of accepted) {
+      if (!change.fieldId.startsWith("equipment-item:")) continue;
+      const parts = change.fieldId.split(":");
+      if (parts.length < 4) continue;
+      const item_id = parts[1];
+      const section_id = parts[2] === "null" ? null : parts[2];
+      const position = parseInt(parts[3], 10);
+      if (!item_id || isNaN(position)) continue;
+      items.push({ item_id, section_id, position });
+    }
+    if (items.length === 0) return;
+    const res = await fetch("/api/workspaces/buildout/reorganize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    if (!res.ok) return;
+    // Refetch to sync local state with persisted arrangement.
+    const [eqRes, secRes] = await Promise.all([
+      fetch("/api/workspaces/financials/equipment"),
+      fetch("/api/workspaces/buildout/sections?list_type=equipment"),
+    ]);
+    if (eqRes.ok) setEquipment((await eqRes.json()) as EquipmentItem[]);
+    if (secRes.ok) setSections((await secRes.json()) as ListSection[]);
+  }, []);
+
   function handleImportCommitted(newItems: EquipmentItem[], newSections: ListSection[]) {
     setEquipment(newItems);
     setSections(newSections);
@@ -532,6 +563,7 @@ export function BuildoutEquipmentWorkspace({
         workspaceKey="buildout_equipment"
         currentFocus={{ label: "Equipment & Supplies: Equipment" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={handleAIApplySuggestions}
       />
     </div>
   );
