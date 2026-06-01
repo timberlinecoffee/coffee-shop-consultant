@@ -33,6 +33,11 @@ import {
   totalCapexCents,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
+import {
+  VENDOR_CATEGORY_LABELS,
+  type VendorCandidate,
+  type VendorDecision,
+} from "@/lib/suppliers";
 import { PrintButton, SectionToggle } from "./print-button";
 
 export const dynamic = "force-dynamic";
@@ -142,6 +147,8 @@ export default async function BusinessPlanPrintPage({
     { data: marketingDoc },
     { data: financialModel },
     { data: coverRow },
+    { data: vendorCandidates },
+    { data: vendorDecisions },
   ] = await Promise.all([
     supabase
       .from("users")
@@ -209,6 +216,17 @@ export default async function BusinessPlanPrintPage({
       .select("template_id, accent_color, logo_path, tagline, prepared_for, author_name")
       .eq("plan_id", planId)
       .maybeSingle(),
+    supabase
+      .from("vendor_candidates")
+      .select("id, category, name, contact, price_per_unit, minimum_order, lead_time, notes, status")
+      .eq("plan_id", planId)
+      .order("category", { ascending: true })
+      .order("position", { ascending: true }),
+    supabase
+      .from("vendor_decisions")
+      .select("id, category, candidate_id, vendor_name, reason, is_current")
+      .eq("plan_id", planId)
+      .eq("is_current", true),
   ]);
 
   const concept: ConceptDocumentV2 = normalizeConceptV2(conceptDoc?.content);
@@ -329,7 +347,12 @@ export default async function BusinessPlanPrintPage({
             {key === "marketing" && (
               <MarketingSection marketing={normalizeMarketing(marketingDoc?.content)} />
             )}
-            {key === "suppliers" && <SuppliersSection />}
+            {key === "suppliers" && (
+              <SuppliersSection
+                candidates={(vendorCandidates ?? []) as VendorCandidate[]}
+                decisions={(vendorDecisions ?? []) as VendorDecision[]}
+              />
+            )}
             {key === "operations" && <OperationsSection playbook={ops} />}
             {key === "financials" && (
               <FinancialsSection
@@ -932,10 +955,61 @@ function MarketingSection({ marketing }: { marketing: MarketingDocument }) {
 
 // ── Suppliers & Vendors ───────────────────────────────────────────────────────
 
-function SuppliersSection() {
-  // TIM-1059: Suppliers workspace is not yet built. Render the spec'd empty state.
+function SuppliersSection({
+  candidates,
+  decisions,
+}: {
+  candidates: VendorCandidate[];
+  decisions: VendorDecision[];
+}) {
+  const chosenIds = new Set(decisions.map((d) => d.candidate_id).filter(Boolean));
+  const chosen = candidates.filter((c) => c.status === "chosen" || chosenIds.has(c.id));
+
+  if (chosen.length === 0 && candidates.length === 0) {
+    return (
+      <EmptyState message="No suppliers added yet. Visit the Suppliers workspace to add them." />
+    );
+  }
+
+  // Group by category
+  const grouped = new Map<string, VendorCandidate[]>();
+  const displayList = chosen.length > 0 ? chosen : candidates;
+  for (const v of displayList) {
+    const cat = v.category;
+    if (!grouped.has(cat)) grouped.set(cat, []);
+    grouped.get(cat)!.push(v);
+  }
+
   return (
-    <EmptyState message="No suppliers added yet. Visit the Suppliers workspace to add them." />
+    <div className="space-y-5">
+      {Array.from(grouped.entries()).map(([cat, vendors]) => {
+        const label = cat.startsWith("custom:")
+          ? cat.replace("custom:", "").replace(/-/g, " ")
+          : (VENDOR_CATEGORY_LABELS[cat as keyof typeof VENDOR_CATEGORY_LABELS] ?? cat);
+        return (
+          <SectionCard key={cat} label={label}>
+            <div className="space-y-3">
+              {vendors.map((v) => (
+                <div key={v.id} className="border-b border-[var(--gray-slate-4)] pb-3 last:border-0 last:pb-0">
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{v.name}</p>
+                  {v.contact && (
+                    <p className="text-xs text-[var(--muted-foreground)]">{v.contact}</p>
+                  )}
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[var(--foreground)]">
+                    {v.price_per_unit && <span>Price: {v.price_per_unit}</span>}
+                    {v.minimum_order && <span>Min. order: {v.minimum_order}</span>}
+                    {v.lead_time && <span>Lead time: {v.lead_time}</span>}
+                  </div>
+                  {v.notes && (
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1">{v.notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        );
+      })}
+    </div>
   );
 }
 
