@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A Planning Resource for Your Coffee Shop Clients</title>
+  <style>
+    /* Fonts */
+    @font-face {
+      font-family: "Source Serif Pro";
+      font-weight: 400;
+      font-style: normal;
+      src: url("/fonts/source-serif-pro-regular.woff2") format("woff2"),
+           url("/fonts/source-serif-pro-regular.ttf") format("truetype");
+    }
+    @font-face {
+      font-family: "Source Serif Pro";
+      font-weight: 600;
+      font-style: normal;
+      src: url("/fonts/source-serif-pro-semibold.woff2") format("woff2"),
+           url("/fonts/source-serif-pro-semibold.ttf") format("truetype");
+    }
+    @font-face {
+      font-family: "Inter";
+      font-weight: 400;
+      font-style: normal;
+      src: url("/fonts/inter-regular.woff2") format("woff2"),
+           url("/fonts/inter-regular.ttf") format("truetype");
+    }
+    @font-face {
+      font-family: "Inter";
+      font-weight: 600;
+      font-style: normal;
+      src: url("/fonts/inter-semibold.woff2") format("woff2"),
+           url("/fonts/inter-semibold.ttf") format("truetype");
+    }
+    @font-face {
+      font-family: "Inter";
+      font-weight: 700;
+      font-style: normal;
+      src: url("/fonts/inter-bold.woff2") format("woff2"),
+           url("/fonts/inter-bold.ttf") format("truetype");
+    }
+
+    @page {
+      size: A4;
+      margin: 12mm 14mm 14mm 14mm;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:       #155e63;
+      --teal-dark:  #0e4448;
+      --sage:       #76b39d;
+      --background: #faf9f7;
+      --surface:    #f0f0ee;
+      --foreground: #1a1a1a;
+      --muted:      #6b6b6b;
+      --border:     #d4d4cc;
+      --card:       #ffffff;
+    }
+
+    html, body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10pt;
+      line-height: 1.55;
+      color: var(--foreground);
+      background: var(--background);
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: var(--card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header band (roaster: teal + roaster name right-aligned) ── */
+    .header-band {
+      background: var(--teal);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .header-band img.logo {
+      height: 26px;
+      width: auto;
+      display: block;
+    }
+
+    .header-cobrand {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .header-cobrand .cobrand-label {
+      font-size: 7pt;
+      font-weight: 400;
+      color: rgba(255,255,255,0.65);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .header-cobrand .cobrand-name {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.01em;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(255,255,255,0.3);
+      flex-shrink: 0;
+    }
+
+    /* ── Hero (roaster: shorter headline) ── */
+    .hero {
+      background: var(--teal);
+      padding: 18px 18px 22px;
+      color: #ffffff;
+    }
+
+    .hero h1 {
+      font-family: "Source Serif Pro", Georgia, "Times New Roman", serif;
+      font-weight: 600;
+      font-size: 20pt;
+      line-height: 1.2;
+      color: #ffffff;
+      margin-bottom: 10px;
+    }
+
+    .hero .from-line {
+      display: inline-block;
+      font-size: 8.5pt;
+      font-weight: 400;
+      color: rgba(255,255,255,0.7);
+      border-top: 1px solid rgba(255,255,255,0.25);
+      padding-top: 8px;
+    }
+
+    .hero .from-line strong {
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+    }
+
+    /* ── Body content ── */
+    .content {
+      padding: 16px 18px 0;
+      flex: 1;
+    }
+
+    .intro-para {
+      font-size: 9.5pt;
+      color: var(--foreground);
+      margin-bottom: 10px;
+    }
+
+    .intro-callout {
+      font-size: 10pt;
+      font-weight: 600;
+      color: var(--teal);
+      margin-bottom: 10px;
+      padding-left: 10px;
+      border-left: 3px solid var(--sage);
+    }
+
+    .section-heading {
+      font-family: "Source Serif Pro", Georgia, serif;
+      font-weight: 600;
+      font-size: 11pt;
+      color: var(--teal);
+      margin: 14px 0 8px;
+    }
+
+    .features-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 12px;
+      margin-bottom: 2px;
+    }
+
+    .features-list li {
+      font-size: 9pt;
+      color: var(--foreground);
+      padding-left: 14px;
+      position: relative;
+      line-height: 1.45;
+    }
+
+    .features-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 5px;
+      width: 7px;
+      height: 7px;
+      background: var(--sage);
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+
+    .features-list li strong {
+      font-weight: 600;
+      color: var(--foreground);
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .audience-para {
+      font-size: 9pt;
+      color: var(--foreground);
+      margin-bottom: 2px;
+    }
+
+    /* ── Note block (roaster variant) ── */
+    .note-block {
+      background: var(--surface);
+      border-left: 3px solid var(--sage);
+      border-radius: 0 4px 4px 0;
+      padding: 10px 12px;
+      margin: 12px 0;
+    }
+
+    .note-block .note-label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .note-block .note-prompt {
+      font-size: 8.5pt;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 6px;
+    }
+
+    .note-block .note-lines {
+      height: 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+
+    /* ── CTA block ── */
+    .cta-block {
+      background: var(--teal);
+      border-radius: 5px;
+      padding: 12px 14px;
+      margin: 0 0 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 20px;
+      align-items: start;
+    }
+
+    .cta-block .cta-offer {
+      grid-column: 1 / -1;
+    }
+
+    .cta-block .offer-label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 3px;
+    }
+
+    .cta-block .offer-headline {
+      font-family: "Source Serif Pro", Georgia, serif;
+      font-weight: 600;
+      font-size: 13pt;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .cta-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .cta-field .field-label {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .cta-field .field-value {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #ffffff;
+      font-family: "Inter", monospace;
+      background: rgba(255,255,255,0.12);
+      border-radius: 3px;
+      padding: 3px 7px;
+      letter-spacing: 0.03em;
+    }
+
+    .cta-contact {
+      grid-column: 1 / -1;
+      font-size: 8pt;
+      color: rgba(255,255,255,0.7);
+      margin-top: 4px;
+    }
+
+    .footer-legal {
+      font-size: 6.5pt;
+      color: var(--muted);
+      padding: 8px 18px 14px;
+      border-top: 1px solid var(--border);
+      line-height: 1.45;
+    }
+
+    .rule {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 10px 0;
+    }
+
+    @media screen {
+      body {
+        background: #e8e8e6;
+        padding: 24px 0 48px;
+      }
+      .page {
+        box-shadow: 0 2px 20px rgba(0,0,0,0.12);
+      }
+    }
+
+    @media print {
+      body { background: transparent; padding: 0; }
+      .page { width: 100%; box-shadow: none; min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ── Header band (roaster: co-brand = roaster name) ── -->
+    <header class="header-band">
+      <img
+        class="logo"
+        src="/brand/groundwork-logo-white.png"
+        alt="Groundwork"
+      />
+      <div class="header-divider"></div>
+      <div class="header-cobrand">
+        <span class="cobrand-label">Recommended by</span>
+        <span class="cobrand-name">[Roaster Name]</span>
+      </div>
+    </header>
+
+    <!-- ── Hero (roaster variant) ── -->
+    <section class="hero">
+      <h1>A Planning Resource for Your Coffee Shop Clients</h1>
+      <span class="from-line">From <strong>[Roaster Name]</strong></span>
+    </section>
+
+    <!-- ── Content (same as educator) ── -->
+    <main class="content">
+
+      <p class="intro-para">
+        Opening a coffee shop is one of the most demanding businesses your clients will ever take on.
+        They've done the training. They know the craft. What they often don't have is a clear,
+        structured plan for the business side.
+      </p>
+
+      <p class="intro-callout">
+        Groundwork is a planning platform built specifically for specialty coffee shop operators.
+      </p>
+
+      <p class="intro-para">
+        It walks aspiring owners through the decisions that matter most before they sign a lease,
+        place an equipment order, or hire their first team member. The planning phase is where the
+        difference between a sustainable shop and an expensive mistake is made.
+      </p>
+
+      <h2 class="section-heading">What Groundwork covers</h2>
+
+      <ul class="features-list">
+        <li>
+          <strong>Financial modeling</strong>
+          Build a realistic P&amp;L, break-even analysis, and cash-flow projection before committing capital. No spreadsheet expertise required.
+        </li>
+        <li>
+          <strong>Concept and menu planning</strong>
+          Price your drinks for profitability, not just for what "feels right." Understand your margins before you finalize your menu.
+        </li>
+        <li>
+          <strong>Buildout and equipment planning</strong>
+          Know what you actually need for your space and service model before you walk into a supplier or sign a lease.
+        </li>
+        <li>
+          <strong>Operations checklists</strong>
+          The pre-opening tasks most new operators miss until it's too late: permits, health inspections, supplier accounts, staffing timelines.
+        </li>
+        <li>
+          <strong>Guided milestones</strong>
+          A structured roadmap from "I want to open a shop" to "I'm ready to open a shop," broken into phases your clients can actually follow.
+        </li>
+        <li>
+          <strong>Ongoing co-pilot</strong>
+          Not a course. A working tool for the real decisions that come after the coffee education is done.
+        </li>
+      </ul>
+
+      <hr class="rule" />
+
+      <h2 class="section-heading">Who it's for</h2>
+
+      <p class="audience-para">
+        Groundwork is built for clients who are <strong>3–18 months from opening</strong>: aspiring
+        specialty coffee operators who've completed their training and are now doing the serious
+        planning work. It's a co-pilot for the business decisions that come after the coffee
+        education.
+      </p>
+
+      <!-- ── Personal note block (roaster prompt) ── -->
+      <div class="note-block">
+        <div class="note-label">A note from [Roaster Name]</div>
+        <p class="note-prompt">
+          "We work with a lot of clients who are in the process of opening or expanding their shops.
+          Groundwork is a tool we've recommended because [X]. We think it's useful for anyone serious
+          about getting the business side right before launch."
+          <br />(Customize with your own experience, 2–3 sentences)
+        </p>
+        <div class="note-lines"></div>
+      </div>
+
+      <!-- ── CTA block ── -->
+      <div class="cta-block">
+        <div class="cta-offer">
+          <div class="offer-label">Get started today</div>
+          <div class="offer-headline">10% off your first 3 months</div>
+        </div>
+        <div class="cta-field">
+          <div class="field-label">Referral code</div>
+          <div class="field-value">[AFFILIATE_CODE]</div>
+        </div>
+        <div class="cta-field">
+          <div class="field-label">Sign-up link</div>
+          <div class="field-value">[TRACKING_LINK]</div>
+        </div>
+        <div class="cta-contact">Questions? Reach the Groundwork team at hello@groundwork.coffee</div>
+      </div>
+
+    </main>
+
+    <!-- ── Legal footer ── -->
+    <footer class="footer-legal">
+      This referral is provided by [Roaster Name], an independent affiliate of Groundwork.
+      [Roaster Name] receives a commission for qualifying referrals. Discount applies to new
+      Groundwork accounts only and cannot be combined with other offers.
+    </footer>
+
+  </div>
+</body>
+</html>
