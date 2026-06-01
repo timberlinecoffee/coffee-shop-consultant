@@ -50,6 +50,7 @@ export default async function CancelPage() {
       <AnnualCancelPageClient
         tierDisplayName={tierDisplayName}
         periodEnd={periodEnd ?? null}
+        userEmail={user.email ?? ""}
       />
     );
   }
