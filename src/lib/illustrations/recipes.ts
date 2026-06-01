@@ -146,7 +146,7 @@ export const RECIPES: IllustrationRecipe[] = [
     alt: "Line-art illustration of a demitasse espresso cup with a crema circle",
     promptSlots: {
       subject: "espresso-shot",
-      orientation: "side-on three-quarter",
+      orientation: "centered",
       strokeWeight: "1.25px",
       variant: "light",
       detail: "high detailed",
