@@ -23,6 +23,7 @@ export interface CoverSettings {
 interface Props {
   initialSettings: CoverSettings;
   logoPublicUrl: string | null;
+  shopName: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // ── Panel ──────────────────────────────────────────────────────────────────────
 
-export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl }: Props) {
+export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogoUrl, shopName }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [template, setTemplate] = useState<CoverTemplateId>(initialSettings.template_id);
   const initialHex = initialSettings.accent_color ?? "#155E63";
@@ -138,6 +139,15 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
 
   const colorPickerRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Derived display values for cover template chips
+  const shopNameUpper = shopName.toUpperCase();
+  const shopWords = shopNameUpper.split(/\s+/).filter(Boolean);
+  const shopMonogram = shopWords.length >= 2
+    ? (shopWords[0][0] + shopWords[1][0])
+    : shopNameUpper.slice(0, 2);
+  const shopLine1 = shopWords[0] ?? shopNameUpper.slice(0, 6);
+  const shopLine2 = shopWords.slice(1).join(" ") || null;
 
   // ── Save helper ────────────────────────────────────────────────────────────
 
@@ -351,12 +361,12 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                         /* Editorial: full-bleed colored header (~55%) + white body */
                         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
                           <div style={{ flex: "0 0 55%", backgroundColor: accentColor, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4px 5px", gap: 2 }}>
-                            {/* EC brand badge */}
+                            {/* Shop monogram badge */}
                             <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 2, flexShrink: 0 }}>
-                              <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>EC</span>
+                              <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
                             </div>
-                            <p style={{ color: "white", fontSize: 11, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>EVERLY</p>
-                            <p style={{ color: "white", fontSize: 9, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 1 }}>COFFEE CO</p>
+                            <p style={{ color: "white", fontSize: 11, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
+                            {shopLine2 && <p style={{ color: "white", fontSize: 9, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 1 }}>{shopLine2}</p>}
                             <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 7.5, textAlign: "center", lineHeight: 1.2, margin: 0, letterSpacing: "0.5px" }}>BUSINESS PLAN</p>
                           </div>
                           {/* White body with faint content lines */}
@@ -369,12 +379,12 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                       ) : t.id === "classic" ? (
                         /* Classic: white page, centered serif — logo + name centered, bottom bar */
                         <div style={{ position: "absolute", inset: 0, backgroundColor: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px" }}>
-                          {/* Circle EC monogram */}
+                          {/* Circle shop monogram */}
                           <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${accentColor}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 5, flexShrink: 0 }}>
-                            <span style={{ color: accentColor, fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>EC</span>
+                            <span style={{ color: accentColor, fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
                           </div>
-                          <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>EVERLY</p>
-                          <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 4 }}>COFFEE CO</p>
+                          <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
+                          {shopLine2 && <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 4 }}>{shopLine2}</p>}
                           {/* Accent rule */}
                           <div style={{ width: 28, height: 1.5, backgroundColor: accentColor, marginBottom: 4 }} />
                           <p style={{ color: "#6b7280", fontSize: 8, textAlign: "center", margin: 0 }}>Business Plan</p>
@@ -387,14 +397,14 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                           {/* Left stripe */}
                           <div style={{ width: 4, backgroundColor: accentColor, flexShrink: 0 }} />
                           <div style={{ flex: 1, padding: "9px 6px", display: "flex", flexDirection: "column" }}>
-                            <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>EVERLY</p>
-                            <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, lineHeight: 1.15, margin: 0, marginBottom: 3 }}>COFFEE CO</p>
+                            <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
+                            {shopLine2 && <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, lineHeight: 1.15, margin: 0, marginBottom: 3 }}>{shopLine2}</p>}
                             <p style={{ color: "#9ca3af", fontSize: 8, margin: 0, marginBottom: 4 }}>Business Plan</p>
                             <div style={{ width: "100%", height: 1.5, backgroundColor: accentColor }} />
                             <div style={{ flex: 1 }} />
-                            {/* EC badge bottom-left */}
+                            {/* Shop monogram badge bottom-left */}
                             <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: accentColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>EC</span>
+                              <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
                             </div>
                           </div>
                         </div>
