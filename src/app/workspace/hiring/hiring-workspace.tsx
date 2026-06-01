@@ -2775,10 +2775,10 @@ export function HiringWorkspace({
             const roleId = rest.slice(0, dotIdx);
             const field = rest.slice(dotIdx + 1);
             if (field !== "notes") continue;
-            const res = await fetch(`/api/workspaces/hiring/roles/${roleId}`, {
+            const res = await fetch(`/api/workspaces/hiring/roles`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ notes: change.finalValue }),
+              body: JSON.stringify({ id: roleId, notes: change.finalValue }),
             });
             if (res.ok) {
               setRoles((prev) =>
