@@ -102,12 +102,15 @@ export async function POST(request: NextRequest) {
       const rawPeriodStart = updatedItem?.current_period_start ?? subscription.current_period_start;
       const newPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000).toISOString() : null;
 
+      const cancelAtPeriodEnd: boolean = subscription.cancel_at_period_end === true;
+
       // --- Pause: switching to the $2.99 pause price ---
       if (PAUSE_PRICE_ID && priceId === PAUSE_PRICE_ID) {
         await supabase.from("subscriptions").update({
           status: "paused",
           paused_from_tier: sub.tier, // read before overwrite — preserve original tier
           paused_at: new Date().toISOString(),
+          cancel_at_period_end: cancelAtPeriodEnd,
           // tier is intentionally NOT updated
         }).eq("stripe_subscription_id", subscription.id);
 
@@ -125,6 +128,7 @@ export async function POST(request: NextRequest) {
           tier,
           paused_from_tier: null,
           paused_at: null,
+          cancel_at_period_end: cancelAtPeriodEnd,
           current_period_start: rawPeriodStart ? new Date(rawPeriodStart * 1000).toISOString() : null,
           current_period_end: newPeriodEnd,
         }).eq("stripe_subscription_id", subscription.id);
@@ -147,6 +151,7 @@ export async function POST(request: NextRequest) {
       await supabase.from("subscriptions").update({
         tier,
         status,
+        cancel_at_period_end: cancelAtPeriodEnd,
         current_period_start: rawPeriodStart ? new Date(rawPeriodStart * 1000).toISOString() : null,
         current_period_end: newPeriodEnd,
       }).eq("stripe_subscription_id", subscription.id);
@@ -182,11 +187,12 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
-      // Clear pause columns on hard cancel (covers paused → cancelled via failed dunning)
+      // Clear pause + cancel-scheduled columns on hard cancel
       await supabase.from("subscriptions").update({
         status: "cancelled",
         paused_from_tier: null,
         paused_at: null,
+        cancel_at_period_end: false,
       }).eq("stripe_subscription_id", subscription.id);
 
       // Downgrade immediately on hard cancellation

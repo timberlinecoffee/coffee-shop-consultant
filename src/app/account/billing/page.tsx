@@ -17,6 +17,8 @@ type BillingStatus = {
   pausedFromTier: string | null;
   resumeTier: string | null;
   resumePrice: string | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
 };
 
 function readSuccessParam(): boolean {
@@ -140,11 +142,24 @@ export default function BillingPage() {
   }
 
   const isPaused = billingStatus?.status === "paused";
+  const cancelScheduled = billingStatus?.cancelAtPeriodEnd === true;
+  const cancelDateLabel = billingStatus?.currentPeriodEnd
+    ? new Date(billingStatus.currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : null;
 
   return (
     <div className="bg-[var(--background)] flex flex-col min-h-full">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6 flex-1">
         <h1 className="text-2xl font-bold text-[var(--foreground)]">Billing</h1>
+
+        {/* Cancel-scheduled banner — shown persistently on fresh load when cancel is pending */}
+        {cancelScheduled && !successParam && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-sm text-amber-800 font-medium">
+              Your subscription cancels on {cancelDateLabel ?? "the end of the current billing period"}. You will keep access until then.
+            </p>
+          </div>
+        )}
 
         {/* Paused-state card — shown whenever the subscription is paused */}
         {isPaused && !successParam && (
@@ -175,13 +190,15 @@ export default function BillingPage() {
                         ? `Resume ${capitalize(billingStatus.resumeTier)} at ${billingStatus.resumePrice}/mo`
                         : "Resume my plan"}
                   </button>
-                  <button
-                    onClick={cancelPause}
-                    disabled={cancelPauseLoading}
-                    className="text-sm text-[var(--dark-grey)] hover:text-red-600 transition-colors disabled:opacity-50"
-                  >
-                    {cancelPauseLoading ? "Cancelling…" : "Cancel pause and end subscription"}
-                  </button>
+                  {!cancelScheduled && (
+                    <button
+                      onClick={cancelPause}
+                      disabled={cancelPauseLoading}
+                      className="text-sm text-[var(--dark-grey)] hover:text-red-600 transition-colors disabled:opacity-50"
+                    >
+                      {cancelPauseLoading ? "Cancelling…" : "Cancel pause and end subscription"}
+                    </button>
+                  )}
                 </div>
                 {actionError && (
                   <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -201,7 +218,7 @@ export default function BillingPage() {
           </div>
         )}
 
-        {cancelledParam && (
+        {cancelledParam && !cancelScheduled && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm text-amber-800 font-medium">
               Cancellation confirmed. Your access continues until the end of your current billing period.

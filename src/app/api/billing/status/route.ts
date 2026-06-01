@@ -36,6 +36,12 @@ export async function GET() {
     return Response.json({ error: "Profile not found" }, { status: 404 });
   }
 
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("cancel_at_period_end, current_period_end")
+    .eq("user_id", user.id)
+    .single();
+
   const resumeTier = profile.paused_from_tier ?? profile.subscription_tier;
   const resumePriceCents = resumeTier ? (TIER_MONTHLY_CENTS[resumeTier] ?? null) : null;
 
@@ -45,5 +51,7 @@ export async function GET() {
     pausedFromTier: profile.paused_from_tier ?? null,
     resumeTier: resumeTier ?? null,
     resumePrice: resumePriceCents !== null ? centsToDollars(resumePriceCents) : null,
+    cancelAtPeriodEnd: sub?.cancel_at_period_end ?? false,
+    currentPeriodEnd: sub?.current_period_end ?? null,
   });
 }
