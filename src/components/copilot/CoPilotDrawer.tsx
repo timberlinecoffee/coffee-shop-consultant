@@ -37,6 +37,98 @@ import type {
 import { useCopilotStream } from "./useCopilotStream";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 
+// TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
+const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
+
+// TIM-1648: write an accepted propose_item suggestion to the menu_pricing APIs.
+// Only called for accepted cards; per-card errors are non-fatal.
+async function applyMenuPricingProposal(accepted: ApprovedChange[]): Promise<void> {
+  for (const change of accepted) {
+    let payload: {
+      name?: string;
+      category_name?: string;
+      description?: string;
+      price_cents?: number;
+      recipe_ingredients?: Array<{ name: string; amount: number; unit: string }>;
+    };
+    try {
+      payload = JSON.parse(change.finalValue) as typeof payload;
+    } catch {
+      continue;
+    }
+    if (!payload.name) continue;
+
+    // 1. Resolve category (fetch list, match by name, fallback to first).
+    const catRes = await fetch("/api/workspaces/menu-pricing/categories", {
+      credentials: "same-origin",
+    });
+    if (!catRes.ok) continue;
+    const categories = (await catRes.json()) as Array<{ id: string; name: string }>;
+    const wantedName = (payload.category_name ?? "").toLowerCase();
+    const matchedCat =
+      categories.find((c) => c.name.toLowerCase() === wantedName) ??
+      categories[0];
+    if (!matchedCat) continue;
+
+    // 2. Create ingredient records (package_cost_cents = 0; owner fills in costs later).
+    const recipeLines = payload.recipe_ingredients ?? [];
+    const ingredientIds: (string | null)[] = [];
+    for (const line of recipeLines) {
+      const unit = MENU_VALID_UNITS.has(line.unit) ? line.unit : "oz";
+      const res = await fetch("/api/workspaces/menu-pricing/ingredients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          name: line.name,
+          package_size: line.amount > 0 ? line.amount : 1,
+          package_unit: unit,
+          package_cost_cents: 0,
+        }),
+      });
+      if (res.ok) {
+        ingredientIds.push(((await res.json()) as { id: string }).id);
+      } else {
+        ingredientIds.push(null);
+      }
+    }
+
+    // 3. Create the menu item.
+    const itemRes = await fetch("/api/workspaces/menu-pricing/items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        name: payload.name,
+        category_id: matchedCat.id,
+        price_cents: typeof payload.price_cents === "number" ? payload.price_cents : 0,
+        notes: payload.description ?? null,
+      }),
+    });
+    if (!itemRes.ok) continue;
+    const newItem = (await itemRes.json()) as { id: string };
+
+    // 4. Link recipe lines.
+    for (let i = 0; i < recipeLines.length; i++) {
+      const ingId = ingredientIds[i];
+      const line = recipeLines[i];
+      if (!ingId || !line) continue;
+      const unit = MENU_VALID_UNITS.has(line.unit) ? line.unit : "oz";
+      await fetch("/api/workspaces/menu-pricing/item-ingredients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          menu_item_id: newItem.id,
+          ingredient_id: ingId,
+          amount: line.amount,
+          unit,
+        }),
+      });
+    }
+  }
+}
+
 // TIM-1149 / TIM-1151: Resizable / expandable panel constants.
 // Expanded mode is a true full-width overlay (TIM-1151 founder feedback) —
 // it ignores PANEL_MAX_WIDTH so the chat takes the whole workspace area.
@@ -883,7 +975,11 @@ export function CoPilotDrawer({
                           const actionable = accepted.filter(
                             (c) => c.fieldId !== "timeline_mismatch"
                           );
-                          if (onApplySuggestions && actionable.length > 0) {
+                          // TIM-1648: route menu_pricing proposals to the write API;
+                          // all other suggestions go through the workspace-level callback.
+                          if (context.workspace === "menu_pricing") {
+                            await applyMenuPricingProposal(actionable);
+                          } else if (onApplySuggestions && actionable.length > 0) {
                             await onApplySuggestions(actionable);
                           }
                           clearSuggestions();
