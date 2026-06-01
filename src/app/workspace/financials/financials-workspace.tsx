@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -2312,6 +2313,11 @@ export function FinancialsWorkspace({
         workspaceKey="financials"
         currentFocus={{ label: "Financials" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (_accepted: ApprovedChange[]) => {
+          // TIM-1690: financials apply is a no-op for v1 — financial model inputs
+          // require structured field mapping not yet defined. Suggestions route
+          // through the review modal but writes are deferred to v2.
+        }, [])}
       />
     </div>
   );

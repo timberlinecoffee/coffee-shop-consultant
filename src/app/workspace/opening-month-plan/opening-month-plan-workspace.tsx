@@ -23,7 +23,7 @@ import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { consumeSseFrames } from "@/components/copilot/sse";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -1395,6 +1395,28 @@ export function OpeningMonthPlanWorkspace({
         planId={planId}
         currentFocus={{ anchor: "opening_month_plan", label: coPilotFocusLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format: "opening_month_plan:milestone:{id}.ai_notes" or ".title"
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("opening_month_plan:milestone:")) continue;
+            const rest = change.fieldId.slice("opening_month_plan:milestone:".length);
+            const dotIdx = rest.indexOf(".");
+            if (dotIdx === -1) continue;
+            const milestoneId = rest.slice(0, dotIdx);
+            const field = rest.slice(dotIdx + 1);
+            if (field !== "ai_notes" && field !== "title") continue;
+            const res = await fetch(`/api/opening-month-plan/milestones/${milestoneId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ [field]: change.finalValue }),
+            });
+            if (res.ok) {
+              setMilestones((prev) =>
+                prev.map((m) => m.id === milestoneId ? { ...m, [field]: change.finalValue } : m)
+              );
+            }
+          }
+        }, [setMilestones])}
       />
 
       {/* Edit modal */}

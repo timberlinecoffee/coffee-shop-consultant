@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
@@ -2765,6 +2765,28 @@ export function HiringWorkspace({
         workspaceKey="hiring"
         currentFocus={{ label: "Hiring & Onboarding" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format: "hiring:role:{roleId}.notes"
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("hiring:role:")) continue;
+            const rest = change.fieldId.slice("hiring:role:".length);
+            const dotIdx = rest.indexOf(".");
+            if (dotIdx === -1) continue;
+            const roleId = rest.slice(0, dotIdx);
+            const field = rest.slice(dotIdx + 1);
+            if (field !== "notes") continue;
+            const res = await fetch(`/api/workspaces/hiring/roles/${roleId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ notes: change.finalValue }),
+            });
+            if (res.ok) {
+              setRoles((prev) =>
+                prev.map((r) => r.id === roleId ? { ...r, notes: change.finalValue } : r)
+              );
+            }
+          }
+        }, [setRoles])}
       />
     </div>
   );

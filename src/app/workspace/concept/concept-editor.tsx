@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { SaveIndicator } from "@/components/ui/save-indicator";
@@ -547,6 +548,15 @@ export function ConceptWorkspace({
         workspaceKey="concept"
         currentFocus={{ label: "Concept" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format from propose_text_update: "concept:components.{id}.content"
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("concept:components.")) continue;
+            const rest = change.fieldId.slice("concept:components.".length);
+            const componentId = rest.replace(/\.content$/, "") as import("@/lib/concept").ConceptComponentId;
+            updateContent(componentId, change.finalValue);
+          }
+        }, [updateContent])}
       />
     </div>
   );

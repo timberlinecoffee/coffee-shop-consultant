@@ -6,7 +6,8 @@
 // SectionedListGrid) but lives as a sibling page to the Equipment page and
 // promotes the shared "buildout_equipment" status.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { Package, X, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
@@ -278,6 +279,36 @@ export function SuppliesWorkspace({
         workspaceKey="buildout_equipment"
         currentFocus={{ label: "Equipment & Supplies: Supplies" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format from reorganize_supplies_list: "supplies-item:{id}:{section_id}:{position}"
+          const items: { item_id: string; section_id: string | null; position: number }[] = [];
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("supplies-item:")) continue;
+            const parts = change.fieldId.split(":");
+            if (parts.length < 4) continue;
+            const item_id = parts[1];
+            const section_id = parts[2] === "null" ? null : parts[2];
+            const position = parseInt(parts[3], 10);
+            if (!item_id || isNaN(position)) continue;
+            items.push({ item_id, section_id, position });
+          }
+          if (items.length === 0) return;
+          const res = await fetch("/api/workspaces/buildout/reorganize-supplies", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items }),
+          });
+          if (!res.ok) return;
+          const [supRes, secRes] = await Promise.all([
+            fetch("/api/workspaces/buildout/supplies"),
+            fetch("/api/workspaces/buildout/sections?list_type=supplies"),
+          ]);
+          if (supRes.ok) setSupplies((await supRes.json()) as SuppliesItem[]);
+          if (secRes.ok) {
+            const allSections = (await secRes.json()) as import("@/types/buildout").ListSection[];
+            setSections(allSections);
+          }
+        }, [setSupplies, setSections])}
       />
     </div>
   );

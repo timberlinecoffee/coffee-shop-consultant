@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -238,6 +238,21 @@ export function MarketingWorkspace({
         workspaceKey="marketing"
         currentFocus={{ label: activeLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format: "marketing:{dotPath}" e.g. "marketing:story.founder_story"
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("marketing:")) continue;
+            const path = change.fieldId.slice("marketing:".length);
+            const parts = path.split(".");
+            if (parts.length === 2) {
+              const [section, field] = parts;
+              updateDoc((d) => ({
+                ...d,
+                [section]: { ...(d[section as keyof typeof d] as unknown as Record<string, unknown>), [field]: change.finalValue },
+              }));
+            }
+          }
+        }, [updateDoc])}
       />
 
       <PaywallModal

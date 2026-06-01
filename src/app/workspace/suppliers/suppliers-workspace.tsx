@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Poi
 import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -885,6 +885,28 @@ export function SuppliersWorkspace({
         workspaceKey="suppliers"
         currentFocus={{ label: `Suppliers: ${labelFor(activeCategory)}` }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format: "suppliers:vendor:{vendorId}.notes"
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("suppliers:vendor:")) continue;
+            const rest = change.fieldId.slice("suppliers:vendor:".length);
+            const dotIdx = rest.indexOf(".");
+            if (dotIdx === -1) continue;
+            const vendorId = rest.slice(0, dotIdx);
+            const field = rest.slice(dotIdx + 1);
+            if (field !== "notes") continue;
+            const res = await fetch(`/api/workspaces/suppliers/candidates/${vendorId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ notes: change.finalValue }),
+            });
+            if (res.ok) {
+              setCandidates((prev) =>
+                prev.map((c) => c.id === vendorId ? { ...c, notes: change.finalValue } : c)
+              );
+            }
+          }
+        }, [setCandidates])}
       />
     </div>
     </>

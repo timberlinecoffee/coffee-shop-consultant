@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -312,6 +312,23 @@ export function OperationsPlaybookWorkspace({
         workspaceKey="operations_playbook"
         currentFocus={{ label: activeLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={useCallback(async (accepted: ApprovedChange[]) => {
+          // TIM-1690: fieldId format: "operations_playbook:{section}.intro"
+          for (const change of accepted) {
+            if (!change.fieldId.startsWith("operations_playbook:")) continue;
+            const path = change.fieldId.slice("operations_playbook:".length);
+            const dotIdx = path.indexOf(".");
+            if (dotIdx === -1) continue;
+            const section = path.slice(0, dotIdx) as keyof import("@/lib/operations-playbook").OperationsPlaybookDocument;
+            const field = path.slice(dotIdx + 1);
+            if (field === "intro") {
+              updateDoc((d) => ({
+                ...d,
+                [section]: { ...(d[section] as unknown as Record<string, unknown>), intro: change.finalValue },
+              }));
+            }
+          }
+        }, [updateDoc])}
       />
 
       <PaywallModal

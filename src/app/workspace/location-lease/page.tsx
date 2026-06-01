@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { CandidateListCard } from "@/components/location-lease/CandidateListCard";
+import { LocationLeaseWorkspace } from "./location-lease-workspace";
 import type { Candidate } from "@/components/location-lease/CandidateListCard";
 import { MapPin } from "lucide-react";
 
@@ -17,7 +17,7 @@ export default async function LocationLeaseWorkspacePage() {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("ai_credits_remaining, subscription_tier")
+      .select("ai_credits_remaining, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -80,11 +80,16 @@ export default async function LocationLeaseWorkspacePage() {
           </p>
         </header>
 
-        <CandidateListCard
+        <LocationLeaseWorkspace
           initialCandidates={initialCandidates}
           planId={plan.id}
           aiCreditsRemaining={profile?.ai_credits_remaining ?? 0}
           subscriptionTier={profile?.subscription_tier ?? "free"}
+          initialTrialMessagesUsed={
+            profile?.subscription_tier === "free"
+              ? (profile.copilot_trial_messages_used ?? 0)
+              : undefined
+          }
         />
       </div>
     </div>

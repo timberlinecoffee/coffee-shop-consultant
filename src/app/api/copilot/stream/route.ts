@@ -11,6 +11,7 @@
 // TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
 // TIM-1638: timeline inconsistency — groundss answers in plan's targetLaunchDate; emits suggestions on mismatch.
 // TIM-1648: propose_item tool lets Scout emit a structured menu-item proposal (beverage+recipe) into menu_pricing.
+// TIM-1690: propose_text_update + reorganize_supplies_list tools extend apply-to-plan to all workspaces.
 
 export const runtime = "nodejs" // service-role writes (ai_errors) need node; Edge has no advantage here
 // TIM-1670: multi-search competitor/market research (web_search, up to 8 uses) plus
@@ -116,6 +117,37 @@ interface SectionCtx {
   position: number
 }
 
+// TIM-1690: context types for workspace-specific apply tools.
+interface VendorCandidateCtx {
+  id: string
+  name: string
+  category: string
+  notes: string | null
+  status: string | null
+}
+
+interface LocationCandidateApplyCtx {
+  id: string
+  name: string
+  address: string | null
+  neighborhood: string | null
+  status: string | null
+  notes: string | null
+}
+
+interface HiringRoleCtx {
+  id: string
+  role_title: string
+  notes: string | null
+}
+
+interface MilestoneApplyCtx {
+  id: string
+  title: string
+  ai_notes: string | null
+  track: string | null
+}
+
 // Minimal SuggestionPayload — mirrors AIReviewModal.tsx (server-safe copy).
 interface SuggestionPayload {
   id: string
@@ -178,6 +210,74 @@ function buildReorganizeSuggestions(
   }
 
   return suggestions
+}
+
+// TIM-1690: identical structure to buildReorganizeSuggestions but for supplies.
+function buildReorganizeSuppliesSuggestions(
+  proposed: { item_id: string; section_id: string | null; position: number }[],
+  items: EquipmentItemCtx[],
+  sections: SectionCtx[],
+): SuggestionPayload[] {
+  const itemMap = new Map(items.map((i) => [i.id, i]))
+  const sectionMap = new Map(sections.map((s) => [s.id, s]))
+  const suggestions: SuggestionPayload[] = []
+  for (const p of proposed) {
+    const item = itemMap.get(p.item_id)
+    if (!item) continue
+    if (item.section_id === p.section_id && item.position === p.position) continue
+    const oldStation = item.section_id
+      ? (sectionMap.get(item.section_id)?.name ?? "Unsectioned")
+      : "Unsectioned"
+    const newStation = p.section_id
+      ? (sectionMap.get(p.section_id)?.name ?? "Unknown section")
+      : "Unsectioned"
+    suggestions.push({
+      id: `sup-reorg-${item.id}`,
+      fieldId: `supplies-item:${item.id}:${p.section_id ?? "null"}:${p.position}`,
+      fieldLabel: item.name,
+      originalValue: `${oldStation} · Position ${item.position + 1}`,
+      proposedValue: `${newStation} · Position ${p.position + 1}`,
+      isStructured: false,
+    })
+  }
+  return suggestions
+}
+
+// TIM-1690: format a list of vendor candidates for AI context with IDs.
+function formatVendorContext(vendors: VendorCandidateCtx[]): string {
+  if (vendors.length === 0) return "No vendor candidates yet."
+  const lines = vendors.map((v) =>
+    `  - ${v.name} | category: ${v.category} | status: ${v.status ?? "shortlisted"} | notes: ${v.notes ?? "(none)"} | id: ${v.id}`
+  )
+  return ["Vendor Candidates:", ...lines].join("\n")
+}
+
+// TIM-1690: format a list of location candidates for AI context with IDs.
+function formatLocationApplyContext(candidates: LocationCandidateApplyCtx[]): string {
+  if (candidates.length === 0) return "No location candidates yet."
+  const lines = candidates.map((c) => {
+    const where = [c.neighborhood, c.address].filter(Boolean).join(", ")
+    return `  - ${c.name}${where ? ` — ${where}` : ""} | status: ${c.status ?? "shortlisted"} | notes: ${c.notes ?? "(none)"} | id: ${c.id}`
+  })
+  return ["Location Candidates:", ...lines].join("\n")
+}
+
+// TIM-1690: format hiring roles for AI context with IDs.
+function formatHiringRolesContext(roles: HiringRoleCtx[]): string {
+  if (roles.length === 0) return "No roles defined yet."
+  const lines = roles.map((r) =>
+    `  - ${r.role_title} | notes: ${r.notes ?? "(none)"} | id: ${r.id}`
+  )
+  return ["Hiring Roles:", ...lines].join("\n")
+}
+
+// TIM-1690: format milestones for AI context with IDs.
+function formatMilestonesContext(milestones: MilestoneApplyCtx[]): string {
+  if (milestones.length === 0) return "No milestones yet."
+  const lines = milestones.map((m) =>
+    `  - ${m.title}${m.track ? ` [${m.track}]` : ""} | ai_notes: ${m.ai_notes ?? "(none)"} | id: ${m.id}`
+  )
+  return ["Launch Milestones:", ...lines].join("\n")
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -301,9 +401,63 @@ const PROPOSE_ITEM_TOOL: Anthropic.Tool = {
   },
 }
 
+// TIM-1690: propose_text_update — generic field-level text update for all workspaces.
+// fieldId format: "{workspace}:{field_path}" so onApplySuggestions can route by workspace.
+// Offered on all non-menu_pricing workspaces when the user asks to change/update text content.
+const PROPOSE_TEXT_UPDATE_TOOL: Anthropic.Tool = {
+  name: "propose_text_update",
+  description:
+    "Propose a specific text change to a field in the owner's plan. Call this ONLY when " +
+    "the user explicitly asks you to update, rewrite, improve, or change specific text content " +
+    "in their plan (e.g. 'update my vision statement', 'rewrite the founder story', " +
+    "'improve the notes on that vendor'). Do NOT call proactively. After calling this tool, " +
+    "summarise what you proposed in your text response.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      section_label: {
+        type: "string",
+        description: "Human-readable label shown in the review modal (e.g. 'Concept > Vision', 'Suppliers > Bean & Brew notes').",
+      },
+      field_id: {
+        type: "string",
+        description:
+          "Internal routing key in the format '{workspace}:{field_path}'. " +
+          "For concept: 'concept:components.{componentId}.content' (componentId is one of: shop_identity, vision, target_customer, differentiation, brand_voice, location, offering). " +
+          "For marketing: 'marketing:overview.narrative', 'marketing:story.founder_story', 'marketing:story.origin', 'marketing:story.differentiator', 'marketing:story.target_customer'. " +
+          "For operations_playbook: 'operations_playbook:{sectionKey}.intro' (sectionKey: opening, closing, cleaning, cash_handling, food_safety, roles, vendor_contacts, training). " +
+          "For suppliers: 'suppliers:vendor:{vendorId}.notes' (use verbatim vendor id from the Vendor Candidates list). " +
+          "For location_lease: 'location_lease:candidate:{candidateId}.notes' (use verbatim candidate id from the Location Candidates list). " +
+          "For hiring: 'hiring:role:{roleId}.notes' (use verbatim role id from the Hiring Roles list). " +
+          "For opening_month_plan: 'opening_month_plan:milestone:{milestoneId}.ai_notes' (use verbatim milestone id from the Launch Milestones list).",
+      },
+      current_content: {
+        type: "string",
+        description: "The current value of this field — copy it verbatim from the plan context.",
+      },
+      proposed_content: {
+        type: "string",
+        description: "Your improved replacement for this field.",
+      },
+      rationale: {
+        type: "string",
+        description: "1-2 sentences explaining why this change improves the plan.",
+      },
+    },
+    required: ["section_label", "field_id", "current_content", "proposed_content", "rationale"],
+  },
+}
+
 function shouldOfferProposeTool(messages: Array<{ role: string; content: string }>): boolean {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
   return /\b(add|create|design|propose|apply|put|make|build)\b.{0,80}(to (the )?(menu|ingredients?)|into (the )?(menu|ingredients?)|a (latte|espresso|cappuccino|cold brew|pour over|americano|macchiato|mocha|cortado|drink|beverage|item))/i.test(lastUser)
+}
+
+// TIM-1690: detect when the user wants to update a text field in their plan.
+function shouldOfferTextUpdateTool(messages: Array<{ role: string; content: string }>, ws: WorkspaceKey | null): boolean {
+  if (!ws || ws === "menu_pricing") return false // menu_pricing uses propose_item instead
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  return /\b(update|change|rewrite|improve|edit|revise|fix|refine|modify|set|write)\b.{0,100}(my |the |this )?(vision|mission|concept|story|notes?|description|vendor|supplier|candidate|milestone|founder|playbook|strategy|overview|role|narrative|origin|differentiator)/i.test(lastUser)
 }
 
 // TIM-1670: detect questions that need real web research (competitors, local market,
@@ -537,8 +691,11 @@ export async function POST(request: NextRequest) {
   // so Scout can emit a reorganize_equipment_list tool call with valid item/section UUIDs.
   let equipmentItems: EquipmentItemCtx[] = []
   let equipmentSections: SectionCtx[] = []
+  // TIM-1690: also fetch supplies items + sections for reorganize_supplies_list tool.
+  let suppliesItems: EquipmentItemCtx[] = []
+  let suppliesSections: SectionCtx[] = []
   if (workspaceKey === "buildout_equipment") {
-    const [eqResult, secResult] = await Promise.all([
+    const [eqResult, secResult, supResult, supSecResult] = await Promise.all([
       svcClient
         .from("buildout_equipment_items")
         .select("id, name, section_id, position, category")
@@ -551,14 +708,99 @@ export async function POST(request: NextRequest) {
         .eq("plan_id", planId)
         .eq("list_type", "equipment")
         .order("position"),
+      svcClient
+        .from("buildout_supplies_items")
+        .select("id, name, section_id, position, category")
+        .eq("plan_id", planId)
+        .eq("archived", false)
+        .order("position"),
+      svcClient
+        .from("buildout_list_sections")
+        .select("id, name, position")
+        .eq("plan_id", planId)
+        .eq("list_type", "supplies")
+        .order("position"),
     ])
     equipmentItems = (eqResult.data ?? []) as EquipmentItemCtx[]
     equipmentSections = (secResult.data ?? []) as SectionCtx[]
+    suppliesItems = (supResult.data ?? []) as EquipmentItemCtx[]
+    suppliesSections = (supSecResult.data ?? []) as SectionCtx[]
+  }
+
+  // TIM-1690: workspace-specific apply context — fetch row data with IDs so tools
+  // can reference them. Each block only fires for its own workspace.
+  let vendorCandidates: VendorCandidateCtx[] = []
+  if (workspaceKey === "suppliers") {
+    const vendorRes = await svcClient
+      .from("vendor_candidates")
+      .select("id, name, category, notes, status")
+      .eq("plan_id", planId)
+      .eq("archived", false)
+      .order("position")
+    vendorCandidates = (vendorRes.data ?? []) as VendorCandidateCtx[]
+  }
+
+  let locationApplyCandidates: LocationCandidateApplyCtx[] = []
+  if (workspaceKey === "location_lease") {
+    const locApplyRes = await svcClient
+      .from("location_candidates")
+      .select("id, name, address, neighborhood, status, notes")
+      .eq("plan_id", planId)
+      .eq("archived", false)
+      .order("position")
+    locationApplyCandidates = (locApplyRes.data ?? []) as LocationCandidateApplyCtx[]
+  }
+
+  let hiringRoles: HiringRoleCtx[] = []
+  if (workspaceKey === "hiring") {
+    const rolesRes = await svcClient
+      .from("hiring_plan_roles")
+      .select("id, role_title, notes")
+      .eq("plan_id", planId)
+      .order("created_at")
+    hiringRoles = (rolesRes.data ?? []) as HiringRoleCtx[]
+  }
+
+  let milestones: MilestoneApplyCtx[] = []
+  if (workspaceKey === "opening_month_plan") {
+    const milestonesRes = await svcClient
+      .from("launch_milestones")
+      .select("id, title, ai_notes, track")
+      .eq("plan_id", planId)
+      .order("order_index")
+    milestones = (milestonesRes.data ?? []) as MilestoneApplyCtx[]
   }
 
   const equipmentContextAddendum =
     workspaceKey === "buildout_equipment" && equipmentItems.length > 0
       ? `\n\n## Equipment List — Current Arrangement\nThe exact item IDs and section IDs below are required for the \`reorganize_equipment_list\` tool. Use them verbatim.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
+      : ""
+
+  // TIM-1690: supplies reorganize context (mirrors equipment).
+  const suppliesContextAddendum =
+    workspaceKey === "buildout_equipment" && suppliesItems.length > 0
+      ? `\n\n## Supplies List — Current Arrangement\nThe exact item IDs and section IDs below are required for the \`reorganize_supplies_list\` tool. Use them verbatim.\n\n${formatEquipmentContext(suppliesItems, suppliesSections)}\n\n**Action available:** \`reorganize_supplies_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the supplies list.`
+      : ""
+
+  // TIM-1690: vendor/location/hiring/milestone context for propose_text_update tool.
+  const vendorContextAddendum =
+    workspaceKey === "suppliers" && vendorCandidates.length > 0
+      ? `\n\n## Vendor Candidates — for propose_text_update\nUse the exact vendor IDs below when calling \`propose_text_update\` with field_id like 'suppliers:vendor:{vendorId}.notes'.\n\n${formatVendorContext(vendorCandidates)}`
+      : ""
+
+  const locationApplyAddendum =
+    workspaceKey === "location_lease" && locationApplyCandidates.length > 0
+      ? `\n\n## Location Candidates — for propose_text_update\nUse the exact candidate IDs below when calling \`propose_text_update\` with field_id like 'location_lease:candidate:{candidateId}.notes'.\n\n${formatLocationApplyContext(locationApplyCandidates)}`
+      : ""
+
+  const hiringRolesAddendum =
+    workspaceKey === "hiring" && hiringRoles.length > 0
+      ? `\n\n## Hiring Roles — for propose_text_update\nUse the exact role IDs below when calling \`propose_text_update\` with field_id like 'hiring:role:{roleId}.notes'.\n\n${formatHiringRolesContext(hiringRoles)}`
+      : ""
+
+  const milestonesAddendum =
+    workspaceKey === "opening_month_plan" && milestones.length > 0
+      ? `\n\n## Launch Milestones — for propose_text_update\nUse the exact milestone IDs below when calling \`propose_text_update\` with field_id like 'opening_month_plan:milestone:{milestoneId}.ai_notes'.\n\n${formatMilestonesContext(milestones)}`
       : ""
 
   // TIM-1670: ground competitor/market research in the owner's actual site(s) + segment.
@@ -577,7 +819,12 @@ export async function POST(request: NextRequest) {
   const dynamicPrompt =
     buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country, targetLaunchDate) +
     localMarketAddendum +
-    equipmentContextAddendum
+    equipmentContextAddendum +
+    suppliesContextAddendum +
+    vendorContextAddendum +
+    locationApplyAddendum +
+    hiringRolesAddendum +
+    milestonesAddendum
 
   // ── Model routing ────────────────────────────────────────────────────────────
   // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
@@ -586,11 +833,13 @@ export async function POST(request: NextRequest) {
   // they need multi-step web_search + synthesis, which haiku handles poorly.
   // Haiku 4.5 does not support extended thinking; thinking is only enabled for sonnet tier.
   // TIM-1648: also force sonnet when offering propose_item tool (haiku tool use is unreliable).
+  // TIM-1690: also force sonnet for propose_text_update / reorganize_supplies_list.
   const workspaceMentions = countWorkspaceMentions(messages)
   const isResearch = isResearchQuestion(messages)
   const offerProposeItemTool = shouldOfferProposeTool(messages)
+  const offerTextUpdateTool = shouldOfferTextUpdateTool(messages, workspaceKey)
   const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3 || isResearch
-  const modelId = (useComplexModel || offerProposeItemTool) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
+  const modelId = (useComplexModel || offerProposeItemTool || offerTextUpdateTool) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
@@ -745,11 +994,56 @@ export async function POST(request: NextRequest) {
           max_uses: 8,
         }
 
+        // TIM-1690: supplies reorganize tool — mirrors equipment, only when supplies items exist.
+        const suppliesTool: Anthropic.Tool | null =
+          workspaceKey === "buildout_equipment" && suppliesItems.length > 0
+            ? {
+                name: "reorganize_supplies_list",
+                description:
+                  "Propose a new arrangement of supplies items across storage sections. Only call this when the user explicitly asks to reorganize, sort, reorder, or rearrange the supplies list. Include ALL items in the output, even those not moving.",
+                input_schema: {
+                  type: "object" as const,
+                  properties: {
+                    rationale: {
+                      type: "string",
+                      description: "1–2 sentences explaining the reorganization logic.",
+                    },
+                    items: {
+                      type: "array",
+                      description: "Complete proposed arrangement. Position is 0-based within each section.",
+                      items: {
+                        type: "object",
+                        properties: {
+                          item_id: {
+                            type: "string",
+                            description: "Supplies item UUID — verbatim from the supplies list.",
+                          },
+                          section_id: {
+                            type: ["string", "null"],
+                            description: "Section UUID, or null for unsectioned.",
+                          },
+                          position: {
+                            type: "integer",
+                            description: "0-based position within the section.",
+                          },
+                        },
+                        required: ["item_id", "section_id", "position"],
+                      },
+                    },
+                  },
+                  required: ["rationale", "items"],
+                },
+              }
+            : null
+
         const tools: Anthropic.ToolUnion[] = [
           ...(isResearch ? [webSearchTool] : []),
           ...(equipmentTool ? [equipmentTool] : []),
+          ...(suppliesTool ? [suppliesTool] : []),
           // TIM-1648: propose_item — offered on creation-intent messages (forces sonnet).
           ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
+          // TIM-1690: propose_text_update — generic field-level text update for all workspaces.
+          ...(offerTextUpdateTool ? [PROPOSE_TEXT_UPDATE_TOOL] : []),
         ]
 
         const stream = anthropic.messages.stream({
@@ -859,6 +1153,68 @@ export async function POST(request: NextRequest) {
                     context: {
                       workspace: "menu_pricing",
                       section: toolInput.category_name ?? "Menu",
+                    },
+                  }))
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            } else if (activeToolName === "reorganize_supplies_list" && toolInputBuffer) {
+              // TIM-1690: emit supplies reorganization suggestions (mirrors equipment).
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  rationale: string
+                  items: { item_id: string; section_id: string | null; position: number }[]
+                }
+                const suggestions = buildReorganizeSuppliesSuggestions(
+                  toolInput.items ?? [],
+                  suppliesItems,
+                  suppliesSections,
+                )
+                if (suggestions.length > 0) {
+                  send(
+                    sse("suggestions", {
+                      suggestions,
+                      context: {
+                        workspace: "buildout_equipment",
+                        section: toolInput.rationale,
+                      },
+                    }),
+                  )
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            } else if (activeToolName === "propose_text_update" && toolInputBuffer) {
+              // TIM-1690: emit a text-field update suggestion routed to the correct workspace.
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  section_label?: string
+                  field_id?: string
+                  current_content?: string
+                  proposed_content?: string
+                  rationale?: string
+                }
+                if (toolInput.field_id && toolInput.proposed_content !== undefined) {
+                  const ws = workspaceKey ?? "general"
+                  send(sse("suggestions", {
+                    suggestions: [
+                      {
+                        id: `text-update-${crypto.randomUUID()}`,
+                        fieldId: toolInput.field_id,
+                        fieldLabel: toolInput.section_label ?? toolInput.field_id,
+                        originalValue: toolInput.current_content ?? "",
+                        proposedValue: toolInput.proposed_content,
+                        isStructured: false,
+                      } satisfies SuggestionPayload,
+                    ],
+                    context: {
+                      workspace: ws,
+                      section: toolInput.rationale ?? "",
                     },
                   }))
                 }
