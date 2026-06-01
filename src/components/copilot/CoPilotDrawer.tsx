@@ -87,7 +87,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
   switch (err.code) {
     case "trial_exhausted":
       return {
-        title: "You've used your 5 trial messages — upgrade to keep planning with Copilot.",
+        title: `You've used your 5 trial messages — upgrade to keep planning with ${COPILOT_NAME}.`,
         cta: "See plans",
         href: UPGRADE_PATH,
       };
@@ -124,13 +124,13 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "paywall":
       if (err.paywallReason === "paused" || err.paywallReason === "expired") {
         return {
-          title: "Your plan is paused — reactivate to keep using the co-pilot.",
+          title: `Your plan is paused — reactivate to keep using ${COPILOT_NAME}.`,
           cta: "Reactivate",
           href: "/account/billing",
         };
       }
       return {
-        title: "A paid plan is required to use the co-pilot.",
+        title: `A paid plan is required to use ${COPILOT_NAME}.`,
         cta: "See plans",
         href: UPGRADE_PATH,
       };
