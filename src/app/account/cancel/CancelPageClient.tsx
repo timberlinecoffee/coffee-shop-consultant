@@ -245,12 +245,12 @@ export function AnnualCancelPageClient({ tierDisplayName, periodEnd, userEmail }
           <h2 className="font-semibold text-[var(--foreground)]">Remind Me at Renewal</h2>
           <p className="text-sm text-[var(--dark-grey)]">
             Want a heads-up before your plan renews so you can switch to monthly and pause? Enter your
-            email and we will send you a reminder a few days before your renewal date.
+            email and we will remind you before your renewal date.
           </p>
 
           {reminderState === "done" ? (
-            <div className="bg-[var(--teal-bg-pale)] border border-[var(--teal-bg-900)] rounded-xl px-4 py-4 text-sm text-[var(--teal)] text-center">
-              You are on the list. We will email you before your renewal date.
+            <div className="bg-[var(--teal-bg-pale)] border border-[var(--teal-bg-900)] rounded-lg px-4 py-4 text-sm text-[var(--teal)] text-center">
+              You are on the list. We will remind you before your renewal date.
             </div>
           ) : (
             <form onSubmit={handleReminderSubmit} className="space-y-3">
@@ -266,7 +266,7 @@ export function AnnualCancelPageClient({ tierDisplayName, periodEnd, userEmail }
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
+                  className="w-full border border-[var(--border)] rounded-lg px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
                 />
               </div>
 
@@ -279,7 +279,7 @@ export function AnnualCancelPageClient({ tierDisplayName, periodEnd, userEmail }
               <button
                 type="submit"
                 disabled={reminderState === "submitting"}
-                className="w-full bg-[var(--teal)] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
+                className="w-full bg-[var(--teal)] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
               >
                 {reminderState === "submitting" ? "Saving…" : "Remind Me at Renewal"}
               </button>
