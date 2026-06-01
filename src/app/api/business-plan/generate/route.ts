@@ -159,7 +159,8 @@ export async function POST(request: NextRequest) {
 - No filler phrases: "high-quality experience," "welcoming space," "wide variety," "we pride ourselves on," "is committed to."
 - Title case for headings and named items (role titles like Opening-Key Barista, equipment names, drink names, place names, persona names). Body prose is sentence case.
 - Specific numbers throughout -- not "significant revenue" but the actual dollar figure from the data.
-- Return only the section text. No preamble, no labels, no explanation.`;
+- Generate, never refuse. This is a drafting tool and the founder reviews and edits every draft before it is saved, so always produce a complete section. When the section-specific data is thin, write the strongest draft you can from the wider plan context and founder profile below, making reasonable assumptions and grounding them in coffee-business norms. Do not reply that there is not enough context and do not tell the founder to go fill in a workspace first.
+- Return only the section text. No preamble, no labels, no explanation, no notes about what is missing.`;
 
   // TIM-1498: prompts keyed to the two-level taxonomy.
   const SECTION_SPECS: Record<string, string> = {
@@ -249,7 +250,7 @@ Founder context:
 - Stage: ${String(onboarding?.stage ?? "not specified")}
 
 Plan data:
-${planSnapshot || "The founder has not yet filled out the workspaces. Write a two-paragraph placeholder that names what should go in each of the four paragraphs once the plan is filled in. Be direct about what is missing."}`;
+${planSnapshot || "The workspaces are mostly empty, so generate from the founder context above plus reasonable, clearly-grounded assumptions for a coffee shop at this stage and location. Write a complete four-paragraph executive summary now -- do not refuse or list what is missing."}`;
   } else {
     systemPrompt = `You are an expert coffee shop business advisor writing the "${sectionTitle}" section of a founder's business plan.
 
@@ -260,8 +261,18 @@ ${sectionSpec}`;
 
     userMessage = `Write the "${sectionTitle}" section for ${shopName}.
 
+Founder context:
+- Budget: ${String(onboarding?.budget ?? "not specified")}
+- Location: ${planContext.location_country ?? "not specified"}
+- Stage: ${String(onboarding?.stage ?? "not specified")}
+
 Assembled plan data for this section:
-${sectionAutoContent || "No data assembled yet. Write a two-paragraph placeholder that explains specifically what information the founder needs to add in the relevant workspace, and what this section will cover once that data is provided. Be concrete about what is missing."}`;
+${sectionAutoContent || "(No section-specific data entered for this section yet.)"}
+
+Wider plan context (use this to ground the section even when the section-specific data above is thin):
+${planSnapshot || "(Other workspaces are not filled in yet -- lean on the founder context and reasonable coffee-business assumptions.)"}
+
+Write a complete, usable draft of this section now. Generate from whatever context is available above plus your coffee-business expertise, making and grounding reasonable assumptions. Do not refuse and do not tell the founder there is not enough context.`;
   }
 
   const client = new Anthropic();
