@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { TrackingScripts } from "@/components/consent/TrackingScripts";
+import { RewardfulScript } from "./_components/RewardfulScript";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -29,6 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
+      <RewardfulScript />
       <body className={`${poppins.className} min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]`}>
         <a href="#main-content" className="skip-to-main">Skip to main content</a>
         <div id="main-content" tabIndex={-1} className="flex flex-col flex-1">
