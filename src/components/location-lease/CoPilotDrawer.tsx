@@ -3,6 +3,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { COPILOT_NAME } from '@/lib/copilot/branding'
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
@@ -100,7 +101,7 @@ export function CoPilotDrawer({
               payload.code === 'quota' ||
               payload.code === 'paywall'
             ) {
-              setError((payload.message as string) ?? 'Co-pilot error. Please try again.')
+              setError((payload.message as string) ?? `${COPILOT_NAME} error. Please try again.`)
             } else if ('threadId' in payload) {
               setMessages((prev) => [...prev, { role: 'assistant', content: accumulated }])
               setStreamText('')
@@ -138,7 +139,7 @@ export function CoPilotDrawer({
       <div className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-96 bg-white shadow-2xl flex flex-col border-l border-[var(--border)]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
-            <p className="text-sm font-semibold text-foreground">Co-Pilot</p>
+            <p className="text-sm font-semibold text-foreground">{COPILOT_NAME}</p>
             <p className="text-xs text-[var(--neutral-cool-600)]">Location &amp; Lease workspace</p>
           </div>
           <div className="flex items-center gap-3">
@@ -160,7 +161,7 @@ export function CoPilotDrawer({
               type="button"
               onClick={onClose}
               className="flex size-7 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] hover:bg-[var(--surface-warm-50)]/80 transition-colors"
-              aria-label="Close co-pilot"
+              aria-label={`Close ${COPILOT_NAME}`}
             >
               <svg
                 width="14"
@@ -200,7 +201,7 @@ export function CoPilotDrawer({
                   <line x1="14" x2="14" y1="2" y2="4" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-foreground mb-1">Your co-pilot is ready</p>
+              <p className="text-sm font-medium text-foreground mb-1">{COPILOT_NAME} is ready</p>
               <p className="text-xs text-[var(--neutral-cool-600)] leading-relaxed">
                 Ask about any of your shortlisted locations, lease terms, or site selection strategy.
               </p>
@@ -254,7 +255,7 @@ export function CoPilotDrawer({
         <div className="border-t border-[var(--border)] px-4 py-4">
           {subscriptionTier === 'free' ? (
             <p className="text-center text-xs text-[var(--neutral-cool-600)]">
-              AI co-pilot requires a paid plan.{' '}
+              {COPILOT_NAME} requires a paid plan.{' '}
               <a href="/pricing" className="text-[var(--teal)] underline">
                 Upgrade →
               </a>

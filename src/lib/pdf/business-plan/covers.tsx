@@ -1,9 +1,10 @@
 // TIM-1225: Business Plan cover-template registry + renderCover().
-// Three templates: Classic (centered serif), Modern (left-band), Editorial (full-bleed green header).
+// Three templates: Classic (centered serif), Modern (left-band), Editorial (full-bleed teal header).
 // Design spec: TIM-1224 spec document.
 
 import React from "react";
 import { Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { BRAND } from "../brand";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export const COVER_TEMPLATES: CoverTemplate[] = [
   {
     id: "editorial",
     label: "Editorial",
-    description: "Bold full-bleed green header — confident, modern, presentation-ready.",
+    description: "Bold full-bleed header block — confident, modern, presentation-ready.",
   },
 ];
 
@@ -58,14 +59,14 @@ export function renderCover(templateId: string, props: CoverProps): React.ReactE
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function accent(props: CoverProps): string {
-  return props.accentColor ?? "var(--warning-amber)";
+  return props.accentColor ?? BRAND.colors.accent;
 }
 
 // ── Template 1: Classic ───────────────────────────────────────────────────────
 
 const classicS = StyleSheet.create({
   page: {
-    backgroundColor: "var(--card)",
+    backgroundColor: BRAND.colors.paper,
     paddingHorizontal: 56,
     paddingTop: 0,
     paddingBottom: 0,
@@ -83,13 +84,13 @@ const classicS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 36,
     fontWeight: "bold",
-    color: "var(--success)",
+    color: "#155E63",
     textAlign: "center",
   },
   subtitle: {
     fontFamily: "Source Serif Pro",
     fontSize: 22,
-    color: "var(--gray-1350)",
+    color: BRAND.colors.ink,
     textAlign: "center",
     marginBottom: 10,
   },
@@ -98,7 +99,7 @@ const classicS = StyleSheet.create({
     fontFamily: "Inter",
     fontSize: 13,
     fontStyle: "italic",
-    color: "var(--gray-1100)",
+    color: BRAND.colors.muted,
     textAlign: "center",
   },
   metaZone: {
@@ -111,19 +112,19 @@ const classicS = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter",
     fontSize: 11,
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginRight: 4,
   },
   metaValue: {
     fontFamily: "Inter",
     fontSize: 11,
     fontWeight: "600",
-    color: "var(--gray-1350)",
+    color: BRAND.colors.ink,
   },
   date: {
     fontFamily: "Inter",
     fontSize: 11,
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginBottom: 0,
   },
   bottomBar: {
@@ -150,7 +151,7 @@ function ClassicCover(props: CoverProps) {
       </View>
 
       {/* Title band */}
-      <Text style={classicS.shopName}>{shopName}</Text>
+      <Text style={[classicS.shopName, { color: ac }]}>{shopName}</Text>
       <View style={classicS.nameGap} />
       <Text style={classicS.subtitle}>Business Plan</Text>
 
@@ -187,7 +188,7 @@ function ClassicCover(props: CoverProps) {
 
 const modernS = StyleSheet.create({
   page: {
-    backgroundColor: "var(--card)",
+    backgroundColor: BRAND.colors.paper,
     flexDirection: "row",
   },
   stripe: {
@@ -196,7 +197,7 @@ const modernS = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: 6,
-    backgroundColor: "var(--success)",
+    backgroundColor: "#155E63",
   },
   content: {
     flex: 1,
@@ -210,21 +211,21 @@ const modernS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 44,
     fontWeight: "bold",
-    color: "var(--success)",
+    color: "#155E63",
     lineHeight: 1.1,
     marginBottom: 14,
   },
   subtitle: {
     fontFamily: "Inter",
     fontSize: 18,
-    color: "var(--gray-1150)",
+    color: BRAND.colors.ink,
     marginBottom: 10,
   },
   tagline: {
     fontFamily: "Inter",
     fontSize: 13,
     fontStyle: "italic",
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginBottom: 14,
   },
   spacer: {
@@ -233,20 +234,20 @@ const modernS = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginBottom: 2,
   },
   metaValue: {
     fontFamily: "Inter",
     fontSize: 12,
     fontWeight: "600",
-    color: "var(--gray-1350)",
+    color: BRAND.colors.ink,
     marginBottom: 12,
   },
   date: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginTop: 8,
   },
   logo: {
@@ -263,7 +264,7 @@ const modernS = StyleSheet.create({
     right: 56,
     fontFamily: "Inter",
     fontSize: 8,
-    color: "var(--gray-800)",
+    color: BRAND.colors.muted,
   },
 });
 
@@ -274,11 +275,11 @@ function ModernCover(props: CoverProps) {
   return (
     <Page size="LETTER" style={modernS.page}>
       {/* Left vertical stripe */}
-      <View style={modernS.stripe} />
+      <View style={[modernS.stripe, { backgroundColor: ac }]} />
 
       {/* Main content area */}
       <View style={modernS.content}>
-        <Text style={modernS.shopName}>{shopName}</Text>
+        <Text style={[modernS.shopName, { color: ac }]}>{shopName}</Text>
         <Text style={modernS.subtitle}>Business Plan</Text>
         {tagline ? <Text style={modernS.tagline}>{tagline}</Text> : null}
 
@@ -322,13 +323,13 @@ function ModernCover(props: CoverProps) {
 
 const editS = StyleSheet.create({
   page: {
-    backgroundColor: "var(--card)",
+    backgroundColor: BRAND.colors.paper,
     flexDirection: "column",
   },
   greenBlock: {
     width: "100%",
     height: 356,
-    backgroundColor: "var(--success)",
+    backgroundColor: "#155E63",
     padding: 40,
     flexDirection: "column",
     justifyContent: "center",
@@ -344,25 +345,26 @@ const editS = StyleSheet.create({
     fontFamily: "Source Serif Pro",
     fontSize: 38,
     fontWeight: "bold",
-    color: "var(--card)",
+    color: BRAND.colors.paper,
     textAlign: "center",
     marginBottom: 16,
   },
   subtitle: {
     fontFamily: "Source Serif Pro",
     fontSize: 20,
+    color: BRAND.colors.paper,
     textAlign: "center",
     marginBottom: 12,
   },
   tagline: {
     fontFamily: "Inter",
     fontSize: 13,
-    color: "var(--sage-bg)",
+    color: "#D4ECD7",
     textAlign: "center",
   },
   whiteBlock: {
     flex: 1,
-    backgroundColor: "var(--card)",
+    backgroundColor: BRAND.colors.paper,
     paddingHorizontal: 56,
     paddingTop: 40,
     paddingBottom: 48,
@@ -370,20 +372,20 @@ const editS = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginBottom: 3,
   },
   metaValue: {
     fontFamily: "Inter",
     fontSize: 13,
     fontWeight: "600",
-    color: "var(--gray-1350)",
+    color: BRAND.colors.ink,
     marginBottom: 16,
   },
   date: {
     fontFamily: "Inter",
     fontSize: 10,
-    color: "var(--neutral-cool-600)",
+    color: BRAND.colors.muted,
     marginTop: 8,
   },
   accentSquare: {
@@ -401,8 +403,8 @@ function EditorialCover(props: CoverProps) {
 
   return (
     <Page size="LETTER" style={editS.page}>
-      {/* Full-bleed green header */}
-      <View style={editS.greenBlock}>
+      {/* Full-bleed header block */}
+      <View style={[editS.greenBlock, { backgroundColor: ac }]}>
         {logo ? (
           <Image
             src={{ data: logo.data, format: logo.format }}
@@ -410,7 +412,7 @@ function EditorialCover(props: CoverProps) {
           />
         ) : null}
         <Text style={editS.shopName}>{shopName}</Text>
-        <Text style={[editS.subtitle, { color: ac }]}>Business Plan</Text>
+        <Text style={editS.subtitle}>Business Plan</Text>
         {tagline ? <Text style={editS.tagline}>{tagline}</Text> : null}
       </View>
 

@@ -1,9 +1,7 @@
-// TIM-1149 / TIM-1151: Single source of truth for the AI co-pilot's display name.
-// Founder feedback locked "Brew" as the product-side name. To rename, edit
-// COPILOT_NAME here and update agent-docs/groundwork/copilot-brand.md so
-// other agents reference the same one.
+// TIM-1563: Single source of truth for the AI assistant's display name.
+// Name is "Scout" per TIM-1557 brand spec. To rename, edit COPILOT_NAME here.
 
-export const COPILOT_NAME = "Brew"
+export const COPILOT_NAME = "Scout"
 export const COPILOT_SUBTITLE = "AI assistant"
 
 // Persistent caveat shown in the chat footer. Wording per TIM-1151 founder ask:

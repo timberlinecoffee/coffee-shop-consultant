@@ -70,7 +70,7 @@ export default function SubscriptionTermsPage() {
             <h2 className="text-xl font-semibold mb-3">3. Free Preview</h2>
             <p>
               New accounts receive a free preview of the planning framework, including 5 free AI
-              planning messages with the co-pilot. The free preview does not require a credit card
+              planning messages with Scout. The free preview does not require a credit card
               and does not auto-convert to a paid subscription.
             </p>
             <p className="mt-3">

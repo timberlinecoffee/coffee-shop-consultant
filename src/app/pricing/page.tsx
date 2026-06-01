@@ -104,7 +104,7 @@ const FAQ = [
   },
   {
     q: "What counts as an AI planning credit?",
-    a: "Each message you send to the AI planning co-pilot uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
+    a: "Each message you send to Scout uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
   },
   {
     q: "What is the weekly async Q&A?",
@@ -112,7 +112,7 @@ const FAQ = [
   },
   {
     q: "Is there a free trial?",
-    a: "New accounts get 5 free AI planning messages to try the co-pilot before subscribing. No credit card is required for the preview, and your account will not be charged unless you start a paid subscription. After subscribing, you can cancel within 7 days of your first payment for a full refund, no questions asked.",
+    a: "New accounts get 5 free AI planning messages to try Scout before subscribing. No credit card is required for the preview, and your account will not be charged unless you start a paid subscription. After subscribing, you can cancel within 7 days of your first payment for a full refund, no questions asked.",
   },
   {
     q: "What payment methods do you accept?",
