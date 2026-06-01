@@ -18,6 +18,7 @@ import { LocationCard } from './LocationCard'
 import { TradeoffPanel } from './TradeoffPanel'
 import { CoPilotDrawer } from './CoPilotDrawer'
 import { useWorkspaceStatus } from '@/components/workspace/WorkspaceProgressProvider'
+import { COPILOT_NAME } from '@/lib/copilot/branding'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -257,11 +258,11 @@ export function CandidateListCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setDrawerOpen((p) => !p)}
-                className={cn(drawerOpen && 'bg-[var(--teal)] text-white hover:bg-[var(--teal)]/90')}
-                aria-label="Toggle Co-Pilot"
+                className={cn(drawerOpen && 'ai-gradient-bg text-white')}
+                aria-label={`Toggle ${COPILOT_NAME}`}
               >
                 <MessageCircle className="size-3.5" />
-                <span className="hidden sm:inline ml-1">Co-Pilot</span>
+                <span className="hidden sm:inline ml-1">{COPILOT_NAME}</span>
               </Button>
               <Button size="sm" onClick={handleAdd} disabled={adding} aria-label="Add candidate">
                 <Plus className="size-3.5" />

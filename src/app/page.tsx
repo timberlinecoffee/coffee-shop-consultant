@@ -303,7 +303,7 @@ export default function LandingPage() {
                 color: "sage" as const,
               },
               {
-                title: "An AI Co-Pilot in Your Corner",
+                title: "Scout in Your Corner",
                 body: "Ask about your lease, menu, or equipment. Get answers tied to your plan.",
                 color: "teal" as const,
               },
@@ -371,7 +371,7 @@ export default function LandingPage() {
                   className="font-semibold uppercase mb-4"
                   style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
                 >
-                  AI Planning Co-Pilot
+                  Scout, AI Planning Assistant
                 </p>
                 <h2
                   className="font-bold mb-5"
@@ -382,7 +382,7 @@ export default function LandingPage() {
                     color: "var(--teal)",
                   }}
                 >
-                  Your Coffee-Specific Co-Pilot, Always in Your Corner
+                  Scout, Your Coffee-Specific AI Assistant
                 </h2>
                 <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
                   Ask about your market, lease, or equipment. Get coffee-specific answers tied
@@ -788,7 +788,7 @@ export default function LandingPage() {
           </StaggerContainer>
           <FadeUp delay={0.3}>
             <p className="text-center text-neutral-500 mt-8" style={{ fontSize: "13px" }}>
-              New accounts get 5 free AI planning messages to try the co-pilot before subscribing. No credit card required for the preview. See{" "}
+              New accounts get 5 free AI planning messages to try Scout before subscribing. No credit card required for the preview. See{" "}
               <Link href="/subscription-terms" className="underline">
                 Subscription Terms
               </Link>{" "}
@@ -915,7 +915,7 @@ function AIChatMockup() {
         </div>
         <div>
           <p className="font-semibold" style={{ fontSize: "13px", color: "var(--teal)" }}>
-            AI Coffee Planning Co-Pilot
+            Scout — AI Coffee Planning Assistant
           </p>
           <p style={{ color: "var(--neutral-500)", fontSize: "11px" }}>
             Specialty-specific planning support, benchmarked

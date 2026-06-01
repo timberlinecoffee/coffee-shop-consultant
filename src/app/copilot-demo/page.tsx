@@ -42,9 +42,9 @@ export default async function CopilotDemoPage({
     return (
       <main className="min-h-screen bg-[var(--background)] px-6 py-12">
         <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-[var(--border)] p-8">
-          <h1 className="text-xl font-semibold text-[var(--foreground)]">Co-Pilot Demo</h1>
+          <h1 className="text-xl font-semibold text-[var(--foreground)]">Scout Demo</h1>
           <p className="mt-2 text-sm text-[var(--gray-1100)]">
-            You don&apos;t have a coffee shop plan yet. Finish onboarding to start using the co-pilot.
+            You don&apos;t have a coffee shop plan yet. Finish onboarding to start using Scout.
           </p>
           <Link
             href="/onboarding"

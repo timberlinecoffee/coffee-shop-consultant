@@ -12,6 +12,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
 import type { WorkspaceKey } from "@/types/supabase";
@@ -168,7 +169,7 @@ export function CoPilotDrawer({
   );
   const [isDragging, setIsDragging] = useState(false);
   const [railOpen, setRailOpen] = useState<boolean>(false);
-  const [sheetOpen, setSheetOpen] = useState<boolean>(false);
+  const [isConversationsSheetOpen, setIsConversationsSheetOpen] = useState<boolean>(false);
   const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -179,6 +180,10 @@ export function CoPilotDrawer({
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
+
+  // Derived constants — placed before effects so they're stable references in deps arrays.
+  const isMobile = viewportWidth < 640;
+  const sheetOpen = open && isMobile;
 
   const {
     isStreaming,
@@ -218,7 +223,7 @@ export function CoPilotDrawer({
   const closeDrawer = useCallback(() => {
     abort();
     setOpen(false);
-    setSheetOpen(false);
+    setIsConversationsSheetOpen(false);
   }, [abort]);
 
   const handleNewThread = useCallback(
@@ -525,15 +530,25 @@ export function CoPilotDrawer({
     };
   }, [isDragging]);
 
-  // TIM-1149: ESC closes the panel.
+  // TIM-1149: ESC closes the desktop panel.
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, closeDrawer]);
+  }, [open, isMobile, closeDrawer]);
+
+  // TIM-1562: ESC must also dismiss the mobile sheet (WAI-ARIA dialog pattern).
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen, closeDrawer]);
 
   // TIM-662: hydrate messages for the restored thread on first mount.
   useEffect(() => {
@@ -593,7 +608,6 @@ export function CoPilotDrawer({
     activeScope === null
       ? GENERAL_CONVERSATION_LABEL
       : WORKSPACE_LABELS[activeScope];
-  const isMobile = viewportWidth < 640;
 
   return (
     <>
@@ -607,7 +621,7 @@ export function CoPilotDrawer({
           type="button"
           aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           onClick={openDrawer}
-          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/30 flex items-center gap-2 active:scale-95 transition-transform"
+          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full ai-gradient-bg text-white shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
         >
           <Sparkles aria-hidden className="w-4 h-4" />
           <span className="text-sm font-semibold">{COPILOT_NAME}</span>
@@ -631,9 +645,10 @@ export function CoPilotDrawer({
           />
           <motion.aside
             role="dialog"
+            aria-modal="true"
             aria-label={`${COPILOT_NAME}: ${COPILOT_SUBTITLE}`}
             style={{ width: computedPanelWidth }}
-            className="relative bg-white flex flex-col h-full shadow-xl"
+            className="relative bg-[var(--background)] flex flex-col h-full shadow-xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -669,13 +684,13 @@ export function CoPilotDrawer({
               <button
                 type="button"
                 aria-label="Conversations"
-                onClick={() => isMobile ? setSheetOpen(true) : setRailOpen((v) => !v)}
+                onClick={() => isMobile ? setIsConversationsSheetOpen(true) : setRailOpen((v) => !v)}
                 title="Conversations"
                 className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
               >
                 <Menu aria-hidden className="w-4 h-4" />
               </button>
-              <div className="shrink-0 w-9 h-9 rounded-full bg-[var(--teal)]/10 text-[var(--teal)] flex items-center justify-center mt-0.5">
+              <div className={cn("shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5", isStreaming ? "ai-streaming-avatar" : "bg-[var(--teal)]/10 text-[var(--teal)]")}>
                 <Sparkles aria-hidden className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
@@ -870,7 +885,7 @@ export function CoPilotDrawer({
                   placeholder={`Ask ${COPILOT_NAME}…`}
                   rows={1}
                   disabled={isStreaming}
-                  className="flex-1 resize-none rounded-xl border border-[var(--gray-600)] bg-white px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-[var(--teal)]/40 disabled:bg-[var(--surface-warm-50)] disabled:text-[var(--neutral-cool-600)]"
+                  className="flex-1 resize-none rounded-xl border border-[var(--gray-600)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-[var(--teal)]/40 disabled:bg-[var(--surface-warm-50)] disabled:text-[var(--neutral-cool-600)]"
                 />
                 {isStreaming ? (
                   <button
@@ -902,16 +917,19 @@ export function CoPilotDrawer({
             </div>
             </div>
             <AnimatePresence>
-              {isMobile && sheetOpen && (
+              {isMobile && isConversationsSheetOpen && (
                 <>
                   <motion.div
                     className="absolute inset-0 z-10 bg-black/40"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    onClick={() => setSheetOpen(false)}
+                    onClick={() => setIsConversationsSheetOpen(false)}
                   />
                   <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Conversations"
                     className="absolute bottom-0 inset-x-0 z-20 flex flex-col bg-[var(--background)] rounded-t-2xl border-t border-[var(--border)]"
                     style={{ height: "60vh" }}
                     initial={{ y: "100%" }}
@@ -929,11 +947,11 @@ export function CoPilotDrawer({
                       activeThreadId={activeThreadId}
                       currentWorkspaceKey={workspaceKey}
                       onSelectThread={(item) => {
-                        setSheetOpen(false);
+                        setIsConversationsSheetOpen(false);
                         void handleSelectThread(item);
                       }}
                       onNewThread={(scope) => {
-                        setSheetOpen(false);
+                        setIsConversationsSheetOpen(false);
                         handleNewThread(scope);
                       }}
                       onRenameThread={handleRenameThread}
