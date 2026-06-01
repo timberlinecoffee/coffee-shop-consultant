@@ -1,13 +1,18 @@
 // Streaming co-pilot route with thinking, model routing, and SSE.
 // TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
-// SSE event names: text | thinking | suggestions | error | done
-// Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions.
+// SSE event names: text | thinking | suggestions | status | error | done
+// TIM-1670: web_search server tool wired in so competitor/local-market queries do genuine
+// multi-source research (enumerate→verify→cite) instead of answering from priors; location
+// candidates surfaced for grounding; research queries route to sonnet; `status:searching` event.
+// Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions OR a research query.
 // Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
 // TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
 // TIM-1638: timeline inconsistency — groundss answers in plan's targetLaunchDate; emits suggestions on mismatch.
 
 export const runtime = "nodejs" // service-role writes (ai_errors) need node; Edge has no advantage here
-export const maxDuration = 60
+// TIM-1670: multi-search competitor/market research (web_search, up to 8 uses) plus
+// synthesis can outrun the old 60s cap and time out mid-answer. Give research room.
+export const maxDuration = 120
 
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
@@ -68,6 +73,26 @@ When the user explicitly asks you to design, draft, write, generate, name, or co
 - Make reasonable assumptions from their plan and profile instead of stalling on a clarifying question. If a key detail is missing, pick a sensible default, say what you assumed, and offer to adjust.
 - Keep your coffee judgment: if what you produced has a real weakness, flag it and give the fix per the Problem → Recommendation Rule.
 - Generating is not applying. You present the result for the user to review; saving it into their plan stays a separate, explicit step they accept, edit, or reject.`
+
+// TIM-1670: research depth. Local market / competitor / supplier / pricing-benchmark
+// questions cannot be answered from training priors — they go stale and miss obvious
+// local players. Scout has a real web_search tool; this mandates it does genuine,
+// multi-source, enumerate-then-verify research before answering these queries.
+const STABLE_RESEARCH_DIRECTIVE = `## Local & Market Research (use web_search — do NOT answer from memory)
+You have a \`web_search\` tool. For any question that depends on real-world, location-specific, or current facts you MUST use it instead of answering from training data. This always includes:
+- Competitor / market research ("who are my competitors", "what coffee shops are near me", "what's the market like here").
+- Local suppliers, roasters, distributors, equipment vendors, real estate, or permits for the owner's area.
+- Current prices, wages, rents, or benchmarks for a specific place.
+
+### How to research competitors / local market (required depth)
+Answering with "a couple of competitors" from memory is a failure. Do this instead:
+1. **Ground in the owner's actual location and segment.** Use the specific address / neighborhood / city from their plan (see Local Market Context below) and their shop type and target customer. Never research a generic or guessed location.
+2. **Enumerate broadly first.** Run several distinct searches, not one. Vary the angle: "coffee shops in {neighborhood/city}", "best coffee {city}", "cafes near {address}", "{city} specialty coffee roasters", map/directory style queries. Pull a candidate list of every plausible direct competitor — independents and chains both.
+3. **Verify each candidate.** Confirm it actually exists, is currently open, and is genuinely a direct competitor (similar segment and trade area), not a distant or unrelated business.
+4. **Then answer.** Return a reasonably complete list of the primary direct competitors — not just the first two or three. For each, give name, location/neighborhood, and a one-line read on positioning (price tier, specialty vs. grab-and-go, notable strength). Include the source link for each from your searches.
+5. **Be honest about coverage.** If results are thin for a small or rural area, say so and name what you did find, rather than padding with invented names. Never fabricate a competitor, address, or statistic — if a search did not surface it, do not assert it.
+
+Keep the Problem → Recommendation Rule: after the competitor list, give the owner a concrete positioning takeaway and a named next step.`
 
 // ── Equipment reorganize types / helpers ─────────────────────────────────────
 
@@ -210,6 +235,55 @@ ${workspaceLine}
 ${planSnapshot}`
 }
 
+// TIM-1670: detect questions that need real web research (competitors, local market,
+// suppliers, current prices/benchmarks) so we (a) route to the stronger model and
+// (b) lengthen the no-data watchdog while web_search runs server-side.
+function isResearchQuestion(messages: Array<{ role: string; content: string }>): boolean {
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  return /\b(competitor|competition|market research|market analysis|who else|other (coffee )?shops?|cafes? near|coffee shops? (near|in|around)|local (market|roaster|supplier|vendor)|nearby|in my area|around (me|here)|going rate|market rate|benchmark|average (price|rent|wage))\b/i.test(
+    lastUser,
+  )
+}
+
+// TIM-1670: the location_lease workspace_document is usually empty because real sites
+// live in the location_candidates table, which composePlanSnapshot never reads. Surface
+// the owner's actual site(s) so Scout grounds competitor research in a precise place.
+interface LocationCandidateCtx {
+  name: string
+  address: string | null
+  neighborhood: string | null
+  status: string | null
+}
+
+function buildLocalMarketContext(
+  candidates: LocationCandidateCtx[],
+  locationCountry: string | null,
+  shopType: string,
+  targetCustomer: string,
+): string {
+  const lines: string[] = ["\n\n## Local Market Context (for web research grounding)"]
+  if (candidates.length === 0) {
+    lines.push(
+      locationCountry
+        ? `No specific site is on the plan yet. Country: ${locationCountry}. If the owner asks for competitor/market research, first ask for their target city or neighborhood — a country alone is too broad to find direct competitors.`
+        : `No location is set on the plan yet. If the owner asks for competitor/market research, ask for their target city or neighborhood first — you cannot find direct competitors without it.`,
+    )
+  } else {
+    lines.push("Research competitors and the local market around these actual site(s) from the owner's plan:")
+    for (const c of candidates) {
+      const where = [c.neighborhood, c.address].filter(Boolean).join(", ")
+      const status = c.status === "signed" ? " (signed lease)" : ""
+      lines.push(`- ${c.name}${status}${where ? ` — ${where}` : ""}`)
+    }
+    if (locationCountry) lines.push(`Country: ${locationCountry}`)
+  }
+  lines.push(`Segment: ${shopType}. Target customer: ${targetCustomer || "not specified"}.`)
+  lines.push(
+    "When researching competitors, use these locations and this segment verbatim — do not substitute a generic or guessed location.",
+  )
+  return lines.join("\n")
+}
+
 function countWorkspaceMentions(messages: Array<{ role: string; content: string }>): number {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
   const lower = lastUser.toLowerCase()
@@ -348,9 +422,16 @@ export async function POST(request: NextRequest) {
   // instead of the frozen onboarding snapshot. Other onboarding fields here
   // (budget, stage, motivation, coffee_experience, timeline, shop_type) have no
   // live workspace equivalent and stay on onboarding_data.
-  const [snapshotResult, planContext] = await Promise.all([
+  const [snapshotResult, planContext, locationsResult] = await Promise.all([
     composePlanSnapshot(planId, workspaceKey, svcClient),
     loadPlanContext(svcClient, user.id),
+    // TIM-1670: real sites live here, not in the location_lease workspace_document.
+    svcClient
+      .from("location_candidates")
+      .select("name, address, neighborhood, status")
+      .eq("plan_id", planId)
+      .eq("archived", false)
+      .order("position", { ascending: true }),
   ])
   const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, targetLaunchDate } = snapshotResult
 
@@ -394,16 +475,31 @@ export async function POST(request: NextRequest) {
       ? `\n\n## Equipment List — Current Arrangement\nThe exact item IDs and section IDs below are required for the \`reorganize_equipment_list\` tool. Use them verbatim.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
       : ""
 
+  // TIM-1670: ground competitor/market research in the owner's actual site(s) + segment.
+  const shopTypeForCtx = Array.isArray(onboarding?.shop_type)
+    ? (onboarding.shop_type as string[]).join(", ")
+    : String(onboarding?.shop_type ?? "not specified")
+  const localMarketAddendum = buildLocalMarketContext(
+    (locationsResult.data ?? []) as LocationCandidateCtx[],
+    planContext.location_country,
+    shopTypeForCtx,
+    planContext.target_customer,
+  )
+
   const dynamicPrompt =
     buildDynamicPrompt(onboarding, planSnapshot, workspaceKey, planContext.location_country, targetLaunchDate) +
+    localMarketAddendum +
     equipmentContextAddendum
 
   // ── Model routing ────────────────────────────────────────────────────────────
   // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
   // "Complex" = snapshot >8000 tokens OR user mentions 3+ workspaces in one turn.
+  // TIM-1670: research questions (competitors/local market) also route to sonnet —
+  // they need multi-step web_search + synthesis, which haiku handles poorly.
   // Haiku 4.5 does not support extended thinking; thinking is only enabled for sonnet tier.
   const workspaceMentions = countWorkspaceMentions(messages)
-  const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3
+  const isResearch = isResearchQuestion(messages)
+  const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3 || isResearch
   const modelId = useComplexModel ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
@@ -419,6 +515,7 @@ export async function POST(request: NextRequest) {
       let outputTokens = 0
       let cacheReadTokens = 0
       let cacheCreateTokens = 0
+      let webSearchRequests = 0 // TIM-1670: billed at $10 / 1000 searches
 
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null
       let ttftTimer: ReturnType<typeof setTimeout> | null = null
@@ -484,7 +581,7 @@ export async function POST(request: NextRequest) {
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
-            text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
+            text: `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}\n\n${STABLE_RESEARCH_DIRECTIVE}`,
           },
           {
             type: "text",
@@ -541,6 +638,18 @@ export async function POST(request: NextRequest) {
               }
             : null
 
+        // TIM-1670: Anthropic-hosted web search. Always registered so Scout can do real
+        // multi-source research (the model only invokes it when relevant via tool_choice auto).
+        // max_uses bounds cost ($10/1k searches) and keeps multi-search research inside the
+        // 60s function budget; the directive tells it to run several searches for competitor work.
+        const webSearchTool: Anthropic.WebSearchTool20250305 = {
+          type: "web_search_20250305",
+          name: "web_search",
+          max_uses: 8,
+        }
+
+        const tools: Anthropic.ToolUnion[] = [webSearchTool, ...(equipmentTool ? [equipmentTool] : [])]
+
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 16_000,
@@ -548,7 +657,8 @@ export async function POST(request: NextRequest) {
           ...(useComplexModel ? { thinking: { type: "enabled", budget_tokens: 4_000 } } : {}),
           system: systemBlocks as Anthropic.TextBlockParam[],
           messages: anthropicMessages,
-          ...(equipmentTool ? { tools: [equipmentTool], tool_choice: { type: "auto" } } : {}),
+          tools,
+          tool_choice: { type: "auto" },
         })
 
         for await (const event of stream) {
@@ -560,6 +670,19 @@ export async function POST(request: NextRequest) {
             if (block.type === "tool_use") {
               activeToolName = block.name
               toolInputBuffer = ""
+            } else if (block.type === "server_tool_use" || block.type === "web_search_tool_result") {
+              // TIM-1670: web_search runs server-side BEFORE any text/thinking token.
+              // Treat it as first activity so the 8s TTFT watchdog doesn't kill a legit
+              // search, and reset the gap watchdog so multi-second searches don't trip it.
+              if (!firstToken) {
+                firstToken = true
+                if (ttftTimer) clearTimeout(ttftTimer)
+              }
+              resetGapTimer()
+              if (block.type === "server_tool_use") {
+                // Let the client show a "searching the web" affordance.
+                send(sse("status", { state: "searching" }))
+              }
             }
           } else if (event.type === "content_block_stop") {
             if (activeToolName === "reorganize_equipment_list" && toolInputBuffer) {
@@ -611,6 +734,8 @@ export async function POST(request: NextRequest) {
             }
           } else if (event.type === "message_delta" && event.usage) {
             outputTokens = event.usage.output_tokens ?? 0
+            // TIM-1670: server-tool usage (web searches) is reported on the final usage.
+            webSearchRequests = event.usage.server_tool_use?.web_search_requests ?? webSearchRequests
           } else if (event.type === "message_start" && event.message?.usage) {
             inputTokens = event.message.usage.input_tokens ?? 0
             cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0
@@ -633,7 +758,9 @@ export async function POST(request: NextRequest) {
               cacheReadTokens * costPerInputM * 0.1 +
               cacheCreateTokens * costPerInputM * 1.25 +
               outputTokens * costPerOutputM) /
-            1_000_000
+              1_000_000 +
+            // TIM-1670: web search billed at $10 per 1,000 requests.
+            webSearchRequests * 0.01
           const effectiveThreadId = threadId ?? crypto.randomUUID()
 
           const existingQuery = supabase
