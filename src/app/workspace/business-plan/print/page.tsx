@@ -1153,7 +1153,7 @@ function AppendixSection({
       </SectionCard>
       <SectionCard label="Source Provenance">
         <p className="text-sm text-[var(--foreground)] leading-relaxed">
-          Plan content is sourced from the owner&apos;s Groundwork workspaces. AI-assisted drafts
+          Plan content is sourced from workspace data entered by the owner. AI-assisted drafts
           are reviewed and edited by the owner before they appear here. Numerical projections are
           derived from the Financials workspace inputs.
         </p>

@@ -290,7 +290,7 @@ function ScorecardWorksheetPdf({
   const { scorecard, questions, role, candidates } = content
 
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       <Page size="LETTER" orientation="landscape" style={S.page}>
         <PdfHeader shopName={shopName} workspaceName="Interview Worksheet" />
 
@@ -302,7 +302,7 @@ function ScorecardWorksheetPdf({
 
         {questions.length === 0 ? (
           <Text style={S.emptyNote}>
-            No questions added to this scorecard yet. Add questions in Groundwork to populate this worksheet.
+            No questions added to this scorecard yet. Add questions to populate this worksheet.
           </Text>
         ) : (
           <View style={S.table}>

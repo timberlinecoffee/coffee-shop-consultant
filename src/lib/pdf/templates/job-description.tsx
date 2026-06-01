@@ -101,7 +101,7 @@ function JobDescriptionPdf({
 }) {
   const { role, jd } = content
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       <LetterPageShell
         shopName={shopName}
         workspaceName="Job Description"
@@ -118,7 +118,7 @@ function JobDescriptionPdf({
           <Text style={styles.sectionBody}>{jd.summary}</Text>
         ) : (
           <Text style={styles.placeholder}>
-            No summary written yet. Open the Job Description editor in Groundwork to add one.
+            No summary written yet. Open the Job Description editor to add one.
           </Text>
         )}
 

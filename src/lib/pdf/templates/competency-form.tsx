@@ -252,7 +252,7 @@ function CompetencyBlankPdf({
   const title = formName ? `${formName} — Competency Form` : "Competency Evaluation Form"
 
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       <LetterPageShell
         shopName={shopName}
         workspaceName="Competency Form"
@@ -278,7 +278,7 @@ function CompetencyBlankPdf({
         {/* Table */}
         {competencies.length === 0 ? (
           <Text style={styles.emptyNote}>
-            No competencies defined. Add skills in the Competency Framework in Groundwork.
+            No competencies defined. Add skills in the Competency Framework to populate this form.
           </Text>
         ) : (
           <>
@@ -354,7 +354,7 @@ function CompetencyCompletedPdf({
   const weightedAvg = totalWeight > 0 ? (weightedSum / totalWeight) * 100 : null
 
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       <LetterPageShell
         shopName={shopName}
         workspaceName="Competency Evaluation"

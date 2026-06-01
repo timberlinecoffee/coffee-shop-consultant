@@ -498,7 +498,7 @@ function CoverPage({ content, generatedDate }: { content: LaunchPlanContent; gen
 
   return (
     <Page size={BRAND.page.size} style={styles.coverPage}>
-      <Text style={styles.coverEyebrow}>GROUNDWORK · LAUNCH PLAN</Text>
+      <Text style={styles.coverEyebrow}>LAUNCH PLAN</Text>
       <View style={styles.coverRule} />
       <Text style={styles.coverTitle}>Launch plan</Text>
       <Text style={styles.coverShop}>{content.shopName ?? content.planName}</Text>
