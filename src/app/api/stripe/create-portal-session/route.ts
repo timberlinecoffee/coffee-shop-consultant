@@ -22,9 +22,13 @@ export async function POST(request: NextRequest) {
 
   const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
 
+  // bpc_1TdRzBCzwciIL0hn5JkVNzmu: cancel disabled, PM update + invoice history on
+  // See docs/stripe-portal-config.md for full spec and rotation procedure.
+  const portalConfigId = process.env.STRIPE_PORTAL_CONFIG_ID;
   const session = await stripe.billingPortal.sessions.create({
     customer: subscription.stripe_customer_id,
     return_url: `${origin}/account/billing`,
+    ...(portalConfigId ? { configuration: portalConfigId } : {}),
   });
 
   return Response.json({ url: session.url });
