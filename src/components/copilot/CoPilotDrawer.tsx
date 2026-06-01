@@ -67,6 +67,11 @@ export interface CoPilotDrawerProps {
   planId: string;
   currentFocus?: CopilotFocus;
   initialTrialMessagesUsed?: number;
+  // TIM-1574: On workspace pages the global CoPilotBeacon is the desktop entry
+  // point, so the drawer's own floating button is hidden on desktop (lg+) to
+  // avoid stacking both at bottom-6 right-6. Standalone consumers without a
+  // Beacon (e.g. the copilot demo) opt back in by passing `true`.
+  showDesktopLauncher?: boolean;
 }
 
 function newThreadId(): string {
@@ -144,6 +149,7 @@ export function CoPilotDrawer({
   planId,
   currentFocus,
   initialTrialMessagesUsed = 0,
+  showDesktopLauncher = false,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
@@ -628,7 +634,9 @@ export function CoPilotDrawer({
           type="button"
           aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           onClick={openDrawer}
-          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full ai-gradient-bg text-white shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
+          // TIM-1574: hide on desktop (lg+) unless this consumer has no Beacon;
+          // otherwise it overlaps the CoPilotBeacon at bottom-6 right-6.
+          className={`fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 h-14 px-5 rounded-full ai-gradient-bg text-white shadow-lg flex items-center gap-2 active:scale-95 transition-transform ${showDesktopLauncher ? "" : "lg:hidden"}`}
         >
           <Sparkles aria-hidden className="w-4 h-4" />
           <span className="text-sm font-semibold">{COPILOT_NAME}</span>
