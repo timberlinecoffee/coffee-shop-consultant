@@ -8,6 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { MapPin, Loader2 } from 'lucide-react'
+import { InfoTip } from '@/components/ui/info-tip'
 
 export type PlacePick = {
   address: string | null
@@ -173,6 +174,9 @@ export function AddressAutocomplete({
           className="w-full bg-transparent text-sm outline-none text-foreground placeholder:text-[var(--neutral-cool-600)]/50"
         />
         {loading && <Loader2 className="size-3.5 shrink-0 text-[var(--neutral-cool-600)] animate-spin" aria-hidden="true" />}
+        <InfoTip label="Address">
+          Type a street address and pick a suggestion from the dropdown — for example, &ldquo;123 Main St, Portland, OR&rdquo;. Selecting a match locks in the exact coordinates so the AI can analyze foot traffic patterns, nearby businesses, neighborhood demographics, and transit access for this location.
+        </InfoTip>
       </div>
 
       {open && suggestions.length > 0 && (

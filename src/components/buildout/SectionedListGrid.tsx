@@ -67,6 +67,7 @@ import type { EquipmentRecommendation } from "@/types/referral";
 import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
 import { type VendorCandidate, type VendorCategoryKey, VENDOR_CATEGORY_KEYS, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
+import { InfoTip } from "@/components/ui/info-tip";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 
@@ -131,6 +132,70 @@ const EQUIPMENT_CATEGORIES: EquipmentCategory[] = [
 const FINANCING_OPTIONS: FinancingMethod[] = [
   "cash", "in_house_financing", "loan", "lease", "credit_card", "other",
 ];
+
+// ── Column help-bubble content ────────────────────────────────────────────────
+
+const EQUIPMENT_COL_HINTS: Record<string, { label: string; text: string }> = {
+  name: {
+    label: "Item Name",
+    text: "Be specific enough to distinguish items — e.g., \"La Marzocco Linea Mini\" rather than just \"Espresso Machine\". Clear names make quotes, comparisons, and AI recommendations more useful.",
+  },
+  vendor: {
+    label: "Brand",
+    text: "The equipment manufacturer or brand (e.g., La Marzocco, Mahlkönig, True Refrigeration). Useful for comparison shopping and referencing supplier quotes.",
+  },
+  model: {
+    label: "Model Number",
+    text: "The specific model or product line (e.g., \"GS/3 Paddle Group\"). Helps ensure you're pricing the exact right item rather than a similar variant.",
+  },
+  unit_cost_cents: {
+    label: "Unit Cost",
+    text: "Per-unit purchase or lease price. Enter your best estimate — refine it once you receive supplier quotes. Used to calculate section totals and your overall build-out budget.",
+  },
+  useful_life_years: {
+    label: "Useful Life",
+    text: "How many years you expect this equipment to remain in service. Used for straight-line annual depreciation in your financial projections. Default is 7 years; commercial espresso machines often run 10–15 years with a service contract.",
+  },
+  financing_method: {
+    label: "Financing Method",
+    text: "How you plan to pay for this item. Cash preserves the asset on your balance sheet; a loan or lease converts the cost to monthly payments. This flows into startup cash-flow projections.",
+  },
+  category: {
+    label: "Category",
+    text: "Groups equipment by type (Espresso Station, Refrigeration, POS & Technology, etc.) for subtotals and benchmarking. The AI compares your budget against typical coffee-shop build-outs by category.",
+  },
+  supplier: {
+    label: "Vendor",
+    text: "The specific supplier or distributor you'll buy from. Links to your Suppliers & Vendors workspace so you can track quotes and contacts in one place.",
+  },
+  notes: {
+    label: "Notes",
+    text: "Anything else worth recording: serial numbers, color choices, delivery lead times, warranty terms, or installation requirements.",
+  },
+};
+
+const SUPPLIES_COL_HINTS: Record<string, { label: string; text: string }> = {
+  name: {
+    label: "Item Name",
+    text: "What this supply is called. Using the same name as your supplier invoice makes reconciliation easier.",
+  },
+  vendor: {
+    label: "Vendor",
+    text: "The supplier you source this item from. Links to your Suppliers & Vendors workspace.",
+  },
+  unit_type: {
+    label: "Unit Type",
+    text: "The purchasing unit (lb, case, box, each, bag, etc.). Knowing the unit lets you estimate re-order quantities and match your supplier's pricing structure.",
+  },
+  unit_cost_cents: {
+    label: "Unit Cost",
+    text: "Cost per unit at your current or estimated supplier price. Used for initial inventory budgeting.",
+  },
+  notes: {
+    label: "Notes",
+    text: "Re-order notes, minimum order quantities, storage requirements, or anything else worth tracking.",
+  },
+};
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
@@ -2068,6 +2133,7 @@ export function SectionedListGrid({
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  const colHints = listType === "equipment" ? EQUIPMENT_COL_HINTS : SUPPLIES_COL_HINTS;
   const headerCellCls = "px-2 py-2 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none relative";
 
   return (
@@ -2279,7 +2345,14 @@ export function SectionedListGrid({
                             aria-hidden
                           />
                         )}
-                        <span>{col.label}</span>
+                        <span className="inline-flex items-center gap-0.5">
+                          <span>{col.label}</span>
+                          {colHints[col.id] && (
+                            <span onPointerDown={(e) => e.stopPropagation()}>
+                              <InfoTip label={colHints[col.id].label}>{colHints[col.id].text}</InfoTip>
+                            </span>
+                          )}
+                        </span>
                         {col.resizable && (
                           <span
                             className="absolute right-0 top-0 h-full w-[10px] cursor-col-resize hover:bg-[var(--teal)]/30 transition-colors"
