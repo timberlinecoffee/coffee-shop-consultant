@@ -229,7 +229,7 @@ function ScorecardBlankPdf({
 }) {
   const { scorecard, questions, role } = content
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       <LetterPageShell
         shopName={shopName}
         workspaceName="Interview Scorecard"
@@ -257,7 +257,7 @@ function ScorecardBlankPdf({
         {/* Questions */}
         {questions.length === 0 ? (
           <Text style={styles.emptyNote}>
-            No questions added to this scorecard yet. Add questions in Groundwork to populate this form.
+            No questions added to this scorecard yet. Add questions to populate this form.
           </Text>
         ) : (
           questions.map((q, idx) => (

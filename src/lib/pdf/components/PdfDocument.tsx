@@ -23,7 +23,7 @@ type Props = {
 
 export function PdfDocument({ children }: Props) {
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       {children}
     </Document>
   )

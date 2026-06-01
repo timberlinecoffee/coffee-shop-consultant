@@ -35,7 +35,7 @@ export function PdfFooter({ generatedDate }: Props) {
   return (
     <View style={styles.footer} fixed>
       <Text style={styles.left}>
-        Groundwork: built for first-time coffee shop owners · Generated {generatedDate}
+        Generated {generatedDate}
       </Text>
       <Text
         style={styles.right}

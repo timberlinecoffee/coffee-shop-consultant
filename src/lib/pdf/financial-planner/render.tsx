@@ -424,7 +424,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function Header({ shopName, sub }: { shopName: string | null; sub: string }) {
   return (
     <View style={styles.header} fixed>
-      <Text style={styles.brandLine}>Groundwork: Financials Report</Text>
+      <Text style={styles.brandLine}>{(shopName ?? "Your Coffee Shop")}: Financials Report</Text>
       <Text style={styles.headerMeta}>
         {(shopName ?? "Your Coffee Shop")}{"\n"}{sub}
       </Text>
@@ -435,7 +435,7 @@ function Header({ shopName, sub }: { shopName: string | null; sub: string }) {
 function Footer({ generatedDate }: { generatedDate: string }) {
   return (
     <View style={styles.footer} fixed>
-      <Text style={styles.footerText}>Groundwork · Generated {generatedDate}</Text>
+      <Text style={styles.footerText}>Generated {generatedDate}</Text>
       <Text
         style={styles.footerText}
         render={({ pageNumber, totalPages }) =>
@@ -926,10 +926,10 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
   const bsRows = buildBalanceSheetRows(year1, fiscalStart);
 
   return (
-    <Document creator="Groundwork" producer="Groundwork">
+    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
       {/* Cover (portrait) */}
       <Page size="A4" style={styles.coverPage}>
-        <Text style={styles.coverEyebrow}>GROUNDWORK · FINANCIAL PLANNER</Text>
+        <Text style={styles.coverEyebrow}>FINANCIAL PLANNER</Text>
         <View style={styles.coverRule} />
         <Text style={styles.coverTitle}>Financials report</Text>
         <Text style={styles.coverShop}>{shopName ?? "Your coffee shop"}</Text>

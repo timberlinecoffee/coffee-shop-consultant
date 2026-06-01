@@ -34,10 +34,8 @@ type Props = {
 export function PdfHeader({ shopName, workspaceName }: Props) {
   return (
     <View style={styles.header} fixed>
-      <Text style={styles.brandLine}>Groundwork</Text>
-      <Text style={styles.meta}>
-        {shopName ?? "Your Coffee Shop"}{"\n"}{workspaceName}
-      </Text>
+      <Text style={styles.brandLine}>{shopName ?? "Your Coffee Shop"}</Text>
+      <Text style={styles.meta}>{workspaceName}</Text>
     </View>
   )
 }

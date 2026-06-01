@@ -398,7 +398,7 @@ function renderCoverPage(opts: RenderOpts) {
 
   return (
     <Page size={BRAND.page.size} style={styles.coverPage}>
-      <Text style={styles.coverEyebrow}>GROUNDWORK · FINANCIALS</Text>
+      <Text style={styles.coverEyebrow}>FINANCIALS</Text>
       <View style={styles.coverRule} />
       <Text style={styles.coverTitle}>Financials report</Text>
       <Text style={styles.coverShop}>{shopName ?? "Your coffee shop"}</Text>
