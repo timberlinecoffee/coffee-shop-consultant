@@ -411,6 +411,7 @@ export function BusinessPlanWorkspace({
         <CoverBrandingPanel
           initialSettings={initialCoverSettings}
           logoPublicUrl={logoPublicUrl}
+          shopName={shopName}
         />
 
         {/* Financial documents panel */}
