@@ -64,7 +64,7 @@ import {
 import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
-import { formatCurrencyAmount } from "@/lib/currency";
+import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
 import { type VendorCandidate, type VendorCategoryKey, VENDOR_CATEGORY_KEYS, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
 
@@ -253,23 +253,27 @@ function TextInput({
 }
 
 function CostInput({
-  valueCents, disabled, onCommit,
-}: { valueCents: number; disabled: boolean; onCommit: (cents: number) => void }) {
+  valueCents, disabled, currencyCode, onCommit,
+}: { valueCents: number; disabled: boolean; currencyCode: string; onCommit: (cents: number) => void }) {
   const [draft, setDraft] = useState(valueCents > 0 ? String(valueCents / 100) : "");
   useEffect(() => { setDraft(valueCents > 0 ? String(valueCents / 100) : ""); }, [valueCents]);
+  const sym = currencySymbol(currencyCode);
   return (
-    <input
-      type="number"
-      min={0}
-      step={50}
-      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
-      value={draft}
-      placeholder="0"
-      disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
-    />
+    <div className="flex items-center gap-0.5 w-full h-full">
+      <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{sym}</span>
+      <input
+        type="number"
+        min={0}
+        step={50}
+        className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
+        value={draft}
+        placeholder="0"
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
+      />
+    </div>
   );
 }
 
@@ -896,6 +900,7 @@ function SortableRow({
   recommendations,
   showRecommendations,
   showAiMarkings,
+  currencyCode,
   onUpdate,
   onDelete,
   onRequestAddVendor,
@@ -910,6 +915,7 @@ function SortableRow({
   recommendations?: Map<string, EquipmentRecommendation>;
   showRecommendations?: boolean;
   showAiMarkings?: boolean;
+  currencyCode: string;
   onUpdate: (id: string, patch: Partial<AnyItem>) => void;
   onDelete: (id: string) => void;
   onRequestAddVendor: (itemId: string, draft: string) => void;
@@ -1050,6 +1056,7 @@ function SortableRow({
             <CostInput
               valueCents={item.unit_cost_cents}
               disabled={!canEdit}
+              currencyCode={currencyCode}
               onCommit={(cents) => onUpdate(item.id, { unit_cost_cents: cents } as Partial<AnyItem>)}
             />
           </td>
@@ -1139,7 +1146,8 @@ function SortableRow({
 
 function SectionHeader({
   section,
-  colCount,
+  visibleCols,
+  colWidths,
   sectionTotal,
   costVisible,
   canEdit,
@@ -1151,7 +1159,8 @@ function SectionHeader({
   onAddItem,
 }: {
   section: ListSection;
-  colCount: number;
+  visibleCols: ColDef[];
+  colWidths: Map<string, number>;
   sectionTotal: number;
   costVisible: boolean;
   canEdit: boolean;
@@ -1176,6 +1185,7 @@ function SectionHeader({
   useEffect(() => { setDraft(section.name); }, [section.name]);
 
   const dropHighlight = isDragging && isOver;
+  const bgCls = dropHighlight ? "bg-[var(--teal-bg-700)]" : "bg-[var(--teal-tint-500)]";
 
   return (
     <tr
@@ -1184,78 +1194,91 @@ function SectionHeader({
         dropHighlight ? "ring-2 ring-inset ring-[var(--teal)]" : ""
       }`}
     >
-      <td
-        colSpan={colCount}
-        className={`px-2 py-1.5 sticky left-0 z-10 ${
-          dropHighlight ? "bg-[var(--teal-bg-700)]" : "bg-[var(--teal-tint-500)]"
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors shrink-0"
-            aria-label={section.collapsed ? "Expand section" : "Collapse section"}
-          >
-            {section.collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-          </button>
-
-          {editing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={draft}
-              autoFocus
-              className="text-xs font-semibold text-[var(--foreground)] bg-white border border-[var(--teal-tint)] rounded px-2 py-0.5 outline-none focus:border-[var(--teal)] min-w-[160px]"
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitRename}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitRename();
-                if (e.key === "Escape") { setEditing(false); setDraft(section.name); }
-              }}
-            />
-          ) : (
-            <span
-              className="text-xs font-semibold text-[var(--foreground)] cursor-text hover:underline decoration-dotted"
-              onDoubleClick={() => canEdit && setEditing(true)}
-              title={canEdit ? "Double-click to rename" : undefined}
+      {visibleCols.map((col) => {
+        if (col.id === "name") {
+          return (
+            <td
+              key="name"
+              className={`px-2 py-1.5 sticky left-0 z-10 ${bgCls}`}
+              style={{ width: colWidths.get("name") }}
             >
-              {section.name}
-            </span>
-          )}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors shrink-0"
+                  aria-label={section.collapsed ? "Expand section" : "Collapse section"}
+                >
+                  {section.collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                </button>
 
-          <div className="flex-1" />
+                {editing ? (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={draft}
+                    autoFocus
+                    className="text-xs font-semibold text-[var(--foreground)] bg-white border border-[var(--teal-tint)] rounded px-2 py-0.5 outline-none focus:border-[var(--teal)] min-w-0 flex-1"
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename();
+                      if (e.key === "Escape") { setEditing(false); setDraft(section.name); }
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="text-xs font-semibold text-[var(--foreground)] cursor-text hover:underline decoration-dotted truncate flex-1"
+                    onDoubleClick={() => canEdit && setEditing(true)}
+                    title={canEdit ? "Double-click to rename" : undefined}
+                  >
+                    {section.name}
+                  </span>
+                )}
 
-          {costVisible && sectionTotal > 0 && (
-            <span className="text-xs font-semibold text-[var(--teal)]">
-              {formatCurrencyAmount(sectionTotal / 100, currencyCode)}
-            </span>
-          )}
+                {canEdit && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={onAddItem}
+                      className="text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
+                      aria-label="Add item to section"
+                      title="Add item"
+                    >
+                      <Plus size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
+                      aria-label="Delete section"
+                      title="Delete section"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </td>
+          );
+        }
 
-          {canEdit && (
-            <>
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
-                aria-label="Add item to section"
-                title="Add item"
-              >
-                <Plus size={13} />
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
-                aria-label="Delete section"
-                title="Delete section"
-              >
-                <X size={13} />
-              </button>
-            </>
-          )}
-        </div>
-      </td>
+        if (col.id === "unit_cost_cents" && costVisible && sectionTotal > 0) {
+          return (
+            <td
+              key="unit_cost_cents"
+              className={`px-2 py-1.5 text-right ${bgCls}`}
+              style={{ width: colWidths.get("unit_cost_cents") }}
+            >
+              <span className="text-xs font-semibold text-[var(--teal)]">
+                {formatCurrencyAmount(sectionTotal / 100, currencyCode)}
+              </span>
+            </td>
+          );
+        }
+
+        return <td key={col.id} className={bgCls} style={{ width: colWidths.get(col.id) }} />;
+      })}
     </tr>
   );
 }
@@ -2287,7 +2310,8 @@ export function SectionedListGrid({
                     >
                       <SectionHeader
                         section={section}
-                        colCount={visibleCols.length}
+                        visibleCols={visibleCols}
+                        colWidths={colWidths}
                         sectionTotal={total}
                         costVisible={costVisible}
                         canEdit={canEdit}
@@ -2325,6 +2349,7 @@ export function SectionedListGrid({
                               recommendations={recommendations}
                               showRecommendations={showRecommendations}
                               showAiMarkings={showAiMarkings}
+                              currencyCode={currencyCode}
                               onUpdate={updateItem}
                               onDelete={deleteItem}
                               onRequestAddVendor={handleRequestAddVendor}
@@ -2362,9 +2387,19 @@ export function SectionedListGrid({
                 >
                   {unsectionedItems.length > 0 && (
                     <tr className="border-b border-[var(--teal-bg-400)]">
-                      <td colSpan={visibleCols.length} className="px-3 py-1.5 sticky left-0 z-10 bg-[var(--background)]">
-                        <span className="text-xs font-semibold text-[var(--dark-grey)]">Unsectioned</span>
-                      </td>
+                      {visibleCols.map((col) =>
+                        col.id === "name" ? (
+                          <td
+                            key="name"
+                            className="px-3 py-1.5 sticky left-0 z-10 bg-[var(--background)]"
+                            style={{ width: colWidths.get("name") }}
+                          >
+                            <span className="text-xs font-semibold text-[var(--dark-grey)]">Unsectioned</span>
+                          </td>
+                        ) : (
+                          <td key={col.id} className="bg-[var(--background)]" style={{ width: colWidths.get(col.id) }} />
+                        )
+                      )}
                     </tr>
                   )}
                   {unsectionedItems.map((item) => (
@@ -2379,6 +2414,7 @@ export function SectionedListGrid({
                       recommendations={recommendations}
                       showRecommendations={showRecommendations}
                       showAiMarkings={showAiMarkings}
+                      currencyCode={currencyCode}
                       onUpdate={updateItem}
                       onDelete={deleteItem}
                       onRequestAddVendor={handleRequestAddVendor}
@@ -2441,6 +2477,7 @@ export function SectionedListGrid({
                       vendorCandidates={vendorCandidates}
                       showRecommendations={showRecommendations}
                       showAiMarkings={showAiMarkings}
+                      currencyCode={currencyCode}
                       onUpdate={() => {}}
                       onDelete={() => {}}
                       onRequestAddVendor={() => {}}
