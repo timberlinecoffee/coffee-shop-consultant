@@ -56,7 +56,7 @@ export function AITriggerButton({
           className
         )}
       >
-        <Sparkles aria-hidden className="w-[22px] h-[22px]" strokeWidth={1.75} />
+        <Sparkles aria-hidden className="w-5 h-5" strokeWidth={1.75} />
       </button>
     );
   }
@@ -70,7 +70,7 @@ export function AITriggerButton({
         disabled={disabled}
         aria-label={ariaLabel ?? label}
         className={cn(
-          "fixed bottom-[72px] right-4 lg:bottom-6 lg:right-6 z-30",
+          "fixed bottom-18 right-4 lg:bottom-6 lg:right-6 z-30",
           "w-14 h-14 rounded-2xl ai-gradient-bg text-white shadow-lg",
           "flex items-center justify-center active:scale-95 transition-transform",
           disabled && "opacity-50 pointer-events-none",
