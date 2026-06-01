@@ -119,6 +119,10 @@ const FAQ = [
     q: "What payment methods do you accept?",
     a: "All major credit and debit cards. Payments are processed securely by Stripe.",
   },
+  {
+    q: "Need a break?",
+    a: "You can pause your plan for $2.99/mo instead of cancelling. Your workspace stays safe and you can resume at your current rate any time. Visit your billing settings to pause.",
+  },
 ];
 
 function PricingPageInner() {
