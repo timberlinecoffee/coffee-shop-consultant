@@ -774,7 +774,7 @@ function ReadinessSection({ content }: { content: LaunchPlanContent }) {
 function LaunchPlanPdf({ content, generatedDate }: { content: LaunchPlanContent; generatedDate: string }) {
   const shopName = content.shopName ?? content.planName
   return (
-    <PdfDocument>
+    <PdfDocument shopName={shopName}>
       {/* Page 1: Cover */}
       <CoverPage content={content} generatedDate={generatedDate} />
 
@@ -880,6 +880,6 @@ export const launchPlanTemplate: PdfTemplate<LaunchPlanContent> = {
   filename: (ctx) => {
     const slug = slugify(ctx.content.shopName ?? ctx.content.planName)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-launch-plan-${slug}-${date}.pdf`
+    return `launch-plan-${slug}-${date}.pdf`
   },
 }

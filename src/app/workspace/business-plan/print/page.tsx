@@ -370,7 +370,6 @@ export default async function BusinessPlanPrintPage({
           <span className="text-xs text-[var(--dark-grey)]">
             {shopName} &middot; Business Plan &middot; {year}
           </span>
-          <span className="text-xs text-[var(--dark-grey)]">Timberline Coffee School</span>
         </footer>
       </div>
     </div>

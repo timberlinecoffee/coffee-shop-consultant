@@ -16,10 +16,55 @@ export const BRAND = {
   },
   spacing: { gutter: 24, blockGap: 16 },
   page: { size: "A4" as const, margin: 40 },
-  logo: "/branding/groundwork-mark.png",
 } as const
 
 export type BrandTokens = typeof BRAND
+
+// ── White-label brand config (TIM-1686) ──────────────────────────────────────
+// Exports must show ONLY the shop owner's brand — never Groundwork/Timberline.
+// Per-shop config (name, logo, colors) is merged over neutral defaults; the
+// full config model + UI lands in follow-up work. These helpers are the single
+// source of truth for the brand strings that appear in every export.
+
+export type BrandConfig = {
+  shopName: string | null
+  logo: string | null
+  colors?: Partial<typeof BRAND.colors>
+}
+
+export type ResolvedBrand = BrandTokens & { shopName: string | null; logo: string | null }
+
+export function resolveBrand(config?: Partial<BrandConfig>): ResolvedBrand {
+  return {
+    ...BRAND,
+    colors: { ...BRAND.colors, ...(config?.colors ?? {}) },
+    shopName: config?.shopName?.trim() || null,
+    logo: config?.logo ?? null,
+  }
+}
+
+// PDF document metadata. Never emit "Timberline Coffee School" — use the shop
+// name when known, otherwise leave the field empty (neutral, no Groundwork).
+export function pdfDocMeta(shopName: string | null | undefined) {
+  const name = (shopName ?? "").trim()
+  return {
+    title: name || undefined,
+    author: name || undefined,
+    creator: name || undefined,
+    producer: name || undefined,
+  }
+}
+
+// Filename prefix derived from the shop name. Falls back to a neutral,
+// non-Groundwork slug so downloads never carry the Groundwork brand.
+export function brandFilePrefix(shopName: string | null | undefined): string {
+  const slug = (shopName ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return slug || "coffee-shop"
+}
 
 let fontsRegistered = false
 

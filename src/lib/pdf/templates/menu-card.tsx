@@ -404,7 +404,7 @@ function MenuCardPdf({
 }) {
   const { items } = content
   return (
-    <PdfDocument>
+    <PdfDocument shopName={shopName}>
       <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} />
       <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} />
     </PdfDocument>
@@ -444,6 +444,6 @@ export const menuCardTemplate: PdfTemplate<MenuCardContent> = {
   filename: (ctx) => {
     const slug = slugify(ctx.plan.shop_name)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-menu-card-${slug}-${date}.pdf`
+    return `menu-card-${slug}-${date}.pdf`
   },
 }

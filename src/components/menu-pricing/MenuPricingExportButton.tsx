@@ -22,7 +22,7 @@ export function MenuPricingExportButton() {
       const blob = await res.blob();
       const disp = res.headers.get("Content-Disposition") ?? "";
       const m = /filename="([^"]+)"/.exec(disp);
-      const fallback = `groundwork-menu-card-${new Date()
+      const fallback = `menu-card-${new Date()
         .toISOString()
         .slice(0, 10)
         .replace(/-/g, "")}.pdf`;

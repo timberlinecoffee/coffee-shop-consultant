@@ -13,7 +13,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { ChartConfiguration } from "chart.js";
-import { BRAND, registerFonts } from "@/lib/pdf/brand";
+import { BRAND, registerFonts, pdfDocMeta } from "@/lib/pdf/brand";
 import { chartToPng } from "@/lib/pdf/chart-to-png";
 import {
   type MonthlyProjections,
@@ -926,7 +926,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
   const bsRows = buildBalanceSheetRows(year1, fiscalStart);
 
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       {/* Cover (portrait) */}
       <Page size="A4" style={styles.coverPage}>
         <Text style={styles.coverEyebrow}>FINANCIAL PLANNER</Text>

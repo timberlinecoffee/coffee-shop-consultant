@@ -128,7 +128,7 @@ export async function GET() {
 
   const slug = slugify(plan.plan_name);
   const date = fmtYyyymmdd(new Date());
-  const filename = `groundwork-financials-${slug}-${date}.pdf`;
+  const filename = `financials-${slug}-${date}.pdf`;
 
   return new Response(stream as unknown as ReadableStream, {
     status: 200,

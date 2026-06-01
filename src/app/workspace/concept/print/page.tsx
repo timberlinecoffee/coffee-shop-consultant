@@ -166,8 +166,6 @@ export default async function ConceptPrintPage() {
                 {sectionCount} section{sectionCount !== 1 ? "s" : ""}
               </>
             )}
-            {" · "}
-            Prepared with Timberline Coffee School
           </p>
 
           {/* Divider below header */}
@@ -299,7 +297,6 @@ export default async function ConceptPrintPage() {
           <span className="text-xs text-[var(--dark-grey)]">
             {shopName} &middot; Concept Brief &middot; {year}
           </span>
-          <span className="text-xs text-[var(--dark-grey)]">Timberline Coffee School</span>
         </footer>
       </div>
     </div>

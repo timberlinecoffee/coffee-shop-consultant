@@ -29,7 +29,7 @@ export function LaunchPlanPdfButton() {
       const blob = await res.blob();
       const disp = res.headers.get("Content-Disposition") ?? "";
       const m = /filename="([^"]+)"/.exec(disp);
-      const fallback = `groundwork-launch-plan-${new Date()
+      const fallback = `launch-plan-${new Date()
         .toISOString()
         .slice(0, 10)
         .replace(/-/g, "")}.pdf`;

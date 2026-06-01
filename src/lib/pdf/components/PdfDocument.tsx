@@ -1,6 +1,6 @@
 import React from "react"
 import { Document, StyleSheet } from "@react-pdf/renderer"
-import { registerFonts, BRAND } from "../brand"
+import { registerFonts, BRAND, pdfDocMeta } from "../brand"
 
 registerFonts()
 
@@ -19,11 +19,14 @@ export const baseStyles = StyleSheet.create({
 
 type Props = {
   children: React.ReactNode
+  // Shop owner's brand name — flows into PDF document metadata. White-label
+  // (TIM-1686): never emit Groundwork/Timberline. Falls back to neutral when null.
+  shopName?: string | null
 }
 
-export function PdfDocument({ children }: Props) {
+export function PdfDocument({ children, shopName }: Props) {
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       {children}
     </Document>
   )

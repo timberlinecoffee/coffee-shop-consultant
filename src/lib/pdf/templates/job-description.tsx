@@ -1,6 +1,6 @@
 import React from "react"
 import { Document, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
+import { BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
 import { LetterPageShell } from "../components/LetterPageShell"
 import type { PdfTemplate } from "../registry"
 import type { OrgRole, JobDescriptionTemplate } from "@/lib/hiring"
@@ -101,7 +101,7 @@ function JobDescriptionPdf({
 }) {
   const { role, jd } = content
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       <LetterPageShell
         shopName={shopName}
         workspaceName="Job Description"
@@ -228,6 +228,6 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
   filename: (ctx) => {
     const slug = slugify(ctx.content.role.role_title)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-jd-${slug}-${date}.pdf`
+    return `${brandFilePrefix(ctx.plan.shop_name)}-jd-${slug}-${date}.pdf`
   },
 }

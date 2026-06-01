@@ -5,7 +5,7 @@
 
 import React from "react"
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { registerFonts, BRAND } from "../brand"
+import { registerFonts, BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
 import { PdfHeader } from "../components/PdfHeader"
 import { PdfFooter } from "../components/PdfFooter"
 import type { PdfTemplate } from "../registry"
@@ -290,7 +290,7 @@ function ScorecardWorksheetPdf({
   const { scorecard, questions, role, candidates } = content
 
   return (
-    <Document creator="Timberline Coffee School" producer="Timberline Coffee School">
+    <Document {...pdfDocMeta(shopName)}>
       <Page size="LETTER" orientation="landscape" style={S.page}>
         <PdfHeader shopName={shopName} workspaceName="Interview Worksheet" />
 
@@ -454,6 +454,6 @@ export const scorecardWorksheetTemplate: PdfTemplate<WorksheetContent> = {
   filename: (ctx) => {
     const slug = slugify(ctx.content.scorecard.name)
     const date = fmtYyyymmdd(new Date())
-    return `groundwork-scorecard-worksheet-${slug}-${date}.pdf`
+    return `${brandFilePrefix(ctx.plan.shop_name)}-scorecard-worksheet-${slug}-${date}.pdf`
   },
 }
