@@ -100,6 +100,15 @@ Answering with "a couple of competitors" from memory is a failure. Do this inste
 
 Keep the Problem → Recommendation Rule: after the competitor list, give the owner a concrete positioning takeaway and a named next step.`
 
+// TIM-1714: apply directive — injected ONLY when offerProposeItemTool (same gate as
+// registering propose_item). Directive presence ⟺ tool presence, always.
+// Without this, the model hallucinates "Done. I've added…" in text when the user asks
+// to apply something (e.g. "Add that beverage to my menu") because "Generating is not
+// applying" in STABLE_COACHING_STYLE makes it treat the save as a user action — but it
+// still writes a confident completion text without calling the tool.
+const PROPOSE_ITEM_DIRECTIVE = `## Adding Items to the Menu (use propose_item tool — do NOT describe it in text)
+You have a \`propose_item\` tool. When the owner asks you to add, save, apply, or put a beverage or menu item into their Menu & Pricing workspace — including when they refer back to something you designed earlier in this conversation (e.g. "add that to my menu", "save it", "put that beverage on the menu") — you MUST call the \`propose_item\` tool. Do NOT write a text-only response claiming the item was added. The tool emits a structured proposal the owner reviews and accepts or rejects before anything is saved. After calling the tool, briefly confirm what you proposed.`
+
 // ── Equipment reorganize types / helpers ─────────────────────────────────────
 
 interface EquipmentItemCtx {
@@ -303,7 +312,13 @@ const PROPOSE_ITEM_TOOL: Anthropic.Tool = {
 
 function shouldOfferProposeTool(messages: Array<{ role: string; content: string }>): boolean {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  return /\b(add|create|design|propose|apply|put|make|build)\b.{0,80}(to (the )?(menu|ingredients?)|into (the )?(menu|ingredients?)|a (latte|espresso|cappuccino|cold brew|pour over|americano|macchiato|mocha|cortado|drink|beverage|item))/i.test(lastUser)
+  // TIM-1714: "to my menu" / "to their menu" etc. broke the old regex which only handled
+  // optional "the". Split into two independent patterns to avoid fragile phrase structure.
+  // Apply intent: verb + any article/possessive + destination word anywhere in the message.
+  const addToMenu = /\b(add|apply|put|save|insert|include|move)\b.{0,120}\b(menu|ingredients?)\b/i.test(lastUser)
+  // Design/create intent: verb + item type anywhere in the message.
+  const designItem = /\b(add|create|design|propose|make|build)\b.{0,80}\b(latte|espresso|cappuccino|cold brew|pour over|americano|macchiato|mocha|cortado|drink|beverage|item)\b/i.test(lastUser)
+  return addToMenu || designItem
 }
 
 // TIM-1670: detect questions that need real web research (competitors, local market,
@@ -672,11 +687,15 @@ export async function POST(request: NextRequest) {
         const systemBlocks: Array<Anthropic.TextBlockParam & { cache_control?: Anthropic.CacheControlEphemeral }> = [
           {
             type: "text",
-            // TIM-1670: the research directive is injected ONLY when isResearch (so the
-            // web_search tool is also registered below). Never claim a tool we didn't pass.
-            text: isResearch
-              ? `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}\n\n${RESEARCH_DIRECTIVE}`
-              : `${STABLE_IDENTITY}\n\n${STABLE_COACHING_STYLE}`,
+            // TIM-1670: research directive injected ONLY when isResearch (tool also registered).
+            // TIM-1714: propose_item directive injected ONLY when offerProposeItemTool (tool also
+            // registered). Directive presence ⟺ tool presence — never claim a tool we didn't pass.
+            text: [
+              STABLE_IDENTITY,
+              STABLE_COACHING_STYLE,
+              isResearch ? RESEARCH_DIRECTIVE : null,
+              offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
+            ].filter(Boolean).join("\n\n"),
           },
           {
             type: "text",
