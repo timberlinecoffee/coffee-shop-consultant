@@ -12,6 +12,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
+import { AITriggerButton } from "@/components/ui/ai-trigger-button";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -641,16 +642,14 @@ export function CoPilotDrawer({
         variant="copilot_trial"
       />
       {!open && (
-        <button
-          type="button"
+        <AITriggerButton
+          variant="fab-mobile"
+          label={`${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
           onClick={openDrawer}
           // TIM-1574: hide on desktop (lg+) unless this consumer has no Beacon.
-          // TIM-1678: style-guide FAB — bottom-[72px] right-4 z-30 w-14 h-14 rounded-2xl.
-          className={`fixed bottom-[72px] right-4 lg:bottom-6 lg:right-6 z-30 w-14 h-14 rounded-2xl ai-gradient-bg text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform ${showDesktopLauncher ? "" : "lg:hidden"}`}
-        >
-          <Sparkles aria-hidden className="w-5 h-5" />
-        </button>
+          className={showDesktopLauncher ? undefined : "lg:hidden"}
+        />
       )}
 
       <AnimatePresence>

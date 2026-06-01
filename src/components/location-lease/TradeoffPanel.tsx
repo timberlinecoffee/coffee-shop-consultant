@@ -6,8 +6,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { X, Sparkles, Trophy, AlertCircle } from 'lucide-react'
+import { X, Trophy, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AITriggerButton } from '@/components/ui/ai-trigger-button'
 import type { Candidate } from './CandidateListCard'
 
 // ── Factor set used for visual comparison ────────────────────────────────
@@ -351,10 +352,12 @@ export function TradeoffPanel({
                 </p>
               </div>
               {canUseAI ? (
-                <Button size="sm" onClick={runTradeoff} disabled={tradeoffLoading} className="shrink-0">
-                  <Sparkles className="size-3.5 mr-1.5" />
-                  {tradeoffLoading ? 'Analyzing…' : tradeoff ? 'Refresh' : 'Generate Trade-Off'}
-                </Button>
+                <AITriggerButton
+                  label={tradeoff ? 'Refresh' : 'Generate Trade-Off'}
+                  loadingLabel="Analyzing…"
+                  loading={tradeoffLoading}
+                  onClick={runTradeoff}
+                />
               ) : (
                 <div className="text-right text-xs text-[var(--neutral-cool-600)]">
                   {subscriptionTier === 'free' ? (

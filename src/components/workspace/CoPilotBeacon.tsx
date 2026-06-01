@@ -6,6 +6,7 @@
 
 import { usePathname } from "next/navigation";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
+import { AITriggerButton } from "@/components/ui/ai-trigger-button";
 
 export function CoPilotBeacon() {
   const pathname = usePathname();
@@ -18,27 +19,11 @@ export function CoPilotBeacon() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={open}
+    <AITriggerButton
+      variant="fab"
+      label={COPILOT_NAME}
       aria-label={`Open ${COPILOT_NAME}`}
-      title={COPILOT_NAME}
-      className="fixed bottom-6 right-6 z-30 w-12 h-12 rounded-full bg-[var(--teal)] text-white shadow-md hover:shadow-lg hover:brightness-105 transition hidden lg:flex items-center justify-center"
-    >
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4L12 3z" />
-        <path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" />
-      </svg>
-    </button>
+      onClick={open}
+    />
   );
 }

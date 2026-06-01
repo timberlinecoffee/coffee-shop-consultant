@@ -9,7 +9,6 @@ import Link from "next/link";
 import {
   Megaphone,
   Check,
-  Sparkles,
   Plus,
   Trash2,
   ArrowUp,
@@ -21,6 +20,7 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
+import { AITriggerButton } from "@/components/ui/ai-trigger-button";
 import { InfoTip } from "@/components/ui/info-tip";
 import {
   type MarketingDocument,
@@ -335,15 +335,13 @@ function SectionEditor(props: SectionEditorProps) {
           <h2 className={sectionLabelCls}>{label}</h2>
           <SectionHelp title={label}>{tagline}</SectionHelp>
         </div>
-        <button
-          type="button"
+        <AITriggerButton
+          label="Draft with AI"
+          loadingLabel="Drafting…"
+          loading={!!generating}
+          disabled={!canEdit}
           onClick={onGenerate}
-          disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Drafting…" : "Draft with AI"}
-        </button>
+        />
         <span className="sr-only" role="status">
           {generating ? `Drafting the ${label} section with AI…` : ""}
         </span>

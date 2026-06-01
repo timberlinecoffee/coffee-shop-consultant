@@ -15,6 +15,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
+import { AITriggerButton } from "@/components/ui/ai-trigger-button";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { ReadinessRing } from "@/components/workspace/ReadinessRing";
 import {
@@ -359,8 +360,9 @@ export function ConceptWorkspace({
                     <div className="flex items-center gap-2 shrink-0">
                       {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise */}
                       {meta.multiline && (
-                        <button
-                          type="button"
+                        <AITriggerButton
+                          label="Improve with AI"
+                          disabled={!canEdit}
                           onClick={() =>
                             setAiAssistField({
                               id: meta.id,
@@ -368,11 +370,8 @@ export function ConceptWorkspace({
                               currentValue: latestDocRef.current.components[meta.id].content,
                             })
                           }
-                          disabled={!canEdit}
-                          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                        >
-                          Improve with AI
-                        </button>
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                        />
                       )}
                       {/* TIM-1408: per-card "Ask Co-pilot" merged into the single global Co-pilot beacon */}
                       {/* Include/exclude toggle — only on deferrable components */}

@@ -17,6 +17,7 @@ import {
   setPersonaPrimary,
 } from "@/lib/concept";
 import { toTitleCase } from "@/lib/text";
+import { AITriggerButton } from "@/components/ui/ai-trigger-button";
 
 interface PersonaEditorProps {
   persona: CustomerPersona;
@@ -161,13 +162,11 @@ export function PersonaEditor({
                 Why they visit <span className="text-[var(--error)]">*</span>
               </label>
               {canEdit && (
-                <button
-                  type="button"
+                <AITriggerButton
+                  variant="xs"
+                  label="Ask AI"
                   onClick={() => triggerAI("whyTheyVisit")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
-                >
-                  Ask AI
-                </button>
+                />
               )}
             </div>
             <textarea
@@ -191,13 +190,11 @@ export function PersonaEditor({
                 Pain points
               </label>
               {canEdit && (
-                <button
-                  type="button"
+                <AITriggerButton
+                  variant="xs"
+                  label="Ask AI"
                   onClick={() => triggerAI("painPoints")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
-                >
-                  Ask AI
-                </button>
+                />
               )}
             </div>
             <textarea

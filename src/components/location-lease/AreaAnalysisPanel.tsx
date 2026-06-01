@@ -6,7 +6,8 @@
 
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Sparkles, AlertCircle, MapPin } from 'lucide-react'
+import { AITriggerButton } from '@/components/ui/ai-trigger-button'
+import { AlertCircle, MapPin } from 'lucide-react'
 
 export function AreaAnalysisPanel({
   candidateId,
@@ -103,10 +104,12 @@ export function AreaAnalysisPanel({
             then ask the AI to read the block for your concept.
           </p>
         </div>
-        <Button size="sm" onClick={run} disabled={loading} className="shrink-0">
-          <Sparkles className="mr-1.5 size-3.5" />
-          {loading ? 'Analyzing…' : text ? 'Refresh' : 'Analyze The Area'}
-        </Button>
+        <AITriggerButton
+          label={text ? 'Refresh' : 'Analyze The Area'}
+          loadingLabel="Analyzing…"
+          loading={loading}
+          onClick={run}
+        />
       </div>
 
       {error && (

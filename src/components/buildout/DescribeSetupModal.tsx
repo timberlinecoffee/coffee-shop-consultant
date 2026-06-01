@@ -6,6 +6,7 @@
 
 import { useRef, useState } from "react";
 import { X, Trash2, ChevronDown } from "lucide-react";
+import { AITriggerButton } from "@/components/ui/ai-trigger-button";
 import { formatCurrency } from "@/lib/financial-projection";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
@@ -367,14 +368,11 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleGenerate}
+            <AITriggerButton
+              label="Generate List"
               disabled={!description.trim()}
-              className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
-            >
-              Generate list
-            </button>
+              onClick={handleGenerate}
+            />
           </div>
         )}
 

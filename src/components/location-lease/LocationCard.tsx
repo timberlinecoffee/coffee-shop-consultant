@@ -12,7 +12,6 @@ import {
   ExternalLink,
   ClipboardList,
   Receipt,
-  Sparkles,
   AlertCircle,
   Star,
   Map,
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { AITriggerButton } from '@/components/ui/ai-trigger-button'
 import { InfoTip } from '@/components/ui/info-tip'
 import { AddressAutocomplete, type PlacePick } from './AddressAutocomplete'
 import { AreaAnalysisPanel } from './AreaAnalysisPanel'
@@ -728,10 +728,12 @@ function AiFeedbackPanel({
             Fill in scores above, then run AI feedback for risk profile, strengths, concerns, and due-diligence questions.
           </p>
         </div>
-        <Button size="sm" onClick={requestFeedback} disabled={loading} className="shrink-0">
-          <Sparkles className="size-3.5 mr-1.5" />
-          {loading ? 'Analyzing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
-        </Button>
+        <AITriggerButton
+          label={finalText ? 'Refresh' : 'Get AI Feedback'}
+          loadingLabel="Analyzing…"
+          loading={loading}
+          onClick={requestFeedback}
+        />
       </div>
 
       {error && (
