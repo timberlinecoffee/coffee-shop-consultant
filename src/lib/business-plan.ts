@@ -434,6 +434,11 @@ export function assembleFinancialPlan(
   financialModel: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   buildoutItems: any[],
+  // TIM-1694: blended menu COGS pct so menu-linked COGS lines resolve against
+  // menu costing here exactly as they do in the Financials workspace. Without
+  // this the Business Plan Financials → Cost of Goods section stayed empty/stale
+  // because menu-linked lines had no rate to compute against (the ctx was {}).
+  menuBlendedCogsPct?: number | null,
 ): string {
   if (!financialModel) {
     return "Complete the Financials workspace to populate this section.";
@@ -451,7 +456,10 @@ export function assembleFinancialPlan(
     financed_cost_cents: Math.round(totalEquipCostUsd * 100),
   };
 
-  const slices = computeMonthlySlices(projections, equipSummary);
+  const slices = computeMonthlySlices(projections, equipSummary, {}, {
+    menu_blended_cogs_pct:
+      typeof menuBlendedCogsPct === "number" ? menuBlendedCogsPct : null,
+  });
   const lines: string[] = [];
 
   const y1 = slices.filter((s) => s.year === 1);
