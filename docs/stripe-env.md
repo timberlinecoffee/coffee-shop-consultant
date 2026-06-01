@@ -14,7 +14,19 @@ All Stripe configuration is stored in environment variables so price or key chan
 | `STRIPE_GROWTH_ANNUAL_PRICE_ID` | Growth plan, annual ($799/year) | `price_...` |
 | `STRIPE_PRO_MONTHLY_PRICE_ID` | Pro plan, monthly ($199/mo) | `price_...` |
 | `STRIPE_PRO_ANNUAL_PRICE_ID` | Pro plan, annual ($1,599/year) | `price_...` |
-| `STRIPE_PAUSE_MONTHLY_PRICE_ID` | Pause plan, monthly ($2.99/mo) | `price_...` |
+| `STRIPE_PAUSE_MONTHLY_PRICE_ID` | Pause plan, monthly ($2.99/mo) | `price_1TdIOcCzwciIL0hnXoGapjth` |
+
+## Configured price IDs — Pause plan (TIM-1542)
+
+> **Stripe mode note (as of 2026-06-01):** Vercel Production's `STRIPE_SECRET_KEY` is `sk_test_…` — the account has not yet switched to live mode. The test-mode price ID below is therefore valid for all environments until the production Stripe account goes live. A follow-up issue will create the live-mode price and rotate the Production env var before [TIM-1535](/TIM/issues/TIM-1535) ships.
+
+| Environment | Stripe mode | Price ID |
+|---|---|---|
+| Development | test | `price_1TdIOcCzwciIL0hnXoGapjth` |
+| Preview (staging) | test | `price_1TdIOcCzwciIL0hnXoGapjth` |
+| Production | test (sk_test_…) | `price_…pjth` |
+
+All three are the same value today (`price_1TdIOcCzwciIL0hnXoGapjth`). Once Stripe live mode is enabled, Production will get a distinct `price_…` (live-mode) and the others keep the test-mode id.
 
 ## Creating Stripe products (first-time setup)
 
@@ -34,8 +46,10 @@ echo "whsec_..."   | npx vercel env add STRIPE_WEBHOOK_SECRET production preview
 echo "price_..."   | npx vercel env add STRIPE_STARTER_MONTHLY_PRICE_ID production preview
 # ... repeat for each price ID
 
-# Pause plan (TIM-1542)
-echo "price_..."   | npx vercel env add STRIPE_PAUSE_MONTHLY_PRICE_ID production preview
+# Pause plan (TIM-1542) — test-mode price, all envs
+echo "price_1TdIOcCzwciIL0hnXoGapjth" | npx vercel env add STRIPE_PAUSE_MONTHLY_PRICE_ID development preview
+echo "price_1TdIOcCzwciIL0hnXoGapjth" | npx vercel env add STRIPE_PAUSE_MONTHLY_PRICE_ID production
+# When Stripe goes live: replace production value with live-mode price ID
 ```
 
 ## Revising a price (e.g. Pro rate change)
