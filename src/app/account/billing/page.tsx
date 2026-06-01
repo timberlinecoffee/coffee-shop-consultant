@@ -16,9 +16,21 @@ function readSuccessParam(): boolean {
   return new URLSearchParams(window.location.search).has("success");
 }
 
+function readPausedParam(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("paused");
+}
+
+function readCancelledParam(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("cancelled");
+}
+
 export default function BillingPage() {
   const [loading, setLoading] = useState(false);
   const [successParam] = useState<boolean>(readSuccessParam);
+  const [pausedParam] = useState<boolean>(readPausedParam);
+  const [cancelledParam] = useState<boolean>(readCancelledParam);
   const [sync, setSync] = useState<SyncState>(successParam ? { phase: "syncing" } : { phase: "idle" });
   const syncStartedRef = useRef(false);
 
@@ -73,6 +85,22 @@ export default function BillingPage() {
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6 flex-1">
         <h1 className="text-2xl font-bold text-[var(--foreground)]">Billing</h1>
 
+        {pausedParam && (
+          <div className="bg-[var(--teal)]/10 border border-[var(--teal)]/20 rounded-xl p-4">
+            <p className="text-sm text-[var(--teal)] font-medium">
+              Your subscription is now paused at $2.99/month. Resume any time from this page.
+            </p>
+          </div>
+        )}
+
+        {cancelledParam && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-sm text-amber-800 font-medium">
+              Cancellation confirmed. Your access continues until the end of your current billing period.
+            </p>
+          </div>
+        )}
+
         {successParam && (
           <div className="bg-[var(--teal)]/10 border border-[var(--teal)]/20 rounded-xl p-4 space-y-1">
             <p className="text-sm text-[var(--teal)] font-medium">
@@ -104,15 +132,23 @@ export default function BillingPage() {
         <div className="bg-white rounded-xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Manage Subscription</h2>
           <p className="text-sm text-[var(--dark-grey)] mb-4">
-            Update your payment method, change your plan, or cancel your subscription through the Stripe billing portal.
+            Update your payment method or change your plan through the Stripe billing portal.
           </p>
-          <button
-            onClick={openPortal}
-            disabled={loading}
-            className="text-sm bg-[var(--teal)] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
-          >
-            {loading ? "Opening portal…" : "Open billing portal →"}
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              onClick={openPortal}
+              disabled={loading}
+              className="text-sm bg-[var(--teal)] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
+            >
+              {loading ? "Opening portal…" : "Open billing portal →"}
+            </button>
+            <Link
+              href="/account/cancel"
+              className="text-sm text-[var(--dark-grey)] hover:text-red-600 transition-colors"
+            >
+              Cancel subscription
+            </Link>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-[var(--border)] p-6">
