@@ -634,7 +634,7 @@ function buildAssetSchedule(
   }
 ) {
   const { capexLines, moneyFormat, shopName, generatedDate, meta, code } = opts;
-  ws.getCell("A1").value = `${ctx.shopName ?? "Your coffee shop"}: Financial Planner`;
+  ws.getCell("A1").value = `${shopName ?? "Your coffee shop"}: Financial Planner`;
   ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
   ws.getCell("A2").value = `${shopName ?? "Your coffee shop"} · Asset Schedule`;
   ws.getCell("A2").font = { bold: true, size: 12 };
@@ -709,7 +709,7 @@ function buildAssumptions(
   }
 ) {
   const { mp, moneyFormat, shopName, generatedDate, meta, code } = opts;
-  ws.getCell("A1").value = `${ctx.shopName ?? "Your coffee shop"}: Financial Planner`;
+  ws.getCell("A1").value = `${shopName ?? "Your coffee shop"}: Financial Planner`;
   ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
   ws.getCell("A2").value = `${shopName ?? "Your coffee shop"} · Assumptions`;
   ws.getCell("A2").font = { bold: true, size: 12 };
