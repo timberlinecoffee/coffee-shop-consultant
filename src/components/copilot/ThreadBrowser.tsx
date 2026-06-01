@@ -73,6 +73,8 @@ export interface ThreadBrowserProps {
   refreshKey?: number
   /** The workspace the drawer was opened from. Drives the "+ New here" button. */
   currentWorkspaceKey: WorkspaceKey
+  /** "inline" (default): border-b + max-h-60 list. "fill": fills parent height, no cap. */
+  variant?: "inline" | "fill"
 }
 
 type LoadState =
@@ -106,6 +108,7 @@ export function ThreadBrowser({
   onDeleteThread,
   refreshKey = 0,
   currentWorkspaceKey,
+  variant = "inline",
 }: ThreadBrowserProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" })
   // Manual collapse overrides — group is open unless explicitly closed by the user.
@@ -313,7 +316,10 @@ export function ThreadBrowser({
   )
 
   return (
-    <div className="border-b border-[var(--border)]" data-testid="thread-browser">
+    <div
+      className={variant === "fill" ? "flex flex-col h-full" : "border-b border-[var(--border)]"}
+      data-testid="thread-browser"
+    >
       <div className="flex items-center justify-between px-4 py-2 gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--gray-1100)] truncate">
           Conversations ({filter.trim() ? `${filteredCount} of ${totalCount}` : totalCount})
@@ -363,7 +369,7 @@ export function ThreadBrowser({
         </div>
       </div>
 
-      <div className="max-h-60 overflow-y-auto px-2 pb-2">
+      <div className={`${variant === "fill" ? "flex-1" : "max-h-60"} overflow-y-auto px-2 pb-2`}>
         {state.kind === "loading" ? (
           <p className="px-2 py-3 text-xs text-[var(--neutral-cool-600)]">Loading conversations…</p>
         ) : state.kind === "error" ? (

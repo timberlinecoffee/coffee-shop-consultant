@@ -11,7 +11,7 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Maximize2, Minimize2, Sparkles, X } from "lucide-react";
+import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -44,6 +44,7 @@ const PANEL_MAX_WIDTH = 1100;
 const PANEL_DEFAULT_WIDTH = 448;
 const PANEL_WIDTH_STORAGE_KEY = "copilot_panel_width_v1";
 const PANEL_EXPANDED_STORAGE_KEY = "copilot_panel_expanded_v1";
+const CONVERSATIONS_RAIL_STORAGE_KEY = "brew-conversations-open";
 
 function readNumber(key: string): number | null {
   if (typeof window === "undefined") return null;
@@ -167,6 +168,8 @@ export function CoPilotDrawer({
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
   const [isDragging, setIsDragging] = useState(false);
+  const [railOpen, setRailOpen] = useState<boolean>(false);
+  const [isConversationsSheetOpen, setIsConversationsSheetOpen] = useState<boolean>(false);
   const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -220,6 +223,7 @@ export function CoPilotDrawer({
   const closeDrawer = useCallback(() => {
     abort();
     setOpen(false);
+    setIsConversationsSheetOpen(false);
   }, [abort]);
 
   const handleNewThread = useCallback(
@@ -466,6 +470,8 @@ export function CoPilotDrawer({
     }
     const storedExpanded = window.localStorage.getItem(PANEL_EXPANDED_STORAGE_KEY);
     if (storedExpanded === "1") setIsExpanded(true);
+    const storedRail = window.localStorage.getItem(CONVERSATIONS_RAIL_STORAGE_KEY);
+    if (storedRail === "1") setRailOpen(true);
   }, []);
 
   // TIM-1149: persist panel width and expanded state.
@@ -477,6 +483,10 @@ export function CoPilotDrawer({
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PANEL_EXPANDED_STORAGE_KEY, isExpanded ? "1" : "0");
   }, [isExpanded]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CONVERSATIONS_RAIL_STORAGE_KEY, railOpen ? "1" : "0");
+  }, [railOpen]);
 
   // TIM-1149: track viewport width so we can clamp the panel responsively.
   useEffect(() => {
@@ -671,6 +681,15 @@ export function CoPilotDrawer({
             )}
 
             <header className="px-4 pt-4 pb-3 border-b border-[var(--border)] flex items-start gap-2">
+              <button
+                type="button"
+                aria-label="Conversations"
+                onClick={() => isMobile ? setIsConversationsSheetOpen(true) : setRailOpen((v) => !v)}
+                title="Conversations"
+                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
+              >
+                <Menu aria-hidden className="w-4 h-4" />
+              </button>
               <div className={cn("shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5", isStreaming ? "ai-streaming-avatar" : "bg-[var(--teal)]/10 text-[var(--teal)]")}>
                 <Sparkles aria-hidden className="w-4 h-4" />
               </div>
@@ -743,18 +762,35 @@ export function CoPilotDrawer({
               </button>
             </header>
 
-            <ThreadBrowser
-              planId={planId}
-              activeScope={activeScope}
-              activeThreadId={activeThreadId}
-              currentWorkspaceKey={workspaceKey}
-              onSelectThread={(item) => void handleSelectThread(item)}
-              onNewThread={handleNewThread}
-              onRenameThread={handleRenameThread}
-              onDeleteThread={handleDeleteThread}
-              refreshKey={browserRefreshKey}
-            />
-
+            <div className="flex flex-1 overflow-hidden min-h-0">
+              <AnimatePresence initial={false}>
+                {!isMobile && railOpen && (
+                  <motion.div
+                    key="conversation-rail"
+                    initial={{ width: 0 }}
+                    animate={{ width: 240 }}
+                    exit={{ width: 0 }}
+                    transition={{ duration: 0.1, ease: "easeOut" }}
+                    className="shrink-0 border-r border-[var(--border)] overflow-hidden"
+                  >
+                    <div className="w-[240px] h-full flex flex-col bg-[var(--surface-warm-50)]">
+                      <ThreadBrowser
+                        variant="fill"
+                        planId={planId}
+                        activeScope={activeScope}
+                        activeThreadId={activeThreadId}
+                        currentWorkspaceKey={workspaceKey}
+                        onSelectThread={(item) => void handleSelectThread(item)}
+                        onNewThread={handleNewThread}
+                        onRenameThread={handleRenameThread}
+                        onDeleteThread={handleDeleteThread}
+                        refreshKey={browserRefreshKey}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {loadingThread && (
                 <p className="text-xs text-[var(--neutral-cool-600)]">Loading conversation…</p>
@@ -878,6 +914,54 @@ export function CoPilotDrawer({
                 {COPILOT_AI_DISCLAIMER}
               </p>
             </motion.div>
+            </div>
+            </div>
+            <AnimatePresence>
+              {isMobile && isConversationsSheetOpen && (
+                <>
+                  <motion.div
+                    className="absolute inset-0 z-10 bg-black/40"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setIsConversationsSheetOpen(false)}
+                  />
+                  <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Conversations"
+                    className="absolute bottom-0 inset-x-0 z-20 flex flex-col bg-[var(--background)] rounded-t-2xl border-t border-[var(--border)]"
+                    style={{ height: "60vh" }}
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  >
+                    <div className="flex justify-center pt-2 pb-1 shrink-0" aria-hidden>
+                      <div className="w-10 h-1 rounded-full bg-[var(--neutral-cool-300)]" />
+                    </div>
+                    <ThreadBrowser
+                      variant="fill"
+                      planId={planId}
+                      activeScope={activeScope}
+                      activeThreadId={activeThreadId}
+                      currentWorkspaceKey={workspaceKey}
+                      onSelectThread={(item) => {
+                        setIsConversationsSheetOpen(false);
+                        void handleSelectThread(item);
+                      }}
+                      onNewThread={(scope) => {
+                        setIsConversationsSheetOpen(false);
+                        handleNewThread(scope);
+                      }}
+                      onRenameThread={handleRenameThread}
+                      onDeleteThread={handleDeleteThread}
+                      refreshKey={browserRefreshKey}
+                    />
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </motion.aside>
         </motion.div>
       )}
