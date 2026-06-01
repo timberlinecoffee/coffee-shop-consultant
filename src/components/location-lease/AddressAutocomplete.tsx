@@ -175,7 +175,7 @@ export function AddressAutocomplete({
         />
         {loading && <Loader2 className="size-3.5 shrink-0 text-[var(--neutral-cool-600)] animate-spin" aria-hidden="true" />}
         <InfoTip label="Address">
-          Type a street address and pick a suggestion from the dropdown — for example, &ldquo;123 Main St, Portland, OR&rdquo;. Selecting a match locks in the exact coordinates so the AI can analyze foot traffic patterns, nearby businesses, neighborhood demographics, and transit access for this location.
+          Type a street address and pick a suggestion from the dropdown. For example, &ldquo;123 Main St, Portland, OR&rdquo;. Selecting a match locks in the exact coordinates so the AI can analyze foot traffic patterns, nearby businesses, neighborhood demographics, and transit access for this location.
         </InfoTip>
       </div>
 

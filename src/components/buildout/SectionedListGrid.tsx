@@ -150,7 +150,7 @@ const EQUIPMENT_COL_HINTS: Record<string, { label: string; text: string }> = {
   },
   unit_cost_cents: {
     label: "Unit Cost",
-    text: "Per-unit purchase or lease price. Enter your best estimate — refine it once you receive supplier quotes. Used to calculate section totals and your overall build-out budget.",
+    text: "Per-unit purchase or lease price. Enter your best estimate. Refine it once you receive supplier quotes. Used to calculate section totals and your overall build-out budget.",
   },
   useful_life_years: {
     label: "Useful Life",
