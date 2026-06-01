@@ -15,27 +15,6 @@ All Stripe configuration is stored in environment variables so price or key chan
 | `STRIPE_PRO_MONTHLY_PRICE_ID` | Pro plan, monthly ($199/mo) | `price_...` |
 | `STRIPE_PRO_ANNUAL_PRICE_ID` | Pro plan, annual ($1,599/year) | `price_...` |
 | `STRIPE_PAUSE_MONTHLY_PRICE_ID` | Pause plan, monthly ($2.99/mo) | `price_1TdIOcCzwciIL0hnXoGapjth` |
-| `STRIPE_CREDITS_SMALL_PRICE_ID` | Credit top-up, Small Pack — 25 credits, one-time ($12) | `price_...` |
-| `STRIPE_CREDITS_MEDIUM_PRICE_ID` | Credit top-up, Medium Pack — 100 credits, one-time ($39) | `price_...` |
-| `STRIPE_CREDITS_LARGE_PRICE_ID` | Credit top-up, Large Pack — 300 credits, one-time ($99) | `price_...` |
-
-## Credit top-up packs (TIM-1687)
-
-One-off credit purchases let an out-of-credit user resume AI use mid-month without upgrading tier. These are **one-time** prices (Stripe `mode: payment`), not subscriptions. The credit grant per pack lives in code (`src/lib/credits/packs.ts`) — the env vars carry only the Stripe price IDs, and the webhook resolves the grant from the pack key, never from Stripe price metadata. The dollar price provisioned in Stripe must match the `amountCents` in `packs.ts`.
-
-| Pack | Credits | Price | Env var |
-|---|---|---|---|
-| Small | 25 | $12 | `STRIPE_CREDITS_SMALL_PRICE_ID` |
-| Medium | 100 | $39 | `STRIPE_CREDITS_MEDIUM_PRICE_ID` |
-| Large | 300 | $99 | `STRIPE_CREDITS_LARGE_PRICE_ID` |
-
-Credits and prices are launch defaults flagged for product calibration (see TIM-1687). Provision the three one-time prices in Stripe (test mode today, per the mode note above) and add each ID to Vercel:
-
-```bash
-echo "price_..." | npx vercel env add STRIPE_CREDITS_SMALL_PRICE_ID development preview production
-echo "price_..." | npx vercel env add STRIPE_CREDITS_MEDIUM_PRICE_ID development preview production
-echo "price_..." | npx vercel env add STRIPE_CREDITS_LARGE_PRICE_ID development preview production
-```
 
 ## Configured price IDs — Pause plan (TIM-1542)
 
@@ -72,6 +51,18 @@ echo "price_1TdIOcCzwciIL0hnXoGapjth" | npx vercel env add STRIPE_PAUSE_MONTHLY_
 echo "price_1TdIOcCzwciIL0hnXoGapjth" | npx vercel env add STRIPE_PAUSE_MONTHLY_PRICE_ID production
 # When Stripe goes live: replace production value with live-mode price ID
 ```
+
+## Configured price IDs — Credit top-up packs (TIM-1703 / TIM-1687)
+
+Provisioned 2026-06-01 in **test mode** (`sk_test_…`) via `scripts/stripe-create-credit-packs.js`. One-time prices (`type=one_time`, no `recurring`). All three set in Vercel for Development, Preview, and Production. Same test-mode IDs apply to all envs until Stripe live mode is enabled (see mode note above).
+
+| Pack | Credits | Price | Env var | Price ID |
+|---|---|---|---|---|
+| Small | 25 | $12 | `STRIPE_CREDITS_SMALL_PRICE_ID` | `price_1TdZrbCzwciIL0hnpqDZOZhq` |
+| Medium | 100 | $39 | `STRIPE_CREDITS_MEDIUM_PRICE_ID` | `price_1TdZrcCzwciIL0hnVluh7lNP` |
+| Large | 300 | $99 | `STRIPE_CREDITS_LARGE_PRICE_ID` | `price_1TdZrdCzwciIL0hnVoTz3Qo1` |
+
+Credits/prices are launch defaults flagged for Trent/product calibration before live mode. When Stripe goes live, create live-mode prices and rotate the Production env values.
 
 ## Revising a price (e.g. Pro rate change)
 
