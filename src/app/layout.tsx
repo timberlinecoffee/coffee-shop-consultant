@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
+import { TrackingScripts } from "@/components/consent/TrackingScripts";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -32,6 +34,8 @@ export default function RootLayout({
         <div id="main-content" tabIndex={-1} className="flex flex-col flex-1">
           {children}
         </div>
+        <CookieConsentBanner />
+        <TrackingScripts />
         <Analytics />
       </body>
     </html>

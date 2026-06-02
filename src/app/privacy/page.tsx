@@ -6,7 +6,7 @@ export const metadata = {
   description: "Privacy Policy for Timberline Coffee School.",
 };
 
-const EFFECTIVE_DATE = "May 22, 2026";
+const EFFECTIVE_DATE = "June 2, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -55,6 +55,12 @@ export default function PrivacyPage() {
                 browser type, operating system, and referring URLs when you visit the Service.
               </li>
               <li>
+                <strong>Advertising and analytics identifiers.</strong> If you consent to analytics or
+                marketing cookies, we and our advertising partners may set cookies and similar
+                identifiers (such as the Meta Pixel and Google tags) to measure site usage and the
+                performance of our ads. We do not set these until you have given consent.
+              </li>
+              <li>
                 <strong>Communications.</strong> If you contact support or submit feedback, we retain
                 those communications.
               </li>
@@ -70,6 +76,10 @@ export default function PrivacyPage() {
               <li>Deliver and improve the Service and course content.</li>
               <li>Send transactional emails (receipts, password resets, account notices).</li>
               <li>Send marketing emails if you have opted in (you can opt out at any time).</li>
+              <li>
+                Measure and improve our advertising, where you have consented to marketing or analytics
+                cookies.
+              </li>
               <li>Detect and prevent fraud and abuse.</li>
               <li>Comply with legal obligations.</li>
             </ul>
@@ -94,6 +104,19 @@ export default function PrivacyPage() {
                 providers.
               </li>
               <li>
+                <strong>Meta (Facebook).</strong> If you consent to marketing cookies, we use the Meta
+                Pixel and the Meta Conversions API to measure the performance of our advertising. Any
+                personal data we send to Meta through the Conversions API (such as email or phone) is
+                SHA-256 hashed before it leaves our servers, so Meta does not receive it in readable
+                form. Meta&rsquo;s data policy is at facebook.com/privacy/policy.
+              </li>
+              <li>
+                <strong>Google.</strong> If you consent to analytics or marketing cookies, we use Google
+                Analytics 4 and Google Ads to understand site usage and measure ad performance. IP
+                addresses are anonymized for analytics. Google&rsquo;s privacy policy is at
+                policies.google.com/privacy.
+              </li>
+              <li>
                 <strong>Legal and safety.</strong> We may disclose information if required by law,
                 court order, or to protect the rights and safety of Timberline, our users, or the
                 public.
@@ -112,6 +135,13 @@ export default function PrivacyPage() {
               We retain your account information for as long as your account is active, plus up to 3
               years after closure for legal and audit purposes. Payment records are retained as required
               by law (typically 7 years). You may request deletion at any time (see Your Rights below).
+            </p>
+            <p className="mt-3">
+              Analytics and advertising data is retained only with your consent. Google Analytics user
+              and event data is retained for up to 14 months. Hashed identifiers sent to advertising
+              partners are transmitted for measurement and are not stored by us in a separate profile.
+              Meta and Google retain the data they receive according to their own retention policies.
+              Your consent choice is stored for up to 12 months, after which we ask again.
             </p>
           </section>
 
@@ -136,14 +166,29 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Cookies</h2>
-            <p>
-              We use cookies and similar technologies to keep you logged in, remember your preferences,
-              and analyze traffic. You can control cookies through your browser settings. Disabling
-              cookies may affect some Service features.
-            </p>
+            <h2 className="text-xl font-semibold mb-3">6. Cookies and Your Choices</h2>
+            <p>We group cookies and similar technologies into three categories:</p>
+            <ul className="list-none space-y-3 mt-3">
+              <li>
+                <strong>Necessary.</strong> Required to keep you logged in, remember your preferences,
+                and secure the Service. These are always on and cannot be turned off.
+              </li>
+              <li>
+                <strong>Analytics.</strong> Help us understand how the Service is used so we can improve
+                it (for example, Google Analytics). Set only with your consent.
+              </li>
+              <li>
+                <strong>Marketing.</strong> Let us measure the performance of our advertising (for
+                example, the Meta Pixel, the Meta Conversions API, and Google Ads). Set only with your
+                consent.
+              </li>
+            </ul>
             <p className="mt-3">
-              We do not use third-party advertising cookies or tracking pixels for ad targeting.
+              When you first visit, a banner lets you accept all cookies or choose necessary only. We do
+              not load analytics or marketing cookies until you have made a choice and given consent.
+              You can change your choice at any time by clearing the consent cookie in your browser or
+              by contacting us. You can also control cookies through your browser settings, though
+              disabling necessary cookies may affect some Service features.
             </p>
           </section>
 
