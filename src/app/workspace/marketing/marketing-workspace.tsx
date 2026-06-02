@@ -5,7 +5,6 @@
 // workspace_key='marketing'. AI seed pulls from concept + onboarding answers.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import {
   Megaphone,
   Check,
@@ -14,10 +13,15 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  Printer,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -199,14 +203,23 @@ export function MarketingWorkspace({
                 Marketing
               </h1>
             </div>
-            <Link
-              href="/workspace/marketing/print"
-              className="hidden sm:inline-block text-xs font-medium text-[var(--teal)] hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* TIM-1846: normalize the lone chrome affordance to the canonical
+                WorkspaceActionButton (secondary) so Marketing's header matches
+                Financials' "Export PDF" control instead of a bare text link. */}
+            <WorkspaceActionButton
+              className="hidden sm:flex"
+              onClick={() =>
+                window.open(
+                  "/workspace/marketing/print",
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+              title="Open a print-friendly view of your marketing plan"
             >
+              <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Print view
-            </Link>
+            </WorkspaceActionButton>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Plan the story, channels, and milestones that get the right people
