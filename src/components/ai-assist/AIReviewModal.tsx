@@ -614,7 +614,7 @@ export function AIReviewModal({
       ) : isCrossWorkspace ? (
         groups.map((g) => (
           <div key={g.label} className="space-y-3">
-            <p className="text-xs font-semibold text-[var(--dark-grey)] uppercase tracking-wide">
+            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
               {g.label}
             </p>
             {g.items.map(renderCard)}
