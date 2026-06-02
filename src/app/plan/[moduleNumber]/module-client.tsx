@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { LogoMark } from "@/app/_components/Logo";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { UpgradeGate } from "@/components/upgrade-gate";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -1388,10 +1389,8 @@ export function ModuleClient({
       <nav className="bg-white border-b border-grey-light px-6 py-4 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-teal rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">TCS</span>
-              </div>
+            <Link href="/dashboard" className="flex items-center gap-2" aria-label="Groundwork home">
+              <LogoMark variant="color" height={28} />
             </Link>
             <span className="text-neutral-500 text-sm">/</span>
             <Link href="/dashboard" className="text-sm text-neutral-500 hover:text-neutral-950 transition-colors hidden sm:block">

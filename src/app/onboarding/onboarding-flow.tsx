@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { LogoMark } from "@/app/_components/Logo";
 import { EMPTY_CONCEPT, type ConceptDocument } from "@/lib/concept";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
@@ -549,10 +550,8 @@ export function OnboardingFlow({
       <div className="flex flex-col w-full sm:max-w-[680px] bg-[var(--background)] min-h-screen sm:min-h-0 sm:rounded-2xl sm:shadow-lg sm:overflow-hidden">
       <header className="px-6 pt-6 pb-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center">
-              <span className="text-white text-xs font-bold">TCS</span>
-            </div>
+          <Link href="/" className="flex items-center gap-2" aria-label="Groundwork home">
+            <LogoMark variant="color" height={28} />
           </Link>
           <span className="text-xs text-[var(--dark-grey)]">
             Step {step + 1} of {totalSteps}

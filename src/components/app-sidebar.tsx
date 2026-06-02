@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { WorkspaceNavItem, NavIcon, WorkspaceCategory } from "@/lib/workspace-manifest";
+import { Logo, LogoMark } from "@/app/_components/Logo";
 import {
   WORKSPACE_CATEGORY_LABEL,
   WORKSPACE_CATEGORY_ORDER,
@@ -428,13 +429,11 @@ function SidebarContent({
           <Link
             href="/dashboard"
             ref={firstLinkRef}
-            title="Timberline"
+            title="Groundwork"
             className="flex items-center justify-center"
             onClick={onClose}
           >
-            <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">TCS</span>
-            </div>
+            <LogoMark variant="color" height={28} />
           </Link>
         ) : (
           <>
@@ -442,14 +441,10 @@ function SidebarContent({
               href="/dashboard"
               ref={firstLinkRef}
               className="flex items-center gap-2"
+              aria-label="Groundwork home"
               onClick={onClose}
             >
-              <div className="w-7 h-7 bg-[var(--teal)] rounded flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-bold">TCS</span>
-              </div>
-              <span className="text-sm font-semibold text-[var(--foreground)]">
-                Timberline
-              </span>
+              <Logo variant="color" height={28} />
             </Link>
             {onClose && (
               <button
