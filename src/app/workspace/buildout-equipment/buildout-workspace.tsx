@@ -18,6 +18,10 @@ import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPan
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
 import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
@@ -400,34 +404,22 @@ export function BuildoutEquipmentWorkspace({
           </div>
           <div className="flex items-center gap-3 flex-wrap shrink-0">
             {canEdit && (
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
-            >
-              <Settings2 size={12} aria-hidden="true" />
+            <WorkspaceActionButton onClick={() => setSettingsOpen(true)}>
+              <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Manage Stations
-            </button>
+            </WorkspaceActionButton>
           )}
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => setDescribeOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
-            >
-              <MessageSquare size={12} aria-hidden="true" />
+            <WorkspaceActionButton onClick={() => setDescribeOpen(true)}>
+              <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Describe your setup
-            </button>
+            </WorkspaceActionButton>
           )}
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
-            >
-              <FileSpreadsheet size={12} aria-hidden="true" />
+            <WorkspaceActionButton onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Import from spreadsheet
-            </button>
+            </WorkspaceActionButton>
           )}
           {/* View options: toggle recommendations and AI markings */}
           <div className="relative" ref={viewOptionsRef}>
@@ -476,15 +468,13 @@ export function BuildoutEquipmentWorkspace({
             onRetry={handleManualSave}
           />
           {canEdit && (
-            <button
-              type="button"
+            <WorkspaceActionButton
               onClick={handleManualSave}
               disabled={saveState.kind === "saving"}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
             >
-              <Save size={12} aria-hidden="true" />
+              <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Save
-            </button>
+            </WorkspaceActionButton>
           )}
           </div>
         </header>

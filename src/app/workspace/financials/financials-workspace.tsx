@@ -16,6 +16,10 @@ import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
+import {
   type MonthlyProjections,
   type FinancialProjections,
   type MonthlySlice,
@@ -2196,48 +2200,41 @@ export function FinancialsWorkspace({
               onRetry={handleManualSave}
             />
             {canEdit && (
-              <button
-                type="button"
+              <WorkspaceActionButton
+                variant="primary"
                 onClick={openWizard}
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-3 py-1.5 hover:bg-[var(--teal-deep)] transition-colors"
                 title="Walk through your forecast inputs step by step, with a hint on each field"
               >
-                <Compass size={12} aria-hidden="true" />
+                <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 Guided setup
-              </button>
+              </WorkspaceActionButton>
             )}
-            <button
-              type="button"
+            <WorkspaceActionButton
               onClick={() =>
                 window.location.assign("/api/workspaces/financials/export/pdf")
               }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
               title="Download financials as PDF (landscape monthly views)"
             >
-              <FileDown size={12} aria-hidden="true" />
+              <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Export PDF
-            </button>
-            <button
-              type="button"
+            </WorkspaceActionButton>
+            <WorkspaceActionButton
               onClick={() =>
                 window.location.assign("/api/workspaces/financials/export/xlsx")
               }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
               title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
             >
-              <Sheet size={12} aria-hidden="true" />
+              <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Export Excel
-            </button>
+            </WorkspaceActionButton>
             {canEdit && (
-              <button
-                type="button"
+              <WorkspaceActionButton
                 onClick={handleManualSave}
                 disabled={saveState.kind === "saving"}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
               >
-                <Save size={12} aria-hidden="true" />
+                <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 Save
-              </button>
+              </WorkspaceActionButton>
             )}
           </div>
         </header>
