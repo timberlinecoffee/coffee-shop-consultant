@@ -14,10 +14,12 @@ const EASE = [0.25, 0.46, 0.45, 0.94] as const;
    placed cleanly in the same right-column slot with the same entrance animation.
    Direct placement (matching prior main behavior) rather than the getAsset() manifest,
    which renders nothing until the recipe asset is registered.
-   TIM-1695: swapped to the taller portrait (2:3, 1024×1536) line-art variant so the
-   illustration fills the right-column slot vertically instead of reading as a thin
-   landscape band. Same canonical style, transparent background. */
-const HERO_ILLUSTRATION = "/images/illustrations/hero/hero-your-coffee-shop-tall.webp";
+   TIM-1866: interim revert to the board-approved original LANDSCAPE asset
+   (hero-your-coffee-shop.webp, the genuine gpt-image-1.5 render the board loves)
+   while the OpenAI-generated VERTICAL hero is regenerated. The rejected vector
+   Candidate A (TIM-1858) is pulled off prod. This is a temporary placeholder;
+   the portrait OpenAI render swaps back in once a fresh key is wired (TIM-1866 Step 2). */
+const HERO_ILLUSTRATION = "/images/illustrations/hero/hero-your-coffee-shop.webp";
 
 export default function HomepageHero() {
   return (
@@ -153,11 +155,11 @@ export default function HomepageHero() {
         >
           <Image
             src={HERO_ILLUSTRATION}
-            alt="Continuous line illustration of a coffee shop interior with a back-bar of stacked shelving, hanging pendant lamps, an espresso machine, pour-over station, and a trailing plant, drawn in off-white line art that floats on the Groundwork teal gradient."
-            width={1024}
-            height={1536}
+            alt="Continuous line illustration of a coffee shop interior with an espresso machine, pour-over station, plants, and a pendant lamp, drawn in off-white line art on Groundwork teal."
+            width={1536}
+            height={1024}
             priority
-            className="w-full h-auto max-w-[480px] mx-auto"
+            className="w-full h-auto"
             sizes="(min-width: 1024px) 50vw, 100vw"
           />
         </motion.div>
