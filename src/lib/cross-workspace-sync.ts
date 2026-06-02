@@ -131,7 +131,7 @@ export const FACT_LOCATIONS: FactLocation[] = [
     id: "opening_date:opening_month_plan",
     factId: "opening_date",
     workspaceKey: "opening_month_plan",
-    workspaceLabel: "Opening Month Plan",
+    workspaceLabel: "Launch Plan",
     locationLabel: "Target launch date",
     writable: true,
   },

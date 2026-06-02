@@ -249,7 +249,7 @@ export function DepreciationTab({
               href="/workspace/buildout-equipment"
               className="text-xs font-medium text-[var(--teal)] hover:underline"
             >
-              Edit in Build-Out &amp; Equipment →
+              Edit in Equipment &amp; Supplies →
             </a>
           </div>
           <div className="overflow-x-auto">
@@ -321,7 +321,7 @@ export function DepreciationTab({
               href="/workspace/buildout-equipment"
               className="font-medium text-[var(--teal)] hover:underline"
             >
-              add equipment in Build-Out &amp; Equipment →
+              add equipment in Equipment &amp; Supplies →
             </a>
           </p>
         </div>
