@@ -44,6 +44,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { recipeIdForItemName } from "@/lib/illustrations/recipes";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
@@ -1117,26 +1118,24 @@ function RecipeTabContent({
       {/* AI generators */}
       {canEdit && (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
+          <WorkspaceActionButton
+            variant="secondary"
             onClick={onSuggestRecipe}
             disabled={recipeLoading || noName}
             title={noName ? "Name the item first" : "Suggest a starting recipe with AI"}
-            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {recipeLoading ? "Building recipe…" : "Suggest recipe with AI"}
-          </button>
-          <button
-            type="button"
+          </WorkspaceActionButton>
+          <WorkspaceActionButton
+            variant="secondary"
             onClick={onSuggestPrepSteps}
             disabled={prepStepsLoading || noName}
             title={noName ? "Name the item first" : "Suggest preparation steps with AI"}
-            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {prepStepsLoading ? "Writing steps…" : "Suggest prep steps with AI"}
-          </button>
+          </WorkspaceActionButton>
         </div>
       )}
       {(recipeError || prepStepsError) && (
@@ -1412,16 +1411,15 @@ function CostOfGoodsTabContent({
           <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
             AI Price Suggestion
           </h3>
-          <button
-            type="button"
+          <WorkspaceActionButton
+            variant="primary"
             onClick={onSuggestPrice}
             disabled={priceLoading || effectiveCogs <= 0}
             title={effectiveCogs <= 0 ? "Add a recipe or manual COGS first" : "Suggest a retail price"}
-            className="flex items-center gap-2 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {priceLoading ? "Thinking…" : "Suggest retail price"}
-          </button>
+          </WorkspaceActionButton>
         </section>
       )}
 
@@ -1431,16 +1429,15 @@ function CostOfGoodsTabContent({
           <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
             Local Benchmark
           </h3>
-          <button
-            type="button"
+          <WorkspaceActionButton
+            variant="secondary"
             onClick={onBenchmarkPrice}
             disabled={benchmarkLoading || noPriceYet}
             title={noPriceYet ? "Set a selling price first" : "Benchmark against cafés in my area"}
-            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {benchmarkLoading ? "Reading local market…" : "Benchmark against cafés in my area"}
-          </button>
+          </WorkspaceActionButton>
           {benchmarkError && (
             <p className="text-[11px] text-[var(--error-accent)] mt-1.5">{benchmarkError}</p>
           )}
