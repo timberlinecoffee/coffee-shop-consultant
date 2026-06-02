@@ -2171,58 +2171,22 @@ export function FinancialsWorkspace({
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-6 pt-8 pb-16">
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <BarChart2 className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Financials
-            </h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Plan your startup costs, forecast revenue, and project Year 1–5 performance.
-          </p>
-        </header>
-
-        {showReviewBanner && (
-          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-            <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800">
-                Your concept or menu has changed
-              </p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                Review your forecast inputs to make sure they still reflect your plan.
-              </p>
+        {/* TIM-1745: action toolbar (saved-status + Guided setup / Export PDF /
+            Export Excel / Save) lives top-right on the same band as the title,
+            relocated out of the row beneath the tabs. */}
+        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart2 className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+                Financials
+              </h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setReviewDismissed(true)}
-              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
-              aria-label="Dismiss"
-            >
-              <X size={14} />
-            </button>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Plan your startup costs, forecast revenue, and project Year 1–5 performance.
+            </p>
           </div>
-        )}
-
-        <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
-          <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveTab(t.id)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                  activeTab === t.id
-                    ? "bg-[var(--teal)] text-white"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap shrink-0">
             <SaveIndicator
               saving={saveState.kind === "saving"}
               savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
@@ -2275,6 +2239,49 @@ export function FinancialsWorkspace({
               </button>
             )}
           </div>
+        </header>
+
+        {showReviewBanner && (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800">
+                Your concept or menu has changed
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Review your forecast inputs to make sure they still reflect your plan.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReviewDismissed(true)}
+              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
+              aria-label="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* TIM-1745: tabs sit flush above the content; the action toolbar that
+            used to share this row now lives in the page header (top-right). */}
+        <div className="mb-5">
+          <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+                  activeTab === t.id
+                    ? "bg-[var(--teal)] text-white"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
         </div>
 
         {activeTab === "forecast" && (
