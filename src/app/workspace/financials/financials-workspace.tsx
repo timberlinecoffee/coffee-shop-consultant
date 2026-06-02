@@ -42,6 +42,7 @@ import {
   applyForwardMonthIndices,
   manualOverrideCountsByLine,
   computeMenuBlendedCogsPct,
+  buildMenuCogsBreakdown,
   type ApplyForwardRange,
 } from "@/lib/financial-projection";
 import { createClient } from "@/lib/supabase/client";
@@ -1733,40 +1734,17 @@ export function FinancialsWorkspace({
     setIsRefreshingMenu(true);
     try {
       const supabase = createClient();
+      // TIM-1799: include expected_popularity and recompute via the shared
+      // helpers so an in-app refresh matches the server load exactly (shared-read,
+      // no stale snapshot) and surfaces every priced item incl. Beverages.
       const { data } = await supabase
         .from("menu_items_with_cogs")
-        .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
+        .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
         .eq("plan_id", planId)
         .eq("archived", false);
       if (data) {
         setLiveMenuBlendedCogsPct(computeMenuBlendedCogsPct(data));
-        const items = data
-          .filter(
-            (it) =>
-              !it.archived &&
-              typeof it.price_cents === "number" &&
-              (it.price_cents as number) > 0 &&
-              typeof it.expected_mix_pct === "number" &&
-              (it.expected_mix_pct as number) > 0
-          )
-          .map((it) => {
-            const effectiveCogs =
-              typeof it.computed_cogs_cents === "number"
-                ? it.computed_cogs_cents
-                : typeof it.cogs_cents === "number"
-                ? it.cogs_cents
-                : 0;
-            return {
-              name: it.name as string,
-              price_cents: it.price_cents as number,
-              cogs_cents: effectiveCogs as number,
-              expected_mix_pct: it.expected_mix_pct as number,
-              cogs_pct: (it.price_cents as number)
-                ? ((effectiveCogs as number) / (it.price_cents as number)) * 100
-                : 0,
-            };
-          });
-        setLiveMenuCogsItems(items);
+        setLiveMenuCogsItems(buildMenuCogsBreakdown(data));
       }
     } catch {
       // silently ignore — stale data is better than an error state
