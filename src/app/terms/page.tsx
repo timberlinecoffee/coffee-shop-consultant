@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 
 export const metadata = {
   title: "Terms of Service | Timberline Coffee School",
@@ -179,6 +180,7 @@ export default function TermsPage() {
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/subscription-terms" className="hover:text-white transition-colors">Subscription Terms</Link>
+            <CookiePreferencesLink className="hover:text-white transition-colors" />
           </div>
         </div>
       </footer>

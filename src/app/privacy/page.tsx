@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "../_components/Logo";
+import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 
 export const metadata = {
   title: "Privacy Policy | Timberline Coffee School",
@@ -28,9 +29,10 @@ export default function PrivacyPage() {
 
         <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
-            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) is committed
-            to protecting your privacy. This Privacy Policy explains what information we collect, how we
-            use it, and your rights regarding that information.
+            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the
+            Groundwork platform at groundwork.coffee. We are committed to protecting your privacy. This
+            Privacy Policy explains what information we collect, how we use it, and your rights regarding
+            that information.
           </p>
 
           <section>
@@ -86,7 +88,119 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">3. Information We Share</h2>
+            <h2 className="text-xl font-semibold mb-3">3. Legal Basis for Processing (EU/EEA/UK visitors)</h2>
+            <p>
+              For visitors in the European Economic Area (EEA) or United Kingdom (UK), applicable
+              data-protection law requires us to state a legal basis for each processing activity. The
+              relevant bases are:
+            </p>
+            <div className="overflow-x-auto mt-3">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="py-2 pr-4 font-semibold align-top">Processing activity</th>
+                    <th className="py-2 font-semibold align-top">Legal basis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Creating and managing your account</td>
+                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Processing subscription payments</td>
+                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Sending transactional emails (receipts, resets, notices)</td>
+                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Delivering and improving the Service and course content</td>
+                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in providing a working, improving product)</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Analytics cookies (e.g. Google Analytics 4)</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Marketing / advertising cookies and CAPI (Meta, Google Ads)</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Hashed-PII sharing with Meta / Google for ad measurement</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Sending marketing emails</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Fraud prevention and security</td>
+                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in protecting the Service and users)</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Complying with legal obligations</td>
+                    <td className="py-2 align-top">Legal obligation -- Art. 6(1)(c) GDPR</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3">
+              Where we rely on legitimate interests, you have the right to object to that processing (see
+              Your Rights).
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">4. International Data Transfers (EU/EEA/UK visitors)</h2>
+            <p>
+              Timberline Coffee School is operated in the United States. When you use the Service, your
+              personal data may be transferred to and processed in the United States.
+            </p>
+            <p className="mt-3">
+              We share certain data with the following US-based third parties and rely on the following
+              transfer mechanisms for transfers from the EEA or UK:
+            </p>
+            <div className="overflow-x-auto mt-3">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="py-2 pr-4 font-semibold align-top">Recipient</th>
+                    <th className="py-2 font-semibold align-top">Transfer mechanism</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Meta Platforms, Inc.</strong></td>
+                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Google LLC</strong></td>
+                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Stripe, Inc.</strong></td>
+                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Supabase</strong></td>
+                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) -- see supabase.com/privacy</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3">
+              You may request a copy of the relevant transfer safeguards by contacting us at{" "}
+              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
+                privacy@timberlinecoffeeschool.com
+              </a>
+              .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">5. Information We Share</h2>
             <p>We do not sell your personal information. We share it only as follows:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -130,7 +244,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">4. Data Retention</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Data Retention</h2>
             <p>
               We retain your account information for as long as your account is active, plus up to 3
               years after closure for legal and audit purposes. Payment records are retained as required
@@ -146,7 +260,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">5. Your Rights</h2>
+            <h2 className="text-xl font-semibold mb-3">7. Your Rights</h2>
             <p>Depending on where you live, you may have rights to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Access the personal information we hold about you.</li>
@@ -163,10 +277,37 @@ export default function PrivacyPage() {
               </a>
               . We will respond within 30 days.
             </p>
+            <p className="mt-4 font-semibold">EEA/UK visitors -- additional rights:</p>
+            <p className="mt-2">If you are located in the EEA or UK, you also have the right to:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>
+                <strong>Lodge a complaint</strong> with your local data-protection supervisory authority.
+                In the EU, you can find your authority at{" "}
+                <a
+                  href="https://edpb.europa.eu/about-edpb/board/members_en"
+                  className="text-[var(--teal)] underline"
+                >
+                  edpb.europa.eu/about-edpb/board/members_en
+                </a>
+                . In the UK, the supervisory authority is the Information Commissioner&rsquo;s Office (
+                <a href="https://ico.org.uk" className="text-[var(--teal)] underline">
+                  ico.org.uk
+                </a>
+                ).
+              </li>
+              <li>
+                <strong>Withdraw consent</strong> at any time where we process your data on the basis of
+                consent. Withdrawal does not affect the lawfulness of processing carried out before
+                withdrawal. To withdraw cookie consent, use the <strong>Cookie Preferences</strong> link
+                in the site footer, or clear the <code>gw_consent</code> cookie in your browser settings.
+                To withdraw marketing email consent, use the unsubscribe link in any marketing email or
+                contact us.
+              </li>
+            </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Cookies and Your Choices</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Cookies and Your Choices</h2>
             <p>We group cookies and similar technologies into three categories:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -186,14 +327,15 @@ export default function PrivacyPage() {
             <p className="mt-3">
               When you first visit, a banner lets you accept all cookies or choose necessary only. We do
               not load analytics or marketing cookies until you have made a choice and given consent.
-              You can change your choice at any time by clearing the consent cookie in your browser or
-              by contacting us. You can also control cookies through your browser settings, though
-              disabling necessary cookies may affect some Service features.
+              You can change your choice at any time by clicking the <strong>Cookie Preferences</strong>{" "}
+              link in the site footer of any page, which will reopen the consent banner. You can also
+              clear the <code>gw_consent</code> cookie in your browser settings, or contact us. Disabling
+              necessary cookies through your browser may affect some Service features.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Security</h2>
             <p>
               We use industry-standard security measures including encryption in transit (TLS) and at
               rest, access controls, and regular security reviews. No method of transmission over the
@@ -202,7 +344,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">10. Children</h2>
             <p>
               The Service is not directed to children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected such information,
@@ -211,7 +353,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. If we make material changes, we will
               notify you by email at least 14 days before the changes take effect.
@@ -219,7 +361,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">12. Contact</h2>
             <p>
               Timberline Coffee School
               <br />
@@ -239,6 +381,7 @@ export default function PrivacyPage() {
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/subscription-terms" className="hover:text-white transition-colors">Subscription Terms</Link>
+            <CookiePreferencesLink className="hover:text-white transition-colors" />
           </div>
         </div>
       </footer>

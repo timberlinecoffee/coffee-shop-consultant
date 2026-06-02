@@ -105,6 +105,20 @@ export function rejectNonEssential(): ConsentState {
   return writeConsent(NECESSARY_ONLY);
 }
 
+/**
+ * Withdraw a prior decision (GDPR Art. 7(3): withdrawal as easy as consent).
+ * Deletes the consent cookie and notifies subscribers, which re-shows the banner
+ * (decided returns to false) and stops gated tracking from re-firing. Wired to the
+ * "Cookie Preferences" footer link.
+ */
+export function resetConsent(): void {
+  if (typeof document === "undefined") return;
+  const secure =
+    typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${CONSENT_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure}`;
+  window.dispatchEvent(new CustomEvent(CONSENT_CHANGE_EVENT, { detail: null }));
+}
+
 /** Subscribe to consent changes. Returns an unsubscribe function. */
 export function subscribeConsent(cb: () => void): () => void {
   if (typeof window === "undefined") return () => {};

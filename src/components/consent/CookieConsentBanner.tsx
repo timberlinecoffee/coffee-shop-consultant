@@ -40,7 +40,7 @@ export function CookieConsentBanner() {
           <Button variant="outline" size="lg" onClick={rejectNonEssential}>
             Necessary Only
           </Button>
-          <Button variant="default" size="lg" onClick={acceptAll}>
+          <Button variant="outline" size="lg" onClick={acceptAll}>
             Accept All
           </Button>
         </div>
