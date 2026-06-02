@@ -12,6 +12,7 @@ import {
 import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { DashboardHero } from "./_components/dashboard-hero";
 import { WorkspaceNav } from "./_components/workspace-nav";
+import { DashboardCoPilot } from "./_components/dashboard-copilot";
 import { Logo } from "../_components/Logo";
 
 export const dynamic = 'force-dynamic';
@@ -140,6 +141,8 @@ export default async function DashboardPage() {
         <ConceptUnlockNote show={showUnlockNote} />
         <WorkspaceNav items={navItems} />
       </div>
+      {/* TIM-1788: Scout reachable from the dashboard (no suite open). */}
+      {plan?.id && <DashboardCoPilot planId={plan.id} />}
       <BottomTabBar />
     </div>
   );

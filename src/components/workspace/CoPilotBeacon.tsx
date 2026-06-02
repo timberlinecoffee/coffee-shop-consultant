@@ -9,9 +9,14 @@ import { COPILOT_NAME } from "@/lib/copilot/branding";
 
 export function CoPilotBeacon() {
   const pathname = usePathname();
-  const isWorkspacePage = pathname?.startsWith("/workspace/");
+  // TIM-1788: also surface the single desktop entry point on the post-login
+  // dashboard (no suite open), the first screen users land on. The dashboard
+  // mounts its own CoPilotDrawer (with showDesktopLauncher=false) so this
+  // Beacon stays the lone desktop launcher there too — no duplicate overlap.
+  const isCoPilotPage =
+    pathname?.startsWith("/workspace/") || pathname?.startsWith("/dashboard");
 
-  if (!isWorkspacePage) return null;
+  if (!isCoPilotPage) return null;
 
   function open() {
     window.dispatchEvent(new CustomEvent("workspace-copilot-open"));
