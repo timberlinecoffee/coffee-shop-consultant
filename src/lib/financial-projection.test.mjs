@@ -1696,3 +1696,105 @@ test("TIM-1310: manualOverrideCountsByLine handles empty/undefined input", () =>
   assert.deepEqual(manualOverrideCountsByLine(undefined), {});
   assert.deepEqual(manualOverrideCountsByLine([]), {});
 });
+
+// ── TIM-1762: per-month loan P&I split — interest→P&L + draw timing ───────────
+
+test("TIM-1762: loan interest lands on the P&L and matches the amortization split", () => {
+  const mp = defaultMonthlyProjections();
+  mp.funding_sources = [
+    { id: "f1", kind: "founder_equity", label: "Founder", amount_cents: 5000000 },
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6 },
+  ];
+  const slices = computeMonthlySlices(mp, EQUIP);
+  const m1 = slices[0];
+  // 6% APR → 0.5%/mo on a $60,000 opening balance = $300 interest in month 1.
+  assert.equal(m1.loan_interest_cents, 30000);
+  // The P&L Interest Expense line now reflects the loan interest (no manual line).
+  assert.equal(m1.interest_cents, m1.loan_interest_cents);
+  // Interest reduces pretax income (structural identity).
+  assert.equal(m1.income_before_taxes_cents, m1.ebit_cents - m1.interest_cents);
+  // As principal amortizes, the monthly interest portion shrinks.
+  assert.ok(slices[11].loan_interest_cents < m1.loan_interest_cents);
+});
+
+test("TIM-1762: loan interest reduces cash (full payment leaves the business)", () => {
+  const base = defaultMonthlyProjections();
+  base.funding_sources = [
+    { id: "f1", kind: "founder_equity", label: "Founder", amount_cents: 5000000 },
+  ];
+  const withLoan = defaultMonthlyProjections();
+  // Loan amount equals the founder cash it replaces, so opening cash is identical.
+  withLoan.funding_sources = [
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 5000000, term_months: 60, annual_rate_pct: 6 },
+  ];
+  const a = computeMonthlySlices(base, EQUIP)[0];
+  const b = computeMonthlySlices(withLoan, EQUIP)[0];
+  // Opening cash matches (equity vs loan of equal size), but the loan plan pays
+  // out the first month's full payment = principal + interest, so its month-1
+  // net cash is lower by exactly that payment.
+  const payment = b.loan_repayment_cents + b.loan_interest_cents;
+  assert.ok(payment > 0);
+  assert.equal(a.net_cash_cents - b.net_cash_cents, payment);
+});
+
+test("TIM-1762: principal (not full payment) reduces the loan liability", () => {
+  const mp = defaultMonthlyProjections();
+  mp.funding_sources = [
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6 },
+  ];
+  const m1 = computeMonthlySlices(mp, EQUIP)[0];
+  // Liability falls by principal only — interest never touches the balance.
+  assert.equal(m1.long_term_debt_cents, 6000000 - m1.loan_repayment_cents);
+});
+
+test("TIM-1762: a 5-year loan drawn in month 3 — draw inflow, then P&I thereafter", () => {
+  const mp = defaultMonthlyProjections();
+  mp.funding_sources = [
+    { id: "f1", kind: "founder_equity", label: "Founder", amount_cents: 8000000 },
+    { id: "l1", kind: "loan", label: "Expansion", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6, draw_month: 3 },
+  ];
+  const slices = computeMonthlySlices(mp, EQUIP);
+  // Before the draw: the loan is off the books entirely.
+  for (const m of [slices[0], slices[1]]) {
+    assert.equal(m.long_term_debt_cents, 0);
+    assert.equal(m.loan_interest_cents, 0);
+    assert.equal(m.loan_repayment_cents, 0);
+    assert.equal(m.loan_draw_cents, 0);
+  }
+  // Draw month (3): proceeds arrive as a financing inflow, liability appears,
+  // and no payment is made yet.
+  const m3 = slices[2];
+  assert.equal(m3.loan_draw_cents, 6000000);
+  assert.equal(m3.long_term_debt_cents, 6000000);
+  assert.equal(m3.loan_repayment_cents, 0);
+  assert.equal(m3.loan_interest_cents, 0);
+  // Thereafter: P&I split — interest on the P&L, principal paying down the loan.
+  const m4 = slices[3];
+  assert.equal(m4.loan_interest_cents, 30000); // 0.5%/mo on $60,000
+  assert.equal(m4.interest_cents, m4.loan_interest_cents);
+  assert.ok(m4.loan_repayment_cents > 0);
+  assert.ok(m4.long_term_debt_cents < 6000000);
+  // Balance-sheet identity holds across the draw.
+  for (const s of slices) {
+    const gap = Math.abs(s.total_assets_cents - s.total_liabilities_and_equity_cents);
+    assert.ok(gap <= 2, `A=L+E within rounding at month ${s.month_index} (gap ${gap})`);
+  }
+});
+
+test("TIM-1762: a deferred-draw loan does not inflate opening cash", () => {
+  const atOpen = defaultMonthlyProjections();
+  atOpen.funding_sources = [
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6, draw_month: 1 },
+  ];
+  const deferred = defaultMonthlyProjections();
+  deferred.funding_sources = [
+    { id: "l1", kind: "loan", label: "Bank", amount_cents: 6000000, term_months: 60, annual_rate_pct: 6, draw_month: 4 },
+  ];
+  const open1 = computeMonthlySlices(atOpen, EQUIP)[0];
+  const def1 = computeMonthlySlices(deferred, EQUIP)[0];
+  // The deferred loan's $60,000 is not yet in the business at month 1; the
+  // at-open loan has it in opening cash but already paid its first month's
+  // principal + interest. So the gap is the proceeds less that first payment.
+  const firstPayment = open1.loan_repayment_cents + open1.loan_interest_cents;
+  assert.equal(open1.cash_cents - def1.cash_cents, 6000000 - firstPayment);
+});

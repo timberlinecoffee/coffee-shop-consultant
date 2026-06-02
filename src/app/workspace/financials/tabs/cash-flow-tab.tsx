@@ -156,13 +156,15 @@ function deriveCF(data: Partial<MonthlySlice>) {
   const dInv = data.delta_inventory_cents ?? 0;
   const dAp = data.delta_ap_cents ?? 0;
   const loan_rep = data.loan_repayment_cents ?? 0;
+  const loan_draw = data.loan_draw_cents ?? 0;
   const capex = data.capex_cents ?? 0;
   const draws = data.owner_draws_cents ?? 0;
   const contributions = data.owner_contributions_cents ?? 0;
 
   const net_cash_operating = ni + dep - dAr - dInv + dAp;
   const net_cash_investing = -capex;
-  const net_cash_financing = -loan_rep - draws + contributions;
+  // TIM-1762: loan proceeds are a financing inflow in the month a loan is drawn.
+  const net_cash_financing = loan_draw - loan_rep - draws + contributions;
   const net_change = net_cash_operating + net_cash_investing + net_cash_financing;
   const ending_cash = data.cash_cents ?? 0;
   const beginning_cash = ending_cash - net_change;
@@ -176,6 +178,7 @@ function deriveCF(data: Partial<MonthlySlice>) {
     capex,
     net_cash_investing,
     loan_repayment: loan_rep,
+    loan_draw,
     owner_draws: draws,
     owner_contributions: contributions,
     net_cash_financing,
@@ -227,6 +230,10 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
     cfCols.map((c) => c[key] as number);
 
   const colCount = columns.length;
+  // TIM-1762: only surface the Loan Proceeds row when a loan is actually drawn
+  // in the displayed period, so plans that fund every loan at opening are
+  // unchanged.
+  const hasLoanDraws = valsArr("loan_draw").some((v) => v > 0);
 
   // Build chart data: one row per column. Each row holds the per-section flows
   // plus ending cash. Operating positive, investing and financing typically
@@ -343,6 +350,9 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
 
             <DividerRow cols={colCount} />
             <SectionHeader label="Financing Activities" colCount={colCount} />
+            {hasLoanDraws && (
+              <CFRow currencyCode={currencyCode} label="Loan Proceeds (Draws)" values={valsArr("loan_draw")} indent />
+            )}
             <CFRow currencyCode={currencyCode} label="Loan Repayments" values={valsArr("loan_repayment").map((v) => -v)} indent negative />
             <CFRow currencyCode={currencyCode} label="Owner Draws" values={valsArr("owner_draws").map((v) => -v)} indent negative />
             <CFRow currencyCode={currencyCode} label="Owner Contributions" values={valsArr("owner_contributions")} indent />
@@ -391,18 +401,14 @@ function LoanAmortizationSchedule({
   if (totalPrincipal === 0 && totalInterest === 0) return null;
 
   const yearSlices = slices.filter((sl) => sl.year === year);
-  // Beginning balance for each month = ending balance of prior month
-  let runningBalance = 0;
-  const startOfYearIdx = (year - 1) * 12;
-  // Find the very first long_term_debt as the original loan amount: walk back
-  // from the first non-zero slice + add its first principal.
-  const firstNonZero = slices.find((s) => s.long_term_debt_cents > 0);
-  const originalLoan = firstNonZero
-    ? firstNonZero.long_term_debt_cents + firstNonZero.loan_repayment_cents
-    : 0;
-  runningBalance = year === 1
-    ? originalLoan
-    : (slices[startOfYearIdx - 1]?.long_term_debt_cents ?? originalLoan);
+  // TIM-1762: beginning balance is derived per-row from the slice itself, which
+  // is draw-aware. The balance identity for any month is
+  //   ending = beginning + draw − principal  ⇒  beginning = ending − draw + principal
+  // so a month before a loan is drawn reads 0, the draw month opens at 0 and
+  // ends at the full principal, and every later month opens where the prior one
+  // closed. No fragile back-walk to infer the original loan amount.
+  const beginningFor = (s: MonthlySlice) =>
+    s.long_term_debt_cents - (s.loan_draw_cents ?? 0) + s.loan_repayment_cents;
 
   return (
     <div className="mt-4 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
@@ -429,9 +435,8 @@ function LoanAmortizationSchedule({
           </thead>
           <tbody className="divide-y divide-[var(--neutral-cool-100)]">
             {yearSlices.map((s, i) => {
-              const begin = runningBalance;
+              const begin = beginningFor(s);
               const ending = s.long_term_debt_cents;
-              runningBalance = ending;
               const payment = s.loan_repayment_cents + s.loan_interest_cents;
               return (
                 <tr key={s.month_index}>

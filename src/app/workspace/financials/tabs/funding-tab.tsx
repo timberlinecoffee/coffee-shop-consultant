@@ -23,7 +23,7 @@ const KIND_META: Record<FundingKind, { label: string; hint: string }> = {
   },
   loan: {
     label: "Loans",
-    hint: "Bank or SBA loans. Each line amortizes independently — the monthly principal payment shows up on Cash Flow as a financing outflow.",
+    hint: "Bank or SBA loans. Each line amortizes independently. The principal pays down the loan on Cash Flow and the Balance Sheet, while the interest portion lands on the P&L as an expense. Set a draw month to time the proceeds to a later phase.",
   },
   investor_equity: {
     label: "Investor Equity",
@@ -148,6 +148,21 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
                 disabled={!canEdit}
                 onChange={(e) =>
                   onChange({ ...line, annual_rate_pct: Math.max(0, parseFloat(e.target.value) || 0) })
+                }
+              />
+            </div>
+            <div className="w-[110px]">
+              <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Draw Month</label>
+              <NumericInput
+                className={`${inputCls} w-full`}
+                type="number"
+                min={1}
+                max={60}
+                step={1}
+                value={line.draw_month ?? 1}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  onChange({ ...line, draw_month: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)) })
                 }
               />
             </div>
@@ -412,8 +427,8 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
           {loanTotal > 0 && (
             <p>
               Total monthly loan payments add up to <strong>{fmt(totalMonthlyLoanPayment, currencyCode)}</strong>.
-              That outflow starts month one — well before steady revenue. Make sure the opening cash buffer covers
-              at least three months of it.
+              Repayment starts the month after each loan is drawn, often well before steady revenue. Make sure the
+              opening cash buffer covers at least three months of it.
             </p>
           )}
           {investorOwnership > 0 && (

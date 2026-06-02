@@ -110,6 +110,12 @@ export interface FundingSourceLine {
   // Loans only — required when kind === "loan".
   term_months?: number;
   annual_rate_pct?: number;
+  // TIM-1762: month the loan is drawn (1-based, absolute). <= 1 (or unset) means
+  // the proceeds land in opening cash at month 1, as before. > 1 means the
+  // principal arrives as a financing inflow in that month and the first P&I
+  // payment falls the month after — so a loan can be timed to a later build-out
+  // or expansion phase instead of all funding hitting day one.
+  draw_month?: number;
   // Investor equity only.
   pct_ownership?: number;
   // Grants / Other.
@@ -666,6 +672,11 @@ function normalizeFundingSource(raw: unknown, fallbackId: string): FundingSource
   if (kind === "loan") {
     line.term_months = typeof r.term_months === "number" && r.term_months > 0 ? Math.round(r.term_months) : 60;
     line.annual_rate_pct = typeof r.annual_rate_pct === "number" && r.annual_rate_pct >= 0 ? r.annual_rate_pct : 0;
+    // TIM-1762: draw month (1-based). Clamp to the 60-month horizon; default 1.
+    line.draw_month =
+      typeof r.draw_month === "number" && r.draw_month > 1
+        ? Math.min(60, Math.round(r.draw_month))
+        : 1;
   } else if (kind === "investor_equity") {
     line.pct_ownership = typeof r.pct_ownership === "number" ? Math.max(0, Math.min(100, r.pct_ownership)) : 0;
   }
@@ -1526,6 +1537,151 @@ function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number
   return Math.round(line.value);
 }
 
+// ── TIM-1762: per-loan amortization schedule (single source of truth) ────────
+// One schedule feeds both compute passes so the principal/interest split can
+// never drift between the P&L (which needs interest as an expense) and the
+// cash-flow / balance-sheet statements (which need principal for financing
+// outflow and the ending balance for the liability). A loan drawn after month 1
+// sits off the books until its draw month: no cash, no liability, no payment.
+// In the draw month the principal arrives as a financing inflow; the first P&I
+// payment falls the month after.
+export interface LoanComputeState {
+  drawMonth: number; // 1-based; <= 1 means drawn into opening cash at month 1
+  principalCents: number;
+  monthlyRate: number; // periodic (monthly) rate
+  monthlyPaymentCents: number;
+}
+
+export interface LoanScheduleMonth {
+  drawInflowCents: number;
+  interestCents: number;
+  principalCents: number;
+  paymentCents: number;
+  endingBalanceCents: number;
+}
+
+export interface LoanSchedule {
+  // Aggregates summed across every loan, indexed by absolute month (1..horizon).
+  interestByMonth: number[];
+  principalByMonth: number[];
+  drawInflowByMonth: number[];
+  endingBalanceByMonth: number[];
+  // Opening-cash draws (drawMonth <= 1) — principal that seeds opening cash.
+  openingDrawTotalCents: number;
+  // Per-loan month-by-month rows, for the amortization view.
+  perLoan: LoanScheduleMonth[][];
+}
+
+export function loanMonthlyPaymentCentsFor(
+  principalCents: number,
+  monthlyRate: number,
+  termMonths: number
+): number {
+  const n = Math.max(0, Math.round(termMonths));
+  if (principalCents <= 0 || n <= 0) return 0;
+  if (monthlyRate <= 0) return Math.round(principalCents / n);
+  return Math.round(
+    (principalCents * monthlyRate * Math.pow(1 + monthlyRate, n)) /
+      (Math.pow(1 + monthlyRate, n) - 1)
+  );
+}
+
+// Build loan states from funding_sources (the source of truth since TIM-1122).
+// `legacy` is the pre-1122 single-loan fallback used only when no funding_sources
+// carry a loan (synthetic / direct-inputs callers); it always draws at month 1.
+export function buildLoanStates(
+  mp: MonthlyProjections,
+  legacy?: { amount_cents: number; term_months: number; annual_rate_pct: number }
+): LoanComputeState[] {
+  const states: LoanComputeState[] = [];
+  for (const s of mp.funding_sources ?? []) {
+    if (s.kind !== "loan" || !((s.amount_cents || 0) > 0)) continue;
+    const monthlyRate = ((s.annual_rate_pct ?? 0) / 100) / 12;
+    const term = Math.max(1, s.term_months ?? 0);
+    states.push({
+      drawMonth: Math.max(1, Math.round(s.draw_month ?? 1)),
+      principalCents: s.amount_cents,
+      monthlyRate,
+      monthlyPaymentCents: loanMonthlyPaymentCentsFor(s.amount_cents, monthlyRate, term),
+    });
+  }
+  if (states.length === 0 && legacy && legacy.amount_cents > 0 && legacy.term_months > 0) {
+    const monthlyRate = ((legacy.annual_rate_pct || 0) / 100) / 12;
+    states.push({
+      drawMonth: 1,
+      principalCents: legacy.amount_cents,
+      monthlyRate,
+      monthlyPaymentCents: loanMonthlyPaymentCentsFor(
+        legacy.amount_cents,
+        monthlyRate,
+        legacy.term_months
+      ),
+    });
+  }
+  return states;
+}
+
+export function computeLoanSchedule(
+  states: LoanComputeState[],
+  horizon = 60
+): LoanSchedule {
+  const interestByMonth = new Array(horizon).fill(0);
+  const principalByMonth = new Array(horizon).fill(0);
+  const drawInflowByMonth = new Array(horizon).fill(0);
+  const endingBalanceByMonth = new Array(horizon).fill(0);
+  const perLoan: LoanScheduleMonth[][] = states.map(() => []);
+  // Opening-cash loans (drawMonth <= 1) start fully drawn at month 1.
+  const balances = states.map((s) => (s.drawMonth <= 1 ? s.principalCents : 0));
+  const drawn = states.map((s) => s.drawMonth <= 1);
+  let openingDrawTotalCents = 0;
+  for (let i = 0; i < states.length; i++) {
+    if (states[i].drawMonth <= 1) openingDrawTotalCents += states[i].principalCents;
+  }
+
+  for (let m = 1; m <= horizon; m++) {
+    for (let i = 0; i < states.length; i++) {
+      const st = states[i];
+      let interestCents = 0;
+      let principalCents = 0;
+      let drawInflowCents = 0;
+      if (!drawn[i] && m >= st.drawMonth) {
+        // Draw event — proceeds arrive as a financing inflow; no payment yet.
+        drawn[i] = true;
+        balances[i] = st.principalCents;
+        drawInflowCents = st.principalCents;
+      } else if (drawn[i] && balances[i] > 0) {
+        interestCents = Math.round(balances[i] * st.monthlyRate);
+        // Principal can never exceed the outstanding balance (final payment).
+        principalCents = Math.max(
+          0,
+          Math.min(st.monthlyPaymentCents - interestCents, balances[i])
+        );
+        balances[i] = Math.max(0, balances[i] - principalCents);
+      }
+      interestByMonth[m - 1] += interestCents;
+      principalByMonth[m - 1] += principalCents;
+      drawInflowByMonth[m - 1] += drawInflowCents;
+      endingBalanceByMonth[m - 1] += balances[i];
+      perLoan[i].push({
+        drawInflowCents,
+        interestCents,
+        principalCents,
+        paymentCents: interestCents + principalCents,
+        endingBalanceCents: balances[i],
+      });
+    }
+  }
+
+  return {
+    interestByMonth,
+    principalByMonth,
+    drawInflowByMonth,
+    endingBalanceByMonth,
+    openingDrawTotalCents,
+    perLoan,
+  };
+}
+
 export function computeMonthlyProjections(
   mp: MonthlyProjections,
   equipment: EquipmentSummary,
@@ -1622,6 +1778,13 @@ export function computeMonthlyProjections(
   };
   addStraightLineDep(sc.buildout_cents ?? 0, sc.buildout_useful_life_years ?? 15);
   addStraightLineDep(sc.equipment_cents ?? 0, sc.equipment_useful_life_years ?? 7);
+
+  // TIM-1762: pre-compute the loan amortization interest per month so the
+  // interest portion of every loan payment lands on the P&L as an expense
+  // (below operating income, alongside any manual interest line). Principal and
+  // the ending liability are derived from the same schedule in the statement
+  // pass (computeMonthlySlices) — single source of truth.
+  const loanInterestByMonth = computeLoanSchedule(buildLoanStates(mp)).interestByMonth;
 
   const rows: MonthlyProjectionRow[] = [];
 
@@ -1748,6 +1911,12 @@ export function computeMonthlyProjections(
         // Interest is moved below the line, not into total_opex.
         if (l.legacy_key !== "interest") total_opex_cents += amt;
       }
+
+      // TIM-1762: loan amortization interest is an interest expense — fold it
+      // into the below-the-line interest so it reduces pretax income (and, via
+      // net income, flows through Cash From Operations). The matching principal
+      // is a financing outflow handled in computeMonthlySlices.
+      interest_cents += loanInterestByMonth[month_index_abs - 1] ?? 0;
 
       // TIM-1206: operating-overhead personnel is the P&L "Labor" opex line.
       labor_cents += labor_overhead_cents;
@@ -1957,6 +2126,7 @@ export interface MonthlySlice extends MonthlyProjectionRow {
   net_cash_cents: number;
   loan_repayment_cents: number;
   loan_interest_cents: number; // TIM-1169: interest portion of loan payment
+  loan_draw_cents: number; // TIM-1762: loan proceeds drawn this month (financing inflow)
   capex_cents: number;
   cash_cents: number;
   // TIM-1169: working-capital changes (this month minus last). Positive Δ in
@@ -2367,39 +2537,16 @@ export function computeMonthlySlices(
     ? founderEquityCents + investorEquityCents + grantsCents
     : (inputs.owner_capital_cents ?? 0);
 
-  type LoanState = { balance: number; monthlyRate: number; monthlyPayment: number };
-  const loanStates: LoanState[] = (fundingHasEntries
-    ? fundingSources.filter((s) => s.kind === "loan" && (s.amount_cents || 0) > 0)
-    : []
-  ).map((s) => {
-    const balance = s.amount_cents || 0;
-    const monthlyRate = ((s.annual_rate_pct ?? 0) / 100) / 12;
-    const term = Math.max(1, s.term_months ?? 0);
-    const monthlyPayment =
-      monthlyRate > 0
-        ? Math.round(
-            balance * monthlyRate * Math.pow(1 + monthlyRate, term) /
-              (Math.pow(1 + monthlyRate, term) - 1)
-          )
-        : Math.round(balance / term);
-    return { balance, monthlyRate, monthlyPayment };
+  // TIM-1762: per-loan amortization comes from the shared schedule so the
+  // principal/interest split, draw timing, and ending liability match the P&L
+  // pass exactly. The legacy single-loan inputs are the pre-1122 fallback used
+  // only when no funding_sources carry a loan.
+  const loanStates = buildLoanStates(mp, {
+    amount_cents: inputs.loan_amount_cents ?? 0,
+    term_months: inputs.loan_term_months ?? 0,
+    annual_rate_pct: inputs.loan_annual_rate_pct ?? 0,
   });
-  // Legacy single-loan fallback if no funding_sources are present.
-  if (!fundingHasEntries) {
-    const legacyAmount = inputs.loan_amount_cents ?? 0;
-    const legacyTerms = inputs.loan_term_months ?? 0;
-    if (legacyAmount > 0 && legacyTerms > 0) {
-      const monthlyRate = ((inputs.loan_annual_rate_pct ?? 0) / 100) / 12;
-      const monthlyPayment =
-        monthlyRate > 0
-          ? Math.round(
-              legacyAmount * monthlyRate * Math.pow(1 + monthlyRate, legacyTerms) /
-                (Math.pow(1 + monthlyRate, legacyTerms) - 1)
-            )
-          : Math.round(legacyAmount / legacyTerms);
-      loanStates.push({ balance: legacyAmount, monthlyRate, monthlyPayment });
-    }
-  }
+  const loanSchedule = computeLoanSchedule(loanStates);
 
   // TIM-1246: gross fixed assets are seeded from the SAME source that drives
   // depreciation (mp.startup_costs), so the two can never diverge — a capital
@@ -2419,7 +2566,9 @@ export function computeMonthlySlices(
   // expensing pre-opening costs (deposits, licenses, launch marketing, initial
   // inventory). Those pre-opening costs become an opening accumulated deficit in
   // retained earnings, which keeps the identity true for every month.
-  const initialLoanTotalCents = loanStates.reduce((sum, l) => sum + l.balance, 0);
+  // TIM-1762: only loans drawn at opening (draw_month <= 1) seed opening cash;
+  // later draws arrive as a financing inflow in their draw month.
+  const initialLoanTotalCents = loanSchedule.openingDrawTotalCents;
   const preOpeningExpensesCents =
     (inputs.rent_deposits_cents ?? 0) +
     (inputs.license_permits_cents ?? 0) +
@@ -2469,21 +2618,15 @@ export function computeMonthlySlices(
     cumulativeNetIncome += row.net_income_cents;
     cumulativeDepreciation += row.depreciation_cents;
 
-    // Loan amortization — amortize each loan independently and sum principal
-    // payments into loan_repayment_cents for the cash-flow statement.
-    let loanRepaymentCents = 0;
-    let loanInterestCents = 0;
-    let totalLoanBalance = 0;
-    for (const loan of loanStates) {
-      if (loan.balance > 0) {
-        const interest = Math.round(loan.balance * loan.monthlyRate);
-        const principal = Math.min(loan.monthlyPayment - interest, loan.balance);
-        loan.balance = Math.max(0, loan.balance - principal);
-        loanRepaymentCents += principal;
-        loanInterestCents += interest;
-      }
-      totalLoanBalance += loan.balance;
-    }
+    // TIM-1762: loan amortization read from the shared schedule. Principal is a
+    // financing outflow, interest is already on the P&L (in net income via the
+    // projection pass), and the draw inflow lands when a loan is drawn after
+    // month 1. The ending balance is the outstanding liability.
+    const schedIdx = row.month_index - 1;
+    const loanRepaymentCents = loanSchedule.principalByMonth[schedIdx] ?? 0;
+    const loanInterestCents = loanSchedule.interestByMonth[schedIdx] ?? 0;
+    const loanDrawCents = loanSchedule.drawInflowByMonth[schedIdx] ?? 0;
+    const totalLoanBalance = loanSchedule.endingBalanceByMonth[schedIdx] ?? 0;
 
     // TIM-1169: working-capital deltas. Compute end-of-period working-capital
     // balances first, then take the delta from the prior period.
@@ -2506,13 +2649,14 @@ export function computeMonthlySlices(
     // Cash flow with full CFO format:
     //   CFO = NI + D&A − ΔAR − ΔInventory + ΔAP
     //   CFI = − capex
-    //   CFF = − loan principal − draws + contributions
+    //   CFF = + loan draws − loan principal − draws + contributions
     const netCashCents =
       row.net_income_cents
       + row.depreciation_cents
       - deltaAr
       - deltaInventory
       + deltaAp
+      + loanDrawCents
       - loanRepaymentCents
       - row.capex_cents
       - ownerDrawsCents
@@ -2547,6 +2691,7 @@ export function computeMonthlySlices(
       net_cash_cents: netCashCents,
       loan_repayment_cents: loanRepaymentCents,
       loan_interest_cents: loanInterestCents,
+      loan_draw_cents: loanDrawCents,
       capex_cents: row.capex_cents,
       cash_cents: cashBalance,
       delta_ar_cents: deltaAr,
