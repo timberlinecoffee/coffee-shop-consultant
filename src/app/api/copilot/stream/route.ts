@@ -142,21 +142,55 @@ interface SuggestionPayload {
   isStructured?: boolean
 }
 
+// TIM-1746: the reorganize_equipment_list tool addresses items/sections by their short
+// numeric index (S#/I#), NOT their UUIDs. A 100+ item list emitted with full UUIDs for
+// item_id AND section_id is ~40 tokens/item (~4–5k tokens) — the model plans the whole
+// arrangement before emitting the first token, so time-to-first-tool-chunk exceeds even the
+// 60s gap watchdog and the turn dies. Indices cut that to ~5 tokens/item, so generation
+// starts streaming fast and finishes well under maxDuration. The server maps indices back to
+// UUIDs (positions inferred from list order) in mapIndexedArrangement.
 function formatEquipmentContext(items: EquipmentItemCtx[], sections: SectionCtx[]): string {
-  const sectionMap = new Map(sections.map((s) => [s.id, s]))
+  const sectionIndex = new Map(sections.map((s, idx) => [s.id, idx]))
   const lines = [
-    "Sections:",
-    ...sections.map((s) => `  ${s.name} (id: ${s.id})`),
+    "Sections (assign items using the section number S#):",
+    ...sections.map((s, idx) => `  S${idx}: ${s.name}`),
+    "  (or null for unsectioned)",
     "",
-    "Items (ordered by position within their current section):",
-    ...items.map((i) => {
+    "Items (reference each by its item number I#, ordered by current position within section):",
+    ...items.map((i, idx) => {
       const station = i.section_id
-        ? (sectionMap.get(i.section_id)?.name ?? "Unsectioned")
+        ? sectionIndex.has(i.section_id)
+          ? `S${sectionIndex.get(i.section_id)}`
+          : "Unsectioned"
         : "Unsectioned"
-      return `  - ${i.name} | category: ${i.category} | station: ${station} | section_id: ${i.section_id ?? "null"} | item_id: ${i.id} | position: ${i.position}`
+      return `  I${idx}: ${i.name} | category: ${i.category} | current section: ${station}`
     }),
   ]
   return lines.join("\n")
+}
+
+// TIM-1746: translate the model's compact index-based arrangement back into the
+// {item_id, section_id, position} shape buildReorganizeSuggestions expects. Item/section
+// indices map into the same arrays formatEquipmentContext numbered. Position is inferred
+// from the order items appear within each section (the model lists them in target order), so
+// the model never has to emit position integers — fewer tokens, fewer ways to get it wrong.
+function mapIndexedArrangement(
+  raw: { item: number; section: number | null }[],
+  items: EquipmentItemCtx[],
+  sections: SectionCtx[],
+): { item_id: string; section_id: string | null; position: number }[] {
+  const out: { item_id: string; section_id: string | null; position: number }[] = []
+  const posBySection = new Map<string, number>() // key: section_id or "__null__"
+  for (const r of raw) {
+    const item = items[r.item]
+    if (!item) continue // index out of range — skip rather than corrupt the arrangement
+    const section = r.section == null ? null : (sections[r.section]?.id ?? null)
+    const key = section ?? "__null__"
+    const position = posBySection.get(key) ?? 0
+    posBySection.set(key, position + 1)
+    out.push({ item_id: item.id, section_id: section, position })
+  }
+  return out
 }
 
 // fieldId encodes the proposed assignment so onApply can act on it without parsing free-text.
@@ -580,7 +614,7 @@ export async function POST(request: NextRequest) {
 
   const equipmentContextAddendum =
     workspaceKey === "buildout_equipment" && equipmentItems.length > 0
-      ? `\n\n## Equipment List — Current Arrangement\nThe exact item IDs and section IDs below are required for the \`reorganize_equipment_list\` tool. Use them verbatim.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
+      ? `\n\n## Equipment List — Current Arrangement\nEach item and section below has a short number (I# / S#). The \`reorganize_equipment_list\` tool takes those numbers — pass the item number as \`item\` and the target section number as \`section\` (or null). Do NOT emit UUIDs.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
       : ""
 
   // TIM-1670: ground competitor/market research in the owner's actual site(s) + segment.
@@ -739,24 +773,22 @@ export async function POST(request: NextRequest) {
                     items: {
                       type: "array",
                       description:
-                        "Complete proposed arrangement. Position is 0-based within each section.",
+                        "Complete proposed arrangement — include every item exactly once, listed in the order it should appear within its section (the first item listed for a section is position 0, the next is position 1, and so on).",
                       items: {
                         type: "object",
                         properties: {
-                          item_id: {
-                            type: "string",
-                            description: "Equipment item UUID — verbatim from the equipment list.",
-                          },
-                          section_id: {
-                            type: ["string", "null"],
-                            description: "Section UUID, or null for unsectioned.",
-                          },
-                          position: {
+                          item: {
                             type: "integer",
-                            description: "0-based position within the section.",
+                            description:
+                              "Item number from the equipment list (the I# value, e.g. 0 for I0).",
+                          },
+                          section: {
+                            type: ["integer", "null"],
+                            description:
+                              "Section number to place this item in (the S# value, e.g. 1 for S1), or null for unsectioned.",
                           },
                         },
-                        required: ["item_id", "section_id", "position"],
+                        required: ["item", "section"],
                       },
                     },
                   },
@@ -838,10 +870,10 @@ export async function POST(request: NextRequest) {
               try {
                 const toolInput = JSON.parse(toolInputBuffer) as {
                   rationale: string
-                  items: { item_id: string; section_id: string | null; position: number }[]
+                  items: { item: number; section: number | null }[]
                 }
                 const suggestions = buildReorganizeSuggestions(
-                  toolInput.items ?? [],
+                  mapIndexedArrangement(toolInput.items ?? [], equipmentItems, equipmentSections),
                   equipmentItems,
                   equipmentSections,
                 )
