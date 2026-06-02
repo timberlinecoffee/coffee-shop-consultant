@@ -793,6 +793,19 @@ export async function POST(request: NextRequest) {
               activeToolName = block.name
               toolInputBuffer = ""
               toolCallCount += 1 // TIM-1671: each tool action adds to the credit charge
+              // TIM-1746: a tool call (e.g. reorganize_equipment_list) streams its input as
+              // input_json_delta chunks with no text/thinking deltas. Treat the tool-block
+              // start as live activity so neither the 8s TTFT nor the 20s gap watchdog kills a
+              // legit long generation (a full equipment-to-stations arrangement is a large
+              // JSON array that can take >20s to emit). The input_json_delta handler below
+              // keeps the gap timer fed for the duration of the tool input.
+              if (!firstToken) {
+                firstToken = true
+                if (ttftTimer) clearTimeout(ttftTimer)
+              }
+              resetGapTimer()
+              // Let the client show an "organizing" affordance while the tool input streams.
+              send(sse("status", { state: "organizing" }))
             } else if (block.type === "server_tool_use" || block.type === "web_search_tool_result") {
               // TIM-1670: web_search runs server-side BEFORE any text/thinking token.
               // Treat it as first activity so the 8s TTFT watchdog doesn't kill a legit
@@ -889,6 +902,15 @@ export async function POST(request: NextRequest) {
             }
           } else if (event.type === "content_block_delta") {
             if (event.delta.type === "input_json_delta") {
+              // TIM-1746: tool-input streaming is real activity. Reset the gap watchdog on
+              // every chunk so a long tool call (full equipment-to-stations arrangement) is
+              // not killed mid-generation with "Took too long". Mark firstToken in case the
+              // model goes straight to a tool with no preceding text/thinking deltas.
+              if (!firstToken) {
+                firstToken = true
+                if (ttftTimer) clearTimeout(ttftTimer)
+              }
+              resetGapTimer()
               toolInputBuffer += event.delta.partial_json
             } else if (event.delta.type === "thinking_delta") {
               if (!firstToken) {
