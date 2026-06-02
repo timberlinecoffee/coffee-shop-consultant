@@ -14,6 +14,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
+import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -2266,22 +2267,13 @@ export function FinancialsWorkspace({
         {/* TIM-1745: tabs sit flush above the content; the action toolbar that
             used to share this row now lives in the page header (top-right). */}
         <div className="mb-5">
-          <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveTab(t.id)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                  activeTab === t.id
-                    ? "bg-[var(--teal)] text-white"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
+          <WorkspaceSubNav
+            tabs={tabs.map((t) => ({ key: t.id, label: t.label }))}
+            active={activeTab}
+            onSelect={setActiveTab}
+            ariaLabel="Financials sections"
+            className="mb-0"
+          />
         </div>
 
         {activeTab === "forecast" && (

@@ -207,22 +207,21 @@ export function SuppliesWorkspace({
         </div>
       )}
       <div className="px-6 pt-8 pb-16">
-        <header className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Package className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Equipment &amp; Supplies
-            </h1>
+        {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
+        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Package className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+                Equipment &amp; Supplies
+              </h1>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Plan the consumables you&apos;ll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
+            </p>
           </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Plan the consumables you&apos;ll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
-          </p>
-        </header>
-
-        <EquipmentSuppliesSubNav active="supplies" />
-
-        <div className="flex items-center gap-3 mb-5">
-          <div className="relative" ref={viewOptionsRef}>
+          <div className="flex items-center gap-3 flex-wrap shrink-0">
+            <div className="relative" ref={viewOptionsRef}>
             <button
               type="button"
               onClick={() => setViewOptionsOpen((o) => !o)}
@@ -251,7 +250,10 @@ export function SuppliesWorkspace({
               </div>
             )}
           </div>
-        </div>
+          </div>
+        </header>
+
+        <EquipmentSuppliesSubNav active="supplies" />
 
         <SeedBanner
           canEdit={canEdit}

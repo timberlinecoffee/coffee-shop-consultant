@@ -385,43 +385,21 @@ export function BuildoutEquipmentWorkspace({
         </div>
       )}
       <div className="px-6 pt-8 pb-16">
-        <header className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Wrench className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Equipment &amp; Supplies
-            </h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page.
-          </p>
-        </header>
-
-        {/* TIM-1458: Sub-nav between the two pages in this suite. */}
-        <EquipmentSuppliesSubNav active="equipment" />
-
-        {showReviewBanner && (
-          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800">Your concept or menu has changed</p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                Review your equipment list to make sure it still reflects your plan.
-              </p>
+        {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
+        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Wrench className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+                Equipment &amp; Supplies
+              </h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setReviewDismissed(true)}
-              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
-              aria-label="Dismiss"
-            >
-              <X size={14} />
-            </button>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page.
+            </p>
           </div>
-        )}
-
-        {/* Save toolbar */}
-        <div className="flex items-center gap-3 mb-5">
-          {canEdit && (
+          <div className="flex items-center gap-3 flex-wrap shrink-0">
+            {canEdit && (
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -496,7 +474,6 @@ export function BuildoutEquipmentWorkspace({
             error={saveState.kind === "error" ? saveState.message : null}
             unsaved={saveState.kind === "dirty"}
             onRetry={handleManualSave}
-            className="ml-auto"
           />
           {canEdit && (
             <button
@@ -509,7 +486,30 @@ export function BuildoutEquipmentWorkspace({
               Save
             </button>
           )}
-        </div>
+          </div>
+        </header>
+
+        {showReviewBanner && (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800">Your concept or menu has changed</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Review your equipment list to make sure it still reflects your plan.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReviewDismissed(true)}
+              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
+              aria-label="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* TIM-1458/TIM-1793: canonical pill sub-nav, left-aligned under header. */}
+        <EquipmentSuppliesSubNav active="equipment" />
 
         <SeedBanner
           canEdit={canEdit}
