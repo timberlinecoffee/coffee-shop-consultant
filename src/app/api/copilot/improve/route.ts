@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       return new Response(
         sse("error", {
           code: "trial_exhausted",
-          message: "You've used your free trial credits — upgrade to keep planning with Copilot.",
+          message: "You've used your free trial credits. Upgrade to keep planning with Copilot.",
         }),
         { status: 402, headers: { "Content-Type": "text/event-stream" } },
       );
