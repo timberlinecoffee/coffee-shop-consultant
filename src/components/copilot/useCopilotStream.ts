@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "./sse";
 import type {
@@ -8,6 +8,13 @@ import type {
   CopilotMessage,
 } from "./types";
 import type { SuggestionPayload } from "@/components/ai-assist/AIReviewModal";
+
+// TIM-1795: single knobs for the pre-stream "thinking" beat and the typewriter
+// reveal cadence. Tune the feel here without touching the streaming logic.
+const THINKING_MIN_MS = 2500; // minimum perceived "thinking" beat before text reveals
+const REVEAL_CHARS_PER_SEC = 38; // typewriter reveal speed (comfortable 30–45 char/s reading pace)
+const REVEAL_MAX_BACKLOG = 280; // cap unrevealed chars mid-stream so reveal never drifts far behind
+const REVEAL_DRAIN_SECONDS = 0.5; // once the stream ends, finish the remaining reveal within this window
 
 // TIM-1561: typed suggestions payload emitted by the SSE `suggestions` event.
 export interface SuggestionsEvent {
@@ -61,22 +68,118 @@ export function useCopilotStream(): UseCopilotStreamResult {
   const [pendingSuggestions, setPendingSuggestions] = useState<SuggestionsEvent | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // TIM-1795: display-layer state for the thinking beat + typewriter reveal.
+  // `assistantBuffer` is the *revealed* text; the full streamed text lives in
+  // `targetTextRef` and the loop advances `assistantBuffer` toward it at a
+  // steady cadence after a minimum thinking beat.
+  const targetTextRef = useRef("");
+  const revealedRef = useRef(0);
+  const startedAtRef = useRef(0);
+  const lastTickRef = useRef(0);
+  const revealAccRef = useRef(0);
+  const streamEndedRef = useRef(false);
+  const drainRateRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const revealDoneRef = useRef<(() => void) | null>(null);
+  const tickRef = useRef<() => void>(() => {});
+
   const clearSuggestions = useCallback(() => setPendingSuggestions(null), []);
 
+  const stopReveal = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  // Flush to the full target and resolve any send() awaiting the reveal.
+  const settleReveal = useCallback(() => {
+    const full = targetTextRef.current;
+    revealedRef.current = full.length;
+    if (full) setAssistantBuffer(full);
+    setIsThinking(false);
+    stopReveal();
+    const resolve = revealDoneRef.current;
+    revealDoneRef.current = null;
+    resolve?.();
+  }, [stopReveal]);
+
+  const tick = useCallback(() => {
+    const now = performance.now();
+    const target = targetTextRef.current;
+    const elapsed = now - startedAtRef.current;
+
+    // Hold the minimum thinking beat before the first character appears. If the
+    // model itself runs longer than the beat, text reveals as soon as it lands
+    // (no stacked delay) because by then `elapsed` already exceeds the beat.
+    if (elapsed < THINKING_MIN_MS && revealedRef.current === 0) {
+      lastTickRef.current = now;
+      rafRef.current = requestAnimationFrame(tickRef.current);
+      return;
+    }
+
+    if (revealedRef.current < target.length) {
+      const dt = now - lastTickRef.current;
+      // After the stream ends, drain the remaining backlog at a fixed rate
+      // (computed once at end) so it finishes within the drain window and never
+      // lags noticeably behind completion.
+      const rate =
+        streamEndedRef.current && drainRateRef.current > 0
+          ? drainRateRef.current
+          : REVEAL_CHARS_PER_SEC;
+      revealAccRef.current += (dt / 1000) * rate;
+      let next = revealedRef.current + Math.floor(revealAccRef.current);
+      revealAccRef.current -= Math.floor(revealAccRef.current);
+      // Mid-stream catch-up: never let the backlog exceed the cap so long
+      // answers don't drift behind the model's actual generation.
+      if (!streamEndedRef.current && target.length - next > REVEAL_MAX_BACKLOG) {
+        next = target.length - REVEAL_MAX_BACKLOG;
+      }
+      if (next > revealedRef.current) {
+        revealedRef.current = Math.min(next, target.length);
+        setIsThinking(false);
+        setAssistantBuffer(target.slice(0, revealedRef.current));
+      }
+    }
+    lastTickRef.current = now;
+
+    if (streamEndedRef.current && revealedRef.current >= target.length) {
+      settleReveal();
+      return;
+    }
+    rafRef.current = requestAnimationFrame(tickRef.current);
+  }, [settleReveal]);
+
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
+  useEffect(() => () => stopReveal(), [stopReveal]);
+
   const reset = useCallback(() => {
+    stopReveal();
+    revealDoneRef.current?.();
+    revealDoneRef.current = null;
+    targetTextRef.current = "";
+    revealedRef.current = 0;
+    revealAccRef.current = 0;
+    streamEndedRef.current = false;
     setAssistantBuffer("");
     setError(null);
     setIsThinking(false);
     setIsStreaming(false);
     setPendingSuggestions(null);
-  }, []);
+  }, [stopReveal]);
 
   const abort = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    stopReveal();
+    streamEndedRef.current = true;
+    revealDoneRef.current?.();
+    revealDoneRef.current = null;
     setIsStreaming(false);
     setIsThinking(false);
-  }, []);
+  }, [stopReveal]);
 
   const send = useCallback<UseCopilotStreamResult["send"]>(
     async ({ planId, workspaceKey, threadId, history, prompt }) => {
@@ -87,7 +190,19 @@ export function useCopilotStream(): UseCopilotStreamResult {
       setError(null);
       setAssistantBuffer("");
       setIsStreaming(true);
-      setIsThinking(false);
+      // TIM-1795: show the thinking beat immediately on send, then prime the
+      // typewriter reveal loop.
+      setIsThinking(true);
+      targetTextRef.current = "";
+      revealedRef.current = 0;
+      revealAccRef.current = 0;
+      streamEndedRef.current = false;
+      drainRateRef.current = 0;
+      const revealStart = performance.now();
+      startedAtRef.current = revealStart;
+      lastTickRef.current = revealStart;
+      stopReveal();
+      rafRef.current = requestAnimationFrame(tickRef.current);
 
       const messages: CopilotMessage[] = [
         ...history,
@@ -138,8 +253,6 @@ export function useCopilotStream(): UseCopilotStreamResult {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistant = "";
-      let lastTextAt = 0;
-      let lastThinkingAt = 0;
       let resolvedThreadId = threadId;
       let resolvedModelUsed: string | null = null;
       let resolvedTrialRemaining: number | null = null;
@@ -155,17 +268,16 @@ export function useCopilotStream(): UseCopilotStreamResult {
           buffer = rest;
           for (const evt of events) {
             if (evt.event === "thinking") {
-              lastThinkingAt = Date.now();
-              // Pill stays on while thinking is fresher than text.
-              if (lastThinkingAt > lastTextAt) setIsThinking(true);
+              // TIM-1795: the thinking beat is owned by the reveal loop (it
+              // shows until the first character is typed), so model `thinking`
+              // frames need no extra handling here.
             } else if (evt.event === "text") {
               try {
                 const parsed = JSON.parse(evt.data) as { delta?: string };
                 if (parsed.delta) {
                   assistant += parsed.delta;
-                  setAssistantBuffer(assistant);
-                  lastTextAt = Date.now();
-                  setIsThinking(false);
+                  // Feed the typewriter loop instead of dumping the buffer.
+                  targetTextRef.current = assistant;
                 }
               } catch {
                 /* ignore malformed text frame */
@@ -223,15 +335,38 @@ export function useCopilotStream(): UseCopilotStreamResult {
           };
         }
       } finally {
-        setIsStreaming(false);
-        setIsThinking(false);
         abortRef.current = null;
       }
 
       if (finalError) {
+        stopReveal();
+        revealDoneRef.current?.();
+        revealDoneRef.current = null;
+        setIsStreaming(false);
+        setIsThinking(false);
         setError(finalError);
         return null;
       }
+
+      // TIM-1795: let the typewriter finish revealing before resolving so the
+      // committed message and the streamed bubble never disagree (no jump).
+      // Fix the drain rate once so the remaining backlog clears within the
+      // drain window rather than decaying with a long tail.
+      drainRateRef.current = Math.max(
+        REVEAL_CHARS_PER_SEC,
+        (targetTextRef.current.length - revealedRef.current) / REVEAL_DRAIN_SECONDS,
+      );
+      streamEndedRef.current = true;
+      await new Promise<void>((resolve) => {
+        if (rafRef.current === null || revealedRef.current >= targetTextRef.current.length) {
+          settleReveal();
+          resolve();
+        } else {
+          revealDoneRef.current = resolve;
+        }
+      });
+      setIsStreaming(false);
+      setIsThinking(false);
 
       setLastThreadId(resolvedThreadId);
       setLastModelUsed(resolvedModelUsed);
@@ -246,7 +381,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
         creditsRemaining: resolvedCreditsRemaining,
       };
     },
-    [],
+    [settleReveal, stopReveal],
   );
 
   return {
