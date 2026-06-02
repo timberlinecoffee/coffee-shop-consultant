@@ -30,8 +30,8 @@ const WORKSPACE_LABELS: Record<string, string> = {
   location_lease: "Location & Lease",
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
-  buildout_equipment: "Build-out & Equipment",
-  opening_month_plan: "Opening Month Plan",
+  buildout_equipment: "Equipment & Supplies",
+  opening_month_plan: "Launch Plan",
 }
 
 const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrepreneurs using the My Coffee Shop Consultant platform. Analyze the provided workspace data across the six workspaces below and produce a structured readiness report.
@@ -51,9 +51,9 @@ const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrep
 
 **Menu & Pricing**: GREEN if menu items are listed with prices and COGS set. RED if no items.
 
-**Build-out & Equipment**: GREEN if equipment list is populated and build-out plan exists. RED if no equipment listed.
+**Equipment & Supplies**: GREEN if equipment list is populated and build-out plan exists. RED if no equipment listed.
 
-**Opening Month Plan**: GREEN when BOTH halves are populated: (a) dated gating milestones across the tracks (lease, permits, build-out, equipment, hiring, training, soft-open dates) with owners and target dates, AND (b) the tactical playbook covers pre-open weeks, opening week, and the first 30 days with specific tasks, owners, and dates (training schedule, supplier first-orders, friends-and-family soft open, grand-open staffing, daily/weekly rituals). YELLOW if only one half is populated. RED if both are empty.
+**Launch Plan**: GREEN when BOTH halves are populated: (a) dated gating milestones across the tracks (lease, permits, build-out, equipment, hiring, training, soft-open dates) with owners and target dates, AND (b) the tactical playbook covers pre-open weeks, opening week, and the first 30 days with specific tasks, owners, and dates (training schedule, supplier first-orders, friends-and-family soft open, grand-open staffing, daily/weekly rituals). YELLOW if only one half is populated. RED if both are empty.
 
 ## Output Format
 Output ONLY valid JSON — no markdown, no prose, no code fences — matching this exact schema:

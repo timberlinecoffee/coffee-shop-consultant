@@ -665,7 +665,7 @@ type EquipmentRow = {
 function EquipmentSection({ items }: { items: EquipmentRow[] }) {
   if (items.length === 0) {
     return (
-      <EmptyState message="No equipment yet. Visit the Build-out & Equipment workspace to add it." />
+      <EmptyState message="No equipment yet. Visit the Equipment & Supplies workspace to add it." />
     );
   }
   const total = items.reduce((s, e) => s + (e.cost_usd ?? 0), 0);
@@ -756,7 +756,7 @@ function BuildoutSection({
 
   if (!hasAny) {
     return (
-      <EmptyState message="No build-out details yet. Visit the Build-out and Location workspaces to add them." />
+      <EmptyState message="No build-out details yet. Visit the Equipment & Supplies and Location workspaces to add them." />
     );
   }
 

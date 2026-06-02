@@ -41,7 +41,7 @@ export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
   buildout_equipment: "Equipment & Supplies",
-  opening_month_plan: "Opening Month Plan",
+  opening_month_plan: "Launch Plan",
   hiring: "Hiring & Onboarding",
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
