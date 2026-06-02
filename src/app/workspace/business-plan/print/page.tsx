@@ -196,8 +196,8 @@ export default async function BusinessPlanPrintPage({
       .eq("archived", false)
       .order("position"),
     supabase
-      .from("launch_timeline_items")
-      .select("id, milestone, target_date, status, track, owner")
+      .from("launch_milestones")
+      .select("id, title, target_date, status, track, owner")
       .eq("plan_id", planId)
       .order("target_date", { ascending: true, nullsFirst: false }),
     supabase
@@ -826,7 +826,7 @@ function BuildoutSection({
 
 type LaunchRow = {
   id: string;
-  milestone: string;
+  title: string;
   target_date: string | null;
   status: string | null;
   track: string | null;
@@ -845,14 +845,14 @@ function LaunchSection({ items }: { items: LaunchRow[] }) {
         {items.map((m) => (
           <li key={m.id} className="py-2.5 first:pt-0 last:pb-0">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm text-[var(--foreground)]">{m.milestone}</span>
+              <span className="text-sm text-[var(--foreground)]">{m.title}</span>
               <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
                 {formatDate(m.target_date)}
               </span>
             </div>
-            {(m.track || m.owner || (m.status && m.status !== "pending")) && (
+            {(m.track || m.owner || (m.status && m.status !== "not_started")) && (
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                {[m.track, m.owner, m.status && m.status !== "pending" ? `[${m.status}]` : null]
+                {[m.track, m.owner, m.status && m.status !== "not_started" ? `[${m.status}]` : null]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
