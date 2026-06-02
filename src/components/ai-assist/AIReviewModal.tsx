@@ -409,6 +409,9 @@ export function AIReviewModal({
 }: AIReviewModalProps) {
   const [cardStates, setCardStates] = useState<Map<string, CardState>>(new Map());
   const [isApplying, setIsApplying] = useState(false);
+  // TIM-1653: error from the apply call itself (e.g. a non-OK API response).
+  // Shown in the footer so the accepted cards stay visible for retry.
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1280,
   );
@@ -426,6 +429,7 @@ export function AIReviewModal({
   useEffect(() => {
     setCardStates(new Map(suggestions.map((s) => [s.id, initialCard(s)])));
     setIsApplying(false);
+    setApplyError(null);
   }, [suggestions]);
 
   // Escape key.
@@ -463,6 +467,7 @@ export function AIReviewModal({
   const handleApply = useCallback(async () => {
     if (acceptedCount === 0 || isApplying) return;
     setIsApplying(true);
+    setApplyError(null);
     const accepted: ApprovedChange[] = suggestions
       .filter((s) => cardStates.get(s.id)?.status === "accepted")
       .map((s) => {
@@ -477,8 +482,15 @@ export function AIReviewModal({
 
     try {
       await onApply(accepted);
-    } catch {
-      // Partial failure: individual cards show errors via their own error state.
+    } catch (e) {
+      // TIM-1653: surface the failure in the footer. The accepted cards stay
+      // visible (onApply rejecting means the caller did not clear them), so the
+      // user can retry without re-reviewing.
+      setApplyError(
+        e instanceof Error && e.message
+          ? e.message
+          : "Couldn't apply your changes. Please try again.",
+      );
     } finally {
       setIsApplying(false);
     }
@@ -575,7 +587,15 @@ export function AIReviewModal({
   );
 
   const footer = (
-    <div className={`px-6 py-4 border-t border-[var(--border)] flex items-center ${isMobile ? "flex-col gap-2" : "justify-between"}`}>
+    <div className="border-t border-[var(--border)]">
+      {/* TIM-1653: apply-level error (e.g. a non-OK API response). Accepted cards above stay visible for retry. */}
+      {applyError && (
+        <p className="mx-6 mt-3 text-xs text-red-600 border border-red-200 rounded-lg px-3 py-2 bg-red-50 flex items-start gap-1.5">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" aria-hidden />
+          <span>{applyError}</span>
+        </p>
+      )}
+      <div className={`px-6 py-4 flex items-center ${isMobile ? "flex-col gap-2" : "justify-between"}`}>
       <span
         className={`text-sm font-medium ${
           acceptedCount === 0
@@ -608,6 +628,7 @@ export function AIReviewModal({
             ? `Apply ${acceptedCount} ${acceptedCount === 1 ? "change" : "changes"}`
             : "Apply changes"}
         </button>
+      </div>
       </div>
     </div>
   );

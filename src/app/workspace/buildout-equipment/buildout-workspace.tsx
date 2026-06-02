@@ -304,7 +304,11 @@ export function BuildoutEquipmentWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      // TIM-1653: surface the failure so the AIReviewModal can show an error
+      // and keep the accepted changes visible for retry, instead of closing silently.
+      throw new Error("Couldn't apply the reorganization. Your changes are still here - try again.");
+    }
     // Refetch to sync local state with persisted arrangement.
     const [eqRes, secRes] = await Promise.all([
       fetch("/api/workspaces/financials/equipment"),
