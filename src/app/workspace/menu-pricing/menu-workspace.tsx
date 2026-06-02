@@ -43,6 +43,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Illustration } from "@/components/illustrations/Illustration";
+import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { recipeIdForItemName } from "@/lib/illustrations/recipes";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
@@ -3802,23 +3803,14 @@ export function MenuWorkspace({
           </p>
         </header>
 
-        <nav className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 mb-6 overflow-x-auto">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                activeTab === t.id
-                  ? "bg-[var(--teal)] text-white"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <t.Icon size={13} />
-              {t.label}
-            </button>
-          ))}
-        </nav>
+        {/* Tab nav — canonical WorkspaceSubNav (TIM-1793) */}
+        <WorkspaceSubNav
+          tabs={tabs.map((t) => ({ key: t.id, label: t.label, Icon: t.Icon }))}
+          active={activeTab}
+          onSelect={setActiveTab}
+          ariaLabel="Menu & Pricing sections"
+          className="mb-6"
+        />
 
         {activeTab === "menu" && (
           <MenuTab

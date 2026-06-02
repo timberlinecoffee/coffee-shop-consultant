@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
+import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -274,42 +275,19 @@ function SectionTabs({
     pre_launch: doc.pre_launch.milestones.length > 0,
   };
 
+  // TIM-1793: canonical WorkspaceSubNav (left-aligned pill). A filled section
+  // shows a leading check via the tab's optional Icon.
   return (
-    <div className={cardCls}>
-      <div
-        role="tablist"
-        aria-label="Marketing sections"
-        className="flex flex-wrap gap-1 p-1"
-      >
-        {MARKETING_SECTION_KEYS.map((key) => {
-          const isActive = active === key;
-          const filled = filledMap[key];
-          return (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={isActive}
-              type="button"
-              onClick={() => onChange(key)}
-              className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl transition-colors ${
-                isActive
-                  ? "bg-[var(--teal)] text-white"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--background)]"
-              }`}
-            >
-              {filled && (
-                <Check
-                  className={`w-3 h-3 ${
-                    isActive ? "text-white" : "text-[var(--teal)]"
-                  }`}
-                />
-              )}
-              {MARKETING_SECTION_LABELS[key]}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <WorkspaceSubNav
+      tabs={MARKETING_SECTION_KEYS.map((key) => ({
+        key,
+        label: MARKETING_SECTION_LABELS[key],
+        Icon: filledMap[key] ? Check : undefined,
+      }))}
+      active={active}
+      onSelect={onChange}
+      ariaLabel="Marketing sections"
+    />
   );
 }
 
