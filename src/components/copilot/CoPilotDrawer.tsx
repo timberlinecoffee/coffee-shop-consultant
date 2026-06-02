@@ -37,6 +37,8 @@ import type {
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
 import { useAIReviewModal, type ApprovedChange, type SuggestionPayload } from "@/hooks/useAIReviewModal";
+import { parseEquipmentCostFieldId } from "@/lib/cross-workspace-apply";
+import { parseFactValue } from "@/lib/cross-workspace-sync";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
@@ -126,6 +128,49 @@ async function applyMenuPricingProposal(accepted: ApprovedChange[]): Promise<voi
           unit,
         }),
       });
+    }
+  }
+}
+
+// TIM-1798: write accepted cross-workspace equipment-cost changes. The equipment
+// item's unit cost is the single source of truth — writing it makes the Financials
+// equipment line + startup-cost total recompute on next load (TIM-1253 auto-sync),
+// so the coordinated change applies coherently from one reviewed action. The
+// linked Financials cards are read-only previews and never reach this function
+// (they carry fieldId "derived" and are not acceptable). Throws on failure so the
+// review modal stays open for retry (TIM-1653 pattern).
+async function applyEquipmentCostChanges(accepted: ApprovedChange[]): Promise<void> {
+  for (const change of accepted) {
+    const meta = parseEquipmentCostFieldId(change.fieldId);
+    if (!meta) continue;
+    const priceCents = parseFactValue("currency_cents", change.finalValue);
+    if (priceCents === null || typeof priceCents !== "number") {
+      throw new Error(`"${change.finalValue}" is not a valid cost.`);
+    }
+    if (meta.action === "reprice" && meta.item_id) {
+      const res = await fetch(`/api/workspaces/financials/equipment/${meta.item_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ unit_cost_cents: priceCents, quantity: meta.quantity }),
+      });
+      if (!res.ok) throw new Error(`Couldn't update ${meta.name}. Please try again.`);
+    } else {
+      const res = await fetch(`/api/workspaces/financials/equipment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          name: meta.name,
+          // Buildout categories are lowercase enum keys; Scout proposes a Title
+          // Case label, so normalize. Omit to let the API default when unset.
+          category: meta.category ? meta.category.toLowerCase() : undefined,
+          quantity: meta.quantity,
+          unit_cost_cents: priceCents,
+          source: "ai_suggested",
+        }),
+      });
+      if (!res.ok) throw new Error(`Couldn't add ${meta.name}. Please try again.`);
     }
   }
 }
@@ -1058,17 +1103,29 @@ export function CoPilotDrawer({
                         suggestions,
                         context,
                         onApply: async (accepted: ApprovedChange[]) => {
-                          // timeline_mismatch is informational — the authoritative
-                          // date already lives in the plan, so no field write on accept.
+                          // timeline_mismatch / derived are informational — the
+                          // authoritative value already lives in (or derives from)
+                          // the plan, so no field write on accept.
                           const actionable = accepted.filter(
-                            (c) => c.fieldId !== "timeline_mismatch"
+                            (c) => c.fieldId !== "timeline_mismatch" && c.fieldId !== "derived"
                           );
+                          // TIM-1798: cross-workspace equipment-cost changes write the
+                          // equipment item (single source of truth); Financials derives.
+                          const equipmentCost = actionable.filter((c) =>
+                            parseEquipmentCostFieldId(c.fieldId)
+                          );
+                          const rest = actionable.filter(
+                            (c) => !parseEquipmentCostFieldId(c.fieldId)
+                          );
+                          if (equipmentCost.length > 0) {
+                            await applyEquipmentCostChanges(equipmentCost);
+                          }
                           // TIM-1648: route menu_pricing proposals to the write API;
                           // all other suggestions go through the workspace-level callback.
                           if (context.workspace === "menu_pricing") {
-                            await applyMenuPricingProposal(actionable);
-                          } else if (onApplySuggestions && actionable.length > 0) {
-                            await onApplySuggestions(actionable);
+                            await applyMenuPricingProposal(rest);
+                          } else if (onApplySuggestions && rest.length > 0) {
+                            await onApplySuggestions(rest);
                           }
                           clearSuggestions();
                         },

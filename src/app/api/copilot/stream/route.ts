@@ -26,6 +26,7 @@ import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { loadPlanContext } from "@/lib/plan-context"
+import { buildEquipmentCostProposal, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -116,6 +117,17 @@ Keep the Problem → Recommendation Rule: after the competitor list, give the ow
 const PROPOSE_ITEM_DIRECTIVE = `## Adding Items to the Menu (use propose_item tool — do NOT describe it in text)
 You have a \`propose_item\` tool. When the owner asks you to add, save, apply, or put a beverage or menu item into their Menu & Pricing workspace — including when they refer back to something you designed earlier in this conversation (e.g. "add that to my menu", "save it", "put that beverage on the menu") — you MUST call the \`propose_item\` tool. Do NOT write a text-only response claiming the item was added. The tool emits a structured proposal the owner reviews and accepts or rejects before anything is saved. After calling the tool, briefly confirm what you proposed.`
 
+// TIM-1798: cross-workspace cost-change directive — injected ONLY when
+// offerEquipmentChangeTool (same gate as registering propose_equipment_change).
+// Directive presence ⟺ tool presence, always. This is what lets Scout act on a
+// request that spans suites ("reprice the espresso machine and update my
+// financials") instead of refusing because it is "only in Equipment".
+const EQUIPMENT_CHANGE_DIRECTIVE = `## Changing Equipment Costs (use propose_equipment_change — coordinated across workspaces)
+You have a \`propose_equipment_change\` tool. When the owner asks you to set, change, raise, or lower the cost of an equipment item, or to add a new piece of equipment with a cost — INCLUDING when they also ask you to update the Financials, startup costs, or budget to match ("reprice the espresso machine to $11k and update my financials") — you MUST call \`propose_equipment_change\`. Do NOT refuse or say you can only edit the current workspace, and do NOT tell them to change Financials by hand.
+- The equipment item's unit cost is the single source of truth: changing it automatically flows to the Financials equipment line and the startup-cost total. The tool builds ONE review proposal showing the equipment change AND the dependent Financials figures together; the owner accepts, edits, or rejects before anything is saved.
+- For a reprice, pass the item's number (the I# value from the Equipment List below) and the new unit cost in cents. For a new item, pass action "add" with a name, category, and unit cost.
+- After calling the tool, briefly confirm what you proposed in plain language.`
+
 // ── Equipment reorganize types / helpers ─────────────────────────────────────
 
 interface EquipmentItemCtx {
@@ -124,6 +136,10 @@ interface EquipmentItemCtx {
   section_id: string | null
   position: number
   category: string
+  // TIM-1798: cost + quantity power the cross-workspace cost-change proposal
+  // (equipment item ↔ Financials capex line ↔ startup-cost total).
+  unit_cost_cents: number
+  quantity: number
 }
 
 interface SectionCtx {
@@ -163,7 +179,11 @@ function formatEquipmentContext(items: EquipmentItemCtx[], sections: SectionCtx[
           ? `S${sectionIndex.get(i.section_id)}`
           : "Unsectioned"
         : "Unsectioned"
-      return `  I${idx}: ${i.name} | category: ${i.category} | current section: ${station}`
+      // TIM-1798: include current unit cost + quantity so propose_equipment_change
+      // can reason about relative price changes ("make it 20% cheaper").
+      const cost = `$${(i.unit_cost_cents / 100).toLocaleString("en-US")}`
+      const qty = i.quantity > 1 ? ` ×${i.quantity}` : ""
+      return `  I${idx}: ${i.name} | category: ${i.category} | unit cost: ${cost}${qty} | current section: ${station}`
     }),
   ]
   return lines.join("\n")
@@ -360,6 +380,79 @@ function shouldOfferProposeTool(messages: Array<{ role: string; content: string 
   // Design/create intent: verb + item type anywhere in the message.
   const designItem = /\b(add|create|design|propose|make|build)\b.{0,80}\b(latte|espresso|cappuccino|cold brew|pour over|americano|macchiato|mocha|cortado|drink|beverage|item)\b/i.test(lastUser)
   return addToMenu || designItem
+}
+
+// ── propose_equipment_change tool (TIM-1798) ──────────────────────────────────
+// Offered in the buildout_equipment workspace when the owner expresses intent to
+// change an equipment cost or add equipment. Forces sonnet (haiku tool use is
+// unreliable). Emits a coordinated cross-workspace proposal (equipment item +
+// derived Financials line + startup-cost total) into the unified review modal.
+
+const PROPOSE_EQUIPMENT_CHANGE_TOOL: Anthropic.Tool = {
+  name: "propose_equipment_change",
+  description:
+    "Propose a coordinated change to an equipment item's cost that spans the " +
+    "Equipment & Supplies and Financials workspaces. Call this when the owner asks " +
+    "to set/raise/lower an equipment item's cost, or to add a new piece of equipment " +
+    "with a cost — including when they also ask to update the Financials or startup " +
+    "costs to match. The equipment unit cost is the single source of truth; the " +
+    "Financials equipment line and startup-cost total are derived from it. Do NOT " +
+    "call this for general discussion or for reordering the list (use " +
+    "reorganize_equipment_list for ordering).",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      action: {
+        type: "string",
+        enum: ["reprice", "add"],
+        description: "'reprice' to change an existing item's unit cost; 'add' for a new item.",
+      },
+      item: {
+        type: ["integer", "null"],
+        description:
+          "reprice only: the item number from the Equipment List (the I# value, e.g. 0 for I0). Null for 'add'.",
+      },
+      name: {
+        type: "string",
+        description:
+          "Item name in Title Case. For reprice, the existing item's name; for add, the new item's name.",
+      },
+      category: {
+        type: ["string", "null"],
+        description:
+          "add only: equipment category (e.g. 'Espresso', 'Grinder', 'Refrigeration', 'Furniture'). Null for reprice.",
+      },
+      quantity: {
+        type: "integer",
+        description: "Quantity for this item (default 1).",
+      },
+      unit_cost_cents: {
+        type: "integer",
+        description: "The proposed unit cost in cents (e.g. 1100000 for $11,000.00).",
+      },
+      rationale: {
+        type: "string",
+        description: "One sentence explaining the change.",
+      },
+    },
+    required: ["action", "name", "unit_cost_cents"],
+  },
+}
+
+// Offer the cost-change tool when the owner expresses cost-change / add-equipment
+// intent. Kept deliberately broad on the cost side because the flagship case is a
+// cross-suite ask ("...and update my financials"); the model still only calls the
+// tool when the request is genuinely about an equipment cost.
+function shouldOfferEquipmentChangeTool(messages: Array<{ role: string; content: string }>): boolean {
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  // Cost-change intent: a price/cost verb near a cost word.
+  const costChange =
+    /\b(reprice|re-price|chang|updat|set|raise|lower|increase|decrease|drop|bump|adjust|make)\b.{0,60}\b(cost|price|budget|\$|dollar|cheaper|expensive|pricier)\b/i.test(lastUser) ||
+    /\b(cost|price|budget)\b.{0,40}\b(to|at|of)\b.{0,20}(\$|\d)/i.test(lastUser)
+  // Add-equipment intent.
+  const addEquip =
+    /\b(add|buy|include|get|purchase)\b.{0,60}\b(machine|grinder|espresso|fridge|refrigerat|oven|equipment|pos|register|furniture|smallware)\b/i.test(lastUser)
+  return costChange || addEquip
 }
 
 // TIM-1670: detect questions that need real web research (competitors, local market,
@@ -597,7 +690,7 @@ export async function POST(request: NextRequest) {
     const [eqResult, secResult] = await Promise.all([
       svcClient
         .from("buildout_equipment_items")
-        .select("id, name, section_id, position, category")
+        .select("id, name, section_id, position, category, unit_cost_cents, quantity")
         .eq("plan_id", planId)
         .eq("archived", false)
         .order("position"),
@@ -614,7 +707,7 @@ export async function POST(request: NextRequest) {
 
   const equipmentContextAddendum =
     workspaceKey === "buildout_equipment" && equipmentItems.length > 0
-      ? `\n\n## Equipment List — Current Arrangement\nEach item and section below has a short number (I# / S#). The \`reorganize_equipment_list\` tool takes those numbers — pass the item number as \`item\` and the target section number as \`section\` (or null). Do NOT emit UUIDs.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
+      ? `\n\n## Equipment List — Current Arrangement\nEach item and section below has a short number (I# / S#). The \`reorganize_equipment_list\` tool takes those numbers — pass the item number as \`item\` and the target section number as \`section\` (or null). Do NOT emit UUIDs.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Actions available:**\n- \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.\n- \`propose_equipment_change\` — call it when the user asks to change an item's cost or add a new item (pass the I# for a reprice). It updates the Financials equipment line and startup-cost total in the same reviewed proposal.`
       : ""
 
   // TIM-1670: ground competitor/market research in the owner's actual site(s) + segment.
@@ -645,8 +738,18 @@ export async function POST(request: NextRequest) {
   const workspaceMentions = countWorkspaceMentions(messages)
   const isResearch = isResearchQuestion(messages)
   const offerProposeItemTool = shouldOfferProposeTool(messages)
+  // TIM-1798: cross-workspace cost-change tool — only in the equipment workspace
+  // with items present (it references items by their I# index) and on cost-change
+  // intent. Forces sonnet like the other tool paths (haiku tool use is unreliable).
+  const offerEquipmentChangeTool =
+    workspaceKey === "buildout_equipment" &&
+    equipmentItems.length > 0 &&
+    shouldOfferEquipmentChangeTool(messages)
   const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3 || isResearch
-  const modelId = (useComplexModel || offerProposeItemTool) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
+  const modelId =
+    useComplexModel || offerProposeItemTool || offerEquipmentChangeTool
+      ? "claude-sonnet-4-6"
+      : "claude-haiku-4-5-20251001"
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
@@ -742,6 +845,7 @@ export async function POST(request: NextRequest) {
               STABLE_COACHING_STYLE,
               isResearch ? RESEARCH_DIRECTIVE : null,
               offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
+              offerEquipmentChangeTool ? EQUIPMENT_CHANGE_DIRECTIVE : null,
             ].filter(Boolean).join("\n\n"),
           },
           {
@@ -814,6 +918,8 @@ export async function POST(request: NextRequest) {
           ...(equipmentTool ? [equipmentTool] : []),
           // TIM-1648: propose_item — offered on creation-intent messages (forces sonnet).
           ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
+          // TIM-1798: propose_equipment_change — coordinated cross-workspace cost change.
+          ...(offerEquipmentChangeTool ? [PROPOSE_EQUIPMENT_CHANGE_TOOL] : []),
         ]
 
         const stream = anthropic.messages.stream({
@@ -938,6 +1044,56 @@ export async function POST(request: NextRequest) {
                       section: toolInput.category_name ?? "Menu",
                     },
                   }))
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            } else if (activeToolName === "propose_equipment_change" && toolInputBuffer) {
+              // TIM-1798: build the coordinated cross-workspace proposal (equipment
+              // item + derived Financials line + startup-cost total) and emit it.
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  action?: "reprice" | "add"
+                  item?: number | null
+                  name?: string
+                  category?: string | null
+                  quantity?: number
+                  unit_cost_cents?: number
+                  rationale?: string
+                }
+                const action = toolInput.action === "add" ? "add" : "reprice"
+                const idx = typeof toolInput.item === "number" ? toolInput.item : null
+                const target = idx != null ? equipmentItems[idx] : undefined
+                const name = toolInput.name ?? target?.name ?? ""
+                const unitCost =
+                  typeof toolInput.unit_cost_cents === "number" ? toolInput.unit_cost_cents : NaN
+                // Need a name and a valid cost to build a coherent proposal.
+                if (name && Number.isFinite(unitCost)) {
+                  const currentItems: EquipmentCostItem[] = equipmentItems.map((i) => ({
+                    id: i.id,
+                    name: i.name,
+                    quantity: i.quantity ?? 1,
+                    unit_cost_cents: i.unit_cost_cents ?? 0,
+                  }))
+                  const proposal = buildEquipmentCostProposal({
+                    change: {
+                      action,
+                      item_id: target?.id ?? null,
+                      name,
+                      category: toolInput.category ?? null,
+                      quantity: typeof toolInput.quantity === "number" ? toolInput.quantity : 1,
+                      new_unit_cost_cents: Math.round(unitCost),
+                    },
+                    currentItems,
+                  })
+                  if (proposal.suggestions.length > 0) {
+                    send(sse("suggestions", {
+                      suggestions: proposal.suggestions,
+                      context: proposal.context,
+                    }))
+                  }
                 }
               } catch {
                 /* malformed tool JSON — skip silently */
