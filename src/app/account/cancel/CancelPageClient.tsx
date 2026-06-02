@@ -170,12 +170,40 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
 type AnnualProps = {
   tierDisplayName: string;
   periodEnd: string | null;
+  userEmail?: string;
 };
 
-export function AnnualCancelPageClient({ tierDisplayName, periodEnd }: AnnualProps) {
+export function AnnualCancelPageClient({ tierDisplayName, periodEnd, userEmail }: AnnualProps) {
+  const [email, setEmail] = useState(userEmail ?? "");
+  const [reminderState, setReminderState] = useState<"idle" | "submitting" | "done" | "error">("idle");
+  const [reminderError, setReminderError] = useState("");
+
   const periodEndFormatted = periodEnd
     ? new Date(periodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null;
+
+  async function handleReminderSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setReminderState("submitting");
+    setReminderError("");
+    try {
+      const res = await fetch("/api/account/renewal-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReminderError(data.error ?? "Something went wrong. Please try again.");
+        setReminderState("error");
+        return;
+      }
+      setReminderState("done");
+    } catch {
+      setReminderError("Network error. Please try again.");
+      setReminderState("error");
+    }
+  }
 
   return (
     <div className="bg-[var(--background)] min-h-full">
@@ -211,6 +239,52 @@ export function AnnualCancelPageClient({ tierDisplayName, periodEnd }: AnnualPro
               Back to Billing
             </Link>
           </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-[var(--border)] p-6 space-y-4">
+          <h2 className="font-semibold text-[var(--foreground)]">Remind Me at Renewal</h2>
+          <p className="text-sm text-[var(--dark-grey)]">
+            Want a heads-up before your plan renews so you can switch to monthly and pause? Enter your
+            email and we will remind you before your renewal date.
+          </p>
+
+          {reminderState === "done" ? (
+            <div className="bg-[var(--teal-bg-pale)] border border-[var(--teal-bg-900)] rounded-lg px-4 py-4 text-sm text-[var(--teal)] text-center">
+              You are on the list. We will remind you before your renewal date.
+            </div>
+          ) : (
+            <form onSubmit={handleReminderSubmit} className="space-y-3">
+              <div>
+                <label htmlFor="reminder-email" className="block text-xs font-medium text-[var(--foreground)] mb-1">
+                  Email Address
+                </label>
+                <input
+                  id="reminder-email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="w-full border border-[var(--border)] rounded-lg px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
+                />
+              </div>
+
+              {reminderState === "error" && (
+                <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                  {reminderError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={reminderState === "submitting"}
+                className="w-full bg-[var(--teal)] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
+              >
+                {reminderState === "submitting" ? "Saving…" : "Remind Me at Renewal"}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
