@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
 // (#76b39d, prompt-recipe.ts COLOR_VARIANTS.muted) — do not hard-code a new value.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Groundwork — Timberline Coffee School",
+    name: "Groundwork: Timberline Coffee School",
     short_name: "Groundwork",
     description:
       "An AI-powered planning platform to go from coffee shop idea to open doors.",
