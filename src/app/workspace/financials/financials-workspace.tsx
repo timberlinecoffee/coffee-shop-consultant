@@ -36,8 +36,10 @@ import {
   BASE_REVENUE_LINE_ID,
   applyForwardMonthIndices,
   manualOverrideCountsByLine,
+  computeMenuBlendedCogsPct,
   type ApplyForwardRange,
 } from "@/lib/financial-projection";
+import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
 import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
 import { PLTab } from "./tabs/pl-tab";
@@ -471,6 +473,10 @@ function ForecastTab({
   overrideCounts,
   onClearLineOverrides,
   onGoToProjections,
+  onRefreshMenu,
+  isRefreshingMenu,
+  onRefreshEquipment,
+  isRefreshingEquipment,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
@@ -485,6 +491,11 @@ function ForecastTab({
   overrideCounts: Record<string, number>;
   onClearLineOverrides: (lineId: string) => void;
   onGoToProjections?: () => void;
+  // TIM-1713: provenance refresh controls
+  onRefreshMenu?: () => void;
+  isRefreshingMenu?: boolean;
+  onRefreshEquipment?: () => void;
+  isRefreshingEquipment?: boolean;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -909,6 +920,10 @@ function ForecastTab({
             overrideCounts={overrideCounts}
             onClearLineOverrides={onClearLineOverrides}
             onGoToProjections={onGoToProjections}
+            onRefreshMenu={onRefreshMenu}
+            isRefreshingMenu={isRefreshingMenu}
+            onRefreshEquipment={onRefreshEquipment}
+            isRefreshingEquipment={isRefreshingEquipment}
           />
         </div>
       </Section>
@@ -1702,6 +1717,77 @@ export function FinancialsWorkspace({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
 
+  // TIM-1713: live-refreshable copies of server-fetched sync sources.
+  const [liveMenuBlendedCogsPct, setLiveMenuBlendedCogsPct] = useState<number | null>(menuBlendedCogsPct);
+  const [liveMenuCogsItems, setLiveMenuCogsItems] = useState(menuCogsItems);
+  const [liveEquipmentItems, setLiveEquipmentItems] = useState<EquipmentItem[]>(initialEquipmentItems);
+  const [isRefreshingMenu, setIsRefreshingMenu] = useState(false);
+  const [isRefreshingEquipment, setIsRefreshingEquipment] = useState(false);
+
+  const handleRefreshMenu = useCallback(async () => {
+    setIsRefreshingMenu(true);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("menu_items_with_cogs")
+        .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
+        .eq("plan_id", planId)
+        .eq("archived", false);
+      if (data) {
+        setLiveMenuBlendedCogsPct(computeMenuBlendedCogsPct(data));
+        const items = data
+          .filter(
+            (it) =>
+              !it.archived &&
+              typeof it.price_cents === "number" &&
+              (it.price_cents as number) > 0 &&
+              typeof it.expected_mix_pct === "number" &&
+              (it.expected_mix_pct as number) > 0
+          )
+          .map((it) => {
+            const effectiveCogs =
+              typeof it.computed_cogs_cents === "number"
+                ? it.computed_cogs_cents
+                : typeof it.cogs_cents === "number"
+                ? it.cogs_cents
+                : 0;
+            return {
+              name: it.name as string,
+              price_cents: it.price_cents as number,
+              cogs_cents: effectiveCogs as number,
+              expected_mix_pct: it.expected_mix_pct as number,
+              cogs_pct: (it.price_cents as number)
+                ? ((effectiveCogs as number) / (it.price_cents as number)) * 100
+                : 0,
+            };
+          });
+        setLiveMenuCogsItems(items);
+      }
+    } catch {
+      // silently ignore — stale data is better than an error state
+    }
+    setIsRefreshingMenu(false);
+  }, [planId]);
+
+  const handleRefreshEquipment = useCallback(async () => {
+    setIsRefreshingEquipment(true);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("buildout_equipment_items")
+        .select("*")
+        .eq("plan_id", planId)
+        .eq("archived", false)
+        .order("position");
+      if (data) {
+        setLiveEquipmentItems(data as EquipmentItem[]);
+      }
+    } catch {
+      // silently ignore
+    }
+    setIsRefreshingEquipment(false);
+  }, [planId]);
+
   // TIM-1244 (v2): inline contextual guided setup. Auto-opens ONCE on the first
   // visit to the planner, then never again on its own — it's re-triggerable via
   // the on-page "Guided setup" button. Each invocation runs a single tour.
@@ -1779,22 +1865,22 @@ export function FinancialsWorkspace({
   // TIM-1253: derive EquipmentSummary from actual buildout_equipment_items so
   // startup_equipment_total and financed_total in FinancialProjections are real.
   const equipment = useMemo(() => {
-    const active = initialEquipmentItems.filter((i) => !i.archived);
+    const active = liveEquipmentItems.filter((i) => !i.archived);
     const total_cost_cents = active.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
     const FINANCED: FinancingMethod[] = ["loan", "lease", "in_house_financing", "credit_card", "credit", "other"];
     const financed_cost_cents = active
       .filter((i) => FINANCED.includes(i.financing_method))
       .reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
     return { total_cost_cents, financed_cost_cents };
-  }, [initialEquipmentItems]);
+  }, [liveEquipmentItems]);
 
   // TIM-1258: when the owner has real equipment items in the Build-Out &
   // Equipment workspace, the Startup tab sources the Equipment line from that
   // total (read-only). Otherwise it falls back to the legacy startup_costs
   // equipment bucket — mirroring the projection's mpForProjection logic.
   const hasEquipmentItems = useMemo(
-    () => initialEquipmentItems.some((i) => !i.archived && i.unit_cost_cents > 0),
-    [initialEquipmentItems]
+    () => liveEquipmentItems.some((i) => !i.archived && i.unit_cost_cents > 0),
+    [liveEquipmentItems]
   );
 
   // TIM-1253: build an mp variant used ONLY for computation — it adds the
@@ -1802,7 +1888,7 @@ export function FinancialsWorkspace({
   // zeros out startup_costs.equipment_cents so that TIM-1246's aggregate
   // depreciation path doesn't double-count with the per-item lines.
   const mpForProjection = useMemo(() => {
-    const itemLines = equipmentItemsToCapexLines(initialEquipmentItems);
+    const itemLines = equipmentItemsToCapexLines(liveEquipmentItems);
     if (itemLines.length === 0) return mp;
     const sc = mp.startup_costs ?? defaultStartupCosts();
     return {
@@ -1813,7 +1899,7 @@ export function FinancialsWorkspace({
         ...itemLines,
       ],
     };
-  }, [mp, initialEquipmentItems]);
+  }, [mp, liveEquipmentItems]);
 
   // TIM-1254b: per-asset capex rows for the Startup tab Capital Assets section.
   // capexLines = user-authored capex ForecastLines (not linked to equipment items).
@@ -1823,15 +1909,15 @@ export function FinancialsWorkspace({
     [mp.forecast_lines]
   );
   const startupEquipmentItemLines = useMemo(
-    () => equipmentItemsToCapexLines(initialEquipmentItems),
-    [initialEquipmentItems]
+    () => equipmentItemsToCapexLines(liveEquipmentItems),
+    [liveEquipmentItems]
   );
 
   // TIM-1117: feed the blended menu COGS pct into the projection so menu-linked
   // COGS lines compute against menu costing rather than the user-entered %.
   const projectionCtx = useMemo(
-    () => ({ menu_blended_cogs_pct: menuBlendedCogsPct }),
-    [menuBlendedCogsPct]
+    () => ({ menu_blended_cogs_pct: liveMenuBlendedCogsPct }),
+    [liveMenuBlendedCogsPct]
   );
 
   const projections = useMemo(
@@ -2196,14 +2282,18 @@ export function FinancialsWorkspace({
             mp={mp}
             canEdit={canEdit}
             onUpdateMp={handleMpUpdate}
-            menuBlendedCogsPct={menuBlendedCogsPct}
-            menuCogsItems={menuCogsItems}
+            menuBlendedCogsPct={liveMenuBlendedCogsPct}
+            menuCogsItems={liveMenuCogsItems}
             onStartWizard={openWizard}
             onGoToStartup={() => setActiveTab("startup")}
             manualLines={mp.manual_lines ?? []}
             overrideCounts={manualOverrideCountsByLine(mp.manual_overrides)}
             onClearLineOverrides={handleClearLineOverrides}
             onGoToProjections={() => setActiveTab("projections")}
+            onRefreshMenu={handleRefreshMenu}
+            isRefreshingMenu={isRefreshingMenu}
+            onRefreshEquipment={handleRefreshEquipment}
+            isRefreshingEquipment={isRefreshingEquipment}
           />
         )}
         {activeTab === "personnel" && (
@@ -2286,7 +2376,7 @@ export function FinancialsWorkspace({
         )}
         {activeTab === "depreciation" && (
           <DepreciationTab
-            equipmentItems={initialEquipmentItems}
+            equipmentItems={liveEquipmentItems}
             slices={slices}
             fiscalYearStartMonth={fiscalYearStartMonth}
             currencyCode={currencyCode}

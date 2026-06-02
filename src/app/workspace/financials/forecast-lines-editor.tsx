@@ -22,6 +22,7 @@ import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { InfoTip } from "@/components/ui/info-tip";
+import { SyncedFromBadge } from "@/app/_components/SyncedFromBadge";
 
 const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; valueLabel: string }> = {
   revenue: {
@@ -90,9 +91,14 @@ interface LineRowProps {
   manualMode?: boolean;
   onViewOverrides?: () => void;
   onClearOverrides?: () => void;
+  // TIM-1713: provenance refresh controls
+  onRefreshMenu?: () => void;
+  isRefreshingMenu?: boolean;
+  onRefreshEquipment?: () => void;
+  isRefreshingEquipment?: boolean;
 }
 
-function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, overrideCount = 0, manualMode = false, onViewOverrides, onClearOverrides }: LineRowProps) {
+function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, overrideCount = 0, manualMode = false, onViewOverrides, onClearOverrides, onRefreshMenu, isRefreshingMenu = false, onRefreshEquipment, isRefreshingEquipment = false }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -104,6 +110,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
   const isOverhead = line.category === "overhead";
   const isRevenue = line.category === "revenue";
   const menuLinked = isCogs && line.menu_linked === true;
+  const isEquipmentLinked = isCapex && !!line.linked_equipment_item_id;
   const hasMenuData = typeof menuBlendedCogsPct === "number";
   // TIM-1168: visually flag manual override — when menu data exists but this line is not auto-linked.
   const isManualOverride = isCogs && hasMenuData && !menuLinked;
@@ -149,6 +156,26 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           className={`${inputCls} flex-1 min-w-0 font-medium`}
           aria-label="Line item name"
         />
+
+        {/* TIM-1713: provenance badge — menu-linked COGS */}
+        {menuLinked && (
+          <SyncedFromBadge
+            source="Menu"
+            onRefresh={onRefreshMenu}
+            isRefreshing={isRefreshingMenu}
+            className="shrink-0"
+          />
+        )}
+
+        {/* TIM-1713: provenance badge — equipment-linked capex */}
+        {isEquipmentLinked && (
+          <SyncedFromBadge
+            source="Equipment and Supplies"
+            onRefresh={onRefreshEquipment}
+            isRefreshing={isRefreshingEquipment}
+            className="shrink-0"
+          />
+        )}
 
         {/* TIM-1168: manual override badge — visible when menu data exists but auto is off */}
         {isManualOverride && (
@@ -678,9 +705,14 @@ interface SectionProps {
   manualLines: string[];
   onClearLineOverrides?: (lineId: string) => void;
   onGoToProjections?: () => void;
+  // TIM-1713: provenance refresh controls
+  onRefreshMenu?: () => void;
+  isRefreshingMenu?: boolean;
+  onRefreshEquipment?: () => void;
+  isRefreshingEquipment?: boolean;
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections, onRefreshMenu, isRefreshingMenu, onRefreshEquipment, isRefreshingEquipment }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
   const hasMenuData = typeof menuBlendedCogsPct === "number";
@@ -802,6 +834,10 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
               manualMode={manualLines.includes(line.id)}
               onViewOverrides={onGoToProjections}
               onClearOverrides={onClearLineOverrides ? () => onClearLineOverrides(line.id) : undefined}
+              onRefreshMenu={onRefreshMenu}
+              isRefreshingMenu={isRefreshingMenu}
+              onRefreshEquipment={onRefreshEquipment}
+              isRefreshingEquipment={isRefreshingEquipment}
             />
           ))
         )}
@@ -828,6 +864,11 @@ interface Props {
   overrideCounts?: Record<string, number>;
   onClearLineOverrides?: (lineId: string) => void;
   onGoToProjections?: () => void;
+  // TIM-1713: provenance refresh controls
+  onRefreshMenu?: () => void;
+  isRefreshingMenu?: boolean;
+  onRefreshEquipment?: () => void;
+  isRefreshingEquipment?: boolean;
 }
 
 // Build the revenue stream picker options from the current forecast lines.
@@ -859,6 +900,10 @@ export function ForecastLinesEditor({
   overrideCounts = {},
   onClearLineOverrides,
   onGoToProjections,
+  onRefreshMenu,
+  isRefreshingMenu,
+  onRefreshEquipment,
+  isRefreshingEquipment,
 }: Props) {
   const streamOptions = streamOptionsFromLines(lines);
   const shared = {
@@ -873,6 +918,10 @@ export function ForecastLinesEditor({
     manualLines,
     onClearLineOverrides,
     onGoToProjections,
+    onRefreshMenu,
+    isRefreshingMenu,
+    onRefreshEquipment,
+    isRefreshingEquipment,
   };
   return (
     <div className="space-y-6">
