@@ -3,6 +3,7 @@
 import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } from "@/lib/financial-projection";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
+import { SyncedFromBadge } from "@/app/_components/SyncedFromBadge";
 
 interface Props {
   startupCosts: StartupCosts;
@@ -16,6 +17,9 @@ interface Props {
   currencyCode?: string;
   canEdit: boolean;
   onUpdateField: (key: keyof StartupCosts, cents: number) => void;
+  // TIM-1713: equipment-sync refresh affordance.
+  onRefreshEquipment?: () => void;
+  isSyncingEquipment?: boolean;
 }
 
 // One-time costs the owner enters directly. Build-Out & Capital Assets are
@@ -69,6 +73,8 @@ export function StartupTab({
   currencyCode = "USD",
   canEdit,
   onUpdateField,
+  onRefreshEquipment,
+  isSyncingEquipment = false,
 }: Props) {
   const f = (v: number) => fmt(v, currencyCode);
 
@@ -266,7 +272,14 @@ export function StartupTab({
             {workspaceCategoryGroups.map((group) => (
               <tr key={`ws-cat:${group.cat}`} className="border-t border-[var(--neutral-cool-150)]">
                 <td className="py-3 pl-8 pr-4">
-                  <span className="text-[var(--foreground)]">{group.label}</span>
+                  <span className="inline-flex items-center gap-2 flex-wrap">
+                    <span className="text-[var(--foreground)]">{group.label}</span>
+                    <SyncedFromBadge
+                      source="Equipment and Supplies"
+                      onRefresh={onRefreshEquipment}
+                      isRefreshing={isSyncingEquipment}
+                    />
+                  </span>
                   <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">
                     {group.count} {group.count === 1 ? "item" : "items"} · {group.avgLifeYears}yr avg life · straight-line ·{" "}
                     <a href="/workspace/buildout-equipment" className="text-[var(--teal)] hover:underline">

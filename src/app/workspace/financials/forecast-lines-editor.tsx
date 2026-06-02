@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Info, AlertCircle, RotateCcw, ExternalLink } from "lucide-react";
+import { SyncedFromBadge } from "@/app/_components/SyncedFromBadge";
 import type {
   ForecastLine,
   ForecastCategory,
@@ -90,9 +91,12 @@ interface LineRowProps {
   manualMode?: boolean;
   onViewOverrides?: () => void;
   onClearOverrides?: () => void;
+  // TIM-1713: menu-sync refresh affordance.
+  onRefreshMenuCogs?: () => void;
+  isSyncingMenuCogs?: boolean;
 }
 
-function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, overrideCount = 0, manualMode = false, onViewOverrides, onClearOverrides }: LineRowProps) {
+function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, overrideCount = 0, manualMode = false, onViewOverrides, onClearOverrides, onRefreshMenuCogs, isSyncingMenuCogs = false }: LineRowProps) {
   const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -149,6 +153,15 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           className={`${inputCls} flex-1 min-w-0 font-medium`}
           aria-label="Line item name"
         />
+
+        {/* TIM-1713: provenance badge — visible when this line is auto-linked to Menu */}
+        {menuLinked && (
+          <SyncedFromBadge
+            source="Menu"
+            onRefresh={onRefreshMenuCogs}
+            isRefreshing={isSyncingMenuCogs}
+          />
+        )}
 
         {/* TIM-1168: manual override badge — visible when menu data exists but auto is off */}
         {isManualOverride && (
@@ -678,9 +691,12 @@ interface SectionProps {
   manualLines: string[];
   onClearLineOverrides?: (lineId: string) => void;
   onGoToProjections?: () => void;
+  // TIM-1713: menu-sync refresh affordance.
+  onRefreshMenuCogs?: () => void;
+  isSyncingMenuCogs?: boolean;
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections, onRefreshMenuCogs, isSyncingMenuCogs }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
   const hasMenuData = typeof menuBlendedCogsPct === "number";
@@ -802,6 +818,8 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
               manualMode={manualLines.includes(line.id)}
               onViewOverrides={onGoToProjections}
               onClearOverrides={onClearLineOverrides ? () => onClearLineOverrides(line.id) : undefined}
+              onRefreshMenuCogs={onRefreshMenuCogs}
+              isSyncingMenuCogs={isSyncingMenuCogs}
             />
           ))
         )}
@@ -828,6 +846,9 @@ interface Props {
   overrideCounts?: Record<string, number>;
   onClearLineOverrides?: (lineId: string) => void;
   onGoToProjections?: () => void;
+  // TIM-1713: menu-sync refresh affordance.
+  onRefreshMenuCogs?: () => void;
+  isSyncingMenuCogs?: boolean;
 }
 
 // Build the revenue stream picker options from the current forecast lines.
@@ -859,6 +880,8 @@ export function ForecastLinesEditor({
   overrideCounts = {},
   onClearLineOverrides,
   onGoToProjections,
+  onRefreshMenuCogs,
+  isSyncingMenuCogs,
 }: Props) {
   const streamOptions = streamOptionsFromLines(lines);
   const shared = {
@@ -873,6 +896,8 @@ export function ForecastLinesEditor({
     manualLines,
     onClearLineOverrides,
     onGoToProjections,
+    onRefreshMenuCogs,
+    isSyncingMenuCogs,
   };
   return (
     <div className="space-y-6">

@@ -4,7 +4,8 @@
 // TIM-1004: Per-day schedule + itemized operating expenses.
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -471,6 +472,8 @@ function ForecastTab({
   overrideCounts,
   onClearLineOverrides,
   onGoToProjections,
+  onRefreshMenuCogs,
+  isSyncingMenuCogs,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
@@ -485,6 +488,9 @@ function ForecastTab({
   overrideCounts: Record<string, number>;
   onClearLineOverrides: (lineId: string) => void;
   onGoToProjections?: () => void;
+  // TIM-1713: menu-sync refresh affordance.
+  onRefreshMenuCogs?: () => void;
+  isSyncingMenuCogs?: boolean;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -909,6 +915,8 @@ function ForecastTab({
             overrideCounts={overrideCounts}
             onClearLineOverrides={onClearLineOverrides}
             onGoToProjections={onGoToProjections}
+            onRefreshMenuCogs={onRefreshMenuCogs}
+            isSyncingMenuCogs={isSyncingMenuCogs}
           />
         </div>
       </Section>
@@ -1685,6 +1693,22 @@ export function FinancialsWorkspace({
   menuBlendedCogsPct = null,
   menuCogsItems = [],
 }: Props) {
+  const router = useRouter();
+  const [isPendingMenuRefresh, startMenuRefreshTransition] = useTransition();
+  const [isPendingEquipRefresh, startEquipRefreshTransition] = useTransition();
+
+  const handleRefreshMenuCogs = useCallback(() => {
+    startMenuRefreshTransition(() => {
+      router.refresh();
+    });
+  }, [router]);
+
+  const handleRefreshEquipment = useCallback(() => {
+    startEquipRefreshTransition(() => {
+      router.refresh();
+    });
+  }, [router]);
+
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
   // TIM-1257: financialInputs is the SINGLE derived view of `mp` consumed by the
@@ -2204,6 +2228,8 @@ export function FinancialsWorkspace({
             overrideCounts={manualOverrideCountsByLine(mp.manual_overrides)}
             onClearLineOverrides={handleClearLineOverrides}
             onGoToProjections={() => setActiveTab("projections")}
+            onRefreshMenuCogs={handleRefreshMenuCogs}
+            isSyncingMenuCogs={isPendingMenuRefresh}
           />
         )}
         {activeTab === "personnel" && (
@@ -2282,6 +2308,8 @@ export function FinancialsWorkspace({
             currencyCode={currencyCode}
             canEdit={canEdit}
             onUpdateField={handleStartupCostUpdate}
+            onRefreshEquipment={handleRefreshEquipment}
+            isSyncingEquipment={isPendingEquipRefresh}
           />
         )}
         {activeTab === "depreciation" && (
