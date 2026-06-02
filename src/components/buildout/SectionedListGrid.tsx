@@ -2411,7 +2411,7 @@ export function SectionedListGrid({
                             />
                           ))}
                           {costVisible && sectionItems.length > 0 && (() => {
-                            const costIdx = visibleCols.findIndex((c) => c.id === "unit_cost_cents");
+                            const costIdx = visibleCols.findIndex((c) => c.id === "total_cost");
                             if (costIdx < 0) return null;
                             const afterSpan = visibleCols.length - costIdx - 1;
                             return (
@@ -2494,7 +2494,7 @@ export function SectionedListGrid({
 
                 {/* Grand total */}
                 {costVisible && grandTotal > 0 && (() => {
-                  const costIdx = visibleCols.findIndex((c) => c.id === "unit_cost_cents");
+                  const costIdx = visibleCols.findIndex((c) => c.id === "total_cost");
                   if (costIdx < 0) return null;
                   const afterSpan = visibleCols.length - costIdx - 1;
                   return (
