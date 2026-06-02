@@ -569,16 +569,28 @@ export function SuppliersWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Truck className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Suppliers &amp; Vendors
-            </h1>
+        {/* TIM-1787: canonical two-column header matching Financials / Operations Playbook
+            pattern — icon+title+description on the left, chosen-vendor summary on the right. */}
+        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Truck className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+                Suppliers &amp; Vendors
+              </h1>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief.
+            </p>
           </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief.
-          </p>
+          {chosenCount > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 mt-1">
+              <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
+              <span className="text-xs text-[var(--muted-foreground)]">
+                of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
+              </span>
+            </div>
+          )}
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
