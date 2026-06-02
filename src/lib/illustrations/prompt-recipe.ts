@@ -88,7 +88,7 @@ export const SUBJECT_LIBRARY: Record<string, string> = {
   "hero-interior":
     "a coffee shop interior viewed from across the counter, showing an espresso machine, pour-over setup, pendant lamp, window with plants, and a chalkboard menu outline in the background",
   "hero-interior-tall":
-    "a coffee shop interior viewed across the counter, composed to fill the full vertical frame from floor to ceiling: in the foreground a counter with a large espresso machine and a pour-over station, behind it a tall back-bar of stacked open shelving holding cups and storage jars rising up the frame, two pendant lamps hanging down from the top edge, a leafy potted plant trailing upward beside a tall window, and a framed chalkboard menu on the upper wall — minimal empty space at the very top and bottom",
+    "a coffee shop interior viewed from across the counter, arranged as a tall vertical scene: a counter with an espresso machine and a pour-over stand in the lower third, a back-bar of open shelving with a few cups and jars in the middle, two pendant lamps hanging from the top edge, a tall window with a trailing potted plant to one side, and a framed chalkboard menu outline on the wall — every element drawn as thin open outlines in a single uniform off-white line on a fully transparent background, no solid or filled areas, no wood tone or warm shading, generous empty space between elements",
   "flat-white":
     "a flat white in a ceramic cup on a saucer, with latte art rosettta pattern visible, top-down perspective slightly angled",
   "espresso-shot":
