@@ -13,7 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { UPGRADE_PATH } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
 import { CreditPacksModal } from "@/components/credit-packs-modal";
 import type { WorkspaceKey } from "@/types/supabase";
@@ -148,10 +148,10 @@ function readNumber(key: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-const FREE_TRIAL_COPILOT_LIMIT = 5;
-
+// TIM-1825: trial is now a one-time 15-credit grant (not a 5-message counter),
+// so trial mode carries a credit `remaining` / `grant` like paid `credits` mode.
 type CreditsState =
-  | { mode: "trial"; trialUsed: number; trialLimit: number; trialRemaining: number }
+  | { mode: "trial"; remaining: number; grant: number }
   | { mode: "credits"; remaining: number; monthlyGrant?: number }
   | null;
 
@@ -159,6 +159,11 @@ export interface CoPilotDrawerProps {
   workspaceKey: WorkspaceKey;
   planId: string;
   currentFocus?: CopilotFocus;
+  /**
+   * @deprecated TIM-1825 — trial is now a one-time 15-credit grant read live
+   * from /api/credits, not a seeded message count. Accepted for back-compat
+   * with existing callers but ignored; the meter drives off `credits` state.
+   */
   initialTrialMessagesUsed?: number;
   // TIM-1574: On workspace pages the global CoPilotBeacon is the desktop entry
   // point, so the drawer's own floating button is hidden on desktop (lg+) to
@@ -251,12 +256,10 @@ export function CoPilotDrawer({
   workspaceKey,
   planId,
   currentFocus,
-  initialTrialMessagesUsed = 0,
   showDesktopLauncher = false,
   onApplySuggestions,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
-  const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
   // Track the prop separately so a parent-driven workspace switch resets the active
@@ -308,7 +311,6 @@ export function CoPilotDrawer({
     isThinking,
     assistantBuffer,
     error,
-    trialRemaining,
     pendingSuggestions,
     clearSuggestions,
     send,
@@ -317,16 +319,6 @@ export function CoPilotDrawer({
   } = useCopilotStream();
 
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
-
-  // Keep local trial count in sync with the server after each message.
-  useEffect(() => {
-    if (trialRemaining === null) return;
-    setCredits((prev) => {
-      if (prev?.mode !== "trial") return prev;
-      const used = FREE_TRIAL_COPILOT_LIMIT - trialRemaining;
-      return { ...prev, trialUsed: used, trialRemaining };
-    });
-  }, [trialRemaining]);
 
   const openDrawer = useCallback(() => {
     setOpen(true);
@@ -499,8 +491,9 @@ export function CoPilotDrawer({
       const trimmed = prompt.trim();
       if (!trimmed || isStreaming) return;
 
-      // TIM-819: Gate at attempt time if trial already exhausted (e.g. dismissed modal on msg 5).
-      if (trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
+      // TIM-819 / TIM-1825: gate at attempt time if the trial grant is spent
+      // (e.g. the user dismissed the modal on their last credit).
+      if (credits?.mode === "trial" && credits.remaining < 1) {
         setTrialModalOpen(true);
         return;
       }
@@ -534,31 +527,30 @@ export function CoPilotDrawer({
       setBrowserRefreshKey((n) => n + 1);
       maybeRequestTitle(result.threadId ?? activeThreadId, finalMessages);
 
-      if (result.trialRemaining !== null) {
-        const newUsed = FREE_TRIAL_COPILOT_LIMIT - result.trialRemaining;
-        setTrialMessagesUsed(newUsed);
-        if (newUsed >= COPILOT_FREE_TRIAL_LIMIT) {
+      // TIM-1671 / TIM-1825: live credit meter — reflect the post-turn balance
+      // from the stream's `done` event without a refetch, for trial and paid
+      // alike. When a trial user hits zero, surface the upgrade modal.
+      if (result.creditsRemaining !== null) {
+        const remaining = result.creditsRemaining;
+        setCredits((prev) =>
+          prev?.mode === "credits" || prev?.mode === "trial"
+            ? { ...prev, remaining }
+            : prev,
+        );
+        if (credits?.mode === "trial" && remaining < 1) {
           setTrialModalOpen(true);
         }
-      }
-
-      // TIM-1671: live credit meter — reflect the post-turn balance from the
-      // stream's `done` event without a refetch.
-      if (result.creditsRemaining !== null) {
-        setCredits((prev) =>
-          prev?.mode === "credits" ? { ...prev, remaining: result.creditsRemaining! } : prev,
-        );
       }
     },
     [
       activeThreadId,
       activeScope,
+      credits,
       isStreaming,
       maybeRequestTitle,
       messages,
       planId,
       send,
-      trialMessagesUsed,
     ],
   );
 
@@ -898,15 +890,18 @@ export function CoPilotDrawer({
                   <span className="text-[11px] uppercase tracking-wide text-[var(--neutral-cool-600)] font-medium">
                     {COPILOT_SUBTITLE}
                   </span>
+                  {/* TIM-1825: trial meter reads credits remaining (matches the
+                      paid credits-mode pill below). */}
                   {credits?.mode === "trial" && (
                     <span
+                      title="Free trial credits are used based on how much work Scout does on each answer."
                       className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        credits.trialRemaining <= 1
+                        credits.remaining <= 5
                           ? "bg-amber-100 text-amber-700"
                           : "bg-[var(--teal)]/10 text-[var(--teal)]"
                       }`}
                     >
-                      {credits.trialRemaining} of {credits.trialLimit} trial messages left
+                      {credits.remaining} of {credits.grant} trial credits
                     </span>
                   )}
                   {/* TIM-1671: live credit meter — balance updates after each turn. */}
@@ -945,19 +940,6 @@ export function CoPilotDrawer({
                   {` · ${activeThreadLabel}`}
                 </p>
               </div>
-              {credits?.mode === "trial" && trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
-                <span
-                  className={`text-[11px] font-medium whitespace-nowrap mt-1 ${
-                    COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed <= 2
-                      ? "text-amber-600"
-                      : "text-[var(--neutral-cool-600)]"
-                  }`}
-                >
-                  {trialMessagesUsed === 0
-                    ? `${COPILOT_FREE_TRIAL_LIMIT} free`
-                    : `${COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed} free left`}
-                </span>
-              )}
               {!isMobile && (
                 <button
                   type="button"

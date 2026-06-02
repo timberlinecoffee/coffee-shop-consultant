@@ -8,7 +8,8 @@ export const maxDuration = 60;
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { isSubscriptionActive } from "@/lib/access";
+import { ensureTrialGrant } from "@/lib/credits/trial";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, subscription_tier, copilot_trial_messages_used, ai_credits_remaining, beta_waiver_until")
+    .select("subscription_status, subscription_tier, trial_credits_granted, ai_credits_remaining, beta_waiver_until")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -38,10 +39,17 @@ export async function POST(request: NextRequest) {
   const betaWaivedUntil = profile.beta_waiver_until ? new Date(profile.beta_waiver_until) : null;
   const isBetaWaived = betaWaivedUntil ? betaWaivedUntil > new Date() : false;
 
+  // TIM-1825: trial users (free tier, not active) spend a one-time 15-credit
+  // grant, applied lazily here, debited per-action like paid tiers.
+  let creditBalance = profile.ai_credits_remaining ?? 0;
+  const spendsCredits = !isBetaWaived && ((isFree && !isActive) || (isActive && !isFree));
+  if (!isActive && !isBetaWaived && isFree) {
+    creditBalance = await ensureTrialGrant(createServiceClient(), user.id, profile);
+  }
+
   if (!isActive && !isBetaWaived) {
     if (isFree) {
-      const used = profile.copilot_trial_messages_used ?? 0;
-      if (used >= COPILOT_FREE_TRIAL_LIMIT) {
+      if (creditBalance < 1) {
         return Response.json({ reason: "trial_exhausted", tier_required: "starter" }, { status: 402 });
       }
     } else {
@@ -145,17 +153,13 @@ ${currentContent}`;
 
         cleanup();
 
-        if (isActive && !isFree) {
+        // TIM-1825: debit 1 credit for trial and paid users alike (from the
+        // trial grant or the monthly allocation). Beta-waived spend nothing.
+        if (spendsCredits) {
           const svc = createServiceClient();
           await svc
             .from("users")
-            .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
-            .eq("id", user.id);
-        } else if (isFree) {
-          const svc = createServiceClient();
-          await svc
-            .from("users")
-            .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
+            .update({ ai_credits_remaining: Math.max(0, creditBalance - 1) })
             .eq("id", user.id);
         }
 

@@ -98,5 +98,12 @@ export function canAccessSection(
 // upgrade link in copy and the redirect target never drift apart.
 export const UPGRADE_PATH = "/pricing";
 
-// Free users get this many Copilot messages before the trial-exhausted gate.
-export const COPILOT_FREE_TRIAL_LIMIT = 5;
+// TIM-1825: Free-trial users receive a one-time grant of this many AI credits,
+// then spend them per-action through the same variable credit path as paid
+// tiers (src/lib/credits/cost.ts). Replaces the old 5-message
+// COPILOT_FREE_TRIAL_LIMIT counter — a 15-credit grant is only meaningful if
+// trial actions debit variable cost (short chat ~1 · long gen ~2 · deep
+// research ~12) rather than counting messages. The one-time grant is applied
+// lazily and idempotently via `ensureTrialGrant` (src/lib/credits/trial.ts),
+// gated on the `users.trial_credits_granted` flag.
+export const TRIAL_GRANT_CREDITS = 15;

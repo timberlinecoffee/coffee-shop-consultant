@@ -26,7 +26,7 @@ import {
   type CustomerPersona,
 } from "@/lib/concept";
 import { PersonaSection } from "@/components/concept/PersonaSection";
-import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { UPGRADE_PATH } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
 // IDs that get featured (tinted, slightly larger) treatment in the brief
@@ -46,7 +46,9 @@ interface ConceptWorkspaceProps {
   initialDoc: ConceptDocumentV2;
   initialUpdatedAt: string | null;
   canEdit: boolean;
-  initialTrialMessagesUsed?: number;
+  // TIM-1825: trial credits remaining (undefined for non-trial users). Replaces
+  // the old 5-message counter.
+  initialTrialCreditsRemaining?: number;
 }
 
 export function ConceptWorkspace({
@@ -54,7 +56,7 @@ export function ConceptWorkspace({
   initialDoc,
   initialUpdatedAt,
   canEdit,
-  initialTrialMessagesUsed,
+  initialTrialCreditsRemaining,
 }: ConceptWorkspaceProps) {
   const [doc, setDoc] = useState<ConceptDocumentV2>(initialDoc);
   const [saveState, setSaveState] = useState<SaveState>({
@@ -73,9 +75,6 @@ export function ConceptWorkspace({
   const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
   const [exampleIdx, setExampleIdx] = useState(0);
 
-  const [trialMessagesUsed, setTrialMessagesUsed] = useState(
-    initialTrialMessagesUsed ?? 0
-  );
   const [paywallOpen, setPaywallOpen] = useState(false);
 
   const inFlightController = useRef<AbortController | null>(null);
@@ -226,8 +225,10 @@ export function ConceptWorkspace({
     });
   }
 
-  const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
-  const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
+  // TIM-1825: trial is a one-time 15-credit grant; warn as the balance runs low.
+  const trialCreditsRemaining = initialTrialCreditsRemaining ?? 0;
+  const showTrialWarning =
+    initialTrialCreditsRemaining !== undefined && trialCreditsRemaining <= 3;
 
   return (
     <div className="bg-[var(--background)]">
@@ -298,16 +299,18 @@ export function ConceptWorkspace({
         {/* Trial limit notice */}
         {showTrialWarning && (
           <div className="mb-6 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted-foreground)]">
-            {trialRemaining <= 0 ? (
+            {trialCreditsRemaining <= 0 ? (
               <>
-                You&apos;ve used all 5 free AI sessions.{" "}
+                You&apos;ve used all your free trial credits.{" "}
                 <Link href="/pricing" className="text-[var(--teal)] font-medium underline">
                   Upgrade to keep improving
                 </Link>
                 .
               </>
             ) : (
-              <>{trialRemaining} AI session{trialRemaining === 1 ? "" : "s"} left in your free trial.</>
+              <>
+                {trialCreditsRemaining} free trial credit{trialCreditsRemaining === 1 ? "" : "s"} left.
+              </>
             )}
           </div>
         )}
@@ -546,7 +549,6 @@ export function ConceptWorkspace({
         planId={planId}
         workspaceKey="concept"
         currentFocus={{ label: "Concept" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
     </div>
   );

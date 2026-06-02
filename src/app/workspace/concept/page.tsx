@@ -1,7 +1,7 @@
 // TIM-834: Concept workspace v2 — backed by workspace_documents.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { isSubscriptionActive, TRIAL_GRANT_CREDITS } from "@/lib/access";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { ConceptWorkspace } from "./concept-editor";
 
@@ -38,7 +38,7 @@ export default async function ConceptWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, subscription_tier, ai_credits_remaining, trial_credits_granted")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -56,9 +56,13 @@ export default async function ConceptWorkspacePage() {
     };
   }
   const canEdit = isSubscriptionActive(profile?.subscription_status);
-  const initialTrialMessagesUsed =
+  // TIM-1825: trial is a one-time 15-credit grant, not a 5-message counter.
+  // Surface remaining trial credits (the full grant until first use applies it).
+  const initialTrialCreditsRemaining =
     profile?.subscription_tier === "free"
-      ? (profile.copilot_trial_messages_used ?? 0)
+      ? profile.trial_credits_granted
+        ? (profile.ai_credits_remaining ?? 0)
+        : TRIAL_GRANT_CREDITS
       : undefined;
 
   return (
@@ -67,7 +71,7 @@ export default async function ConceptWorkspacePage() {
       initialDoc={initialDoc}
       initialUpdatedAt={doc?.updated_at ?? null}
       canEdit={canEdit}
-      initialTrialMessagesUsed={initialTrialMessagesUsed}
+      initialTrialCreditsRemaining={initialTrialCreditsRemaining}
     />
   );
 }

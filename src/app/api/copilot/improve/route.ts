@@ -11,7 +11,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
-import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { isSubscriptionActive } from "@/lib/access";
+import { ensureTrialGrant } from "@/lib/credits/trial";
 import { loadPlanContext } from "@/lib/plan-context";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data",
+      "ai_credits_remaining, trial_credits_granted, subscription_tier, subscription_status, onboarding_data",
     )
     .eq("id", user.id)
     .single();
@@ -141,14 +142,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (profile.subscription_tier === "free") {
-    const used = profile.copilot_trial_messages_used ?? 0;
-    if (used >= COPILOT_FREE_TRIAL_LIMIT) {
+  // TIM-1825: free trial now spends a one-time 15-credit grant (applied lazily
+  // here), debited per-action like paid tiers — no more message counter.
+  // `creditBalance` is the post-grant balance the debit below reads.
+  const isFree = profile.subscription_tier === "free";
+  let creditBalance = profile.ai_credits_remaining ?? 0;
+  if (isFree) {
+    creditBalance = await ensureTrialGrant(createServiceClient(), user.id, profile);
+    if (creditBalance < 1) {
       return new Response(
         sse("error", {
           code: "trial_exhausted",
-          messages_used: COPILOT_FREE_TRIAL_LIMIT,
-          messages_allowed: COPILOT_FREE_TRIAL_LIMIT,
+          message: "You've used your free trial credits — upgrade to keep planning with Copilot.",
         }),
         { status: 402, headers: { "Content-Type": "text/event-stream" } },
       );
@@ -303,50 +308,38 @@ export async function POST(request: NextRequest) {
           clearTimers();
           closed = true;
 
-          // Deduct 1 credit on successful completion.
-          const isFree = profile.subscription_tier === "free";
+          // TIM-1825: deduct 1 credit on successful completion for trial and
+          // paid users alike (from the trial grant or the monthly allocation).
+          // Unlimited (legacy pro) accounts spend nothing.
           const costPerInputM = 3;
           const costPerOutputM = 15;
           const costUsd =
             (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000;
 
-          if (isFree) {
-            const newTrialCount = (profile.copilot_trial_messages_used ?? 0) + 1;
+          let creditsRemaining: number | null = null;
+          if (!isUnlimited) {
+            creditsRemaining = Math.max(0, creditBalance - 1);
             await supabase
               .from("users")
-              .update({ copilot_trial_messages_used: newTrialCount })
+              .update({ ai_credits_remaining: creditsRemaining })
               .eq("id", user.id);
-            send(
-              sse("done", {
-                modelUsed: "claude-sonnet-4-6",
-                trial_messages_used: newTrialCount,
-                cost_usd: costUsd,
-              }),
-            );
-          } else {
-            if (!isUnlimited) {
-              await supabase
-                .from("users")
-                .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
-                .eq("id", user.id);
 
-              await supabase.from("credit_transactions").insert({
-                user_id: user.id,
-                amount: -1,
-                type: "usage",
-                description: `AI Assist: ${workspaceKey}/${fieldKey}`,
-              });
-            }
-            // Log cost for internal tracking (best-effort).
-            await svcClient.from("ai_errors").insert({
+            await supabase.from("credit_transactions").insert({
               user_id: user.id,
-              workspace_key: workspaceKey,
-              error_code: "cost_log",
-              upstream_status: 200,
-              details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
-            }).then(() => {});
-            send(sse("done", { modelUsed: "claude-sonnet-4-6" }));
+              amount: -1,
+              type: "usage",
+              description: `AI Assist: ${workspaceKey}/${fieldKey}`,
+            });
           }
+          // Log cost for internal tracking (best-effort).
+          await svcClient.from("ai_errors").insert({
+            user_id: user.id,
+            workspace_key: workspaceKey,
+            error_code: "cost_log",
+            upstream_status: 200,
+            details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
+          }).then(() => {});
+          send(sse("done", { modelUsed: "claude-sonnet-4-6", creditsRemaining, cost_usd: costUsd }));
           controller.close();
         }
       } catch (err: unknown) {

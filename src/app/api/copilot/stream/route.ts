@@ -21,17 +21,14 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { ensureTrialGrant } from "@/lib/credits/trial"
 import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { loadPlanContext } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const FREE_TRIAL_COPILOT_LIMIT = 5
 
 const WORKSPACE_KEYS: WorkspaceKey[] = [
   "concept",
@@ -478,7 +475,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data, beta_waiver_until")
+    .select("ai_credits_remaining, trial_credits_granted, subscription_tier, subscription_status, onboarding_data, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
@@ -502,62 +499,67 @@ export async function POST(request: NextRequest) {
   const isTrial = profile.subscription_status === "free_trial"
   const isActive = isSubscriptionActive(profile.subscription_status)
 
-  // Free trial: allow up to FREE_TRIAL_COPILOT_LIMIT messages before showing paywall.
-  // Beta-waived accounts skip the trial gate.
+  // Beta-waived accounts skip credit deduction. All paid tiers have a defined monthly cap.
+  const isUnlimited = isWaived
+
+  const svcClient = createServiceClient()
+
+  // TIM-1825: free-trial users spend a one-time 15-credit grant, applied lazily
+  // here on first use and debited per-action below like paid tiers (no more
+  // 5-message counter). `creditBalance` is the authoritative post-grant balance
+  // both the gate and the debit read.
+  let creditBalance = profile.ai_credits_remaining ?? 0
   if (!isWaived && isTrial) {
-    const used = profile.copilot_trial_messages_used ?? 0
-    const remaining = FREE_TRIAL_COPILOT_LIMIT - used
-    if (remaining <= 0) {
+    creditBalance = await ensureTrialGrant(svcClient, user.id, profile)
+  }
+
+  if (!isWaived) {
+    if (isTrial) {
+      // Trial: gate on the credit grant, not a message count.
+      if (creditBalance < 1) {
+        return new Response(
+          sse("error", {
+            code: "trial_exhausted",
+            message: "You've used your free trial credits — upgrade to keep planning with Copilot.",
+          }),
+          { status: 402, headers: { "Content-Type": "text/event-stream" } },
+        )
+      }
+    } else if (!isActive) {
+      // Cancelled or expired subscriptions: paywall without trial messaging.
+      return new Response(
+        sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
+        { status: 402, headers: { "Content-Type": "text/event-stream" } },
+      )
+    } else if (profile.subscription_tier === "free") {
+      // Active status but free tier — shouldn't normally occur; gate for safety.
       return new Response(
         sse("error", {
-          code: "trial_exhausted",
-          message: "You've used your 5 trial messages — upgrade to keep planning with Copilot.",
-          trialUsed: used,
-          trialLimit: FREE_TRIAL_COPILOT_LIMIT,
+          code: "quota",
+          message: `${COPILOT_NAME} requires a Starter, Growth, or Pro plan. Upgrade to start coaching.`,
+        }),
+        { status: 403, headers: { "Content-Type": "text/event-stream" } },
+      )
+    } else if (creditBalance < 1) {
+      const tier = profile.subscription_tier as string
+      const upgradeHint =
+        tier === "starter"
+          ? "Upgrade to Growth for more monthly credits, or your credits reset next month."
+          : tier === "growth"
+            ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
+            : "Your credits reset at the start of next month."
+      return new Response(
+        // TIM-1687: distinct code so the client can offer Buy-more-credits alongside Upgrade.
+        sse("error", {
+          code: "out_of_credits",
+          message: `You're out of Copilot credits for this month. ${upgradeHint}`,
         }),
         { status: 402, headers: { "Content-Type": "text/event-stream" } },
       )
     }
-  } else if (!isWaived && !isActive) {
-    // Cancelled or expired subscriptions: paywall without trial messaging.
-    return new Response(
-      sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
-      { status: 402, headers: { "Content-Type": "text/event-stream" } },
-    )
-  } else if (!isWaived && profile.subscription_tier === "free") {
-    // Active status but free tier — shouldn't normally occur; gate for safety.
-    return new Response(
-      sse("error", {
-        code: "quota",
-        message: `${COPILOT_NAME} requires a Starter, Growth, or Pro plan. Upgrade to start coaching.`,
-      }),
-      { status: 403, headers: { "Content-Type": "text/event-stream" } },
-    )
-  }
-
-  // Beta-waived accounts skip credit deduction. All paid tiers have a defined monthly cap.
-  const isUnlimited = isWaived
-
-  if (!isTrial && !isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
-    const tier = profile.subscription_tier as string
-    const upgradeHint =
-      tier === "starter"
-        ? "Upgrade to Growth for more monthly credits, or your credits reset next month."
-        : tier === "growth"
-          ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
-          : "Your credits reset at the start of next month."
-    return new Response(
-      // TIM-1687: distinct code so the client can offer Buy-more-credits alongside Upgrade.
-      sse("error", {
-        code: "out_of_credits",
-        message: `You're out of Copilot credits for this month. ${upgradeHint}`,
-      }),
-      { status: 402, headers: { "Content-Type": "text/event-stream" } },
-    )
   }
 
   // ── Build prompt ────────────────────────────────────────────────────────────
-  const svcClient = createServiceClient()
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
   // TIM-1418: Location is read live from plan_hiring_settings + location_candidates
@@ -1055,19 +1057,15 @@ export async function POST(request: NextRequest) {
           }
 
           // TIM-1671: track post-turn credit balance so the chat meter can update
-          // live from the `done` event. null when the account is not on the credit
-          // model (trial / beta-waived / unlimited).
+          // live from the `done` event. null only for beta-waived/unlimited
+          // accounts. TIM-1825: trial users debit the same credit balance as paid
+          // tiers (from their one-time grant) — same path, no message counter.
           let creditsRemaining: number | null = null
 
-          if (isTrial && !isWaived) {
-            await supabase
-              .from("users")
-              .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
-              .eq("id", user.id)
-          } else if (!isUnlimited) {
+          if (!isUnlimited) {
             // Floor at 0 — a single heavy turn can cost more than the remaining
             // balance; we let it finish (already streamed) but never go negative.
-            creditsRemaining = Math.max(0, profile.ai_credits_remaining - creditCost)
+            creditsRemaining = Math.max(0, creditBalance - creditCost)
             await supabase
               .from("users")
               .update({ ai_credits_remaining: creditsRemaining })
@@ -1108,14 +1106,12 @@ export async function POST(request: NextRequest) {
             }))
           }
 
-          const trialRemaining = (isTrial && !isWaived)
-            ? FREE_TRIAL_COPILOT_LIMIT - ((profile.copilot_trial_messages_used ?? 0) + 1)
-            : null
-
           send(sse("done", {
             threadId: effectiveThreadId,
             modelUsed: modelId,
-            trialRemaining,
+            // TIM-1825: trial no longer uses a message counter; meter reads
+            // `creditsRemaining` for both trial and paid.
+            trialRemaining: null,
             // TIM-1671: live credit meter — what this turn cost and what's left.
             creditsSpent: creditsRemaining === null ? null : creditCost,
             creditsRemaining,

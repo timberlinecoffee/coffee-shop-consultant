@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
+import { TRIAL_GRANT_CREDITS } from "@/lib/access";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,14 +16,17 @@ export default async function AccountPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, email, subscription_tier, subscription_status, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
+    .select("full_name, email, subscription_tier, subscription_status, ai_credits_remaining, trial_credits_granted, readiness_score")
     .eq("id", user.id)
     .single();
 
   const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
-  const FREE_TRIAL_COPILOT_LIMIT = 5;
   const isTrial = profile?.subscription_status === "free_trial";
-  const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
+  // TIM-1825: trial is a one-time 15-credit grant (full grant shown until the
+  // lazy grant applies on first use), not a 5-message counter.
+  const trialRemaining = profile?.trial_credits_granted
+    ? (profile?.ai_credits_remaining ?? 0)
+    : TRIAL_GRANT_CREDITS;
 
   return (
     <div className="bg-[var(--background)]">
@@ -54,8 +58,8 @@ export default async function AccountPage() {
               <span className="text-[var(--dark-grey)]">AI coaching</span>
               <span className="text-[var(--foreground)]">
                 {isTrial
-                  ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
-                  : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
+                  ? `${Math.max(0, trialRemaining)} of ${TRIAL_GRANT_CREDITS} trial credits left`
+                  : `${profile?.ai_credits_remaining ?? 0} credits left this month`}
               </span>
             </div>
           </div>

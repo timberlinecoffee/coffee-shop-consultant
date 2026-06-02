@@ -37,6 +37,7 @@ export interface Database {
           subscription_tier: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining: number
           copilot_trial_messages_used: number
+          trial_credits_granted: boolean
           beta_waiver_until: string | null
           target_opening_date: string | null
           readiness_score: number
@@ -55,6 +56,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
+          trial_credits_granted?: boolean
           beta_waiver_until?: string | null
           target_opening_date?: string | null
           readiness_score?: number
@@ -73,6 +75,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'growth' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
+          trial_credits_granted?: boolean
           beta_waiver_until?: string | null
           target_opening_date?: string | null
           readiness_score?: number
@@ -624,7 +627,7 @@ export interface Database {
           id: string
           user_id: string
           amount: number
-          type: 'monthly_allocation' | 'purchase' | 'usage'
+          type: 'monthly_allocation' | 'purchase' | 'usage' | 'trial_grant'
           description: string
           created_at: string
         }
@@ -632,7 +635,7 @@ export interface Database {
           id?: string
           user_id: string
           amount: number
-          type: 'monthly_allocation' | 'purchase' | 'usage'
+          type: 'monthly_allocation' | 'purchase' | 'usage' | 'trial_grant'
           description: string
           created_at?: string
         }
@@ -640,7 +643,7 @@ export interface Database {
           id?: string
           user_id?: string
           amount?: number
-          type?: 'monthly_allocation' | 'purchase' | 'usage'
+          type?: 'monthly_allocation' | 'purchase' | 'usage' | 'trial_grant'
           description?: string
           created_at?: string
         }
