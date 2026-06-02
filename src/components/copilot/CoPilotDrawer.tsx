@@ -36,7 +36,7 @@ import type {
   CopilotMessage,
 } from "./types";
 import { useCopilotStream } from "./useCopilotStream";
-import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange, type SuggestionPayload } from "@/hooks/useAIReviewModal";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
@@ -289,6 +289,9 @@ export function CoPilotDrawer({
   const [browserRefreshKey, setBrowserRefreshKey] = useState(0);
   const [loadingThread, setLoadingThread] = useState(false);
   const [credits, setCredits] = useState<CreditsState>(null);
+  // TIM-1728: cross-workspace consistency conflicts surfaced through AIReviewModal.
+  const [consistencyConflicts, setConsistencyConflicts] = useState<SuggestionPayload[] | null>(null);
+  const [consistencyChecking, setConsistencyChecking] = useState(false);
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
@@ -375,6 +378,34 @@ export function CoPilotDrawer({
     },
     [activeThreadId, handleNewThread],
   );
+
+  // TIM-1728: fetch consistency conflicts and surface via AIReviewModal.
+  const handleConsistencyCheck = useCallback(async () => {
+    if (consistencyChecking) return;
+    setConsistencyChecking(true);
+    try {
+      const res = await fetch("/api/copilot/consistency", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { suggestions: SuggestionPayload[] };
+      setConsistencyConflicts(data.suggestions.length > 0 ? data.suggestions : null);
+    } catch {}
+    finally {
+      setConsistencyChecking(false);
+    }
+  }, [consistencyChecking]);
+
+  // TIM-1728: apply a consistency resolution — POST the canonical value for each accepted conflict.
+  const handleConsistencyApply = useCallback(async (accepted: ApprovedChange[]) => {
+    for (const change of accepted) {
+      await fetch("/api/copilot/consistency", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ factId: change.fieldId, value: change.finalValue }),
+      });
+    }
+    setConsistencyConflicts(null);
+  }, []);
 
   const handleSelectThread = useCallback(
     async (item: ThreadBrowserItem) => {
@@ -578,6 +609,27 @@ export function CoPilotDrawer({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setExternalFocusLabel(null);
   }, [activeThreadId, activeScope]);
+
+  // TIM-1728: detect cross-workspace conflicts whenever the drawer opens.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setConsistencyChecking(true);
+    fetch("/api/copilot/consistency", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (cancelled || !res.ok) return;
+        const data = (await res.json()) as { suggestions: SuggestionPayload[] };
+        if (!cancelled) {
+          setConsistencyConflicts(data.suggestions.length > 0 ? data.suggestions : null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setConsistencyChecking(false);
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]); // Only re-run when drawer opens/closes, not on every state change.
 
   // TIM-662: persist active thread so reload can restore it.
   useEffect(() => {
@@ -955,6 +1007,20 @@ export function CoPilotDrawer({
                   {activeScope === null
                     ? `Ask ${COPILOT_NAME} anything about your plan. This conversation isn't tied to a specific workspace — useful for cross-cutting questions like cash flow, opening sequencing, or "is this realistic?"`
                     : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()} plan. ${COPILOT_NAME} can see your plan snapshot across every workspace.`}
+                  {/* TIM-1728: manual consistency trigger in empty state. */}
+                  {!consistencyConflicts && !consistencyChecking && (
+                    <button
+                      type="button"
+                      onClick={() => void handleConsistencyCheck()}
+                      className="mt-3 flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
+                    >
+                      <Sparkles size={12} aria-hidden />
+                      Check plan consistency
+                    </button>
+                  )}
+                  {consistencyChecking && (
+                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">Checking plan consistency…</p>
+                  )}
                 </div>
               )}
 
@@ -1012,6 +1078,27 @@ export function CoPilotDrawer({
                   >
                     <Sparkles size={14} aria-hidden />
                     {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
+                  </button>
+                </div>
+              )}
+
+              {/* TIM-1728: "Review N conflicts" CTA when cross-workspace consistency check finds disagreements. */}
+              {consistencyConflicts && !isStreaming && (
+                <div className="flex">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!consistencyConflicts) return;
+                      openAIReviewModal({
+                        suggestions: consistencyConflicts,
+                        context: { workspace: "consistency", section: "Plan consistency" },
+                        onApply: handleConsistencyApply,
+                      });
+                    }}
+                    className="flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
+                  >
+                    <Sparkles size={14} aria-hidden />
+                    {`Review ${consistencyConflicts.length} plan ${consistencyConflicts.length === 1 ? "conflict" : "conflicts"}`}
                   </button>
                 </div>
               )}
