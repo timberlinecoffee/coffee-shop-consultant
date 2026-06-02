@@ -31,6 +31,7 @@ import {
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -137,16 +138,15 @@ function HiringPdfButton({
 
   return (
     <>
-      <button
-        type="button"
+      <WorkspaceActionButton
+        variant="secondary"
         onClick={handleClick}
         disabled={exporting}
         title={iconTitle ?? label}
-        className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] disabled:opacity-50 transition-colors"
       >
-        <Download size={12} />
+        <Download size={WORKSPACE_ACTION_ICON_SIZE} />
         {label}
-      </button>
+      </WorkspaceActionButton>
       {paywalled && (
         <PaywallModal
           open={paywalled}
@@ -222,15 +222,14 @@ function ScorecardWorksheetButton({ scorecardId }: { scorecardId: string }) {
             if (e.key === "Escape") setOpen(false);
           }}
         />
-        <button
-          type="button"
+        <WorkspaceActionButton
+          variant="secondary"
           onClick={download}
           disabled={exporting}
           title="Download worksheet"
-          className="flex items-center gap-0.5 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] disabled:opacity-50"
         >
-          <Download size={11} />
-        </button>
+          <Download size={WORKSPACE_ACTION_ICON_SIZE} />
+        </WorkspaceActionButton>
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -543,14 +542,13 @@ function OrgTab({
             <SectionHelp title="Roles">Define every role you plan to hire for.</SectionHelp>
           </div>
           {canEdit && (
-            <button
-              type="button"
+            <WorkspaceActionButton
+              variant="primary"
               onClick={addRole}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
             >
-              <Plus size={13} />
+              <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
               Add role
-            </button>
+            </WorkspaceActionButton>
           )}
         </div>
 
