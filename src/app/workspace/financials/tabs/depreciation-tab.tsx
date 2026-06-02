@@ -3,10 +3,12 @@
 import { useMemo } from "react";
 import {
   type MonthlySlice,
+  type ForecastLine,
   fiscalYearMonthLabels,
   formatCurrency,
 } from "@/lib/financial-projection";
 import type { EquipmentItem } from "../financials-workspace";
+import { ForecastLinesEditor, type MenuCogsItem } from "../forecast-lines-editor";
 import {
   ChartCard,
   FinancialBarChart,
@@ -14,6 +16,9 @@ import {
   type ChartDatum,
   type ChartSeries,
 } from "./financial-charts";
+
+// 60-month projection horizon used for the accumulated-depreciation column.
+const PROJ_MONTHS = 60;
 
 const CATEGORY_LABELS: Record<string, string> = {
   espresso_station: "Espresso Station",
@@ -50,6 +55,18 @@ interface Props {
   slices: MonthlySlice[];
   fiscalYearStartMonth: number;
   currencyCode: string;
+  // TIM-1739: the Asset Purchase (capex) editor was relocated here from
+  // Forecast Inputs. `forecastLines` is the full set; the editor filters to
+  // capex internally and onChange returns the full array.
+  forecastLines: ForecastLine[];
+  canEdit: boolean;
+  onChangeForecastLines: (next: ForecastLine[]) => void;
+  menuBlendedCogsPct?: number | null;
+  menuCogsItems?: MenuCogsItem[];
+  manualLines?: string[];
+  overrideCounts?: Record<string, number>;
+  onClearLineOverrides?: (lineId: string) => void;
+  onGoToProjections?: () => void;
 }
 
 const CHART_SERIES: ChartSeries[] = [
@@ -61,6 +78,15 @@ export function DepreciationTab({
   slices,
   fiscalYearStartMonth,
   currencyCode,
+  forecastLines,
+  canEdit,
+  onChangeForecastLines,
+  menuBlendedCogsPct = null,
+  menuCogsItems = [],
+  manualLines = [],
+  overrideCounts = {},
+  onClearLineOverrides,
+  onGoToProjections,
 }: Props) {
   const activeItems = useMemo(
     () => equipmentItems.filter((i) => !i.archived && i.unit_cost_cents > 0),
@@ -81,28 +107,67 @@ export function DepreciationTab({
     [slices, year1Labels]
   );
 
-  const assetRows = useMemo(
+  // TIM-1739: manual capex ForecastLines entered in this tab (excludes the
+  // synthetic equipment-linked lines, which are represented by `equipmentItems`).
+  const capexLines = useMemo(
     () =>
-      activeItems.map((item) => {
-        const totalCostCents = item.unit_cost_cents * item.quantity;
-        const life = item.useful_life_years > 0 ? item.useful_life_years : 7;
-        const lifeMonths = Math.max(1, Math.round(life * 12));
-        const monthlyDepCents = Math.round(totalCostCents / lifeMonths);
-        // Accumulated over projection period (60 months max, capped at life)
-        const projMonths = Math.min(60, lifeMonths);
-        const accumulatedCents = monthlyDepCents * projMonths;
-        return {
-          id: item.id,
-          name: item.name || "Unnamed Asset",
-          category: fmtCategory(item.category),
-          life,
-          totalCostCents,
-          monthlyDepCents,
-          accumulatedCents,
-        };
-      }),
-    [activeItems]
+      forecastLines.filter(
+        (l) => l.category === "capex" && !l.linked_equipment_item_id && l.value > 0
+      ),
+    [forecastLines]
   );
+
+  // Accumulated depreciation recognized within the 60-month projection window,
+  // starting from the asset's purchase month. An asset bought in month 4 only
+  // depreciates for months 4..60, so its 5-year accumulated is lower than a
+  // month-1 asset of the same cost.
+  function accumulatedInWindow(
+    monthlyDepCents: number,
+    lifeMonths: number,
+    purchaseMonth: number
+  ): number {
+    const remaining = PROJ_MONTHS - (purchaseMonth - 1);
+    const depMonths = Math.max(0, Math.min(lifeMonths, remaining));
+    return monthlyDepCents * depMonths;
+  }
+
+  const assetRows = useMemo(() => {
+    const equipmentRows = activeItems.map((item) => {
+      const totalCostCents = item.unit_cost_cents * item.quantity;
+      const life = item.useful_life_years > 0 ? item.useful_life_years : 7;
+      const lifeMonths = Math.max(1, Math.round(life * 12));
+      const monthlyDepCents = Math.round(totalCostCents / lifeMonths);
+      const purchaseMonth = Math.max(1, item.purchase_month ?? 1);
+      return {
+        id: item.id,
+        name: item.name || "Unnamed Asset",
+        category: fmtCategory(item.category),
+        life,
+        purchaseMonth,
+        totalCostCents,
+        monthlyDepCents,
+        accumulatedCents: accumulatedInWindow(monthlyDepCents, lifeMonths, purchaseMonth),
+      };
+    });
+    const capexRows = capexLines.map((l) => {
+      const totalCostCents = Math.round(l.value);
+      const life = l.useful_life_years && l.useful_life_years > 0 ? l.useful_life_years : 7;
+      const lifeMonths = Math.max(1, Math.round(life * 12));
+      const monthlyDepCents = Math.round(totalCostCents / lifeMonths);
+      const purchaseMonth = Math.max(1, l.ramp?.start_month ?? 1);
+      return {
+        id: l.id,
+        name: l.label || "Asset Purchase",
+        category: l.asset_category ? fmtCategory(l.asset_category) : "Capital Asset",
+        life,
+        purchaseMonth,
+        totalCostCents,
+        monthlyDepCents,
+        accumulatedCents: accumulatedInWindow(monthlyDepCents, lifeMonths, purchaseMonth),
+      };
+    });
+    return [...equipmentRows, ...capexRows];
+  }, [activeItems, capexLines]);
 
   const totals = useMemo(
     () => ({
@@ -119,6 +184,32 @@ export function DepreciationTab({
 
   return (
     <div className="space-y-6">
+      {/* TIM-1739: Asset Purchase entry, relocated here from Forecast Inputs. */}
+      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+        <div className="flex items-center gap-1.5 mb-1">
+          <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
+            Asset Purchases
+          </p>
+        </div>
+        <p className="text-xs text-[var(--muted-foreground)] mb-3">
+          Add the capital assets you plan to buy. Each one is charged as cash in its
+          purchase month and depreciated over its useful life on the schedule below.
+        </p>
+        <ForecastLinesEditor
+          lines={forecastLines}
+          canEdit={canEdit}
+          onChange={onChangeForecastLines}
+          currencyCode={currencyCode}
+          menuBlendedCogsPct={menuBlendedCogsPct}
+          menuCogsItems={menuCogsItems}
+          categories={["capex"]}
+          manualLines={manualLines}
+          overrideCounts={overrideCounts}
+          onClearLineOverrides={onClearLineOverrides}
+          onGoToProjections={onGoToProjections}
+        />
+      </div>
+
       <ChartCard
         title="Monthly Depreciation Expense: Year 1"
         description="Straight-line depreciation charged to the P&L each month across all capital assets."
@@ -178,6 +269,9 @@ export function DepreciationTab({
                     Useful Life
                   </th>
                   <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                    Purchase
+                  </th>
+                  <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
                     Monthly Dep.
                   </th>
                   <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
@@ -199,6 +293,9 @@ export function DepreciationTab({
                     <td className="py-2 px-3 text-right text-[var(--muted-foreground)]">
                       {row.life}yr
                     </td>
+                    <td className="py-2 px-3 text-right text-[var(--muted-foreground)] tabular-nums">
+                      Mo {row.purchaseMonth}
+                    </td>
                     <td className="py-2 px-3 text-right tabular-nums">{fmtC(row.monthlyDepCents)}</td>
                     <td className="py-2 px-3 text-right tabular-nums">{fmtC(row.accumulatedCents)}</td>
                   </tr>
@@ -207,6 +304,7 @@ export function DepreciationTab({
                   <td className="py-2 px-4 sticky left-0 bg-[var(--teal-tint-50)]">Total</td>
                   <td className="py-2 px-3" />
                   <td className="py-2 px-3 text-right tabular-nums">{fmtC(totals.costCents)}</td>
+                  <td className="py-2 px-3" />
                   <td className="py-2 px-3" />
                   <td className="py-2 px-3 text-right tabular-nums">{fmtC(totals.monthlyDepCents)}</td>
                   <td className="py-2 px-3 text-right tabular-nums">{fmtC(totals.accumulatedCents)}</td>
@@ -218,12 +316,12 @@ export function DepreciationTab({
       ) : (
         <div className="rounded-xl border border-[var(--border)] bg-white p-8 text-center">
           <p className="text-sm text-[var(--muted-foreground)]">
-            No capitalized assets yet.{" "}
+            No capitalized assets yet. Add an Asset Purchase above, or{" "}
             <a
               href="/workspace/buildout-equipment"
               className="font-medium text-[var(--teal)] hover:underline"
             >
-              Add equipment in Build-Out &amp; Equipment →
+              add equipment in Build-Out &amp; Equipment →
             </a>
           </p>
         </div>

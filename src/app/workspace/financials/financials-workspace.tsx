@@ -915,7 +915,7 @@ function ForecastTab({
             currencyCode={mp.currency_code ?? "USD"}
             menuBlendedCogsPct={menuBlendedCogsPct}
             menuCogsItems={menuCogsItems}
-            categories={["cogs", "overhead", "capex"]}
+            categories={["cogs", "overhead"]}
             manualLines={manualLines}
             overrideCounts={overrideCounts}
             onClearLineOverrides={onClearLineOverrides}
@@ -2162,7 +2162,7 @@ export function FinancialsWorkspace({
     { id: "break-even", label: "Break-Even" },
     { id: "ratios", label: "Ratios" },
     { id: "startup", label: "Startup Costs" },
-    { id: "depreciation", label: "Depreciation" },
+    { id: "depreciation", label: "Asset & Depreciation" },
   ];
 
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
@@ -2380,6 +2380,15 @@ export function FinancialsWorkspace({
             slices={slices}
             fiscalYearStartMonth={fiscalYearStartMonth}
             currencyCode={currencyCode}
+            forecastLines={mp.forecast_lines}
+            canEdit={canEdit}
+            onChangeForecastLines={(next) => handleMpUpdate({ ...mp, forecast_lines: next })}
+            menuBlendedCogsPct={menuBlendedCogsPct}
+            menuCogsItems={menuCogsItems}
+            manualLines={mp.manual_lines ?? []}
+            overrideCounts={manualOverrideCountsByLine(mp.manual_overrides)}
+            onClearLineOverrides={handleClearLineOverrides}
+            onGoToProjections={() => setActiveTab("projections")}
           />
         )}
       </div>

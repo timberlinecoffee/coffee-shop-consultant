@@ -42,7 +42,7 @@ const CATEGORY_META: Record<ForecastCategory, { label: string; hint: string; val
   },
   capex: {
     label: "Asset Purchases (Capex)",
-    hint: "One-time investments (equipment, build-out, technology). Charged in the start month and depreciated over the asset's useful life — the per-month expense flows to your P&L without affecting cash again.",
+    hint: "One-time investments (equipment, build-out, technology). The full cost is a cash outflow in the purchase month, then depreciated over the asset's useful life. The per-month depreciation flows to your P&L without affecting cash again.",
     valueLabel: "(one-time)",
   },
 };
@@ -352,7 +352,9 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           </span>
         )}
         {isCapex && (
-          <span className="text-[10px] text-[var(--dark-grey)] shrink-0 w-16">one-time</span>
+          <span className="text-[10px] text-[var(--dark-grey)] shrink-0 w-20 whitespace-nowrap">
+            one-time · Mo {line.ramp?.start_month ?? 1}
+          </span>
         )}
 
         <button
@@ -403,32 +405,60 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
       {expanded && (
         <div className="px-3 pb-3 border-t border-[var(--neutral-cool-100)] pt-3 space-y-3 bg-[var(--neutral-cool-50)]">
           {isCapex && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <label className="block text-[10px] font-medium text-[var(--muted-foreground)]">
-                  Useful life (years)
-                </label>
-                <InfoTip label="Useful life (years)">
-                  Spreads the cost on your P&amp;L over this many years. Common defaults: POS hardware 3y, espresso &amp; equipment 5–7y, vehicles 5y, build-out &amp; furniture 10–15y.
-                </InfoTip>
+            <div className="grid grid-cols-2 gap-3 max-w-[320px]">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="block text-[10px] font-medium text-[var(--muted-foreground)]">
+                    Purchase month
+                  </label>
+                  <InfoTip label="Purchase month">
+                    The month within your projection this asset is bought. The full cost is a cash outflow that month, and depreciation begins that month. Month 1 is your first month of operations.
+                  </InfoTip>
+                </div>
+                <NumericInput
+                  type="number"
+                  min={1}
+                  max={60}
+                  step={1}
+                  value={line.ramp?.start_month ?? 1}
+                  disabled={!canEdit}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    const start = isFinite(v) && v > 0 ? Math.min(60, Math.round(v)) : 1;
+                    const prev = line.ramp ?? { enabled: true, start_month: 1, ramp_months: 0, start_pct: 100 };
+                    onChange({ ...line, ramp: { ...prev, enabled: true, start_month: start } });
+                  }}
+                  className={inputCls + " w-full"}
+                  aria-label="Purchase month"
+                />
               </div>
-              <NumericInput
-                type="number"
-                min={1}
-                max={50}
-                step={1}
-                value={line.useful_life_years ?? 7}
-                disabled={!canEdit}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  onChange({
-                    ...line,
-                    useful_life_years: isFinite(v) && v > 0 ? Math.round(v) : 7,
-                  });
-                }}
-                className={inputCls + " w-full max-w-[140px]"}
-                aria-label="Useful life in years"
-              />
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="block text-[10px] font-medium text-[var(--muted-foreground)]">
+                    Useful life (years)
+                  </label>
+                  <InfoTip label="Useful life (years)">
+                    Spreads the cost on your P&amp;L over this many years. Common defaults: POS hardware 3y, espresso &amp; equipment 5–7y, vehicles 5y, build-out &amp; furniture 10–15y.
+                  </InfoTip>
+                </div>
+                <NumericInput
+                  type="number"
+                  min={1}
+                  max={50}
+                  step={1}
+                  value={line.useful_life_years ?? 7}
+                  disabled={!canEdit}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    onChange({
+                      ...line,
+                      useful_life_years: isFinite(v) && v > 0 ? Math.round(v) : 7,
+                    });
+                  }}
+                  className={inputCls + " w-full"}
+                  aria-label="Useful life in years"
+                />
+              </div>
             </div>
           )}
           {isCogs && (
@@ -541,7 +571,8 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
             </div>
           )}
 
-          {/* Ramp */}
+          {/* Ramp (not for capex — capex uses the Purchase month field above) */}
+          {!isCapex && (
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -635,6 +666,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               </div>
             )}
           </div>
+          )}
 
           {/* Growth (not for capex) */}
           {!isCapex && (
