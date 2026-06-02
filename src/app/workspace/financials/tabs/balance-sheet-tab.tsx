@@ -160,6 +160,7 @@ export function BalanceSheetTab({
         slice: lastSlice,
         allSlices: slices,
         inputs: financialInputs,
+        currencyCode,
       })
     : null;
 

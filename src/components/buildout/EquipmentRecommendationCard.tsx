@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
-import { formatCurrency } from "@/lib/financial-projection";
+import { useCurrency } from "@/components/CurrencyProvider";
 import type { EquipmentRecommendation } from "@/types/referral";
 
 const AFFILIATE_DISCLOSURE =
@@ -19,10 +19,11 @@ interface Props {
 export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const { format } = useCurrency();
 
   const priceLabel =
     rec.estimated_price_cents > 0
-      ? ` (${formatCurrency(rec.estimated_price_cents / 100)})`
+      ? ` (${format(rec.estimated_price_cents / 100)})`
       : "";
 
   if (collapsed) {

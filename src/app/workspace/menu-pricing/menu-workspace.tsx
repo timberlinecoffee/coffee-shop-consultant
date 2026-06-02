@@ -41,6 +41,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -360,10 +361,11 @@ function IngredientTableRow({
   const [notes, setNotes] = useState(ingredient.notes ?? "");
   const [notesOpen, setNotesOpen] = useState(false);
 
+  const { symbol } = useCurrency();
   const cpu = costPerUnit(ingredient);
   const cpuDisplay =
     ingredient.package_size > 0 && ingredient.package_cost_cents > 0
-      ? "$" + cpu.toFixed(4)
+      ? `${symbol}${cpu.toFixed(4)}`
       : "—";
   const hasNotes = (ingredient.notes ?? "").trim().length > 0;
 
@@ -504,11 +506,12 @@ function QuickAddRow({
   const submittingRef = useRef(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  const { symbol } = useCurrency();
   const sizeNum = parseFloat(size);
   const costNum = parseFloat(cost);
   const cpuPreview =
     !isNaN(sizeNum) && sizeNum > 0 && !isNaN(costNum) && costNum > 0
-      ? "$" + (costNum / sizeNum).toFixed(4)
+      ? `${symbol}${(costNum / sizeNum).toFixed(4)}`
       : "—";
   const canCommit = name.trim().length > 0 && !busy;
 
@@ -853,6 +856,7 @@ function ItemEditorPanel({
     item.price_cents > 0 ? (item.price_cents / 100).toFixed(2) : ""
   );
 
+  const { symbol } = useCurrency();
   const recipeLines = itemIngredients.filter(
     (ii) => ii.menu_item_id === item.id
   );
@@ -868,7 +872,7 @@ function ItemEditorPanel({
 
   const cogsDisplay =
     recipeLines.length > 0
-      ? "$" + computedCogs.toFixed(2)
+      ? `${symbol}${computedCogs.toFixed(2)}`
       : item.cogs_cents && item.cogs_cents > 0
       ? formatCents(item.cogs_cents)
       : "—";
@@ -1335,6 +1339,7 @@ function CostOfGoodsTabContent({
   benchmarkResult: BenchmarkResult | null;
   benchmarkError: string | null;
 }) {
+  const { symbol } = useCurrency();
   const targetPct = (targetGrossMargin * 100).toFixed(0);
   const noPriceYet = item.price_cents === 0;
 
@@ -1448,7 +1453,7 @@ function CostOfGoodsTabContent({
                   Local range for{" "}
                   <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
                   <span className="font-semibold text-[var(--foreground)]">
-                    ${(benchmarkResult.low_cents / 100).toFixed(2)} to ${(benchmarkResult.high_cents / 100).toFixed(2)}
+                    {symbol}{(benchmarkResult.low_cents / 100).toFixed(2)} to {symbol}{(benchmarkResult.high_cents / 100).toFixed(2)}
                   </span>
                 </p>
                 {benchmarkResult.source === "industry_benchmark" && (
@@ -1468,7 +1473,7 @@ function CostOfGoodsTabContent({
               <p className="text-xs">
                 Your price{" "}
                 <span className="font-semibold text-[var(--foreground)]">
-                  ${(benchmarkResult.current_price_cents / 100).toFixed(2)}
+                  {symbol}{(benchmarkResult.current_price_cents / 100).toFixed(2)}
                 </span>{" "}
                 reads as{" "}
                 <span
@@ -1516,6 +1521,7 @@ function RecipeLineRow({
   onUpdate: (patch: { amount?: number; unit?: IngredientUnit }) => void;
   onDelete: () => void;
 }) {
+  const { symbol } = useCurrency();
   const [amount, setAmount] = useState(line.amount.toString());
 
   function handleAmountBlur() {
@@ -1552,7 +1558,7 @@ function RecipeLineRow({
         ) : (
           lineCost !== null && (
             <span className="text-xs text-[var(--muted-foreground)] shrink-0 tabular-nums">
-              ${lineCost.toFixed(4)}
+              {symbol}{lineCost.toFixed(4)}
             </span>
           )
         )}
@@ -1593,7 +1599,7 @@ function RecipeLineRow({
       ) : (
         lineCost !== null && (
           <span className="text-xs text-[var(--muted-foreground)] shrink-0 min-w-[3rem] text-right">
-            ${lineCost.toFixed(4)}
+            {symbol}{lineCost.toFixed(4)}
           </span>
         )
       )}
@@ -3057,6 +3063,7 @@ export function MenuWorkspace({
   initialTargetGrossMargin,
   conceptContext,
 }: Props) {
+  const { symbol } = useCurrency();
   const [items, setItems] = useState<MenuItemWithCogs[]>(initialItems);
   const [ingredients, setIngredients] = useState<MenuIngredient[]>(initialIngredients);
   const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(initialItemIngredients);
@@ -3487,7 +3494,7 @@ export function MenuWorkspace({
         // TIM-1561: route through unified review modal (delete bespoke proposal box).
         const suggestedDollars = (data.suggested_price_cents / 100).toFixed(2);
         const currentDollars = item.price_cents > 0
-          ? `$${(item.price_cents / 100).toFixed(2)}`
+          ? `${symbol}${(item.price_cents / 100).toFixed(2)}`
           : "Not set";
         openAIReviewModal({
           suggestions: [
@@ -3496,7 +3503,7 @@ export function MenuWorkspace({
               fieldId: "price_cents",
               fieldLabel: `${item.name} - Retail Price`,
               originalValue: currentDollars,
-              proposedValue: `$${suggestedDollars}\n\nMarket range: $${(data.low_cents / 100).toFixed(2)} – $${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
+              proposedValue: `${symbol}${suggestedDollars}\n\nMarket range: ${symbol}${(data.low_cents / 100).toFixed(2)} – ${symbol}${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
               isStructured: false,
             },
           ],

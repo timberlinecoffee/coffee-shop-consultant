@@ -14,6 +14,7 @@ import { PdfTable, type ColumnDef, type Row } from "../components/PdfTable"
 import { PdfChartImage } from "../components/PdfChartImage"
 import { chartToPng } from "../chart-to-png"
 import { parseFinancialsContent } from "@/lib/financials/schema"
+import { formatCurrencyAmount, formatMinorUnits } from "@/lib/currency"
 import type { PdfTemplate } from "../registry"
 import type {
   FinancialsContent,
@@ -99,13 +100,8 @@ function computeBreakEven(pnl: MonthlyPnl) {
   return { breakEvenRevenue, grossMarginPct, monthlyFixed, revenueGap }
 }
 
-function fmtUsd(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
+function fmtUsd(cents: number, currencyCode: string = "USD"): string {
+  return formatMinorUnits(cents, currencyCode)
 }
 
 function fmtDateLong(d: Date): string {
@@ -137,7 +133,7 @@ function slugify(s: string | null | undefined): string {
 
 // ── chart configs ────────────────────────────────────────────────────────────
 
-function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
+function breakEvenChartConfig(pnl: MonthlyPnl, currencyCode = "USD"): ChartConfiguration {
   const { totalRevenue, totalLabor, totalFixed } = computePnl(pnl)
   const { breakEvenRevenue } = computeBreakEven(pnl)
   const maxX = Math.max(totalRevenue, breakEvenRevenue, 1) * 1.5
@@ -157,7 +153,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
   return {
     type: "line",
     data: {
-      labels: labels.map((v) => `$${v.toLocaleString("en-US")}`),
+      labels: labels.map((v) => formatCurrencyAmount(v, currencyCode, { compact: false })),
       datasets: [
         {
           label: "Total costs",
@@ -183,7 +179,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
         legend: { position: "bottom" },
         title: {
           display: true,
-          text: `Break-even at ${fmtUsd(breakEvenRevenue)}/mo revenue`,
+          text: `Break-even at ${fmtUsd(breakEvenRevenue, currencyCode)}/mo revenue`,
         },
       },
       scales: {
@@ -191,7 +187,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
         y: {
           title: { display: true, text: "Dollars" },
           ticks: {
-            callback: (v) => `$${Number(v).toLocaleString("en-US")}`,
+            callback: (v) => formatCurrencyAmount(Number(v), currencyCode, { compact: false }),
           },
         },
       },
@@ -199,7 +195,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl): ChartConfiguration {
   }
 }
 
-function monthlyBurnChartConfig(pnl: MonthlyPnl): ChartConfiguration {
+function monthlyBurnChartConfig(pnl: MonthlyPnl, currencyCode = "USD"): ChartConfiguration {
   const { cogs, totalLabor, totalFixed } = computePnl(pnl)
   return {
     type: "bar",
@@ -227,7 +223,7 @@ function monthlyBurnChartConfig(pnl: MonthlyPnl): ChartConfiguration {
         y: {
           title: { display: true, text: "Dollars per month" },
           ticks: {
-            callback: (v) => `$${Number(v).toLocaleString("en-US")}`,
+            callback: (v) => formatCurrencyAmount(Number(v), currencyCode, { compact: false }),
           },
         },
       },
@@ -385,10 +381,11 @@ type RenderOpts = {
   generatedDate: string
   breakEvenPng: Buffer | null
   burnPng: Buffer | null
+  currencyCode: string
 }
 
 function renderCoverPage(opts: RenderOpts) {
-  const { content, shopName, generatedDate } = opts
+  const { content, shopName, generatedDate, currencyCode } = opts
   const { totalRevenue, netProfit } = computePnl(content.monthly_pnl)
   const { breakEvenRevenue } = computeBreakEven(content.monthly_pnl)
   const totalStartup = content.startup_costs.reduce(
@@ -407,20 +404,20 @@ function renderCoverPage(opts: RenderOpts) {
       <Text style={styles.coverMetaValue}>{generatedDate}</Text>
 
       <Text style={styles.coverMetaLabel}>Total startup costs</Text>
-      <Text style={styles.coverMetaValue}>{fmtUsd(totalStartup)}</Text>
+      <Text style={styles.coverMetaValue}>{fmtUsd(totalStartup, currencyCode)}</Text>
 
       <Text style={styles.coverMetaLabel}>Projected monthly revenue</Text>
-      <Text style={styles.coverMetaValue}>{fmtUsd(totalRevenue)}</Text>
+      <Text style={styles.coverMetaValue}>{fmtUsd(totalRevenue, currencyCode)}</Text>
 
       <Text style={styles.coverMetaLabel}>Projected monthly net profit</Text>
       <Text style={styles.coverMetaValue}>
         {netProfit >= 0 ? "+" : "-"}
-        {fmtUsd(Math.abs(netProfit))}
+        {fmtUsd(Math.abs(netProfit), currencyCode)}
       </Text>
 
       <Text style={styles.coverMetaLabel}>Break-even revenue</Text>
       <Text style={styles.coverMetaValue}>
-        {breakEvenRevenue > 0 ? `${fmtUsd(breakEvenRevenue)}/mo` : "—"}
+        {breakEvenRevenue > 0 ? `${fmtUsd(breakEvenRevenue, currencyCode)}/mo` : "—"}
       </Text>
 
       <Text style={styles.coverFootnote}>
@@ -432,7 +429,7 @@ function renderCoverPage(opts: RenderOpts) {
   )
 }
 
-function ExecutiveSummary({ content }: { content: FinancialsContent }) {
+function ExecutiveSummary({ content, currencyCode = "USD" }: { content: FinancialsContent; currencyCode?: string }) {
   const pnl = computePnl(content.monthly_pnl)
   const be = computeBreakEven(content.monthly_pnl)
   const totalStartup = content.startup_costs.reduce(
@@ -454,7 +451,7 @@ function ExecutiveSummary({ content }: { content: FinancialsContent }) {
       <View style={styles.metricRow}>
         <View style={styles.metric}>
           <Text style={styles.metricLabel}>Monthly revenue</Text>
-          <Text style={styles.metricValue}>{fmtUsd(pnl.totalRevenue)}</Text>
+          <Text style={styles.metricValue}>{fmtUsd(pnl.totalRevenue, currencyCode)}</Text>
         </View>
         <View style={styles.metric}>
           <Text style={styles.metricLabel}>Net profit / month</Text>
@@ -467,7 +464,7 @@ function ExecutiveSummary({ content }: { content: FinancialsContent }) {
             ]}
           >
             {pnl.netProfit >= 0 ? "+" : "-"}
-            {fmtUsd(Math.abs(pnl.netProfit))}
+            {fmtUsd(Math.abs(pnl.netProfit), currencyCode)}
           </Text>
         </View>
         <View style={styles.metric}>
@@ -480,7 +477,7 @@ function ExecutiveSummary({ content }: { content: FinancialsContent }) {
           <Text style={styles.metricLabel}>Break-even revenue</Text>
           <Text style={styles.metricValue}>
             {be.breakEvenRevenue > 0
-              ? `${fmtUsd(be.breakEvenRevenue)}/mo`
+              ? `${fmtUsd(be.breakEvenRevenue, currencyCode)}/mo`
               : "—"}
           </Text>
         </View>
@@ -495,7 +492,7 @@ function ExecutiveSummary({ content }: { content: FinancialsContent }) {
             ]}
           >
             {fundingGap >= 0 ? "+" : "-"}
-            {fmtUsd(Math.abs(fundingGap))}
+            {fmtUsd(Math.abs(fundingGap), currencyCode)}
           </Text>
         </View>
         <View style={styles.metric}>
@@ -838,6 +835,7 @@ export const financialsTemplate: PdfTemplate<unknown> = {
         generatedDate={fmtDateLong(new Date())}
         breakEvenPng={breakEvenPng}
         burnPng={burnPng}
+        currencyCode={ctx.currencyCode}
       />
     )
   },

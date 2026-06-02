@@ -1,3 +1,5 @@
+import { formatCurrencyAmount } from "./currency.ts";
+
 // TIM-1688: General cross-workspace consistency engine.
 //
 // A handful of business facts (monthly rent, square footage, opening date, …)
@@ -175,15 +177,12 @@ export function comparisonKey(unit: FactUnit, value: FactValue, tolerance = 0): 
   }
 }
 
-export function formatFactValue(unit: FactUnit, value: FactValue): string {
+export function formatFactValue(unit: FactUnit, value: FactValue, currencyCode = "USD"): string {
   switch (unit) {
     case "currency_cents": {
       const cents = typeof value === "number" ? value : Number(value);
       if (!Number.isFinite(cents)) return String(value);
-      return `$${(cents / 100).toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`;
+      return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
     }
     case "integer": {
       const n = typeof value === "number" ? value : Number(value);
@@ -250,7 +249,7 @@ export interface FactConflict {
 // more of its homes hold values that do not collide under the unit's comparison
 // key. Readings with null/absent values are ignored. Unknown fact/location ids
 // are skipped (registry is the source of truth).
-export function detectConflicts(readings: FactReading[]): FactConflict[] {
+export function detectConflicts(readings: FactReading[], currencyCode = "USD"): FactConflict[] {
   const byFact = new Map<string, FactReading[]>();
   for (const r of readings) {
     if (r.value === null || r.value === undefined) continue;
@@ -282,7 +281,7 @@ export function detectConflicts(readings: FactReading[]): FactConflict[] {
       } else {
         groupsByKey.set(key, {
           value: r.value as FactValue,
-          display: formatFactValue(fact.unit, r.value as FactValue),
+          display: formatFactValue(fact.unit, r.value as FactValue, currencyCode),
           locations: [entry],
         });
       }
@@ -386,7 +385,7 @@ export interface ConsistencySuggestion {
   isStructured: false;
 }
 
-export function conflictToSuggestion(conflict: FactConflict): ConsistencySuggestion {
+export function conflictToSuggestion(conflict: FactConflict, currencyCode = "USD"): ConsistencySuggestion {
   const summary = conflict.groups
     .map(
       (g) =>
@@ -398,7 +397,7 @@ export function conflictToSuggestion(conflict: FactConflict): ConsistencySuggest
     fieldId: conflict.factId,
     fieldLabel: `${conflict.factLabel} disagrees across workspaces`,
     originalValue: summary,
-    proposedValue: formatFactValue(conflict.unit, conflict.recommendedValue),
+    proposedValue: formatFactValue(conflict.unit, conflict.recommendedValue, currencyCode),
     isStructured: false,
   };
 }

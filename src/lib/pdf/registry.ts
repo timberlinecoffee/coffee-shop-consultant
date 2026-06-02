@@ -7,6 +7,8 @@ export type PdfRenderContext<TContent = unknown> = {
   brand: BrandTokens
   user: { id: string; email: string | null }
   plan: { id: string; shop_name: string | null }
+  /** ISO 4217 currency code from the account's platform setting. Defaults to "USD". */
+  currencyCode: string
 }
 
 export type PdfTemplate<TContent = unknown> = {

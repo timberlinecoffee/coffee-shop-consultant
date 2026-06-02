@@ -1,62 +1,46 @@
 "use client";
 
-// TIM-1741: platform-wide currency context. Every money display reads the
-// account's selected currency through useCurrency() so a single Settings
-// change re-symbols and re-formats the whole platform. Formatting itself is
-// delegated to the central utility in src/lib/currency.ts.
+// TIM-1741: CurrencyProvider + useCurrency hook.
+// Wraps a subtree with the account's selected ISO 4217 currency so every money
+// render uses the correct symbol, separator, and fraction digits — no hardcoded "$".
 
-import { createContext, useContext, useMemo } from "react";
-import {
-  DEFAULT_CURRENCY_CODE,
-  currencySymbol,
-  formatCurrencyAmount,
-  formatMinorUnits,
-  normalizeCurrencyCode,
-} from "@/lib/currency";
+import { createContext, useContext, type ReactNode } from "react";
+import { formatCurrencyAmount, formatMinorUnits, currencySymbol } from "@/lib/currency";
 
-export interface CurrencyContextValue {
-  /** Normalized ISO 4217 code currently in effect. */
+interface CurrencyContextValue {
   currencyCode: string;
-  /** Format a whole-unit amount (compact K/M by default — see currency.ts). */
-  format: (n: number, opts?: { compact?: boolean }) => string;
-  /** Format a minor-unit (cents) amount. */
+  format: (amount: number, opts?: { compact?: boolean }) => string;
   formatMinor: (minorUnits: number) => string;
-  /** Bare currency symbol (e.g. "$", "€") for input prefixes. */
   symbol: string;
 }
 
-function buildValue(code: string): CurrencyContextValue {
-  const normalized = normalizeCurrencyCode(code);
-  return {
-    currencyCode: normalized,
-    format: (n, opts) => formatCurrencyAmount(n, normalized, opts),
-    formatMinor: (minorUnits) => formatMinorUnits(minorUnits, normalized),
-    symbol: currencySymbol(normalized),
-  };
-}
+const DEFAULT_CODE = "USD";
 
-const CurrencyContext = createContext<CurrencyContextValue | null>(null);
+const CurrencyContext = createContext<CurrencyContextValue>({
+  currencyCode: DEFAULT_CODE,
+  format: (n, opts) => formatCurrencyAmount(n, DEFAULT_CODE, opts),
+  formatMinor: (m) => formatMinorUnits(m, DEFAULT_CODE),
+  symbol: "$",
+});
 
 export function CurrencyProvider({
   currencyCode,
   children,
 }: {
-  currencyCode: string | null | undefined;
-  children: React.ReactNode;
+  currencyCode: string;
+  children: ReactNode;
 }) {
-  const value = useMemo(
-    () => buildValue(currencyCode ?? DEFAULT_CURRENCY_CODE),
-    [currencyCode]
+  const value: CurrencyContextValue = {
+    currencyCode,
+    format: (n, opts) => formatCurrencyAmount(n, currencyCode, opts),
+    formatMinor: (m) => formatMinorUnits(m, currencyCode),
+    symbol: currencySymbol(currencyCode),
+  };
+  return (
+    <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>
   );
-  return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
 }
 
-/**
- * Read the active currency formatter. Falls back to a USD formatter when used
- * outside a provider so a component is never crash-coupled to provider
- * placement (matches the prior default-USD behavior).
- */
 export function useCurrency(): CurrencyContextValue {
-  const ctx = useContext(CurrencyContext);
-  return ctx ?? buildValue(DEFAULT_CURRENCY_CODE);
+  return useContext(CurrencyContext);
 }
