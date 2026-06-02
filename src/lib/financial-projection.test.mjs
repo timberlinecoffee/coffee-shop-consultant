@@ -12,6 +12,7 @@ import {
   computeMonthlyProjections,
   computeMonthlySlices,
   computeMenuBlendedCogsPct,
+  buildMenuCogsBreakdown,
   computeBreakEvenModel,
   deriveFinancialInputs,
   BASE_REVENUE_LINE_ID,
@@ -484,13 +485,55 @@ test("computeMenuBlendedCogsPct: weighted by mix, prefers computed_cogs_cents", 
 test("computeMenuBlendedCogsPct: returns null when nothing is priced", () => {
   assert.equal(computeMenuBlendedCogsPct([]), null);
   assert.equal(computeMenuBlendedCogsPct(null), null);
+  // Only the unpriced item is dropped; nothing priced remains → null.
   assert.equal(
     computeMenuBlendedCogsPct([
       { price_cents: 0, computed_cogs_cents: 100, expected_mix_pct: 50 },
-      { price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 0 },
     ]),
     null
   );
+});
+
+test("computeMenuBlendedCogsPct: TIM-1799 — priced item with no mix still counts (equal weight)", () => {
+  // The menu UI no longer sets expected_mix_pct (it captures popularity), so a
+  // real/demo menu item has mix 0. It must NOT be dropped: a populated menu has
+  // to reach Financials. Single item → blend = its own COGS % (120/300 = 40%).
+  const pct = computeMenuBlendedCogsPct([
+    { price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 0 },
+  ]);
+  assert.ok(pct !== null);
+  assert.ok(Math.abs(pct - 40) < 1e-9);
+});
+
+test("computeMenuBlendedCogsPct: TIM-1799 — weights by popularity when mix is unset", () => {
+  // No numeric mix anywhere; popularity high=3 / low=1 supplies the weights.
+  //   Latte: price $5, cogs $1, high → w3 → cost 3, price 15
+  //   Drip:  price $3, cogs $1.20, low → w1 → cost 1.2, price 3
+  // Blended = (3 + 1.2) / (15 + 3) × 100 = 4.2/18 × 100 ≈ 23.333%
+  const pct = computeMenuBlendedCogsPct([
+    { price_cents: 500, computed_cogs_cents: 100, expected_popularity: "high" },
+    { price_cents: 300, computed_cogs_cents: 120, expected_popularity: "low" },
+  ]);
+  assert.ok(pct !== null);
+  assert.ok(Math.abs(pct - (4.2 / 18) * 100) < 1e-9);
+});
+
+test("buildMenuCogsBreakdown: TIM-1799 — includes all priced items, normalizes mix to ~100%", () => {
+  const rows = buildMenuCogsBreakdown([
+    { name: "Latte", price_cents: 500, computed_cogs_cents: 100, expected_popularity: "high" },
+    { name: "Cold Brew", price_cents: 450, computed_cogs_cents: 90, expected_popularity: "medium" },
+    { name: "Drip", price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 0 },
+    { name: "Archived", price_cents: 400, computed_cogs_cents: 80, archived: true },
+    { name: "Unpriced", price_cents: 0, computed_cogs_cents: 80 },
+  ]);
+  // Archived + unpriced dropped; the three Beverages-style priced items remain.
+  assert.equal(rows.length, 3);
+  // Weights 3 + 2 + 1 = 6 → normalized mix sums to 100%.
+  const sumMix = rows.reduce((s, r) => s + r.expected_mix_pct, 0);
+  assert.ok(Math.abs(sumMix - 100) < 1e-9);
+  // High-popularity item carries the largest share.
+  assert.ok(Math.abs(rows[0].expected_mix_pct - 50) < 1e-9);
+  assert.ok(Math.abs(rows[0].cogs_pct - 20) < 1e-9);
 });
 
 test("stream-linked COGS flows through to balance sheet: inventory + accounts payable", () => {

@@ -75,7 +75,7 @@ export async function GET() {
       // TIM-1694: also select cogs/mix columns so Financials → Cost of Goods can
       // resolve the blended menu COGS pct (menu→COGS auto-sync on load).
       .select(
-        "id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived"
+        "id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived"
       )
       .eq("plan_id", planId)
       .order("position"),

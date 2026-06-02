@@ -8,6 +8,7 @@ import {
   normalizeMonthlyProjections,
   defaultMonthlyProjections,
   computeMenuBlendedCogsPct,
+  buildMenuCogsBreakdown,
 } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 import { FinancialsWorkspace } from "./financials-workspace";
@@ -46,9 +47,12 @@ export default async function FinancialsWorkspacePage() {
       .maybeSingle(),
     // TIM-1117: pull menu items so COGS lines can link to menu costing.
     // TIM-1168: also select name for the "How is this calculated?" reveal.
+    // TIM-1799: select expected_popularity too — it (not the legacy numeric
+    // expected_mix_pct, which the menu UI no longer sets) is what weights the
+    // blend, so Beverages and every other priced category reach Financials.
     supabase
       .from("menu_items_with_cogs")
-      .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
+      .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
       .eq("plan_id", plan.id)
       .eq("archived", false),
     // TIM-1253: fetch equipment items for shared-read capex sync — each item
@@ -97,30 +101,9 @@ export default async function FinancialsWorkspacePage() {
   const menuBlendedCogsPct = computeMenuBlendedCogsPct(rawMenuItems);
 
   // TIM-1168: per-item breakdown for "How is this calculated?" reveal.
-  const menuCogsItems = rawMenuItems
-    .filter(
-      (it) =>
-        !it.archived &&
-        typeof it.price_cents === "number" &&
-        it.price_cents > 0 &&
-        typeof it.expected_mix_pct === "number" &&
-        it.expected_mix_pct > 0
-    )
-    .map((it) => {
-      const effectiveCogs =
-        typeof it.computed_cogs_cents === "number"
-          ? it.computed_cogs_cents
-          : typeof it.cogs_cents === "number"
-          ? it.cogs_cents
-          : 0;
-      return {
-        name: it.name as string,
-        price_cents: it.price_cents as number,
-        cogs_cents: effectiveCogs,
-        expected_mix_pct: it.expected_mix_pct as number,
-        cogs_pct: it.price_cents ? (effectiveCogs / (it.price_cents as number)) * 100 : 0,
-      };
-    });
+  // TIM-1799: built via the shared recompute so it reflects ALL priced items
+  // (incl. Beverages), weighting by popularity when no numeric mix is set.
+  const menuCogsItems = buildMenuCogsBreakdown(rawMenuItems);
 
   return (
     <FinancialsWorkspace

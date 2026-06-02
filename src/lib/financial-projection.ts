@@ -11,6 +11,7 @@
 //   formatCurrency / fmt accept an optional code and delegate to src/lib/currency.
 
 import { formatCurrencyAmount, normalizeCurrencyCode } from "./currency.ts";
+import type { ExpectedPopularity } from "./menu-engineering.ts";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -2067,11 +2068,38 @@ export function computeProjections(
 // has no valid items (no positive priced item with a non-zero mix), so the
 // caller can render "Menu not available" rather than apply a zero rate.
 export interface MenuItemForCogs {
+  name?: string | null;
   price_cents: number;
   computed_cogs_cents?: number | null;
   cogs_cents?: number | null;
   expected_mix_pct?: number | null;
+  // TIM-1322: the menu UI captures popularity (low/medium/high), not a numeric
+  // sales-mix percent — so expected_mix_pct is left at its 0 default for nearly
+  // every real or demo menu. See menuItemMixWeight for how this feeds the blend.
+  expected_popularity?: ExpectedPopularity | null;
   archived?: boolean | null;
+}
+
+// TIM-1799: relative sales-mix weight for a menu item in the Financials COGS
+// blend. The menu builder no longer collects a numeric mix percent (TIM-1322
+// replaced it with low/medium/high popularity), so keying the blend off
+// expected_mix_pct alone silently dropped EVERY item — the menu had beverages
+// but Financials saw none. Fall back: explicit mix → popularity score →
+// equal weight. A priced item is never silently dropped.
+export function menuItemMixWeight(item: MenuItemForCogs): number {
+  if (typeof item.expected_mix_pct === "number" && item.expected_mix_pct > 0) {
+    return item.expected_mix_pct;
+  }
+  if (item.expected_popularity === "high") return 3;
+  if (item.expected_popularity === "medium") return 2;
+  if (item.expected_popularity === "low") return 1;
+  return 1; // equal weight — a populated menu always reaches Financials
+}
+
+function effectiveMenuCogsCents(item: MenuItemForCogs): number {
+  if (typeof item.computed_cogs_cents === "number") return item.computed_cogs_cents;
+  if (typeof item.cogs_cents === "number") return item.cogs_cents;
+  return 0;
 }
 
 export function computeMenuBlendedCogsPct(
@@ -2083,20 +2111,54 @@ export function computeMenuBlendedCogsPct(
   for (const it of items) {
     if (it.archived) continue;
     const price = typeof it.price_cents === "number" && it.price_cents > 0 ? it.price_cents : 0;
-    const mix = typeof it.expected_mix_pct === "number" && it.expected_mix_pct > 0
-      ? it.expected_mix_pct
-      : 0;
-    if (price === 0 || mix === 0) continue;
-    const cogs = typeof it.computed_cogs_cents === "number"
-      ? it.computed_cogs_cents
-      : typeof it.cogs_cents === "number"
-        ? it.cogs_cents
-        : 0;
-    totalCost += cogs * mix;
-    totalPrice += price * mix;
+    if (price === 0) continue;
+    const weight = menuItemMixWeight(it);
+    const cogs = effectiveMenuCogsCents(it);
+    totalCost += cogs * weight;
+    totalPrice += price * weight;
   }
   if (totalPrice <= 0) return null;
   return (totalCost / totalPrice) * 100;
+}
+
+// TIM-1799: the per-item COGS breakdown shown under a menu-linked COGS line in
+// the Financials forecast editor. Shared by the server loader (page.tsx) and
+// the in-app "Refresh from Menu" control so both recompute identically from the
+// live menu (the TIM-1705 shared-read standard — no persisted stale snapshot).
+// expected_mix_pct here is the normalized display weight (sums to ~100%), so the
+// breakdown reflects ALL priced items including Beverages, not just ones that
+// happen to carry a legacy numeric mix.
+export interface MenuCogsBreakdownItem {
+  name: string;
+  price_cents: number;
+  cogs_cents: number;
+  expected_mix_pct: number;
+  cogs_pct: number;
+}
+
+export function buildMenuCogsBreakdown(
+  items: ReadonlyArray<MenuItemForCogs> | null | undefined
+): MenuCogsBreakdownItem[] {
+  if (!items || items.length === 0) return [];
+  const priced = items.filter(
+    (it) =>
+      !it.archived &&
+      typeof it.price_cents === "number" &&
+      (it.price_cents as number) > 0
+  );
+  const totalWeight = priced.reduce((s, it) => s + menuItemMixWeight(it), 0);
+  return priced.map((it) => {
+    const effectiveCogs = effectiveMenuCogsCents(it);
+    const weight = menuItemMixWeight(it);
+    const price = it.price_cents as number;
+    return {
+      name: (it.name as string) ?? "",
+      price_cents: price,
+      cogs_cents: effectiveCogs,
+      expected_mix_pct: totalWeight > 0 ? (weight / totalWeight) * 100 : 0,
+      cogs_pct: price ? (effectiveCogs / price) * 100 : 0,
+    };
+  });
 }
 
 // TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the
