@@ -20,7 +20,7 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center px-4 py-12">
       <Link href="/" className="flex items-center mb-10" aria-label="Groundwork home">
-        <Logo variant="color" height={32} priority />
+        <Logo variant="color" height={48} priority />
       </Link>
 
       <div className="bg-white rounded-2xl border border-[var(--border)] p-8 w-full max-w-sm shadow-sm">

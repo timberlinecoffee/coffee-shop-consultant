@@ -433,7 +433,7 @@ function SidebarContent({
             className="flex items-center justify-center"
             onClick={onClose}
           >
-            <LogoMark variant="color" height={28} />
+            <LogoMark variant="color" height={40} />
           </Link>
         ) : (
           <>
@@ -444,7 +444,7 @@ function SidebarContent({
               aria-label="Groundwork home"
               onClick={onClose}
             >
-              <Logo variant="color" height={28} />
+              <Logo variant="color" height={40} />
             </Link>
             {onClose && (
               <button
