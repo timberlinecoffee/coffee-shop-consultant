@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import { normalizeAIOutput } from "@/lib/normalize";
+import { applyExplicitPrices } from "@/lib/buildout-explicit-price";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
 import type { NextRequest } from "next/server";
 import type { ParsedRow } from "../import/route";
@@ -113,7 +114,7 @@ Return a structured equipment list grouped by station. For each item:
 - category: one of espresso_station, brew_platform, milk_beverage_prep, refrigeration, plumbing_water, electrical, pos_tech, furniture_fixtures, signage_decor, smallwares, ceramics, glassware, to_go_ware, miscellaneous
 - brand: brand name if mentioned or strongly implied (e.g. "La Marzocco" from "Linea PB"). Title Case. Empty string if unknown.
 - quantity: integer (default 1). Use context clues — "two-group" implies 1 machine; "two EK43" implies 2.
-- unit_cost_cents: integer cents. Use realistic market prices for specialty coffee equipment. 0 if truly unknown.
+- unit_cost_cents: integer cents. If the description states an explicit price for an item (e.g. "espresso machine at $24,000", "$1,250 grinder"), use EXACTLY that amount converted to cents (dollars × 100) — never substitute your own estimate. Only when NO price is given, use a realistic market price for specialty coffee equipment. 0 if truly unknown.
 - price_band: one of "budget", "mid", "premium", "luxury" based on the item. Use "" if not relevant.
 - notes: any relevant notes (PID mod, custom order, etc.). Empty string if none.
 
@@ -184,5 +185,10 @@ Return ONLY valid JSON — no markdown, no explanation:
     skip: false,
   }));
 
-  return Response.json({ rows });
+  // TIM-1797: deterministic guard — re-bind any item whose price the owner stated
+  // explicitly in the description, so a stated dollar figure (e.g. "$24,000")
+  // round-trips faithfully even if the model substituted its own estimate.
+  const guardedRows = applyExplicitPrices(description, rows);
+
+  return Response.json({ rows: guardedRows });
 }
