@@ -27,7 +27,7 @@ export default async function AccountPage() {
   return (
     <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">Account Settings</h1>
+        <h1 className="text-3xl font-bold text-[var(--foreground)]">Account Settings</h1>
 
         <div className="bg-white rounded-xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Profile</h2>
@@ -72,7 +72,7 @@ export default async function AccountPage() {
           <p className="text-sm text-[var(--dark-grey)] mb-4">
             Permanently delete your account and all plan data. This cannot be undone.
           </p>
-          <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">
+          <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
             Delete My Account
           </button>
         </div>
