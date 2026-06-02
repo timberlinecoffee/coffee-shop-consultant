@@ -79,6 +79,19 @@ export function tierFromPriceId(priceId: string): Tier {
   return "free";
 }
 
+// TIM-1663: the set of configured annual price IDs. The renewal-reminder job
+// uses this to confirm a subscriber is still on an annual plan before reminding
+// (a subscriber can opt in while annual, then switch to monthly).
+export const ANNUAL_PRICE_IDS: ReadonlySet<string> = new Set(
+  Object.values(PLANS)
+    .filter((plan) => plan.interval === "annual" && plan.priceId)
+    .map((plan) => plan.priceId),
+);
+
+export function isAnnualPriceId(priceId: string | null | undefined): boolean {
+  return !!priceId && ANNUAL_PRICE_IDS.has(priceId);
+}
+
 // TIM-929: No tier is unlimited. Every paid tier has a hard monthly credit cap.
 // Pro cap is a placeholder (500) pending CEO confirmation — see TIM-929 comment.
 export const MONTHLY_CREDITS: Record<Tier, number> = {
