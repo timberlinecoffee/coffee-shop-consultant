@@ -292,6 +292,9 @@ export function CoPilotDrawer({
   // TIM-1728: cross-workspace consistency conflicts surfaced through AIReviewModal.
   const [consistencyConflicts, setConsistencyConflicts] = useState<SuggestionPayload[] | null>(null);
   const [consistencyChecking, setConsistencyChecking] = useState(false);
+  // TIM-1801: result feedback so the button never silently no-ops — a clean
+  // "no issues" state and a surfaced error replace the prior silent returns.
+  const [consistencyResult, setConsistencyResult] = useState<"idle" | "clean" | "error">("idle");
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
@@ -383,13 +386,26 @@ export function CoPilotDrawer({
   const handleConsistencyCheck = useCallback(async () => {
     if (consistencyChecking) return;
     setConsistencyChecking(true);
+    setConsistencyResult("idle");
     try {
       const res = await fetch("/api/copilot/consistency", { credentials: "same-origin" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setConsistencyConflicts(null);
+        setConsistencyResult("error");
+        return;
+      }
       const data = (await res.json()) as { suggestions: SuggestionPayload[] };
-      setConsistencyConflicts(data.suggestions.length > 0 ? data.suggestions : null);
-    } catch {}
-    finally {
+      if (data.suggestions.length > 0) {
+        setConsistencyConflicts(data.suggestions);
+        setConsistencyResult("idle");
+      } else {
+        setConsistencyConflicts(null);
+        setConsistencyResult("clean");
+      }
+    } catch {
+      setConsistencyConflicts(null);
+      setConsistencyResult("error");
+    } finally {
       setConsistencyChecking(false);
     }
   }, [consistencyChecking]);
@@ -1020,6 +1036,14 @@ export function CoPilotDrawer({
                   )}
                   {consistencyChecking && (
                     <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">Checking plan consistency…</p>
+                  )}
+                  {/* TIM-1801: clean state so a no-conflict run is never silent. */}
+                  {!consistencyChecking && !consistencyConflicts && consistencyResult === "clean" && (
+                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">No plan inconsistencies found. Everything lines up across your workspaces.</p>
+                  )}
+                  {/* TIM-1801: surface failures instead of swallowing them. */}
+                  {!consistencyChecking && consistencyResult === "error" && (
+                    <p className="mt-3 text-xs text-red-700">Couldn&apos;t check plan consistency. Please try again.</p>
                   )}
                 </div>
               )}
