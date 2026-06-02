@@ -47,6 +47,13 @@ const WORKSPACE_KEYS: WorkspaceKey[] = [
 
 const TTFT_MS = 8_000
 const GAP_MS = 20_000
+// TIM-1746/TIM-1763: while a tool call streams its input (e.g. reorganize_equipment_list
+// for a 100+ item equipment list), the model can go silent for >20s between
+// content_block_start and the first input_json_delta chunk — the JSON array is composed
+// before any partial_json is emitted. That gap is normal for large structured outputs, so
+// use a wider watchdog window while inside a tool-input stream and keep the snappy 20s
+// window for ordinary text/thinking stalls. Stays well under maxDuration (120s).
+const TOOL_GAP_MS = 60_000
 const HEARTBEAT_MS = 15_000
 
 // Stable sections: cached with cache_control:ephemeral across the conversation.
@@ -659,9 +666,15 @@ export async function POST(request: NextRequest) {
 
       const resetGapTimer = () => {
         if (gapTimer) clearTimeout(gapTimer)
+        // Wider window while a tool call is streaming its input (activeToolName set): large
+        // tool-input arrays can stall >20s between chunks without being a genuine failure.
+        const windowMs = activeToolName ? TOOL_GAP_MS : GAP_MS
         gapTimer = setTimeout(() => {
-          closeWithError("timeout", "AI stream stalled. No data for 20 seconds. Please try again.")
-        }, GAP_MS)
+          closeWithError(
+            "timeout",
+            `AI stream stalled. No data for ${Math.round(windowMs / 1000)} seconds. Please try again.`,
+          )
+        }, windowMs)
       }
 
       heartbeatTimer = setInterval(() => {
