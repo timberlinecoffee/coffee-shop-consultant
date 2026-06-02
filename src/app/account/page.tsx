@@ -29,7 +29,7 @@ export default async function AccountPage() {
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
         <h1 className="text-3xl font-bold text-[var(--foreground)]">Account Settings</h1>
 
-        <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Profile</h2>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
@@ -43,7 +43,7 @@ export default async function AccountPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Subscription</h2>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
@@ -67,7 +67,7 @@ export default async function AccountPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Delete Account</h2>
           <p className="text-sm text-[var(--dark-grey)] mb-4">
             Permanently delete your account and all plan data. This cannot be undone.
