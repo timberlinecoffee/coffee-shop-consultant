@@ -22,12 +22,12 @@ const MONTHS = [
 ];
 
 const FIELD_CLASS =
-  "flex h-9 w-full rounded-md border border-[var(--border-medium)] bg-white px-3 py-1 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
+  "w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm text-[var(--dark-grey)] mb-1">{label}</span>
+      <span className="block text-sm font-medium text-neutral-950 mb-1">{label}</span>
       {children}
       {hint ? <span className="block text-xs text-[var(--dark-grey)] mt-1">{hint}</span> : null}
     </label>
@@ -47,7 +47,7 @@ export function LocalizationSettingsCard({ initial }: { initial: AccountSettings
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
 
   const currencyOptions = useMemo(
-    () => CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` })),
+    () => CURRENCIES.map((c) => ({ value: c.code, label: `${c.code}: ${c.name}` })),
     []
   );
 
@@ -151,7 +151,7 @@ export function LocalizationSettingsCard({ initial }: { initial: AccountSettings
           <span className="text-sm text-[var(--teal)]">Saved</span>
         ) : null}
         {status === "error" ? (
-          <span className="text-sm text-red-600">Could not save. Try again.</span>
+          <span className="text-sm text-[var(--error)]">Could not save. Try again.</span>
         ) : null}
       </div>
     </div>
