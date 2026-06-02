@@ -331,7 +331,7 @@ export function ThreadBrowser({
             className="text-xs font-semibold text-[var(--teal)] hover:underline"
             title={`New conversation in ${WORKSPACE_LABELS[currentWorkspaceKey]}`}
           >
-            + Here
+            This Page
           </button>
           <span aria-hidden className="text-[var(--gray-800)]">·</span>
           <button
