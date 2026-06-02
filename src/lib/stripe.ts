@@ -93,10 +93,11 @@ export function isAnnualPriceId(priceId: string | null | undefined): boolean {
 }
 
 // TIM-929: No tier is unlimited. Every paid tier has a hard monthly credit cap.
-// Pro cap is a placeholder (500) pending CEO confirmation — see TIM-929 comment.
+// TIM-1821: Launch grants confirmed by Trent on TIM-1727 (confirmation cce3d4a7,
+// accepted 2026-06-02). Supersedes board approval e47bfbba (proposed 25/100/500).
 export const MONTHLY_CREDITS: Record<Tier, number> = {
-  starter: 25,
-  growth: 100,
+  starter: 50,
+  growth: 150,
   pro: 500,
   free: 0,
 };
