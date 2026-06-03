@@ -658,7 +658,8 @@ function ForecastTab({
                   const hours = computeDayHours(sched);
                   return (
                     <tr key={day} className={!sched.open ? "bg-[var(--background)]" : ""}>
-                      <td className="py-2.5 pl-4 pr-2 text-sm font-medium text-[var(--foreground)]">
+                      {/* TIM-1894: body cells match Equipment-table reference (text-xs, was text-sm). */}
+                      <td className="py-2.5 pl-4 pr-2 text-xs font-medium text-[var(--foreground)]">
                         {DAY_LABELS[day]}
                       </td>
                       <td className="py-2.5 px-2">
@@ -681,7 +682,7 @@ function ForecastTab({
                             className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
-                          <span className="text-sm text-[var(--neutral-cool-400)]">Closed</span>
+                          <span className="text-xs text-[var(--neutral-cool-400)]">Closed</span>
                         )}
                       </td>
                       <td className="py-2 px-2">
@@ -697,7 +698,7 @@ function ForecastTab({
                           <span className="text-sm text-[var(--neutral-cool-400)]"></span>
                         )}
                       </td>
-                      <td className="py-2.5 pl-2 pr-4 text-right text-sm text-[var(--muted-foreground)]">
+                      <td className="py-2.5 pl-2 pr-4 text-right text-xs text-[var(--muted-foreground)]">
                         {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : ""}
                       </td>
                     </tr>
@@ -709,7 +710,7 @@ function ForecastTab({
                   <td colSpan={4} className="py-2.5 pl-4 pr-2 text-xs font-semibold text-[var(--muted-foreground)]">
                     Weekly total
                   </td>
-                  <td className="py-2.5 pl-2 pr-4 text-right text-sm font-semibold text-[var(--foreground)]">
+                  <td className="py-2.5 pl-2 pr-4 text-right text-xs font-semibold text-[var(--foreground)]">
                     {weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h
                   </td>
                 </tr>

@@ -359,9 +359,10 @@ export function StartupTab({
               </tr>
             ))}
 
+            {/* TIM-1894: total row matches Equipment-table reference (text-xs, was text-lg on the amount). */}
             <tr className="border-t-2 border-[var(--teal)] bg-[var(--teal-tint-50)]">
-              <td className="py-3 pl-5 pr-4 font-semibold">Total Startup Cost</td>
-              <td className="py-3 pr-5 text-right font-bold text-lg">{f(totalStartup)}</td>
+              <td className="py-3 pl-5 pr-4 text-xs font-semibold">Total Startup Cost</td>
+              <td className="py-3 pr-5 text-right text-xs font-bold">{f(totalStartup)}</td>
             </tr>
           </tbody>
         </table>
