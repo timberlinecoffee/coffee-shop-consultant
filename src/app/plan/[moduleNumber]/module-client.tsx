@@ -9,6 +9,7 @@ import { UpgradeGate } from "@/components/upgrade-gate";
 import { PaywallModal } from "@/components/paywall-modal";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { canAccessSection } from "@/lib/access";
+import { useCurrency } from "@/components/CurrencyProvider";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -706,6 +707,7 @@ function SectionConceptBrief({
 // ── Module 2 Section Components ───────────────────────────────────────────
 
 function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const { format, symbol } = useCurrency();
   const fields = [
     { key: "equipment_budget", label: "Equipment & Bar Build-Out", placeholder: "e.g. 85000", hint: "Espresso machine, grinders, brewers, refrigeration" },
     { key: "buildout_budget", label: "Construction & Leasehold Improvements", placeholder: "e.g. 120000", hint: "Plumbing, electrical, flooring, walls" },
@@ -734,7 +736,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
             <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
             <p className="text-xs text-neutral-500 mb-2">{f.hint}</p>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
               <input
                 type="number"
                 min="0"
@@ -750,7 +752,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
       {total > 0 && (
         <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-teal">Estimated Total Startup Cost</span>
-          <span className="text-lg font-bold text-teal">${total.toLocaleString()}</span>
+          <span className="text-lg font-bold text-teal">{format(total, { compact: false })}</span>
         </div>
       )}
     </div>
@@ -758,6 +760,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
 }
 
 function SectionRevenueProjections({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const { format, symbol } = useCurrency();
   const avgTicket = parseFloat((data.avg_ticket as string) ?? "0") || 0;
   const dailyTx = parseFloat((data.daily_transactions as string) ?? "0") || 0;
   const daysPerWeek = parseFloat((data.days_per_week as string) ?? "0") || 0;
@@ -776,7 +779,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
           <label className="text-sm font-medium text-neutral-950 block mb-1">Average Ticket Size</label>
           <p className="text-xs text-neutral-500 mb-2">Total sale per customer including food and add-ons</p>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
             <input
               type="number"
               min="0"
@@ -827,7 +830,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
       {monthlyRevenue > 0 && (
         <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-teal">Estimated Monthly Revenue</span>
-          <span className="text-lg font-bold text-teal">${Math.round(monthlyRevenue).toLocaleString()}</span>
+          <span className="text-lg font-bold text-teal">{format(Math.round(monthlyRevenue), { compact: false })}</span>
         </div>
       )}
     </div>
@@ -835,6 +838,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
 }
 
 function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const { format, symbol } = useCurrency();
   const fields = [
     { key: "rent", label: "Rent / Lease Payment", placeholder: "e.g. 6500", hint: "Monthly base rent (don't include CAM yet)" },
     { key: "labor_cost", label: "Total Labor (Gross)", placeholder: "e.g. 14000", hint: "All staff wages + your own owner pay" },
@@ -878,7 +882,7 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
             <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
             <p className="text-xs text-neutral-500 mb-2">{f.hint}</p>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
               <input
                 type="number"
                 min="0"
@@ -895,7 +899,7 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
         <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-teal">Fixed Monthly Costs</span>
-            <span className="text-lg font-bold text-teal">${otherFixed.toLocaleString()}</span>
+            <span className="text-lg font-bold text-teal">{format(otherFixed, { compact: false })}</span>
           </div>
           {cogsPercent > 0 && (
             <p className="text-xs text-teal/70">Plus {cogsPercent}% of revenue in COGS (variable)</p>
@@ -907,6 +911,7 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
 }
 
 function SectionPricingStrategy({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const { symbol } = useCurrency();
   const pricingFields = [
     { key: "espresso_price", label: "Espresso / Americano", placeholder: "e.g. 4.50" },
     { key: "drip_price", label: "Drip / Filter Coffee", placeholder: "e.g. 3.50" },
@@ -919,7 +924,7 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
       <div>
         <h3 className="font-semibold text-neutral-950 mb-2">Pricing Strategy</h3>
         <p className="text-sm text-neutral-500 leading-relaxed">
-          Set your core price points. Specialty cafés in major metros average $5–$7 for espresso drinks. Price confidently; customers pay for experience, not just coffee.
+          Set your core price points. Specialty cafés in major metros average {symbol}5–{symbol}7 for espresso drinks. Price confidently; customers pay for experience, not just coffee.
         </p>
       </div>
       <div className="space-y-5">
@@ -927,7 +932,7 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
           <div key={f.key}>
             <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
               <input
                 type="number"
                 min="0"
@@ -965,6 +970,7 @@ function SectionFinancialSummary({
   onChange: (d: Record<string, unknown>) => void;
   allData: Record<string, Record<string, unknown>>;
 }) {
+  const { format } = useCurrency();
   const costs = allData.startup_costs ?? {};
   const revenue = allData.revenue_projections ?? {};
   const expenses = allData.monthly_expenses ?? {};
@@ -983,7 +989,7 @@ function SectionFinancialSummary({
   const totalMonthlyExpenses = cogs + fixedExpenses;
   const monthlyProfit = monthlyRevenue - totalMonthlyExpenses;
 
-  const generated = `# Financial Summary\n\n## Startup Investment\nTotal estimated startup cost: $${startupTotal.toLocaleString()}\n\n## Monthly P&L Projection\n- Revenue: $${Math.round(monthlyRevenue).toLocaleString()}\n- COGS: $${Math.round(cogs).toLocaleString()}\n- Fixed costs: $${Math.round(fixedExpenses).toLocaleString()}\n- **Net operating income: $${Math.round(monthlyProfit).toLocaleString()}**\n\n## Notes\n[Add your notes on assumptions, risks, and funding plan here.]`;
+  const generated = `# Financial Summary\n\n## Startup Investment\nTotal estimated startup cost: ${format(startupTotal, { compact: false })}\n\n## Monthly P&L Projection\n- Revenue: ${format(Math.round(monthlyRevenue), { compact: false })}\n- COGS: ${format(Math.round(cogs), { compact: false })}\n- Fixed costs: ${format(Math.round(fixedExpenses), { compact: false })}\n- **Net operating income: ${format(Math.round(monthlyProfit), { compact: false })}**\n\n## Notes\n[Add your notes on assumptions, risks, and funding plan here.]`;
 
   const content = (data.summary_notes as string) ?? generated;
 
@@ -998,9 +1004,9 @@ function SectionFinancialSummary({
       {monthlyRevenue > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: "Startup Cost", value: `$${startupTotal.toLocaleString()}` },
-            { label: "Monthly Revenue", value: `$${Math.round(monthlyRevenue).toLocaleString()}` },
-            { label: "Monthly Profit", value: `$${Math.round(monthlyProfit).toLocaleString()}`, highlight: monthlyProfit > 0 },
+            { label: "Startup Cost", value: format(startupTotal, { compact: false }) },
+            { label: "Monthly Revenue", value: format(Math.round(monthlyRevenue), { compact: false }) },
+            { label: "Monthly Profit", value: format(Math.round(monthlyProfit), { compact: false }), highlight: monthlyProfit > 0 },
           ].map((stat) => (
             <div key={stat.label} className={`rounded-xl border p-4 ${stat.highlight ? "bg-teal/5 border-teal/20" : "bg-neutral-100 border-grey-light"}`}>
               <div className="text-xs text-neutral-500 mb-1">{stat.label}</div>

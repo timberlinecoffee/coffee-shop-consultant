@@ -6,6 +6,8 @@ import {
   isWorkspaceStatus,
   type WorkspaceStatus,
 } from "@/lib/workspace-status";
+import { CurrencyProvider } from "@/components/CurrencyProvider";
+import { getAccountSettings } from "@/lib/account-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,8 @@ export default async function AccountLayout({
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const settings = await getAccountSettings(supabase, user.id);
 
   const initialStatuses: Record<string, WorkspaceStatus> = {};
 
@@ -45,11 +49,13 @@ export default async function AccountLayout({
   }
 
   return (
-    <WorkspaceProgressProvider
-      manifest={WORKSPACE_MANIFEST}
-      initialStatuses={initialStatuses}
-    >
-      {children}
-    </WorkspaceProgressProvider>
+    <CurrencyProvider currencyCode={settings.currencyCode}>
+      <WorkspaceProgressProvider
+        manifest={WORKSPACE_MANIFEST}
+        initialStatuses={initialStatuses}
+      >
+        {children}
+      </WorkspaceProgressProvider>
+    </CurrencyProvider>
   );
 }

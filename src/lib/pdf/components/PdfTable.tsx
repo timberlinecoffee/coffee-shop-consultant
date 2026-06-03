@@ -1,6 +1,7 @@
 import React from "react"
 import { View, Text, StyleSheet } from "@react-pdf/renderer"
 import { BRAND } from "../brand"
+import { formatMinorUnits } from "@/lib/currency"
 
 export type ColumnDef = {
   key: string
@@ -61,21 +62,16 @@ const styles = StyleSheet.create({
   },
 })
 
-function formatCents(value: number | string | null | undefined): string {
+function formatCentsWithCode(value: number | string | null | undefined, currencyCode: string): string {
   if (value == null || value === "") return "-"
   const cents = typeof value === "string" ? parseFloat(value) : value
   if (isNaN(cents)) return "-"
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
+  return formatMinorUnits(cents, currencyCode)
 }
 
-function formatValue(col: ColumnDef, val: string | number | null | undefined): string {
+function formatValue(col: ColumnDef, val: string | number | null | undefined, currencyCode: string): string {
   if (val == null || val === "") return "-"
-  if (col.currency) return formatCents(val)
+  if (col.currency) return formatCentsWithCode(val, currencyCode)
   if (col.numeric && typeof val === "number") {
     return val.toLocaleString("en-US")
   }
@@ -86,9 +82,10 @@ type Props = {
   columns: ColumnDef[]
   rows: Row[]
   totalsRow?: Row
+  currencyCode?: string
 }
 
-export function PdfTable({ columns, rows, totalsRow }: Props) {
+export function PdfTable({ columns, rows, totalsRow, currencyCode = "USD" }: Props) {
   return (
     <View style={styles.table}>
       <View style={styles.headerRow}>
@@ -117,7 +114,7 @@ export function PdfTable({ columns, rows, totalsRow }: Props) {
                 col.width ? { flex: undefined, width: col.width } : {},
               ]}
             >
-              {formatValue(col, row[col.key])}
+              {formatValue(col, row[col.key], currencyCode)}
             </Text>
           ))}
         </View>
@@ -134,7 +131,7 @@ export function PdfTable({ columns, rows, totalsRow }: Props) {
                 col.width ? { flex: undefined, width: col.width } : {},
               ]}
             >
-              {formatValue(col, totalsRow[col.key])}
+              {formatValue(col, totalsRow[col.key], currencyCode)}
             </Text>
           ))}
         </View>

@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
+import { getAccountSettings } from "@/lib/account-settings";
+import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +20,8 @@ export default async function AccountPage() {
     .select("full_name, email, subscription_tier, subscription_status, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
     .eq("id", user.id)
     .single();
+
+  const accountSettings = await getAccountSettings(supabase, user.id);
 
   const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
   const FREE_TRIAL_COPILOT_LIMIT = 5;
@@ -42,6 +46,8 @@ export default async function AccountPage() {
             </div>
           </div>
         </div>
+
+        <LocalizationSettingsCard initial={accountSettings} />
 
         <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Subscription</h2>

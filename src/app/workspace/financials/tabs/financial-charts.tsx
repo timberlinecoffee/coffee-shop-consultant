@@ -20,6 +20,7 @@ import {
   YAxis,
 } from "recharts";
 import { fmt } from "@/lib/financial-projection";
+import { currencySymbol } from "@/lib/currency";
 
 // Groundwork palette (taken from existing UI: deep teal primary, red for negatives,
 // muted greys for grid + axes). Categorical accents pulled from the same family
@@ -48,35 +49,8 @@ function compactCurrency(cents: number, currencyCode: string) {
   if (abs >= 1_000_000) value = `${(dollars / 1_000_000).toFixed(1)}M`;
   else if (abs >= 1_000) value = `${(dollars / 1_000).toFixed(1)}K`;
   else value = dollars.toFixed(0);
-  const symbol = symbolFor(currencyCode);
-  return dollars < 0 ? `-${symbol}${value.slice(1)}` : `${symbol}${value}`;
-}
-
-function symbolFor(code: string): string {
-  // Minimal mapping; fall back to currency code with a space.
-  switch (code) {
-    case "USD":
-    case "CAD":
-    case "AUD":
-    case "NZD":
-    case "MXN":
-    case "SGD":
-    case "HKD":
-      return "$";
-    case "EUR":
-      return "€";
-    case "GBP":
-      return "£";
-    case "JPY":
-    case "CNY":
-      return "¥";
-    case "INR":
-      return "₹";
-    case "KRW":
-      return "₩";
-    default:
-      return `${code} `;
-  }
+  const sym = currencySymbol(currencyCode);
+  return dollars < 0 ? `-${sym}${value.slice(1)}` : `${sym}${value}`;
 }
 
 interface TooltipPayloadEntry {

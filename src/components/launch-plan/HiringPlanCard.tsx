@@ -2,6 +2,7 @@
 
 import { useLaunchPlanRows } from "./useLaunchPlanRows";
 import type { HiringRoleStatus } from "@/types/supabase";
+import { useCurrency } from "@/components/CurrencyProvider";
 
 type HiringRole = {
   id: string;
@@ -32,13 +33,6 @@ const STATUS_PILL: Record<HiringRoleStatus, string> = {
   hired: "bg-[var(--success-bg-2)] text-[var(--success-medium)]",
 };
 
-function formatCents(cents: number): string {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
-}
 
 function parseDollarsToCents(input: string): number | null {
   const cleaned = input.replace(/[^0-9.]/g, "");
@@ -49,6 +43,7 @@ function parseDollarsToCents(input: string): number | null {
 }
 
 export function HiringPlanCard() {
+  const { formatMinor } = useCurrency();
   const { loading, items, error, paywall, addItem, updateItem, removeItem } =
     useLaunchPlanRows<HiringRole>("/api/opening-month-plan/hiring-plan");
 
@@ -208,7 +203,7 @@ export function HiringPlanCard() {
           <span>
             <span className="text-[var(--muted-foreground)]">Monthly payroll: </span>
             <span className="font-semibold">
-              {totalPayrollCents > 0 ? formatCents(totalPayrollCents) : "—"}
+              {totalPayrollCents > 0 ? formatMinor(totalPayrollCents) : "—"}
             </span>
           </span>
         </div>

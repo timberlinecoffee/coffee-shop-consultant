@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Download,
 } from "lucide-react";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -860,6 +861,8 @@ function RoleRow({
     }
   }
 
+  const { formatMinor } = useCurrency();
+
   // Live loaded cost preview (from entered fields, not just saved line)
   const compPreviewCents =
     typeof compPayAmount === "number" && compPayAmount > 0
@@ -1031,7 +1034,7 @@ function RoleRow({
               )}
               {compPreviewCents !== null && (
                 <span className="text-xs font-semibold text-[var(--teal)]">
-                  Loaded: ${(compPreviewCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
+                  Loaded: {formatMinor(compPreviewCents)}/mo
                 </span>
               )}
             </div>
