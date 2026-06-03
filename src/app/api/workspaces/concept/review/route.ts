@@ -168,7 +168,22 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
     parsed = JSON.parse(jsonMatch[0]);
   } catch (err) {
     console.error("concept review error:", err);
-    return Response.json({ error: "AI generation failed" }, { status: 500 });
+    // Surface upstream/provider failures with the same cohesive message the
+    // copilot routes use, rather than a bare "generation failed".
+    const status =
+      err && typeof err === "object" && "status" in err
+        ? Number((err as { status: number }).status)
+        : undefined;
+    const isUpstream = typeof status === "number" && status >= 400;
+    return Response.json(
+      {
+        error: isUpstream
+          ? "AI service temporarily unavailable. Please try again."
+          : "AI generation failed",
+        code: isUpstream ? "upstream_error" : "parse_error",
+      },
+      { status: 502 },
+    );
   }
 
   const targetSet = new Set<string>(targets);
