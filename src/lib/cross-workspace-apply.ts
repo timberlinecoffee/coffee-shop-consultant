@@ -89,7 +89,9 @@ export interface EquipmentCostChange {
   name: string;
   // add only: equipment category for the new item.
   category?: string | null;
-  quantity: number;
+  // Optional. On a reprice, when the user/model does not state a quantity the
+  // existing item's quantity is preserved (a reprice must not silently drop qty).
+  quantity?: number;
   new_unit_cost_cents: number;
 }
 
@@ -176,7 +178,6 @@ export function buildEquipmentCostProposal(args: {
   currentItems: EquipmentCostItem[];
 }): { suggestions: CrossWorkspaceSuggestion[]; context: { workspace: string; section?: string } } {
   const { change, currentItems } = args;
-  const quantity = Math.max(1, Math.round(change.quantity || 1));
   const newUnitCost = Math.max(0, Math.round(change.new_unit_cost_cents));
 
   // Existing item (reprice) — match by id, fall back to name (model may pass the
@@ -186,6 +187,11 @@ export function buildEquipmentCostProposal(args: {
       ? currentItems.find((i) => i.id === change.item_id) ??
         currentItems.find((i) => i.name.trim().toLowerCase() === change.name.trim().toLowerCase())
       : undefined;
+
+  // Preserve the existing item's quantity on a reprice unless the user explicitly
+  // states a new one — repricing must never silently change the count (which would
+  // also corrupt the line total: unit cost × quantity).
+  const quantity = Math.max(1, Math.round(change.quantity ?? existing?.quantity ?? 1));
 
   const itemId = existing?.id ?? null;
   const oldUnitCost = existing ? existing.unit_cost_cents : 0;

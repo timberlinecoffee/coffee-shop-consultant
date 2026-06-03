@@ -1073,7 +1073,9 @@ export async function POST(request: NextRequest) {
                       item_id: target?.id ?? null,
                       name,
                       category: toolInput.category ?? null,
-                      quantity: typeof toolInput.quantity === "number" ? toolInput.quantity : 1,
+                      // Omit when the model didn't state one so a reprice preserves
+                      // the existing item's quantity (engine resolves the default).
+                      quantity: typeof toolInput.quantity === "number" ? toolInput.quantity : undefined,
                       new_unit_cost_cents: Math.round(unitCost),
                     },
                     currentItems,

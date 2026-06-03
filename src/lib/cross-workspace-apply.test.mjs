@@ -116,6 +116,28 @@ test("reprice with quantity > 1 multiplies the line and total correctly", () => 
   assert.equal(total.proposedValue, "$12,000");
 });
 
+test("reprice with no stated quantity preserves the existing item quantity", () => {
+  // Mirrors the prod case: a $24,000 ×3 espresso machine repriced to $11,000 with
+  // no quantity in the tool call must keep ×3 (line and total use the existing qty).
+  const items = [
+    { id: "esp", name: "Commercial Espresso Machine", quantity: 3, unit_cost_cents: 2_400_000 },
+    { id: "g", name: "Grinder", quantity: 1, unit_cost_cents: 90_000 },
+  ];
+  const { suggestions } = buildEquipmentCostProposal({
+    change: { action: "reprice", item_id: "esp", name: "Commercial Espresso Machine", new_unit_cost_cents: 1_100_000 },
+    currentItems: items,
+  });
+  const [primary, line, total] = suggestions;
+  assert.equal(primary.proposedValue, "$11,000"); // unit cost
+  assert.equal(line.originalValue, "$72,000"); // 2,400,000 * 3
+  assert.equal(line.proposedValue, "$33,000"); // 1,100,000 * 3  (NOT $11,000)
+  // total old = 72,000 + 900 = 72,900 -> new = 33,000 + 900 = 33,900
+  assert.equal(total.originalValue, "$72,900");
+  assert.equal(total.proposedValue, "$33,900");
+  // recompute params carry the preserved quantity (3).
+  assert.equal(primary.recompute.quantity, 3);
+});
+
 // ── Add proposal ──────────────────────────────────────────────────────────────
 
 test("add produces a primary with no existing value and grows the total", () => {
