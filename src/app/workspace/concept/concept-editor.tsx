@@ -24,6 +24,7 @@ import {
   isConceptV2Complete,
   type ConceptComponentId,
   type ConceptDocumentV2,
+  type ConceptAssessment,
   type CustomerPersona,
 } from "@/lib/concept";
 import { PersonaSection } from "@/components/concept/PersonaSection";
@@ -32,6 +33,14 @@ import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
 // IDs that get featured (tinted, slightly larger) treatment in the brief
 const BRIEF_FEATURED_IDS: ReadonlySet<ConceptComponentId> = new Set(["vision"]);
+
+// TIM-1872: assessment bullet glyphs + colors, matching the Financial Suite.
+const ASSESSMENT_ICON = { strength: "✓", weakness: "!", suggestion: "→" } as const;
+const ASSESSMENT_COLOR = {
+  strength: "text-[var(--teal)]",
+  weakness: "text-[var(--error)]",
+  suggestion: "text-[var(--muted-foreground)]",
+} as const;
 
 const AUTOSAVE_DEBOUNCE_MS = 700;
 
@@ -70,6 +79,15 @@ export function ConceptWorkspace({
     label: string;
     currentValue: string;
   } | null>(null);
+
+  // TIM-1872: suite-level AI review of the whole concept, mirroring the
+  // Financial Suite's AI Assessment.
+  const [assessment, setAssessment] = useState<ConceptAssessment | null>(
+    initialDoc.assessment ?? null
+  );
+  const [assessmentStatus, setAssessmentStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
 
   const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
   const [exampleIdx, setExampleIdx] = useState(0);
@@ -208,6 +226,38 @@ export function ConceptWorkspace({
       scheduleSave(next);
       return next;
     });
+  }
+
+  // TIM-1872: persist the AI review into the concept jsonb so it survives reload.
+  function persistAssessment(next: ConceptAssessment | null) {
+    setAssessment(next);
+    setDoc((prev) => {
+      const nextDoc: ConceptDocumentV2 = { ...prev, assessment: next };
+      scheduleSave(nextDoc);
+      return nextDoc;
+    });
+  }
+
+  async function generateAssessment() {
+    if (!canEdit) return;
+    setAssessmentStatus("loading");
+    try {
+      const res = await fetch("/api/workspaces/concept/assess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concept: latestDocRef.current }),
+      });
+      if (res.status === 402) {
+        setAssessmentStatus("error");
+        return;
+      }
+      if (!res.ok) throw new Error(`assessment failed (${res.status})`);
+      const data = (await res.json()) as ConceptAssessment;
+      persistAssessment(data);
+      setAssessmentStatus("idle");
+    } catch {
+      setAssessmentStatus("error");
+    }
   }
 
   function toggleIncluded(id: ConceptComponentId) {
@@ -470,7 +520,10 @@ export function ConceptWorkspace({
                       </button>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise */}
+                      {/* TIM-881 + TIM-1408: per-field AI improve button.
+                          TIM-1872: now always visible (was hover/focus-revealed),
+                          matching the always-on AI buttons in the Business Plan
+                          and Financial suites so the controls are discoverable. */}
                       {meta.multiline && (
                         <button
                           type="button"
@@ -482,7 +535,7 @@ export function ConceptWorkspace({
                             })
                           }
                           disabled={!canEdit}
-                          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                           Improve with AI
                         </button>
@@ -606,6 +659,100 @@ export function ConceptWorkspace({
             );
           })}
         </div>
+
+        {/* ── AI Review (TIM-1872) ──────────────────────────
+            Suite-level review of the whole concept, mirroring the Financial
+            Suite's AI Assessment. Routes through the same review-before-apply
+            posture: feedback is advisory; the owner edits fields themselves. */}
+        {progress.filled > 0 && (
+          <div className="mt-8 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-bold text-[var(--foreground)] leading-tight">
+                  AI Review
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  Get feedback and suggestions on your concept.
+                </p>
+              </div>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={generateAssessment}
+                  disabled={assessmentStatus === "loading"}
+                  className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60 shrink-0"
+                >
+                  {assessmentStatus === "loading"
+                    ? "Reviewing..."
+                    : assessment
+                    ? "Refresh"
+                    : "Review my concept"}
+                </button>
+              )}
+            </div>
+            {assessmentStatus === "error" && (
+              <p className="px-5 py-4 text-sm text-[var(--error)]">
+                Could not generate a review. Try again.
+              </p>
+            )}
+            {assessment ? (
+              <ul className="divide-y divide-[var(--border)]">
+                {assessment.bullets.map((b, i) => (
+                  <li key={i} className="px-5 py-3 flex items-start gap-3">
+                    <span
+                      className={`text-sm font-bold shrink-0 mt-0.5 ${ASSESSMENT_COLOR[b.type]}`}
+                    >
+                      {ASSESSMENT_ICON[b.type]}
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                        {b.text}
+                      </p>
+                      {b.type !== "strength" && b.recommendation && (
+                        <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mr-2">
+                            Recommendation
+                          </span>
+                          {b.recommendation}
+                        </p>
+                      )}
+                      {b.type !== "strength" && b.next_step && (
+                        <p className="text-sm text-[var(--teal)] leading-relaxed">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mr-2">
+                            Next Step
+                          </span>
+                          {b.next_step}
+                        </p>
+                      )}
+                      {b.type !== "strength" && b.why && (
+                        <p className="text-xs text-[var(--muted-foreground)] leading-relaxed italic">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mr-2 not-italic">
+                            Why
+                          </span>
+                          {b.why}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : !canEdit ? null : (
+              <p className="px-5 py-4 text-sm text-[var(--dark-grey)]">
+                Run a review to get specific feedback on your vision, personas, differentiation, and brand voice.
+              </p>
+            )}
+            {assessment?.generated_at && (
+              <p className="px-5 py-3 border-t border-[var(--border)] text-[10px] text-[var(--dark-grey)]">
+                Reviewed{" "}
+                {new Date(assessment.generated_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── Concept Brief (Section 5 — TIM-865) ─────────── */}
         {progress.filled > 0 && (

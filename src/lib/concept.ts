@@ -209,6 +209,35 @@ function isValidPersona(v: unknown): v is CustomerPersona {
   return typeof p.id === "string" && typeof p.name === "string" && typeof p.isPrimary === "boolean";
 }
 
+// TIM-1872: defensively parse a stored concept assessment. Returns null for
+// anything malformed so an older or corrupted record never crashes the editor.
+export function normalizeConceptAssessment(v: unknown): ConceptAssessment | null {
+  if (!v || typeof v !== "object") return null;
+  const obj = v as Record<string, unknown>;
+  if (!Array.isArray(obj.bullets)) return null;
+  const bullets: ConceptAssessmentBullet[] = [];
+  for (const raw of obj.bullets) {
+    if (!raw || typeof raw !== "object") continue;
+    const b = raw as Record<string, unknown>;
+    const type = b.type === "strength" || b.type === "weakness" || b.type === "suggestion"
+      ? b.type
+      : "suggestion";
+    if (typeof b.text !== "string" || b.text.trim().length === 0) continue;
+    bullets.push({
+      type,
+      text: b.text,
+      recommendation: typeof b.recommendation === "string" ? b.recommendation : undefined,
+      next_step: typeof b.next_step === "string" ? b.next_step : undefined,
+      why: typeof b.why === "string" ? b.why : undefined,
+    });
+  }
+  if (bullets.length === 0) return null;
+  return {
+    bullets,
+    generated_at: typeof obj.generated_at === "string" ? obj.generated_at : new Date().toISOString(),
+  };
+}
+
 // ── V2 ───────────────────────────────────────────────────────────────────────
 
 export type ConceptComponentId =
@@ -229,6 +258,25 @@ export interface ConceptDocumentV2 {
   version: 2;
   components: Record<ConceptComponentId, ConceptComponentV2>;
   personas?: CustomerPersona[];
+  // TIM-1872: persisted AI review of the whole concept (strengths / weaknesses /
+  // suggestions). Mirrors the Financial Suite's stored critique. Optional so
+  // older records load cleanly. Stored in the jsonb content, no migration.
+  assessment?: ConceptAssessment | null;
+}
+
+// TIM-1872: shape mirrors the Financial Suite's CritiqueResult so the two
+// suites present AI feedback the same way.
+export interface ConceptAssessmentBullet {
+  type: "strength" | "weakness" | "suggestion";
+  text: string;
+  recommendation?: string;
+  next_step?: string;
+  why?: string;
+}
+
+export interface ConceptAssessment {
+  bullets: ConceptAssessmentBullet[];
+  generated_at: string;
 }
 
 export const EMPTY_CONCEPT_V2: ConceptDocumentV2 = {
@@ -369,7 +417,10 @@ export function normalizeConceptV2(input: unknown): ConceptDocumentV2 {
       }];
     }
 
-    return { version: 2, components, personas };
+    // TIM-1872: preserve the persisted AI assessment if present and well-formed.
+    const assessment = normalizeConceptAssessment(obj.assessment);
+
+    return { version: 2, components, personas, assessment };
   }
 
   // V1 migration
