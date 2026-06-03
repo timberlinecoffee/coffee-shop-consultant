@@ -4,7 +4,7 @@
 // Backed by row-level DB tables; no autosave JSONB blob — all mutations hit
 // dedicated API routes directly with optimistic local state updates.
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import {
   Users,
   Network,
@@ -383,6 +383,81 @@ function OrgChartNode({
   );
 }
 
+// Scales the tree to fit its container width with no internal scroll.
+// Uses ResizeObserver to recompute when the container resizes.
+function OrgChartFit({
+  rootRoles,
+  childMap,
+  onSelect,
+}: {
+  rootRoles: OrgRole[];
+  childMap: Map<string, OrgRole[]>;
+  onSelect: (id: string) => void;
+}) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [wrapH, setWrapH] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    function fit() {
+      const saved = inner!.style.transform;
+      inner!.style.transform = "none";
+      const nW = inner!.scrollWidth;
+      const nH = inner!.scrollHeight;
+      inner!.style.transform = saved;
+
+      const avail = outer!.clientWidth;
+      if (avail > 0 && nW > avail) {
+        const s = avail / nW;
+        setScale(s);
+        setWrapH(nH * s);
+      } else {
+        setScale(1);
+        setWrapH(null);
+      }
+    }
+
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(outer);
+    return () => ro.disconnect();
+  }, [rootRoles, childMap]);
+
+  return (
+    <div ref={outerRef} className="w-full overflow-hidden">
+      <div
+        style={wrapH !== null ? { height: `${wrapH}px`, overflow: "hidden" } : undefined}
+      >
+        <div
+          ref={innerRef}
+          style={{
+            transform: scale < 1 ? `scale(${scale})` : undefined,
+            transformOrigin: "top left",
+            display: "inline-block",
+            minWidth: scale >= 1 ? "100%" : undefined,
+          }}
+        >
+          <div className="flex items-start justify-center gap-10 py-2">
+            {rootRoles.map((r) => (
+              <OrgChartNode
+                key={r.id}
+                role={r}
+                childMap={childMap}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrgTab({
   planId,
   canEdit,
@@ -512,7 +587,7 @@ function OrgTab({
             <SectionHelp title="Org Chart">Set &quot;Reports to&quot; on each role to build the hierarchy. Click a node to open its row.</SectionHelp>
           </div>
         </div>
-        <div className="px-5 py-6 overflow-x-auto">
+        <div className="px-5 py-6">
           {roles.length === 0 ? (
             <p className="text-sm text-[var(--dark-grey)] text-center">
               Add your first role to see your org chart here.
@@ -522,16 +597,11 @@ function OrgTab({
               No top-level roles. Set &quot;Reports to&quot; on roles to build the chart.
             </p>
           ) : (
-            <div className="flex items-start justify-center gap-10 min-w-max">
-              {rootRoles.map((r) => (
-                <OrgChartNode
-                  key={r.id}
-                  role={r}
-                  childMap={childMap}
-                  onSelect={handleChartSelect}
-                />
-              ))}
-            </div>
+            <OrgChartFit
+              rootRoles={rootRoles}
+              childMap={childMap}
+              onSelect={handleChartSelect}
+            />
           )}
         </div>
       </div>
