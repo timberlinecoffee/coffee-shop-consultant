@@ -401,23 +401,21 @@ export function BuildoutEquipmentWorkspace({
           description="Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page."
           actions={
             <>
-            {/* TIM-1937: Equipment & Supplies has 6 header chips — the most of any
-                workspace. To keep them on the title row at the board's 1200px
-                and 1440px targets (the page sits in a sidebar layout that
-                reduces the usable content width by ~175px), the long labels
-                collapse to icon-only below 1536px and re-expand on wide
-                monitors. The title= tooltip preserves discoverability on hover
-                and aria-label preserves the action name for screen readers. */}
+            {/* TIM-1937 (board refinement bae7ef73): icon-only collapse below
+                1536px is the canonical action-cluster style platform-wide. At
+                wide monitors (>=1536px) the labels expand. title= tooltip +
+                aria-label preserve discoverability / a11y. Primary button is
+                the first item in the cluster, per the board's reordering ask. */}
             {canEdit && (
-            <WorkspaceActionButton onClick={() => setSettingsOpen(true)} aria-label="Manage Stations" title="Manage Stations">
-              <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span className="hidden min-[1536px]:inline">Manage Stations</span>
-            </WorkspaceActionButton>
-          )}
-          {canEdit && (
             <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)} aria-label="Describe your setup" title="Describe your setup">
               <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               <span className="hidden min-[1536px]:inline">Describe your setup</span>
+            </WorkspaceActionButton>
+          )}
+          {canEdit && (
+            <WorkspaceActionButton onClick={() => setSettingsOpen(true)} aria-label="Manage Stations" title="Manage Stations">
+              <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+              <span className="hidden min-[1536px]:inline">Manage Stations</span>
             </WorkspaceActionButton>
           )}
           {canEdit && (

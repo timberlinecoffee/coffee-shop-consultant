@@ -210,7 +210,7 @@ export function OperationsPlaybookWorkspace({
           description="Your planning binder: policies, schedules, and templates your team needs before opening day. Edit anything."
           actions={
             <>
-              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
               <WorkspaceActionButton
                 className="hidden sm:flex"
                 onClick={() =>
@@ -220,11 +220,13 @@ export function OperationsPlaybookWorkspace({
                     "noopener,noreferrer"
                   )
                 }
+                aria-label="Print all"
                 title="Open a print-friendly view of your operations playbook"
               >
                 <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                Print all
+                <span className="hidden min-[1536px]:inline">Print all</span>
               </WorkspaceActionButton>
+              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
             </>
           }
         />
