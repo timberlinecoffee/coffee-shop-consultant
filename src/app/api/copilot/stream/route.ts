@@ -552,7 +552,9 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status, paused_from_tier, onboarding_data, beta_waiver_until, trial_ends_at")
+    // TIM-1955: paused_from_tier omitted (TIM-1923 backlog) — effectiveTierForRead
+    // treats it as optional.
+    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, beta_waiver_until, trial_ends_at")
     .eq("id", user.id)
     .single()
 

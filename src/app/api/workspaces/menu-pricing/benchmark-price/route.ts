@@ -89,8 +89,11 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
+    // TIM-1955: paused_from_tier intentionally omitted — column lands with
+    // the TIM-1923 migration backlog; effectiveTierForRead treats it as
+    // optional (paused users fall back to subscription_tier).
     .select(
-      "subscription_status, subscription_tier, paused_from_tier, trial_ends_at, beta_waiver_until",
+      "subscription_status, subscription_tier, trial_ends_at, beta_waiver_until",
     )
     .eq("id", user.id)
     .single()

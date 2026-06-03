@@ -28,8 +28,9 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
+    // TIM-1955: paused_from_tier omitted (TIM-1923 migration backlog).
     .select(
-      "subscription_status, subscription_tier, paused_from_tier, trial_ends_at, beta_waiver_until",
+      "subscription_status, subscription_tier, trial_ends_at, beta_waiver_until",
     )
     .eq("id", user.id)
     .single()

@@ -93,8 +93,9 @@ export async function POST(request: NextRequest) {
       submitterUserId = submitter.id;
       const { data: profile } = await authedClient
         .from("users")
+        // TIM-1955: paused_from_tier omitted (TIM-1923 backlog).
         .select(
-          "subscription_status, subscription_tier, paused_from_tier, trial_ends_at",
+          "subscription_status, subscription_tier, trial_ends_at",
         )
         .eq("id", submitter.id)
         .single();
