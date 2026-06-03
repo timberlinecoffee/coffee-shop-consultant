@@ -134,3 +134,18 @@ export const UPGRADE_PATH = "/pricing";
 // trialists are gated on ai_credits_remaining. New AI routes should use
 // hasWriteAccess() instead. Removing this export is a follow-up sweep.
 export const COPILOT_FREE_TRIAL_LIMIT = 5;
+
+// TIM-1955: canonical Starter/Pro Pro-feature gate. Wraps effectiveTierForRead
+// so callers gating Pro-only surfaces have a single predicate that already
+// honors trial-as-Pro (TIM-1902) and paused_from_tier (TIM-1541). Free is out
+// of scope here — Free users can't reach any of the Pro-only routes anyway —
+// but normalizeTier still maps unknown values to 'free' so this is safe to
+// strict-compare with === 'pro' for the gate.
+export function effectivePlanForGating(user: {
+  subscription_status: string | null | undefined;
+  subscription_tier: string | null | undefined;
+  paused_from_tier?: string | null;
+  trial_ends_at?: string | Date | null;
+}): SubscriptionTier {
+  return normalizeTier(effectiveTierForRead(user));
+}

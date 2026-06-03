@@ -12,8 +12,10 @@
 //   inbox in TIM-1940b reads it. The route logs a structured warning.
 
 import type { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendSupportEmail } from "@/lib/email/send-support";
+import { effectivePlanForGating } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -76,6 +78,33 @@ export async function POST(request: NextRequest) {
   const userAgent =
     request.headers.get("user-agent")?.slice(0, 500) ?? null;
 
+  // TIM-1955: derive a server-side `priority` flag from the submitter's
+  // subscription tier when they're logged in. Pro plan subscribers + card-on-
+  // file trialists get priority:true; everyone else (Starter, free, anon) is
+  // priority:false. Triage and SLA copy hang off this column. Anonymous
+  // submissions are still accepted — the help center is public — they just
+  // can't be priority by definition.
+  let priority = false;
+  let submitterUserId: string | null = null;
+  try {
+    const authedClient = await createClient();
+    const { data: { user: submitter } } = await authedClient.auth.getUser();
+    if (submitter) {
+      submitterUserId = submitter.id;
+      const { data: profile } = await authedClient
+        .from("users")
+        .select(
+          "subscription_status, subscription_tier, paused_from_tier, trial_ends_at",
+        )
+        .eq("id", submitter.id)
+        .single();
+      if (profile) priority = effectivePlanForGating(profile) === "pro";
+    }
+  } catch (err) {
+    // Auth lookup failures are non-fatal — submit still lands as Starter SLA.
+    console.warn("[/api/support] priority lookup failed", err);
+  }
+
   const supabase = createServiceClient();
   const { data: row, error: insertError } = await supabase
     .from("support_messages")
@@ -86,6 +115,8 @@ export async function POST(request: NextRequest) {
       message,
       page_url: pageUrl,
       user_agent: userAgent,
+      user_id: submitterUserId,
+      priority,
     })
     .select("id, created_at")
     .single();
@@ -103,6 +134,7 @@ export async function POST(request: NextRequest) {
     message,
     pageUrl,
     createdAt: row.created_at,
+    priority,
   });
 
   if (!emailResult.ok) {

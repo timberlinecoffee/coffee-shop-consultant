@@ -20,6 +20,9 @@ export type SupportEmailInput = {
   message: string;
   pageUrl?: string | null;
   createdAt: string;
+  // TIM-1955: true for Pro/trialist submitters. Drives the outbound subject
+  // prefix so ops sees Pro tickets at a glance.
+  priority?: boolean;
 };
 
 export type SupportEmailResult =
@@ -106,11 +109,14 @@ export async function sendSupportEmail(
     process.env.SUPPORT_FROM_EMAIL ??
     "Groundwork Support <support@timberline.coffee>";
 
+  // TIM-1955: Pro/trialist tickets get a [PRIORITY] prefix on the subject so
+  // ops can sort by tag in the inbox without opening the row.
+  const tag = input.priority ? "[PRIORITY] " : "";
   const body = {
     from,
     to: [to],
     reply_to: input.email,
-    subject: `[Groundwork support] ${input.subject}`,
+    subject: `${tag}[Groundwork support] ${input.subject}`,
     html: buildSupportEmailHtml(input),
     text: buildSupportEmailText(input),
   };
