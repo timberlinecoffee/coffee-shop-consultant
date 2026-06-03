@@ -2451,7 +2451,8 @@ export function SectionedListGrid({
                           Grand total
                         </td>
                       )}
-                      <td className="px-2 py-2.5 text-sm font-bold text-[var(--teal)] text-right">
+                      {/* TIM-1894: grand-total cell matches Equipment-table reference (text-xs, was text-sm). */}
+                      <td className="px-2 py-2.5 text-xs font-bold text-[var(--teal)] text-right">
                         {formatCurrencyAmount(grandTotal / 100, currencyCode)}
                       </td>
                       {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[var(--teal-tint-500)]" />}
