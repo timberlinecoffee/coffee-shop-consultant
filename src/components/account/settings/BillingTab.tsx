@@ -135,7 +135,7 @@ export function BillingTab() {
           {isPaused ? (
             <div className="space-y-4 pt-1">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
+                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-[var(--warning-bg)] flex items-center justify-center">
                   <svg
                     width="16"
                     height="16"
