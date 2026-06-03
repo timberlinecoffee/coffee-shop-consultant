@@ -14,6 +14,10 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 
@@ -222,19 +226,16 @@ export function SuppliesWorkspace({
           </div>
           <div className="flex items-center gap-3 flex-wrap shrink-0">
             <div className="relative" ref={viewOptionsRef}>
-            <button
-              type="button"
+            {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled
+                button); active state keeps the teal tint when a view filter is on. */}
+            <WorkspaceActionButton
               onClick={() => setViewOptionsOpen((o) => !o)}
-              className={`flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 transition-colors ${
-                !showAiMarkings
-                  ? "text-[var(--teal)] border-[var(--teal)]/50 bg-[var(--teal)]/5"
-                  : "text-[var(--muted-foreground)] border-[var(--neutral-cool-200)] hover:bg-[var(--background)]"
-              }`}
+              className={!showAiMarkings ? "bg-[var(--teal)]/5" : ""}
               aria-label="View options"
             >
-              <Eye size={12} aria-hidden="true" />
+              <Eye size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               View
-            </button>
+            </WorkspaceActionButton>
             {viewOptionsOpen && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
                 <p className="px-3 py-1 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Show in workspace</p>

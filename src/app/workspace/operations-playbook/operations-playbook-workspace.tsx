@@ -25,6 +25,10 @@ import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
+import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
   type SopChecklistItem,
@@ -207,15 +211,21 @@ export function OperationsPlaybookWorkspace({
                 Operations Playbook
               </h1>
             </div>
-            <Link
-              href="/workspace/operations-playbook/print"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled Link). */}
+            <WorkspaceActionButton
+              className="hidden sm:flex"
+              onClick={() =>
+                window.open(
+                  "/workspace/operations-playbook/print",
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+              title="Open a print-friendly view of your operations playbook"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Print all
-            </Link>
+            </WorkspaceActionButton>
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Your planning binder: policies, schedules, and templates your team

@@ -23,6 +23,10 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
+import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
   VENDOR_CATEGORY_SUBTITLES,
@@ -742,29 +746,26 @@ export function SuppliersWorkspace({
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
+                    {/* TIM-1846: canonical WorkspaceActionButton chrome (were hand-rolled). */}
+                    <WorkspaceActionButton
                       onClick={() => handleSeed(activeCategory, activeRows.length > 0 ? "append" : "replace")}
                       disabled={!canEdit || seedingCategory === activeCategory}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title={activeRows.length > 0 ? "Generate more AI-suggested vendors" : "Generate AI suggestions"}
                     >
-                      <Sparkles size={12} aria-hidden="true" />
+                      <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                       {seedingCategory === activeCategory
                         ? "Generating..."
                         : activeRows.length > 0
                           ? "Suggest more"
                           : "Suggest vendors"}
-                    </button>
-                    <button
-                      type="button"
+                    </WorkspaceActionButton>
+                    <WorkspaceActionButton
                       onClick={() => handleAddRow(activeCategory)}
                       disabled={!canEdit}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Plus size={12} aria-hidden="true" />
+                      <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                       Add vendor
-                    </button>
+                    </WorkspaceActionButton>
                   </div>
                 </div>
                 {seedError && (

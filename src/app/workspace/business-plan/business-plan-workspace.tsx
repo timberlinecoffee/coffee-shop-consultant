@@ -19,6 +19,10 @@ import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 interface Props {
@@ -378,23 +382,23 @@ export function BusinessPlanWorkspace({
             {visibleCount} of {sections.length} sections visible
           </p>
           <div className="flex items-center gap-2">
-            {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
-            <button
+            {/* TIM-1551: Print drives through the same PDF renderer as Export.
+                TIM-1846: canonical WorkspaceActionButton chrome (was rounded-xl
+                text-sm hand-rolled — now matches the Financials reference). */}
+            <WorkspaceActionButton
               onClick={handlePrintPlan}
               disabled={isPrintingPdf || !canEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <FileText className="w-3.5 h-3.5" />
+              <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
-            </button>
-            <button
+            </WorkspaceActionButton>
+            <WorkspaceActionButton
               onClick={handleExportPdf}
               disabled={isExportingPdf || !canEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--teal)] text-[var(--teal)] text-sm font-medium hover:bg-[var(--teal)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               {isExportingPdf ? "Exporting..." : "Export PDF"}
-            </button>
+            </WorkspaceActionButton>
           </div>
         </div>
 
