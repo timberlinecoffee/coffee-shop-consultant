@@ -1,0 +1,27 @@
+name: TIM-1922 Apply migration + credit backfill (one-shot)
+
+# One-shot workflow — trigger manually, then delete.
+# Applies TIM-1902 DDL and credit backfill to production Supabase.
+# Required secret: SUPABASE_DB_URL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply-migration:
+    name: Apply TIM-1902 migration + credit backfill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pg driver
+        run: npm install --no-save pg
+
+      - name: Apply migration + credit backfill
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/apply-tim1902-migration.mjs
