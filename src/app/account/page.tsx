@@ -4,6 +4,8 @@ import Link from "next/link";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 import { getAccountSettings } from "@/lib/account-settings";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
+import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
+import { effectivePlanForGating } from "@/lib/access";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,9 +19,20 @@ export default async function AccountPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, email, subscription_tier, subscription_status, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
+    .select("full_name, email, subscription_tier, subscription_status, trial_ends_at, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
     .eq("id", user.id)
     .single();
+
+  // TIM-1956: surface Pro-feature entry points (Office Hours, multi-project)
+  // for Starter users with locked-state CTAs that open the upgrade prompt.
+  // Trialists and Pro see them as included.
+  const isPro = profile
+    ? effectivePlanForGating({
+        subscription_status: profile.subscription_status,
+        subscription_tier: profile.subscription_tier,
+        trial_ends_at: profile.trial_ends_at,
+      }) === "pro"
+    : false;
 
   const accountSettings = await getAccountSettings(supabase, user.id);
 
@@ -72,6 +85,8 @@ export default async function AccountPage() {
             Manage Billing →
           </Link>
         </div>
+
+        <ProFeatureEntries isPro={isPro} />
 
         <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Delete Account</h2>

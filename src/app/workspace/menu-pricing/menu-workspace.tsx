@@ -50,6 +50,7 @@ import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/
 import { recipeIdForItemName } from "@/lib/illustrations/recipes";
 import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
+import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SectionHelp } from "@/components/ui/section-help";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -3089,6 +3090,11 @@ export function MenuWorkspace({
   );
   const [expandedDefaultsCatId, setExpandedDefaultsCatId] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  // TIM-1956 Phase 2C: Pro-feature upgrade prompt for Starter clients on the
+  // Coffee Shop World benchmark touchpoint. Distinct from the generic paywall
+  // (which fires on trial-exhaust / no-sub) — this one carries Pro-specific
+  // microcopy from Marketing v3.
+  const [proPromptFeature, setProPromptFeature] = useState<ProFeatureKey | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [recipeLoading, setRecipeLoading] = useState(false);
@@ -3675,6 +3681,18 @@ export function MenuWorkspace({
         }),
       });
       if (res.status === 402) {
+        // TIM-1956: Coffee Shop World benchmarking is Pro-only. Server returns
+        // code:"pro_required" for Starter users; any other 402 (trial out,
+        // cancelled, paused) falls through to the generic paywall.
+        try {
+          const payload = (await res.clone().json()) as { code?: string };
+          if (payload.code === "pro_required") {
+            setProPromptFeature("coffee_shop_world");
+            return;
+          }
+        } catch {
+          // Ignore JSON parse failure and fall through to generic paywall.
+        }
         setPaywallOpen(true);
         return;
       }
@@ -3899,6 +3917,12 @@ export function MenuWorkspace({
         open={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         variant="copilot_trial"
+      />
+
+      <ProUpgradePrompt
+        open={proPromptFeature !== null}
+        onClose={() => setProPromptFeature(null)}
+        feature={proPromptFeature ?? "generic"}
       />
 
       <CoPilotDrawer
