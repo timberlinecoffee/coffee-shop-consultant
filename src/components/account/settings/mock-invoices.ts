@@ -11,21 +11,21 @@ export type MockInvoice = {
 export const MOCK_INVOICES: MockInvoice[] = [
   {
     date: "May 1, 2026",
-    description: "Growth Plan — Monthly",
+    description: "Growth Plan, Monthly",
     amount: "$29.00",
     status: "Paid",
     downloadUrl: "#",
   },
   {
     date: "Apr 1, 2026",
-    description: "Growth Plan — Monthly",
+    description: "Growth Plan, Monthly",
     amount: "$29.00",
     status: "Paid",
     downloadUrl: "#",
   },
   {
     date: "Mar 1, 2026",
-    description: "Growth Plan — Monthly",
+    description: "Growth Plan, Monthly",
     amount: "$29.00",
     status: "Paid",
     downloadUrl: "#",
