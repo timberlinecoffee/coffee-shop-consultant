@@ -28,6 +28,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -199,42 +200,34 @@ export function OperationsPlaybookWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-36 sm:pb-12">
-        {/* Header spans full width above the 2-col grid */}
-        <header className="mb-6">
-          <div className="flex items-center justify-between gap-3 mb-1">
-            <div className="flex items-center gap-2">
-              <ClipboardList
-                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
-                aria-hidden="true"
-              />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Operations Playbook
-              </h1>
-            </div>
-            {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled Link). */}
-            <WorkspaceActionButton
-              className="hidden sm:flex"
-              onClick={() =>
-                window.open(
-                  "/workspace/operations-playbook/print",
-                  "_blank",
-                  "noopener,noreferrer"
-                )
-              }
-              title="Open a print-friendly view of your operations playbook"
-            >
-              <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Print all
-            </WorkspaceActionButton>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Your planning binder: policies, schedules, and templates your team
-            needs before opening day. Edit anything.
-          </p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
-            <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
-          </div>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader — description in the left column
+            under the title, SaveIndicator + Print action top-right, matching
+            Financials (was description full-width below the title row). Header
+            spans full width above the 2-col grid. */}
+        <WorkspaceHeader
+          Icon={ClipboardList}
+          title="Operations Playbook"
+          description="Your planning binder: policies, schedules, and templates your team needs before opening day. Edit anything."
+          actions={
+            <>
+              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              <WorkspaceActionButton
+                className="hidden sm:flex"
+                onClick={() =>
+                  window.open(
+                    "/workspace/operations-playbook/print",
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+                title="Open a print-friendly view of your operations playbook"
+              >
+                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Print all
+              </WorkspaceActionButton>
+            </>
+          }
+        />
 
         {/* Mobile: horizontal scroll nav above content */}
         <div className="md:hidden mb-4">

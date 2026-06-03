@@ -18,6 +18,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 
@@ -212,19 +213,13 @@ export function SuppliesWorkspace({
       )}
       <div className="px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Package className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Equipment &amp; Supplies
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Plan the consumables you&apos;ll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
+        {/* TIM-1894: canonical WorkspaceHeader (View filter is the only action;
+            no hero primary on the Supplies tab). */}
+        <WorkspaceHeader
+          Icon={Package}
+          title="Equipment & Supplies"
+          description="Plan the consumables you'll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers & Vendors."
+          actions={
             <div className="relative" ref={viewOptionsRef}>
             {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled
                 button); active state keeps the teal tint when a view filter is on. */}
@@ -251,8 +246,8 @@ export function SuppliesWorkspace({
               </div>
             )}
           </div>
-          </div>
-        </header>
+          }
+        />
 
         <EquipmentSuppliesSubNav active="supplies" />
 

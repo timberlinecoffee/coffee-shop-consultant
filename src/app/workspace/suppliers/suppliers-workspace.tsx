@@ -27,6 +27,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
@@ -574,29 +575,23 @@ export function SuppliersWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
-        {/* TIM-1787: canonical two-column header matching Financials / Operations Playbook
-            pattern — icon+title+description on the left, chosen-vendor summary on the right. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Truck className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Suppliers &amp; Vendors
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief.
-            </p>
-          </div>
-          {chosenCount > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 mt-1">
-              <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
-              <span className="text-xs text-[var(--muted-foreground)]">
-                of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
-              </span>
-            </div>
-          )}
-        </header>
+        {/* TIM-1787 / TIM-1894: canonical WorkspaceHeader — icon+title+description
+            on the left, chosen-vendor summary in the top-right actions slot. */}
+        <WorkspaceHeader
+          Icon={Truck}
+          title="Suppliers & Vendors"
+          description="Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief."
+          actions={
+            chosenCount > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
+                </span>
+              </div>
+            ) : undefined
+          }
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
           {/* Category nav */}

@@ -23,6 +23,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 interface Props {
@@ -363,44 +364,39 @@ export function BusinessPlanWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-20">
-        {/* Page header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Business Plan
-            </h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI.
-          </p>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader — actions live top-right on the
+            title band (was a separate toolbar stacked below the header, the
+            board-flagged Item-3 offender). Export PDF is the filled-primary to
+            match Financials' single primary + outlined secondaries. */}
+        <WorkspaceHeader
+          Icon={FileText}
+          title="Business Plan"
+          description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
+          actions={
+            <>
+              {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
+              <WorkspaceActionButton
+                onClick={handlePrintPlan}
+                disabled={isPrintingPdf || !canEdit}
+              >
+                <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
+              </WorkspaceActionButton>
+              <WorkspaceActionButton
+                variant="primary"
+                onClick={handleExportPdf}
+                disabled={isExportingPdf || !canEdit}
+              >
+                <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                {isExportingPdf ? "Exporting..." : "Export PDF"}
+              </WorkspaceActionButton>
+            </>
+          }
+        />
 
-        {/* Toolbar — TIM-1679: flex-col on mobile so buttons don't overflow at ≤480px */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2 sm:gap-3">
-          <p className="text-xs text-[var(--neutral-cool-600)]">
-            {visibleCount} of {sections.length} sections visible
-          </p>
-          <div className="flex items-center gap-2">
-            {/* TIM-1551: Print drives through the same PDF renderer as Export.
-                TIM-1846: canonical WorkspaceActionButton chrome (was rounded-xl
-                text-sm hand-rolled — now matches the Financials reference). */}
-            <WorkspaceActionButton
-              onClick={handlePrintPlan}
-              disabled={isPrintingPdf || !canEdit}
-            >
-              <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
-            </WorkspaceActionButton>
-            <WorkspaceActionButton
-              onClick={handleExportPdf}
-              disabled={isExportingPdf || !canEdit}
-            >
-              <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              {isExportingPdf ? "Exporting..." : "Export PDF"}
-            </WorkspaceActionButton>
-          </div>
-        </div>
+        <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
+          {visibleCount} of {sections.length} sections visible
+        </p>
 
         {globalError && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">

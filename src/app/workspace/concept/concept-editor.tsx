@@ -19,6 +19,10 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { ReadinessRing } from "@/components/workspace/ReadinessRing";
 import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
+import {
   CONCEPT_COMPONENTS_V2,
   getConceptV2Progress,
   isConceptV2Complete,
@@ -320,10 +324,14 @@ export function ConceptWorkspace({
   return (
     <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
-        {/* Page header */}
-        <header className="mb-8">
+        {/* Page header. TIM-1894: header band normalized to the canonical mb-6 /
+            gap-4 chrome; the AI review control now uses the canonical
+            WorkspaceActionButton (filled-primary) instead of a hand-rolled
+            off-spec button (was px-4 py-2 / icon w-3.5). The progress row stays
+            below — it is concept-specific content, not header chrome. */}
+        <header className="mb-6">
           {/* TIM-1099: icon matches the sidebar entry for this workspace. */}
-          <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
             <div className="flex items-center gap-2 min-w-0">
               <Lightbulb className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
               <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight truncate">
@@ -337,8 +345,9 @@ export function ConceptWorkspace({
             {/* TIM-1872: suite-level AI review/suggest control, cohesive with the
                 Financial Suite "AI Assessment" and Business Plan "Improve" controls. */}
             {canEdit && (
-              <button
-                type="button"
+              <WorkspaceActionButton
+                variant="primary"
+                className="shrink-0"
                 onClick={runConceptReview}
                 disabled={reviewStatus === "loading" || progress.filled === 0}
                 title={
@@ -346,11 +355,10 @@ export function ConceptWorkspace({
                     ? "Fill in a section first"
                     : "Get AI feedback and suggested improvements across your concept"
                 }
-                className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
-              </button>
+              </WorkspaceActionButton>
             )}
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">

@@ -24,6 +24,7 @@ import {
   WorkspaceSubNav,
   type WorkspaceSubNavTab,
 } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 
 // TIM-1888 H-8: list/calendar view toggle as canonical text-only pills.
 const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
@@ -1062,19 +1063,13 @@ export function OpeningMonthPlanWorkspace({
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
-        {/* Header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            {(() => {
-              const HeaderIcon = headerIcon;
-              return <HeaderIcon className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />;
-            })()}
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">{headerTitle}</h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            {headerSubtitle}
-          </p>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader (title-only; icon/title/subtitle
+            are page-state-driven for the two Launch Plan sub-pages). */}
+        <WorkspaceHeader
+          Icon={headerIcon}
+          title={headerTitle}
+          description={headerSubtitle}
+        />
 
         {/* TIM-1634: standard suite sub-nav between the two pages in this
             suite, replacing the old two-card landing. Only rendered for the

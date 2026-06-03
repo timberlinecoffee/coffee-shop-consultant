@@ -22,6 +22,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
@@ -390,19 +391,16 @@ export function BuildoutEquipmentWorkspace({
       )}
       <div className="px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Wrench className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Equipment &amp; Supplies
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
+        {/* TIM-1894: canonical WorkspaceHeader. "Describe your setup" is the
+            filled-primary (the AI hero action, analogous to Financials' Guided
+            setup); the board flagged this header as the Item-3 offender for
+            having no primary. Other actions are outlined secondaries. */}
+        <WorkspaceHeader
+          Icon={Wrench}
+          title="Equipment & Supplies"
+          description="Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page."
+          actions={
+            <>
             {canEdit && (
             <WorkspaceActionButton onClick={() => setSettingsOpen(true)}>
               <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
@@ -410,7 +408,7 @@ export function BuildoutEquipmentWorkspace({
             </WorkspaceActionButton>
           )}
           {canEdit && (
-            <WorkspaceActionButton onClick={() => setDescribeOpen(true)}>
+            <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)}>
               <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               Describe your setup
             </WorkspaceActionButton>
@@ -476,8 +474,9 @@ export function BuildoutEquipmentWorkspace({
               Save
             </WorkspaceActionButton>
           )}
-          </div>
-        </header>
+            </>
+          }
+        />
 
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
