@@ -904,6 +904,19 @@ export async function POST(request: NextRequest) {
           ...(offerEquipmentChangeTool ? [PROPOSE_EQUIPMENT_CHANGE_TOOL] : []),
         ]
 
+        // TIM-1798: on Haiku 4.5 (TIM-1897, platform model) tool_choice:auto does NOT
+        // reliably call the tool — verified 0/5 fires on prod, so the cross-workspace
+        // proposal never appeared. The owner's message already passed the deterministic
+        // equipment cost/add intent gate (shouldOfferEquipmentChangeTool), so forcing
+        // the tool is correct: it guarantees the proposal is produced for review.
+        // Nothing auto-applies (the modal still gates every write), so a forced call is
+        // safe. Force only when the equipment tool is the unambiguous action this turn
+        // (not a research turn, where web_search must stay available under auto).
+        const toolChoice: Anthropic.ToolChoice =
+          offerEquipmentChangeTool && !isResearch
+            ? { type: "tool", name: "propose_equipment_change" }
+            : { type: "auto" }
+
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 16_000,
@@ -913,7 +926,7 @@ export async function POST(request: NextRequest) {
           messages: anthropicMessages,
           // Only send tools/tool_choice when at least one tool applies — an empty tools
           // array with tool_choice is rejected by the API.
-          ...(tools.length > 0 ? { tools, tool_choice: { type: "auto" as const } } : {}),
+          ...(tools.length > 0 ? { tools, tool_choice: toolChoice } : {}),
         })
 
         for await (const event of stream) {
