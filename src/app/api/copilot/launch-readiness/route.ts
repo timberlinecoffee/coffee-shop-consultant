@@ -17,6 +17,7 @@ import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import type { NextRequest } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -203,11 +204,10 @@ export async function POST(request: NextRequest) {
   // ── Build cross-workspace snapshot ────────────────────────────────────────
 
   const svcClient = createServiceClient()
-  const { snapshots, totalChars } = await composeAllWorkspacesSnapshot(planId, svcClient)
+  const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
 
-  const estimatedTokens = Math.ceil(totalChars / 4)
-  // Use opus for large snapshots; sonnet otherwise.
-  const modelId = estimatedTokens > 6_000 ? "claude-opus-4-7" : "claude-sonnet-4-6"
+  // TIM-1897: all platform AI runs on Claude Haiku (src/lib/ai/models.ts).
+  const modelId = PLATFORM_AI_MODEL
 
   const workspaceDataSection = snapshots
     .map((s) => `### ${WORKSPACE_LABELS[s.key] ?? s.key}\n${s.text}`)
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 4_000,
-          thinking: { type: "enabled", budget_tokens: 3_000 },
+          // TIM-1897: no `thinking` — Haiku 4.5 does not support extended thinking.
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMessage }],
         })

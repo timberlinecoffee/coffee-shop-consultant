@@ -2,6 +2,7 @@
 // Sibling of /suggest-recipe — that one generates ingredients, this one
 // generates the ordered prep instructions shown in the Recipe tab.
 // Title Case per TIM-1002 at the API boundary. No em dashes per Voice Mandate.
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -115,7 +116,7 @@ Return ONLY a JSON object: { "steps": ["...", "...", ...] }`
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     })

@@ -1,13 +1,12 @@
-// Streaming co-pilot route with thinking, model routing, and SSE.
+// Streaming co-pilot route (SSE).
 // TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
 // SSE event names: text | thinking | suggestions | status | error | done
 // TIM-1670: web_search server tool wired in so competitor/local-market queries do genuine
 // multi-source research (enumerate→verify→cite) instead of answering from priors; location
-// candidates surfaced for grounding; research queries route to sonnet; `status:searching` event.
+// candidates surfaced for grounding; the web_search tool is registered on isResearch turns; `status:searching` event.
 // INVARIANT: the research directive is injected ONLY on isResearch turns (same gate as the
 // web_search tool) — never tell the model it has a tool we didn't register, or it fabricates.
-// Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions OR a research query.
-// Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
+// TIM-1897: all turns run on Claude Haiku (src/lib/ai/models.ts) — no Sonnet routing, no extended thinking.
 // TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
 // TIM-1638: timeline inconsistency — groundss answers in plan's targetLaunchDate; emits suggestions on mismatch.
 // TIM-1648: propose_item tool lets Scout emit a structured menu-item proposal (beverage+recipe) into menu_pricing.
@@ -25,6 +24,7 @@ import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/
 import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { loadPlanContext } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
@@ -32,18 +32,6 @@ import type { NextRequest } from "next/server"
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const FREE_TRIAL_COPILOT_LIMIT = 5
-
-const WORKSPACE_KEYS: WorkspaceKey[] = [
-  "concept",
-  "location_lease",
-  "financials",
-  "menu_pricing",
-  "buildout_equipment",
-  "opening_month_plan",
-  "hiring",
-  "marketing",
-  "suppliers",
-]
 
 const TTFT_MS = 8_000
 const GAP_MS = 20_000
@@ -425,14 +413,6 @@ function buildLocalMarketContext(
   return lines.join("\n")
 }
 
-function countWorkspaceMentions(messages: Array<{ role: string; content: string }>): number {
-  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  const lower = lastUser.toLowerCase()
-  return WORKSPACE_KEYS.filter(
-    (k) => lower.includes(k.replace(/_/g, " ")) || lower.includes(k.replace(/_/g, "")),
-  ).length
-}
-
 // ── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -575,7 +555,7 @@ export async function POST(request: NextRequest) {
       .eq("archived", false)
       .order("position", { ascending: true }),
   ])
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, targetLaunchDate } = snapshotResult
+  const { snapshot: planSnapshot, targetLaunchDate } = snapshotResult
 
   // TIM-1638: detect timeline mismatch between the authoritative plan date and
   // the stale onboarding estimate. Emit the inconsistency suggestion only when
@@ -636,17 +616,19 @@ export async function POST(request: NextRequest) {
     equipmentContextAddendum
 
   // ── Model routing ────────────────────────────────────────────────────────────
-  // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
-  // "Complex" = snapshot >8000 tokens OR user mentions 3+ workspaces in one turn.
-  // TIM-1670: research questions (competitors/local market) also route to sonnet —
-  // they need multi-step web_search + synthesis, which haiku handles poorly.
-  // Haiku 4.5 does not support extended thinking; thinking is only enabled for sonnet tier.
-  // TIM-1648: also force sonnet when offering propose_item tool (haiku tool use is unreliable).
-  const workspaceMentions = countWorkspaceMentions(messages)
+  // TIM-1897: board directive (Trent on TIM-1555) — ALL platform AI runs on Claude
+  // Haiku, no Sonnet routing. The single model constant lives in src/lib/ai/models.ts.
+  // What used to flip to Sonnet (large snapshots, 3+ workspace mentions, research,
+  // propose_item tool) now stays on Haiku. Two carry-over effects of that switch:
+  //   • Extended thinking is OFF — Haiku 4.5 does not support it (a `thinking` param
+  //     would 400). Removed below.
+  //   • Credit/cost metering is always the Haiku "default" tier (see cost block).
+  // Research depth (TIM-1670) and propose_item tool reliability (TIM-1648) were the
+  // original reasons for Sonnet; both are flagged to Trent on TIM-1897 as a quality
+  // re-check, but the directive is Haiku-everywhere.
   const isResearch = isResearchQuestion(messages)
   const offerProposeItemTool = shouldOfferProposeTool(messages)
-  const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3 || isResearch
-  const modelId = (useComplexModel || offerProposeItemTool) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
+  const modelId = PLATFORM_AI_MODEL
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
@@ -812,15 +794,16 @@ export async function POST(request: NextRequest) {
         const tools: Anthropic.ToolUnion[] = [
           ...(isResearch ? [webSearchTool] : []),
           ...(equipmentTool ? [equipmentTool] : []),
-          // TIM-1648: propose_item — offered on creation-intent messages (forces sonnet).
+          // TIM-1648: propose_item — offered on creation-intent messages. (TIM-1897: runs
+          // on Haiku like everything else; tool-use reliability flagged to Trent.)
           ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
         ]
 
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 16_000,
-          // Extended thinking only available on sonnet and above (haiku-4-5 does not support it).
-          ...(useComplexModel ? { thinking: { type: "enabled", budget_tokens: 4_000 } } : {}),
+          // TIM-1897: no `thinking` — the platform runs on Haiku 4.5, which does not
+          // support extended thinking (passing the param is a 400).
           system: systemBlocks as Anthropic.TextBlockParam[],
           messages: anthropicMessages,
           // Only send tools/tool_choice when at least one tool applies — an empty tools
@@ -989,11 +972,11 @@ export async function POST(request: NextRequest) {
           closed = true
 
           // Persist completed turn (only on clean stream close — dropped on disconnect).
-          // TIM-1272: haiku-4-5 = $0.80/$4.00 per M; sonnet-4-6 = $3/$15 per M.
+          // TIM-1897: all turns run on Haiku 4.5 = $0.80/$4.00 per M (no Sonnet tier).
           // input_tokens already excludes cached tokens; cache reads bill at 0.1x and cache
           // writes at 1.25x the base input rate, so fold them in to keep cost_usd honest.
-          const costPerInputM = useComplexModel ? 3 : 0.8
-          const costPerOutputM = useComplexModel ? 15 : 4
+          const costPerInputM = 0.8
+          const costPerOutputM = 4
           const costUsd =
             (inputTokens * costPerInputM +
               cacheReadTokens * costPerInputM * 0.1 +
@@ -1008,7 +991,8 @@ export async function POST(request: NextRequest) {
           // than a flat 1-per-message. Cost model + launch-default pricing live
           // in src/lib/credits/cost.ts (flagged for product calibration).
           const creditBreakdown = computeCreditCost({
-            modelTier: useComplexModel ? "complex" : "default",
+            // TIM-1897: Haiku-everywhere → always the "default" (Haiku) cost basis.
+            modelTier: "default",
             outputTokens,
             webSearchRequests,
             toolCalls: toolCallCount,

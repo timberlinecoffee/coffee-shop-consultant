@@ -6,6 +6,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
@@ -281,7 +282,7 @@ ${buildConceptBlock(seed)}
   let aiText: string;
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
