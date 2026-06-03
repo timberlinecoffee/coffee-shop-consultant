@@ -13,6 +13,10 @@ import { ConceptUnlockNote } from "./_components/concept-unlock-note";
 import { DashboardHero } from "./_components/dashboard-hero";
 import { WorkspaceNav } from "./_components/workspace-nav";
 import { DashboardCoPilot } from "./_components/dashboard-copilot";
+import { TrialBanner } from "./_components/trial-banner";
+import { WelcomeToast } from "./_components/welcome-toast";
+import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
+import { isTrialActive } from "@/lib/access";
 import { Logo } from "../_components/Logo";
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +32,7 @@ export default async function DashboardPage() {
   const [{ data: profile }, { data: plan }] = await Promise.all([
     supabase
       .from("users")
-      .select("full_name, onboarding_completed")
+      .select("full_name, onboarding_completed, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to")
       .eq("id", user.id)
       .single(),
     supabase
@@ -111,6 +115,29 @@ export default async function DashboardPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-10">
+        {/* TIM-1903: Persistent trial banner — days left + CTA to /pricing. */}
+        {profile?.subscription_status === "free_trial" &&
+          isTrialActive(profile.trial_ends_at) && (
+            <TrialBanner
+              trialEndsAt={profile.trial_ends_at as string}
+              chosenTier={
+                profile.subscription_tier === "pro" ? "pro" : "starter"
+              }
+            />
+          )}
+
+        {/* TIM-1903: One-time "Welcome to {plan}" toast on the first dashboard
+            load after a trial converts to a paid subscription. */}
+        {profile?.trial_just_converted_to && (
+          <WelcomeToast
+            planName={
+              PLAN_DISPLAY_NAMES[
+                profile.trial_just_converted_to as string
+              ] ?? "Pro"
+            }
+          />
+        )}
+
         {/* TIM-736: Launch readiness banner */}
         {readinessBannerVisible && readinessOverall && (
           <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border mb-6 ${READINESS_COLORS[readinessOverall].bg}`}>

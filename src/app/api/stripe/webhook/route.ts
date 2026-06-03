@@ -233,6 +233,10 @@ export async function POST(request: NextRequest) {
         usersUpdate.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
         usersUpdate.trial_ends_at = null;
         usersUpdate.past_due_since = null;
+        // TIM-1903: stamp the converted-to plan so /dashboard can show a
+        // one-time "Welcome to {plan}" toast on the next load. The dashboard
+        // toast clears the column via POST /api/account/dismiss-welcome-toast.
+        usersUpdate.trial_just_converted_to = tier;
         await supabase.from("credit_transactions").insert({
           user_id: sub.user_id,
           amount: MONTHLY_CREDITS[tier] ?? 0,
