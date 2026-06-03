@@ -23,6 +23,9 @@ type Tier = {
   ctaAnnual?: string;
 };
 
+// TIM-1902: collapsed to two tiers (Starter / Pro) with a 7-day card-required
+// free trial that unlocks Pro features for every trialist. Pricing locked by
+// board on TIM-1898 §8 (confirmation 09434556, 2026-06-03).
 const TIERS: Tier[] = [
   {
     key: "starter",
@@ -35,7 +38,7 @@ const TIERS: Tier[] = [
     highlight: false,
     features: [
       "All Course Modules",
-      "25 AI Planning Credits/Month",
+      "100 AI Planning Credits/Month",
       "Complete Every Exercise",
       "BRD and Financial Model Generation",
       "Export to PDF",
@@ -47,12 +50,12 @@ const TIERS: Tier[] = [
       "Equipment Sourcing Assistance",
       "1-on-1 Call at BRD Completion",
     ],
-    cta: "Start Building",
-    ctaAnnual: "Start Building, Pay Annually",
+    cta: "Start 7-Day Free Trial",
+    ctaAnnual: "Start 7-Day Free Trial",
   },
   {
-    key: "growth",
-    name: "Growth",
+    key: "pro",
+    name: "Pro",
     monthlyPrice: "$99",
     annualPrice: "$67",
     annualBilled: "$799/year",
@@ -61,40 +64,24 @@ const TIERS: Tier[] = [
     highlight: true,
     features: [
       "Everything in Starter",
-      "100 AI Planning Credits/Month",
+      "500 AI Planning Credits/Month",
       "Weekly Async Q&A with Trent",
       "Financial Model Stress-Testing",
+      "Equipment Sourcing Assistance",
+      "30-Min 1-on-1 Call at BRD Completion",
       "Priority Support",
     ],
-    notIncluded: [
-      "Equipment Sourcing Assistance",
-      "1-on-1 Call at BRD Completion",
-    ],
-    cta: "Start with Growth",
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    monthlyPrice: "$199",
-    annualPrice: "$133",
-    annualBilled: "$1,599/year",
-    annualSavings: "Save $789",
-    description: "Full support from concept to open doors.",
-    highlight: false,
-    features: [
-      "Everything in Growth",
-      "500 AI Planning Credits/Month",
-      "Equipment Sourcing Assistance",
-      "Roaster Matching Recommendations",
-      "30-Min 1-on-1 Call at BRD Completion",
-      "White-Glove Onboarding",
-    ],
     notIncluded: [],
-    cta: "Start with Pro",
+    cta: "Start 7-Day Free Trial",
+    ctaAnnual: "Start 7-Day Free Trial",
   },
 ];
 
 const FAQ = [
+  {
+    q: "How does the 7-day free trial work?",
+    a: "Pick the plan you'd like to convert to, add a card, and you get 7 days of full Pro access plus 75 AI planning credits to try Scout. Cancel anytime in your billing settings before day 7 and you won't be charged. If you don't cancel, we charge the plan you picked on day 7 — Starter at $39/mo or Pro at $99/mo.",
+  },
   {
     q: "Can I switch plans later?",
     a: "Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades take effect immediately; downgrades apply at the end of your current billing period.",
@@ -105,15 +92,11 @@ const FAQ = [
   },
   {
     q: "What counts as an AI planning credit?",
-    a: "Each message you send to Scout uses one credit. Starter includes 25/month, Growth includes 100/month, and Pro includes 500/month.",
+    a: "Credits are debited based on how much work Scout does on each turn — a short reply costs about one credit and a long research turn costs more. Trial accounts get 75 credits up front. Starter includes 100/month and Pro includes 500/month.",
   },
   {
     q: "What is the weekly async Q&A?",
-    a: "Growth and Pro members can submit questions each week. Trent records a short video response delivered within 48 hours.",
-  },
-  {
-    q: "Is there a free trial?",
-    a: "New accounts get 5 free AI planning messages to try Scout before subscribing. No credit card is required for the preview, and your account will not be charged unless you start a paid subscription. After subscribing, you can cancel within 7 days of your first payment for a full refund, no questions asked.",
+    a: "Pro members can submit questions each week. Trent records a short video response delivered within 48 hours.",
   },
   {
     q: "What payment methods do you accept?",
@@ -195,7 +178,7 @@ function PricingPageInner() {
             {isLoggedIn ? "Choose Your Plan" : "Groundwork Pricing"}
           </h1>
           <p className="text-[var(--muted-foreground)] text-lg">
-            Three tiers. Two intervals. One goal: open doors with a plan that works.
+            Two plans. 7-day free trial — card required, cancel anytime, full Pro features during trial.
           </p>
         </div>
 
@@ -225,7 +208,7 @@ function PricingPageInner() {
         </div>
 
         {/* Tier cards */}
-        <div className="grid sm:grid-cols-3 gap-6 mb-16">
+        <div className="grid sm:grid-cols-2 gap-6 mb-16 max-w-3xl mx-auto">
           {TIERS.map((tier) => {
             const loadingKey = `${tier.key}_${interval}`;
             return (
@@ -268,9 +251,9 @@ function PricingPageInner() {
                         </span>
                       </div>
                       <p className={`text-xs mb-2 ${tier.highlight ? "text-white/70" : "text-[var(--dark-grey)]"}`}>
-                        Billed once at $
+                        7-day free trial — card required, cancel anytime before day 7 with no charge. After the trial, billed once at $
                         {tier.annualBilled.replace(/[^0-9,]/g, "")}{" "}
-                        for 12 months. 7-day money-back guarantee; non-refundable after. Cancel anytime; access continues through the paid year. See{" "}
+                        for 12 months. Cancel anytime; access continues through the paid year. See{" "}
                         <a
                           href="/subscription-terms"
                           className={`underline ${tier.highlight ? "text-white" : "text-[var(--teal)]"}`}
@@ -283,7 +266,7 @@ function PricingPageInner() {
                   )}
                   {interval === "monthly" && (
                     <p className={`text-xs mb-2 ${tier.highlight ? "text-white/70" : "text-[var(--dark-grey)]"}`}>
-                      Renews monthly. 7-day money-back on first payment; non-refundable after. Cancel anytime. See{" "}
+                      7-day free trial — card required, cancel anytime before day 7 with no charge. Renews monthly afterwards. See{" "}
                       <a
                         href="/subscription-terms"
                         className={`underline ${tier.highlight ? "text-white" : "text-[var(--teal)]"}`}

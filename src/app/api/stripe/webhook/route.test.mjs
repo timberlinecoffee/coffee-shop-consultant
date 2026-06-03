@@ -14,12 +14,12 @@ import assert from "node:assert/strict";
 
 const PAUSE_PRICE_ID = "price_pause_test";
 const STARTER_MONTHLY_PRICE_ID = "price_starter_monthly_test";
-const GROWTH_MONTHLY_PRICE_ID = "price_growth_monthly_test";
+const PRO_MONTHLY_PRICE_ID = "price_pro_monthly_test";
 
 // Minimal tierFromPriceId mirror of the real function
 function tierFromPriceId(priceId) {
   if (priceId === STARTER_MONTHLY_PRICE_ID) return "starter";
-  if (priceId === GROWTH_MONTHLY_PRICE_ID) return "growth";
+  if (priceId === PRO_MONTHLY_PRICE_ID) return "pro";
   return "free";
 }
 
@@ -152,7 +152,7 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     subscriptionsRow = {
       stripe_subscription_id: "sub_test123",
       user_id: "user_test123",
-      tier: "growth",
+      tier: "pro",
       status: "active",
       current_period_end: "2026-07-01T00:00:00.000Z",
       paused_from_tier: null,
@@ -161,7 +161,7 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     usersRow = {
       id: "user_test123",
       subscription_status: "active",
-      subscription_tier: "growth",
+      subscription_tier: "pro",
     };
   });
 
@@ -175,13 +175,13 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     await handleSubscriptionUpdated(sub, makeSupabase());
 
     assert.equal(subscriptionsRow.status, "paused", "subscriptions.status should be paused");
-    assert.equal(subscriptionsRow.paused_from_tier, "growth", "paused_from_tier should hold original tier");
+    assert.equal(subscriptionsRow.paused_from_tier, "pro", "paused_from_tier should hold original tier");
     assert.ok(subscriptionsRow.paused_at, "paused_at should be set");
     // tier must NOT be overwritten by the pause event
-    assert.equal(subscriptionsRow.tier, "growth", "tier must not be overwritten on pause");
+    assert.equal(subscriptionsRow.tier, "pro", "tier must not be overwritten on pause");
     assert.equal(usersRow.subscription_status, "paused", "users.subscription_status should be paused");
     // subscription_tier on users must not change either
-    assert.equal(usersRow.subscription_tier, "growth", "users.subscription_tier must not change on pause");
+    assert.equal(usersRow.subscription_tier, "pro", "users.subscription_tier must not change on pause");
   });
 
   test("resume event (tier priceId while paused) clears pause columns and restores active status", async () => {
@@ -189,9 +189,9 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     subscriptionsRow = {
       ...subscriptionsRow,
       status: "paused",
-      paused_from_tier: "growth",
+      paused_from_tier: "pro",
       paused_at: "2026-06-01T00:00:00.000Z",
-      tier: "growth",
+      tier: "pro",
     };
     usersRow = { ...usersRow, subscription_status: "paused" };
 
@@ -216,7 +216,7 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     subscriptionsRow = {
       ...subscriptionsRow,
       status: "paused",
-      paused_from_tier: "growth",
+      paused_from_tier: "pro",
       paused_at: "2026-06-01T00:00:00.000Z",
     };
     usersRow = { ...usersRow, subscription_status: "paused" };
@@ -243,16 +243,16 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     await handleSubscriptionUpdated(sub, makeSupabase());
 
     assert.equal(subscriptionsRow.status, "paused");
-    assert.equal(subscriptionsRow.tier, "growth", "tier unchanged");
+    assert.equal(subscriptionsRow.tier, "pro", "tier unchanged");
   });
 
   test("non-pause priceId on active sub does NOT enter pause or resume branch", async () => {
-    // Active sub switching to growth — should fall through to default path (no change by our logic)
+    // Active sub switching to a tier price — should fall through to default path (no change by our logic)
     const periodEnd = Math.floor(new Date("2026-08-01").getTime() / 1000);
     const sub = {
       id: "sub_test123",
       status: "active",
-      items: { data: [{ price: { id: GROWTH_MONTHLY_PRICE_ID }, current_period_end: periodEnd }] },
+      items: { data: [{ price: { id: PRO_MONTHLY_PRICE_ID }, current_period_end: periodEnd }] },
     };
 
     await handleSubscriptionUpdated(sub, makeSupabase());

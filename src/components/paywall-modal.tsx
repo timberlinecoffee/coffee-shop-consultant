@@ -54,7 +54,7 @@ function getContent(
   // reason === "no_subscription" (default save variant)
   return {
     title: "Start a plan to save your work",
-    body: "You can explore for free. To save your answers and build your full plan, choose a Starter, Growth, or Pro plan.",
+    body: "You can explore for free. To save your answers and build your full plan, start a 7-day free trial on Starter or Pro.",
     cta: "Choose a plan",
     href: "/pricing",
     dismiss: "Not now",

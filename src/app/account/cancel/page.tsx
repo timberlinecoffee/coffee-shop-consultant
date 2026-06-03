@@ -14,8 +14,7 @@ export const metadata: Metadata = { title: "Cancel Subscription | My Coffee Shop
 
 const MONTHLY_RATES: Record<string, string> = {
   starter: "$39/month",
-  growth: "$99/month",
-  pro: "$199/month",
+  pro: "$99/month",
 };
 
 export default async function CancelPage() {

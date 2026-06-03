@@ -17,7 +17,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeAIOutput } from "@/lib/normalize";
-import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import {
   CONCEPT_COMPONENTS_V2,
   formatConceptV2ForAI,
@@ -59,10 +59,12 @@ export async function POST(request: Request) {
   const doc: ConceptDocumentV2 = normalizeConceptV2(body.content);
 
   // ── Quota / billing gate (mirrors /api/copilot/improve) ──────────────────────
+  // TIM-1902: trialists with a card on file count as active here. Gating is
+  // uniform across active and trial — both debit ai_credits_remaining.
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data",
+      "ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, trial_ends_at",
     )
     .eq("id", user.id)
     .single();
@@ -71,30 +73,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  if (
-    !isSubscriptionActive(profile.subscription_status) &&
-    profile.subscription_tier !== "free"
-  ) {
+  const hasAccess = hasWriteAccess({
+    subscription_status: profile.subscription_status,
+    trial_ends_at: profile.trial_ends_at,
+  });
+
+  if (!hasAccess) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
   }
 
-  const isFree = profile.subscription_tier === "free";
-  const isUnlimited = profile.subscription_tier === "pro";
-
-  if (isFree) {
-    const used = profile.copilot_trial_messages_used ?? 0;
-    if (used >= COPILOT_FREE_TRIAL_LIMIT) {
-      return Response.json(
-        { error: "Free trial AI sessions used up.", code: "trial_exhausted" },
-        { status: 402 },
-      );
-    }
-  } else if (!isUnlimited && (profile.ai_credits_remaining ?? 0) < 1) {
+  if ((profile.ai_credits_remaining ?? 0) < 1) {
     return Response.json(
-      { error: "You've used all your AI credits for this month.", code: "quota" },
+      { error: "You're out of AI credits for this month.", code: "out_of_credits" },
       { status: 402 },
     );
   }
+  void isSubscriptionActive;
 
   // ── Eligible fields: prose fields that have content ──────────────────────────
   const targets = REVIEWABLE_IDS.filter(
@@ -211,25 +205,20 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
     return Response.json({ suggestions: [], generated_at: new Date().toISOString() });
   }
 
-  // ── Charge 1 unit (only when we have real suggestions to return) ─────────────
+  // ── Charge 1 credit (only when we have real suggestions to return) ────────────
+  // TIM-1902: uniform debit — trialists are on the same credit balance as
+  // paid users, so there is no separate trial counter to bump.
   const svcClient = createServiceClient();
-  if (isFree) {
-    await supabase
-      .from("users")
-      .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
-      .eq("id", user.id);
-  } else if (!isUnlimited) {
-    await supabase
-      .from("users")
-      .update({ ai_credits_remaining: (profile.ai_credits_remaining ?? 0) - 1 })
-      .eq("id", user.id);
-    await svcClient.from("credit_transactions").insert({
-      user_id: user.id,
-      amount: -1,
-      type: "usage",
-      description: "AI Review: concept",
-    });
-  }
+  await supabase
+    .from("users")
+    .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
+    .eq("id", user.id);
+  await svcClient.from("credit_transactions").insert({
+    user_id: user.id,
+    amount: -1,
+    type: "usage",
+    description: "AI Review: concept",
+  });
 
   return Response.json({
     suggestions,
