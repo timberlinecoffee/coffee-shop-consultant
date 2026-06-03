@@ -47,6 +47,7 @@ import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { recipeIdForItemName } from "@/lib/illustrations/recipes";
+import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -2731,7 +2732,7 @@ function InsightsTab({
         ) : (
           <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={`w-full ${TABLE_CELL_TEXT}`}>
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--background)] border-b border-[var(--border)]">
                     <th className="text-left font-semibold px-4 py-2 w-8">#</th>

@@ -37,7 +37,7 @@ function CFRow({ label, values, bold, indent, highlight, negative, currencyCode 
     <tr className={highlight ? "bg-[var(--teal-tint-50)]" : ""}>
       {/* TIM-1309: opaque frozen column with z-index above scrolled cells. */}
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${highlight ? "bg-[var(--teal-tint-50)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
+        className={`py-2 pr-4 text-xs sticky left-0 z-10 ${highlight ? "bg-[var(--teal-tint-50)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
       >
         {label}
       </td>
@@ -46,7 +46,7 @@ function CFRow({ label, values, bold, indent, highlight, negative, currencyCode 
         return (
           <td
             key={i}
-            className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
+            className={`py-2 px-3 text-right text-xs whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
           >
             {v !== undefined ? fmt(v, currencyCode) : "—"}
           </td>
@@ -321,14 +321,14 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
         </div>
       ) : (
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
+              <th className="py-3 pl-4 pr-4 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
                 Line Item
               </th>
               {columns.map((c) => (
-                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
+                <th key={c.label} className="py-3 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
                   {c.label}
                 </th>
               ))}
@@ -422,15 +422,15 @@ function LoanAmortizationSchedule({
         <p className="text-xs text-[var(--dark-grey)]">Year {year}</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-[var(--border)] bg-[var(--background)]">
-              <th className="py-2.5 pl-5 pr-3 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Month</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Beginning Balance</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Interest</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Principal</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Payment</th>
-              <th className="py-2.5 px-5 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Ending Balance</th>
+              <th className="py-2.5 pl-5 pr-3 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Month</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Beginning Balance</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Interest</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Principal</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Payment</th>
+              <th className="py-2.5 px-5 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Ending Balance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--neutral-cool-100)]">
@@ -440,12 +440,12 @@ function LoanAmortizationSchedule({
               const payment = s.loan_repayment_cents + s.loan_interest_cents;
               return (
                 <tr key={s.month_index}>
-                  <td className="py-2 pl-5 pr-3 text-sm text-[var(--foreground)]">{monthLabels[i]}</td>
-                  <td className="py-2 px-3 text-right text-sm tabular-nums">{fmt(begin, currencyCode)}</td>
-                  <td className="py-2 px-3 text-right text-sm tabular-nums text-[var(--error)]">{fmt(s.loan_interest_cents, currencyCode)}</td>
-                  <td className="py-2 px-3 text-right text-sm tabular-nums">{fmt(s.loan_repayment_cents, currencyCode)}</td>
-                  <td className="py-2 px-3 text-right text-sm tabular-nums font-medium">{fmt(payment, currencyCode)}</td>
-                  <td className="py-2 px-5 text-right text-sm tabular-nums">{fmt(ending, currencyCode)}</td>
+                  <td className="py-2 pl-5 pr-3 text-xs text-[var(--foreground)]">{monthLabels[i]}</td>
+                  <td className="py-2 px-3 text-right text-xs tabular-nums">{fmt(begin, currencyCode)}</td>
+                  <td className="py-2 px-3 text-right text-xs tabular-nums text-[var(--error)]">{fmt(s.loan_interest_cents, currencyCode)}</td>
+                  <td className="py-2 px-3 text-right text-xs tabular-nums">{fmt(s.loan_repayment_cents, currencyCode)}</td>
+                  <td className="py-2 px-3 text-right text-xs tabular-nums font-medium">{fmt(payment, currencyCode)}</td>
+                  <td className="py-2 px-5 text-right text-xs tabular-nums">{fmt(ending, currencyCode)}</td>
                 </tr>
               );
             })}

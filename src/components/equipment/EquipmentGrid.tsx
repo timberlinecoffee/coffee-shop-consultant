@@ -31,6 +31,11 @@ import type {
 } from "@/app/workspace/financials/financials-workspace";
 import { formatCurrency } from "@/lib/financial-projection";
 import { useCurrency } from "@/components/CurrencyProvider";
+import {
+  TABLE_CELL_TEXT,
+  TABLE_HEADER_TEXT,
+  TABLE_ACTION_ICON_SIZE,
+} from "@/lib/workspace-table";
 
 const COL_VISIBILITY_KEY = "tcs-equipment-col-visibility";
 
@@ -1160,9 +1165,9 @@ export function EquipmentGrid({
   // ── Spreadsheet ───────────────────────────────────────────────────────────────
 
   const cellCls =
-    "px-2.5 py-2 text-xs border-r border-[var(--neutral-cool-150)] last:border-r-0 align-top";
+    `px-2.5 py-2 ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-top`;
   const headerCellCls =
-    "px-2.5 py-2 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none";
+    `px-2.5 py-2 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
 
   return (
     <div className="space-y-3">

@@ -37,7 +37,7 @@ function BSRow({ label, values, bold, indent, highlight, negative, currencyCode 
     <tr className={highlight ? "bg-[var(--teal-tint-50)]" : ""}>
       {/* TIM-1309: opaque frozen column with z-index above scrolled cells. */}
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${highlight ? "bg-[var(--teal-tint-50)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
+        className={`py-2 pr-4 text-xs sticky left-0 z-10 ${highlight ? "bg-[var(--teal-tint-50)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""}`}
       >
         {label}
       </td>
@@ -46,7 +46,7 @@ function BSRow({ label, values, bold, indent, highlight, negative, currencyCode 
         return (
           <td
             key={i}
-            className={`py-2 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
+            className={`py-2 px-3 text-right text-xs whitespace-nowrap ${bold ? "font-semibold" : ""} ${isNeg ? "text-red-600" : ""}`}
           >
             {v !== undefined ? fmt(v, currencyCode) : "—"}
           </td>
@@ -261,14 +261,14 @@ export function BalanceSheetTab({
         </div>
       ) : (
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
+              <th className="py-3 pl-4 pr-4 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-56">
                 Line Item
               </th>
               {columns.map((c) => (
-                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
+                <th key={c.label} className="py-3 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
                   {c.label}
                 </th>
               ))}
