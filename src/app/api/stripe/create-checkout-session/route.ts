@@ -45,9 +45,31 @@ export async function POST(request: NextRequest) {
 
   const { data: subscription } = await supabase
     .from("subscriptions")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, stripe_subscription_id, status")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // TIM-1933: Refuse to mint a brand-new subscription when the user already
+  // has a live one. Without this guard, the pricing-page "upgrade" CTA
+  // produced TWO active subs on the same Stripe customer (board report on
+  // TIM-1932 — every upgrader was being double-billed). Live upgrades MUST
+  // go through /api/billing/change-plan, which calls
+  // stripe.subscriptions.update on the existing sub. "Live" here = any state
+  // where Stripe is still billing or about to bill the customer: trialing,
+  // active, or past_due. Paused/cancelled subs are allowed to mint a new
+  // one through this route (pause → resume restores the original plan;
+  // cancelled → fresh checkout is the correct re-subscribe path).
+  const liveStatuses = new Set(["trialing", "active", "past_due"]);
+  if (subscription?.stripe_subscription_id && liveStatuses.has(subscription.status ?? "")) {
+    return Response.json(
+      {
+        error: "You already have an active subscription. Use the change-plan flow to switch.",
+        reason: "existing_subscription",
+        currentStatus: subscription.status,
+      },
+      { status: 409 },
+    );
+  }
 
   const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
 
