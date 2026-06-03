@@ -59,7 +59,7 @@ export function SettingsShell({
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       activeTab === tab.id
                         ? "bg-[var(--teal-bg-100)] text-[var(--teal)] font-medium"
-                        : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--border)]"
+                        : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]"
                     }`}
                   >
                     {tab.label}
