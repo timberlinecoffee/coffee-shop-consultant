@@ -232,7 +232,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
   switch (err.code) {
     case "trial_exhausted":
       return {
-        title: `You've used your 5 trial messages — upgrade to keep planning with ${COPILOT_NAME}.`,
+        title: `You've used all 5 trial messages. Upgrade to keep planning with ${COPILOT_NAME}.`,
         cta: "See plans",
         href: UPGRADE_PATH,
       };
@@ -258,7 +258,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
       };
     case "upstream_error":
       return {
-        title: "AI service hiccup — your message wasn't sent.",
+        title: "AI service hiccup. Your message wasn't sent.",
         cta: "Retry",
         href: null,
       };
@@ -277,7 +277,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "paywall":
       if (err.paywallReason === "paused" || err.paywallReason === "expired") {
         return {
-          title: `Your plan is paused — reactivate to keep using ${COPILOT_NAME}.`,
+          title: `Your plan is paused. Reactivate to keep using ${COPILOT_NAME}.`,
           cta: "Reactivate",
           href: "/account/billing",
         };
@@ -1082,7 +1082,7 @@ export function CoPilotDrawer({
               {showEmpty && (
                 <div className="text-sm text-[var(--gray-1100)] bg-[var(--background)] border border-[var(--border)] rounded-xl p-4">
                   {activeScope === null
-                    ? `Ask ${COPILOT_NAME} anything about your plan. This conversation isn't tied to a specific workspace — useful for cross-cutting questions like cash flow, opening sequencing, or "is this realistic?"`
+                    ? `Ask ${COPILOT_NAME} anything about your plan. This conversation isn't tied to a specific workspace. Good for cross-cutting questions like cash flow, opening sequencing, or "is this realistic?"`
                     : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()} plan. ${COPILOT_NAME} can see your plan snapshot across every workspace.`}
                   {/* TIM-1728: manual consistency trigger in empty state. */}
                   {!consistencyConflicts && !consistencyChecking && (
