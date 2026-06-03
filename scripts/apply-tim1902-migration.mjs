@@ -13,9 +13,9 @@
  */
 
 import pg from "pg";
-import { setDefaultResultOrder } from "dns";
+import { setDefaultResultOrder, resolve4, resolve6 } from "dns/promises";
 
-// Force IPv4 — GitHub Actions runners can have IPv6 but with no route to Supabase IPv6 addresses.
+// Force IPv4 — GitHub Actions runners often have IPv6 with no route to Supabase IPv6 endpoints.
 setDefaultResultOrder("ipv4first");
 
 const { Client } = pg;
@@ -26,9 +26,31 @@ if (!DB_URL) {
   process.exit(1);
 }
 
-// Strategy: try the original SUPABASE_DB_URL first, then fall back to
-// the new Supabase pooler format (postgres.{ref}@aws-0-*.pooler) and
-// finally the direct db.{ref}.supabase.co connection.
+const REF = "ltmcttjftxzpgynhnrpg";
+
+// Parse the stored URL to extract credentials using object params (avoids
+// re-encoding issues with special chars in the password).
+let parsedUser = "postgres", parsedPassword = "", parsedHost = "";
+try {
+  const url = new URL(DB_URL);
+  parsedUser = url.username || "postgres";
+  parsedPassword = url.password;
+  parsedHost = url.hostname;
+  console.log(`Parsed: user=${parsedUser} host=${parsedHost}`);
+} catch (e) {
+  console.log(`URL parse failed: ${e.message}`);
+}
+
+// Resolve IPv4 for the direct db host (bypasses IPv6 ENETUNREACH).
+let directIPv4 = null;
+try {
+  const addrs = await resolve4(`db.${REF}.supabase.co`);
+  directIPv4 = addrs[0];
+  console.log(`db.${REF}.supabase.co → IPv4: ${directIPv4}`);
+} catch (e) {
+  console.log(`IPv4 lookup failed: ${e.message}`);
+}
+
 async function tryConnect(config, label) {
   const c = new Client(config);
   try {
@@ -42,17 +64,20 @@ async function tryConnect(config, label) {
   }
 }
 
-const REF = "ltmcttjftxzpgynhnrpg";
-let password = "";
-try {
-  password = new URL(DB_URL).password;
-} catch {}
+const ssl = { rejectUnauthorized: false };
+const base = { database: "postgres", ssl };
 
 const configs = [
-  [{ connectionString: DB_URL, ssl: { rejectUnauthorized: false } }, "SUPABASE_DB_URL as-is"],
-  [{ connectionString: `postgresql://postgres.${REF}:${password}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`, ssl: { rejectUnauthorized: false } }, "session pooler (us-east-1)"],
-  [{ connectionString: `postgresql://postgres.${REF}:${password}@aws-0-us-west-1.pooler.supabase.com:5432/postgres`, ssl: { rejectUnauthorized: false } }, "session pooler (us-west-1)"],
-  [{ connectionString: `postgresql://postgres:${password}@db.${REF}.supabase.co:5432/postgres`, ssl: { rejectUnauthorized: false } }, "direct db host"],
+  // 1. Use SUPABASE_DB_URL as-is
+  [{ connectionString: DB_URL, ssl }, "SUPABASE_DB_URL as-is"],
+  // 2. Use parsed creds with us-east-1 pooler (object form — no URL encoding issues)
+  [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: "aws-0-us-east-1.pooler.supabase.com", port: 5432 }, "pooler us-east-1 (new username format)"],
+  // 3. Use parsed creds with us-east-2 pooler
+  [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: "aws-0-us-east-2.pooler.supabase.com", port: 5432 }, "pooler us-east-2"],
+  // 4. Try old-style username in us-east-1
+  [{ ...base, user: "postgres", password: parsedPassword, host: "aws-0-us-east-1.pooler.supabase.com", port: 5432 }, "pooler us-east-1 (old username)"],
+  // 5. Direct IPv4 connection (bypasses IPv6)
+  ...(directIPv4 ? [[{ ...base, user: "postgres", password: parsedPassword, host: directIPv4, port: 5432 }, `direct IPv4 ${directIPv4}`]] : []),
 ];
 
 let client = null;
@@ -62,7 +87,7 @@ for (const [cfg, label] of configs) {
 }
 
 if (!client) {
-  console.error("FATAL: Could not connect via any method. Check SUPABASE_DB_URL secret value.");
+  console.error("FATAL: All connection attempts failed. The SUPABASE_DB_URL secret likely has an incorrect password or the project is paused.");
   process.exit(1);
 }
 
