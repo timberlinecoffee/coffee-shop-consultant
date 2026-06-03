@@ -256,6 +256,7 @@ const FOOTER_COLS = [
   {
     heading: "Contact",
     links: [
+      { label: "Help & Support", href: "/help" },
       { label: "hello@timberline.coffee", href: "mailto:hello@timberline.coffee" },
     ],
   },
