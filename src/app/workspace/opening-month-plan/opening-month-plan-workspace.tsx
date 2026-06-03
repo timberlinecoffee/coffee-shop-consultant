@@ -836,11 +836,11 @@ export function OpeningMonthPlanWorkspace({
         return;
       }
       if (!res.ok) {
-        showToast("error", "Couldn't seed the playbook. Try again or contact support.");
+        showToast("error", "Couldn't generate the playbook. Try again or contact support.");
         return;
       }
       await reloadPlaybook();
-      showToast("success", "Opening Month Plan seeded. Edit anything that doesn't fit your shop.");
+      showToast("success", "Opening Month Plan generated. Edit anything that doesn't fit your shop.");
     } catch {
       showToast("error", "Couldn't seed the playbook. Try again or contact support.");
     } finally {
@@ -1031,7 +1031,7 @@ export function OpeningMonthPlanWorkspace({
     section === "milestones"
       ? (hasContent ? "Regenerate Launch Milestones" : "Generate Launch Milestones")
       : section === "playbook"
-      ? (playbookItems.length > 0 ? "Reseed Opening Month Plan" : "Seed Opening Month Plan")
+      ? (playbookItems.length > 0 ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan")
       : (hasContent ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan");
   const onCtaClick =
     section === "milestones" ? handleGenerateMilestones
@@ -1123,7 +1123,7 @@ export function OpeningMonthPlanWorkspace({
             /* Playbook: simple Seed CTA, no date input. */
             <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-                Seed a starter playbook of pre-open, opening-week, and first-30-day tasks. Edit anything that doesn&apos;t fit your shop.
+                Generate a starter playbook of pre-open, opening-week, and first-30-day tasks. Edit anything that doesn&apos;t fit your shop.
               </div>
               <div className="flex flex-col gap-1.5 sm:items-end">
                 <button
@@ -1132,10 +1132,10 @@ export function OpeningMonthPlanWorkspace({
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-dark)] disabled:opacity-50 transition-colors"
                 >
                   <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-                  {generating ? "Seeding..." : ctaLabel}
+                  {generating ? "Generating..." : ctaLabel}
                 </button>
                 {!canEdit && (
-                  <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to seed</p>
+                  <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to generate</p>
                 )}
               </div>
             </div>
@@ -1282,7 +1282,7 @@ export function OpeningMonthPlanWorkspace({
                     <p className="text-sm text-[var(--foreground)] font-semibold">Start with a tactical playbook</p>
                     <p className="text-sm text-[var(--muted-foreground)]">
                       {section === "playbook"
-                        ? "Use the Seed Opening Month Plan button above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."
+                        ? "Use the Generate Opening Month Plan button above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."
                         : "Use Generate Opening Month Plan above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."}
                     </p>
                   </div>
