@@ -14,7 +14,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { lookupIndustryBenchmark } from "@/lib/menu-pricing/industry-benchmarks"
 
 export const runtime = "nodejs"
@@ -89,7 +89,9 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select(
+      "subscription_status, subscription_tier, paused_from_tier, trial_ends_at, beta_waiver_until",
+    )
     .eq("id", user.id)
     .single()
 
@@ -99,6 +101,20 @@ export async function POST(request: Request) {
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
+  }
+
+  // TIM-1955: Coffee Shop World (cross-shop benchmarking) is a Pro feature.
+  // Trialists are Pro per effectivePlanForGating (TIM-1902). Beta-waived
+  // accounts bypass like every other gate. Starter clients render an upgrade
+  // prompt against this 402 (TIM-1956).
+  if (
+    !isBetaWaived(profile.beta_waiver_until) &&
+    effectivePlanForGating(profile) !== "pro"
+  ) {
+    return Response.json(
+      { error: "Pro plan required", code: "pro_required" },
+      { status: 402 },
+    )
   }
 
   const planId = await getPlanId(supabase, user.id)

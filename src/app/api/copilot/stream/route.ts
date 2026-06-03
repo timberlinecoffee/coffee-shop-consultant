@@ -23,7 +23,12 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive, isBetaWaived, isTrialActive } from "@/lib/access"
+import {
+  isSubscriptionActive,
+  isBetaWaived,
+  isTrialActive,
+  effectivePlanForGating,
+} from "@/lib/access"
 import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
@@ -547,7 +552,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, beta_waiver_until, trial_ends_at")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, paused_from_tier, onboarding_data, beta_waiver_until, trial_ends_at")
     .eq("id", user.id)
     .single()
 
@@ -712,6 +717,16 @@ export async function POST(request: NextRequest) {
   // original reasons for Sonnet; both are flagged to Trent on TIM-1897 as a quality
   // re-check, but the directive is Haiku-everywhere.
   const isResearch = isResearchQuestion(messages)
+  // TIM-1955: "Deeper insights" (web-search-backed research) is a Pro feature.
+  // Trialists are Pro per effectivePlanForGating (TIM-1902); beta-waived
+  // accounts bypass the gate to keep internal testing seamless. When intent
+  // is research but the gate fails, we strip the tool + directive and emit a
+  // single in-stream notice — chat keeps working, just without live web
+  // research. No 402.
+  const tier = effectivePlanForGating(profile)
+  const researchGateBypass = isBetaWaived(profile.beta_waiver_until)
+  const isResearchAllowed = isResearch && (tier === "pro" || researchGateBypass)
+  const researchBlocked = isResearch && !isResearchAllowed
   const offerProposeItemTool = shouldOfferProposeTool(messages)
   // TIM-1798: cross-workspace cost-change tool — only in the equipment workspace
   // with items present (it references items by their I# index) and on cost-change
@@ -798,6 +813,22 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS)
 
       try {
+        // TIM-1955: research-intent turn from a Starter — emit a one-line
+        // in-stream notice before any model output so the user sees the gate
+        // immediately. The web_search tool and research directive are already
+        // stripped above, so the model answers from priors. Counts as the
+        // first token so the TTFT watchdog (8s) does not race a slow Haiku
+        // cold-start that follows.
+        if (researchBlocked) {
+          const notice =
+            "Deeper market research with live web sources is a Pro feature — [Upgrade](/pricing?ref=scout-research). For now I'm answering from what I already know.\n\n"
+          fullText += notice
+          send(sse("text", { delta: notice }))
+          firstToken = true
+          if (ttftTimer) clearTimeout(ttftTimer)
+          resetGapTimer()
+        }
+
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
         // System prompt cached as a single prefix. The cache breakpoint must sit on the
@@ -816,7 +847,7 @@ export async function POST(request: NextRequest) {
             text: [
               STABLE_IDENTITY,
               STABLE_COACHING_STYLE,
-              isResearch ? RESEARCH_DIRECTIVE : null,
+              isResearchAllowed ? RESEARCH_DIRECTIVE : null,
               offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
               offerEquipmentChangeTool ? EQUIPMENT_CHANGE_DIRECTIVE : null,
             ].filter(Boolean).join("\n\n"),
@@ -887,7 +918,7 @@ export async function POST(request: NextRequest) {
         }
 
         const tools: Anthropic.ToolUnion[] = [
-          ...(isResearch ? [webSearchTool] : []),
+          ...(isResearchAllowed ? [webSearchTool] : []),
           ...(equipmentTool ? [equipmentTool] : []),
           // TIM-1648: propose_item — offered on creation-intent messages. (TIM-1897: runs
           // on Haiku like everything else; tool-use reliability flagged to Trent.)

@@ -12,6 +12,7 @@ import {
   isSubscriptionActive,
   normalizeTier,
   effectiveTierForRead,
+  effectivePlanForGating,
   hasWriteAccess,
   isTrialActive,
   FREE_PREVIEW_MODULE,
@@ -183,6 +184,80 @@ test("isTrialActive reflects whether the trial window is still open", () => {
   assert.equal(isTrialActive(future), true);
   assert.equal(isTrialActive(past), false);
   assert.equal(isTrialActive(null), false);
+});
+
+// TIM-1955: effectivePlanForGating wraps effectiveTierForRead and normalizes
+// the result for strict === 'pro' comparisons in Pro-only route gates.
+test("effectivePlanForGating returns 'pro' for active Pro subscribers", () => {
+  assert.equal(
+    effectivePlanForGating({ subscription_status: "active", subscription_tier: "pro" }),
+    "pro"
+  );
+});
+
+test("effectivePlanForGating returns 'starter' for active Starter subscribers", () => {
+  assert.equal(
+    effectivePlanForGating({ subscription_status: "active", subscription_tier: "starter" }),
+    "starter"
+  );
+});
+
+test("effectivePlanForGating returns 'pro' for trialists with a future trial_ends_at", () => {
+  const future = new Date(Date.now() + 5 * 86400000).toISOString();
+  assert.equal(
+    effectivePlanForGating({
+      subscription_status: "free_trial",
+      subscription_tier: "starter",
+      trial_ends_at: future,
+    }),
+    "pro"
+  );
+  assert.equal(
+    effectivePlanForGating({
+      subscription_status: "free_trial",
+      subscription_tier: "pro",
+      trial_ends_at: future,
+    }),
+    "pro"
+  );
+});
+
+test("effectivePlanForGating honors paused_from_tier", () => {
+  assert.equal(
+    effectivePlanForGating({
+      subscription_status: "paused",
+      subscription_tier: "free",
+      paused_from_tier: "pro",
+    }),
+    "pro"
+  );
+  assert.equal(
+    effectivePlanForGating({
+      subscription_status: "paused",
+      subscription_tier: "free",
+      paused_from_tier: "starter",
+    }),
+    "starter"
+  );
+});
+
+test("effectivePlanForGating returns 'free' for unknown tiers and expired trials", () => {
+  const past = new Date(Date.now() - 1000).toISOString();
+  assert.equal(
+    effectivePlanForGating({
+      subscription_status: "free_trial",
+      subscription_tier: "starter",
+      trial_ends_at: past,
+    }),
+    "starter"
+  );
+  assert.equal(
+    effectivePlanForGating({
+      subscription_status: "active",
+      subscription_tier: null,
+    }),
+    "free"
+  );
 });
 
 test("paid users see every section", () => {
