@@ -202,7 +202,7 @@ export function MarketingWorkspace({
           description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
           actions={
             <>
-              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
               <WorkspaceActionButton
                 className="hidden sm:flex"
                 onClick={() =>
@@ -212,11 +212,13 @@ export function MarketingWorkspace({
                     "noopener,noreferrer"
                   )
                 }
+                aria-label="Print view"
                 title="Open a print-friendly view of your marketing plan"
               >
                 <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                Print view
+                <span className="hidden min-[1536px]:inline">Print view</span>
               </WorkspaceActionButton>
+              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
             </>
           }
         />

@@ -350,6 +350,7 @@ export function ConceptWorkspace({
                 className="shrink-0"
                 onClick={runConceptReview}
                 disabled={reviewStatus === "loading" || progress.filled === 0}
+                aria-label="Review with AI"
                 title={
                   progress.filled === 0
                     ? "Fill in a section first"
@@ -357,7 +358,10 @@ export function ConceptWorkspace({
                 }
               >
                 <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
+                {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
+                <span className="hidden min-[1536px]:inline">
+                  {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
+                </span>
               </WorkspaceActionButton>
             )}
           </div>

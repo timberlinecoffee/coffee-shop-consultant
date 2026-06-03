@@ -374,21 +374,31 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
-              {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
-              <WorkspaceActionButton
-                onClick={handlePrintPlan}
-                disabled={isPrintingPdf || !canEdit}
-              >
-                <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
-              </WorkspaceActionButton>
+              {/* TIM-1937 (board refinement bae7ef73): primary first, then
+                  secondaries. Labels collapse to icon-only below 1536px. */}
               <WorkspaceActionButton
                 variant="primary"
                 onClick={handleExportPdf}
                 disabled={isExportingPdf || !canEdit}
+                aria-label="Export PDF"
+                title="Export PDF"
               >
                 <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                {isExportingPdf ? "Exporting..." : "Export PDF"}
+                <span className="hidden min-[1536px]:inline">
+                  {isExportingPdf ? "Exporting..." : "Export PDF"}
+                </span>
+              </WorkspaceActionButton>
+              {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
+              <WorkspaceActionButton
+                onClick={handlePrintPlan}
+                disabled={isPrintingPdf || !canEdit}
+                aria-label="Print Business Plan"
+                title="Print Business Plan"
+              >
+                <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                <span className="hidden min-[1536px]:inline">
+                  {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
+                </span>
               </WorkspaceActionButton>
             </>
           }

@@ -2169,33 +2169,39 @@ export function FinancialsWorkspace({
           description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
           actions={
             <>
+              {/* TIM-1937 (board refinement bae7ef73): icon-only collapse below
+                  1536px is canon — labels show only on wide monitors. Primary
+                  "Guided setup" is the first item in the cluster. */}
               {canEdit && (
                 <WorkspaceActionButton
                   variant="primary"
                   onClick={openWizard}
+                  aria-label="Guided setup"
                   title="Walk through your forecast inputs step by step, with a hint on each field"
                 >
                   <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  Guided setup
+                  <span className="hidden min-[1536px]:inline">Guided setup</span>
                 </WorkspaceActionButton>
               )}
               <WorkspaceActionButton
                 onClick={() =>
                   window.location.assign("/api/workspaces/financials/export/pdf")
                 }
+                aria-label="Export PDF"
                 title="Download financials as PDF (landscape monthly views)"
               >
                 <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                Export PDF
+                <span className="hidden min-[1536px]:inline">Export PDF</span>
               </WorkspaceActionButton>
               <WorkspaceActionButton
                 onClick={() =>
                   window.location.assign("/api/workspaces/financials/export/xlsx")
                 }
+                aria-label="Export Excel"
                 title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
               >
                 <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                Export Excel
+                <span className="hidden min-[1536px]:inline">Export Excel</span>
               </WorkspaceActionButton>
               <SaveStatusAndButton
                 saving={saveState.kind === "saving"}
