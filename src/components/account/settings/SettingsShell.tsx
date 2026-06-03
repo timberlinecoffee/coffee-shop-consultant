@@ -7,7 +7,7 @@
 // Visual reference: src/components/ui/card.tsx; Financials page header chrome.
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { BillingTab } from "@/components/account/settings/BillingTab";
 import { SETTINGS_TABS } from "@/components/account/settings/tabs";
@@ -58,7 +58,7 @@ export function SettingsShell({
                     aria-current={activeTab === tab.id ? "page" : undefined}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       activeTab === tab.id
-                        ? "bg-[var(--teal)]/10 text-[var(--teal)] font-medium"
+                        ? "bg-[var(--teal-bg-100)] text-[var(--teal)] font-medium"
                         : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/50"
                     }`}
                   >
@@ -118,11 +118,9 @@ function AccountTabContent({
     <>
       {/* Profile card */}
       <Card>
-        <div className="px-4 py-3 border-b border-[var(--border)]">
-          <p className="font-semibold text-sm text-[var(--foreground)]">
-            Profile
-          </p>
-        </div>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
@@ -141,11 +139,9 @@ function AccountTabContent({
 
       {/* Subscription card */}
       <Card>
-        <div className="px-4 py-3 border-b border-[var(--border)]">
-          <p className="font-semibold text-sm text-[var(--foreground)]">
-            Subscription
-          </p>
-        </div>
+        <CardHeader>
+          <CardTitle>Subscription</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
@@ -166,11 +162,9 @@ function AccountTabContent({
 
       {/* Delete account card */}
       <Card>
-        <div className="px-4 py-3 border-b border-[var(--border)]">
-          <p className="font-semibold text-sm text-[var(--foreground)]">
-            Delete Account
-          </p>
-        </div>
+        <CardHeader>
+          <CardTitle>Delete Account</CardTitle>
+        </CardHeader>
         <CardContent>
           <p className="text-sm text-[var(--dark-grey)] mb-4">
             Permanently delete your account and all plan data. This cannot be
