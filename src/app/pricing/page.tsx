@@ -113,13 +113,28 @@ function PricingPageInner() {
   const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // TIM-1933: Track whether the logged-in viewer already has a live (trialing
+  // / active / past_due) subscription. If yes, the CTA must call
+  // /api/billing/change-plan (swap in place) instead of
+  // /api/stripe/create-checkout-session (mint a new sub on top of the old).
+  const [hasLiveSub, setHasLiveSub] = useState(false);
   const searchParams = useSearchParams();
   const returnPath = searchParams.get("return");
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session);
+      const logged = !!session;
+      setIsLoggedIn(logged);
+      if (!logged) return;
+      fetch("/api/billing/status", { credentials: "same-origin" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data) return;
+          const live = new Set(["trialing", "free_trial", "active", "past_due"]);
+          setHasLiveSub(live.has(data.status ?? ""));
+        })
+        .catch(() => {});
     });
   }, []);
 
@@ -127,6 +142,25 @@ function PricingPageInner() {
     const key = `${tier}_${interval}`;
     setLoading(key);
     try {
+      if (hasLiveSub) {
+        // In-place plan swap on the existing Stripe subscription.
+        const res = await fetch("/api/billing/change-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tier, interval }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          window.location.href = "/account/billing?success=1";
+        } else if (res.status === 401) {
+          window.location.href = `/login?redirect=/pricing`;
+        } else if (data.reason === "paused" || data.reason === "cancelled" || data.reason === "no_subscription") {
+          window.location.href = "/account/billing";
+        } else {
+          alert(data.error ?? "Something went wrong. Please try again.");
+        }
+        return;
+      }
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,6 +171,20 @@ function PricingPageInner() {
         window.location.href = data.url;
       } else if (res.status === 401) {
         window.location.href = `/login?redirect=/pricing`;
+      } else if (res.status === 409 && data.reason === "existing_subscription") {
+        // Race: status fetched as no-sub but a sub now exists. Bounce through
+        // change-plan instead of mint.
+        setHasLiveSub(true);
+        const swap = await fetch("/api/billing/change-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tier, interval }),
+        });
+        if (swap.ok) {
+          window.location.href = "/account/billing?success=1";
+        } else {
+          alert("Could not switch your plan. Open Billing and try again.");
+        }
       } else {
         alert(data.error ?? "Something went wrong. Please try again.");
       }
@@ -323,7 +371,11 @@ function PricingPageInner() {
                       : "bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)]"
                   }`}
                 >
-                  {loading === loadingKey ? "Loading..." : ((interval === "annual" && tier.ctaAnnual) || tier.cta)}
+                  {loading === loadingKey
+                    ? "Loading..."
+                    : hasLiveSub
+                      ? `Switch to ${tier.name}`
+                      : ((interval === "annual" && tier.ctaAnnual) || tier.cta)}
                 </button>
               </div>
             );
