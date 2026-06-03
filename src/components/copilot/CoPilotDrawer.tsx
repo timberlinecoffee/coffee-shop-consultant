@@ -411,14 +411,30 @@ export function CoPilotDrawer({
   }, [consistencyChecking]);
 
   // TIM-1728: apply a consistency resolution — POST the canonical value for each accepted conflict.
+  // TIM-1731: per-call error handling. A failed write must NOT clear the conflict list; throwing
+  // here keeps the AIReviewModal's accepted cards visible and surfaces the failure in its footer
+  // (same contract as the other onApply paths). Conflicts clear only when every write succeeds.
   const handleConsistencyApply = useCallback(async (accepted: ApprovedChange[]) => {
+    const failed: string[] = [];
     for (const change of accepted) {
-      await fetch("/api/copilot/consistency", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ factId: change.fieldId, value: change.finalValue }),
-      });
+      try {
+        const res = await fetch("/api/copilot/consistency", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ factId: change.fieldId, value: change.finalValue }),
+        });
+        if (!res.ok) failed.push(change.fieldId);
+      } catch {
+        failed.push(change.fieldId);
+      }
+    }
+    if (failed.length > 0) {
+      throw new Error(
+        failed.length === accepted.length
+          ? "Couldn't save these changes. Please try again."
+          : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+      );
     }
     setConsistencyConflicts(null);
   }, []);
