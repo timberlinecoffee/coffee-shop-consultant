@@ -1,6 +1,7 @@
 // TIM-545 / TIM-701: paywall regression tests. These pin down the access
 // policy contract. The /plan/[moduleNumber] route guard tests were retired
 // in TIM-701 when that route was deleted; the policy unit tests remain.
+// TIM-1902: Growth tier collapsed into Pro; trial unlocks Pro for everyone.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,6 +12,8 @@ import {
   isSubscriptionActive,
   normalizeTier,
   effectiveTierForRead,
+  hasWriteAccess,
+  isTrialActive,
   FREE_PREVIEW_MODULE,
   FREE_PREVIEW_SECTION_KEYS,
 } from "./access.ts";
@@ -24,21 +27,25 @@ test("free tier is not paid", () => {
   assert.equal(isPaidTier("free_trial"), false);
 });
 
-test("starter, growth, and pro are paid tiers", () => {
+test("starter and pro are paid tiers", () => {
   assert.equal(isPaidTier("starter"), true);
-  assert.equal(isPaidTier("growth"), true);
   assert.equal(isPaidTier("pro"), true);
+});
+
+// TIM-1902: legacy 'growth' must no longer be recognized — it was collapsed into Pro.
+test("legacy growth tier is no longer paid", () => {
+  assert.equal(isPaidTier("growth"), false);
 });
 
 test("normalizeTier maps unknown values to free", () => {
   assert.equal(normalizeTier("free_trial"), "free");
   assert.equal(normalizeTier(null), "free");
   assert.equal(normalizeTier("starter"), "starter");
-  assert.equal(normalizeTier("growth"), "growth");
   assert.equal(normalizeTier("pro"), "pro");
-  // Legacy names from pre-TIM-641 must no longer be recognized as paid.
+  // Legacy names from pre-TIM-641 and TIM-1902 must no longer be recognized as paid.
   assert.equal(normalizeTier("builder"), "free");
   assert.equal(normalizeTier("accelerator"), "free");
+  assert.equal(normalizeTier("growth"), "free");
 });
 
 test("free users can access the preview module only", () => {
@@ -53,7 +60,7 @@ test("free users can access the preview module only", () => {
 });
 
 test("paid users can access every module", () => {
-  for (const tier of ["starter", "growth", "pro"]) {
+  for (const tier of ["starter", "pro"]) {
     for (let m = 1; m <= 8; m++) {
       assert.equal(canAccessModule(tier, m), true);
     }
@@ -96,8 +103,8 @@ test("paused status is not active", () => {
 // TIM-1541: effectiveTierForRead — paused users use paused_from_tier.
 test("effectiveTierForRead returns paused_from_tier when paused", () => {
   assert.equal(
-    effectiveTierForRead({ subscription_status: "paused", subscription_tier: "free", paused_from_tier: "growth" }),
-    "growth"
+    effectiveTierForRead({ subscription_status: "paused", subscription_tier: "free", paused_from_tier: "pro" }),
+    "pro"
   );
 });
 
@@ -110,7 +117,7 @@ test("effectiveTierForRead falls back to subscription_tier when paused_from_tier
 
 test("effectiveTierForRead returns subscription_tier for active status", () => {
   assert.equal(
-    effectiveTierForRead({ subscription_status: "active", subscription_tier: "starter", paused_from_tier: "growth" }),
+    effectiveTierForRead({ subscription_status: "active", subscription_tier: "starter", paused_from_tier: null }),
     "starter"
   );
 });
@@ -122,8 +129,64 @@ test("effectiveTierForRead normalizes unknown tiers to free", () => {
   );
 });
 
+// TIM-1902: a trial user with a future trial_ends_at always reads as Pro.
+test("effectiveTierForRead returns 'pro' during an active trial regardless of chosen plan", () => {
+  const future = new Date(Date.now() + 5 * 86400000).toISOString();
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "free_trial", subscription_tier: "starter", trial_ends_at: future }),
+    "pro"
+  );
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "free_trial", subscription_tier: "pro", trial_ends_at: future }),
+    "pro"
+  );
+});
+
+test("effectiveTierForRead returns the chosen tier after the trial window closes", () => {
+  const past = new Date(Date.now() - 1000).toISOString();
+  assert.equal(
+    effectiveTierForRead({ subscription_status: "free_trial", subscription_tier: "starter", trial_ends_at: past }),
+    "starter"
+  );
+});
+
+// TIM-1902: hasWriteAccess — active OR card-on-file trial with a future trial_ends_at.
+test("hasWriteAccess is true for active subscribers", () => {
+  assert.equal(hasWriteAccess({ subscription_status: "active" }), true);
+});
+
+test("hasWriteAccess is true for trialists with a future trial_ends_at", () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  assert.equal(
+    hasWriteAccess({ subscription_status: "free_trial", trial_ends_at: future }),
+    true
+  );
+});
+
+test("hasWriteAccess is false for trialists whose trial has expired", () => {
+  const past = new Date(Date.now() - 1000).toISOString();
+  assert.equal(
+    hasWriteAccess({ subscription_status: "free_trial", trial_ends_at: past }),
+    false
+  );
+});
+
+test("hasWriteAccess is false for paused / cancelled / past_due", () => {
+  for (const status of ["paused", "cancelled", "past_due", "expired"]) {
+    assert.equal(hasWriteAccess({ subscription_status: status }), false, `status ${status}`);
+  }
+});
+
+test("isTrialActive reflects whether the trial window is still open", () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const past = new Date(Date.now() - 1000).toISOString();
+  assert.equal(isTrialActive(future), true);
+  assert.equal(isTrialActive(past), false);
+  assert.equal(isTrialActive(null), false);
+});
+
 test("paid users see every section", () => {
-  for (const tier of ["starter", "growth", "pro"]) {
+  for (const tier of ["starter", "pro"]) {
     for (const key of [
       "shop_type",
       "your_why",
@@ -136,4 +199,3 @@ test("paid users see every section", () => {
     }
   }
 });
-

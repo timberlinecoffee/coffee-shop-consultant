@@ -1,4 +1,4 @@
-import { stripe, tierFromPriceId, MONTHLY_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
+import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
 import { creditsForPackKey } from "@/lib/credits/packs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextRequest } from "next/server";
@@ -90,29 +90,61 @@ export async function POST(request: NextRequest) {
       const periodStart = item?.current_period_start ?? sub.current_period_start;
       const periodEnd = item?.current_period_end ?? sub.current_period_end;
 
+      // TIM-1902: a freshly-created subscription with trial_period_days starts
+      // in 'trialing' state. Detect that and seed trial state instead of
+      // granting a monthly allocation. The trial-to-active transition is
+      // handled in customer.subscription.updated below.
+      const isTrialing = sub.status === "trialing";
+      const trialEnd = typeof sub.trial_end === "number" ? sub.trial_end : null;
+      const trialEndIso = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
+
       await supabase.from("subscriptions").upsert({
         user_id: userId,
         stripe_customer_id: customerId,
         stripe_subscription_id: subscriptionId,
         tier,
-        status: "active",
+        status: isTrialing ? "trialing" : "active",
         current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       }, { onConflict: "user_id" });
 
-      await supabase.from("users").update({
-        subscription_status: "active",
-        subscription_tier: tier,
-        ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
-      }).eq("id", userId);
+      if (isTrialing) {
+        // Trial: one-time 75-credit grant; subscription_tier records the plan
+        // the user chose to convert to (Starter or Pro). Pro-feature unlock for
+        // the trial window is handled in src/lib/access.ts (effectiveTierForRead
+        // returns 'pro' while free_trial + trial_ends_at is future).
+        await supabase.from("users").update({
+          subscription_status: "free_trial",
+          subscription_tier: tier,
+          ai_credits_remaining: TRIAL_CREDITS,
+          trial_ends_at: trialEndIso,
+          trial_credits_granted: true,
+        }).eq("id", userId);
 
-      if (tier !== "free") {
         await supabase.from("credit_transactions").insert({
           user_id: userId,
-          amount: MONTHLY_CREDITS[tier] ?? 0,
+          amount: TRIAL_CREDITS,
           type: "monthly_allocation",
-          description: `${tier} plan: initial allocation`,
+          description: `${tier} 7-day trial: initial allocation`,
         });
+      } else {
+        // Non-trial path (e.g. resubscribe after a previous cancel): grant the
+        // chosen plan's monthly allotment immediately.
+        await supabase.from("users").update({
+          subscription_status: "active",
+          subscription_tier: tier,
+          ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
+          trial_ends_at: null,
+        }).eq("id", userId);
+
+        if (tier !== "free") {
+          await supabase.from("credit_transactions").insert({
+            user_id: userId,
+            amount: MONTHLY_CREDITS[tier] ?? 0,
+            type: "monthly_allocation",
+            description: `${tier} plan: initial allocation`,
+          });
+        }
       }
       break;
     }
@@ -171,13 +203,18 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      // --- Default: plan change, renewal, status sync ---
+      // --- Default: plan change, renewal, status sync, trial conversion ---
       const status = subscription.status === "active" ? "active"
         : subscription.status === "canceled" ? "cancelled"
         : subscription.status === "past_due" ? "past_due"
         : subscription.status === "trialing" ? "trialing"
         : "cancelled";
       const isRenewal = newPeriodEnd !== sub.current_period_end;
+      // TIM-1902: trialing → active means Stripe just successfully auto-charged
+      // the card on day 7. Replace the 75 trial credits with the chosen plan's
+      // monthly allotment, clear trial_ends_at, and stamp subscription_status
+      // active. invoice.payment_failed on this same charge is handled below.
+      const trialConverted = sub.status === "trialing" && status === "active";
 
       await supabase.from("subscriptions").update({
         tier,
@@ -186,22 +223,38 @@ export async function POST(request: NextRequest) {
         current_period_end: newPeriodEnd,
       }).eq("stripe_subscription_id", subscription.id);
 
-      const updates: Record<string, unknown> = {
-        subscription_status: status,
-        subscription_tier: status === "active" ? tier : "free",
+      const usersUpdate: Record<string, unknown> = {
+        subscription_status: status === "trialing" ? "free_trial" : status,
+        subscription_tier: status === "active" || status === "trialing" ? tier : "free",
       };
 
-      if (isRenewal && status === "active" && tier !== "free") {
-        updates.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+      // Trial conversion: replace trial credits with the monthly grant.
+      if (trialConverted && tier !== "free") {
+        usersUpdate.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+        usersUpdate.trial_ends_at = null;
+        usersUpdate.past_due_since = null;
+        await supabase.from("credit_transactions").insert({
+          user_id: sub.user_id,
+          amount: MONTHLY_CREDITS[tier] ?? 0,
+          type: "monthly_allocation",
+          description: `${tier} plan: trial converted — initial allocation`,
+        });
+      } else if (isRenewal && status === "active" && tier !== "free" && !trialConverted) {
+        // Standard monthly renewal — refresh the credit balance.
+        usersUpdate.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+        usersUpdate.past_due_since = null;
         await supabase.from("credit_transactions").insert({
           user_id: sub.user_id,
           amount: MONTHLY_CREDITS[tier] ?? 0,
           type: "monthly_allocation",
           description: `${tier} plan: monthly renewal`,
         });
+      } else if (status === "active") {
+        // Recovered from past_due via successful retry — clear the dunning stamp.
+        usersUpdate.past_due_since = null;
       }
 
-      await supabase.from("users").update(updates).eq("id", sub.user_id);
+      await supabase.from("users").update(usersUpdate).eq("id", sub.user_id);
       break;
     }
 
@@ -224,10 +277,12 @@ export async function POST(request: NextRequest) {
         paused_at: null,
       }).eq("stripe_subscription_id", subscription.id);
 
-      // Downgrade immediately on hard cancellation
+      // Downgrade immediately on hard cancellation; clear trial + dunning state.
       await supabase.from("users").update({
         subscription_status: "cancelled",
         subscription_tier: "free",
+        trial_ends_at: null,
+        past_due_since: null,
       }).eq("id", sub.user_id);
       break;
     }
@@ -250,14 +305,27 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
-      // Mark past_due — Stripe will retry; paywall enforced on next write (TIM-643)
+      // Mark past_due — Stripe will retry; paywall enforced on next write (TIM-643).
       await supabase.from("subscriptions").update({
         status: "past_due",
       }).eq("stripe_subscription_id", stripeSubscriptionId);
 
-      await supabase.from("users").update({
-        subscription_status: "past_due",
-      }).eq("id", sub.user_id);
+      // TIM-1902: stamp past_due_since on first failure only. The billing UI
+      // uses this to render the update-payment banner and to drive the 3-day
+      // grace before write access is fully revoked. invoice.payment_failed
+      // fires for each Stripe retry, but we keep the original timestamp so the
+      // grace clock starts from the FIRST failure, not the most recent.
+      const { data: existing } = await supabase
+        .from("users")
+        .select("past_due_since")
+        .eq("id", sub.user_id)
+        .single();
+
+      const usersUpdate: Record<string, unknown> = { subscription_status: "past_due" };
+      if (!existing?.past_due_since) {
+        usersUpdate.past_due_since = new Date().toISOString();
+      }
+      await supabase.from("users").update(usersUpdate).eq("id", sub.user_id);
 
       // After Stripe exhausts retries it fires customer.subscription.deleted;
       // that handler downgrades to free. No grace-period timer needed here.

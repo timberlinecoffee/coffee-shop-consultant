@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     return new Response(
       sse("error", {
         code: "quota",
-        message: "Launch readiness check requires a Starter, Growth, or Pro plan.",
+        message: "Launch readiness check requires a Starter or Pro plan.",
       }),
       { status: 403, headers: { "Content-Type": "text/event-stream" } },
     )
