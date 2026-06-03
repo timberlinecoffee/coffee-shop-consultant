@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Logo } from "../_components/Logo";
+import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 
 export const metadata = {
   title: "Privacy Policy | Timberline Coffee School",
   description: "Privacy Policy for Timberline Coffee School.",
 };
 
-const EFFECTIVE_DATE = "May 22, 2026";
+const EFFECTIVE_DATE = "June 2, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -28,9 +29,10 @@ export default function PrivacyPage() {
 
         <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
-            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) is committed
-            to protecting your privacy. This Privacy Policy explains what information we collect, how we
-            use it, and your rights regarding that information.
+            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the
+            Groundwork platform at groundwork.coffee. We are committed to protecting your privacy. This
+            Privacy Policy explains what information we collect, how we use it, and your rights regarding
+            that information.
           </p>
 
           <section>
@@ -55,6 +57,12 @@ export default function PrivacyPage() {
                 browser type, operating system, and referring URLs when you visit the Service.
               </li>
               <li>
+                <strong>Advertising and analytics identifiers.</strong> If you consent to analytics or
+                marketing cookies, we and our advertising partners may set cookies and similar
+                identifiers (such as the Meta Pixel and Google tags) to measure site usage and the
+                performance of our ads. We do not set these until you have given consent.
+              </li>
+              <li>
                 <strong>Communications.</strong> If you contact support or submit feedback, we retain
                 those communications.
               </li>
@@ -70,13 +78,129 @@ export default function PrivacyPage() {
               <li>Deliver and improve the Service and course content.</li>
               <li>Send transactional emails (receipts, password resets, account notices).</li>
               <li>Send marketing emails if you have opted in (you can opt out at any time).</li>
+              <li>
+                Measure and improve our advertising, where you have consented to marketing or analytics
+                cookies.
+              </li>
               <li>Detect and prevent fraud and abuse.</li>
               <li>Comply with legal obligations.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">3. Information We Share</h2>
+            <h2 className="text-xl font-semibold mb-3">3. Legal Basis for Processing (EU/EEA/UK visitors)</h2>
+            <p>
+              For visitors in the European Economic Area (EEA) or United Kingdom (UK), applicable
+              data-protection law requires us to state a legal basis for each processing activity. The
+              relevant bases are:
+            </p>
+            <div className="overflow-x-auto mt-3">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="py-2 pr-4 font-semibold align-top">Processing activity</th>
+                    <th className="py-2 font-semibold align-top">Legal basis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Creating and managing your account</td>
+                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Processing subscription payments</td>
+                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Sending transactional emails (receipts, resets, notices)</td>
+                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Delivering and improving the Service and course content</td>
+                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in providing a working, improving product)</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Analytics cookies (e.g. Google Analytics 4)</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Marketing / advertising cookies and CAPI (Meta, Google Ads)</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Hashed-PII sharing with Meta / Google for ad measurement</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Sending marketing emails</td>
+                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Fraud prevention and security</td>
+                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in protecting the Service and users)</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top">Complying with legal obligations</td>
+                    <td className="py-2 align-top">Legal obligation -- Art. 6(1)(c) GDPR</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3">
+              Where we rely on legitimate interests, you have the right to object to that processing (see
+              Your Rights).
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">4. International Data Transfers (EU/EEA/UK visitors)</h2>
+            <p>
+              Timberline Coffee School is operated in the United States. When you use the Service, your
+              personal data may be transferred to and processed in the United States.
+            </p>
+            <p className="mt-3">
+              We share certain data with the following US-based third parties and rely on the following
+              transfer mechanisms for transfers from the EEA or UK:
+            </p>
+            <div className="overflow-x-auto mt-3">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-left">
+                    <th className="py-2 pr-4 font-semibold align-top">Recipient</th>
+                    <th className="py-2 font-semibold align-top">Transfer mechanism</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Meta Platforms, Inc.</strong></td>
+                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Google LLC</strong></td>
+                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Stripe, Inc.</strong></td>
+                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 align-top"><strong>Supabase</strong></td>
+                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) -- see supabase.com/privacy</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3">
+              You may request a copy of the relevant transfer safeguards by contacting us at{" "}
+              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
+                privacy@timberlinecoffeeschool.com
+              </a>
+              .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">5. Information We Share</h2>
             <p>We do not sell your personal information. We share it only as follows:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -94,6 +218,19 @@ export default function PrivacyPage() {
                 providers.
               </li>
               <li>
+                <strong>Meta (Facebook).</strong> If you consent to marketing cookies, we use the Meta
+                Pixel and the Meta Conversions API to measure the performance of our advertising. Any
+                personal data we send to Meta through the Conversions API (such as email or phone) is
+                SHA-256 hashed before it leaves our servers, so Meta does not receive it in readable
+                form. Meta&rsquo;s data policy is at facebook.com/privacy/policy.
+              </li>
+              <li>
+                <strong>Google.</strong> If you consent to analytics or marketing cookies, we use Google
+                Analytics 4 and Google Ads to understand site usage and measure ad performance. IP
+                addresses are anonymized for analytics. Google&rsquo;s privacy policy is at
+                policies.google.com/privacy.
+              </li>
+              <li>
                 <strong>Legal and safety.</strong> We may disclose information if required by law,
                 court order, or to protect the rights and safety of Timberline, our users, or the
                 public.
@@ -107,16 +244,23 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">4. Data Retention</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Data Retention</h2>
             <p>
               We retain your account information for as long as your account is active, plus up to 3
               years after closure for legal and audit purposes. Payment records are retained as required
               by law (typically 7 years). You may request deletion at any time (see Your Rights below).
             </p>
+            <p className="mt-3">
+              Analytics and advertising data is retained only with your consent. Google Analytics user
+              and event data is retained for up to 14 months. Hashed identifiers sent to advertising
+              partners are transmitted for measurement and are not stored by us in a separate profile.
+              Meta and Google retain the data they receive according to their own retention policies.
+              Your consent choice is stored for up to 12 months, after which we ask again.
+            </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">5. Your Rights</h2>
+            <h2 className="text-xl font-semibold mb-3">7. Your Rights</h2>
             <p>Depending on where you live, you may have rights to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Access the personal information we hold about you.</li>
@@ -133,22 +277,65 @@ export default function PrivacyPage() {
               </a>
               . We will respond within 30 days.
             </p>
+            <p className="mt-4 font-semibold">EEA/UK visitors -- additional rights:</p>
+            <p className="mt-2">If you are located in the EEA or UK, you also have the right to:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>
+                <strong>Lodge a complaint</strong> with your local data-protection supervisory authority.
+                In the EU, you can find your authority at{" "}
+                <a
+                  href="https://edpb.europa.eu/about-edpb/board/members_en"
+                  className="text-[var(--teal)] underline"
+                >
+                  edpb.europa.eu/about-edpb/board/members_en
+                </a>
+                . In the UK, the supervisory authority is the Information Commissioner&rsquo;s Office (
+                <a href="https://ico.org.uk" className="text-[var(--teal)] underline">
+                  ico.org.uk
+                </a>
+                ).
+              </li>
+              <li>
+                <strong>Withdraw consent</strong> at any time where we process your data on the basis of
+                consent. Withdrawal does not affect the lawfulness of processing carried out before
+                withdrawal. To withdraw cookie consent, use the <strong>Cookie Preferences</strong> link
+                in the site footer, or clear the <code>gw_consent</code> cookie in your browser settings.
+                To withdraw marketing email consent, use the unsubscribe link in any marketing email or
+                contact us.
+              </li>
+            </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Cookies</h2>
-            <p>
-              We use cookies and similar technologies to keep you logged in, remember your preferences,
-              and analyze traffic. You can control cookies through your browser settings. Disabling
-              cookies may affect some Service features.
-            </p>
+            <h2 className="text-xl font-semibold mb-3">8. Cookies and Your Choices</h2>
+            <p>We group cookies and similar technologies into three categories:</p>
+            <ul className="list-none space-y-3 mt-3">
+              <li>
+                <strong>Necessary.</strong> Required to keep you logged in, remember your preferences,
+                and secure the Service. These are always on and cannot be turned off.
+              </li>
+              <li>
+                <strong>Analytics.</strong> Help us understand how the Service is used so we can improve
+                it (for example, Google Analytics). Set only with your consent.
+              </li>
+              <li>
+                <strong>Marketing.</strong> Let us measure the performance of our advertising (for
+                example, the Meta Pixel, the Meta Conversions API, and Google Ads). Set only with your
+                consent.
+              </li>
+            </ul>
             <p className="mt-3">
-              We do not use third-party advertising cookies or tracking pixels for ad targeting.
+              When you first visit, a banner lets you accept all cookies or choose necessary only. We do
+              not load analytics or marketing cookies until you have made a choice and given consent.
+              You can change your choice at any time by clicking the <strong>Cookie Preferences</strong>{" "}
+              link in the site footer of any page, which will reopen the consent banner. You can also
+              clear the <code>gw_consent</code> cookie in your browser settings, or contact us. Disabling
+              necessary cookies through your browser may affect some Service features.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Security</h2>
             <p>
               We use industry-standard security measures including encryption in transit (TLS) and at
               rest, access controls, and regular security reviews. No method of transmission over the
@@ -157,7 +344,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">10. Children</h2>
             <p>
               The Service is not directed to children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected such information,
@@ -166,7 +353,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. If we make material changes, we will
               notify you by email at least 14 days before the changes take effect.
@@ -174,7 +361,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">12. Contact</h2>
             <p>
               Timberline Coffee School
               <br />
@@ -194,6 +381,7 @@ export default function PrivacyPage() {
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/subscription-terms" className="hover:text-white transition-colors">Subscription Terms</Link>
+            <CookiePreferencesLink className="hover:text-white transition-colors" />
           </div>
         </div>
       </footer>

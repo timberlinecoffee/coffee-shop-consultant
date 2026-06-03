@@ -337,6 +337,9 @@ export function CoPilotDrawer({
   // TIM-1728: cross-workspace consistency conflicts surfaced through AIReviewModal.
   const [consistencyConflicts, setConsistencyConflicts] = useState<SuggestionPayload[] | null>(null);
   const [consistencyChecking, setConsistencyChecking] = useState(false);
+  // TIM-1801: result feedback so the button never silently no-ops — a clean
+  // "no issues" state and a surfaced error replace the prior silent returns.
+  const [consistencyResult, setConsistencyResult] = useState<"idle" | "clean" | "error">("idle");
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
@@ -428,26 +431,55 @@ export function CoPilotDrawer({
   const handleConsistencyCheck = useCallback(async () => {
     if (consistencyChecking) return;
     setConsistencyChecking(true);
+    setConsistencyResult("idle");
     try {
       const res = await fetch("/api/copilot/consistency", { credentials: "same-origin" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setConsistencyConflicts(null);
+        setConsistencyResult("error");
+        return;
+      }
       const data = (await res.json()) as { suggestions: SuggestionPayload[] };
-      setConsistencyConflicts(data.suggestions.length > 0 ? data.suggestions : null);
-    } catch {}
-    finally {
+      if (data.suggestions.length > 0) {
+        setConsistencyConflicts(data.suggestions);
+        setConsistencyResult("idle");
+      } else {
+        setConsistencyConflicts(null);
+        setConsistencyResult("clean");
+      }
+    } catch {
+      setConsistencyConflicts(null);
+      setConsistencyResult("error");
+    } finally {
       setConsistencyChecking(false);
     }
   }, [consistencyChecking]);
 
   // TIM-1728: apply a consistency resolution — POST the canonical value for each accepted conflict.
+  // TIM-1731: per-call error handling. A failed write must NOT clear the conflict list; throwing
+  // here keeps the AIReviewModal's accepted cards visible and surfaces the failure in its footer
+  // (same contract as the other onApply paths). Conflicts clear only when every write succeeds.
   const handleConsistencyApply = useCallback(async (accepted: ApprovedChange[]) => {
+    const failed: string[] = [];
     for (const change of accepted) {
-      await fetch("/api/copilot/consistency", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ factId: change.fieldId, value: change.finalValue }),
-      });
+      try {
+        const res = await fetch("/api/copilot/consistency", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ factId: change.fieldId, value: change.finalValue }),
+        });
+        if (!res.ok) failed.push(change.fieldId);
+      } catch {
+        failed.push(change.fieldId);
+      }
+    }
+    if (failed.length > 0) {
+      throw new Error(
+        failed.length === accepted.length
+          ? "Couldn't save these changes. Please try again."
+          : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+      );
     }
     setConsistencyConflicts(null);
   }, []);
@@ -1065,6 +1097,14 @@ export function CoPilotDrawer({
                   )}
                   {consistencyChecking && (
                     <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">Checking plan consistency…</p>
+                  )}
+                  {/* TIM-1801: clean state so a no-conflict run is never silent. */}
+                  {!consistencyChecking && !consistencyConflicts && consistencyResult === "clean" && (
+                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">No plan inconsistencies found. Everything lines up across your workspaces.</p>
+                  )}
+                  {/* TIM-1801: surface failures instead of swallowing them. */}
+                  {!consistencyChecking && consistencyResult === "error" && (
+                    <p className="mt-3 text-xs text-red-700">Couldn&apos;t check plan consistency. Please try again.</p>
                   )}
                 </div>
               )}

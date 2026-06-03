@@ -7,6 +7,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
@@ -262,7 +263,7 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
 }`;
 
   const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: PLATFORM_AI_MODEL,
     max_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
   });

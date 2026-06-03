@@ -14,6 +14,11 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 
@@ -208,33 +213,24 @@ export function SuppliesWorkspace({
       )}
       <div className="px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Package className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Equipment &amp; Supplies
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Plan the consumables you&apos;ll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers &amp; Vendors.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
+        {/* TIM-1894: canonical WorkspaceHeader (View filter is the only action;
+            no hero primary on the Supplies tab). */}
+        <WorkspaceHeader
+          Icon={Package}
+          title="Equipment & Supplies"
+          description="Plan the consumables you'll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers & Vendors."
+          actions={
             <div className="relative" ref={viewOptionsRef}>
-            <button
-              type="button"
+            {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled
+                button); active state keeps the teal tint when a view filter is on. */}
+            <WorkspaceActionButton
               onClick={() => setViewOptionsOpen((o) => !o)}
-              className={`flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 transition-colors ${
-                !showAiMarkings
-                  ? "text-[var(--teal)] border-[var(--teal)]/50 bg-[var(--teal)]/5"
-                  : "text-[var(--muted-foreground)] border-[var(--neutral-cool-200)] hover:bg-[var(--background)]"
-              }`}
+              className={!showAiMarkings ? "bg-[var(--teal)]/5" : ""}
               aria-label="View options"
             >
-              <Eye size={12} aria-hidden="true" />
+              <Eye size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               View
-            </button>
+            </WorkspaceActionButton>
             {viewOptionsOpen && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
                 <p className="px-3 py-1 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Show in workspace</p>
@@ -250,8 +246,8 @@ export function SuppliesWorkspace({
               </div>
             )}
           </div>
-          </div>
-        </header>
+          }
+        />
 
         <EquipmentSuppliesSubNav active="supplies" />
 

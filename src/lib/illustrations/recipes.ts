@@ -39,6 +39,10 @@ export interface IllustrationRecipe {
   alt: string;
   /** Canonical TIM-1579 §5 prompt slots. When present, resolvePrompt() uses these. */
   promptSlots?: PromptSlots;
+  /** TIM-1695: when "transparent", the pipeline asks gpt-image for an alpha
+   *  background (off-white strokes only) so the asset floats on the hero gradient
+   *  with no teal box — no post-hoc luminance matte. Defaults to opaque. */
+  background?: "transparent" | "opaque";
   /** True once the canonical TIM-1579 recipe text has been wired in. */
   recipeConfirmed: boolean;
 }
@@ -116,6 +120,30 @@ export const RECIPES: IllustrationRecipe[] = [
       detail: "medium narrative",
       aspectRatio: "3:2 landscape",
     },
+    recipeConfirmed: true,
+  },
+  {
+    // TIM-1695: taller hero variant. Board (Trent, TIM-1576) approved the corrected
+    // hero but the 3:2 landscape asset reads as a thin band in the tall right-column
+    // slot, leaving dead space top and bottom. Same canonical line-art style, new
+    // vertical composition, portrait 2:3, transparent background so it floats on the
+    // hero gradient. Swaps in for hero-your-coffee-shop once rendered.
+    id: "hero-your-coffee-shop-tall",
+    slot: "hero",
+    title: "Hero — Your Coffee Shop (Tall)",
+    size: "1024x1536",
+    quality: "high",
+    subject: "Coffee shop interior, full-height vertical composition — back-bar shelving, hanging pendant lamps, espresso machine + pour-over on the counter, tall window with trailing plant, chalkboard.",
+    alt: "Line-art illustration of a coffee shop interior viewed across the counter, composed vertically from the counter up to hanging pendant lamps",
+    promptSlots: {
+      subject: "hero-interior-tall",
+      orientation: "vertical full-height",
+      strokeWeight: "1.5px",
+      variant: "dark-transparent",
+      detail: "medium narrative",
+      aspectRatio: "2:3 portrait",
+    },
+    background: "transparent",
     recipeConfirmed: true,
   },
   {

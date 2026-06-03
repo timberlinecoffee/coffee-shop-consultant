@@ -1,0 +1,9 @@
+{
+  "issueId": "TIM-1486",
+  "mergeSha": "79e5ff46a88717798794b0a481d32d6e321163ee",
+  "prodDeploymentId": "dpl_4UqhCWRyJWix9m3scALVK9VCHfX2",
+  "prodHttpCode": 200,
+  "prodUrl": "https://coffee-shop-consultant.vercel.app/",
+  "githubFileUrl": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/src/app/workspace/hiring/hiring-workspace.tsx",
+  "timestamp": "2026-05-30T22:00:00Z"
+}

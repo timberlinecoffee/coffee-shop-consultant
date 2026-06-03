@@ -9,7 +9,6 @@
 // TIM-1793: now delegates to the canonical WorkspaceSubNav (pill style) so its
 // layout matches every other Groundwork workspace.
 
-import { Rocket, ClipboardList } from "lucide-react";
 import {
   WorkspaceSubNav,
   type WorkspaceSubNavTab,
@@ -17,9 +16,10 @@ import {
 
 type Active = "milestones" | "playbook";
 
+// TIM-1888 H-6: text-only pills (no leading icon) to match the Financials canonical.
 const TABS: ReadonlyArray<WorkspaceSubNavTab<Active>> = [
-  { key: "milestones", label: "Launch Milestones", href: "/workspace/launch-plan/milestones", Icon: Rocket },
-  { key: "playbook", label: "Opening Month Plan", href: "/workspace/launch-plan/opening-month", Icon: ClipboardList },
+  { key: "milestones", label: "Launch Milestones", href: "/workspace/launch-plan/milestones" },
+  { key: "playbook", label: "Opening Month Plan", href: "/workspace/launch-plan/opening-month" },
 ];
 
 export function LaunchPlanSubNav({ active }: { active: Active }) {

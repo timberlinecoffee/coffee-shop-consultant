@@ -29,6 +29,12 @@
 //   - WEB SEARCH requests — real metered research depth; each hosted search is
 //     billed cost and signals a heavier turn.
 //   - TOOL CALLS — discrete actions Scout took on the user's plan.
+//
+// TIM-1897: the platform now runs entirely on Claude Haiku, so every live caller
+// passes the "default" (Haiku) tier. The "complex"/Sonnet tier below is retained
+// as the generic mechanism (and is still pinned by cost.test.mjs) so that
+// re-introducing a stronger model later is a one-line routing change rather than
+// a cost-model rewrite.
 
 export type CreditModelTier = "default" | "complex"
 

@@ -5,6 +5,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { formatMinorUnits, formatCurrencyAmount } from "@/lib/currency";
+import { getAccountSettings } from "@/lib/account-settings";
 import {
   CONCEPT_COMPONENTS_V2,
   normalizeConceptV2,
@@ -87,16 +89,6 @@ function parseExcluded(searchParams: SearchParams): Set<SectionKey> {
   );
 }
 
-function centsToUsd(cents: number | null | undefined): string {
-  if (!cents) return "—";
-  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
-
-function usd(amountUsd: number | null | undefined): string {
-  if (!amountUsd) return "—";
-  return `$${Math.round(amountUsd).toLocaleString("en-US")}`;
-}
-
 function pct(num: number, denom: number): string {
   if (!denom) return "0%";
   return `${Math.round((num / denom) * 100)}%`;
@@ -122,6 +114,9 @@ export default async function BusinessPlanPrintPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const settings = await getAccountSettings(supabase, user.id);
+  const currencyCode = settings.currencyCode;
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
@@ -333,14 +328,15 @@ export default async function BusinessPlanPrintPage({
         {visibleSections.map((key, i) => (
           <SectionFrame key={key} index={i + 1} title={SECTION_LABELS[key]}>
             {key === "concept" && <ConceptSection concept={concept} />}
-            {key === "team_hiring" && <TeamHiringSection roles={roles ?? []} />}
-            {key === "menu" && <MenuSection items={menuItems ?? []} />}
-            {key === "equipment" && <EquipmentSection items={equipment ?? []} />}
+            {key === "team_hiring" && <TeamHiringSection roles={roles ?? []} currencyCode={currencyCode} />}
+            {key === "menu" && <MenuSection items={menuItems ?? []} currencyCode={currencyCode} />}
+            {key === "equipment" && <EquipmentSection items={equipment ?? []} currencyCode={currencyCode} />}
             {key === "buildout" && (
               <BuildoutSection
                 sections={buildoutSections ?? []}
                 locations={locations ?? []}
                 financialModel={financialModel}
+                currencyCode={currencyCode}
               />
             )}
             {key === "launch" && <LaunchSection items={launchItems ?? []} />}
@@ -358,6 +354,7 @@ export default async function BusinessPlanPrintPage({
               <FinancialsSection
                 financialModel={financialModel}
                 equipment={equipment ?? []}
+                currencyCode={currencyCode}
               />
             )}
             {key === "appendix" && (
@@ -553,7 +550,7 @@ type RoleRow = {
   notes: string | null;
 };
 
-function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
+function TeamHiringSection({ roles, currencyCode }: { roles: RoleRow[]; currencyCode: string }) {
   if (roles.length === 0) {
     return (
       <EmptyState message="No roles added yet. Visit the Hiring workspace to add them." />
@@ -568,7 +565,7 @@ function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
           {totalHeadcount} total headcount across {roles.length} role
           {roles.length === 1 ? "" : "s"}
           {totalMonthlyCents > 0
-            ? `, estimated payroll ${centsToUsd(totalMonthlyCents)} per month.`
+            ? `, estimated payroll ${formatMinorUnits(totalMonthlyCents ?? 0, currencyCode)} per month.`
             : "."}
         </p>
       </SectionCard>
@@ -584,7 +581,7 @@ function TeamHiringSection({ roles }: { roles: RoleRow[] }) {
                   ) : null}
                 </p>
                 <p className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
-                  {r.monthly_cost_cents ? `${centsToUsd(r.monthly_cost_cents)}/mo` : ""}
+                  {r.monthly_cost_cents ? `${formatMinorUnits(r.monthly_cost_cents ?? 0, currencyCode)}/mo` : ""}
                 </p>
               </div>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
@@ -615,7 +612,7 @@ type MenuRow = {
   notes: string | null;
 };
 
-function MenuSection({ items }: { items: MenuRow[] }) {
+function MenuSection({ items, currencyCode }: { items: MenuRow[]; currencyCode: string }) {
   if (items.length === 0) {
     return (
       <EmptyState message="No menu items yet. Visit the Menu & Pricing workspace to add them." />
@@ -638,7 +635,7 @@ function MenuSection({ items }: { items: MenuRow[] }) {
               <li key={item.id} className="py-2 first:pt-0 last:pb-0 flex items-baseline gap-3">
                 <span className="flex-1 text-sm text-[var(--foreground)]">{item.name}</span>
                 <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">
-                  {centsToUsd(item.price_cents)}
+                  {formatMinorUnits(item.price_cents ?? 0, currencyCode)}
                 </span>
               </li>
             ))}
@@ -662,10 +659,10 @@ type EquipmentRow = {
   notes: string | null;
 };
 
-function EquipmentSection({ items }: { items: EquipmentRow[] }) {
+function EquipmentSection({ items, currencyCode }: { items: EquipmentRow[]; currencyCode: string }) {
   if (items.length === 0) {
     return (
-      <EmptyState message="No equipment yet. Visit the Build-out & Equipment workspace to add it." />
+      <EmptyState message="No equipment yet. Visit the Equipment & Supplies workspace to add it." />
     );
   }
   const total = items.reduce((s, e) => s + (e.cost_usd ?? 0), 0);
@@ -682,7 +679,7 @@ function EquipmentSection({ items }: { items: EquipmentRow[] }) {
             <li key={item.id} className="py-2.5 first:pt-0 last:pb-0">
               <div className="flex items-baseline gap-3">
                 <span className="flex-1 text-sm text-[var(--foreground)]">{item.name}</span>
-                <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">{usd(item.cost_usd)}</span>
+                <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">{formatCurrencyAmount(item.cost_usd ?? 0, currencyCode)}</span>
               </div>
               {(item.brand?.trim() || item.model?.trim() || item.supplier?.trim()) && (
                 <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
@@ -705,7 +702,7 @@ function EquipmentSection({ items }: { items: EquipmentRow[] }) {
     <div className="space-y-5">
       <SectionCard label="Equipment Total" featured>
         <p className="text-sm text-[var(--foreground)] leading-[1.75]">
-          {items.length} items, estimated total {usd(total)}
+          {items.length} items, estimated total {formatCurrencyAmount(total ?? 0, currencyCode)}
           {hasSupplierData ? "." : ". Visit the Suppliers workspace to add supplier details."}
         </p>
       </SectionCard>
@@ -740,10 +737,12 @@ function BuildoutSection({
   sections,
   locations,
   financialModel,
+  currencyCode,
 }: {
   sections: BuildoutSectionRow[];
   locations: LocationRow[];
   financialModel: { startup_costs?: Record<string, unknown> } | null;
+  currencyCode: string;
 }) {
   const chosen = locations.find((l) => l.status === "chosen") ?? locations[0] ?? null;
   const layoutSections = sections.filter((s) => s.list_type === "equipment");
@@ -756,7 +755,7 @@ function BuildoutSection({
 
   if (!hasAny) {
     return (
-      <EmptyState message="No build-out details yet. Visit the Build-out and Location workspaces to add them." />
+      <EmptyState message="No build-out details yet. Visit the Equipment & Supplies and Location workspaces to add them." />
     );
   }
 
@@ -772,7 +771,7 @@ function BuildoutSection({
             <p className="text-xs text-[var(--muted-foreground)] mt-2">
               {[
                 chosen.sq_ft ? `${chosen.sq_ft.toLocaleString()} sq ft` : null,
-                chosen.asking_rent_cents ? `${centsToUsd(chosen.asking_rent_cents)}/mo rent` : null,
+                chosen.asking_rent_cents ? `${formatMinorUnits(chosen.asking_rent_cents ?? 0, currencyCode)}/mo rent` : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -800,19 +799,19 @@ function BuildoutSection({
             {buildOutCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[var(--foreground)]">Construction & finishes</span>
-                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(buildOutCents)}</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(buildOutCents ?? 0, currencyCode)}</span>
               </li>
             )}
             {licensesCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[var(--foreground)]">Licenses & permits</span>
-                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(licensesCents)}</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(licensesCents ?? 0, currencyCode)}</span>
               </li>
             )}
             {depositsCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[var(--foreground)]">Deposits</span>
-                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(depositsCents)}</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(depositsCents ?? 0, currencyCode)}</span>
               </li>
             )}
           </ul>
@@ -1067,9 +1066,11 @@ type FinancialModelRow = {
 function FinancialsSection({
   financialModel,
   equipment,
+  currencyCode,
 }: {
   financialModel: FinancialModelRow;
   equipment: EquipmentRow[];
+  currencyCode: string;
 }) {
   if (!financialModel) {
     return (
@@ -1113,27 +1114,27 @@ function FinancialsSection({
           <tbody>
             <tr>
               <td className="py-1">Revenue</td>
-              <td className="py-1 text-right">{centsToUsd(totalRev)}</td>
+              <td className="py-1 text-right">{formatMinorUnits(totalRev ?? 0, currencyCode)}</td>
             </tr>
             <tr>
               <td className="py-1">COGS</td>
               <td className="py-1 text-right text-[var(--muted-foreground)]">
-                {centsToUsd(totalCogs)} ({pct(totalCogs, totalRev)})
+                {formatMinorUnits(totalCogs ?? 0, currencyCode)} ({pct(totalCogs, totalRev)})
               </td>
             </tr>
             <tr>
               <td className="py-1">Labor</td>
               <td className="py-1 text-right text-[var(--muted-foreground)]">
-                {centsToUsd(totalLabor)} ({pct(totalLabor, totalRev)})
+                {formatMinorUnits(totalLabor ?? 0, currencyCode)} ({pct(totalLabor, totalRev)})
               </td>
             </tr>
             <tr>
               <td className="py-1">Operating Expenses</td>
-              <td className="py-1 text-right text-[var(--muted-foreground)]">{centsToUsd(totalOpex)}</td>
+              <td className="py-1 text-right text-[var(--muted-foreground)]">{formatMinorUnits(totalOpex ?? 0, currencyCode)}</td>
             </tr>
             <tr className="border-t border-[var(--teal-tint-300)]">
               <td className="pt-2 font-semibold">Net Income</td>
-              <td className="pt-2 text-right font-semibold">{centsToUsd(totalNet)}</td>
+              <td className="pt-2 text-right font-semibold">{formatMinorUnits(totalNet ?? 0, currencyCode)}</td>
             </tr>
           </tbody>
         </table>
@@ -1148,30 +1149,30 @@ function FinancialsSection({
               .map((l) => (
                 <li key={l.id} className="py-2 flex items-baseline justify-between">
                   <span className="text-sm text-[var(--foreground)]">{l.label}</span>
-                  <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(l.value)}</span>
+                  <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(l.value ?? 0, currencyCode)}</span>
                 </li>
               ))}
             {licensesCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[var(--foreground)]">Licenses & permits</span>
-                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(licensesCents)}</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(licensesCents ?? 0, currencyCode)}</span>
               </li>
             )}
             {depositsCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[var(--foreground)]">Deposits</span>
-                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(depositsCents)}</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(depositsCents ?? 0, currencyCode)}</span>
               </li>
             )}
             {cashReserveCents > 0 && (
               <li className="py-2 flex items-baseline justify-between">
                 <span className="text-sm text-[var(--foreground)]">Cash reserve</span>
-                <span className="text-sm text-[var(--muted-foreground)]">{centsToUsd(cashReserveCents)}</span>
+                <span className="text-sm text-[var(--muted-foreground)]">{formatMinorUnits(cashReserveCents ?? 0, currencyCode)}</span>
               </li>
             )}
             <li className="py-2 flex items-baseline justify-between border-t border-[var(--teal-tint-300)]">
               <span className="text-sm font-semibold text-[var(--foreground)]">Total</span>
-              <span className="text-sm font-semibold text-[var(--foreground)]">{centsToUsd(totalStartupCents)}</span>
+              <span className="text-sm font-semibold text-[var(--foreground)]">{formatMinorUnits(totalStartupCents ?? 0, currencyCode)}</span>
             </li>
           </ul>
         </SectionCard>
@@ -1181,7 +1182,7 @@ function FinancialsSection({
         <ul className="space-y-1.5 text-sm text-[var(--foreground)]">
           <li>
             <span className="text-[var(--muted-foreground)]">Cash reserve at open:</span>{" "}
-            {cashReserveCents > 0 ? centsToUsd(cashReserveCents) : "Not yet set"}
+            {cashReserveCents > 0 ? formatMinorUnits(cashReserveCents ?? 0, currencyCode) : "Not yet set"}
           </li>
           <li>
             <span className="text-[var(--muted-foreground)]">Estimated months to first profitable month:</span>{" "}

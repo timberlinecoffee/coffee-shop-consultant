@@ -17,6 +17,7 @@ import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import type { NextRequest } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -30,8 +31,8 @@ const WORKSPACE_LABELS: Record<string, string> = {
   location_lease: "Location & Lease",
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
-  buildout_equipment: "Build-out & Equipment",
-  opening_month_plan: "Opening Month Plan",
+  buildout_equipment: "Equipment & Supplies",
+  opening_month_plan: "Launch Plan",
 }
 
 const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrepreneurs using the My Coffee Shop Consultant platform. Analyze the provided workspace data across the six workspaces below and produce a structured readiness report.
@@ -51,9 +52,9 @@ const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrep
 
 **Menu & Pricing**: GREEN if menu items are listed with prices and COGS set. RED if no items.
 
-**Build-out & Equipment**: GREEN if equipment list is populated and build-out plan exists. RED if no equipment listed.
+**Equipment & Supplies**: GREEN if equipment list is populated and build-out plan exists. RED if no equipment listed.
 
-**Opening Month Plan**: GREEN when BOTH halves are populated: (a) dated gating milestones across the tracks (lease, permits, build-out, equipment, hiring, training, soft-open dates) with owners and target dates, AND (b) the tactical playbook covers pre-open weeks, opening week, and the first 30 days with specific tasks, owners, and dates (training schedule, supplier first-orders, friends-and-family soft open, grand-open staffing, daily/weekly rituals). YELLOW if only one half is populated. RED if both are empty.
+**Launch Plan**: GREEN when BOTH halves are populated: (a) dated gating milestones across the tracks (lease, permits, build-out, equipment, hiring, training, soft-open dates) with owners and target dates, AND (b) the tactical playbook covers pre-open weeks, opening week, and the first 30 days with specific tasks, owners, and dates (training schedule, supplier first-orders, friends-and-family soft open, grand-open staffing, daily/weekly rituals). YELLOW if only one half is populated. RED if both are empty.
 
 ## Output Format
 Output ONLY valid JSON — no markdown, no prose, no code fences — matching this exact schema:
@@ -203,11 +204,10 @@ export async function POST(request: NextRequest) {
   // ── Build cross-workspace snapshot ────────────────────────────────────────
 
   const svcClient = createServiceClient()
-  const { snapshots, totalChars } = await composeAllWorkspacesSnapshot(planId, svcClient)
+  const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
 
-  const estimatedTokens = Math.ceil(totalChars / 4)
-  // Use opus for large snapshots; sonnet otherwise.
-  const modelId = estimatedTokens > 6_000 ? "claude-opus-4-7" : "claude-sonnet-4-6"
+  // TIM-1897: all platform AI runs on Claude Haiku (src/lib/ai/models.ts).
+  const modelId = PLATFORM_AI_MODEL
 
   const workspaceDataSection = snapshots
     .map((s) => `### ${WORKSPACE_LABELS[s.key] ?? s.key}\n${s.text}`)
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 4_000,
-          thinking: { type: "enabled", budget_tokens: 3_000 },
+          // TIM-1897: no `thinking` — Haiku 4.5 does not support extended thinking.
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMessage }],
         })

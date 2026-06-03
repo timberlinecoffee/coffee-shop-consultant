@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 import HomeNav from "./_components/HomeNav";
 import { Logo } from "./_components/Logo";
 import HomepageHero from "./_components/HomepageHero";
@@ -264,6 +265,7 @@ const FOOTER_COLS = [
       { label: "Terms of Use", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Subscription Terms", href: "/subscription-terms" },
+      { label: "Cookie Preferences", href: "#cookie-preferences" },
     ],
   },
   {
@@ -817,13 +819,20 @@ export default function LandingPage() {
                 <ul className="space-y-3">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className="transition-colors"
-                        style={{ color: "var(--neutral-400)", fontSize: "14px", textDecoration: "none" }}
-                      >
-                        {link.label}
-                      </Link>
+                      {link.href === "#cookie-preferences" ? (
+                        <CookiePreferencesLink
+                          className="transition-colors text-left"
+                          style={{ color: "var(--neutral-400)", fontSize: "14px", textDecoration: "none" }}
+                        />
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="transition-colors"
+                          style={{ color: "var(--neutral-400)", fontSize: "14px", textDecoration: "none" }}
+                        >
+                          {link.label}
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>

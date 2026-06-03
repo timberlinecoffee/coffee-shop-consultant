@@ -3,6 +3,7 @@
 // existing library ingredients by name (Title Case, TIM-1002) and creating the
 // rest with a sensible default the user can price. Reuses the AI integration
 // pattern from the TIM-1020 price suggestion.
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
@@ -127,7 +128,7 @@ Rules: no emojis, no AI language, no commentary outside the JSON. Quantities mus
   let lines
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     })

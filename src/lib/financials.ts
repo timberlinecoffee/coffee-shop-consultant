@@ -224,15 +224,8 @@ export function computeProjections(doc: FinancialsDocument): FinancialProjection
   };
 }
 
-export function formatCurrency(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) {
-    return `${n < 0 ? "-" : ""}$${(abs / 1_000_000).toFixed(1)}M`;
-  }
-  if (abs >= 1_000) {
-    return `${n < 0 ? "-" : ""}$${Math.round(abs / 100) / 10}K`;
-  }
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+export function formatCurrency(n: number, currencyCode = "USD"): string {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }).format(n);
 }
 
 export const FINANCING_LABELS: Record<FinancingMethod, string> = {

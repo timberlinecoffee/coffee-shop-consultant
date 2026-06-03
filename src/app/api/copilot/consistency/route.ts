@@ -161,7 +161,7 @@ export async function GET() {
   const conflicts = detectConflicts(readings);
   return Response.json({
     conflicts,
-    suggestions: conflicts.map(conflictToSuggestion),
+    suggestions: conflicts.map((c) => conflictToSuggestion(c)),
   });
 }
 

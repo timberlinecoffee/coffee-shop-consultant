@@ -5,7 +5,6 @@
 // workspace_key='marketing'. AI seed pulls from concept + onboarding answers.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import {
   Megaphone,
   Check,
@@ -14,10 +13,16 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  Printer,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -188,34 +193,33 @@ export function MarketingWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
-        <header className="mb-6">
-          <div className="flex items-center justify-between gap-3 mb-1">
-            <div className="flex items-center gap-2">
-              <Megaphone
-                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
-                aria-hidden="true"
-              />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Marketing
-              </h1>
-            </div>
-            <Link
-              href="/workspace/marketing/print"
-              className="hidden sm:inline-block text-xs font-medium text-[var(--teal)] hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Print view
-            </Link>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Plan the story, channels, and milestones that get the right people
-            through the door. This is your plan, in your own words.
-          </p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-[var(--dark-grey)]">
-            <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
-          </div>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader — description sits in the left
+            column under the title (was full-width below the title row) and the
+            SaveIndicator + Print action live top-right, matching Financials. */}
+        <WorkspaceHeader
+          Icon={Megaphone}
+          title="Marketing"
+          description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
+          actions={
+            <>
+              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              <WorkspaceActionButton
+                className="hidden sm:flex"
+                onClick={() =>
+                  window.open(
+                    "/workspace/marketing/print",
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+                title="Open a print-friendly view of your marketing plan"
+              >
+                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Print view
+              </WorkspaceActionButton>
+            </>
+          }
+        />
 
         <SectionTabs active={active} onChange={setActive} doc={doc} />
 

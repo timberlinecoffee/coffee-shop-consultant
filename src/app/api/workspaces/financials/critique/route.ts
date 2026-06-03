@@ -12,6 +12,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
@@ -177,7 +178,7 @@ Return ONLY the JSON object, no other text.`;
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     });

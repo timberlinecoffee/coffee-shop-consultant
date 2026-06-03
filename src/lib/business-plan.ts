@@ -6,6 +6,7 @@
 import { normalizeConceptV2 } from "@/lib/concept";
 import { normalizeMarketing } from "@/lib/marketing";
 import { normalizeMonthlyProjections, computeMonthlySlices, totalCapexCents, type EquipmentSummary } from "@/lib/financial-projection";
+import { formatCurrencyAmount } from "@/lib/currency";
 
 // ── Group keys (parent rows in the two-level nav) ─────────────────────────────
 
@@ -185,8 +186,8 @@ export function toBpMarketingPlanning(content: unknown): BpMarketingPlanning | n
 
 // ── Auto-content assemblers ───────────────────────────────────────────────────
 
-function centsToUsd(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function centsToUsd(cents: number, currencyCode = "USD"): string {
+  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
 }
 
 export function assembleCompanyConcept(conceptContent: unknown): string {
@@ -246,7 +247,7 @@ export function assembleTargetMarket(conceptContent: unknown): string {
   return lines.join("\n").trim() || "Add customer personas and market details in the Concept workspace to populate this section.";
 }
 
-export function assembleLocationSection(candidates: BpLocationCandidate[]): string {
+export function assembleLocationSection(candidates: BpLocationCandidate[], currencyCode = "USD"): string {
   if (!candidates || candidates.length === 0) {
     return "Add location candidates in the Location & Lease workspace to populate this section.";
   }
@@ -259,7 +260,7 @@ export function assembleLocationSection(candidates: BpLocationCandidate[]): stri
     if (chosen.address) lines.push(`Address: ${chosen.address}`);
     if (chosen.neighborhood) lines.push(`Neighborhood: ${chosen.neighborhood}`);
     if (chosen.sq_ft) lines.push(`Size: ${chosen.sq_ft.toLocaleString()} sq ft`);
-    if (chosen.asking_rent_cents) lines.push(`Rent: ${centsToUsd(chosen.asking_rent_cents)}/month`);
+    if (chosen.asking_rent_cents) lines.push(`Rent: ${centsToUsd(chosen.asking_rent_cents, currencyCode)}/month`);
     if (chosen.notes) lines.push(`\nNotes\n${chosen.notes}`);
   }
 
@@ -280,12 +281,13 @@ export function assembleBuildoutEquipment(
   equipment: BpEquipmentItem[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   financialModel: any,
+  currencyCode = "USD",
 ): string {
   const lines: string[] = [];
 
   if (equipment && equipment.length > 0) {
     const totalCost = equipment.reduce((sum, e) => sum + (e.cost_usd ?? 0), 0);
-    lines.push(`Equipment (${equipment.length} items, total $${totalCost.toLocaleString()})`);
+    lines.push(`Equipment (${equipment.length} items, total ${formatCurrencyAmount(totalCost, currencyCode, { compact: false })})`);
 
     const major = equipment.filter((e) => e.category === "major");
     const minor = equipment.filter((e) => e.category === "minor");
@@ -317,16 +319,16 @@ export function assembleBuildoutEquipment(
     const depositsCents = typeof sc.deposits_cents === "number" ? sc.deposits_cents : 0;
     if (buildOutCents || licensesCents || depositsCents) {
       lines.push(`\nBuild-out Budget`);
-      if (buildOutCents) lines.push(`- Build-out: ${centsToUsd(buildOutCents)}`);
-      if (licensesCents) lines.push(`- Licenses & permits: ${centsToUsd(licensesCents)}`);
-      if (depositsCents) lines.push(`- Deposits: ${centsToUsd(depositsCents)}`);
+      if (buildOutCents) lines.push(`- Build-out: ${centsToUsd(buildOutCents, currencyCode)}`);
+      if (licensesCents) lines.push(`- Licenses & permits: ${centsToUsd(licensesCents, currencyCode)}`);
+      if (depositsCents) lines.push(`- Deposits: ${centsToUsd(depositsCents, currencyCode)}`);
     }
   }
 
   return lines.join("\n").trim();
 }
 
-export function assembleMenuPricing(menuItems: BpMenuItem[]): string {
+export function assembleMenuPricing(menuItems: BpMenuItem[], currencyCode = "USD"): string {
   if (!menuItems || menuItems.length === 0) {
     return "Add menu items in the Menu & Pricing workspace to populate this section.";
   }
@@ -342,7 +344,7 @@ export function assembleMenuPricing(menuItems: BpMenuItem[]): string {
   for (const [cat, items] of Object.entries(byCategory)) {
     lines.push(`\n${cat}`);
     for (const item of items.slice(0, 12)) {
-      const price = item.price_cents ? centsToUsd(item.price_cents) : "";
+      const price = item.price_cents ? centsToUsd(item.price_cents, currencyCode) : "";
       lines.push(`- ${item.name}${price ? `  ${price}` : ""}`);
     }
     if (items.length > 12) lines.push(`  … and ${items.length - 12} more`);
@@ -408,7 +410,7 @@ export function assembleOperationsLaunch(timeline: BpLaunchItem[]): string {
   return lines.join("\n").trim();
 }
 
-export function assembleTeamHiring(roles: BpHiringRole[]): string {
+export function assembleTeamHiring(roles: BpHiringRole[], currencyCode = "USD"): string {
   if (!roles || roles.length === 0) {
     return "Add roles in the Hiring & Onboarding workspace to populate this section.";
   }
@@ -417,11 +419,11 @@ export function assembleTeamHiring(roles: BpHiringRole[]): string {
   const totalMonthlyCost = roles.reduce((sum, r) => sum + (r.monthly_cost_cents ?? 0), 0);
 
   const lines: string[] = [
-    `Team (${totalHeadcount} headcount${totalMonthlyCost ? `, ${centsToUsd(totalMonthlyCost)}/month est.` : ""})`,
+    `Team (${totalHeadcount} headcount${totalMonthlyCost ? `, ${centsToUsd(totalMonthlyCost, currencyCode)}/month est.` : ""})`,
   ];
 
   for (const role of roles) {
-    const cost = role.monthly_cost_cents ? ` — ${centsToUsd(role.monthly_cost_cents)}/mo` : "";
+    const cost = role.monthly_cost_cents ? ` — ${centsToUsd(role.monthly_cost_cents, currencyCode)}/mo` : "";
     const date = role.start_date ? ` (start ${new Date(role.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })})` : "";
     lines.push(`- ${role.role_title} ×${role.headcount}${cost}${date} [${role.status}]`);
   }
@@ -439,6 +441,7 @@ export function assembleFinancialPlan(
   // this the Business Plan Financials → Cost of Goods section stayed empty/stale
   // because menu-linked lines had no rate to compute against (the ctx was {}).
   menuBlendedCogsPct?: number | null,
+  currencyCode = "USD",
 ): string {
   if (!financialModel) {
     return "Complete the Financials workspace to populate this section.";
@@ -482,17 +485,18 @@ export function assembleFinancialPlan(
   const grossMarginPct = totalRevCents > 0 ? Math.round((grossProfitCents / totalRevCents) * 100) : 0;
   const ebitdaMarginPct = totalRevCents > 0 ? Math.round((ebitdaCents / totalRevCents) * 100) : 0;
 
+  const cu = (c: number) => centsToUsd(c, currencyCode);
   lines.push("Year 1 Income Statement");
-  lines.push(`Revenue:           ${centsToUsd(totalRevCents)}`);
-  lines.push(`COGS:              ${centsToUsd(totalCogsCents)} (${totalRevCents > 0 ? Math.round((totalCogsCents / totalRevCents) * 100) : 0}%)`);
-  lines.push(`Gross Profit:      ${centsToUsd(grossProfitCents)} (${grossMarginPct}% margin)`);
-  lines.push(`Operating Exp:     ${centsToUsd(totalOpexCents)}`);
-  lines.push(`EBITDA:            ${centsToUsd(ebitdaCents)} (${ebitdaMarginPct}% margin)`);
-  lines.push(`Depreciation:      ${centsToUsd(totalDeprecCents)}`);
-  lines.push(`Interest:          ${centsToUsd(totalInterestCents)}`);
-  lines.push(`Income Tax:        ${centsToUsd(totalTaxesCents)}`);
-  lines.push(`Net Income:        ${centsToUsd(netIncomeCents)}`);
-  lines.push(`Ending Cash:       ${centsToUsd(endingCashY1)}`);
+  lines.push(`Revenue:           ${cu(totalRevCents)}`);
+  lines.push(`COGS:              ${cu(totalCogsCents)} (${totalRevCents > 0 ? Math.round((totalCogsCents / totalRevCents) * 100) : 0}%)`);
+  lines.push(`Gross Profit:      ${cu(grossProfitCents)} (${grossMarginPct}% margin)`);
+  lines.push(`Operating Exp:     ${cu(totalOpexCents)}`);
+  lines.push(`EBITDA:            ${cu(ebitdaCents)} (${ebitdaMarginPct}% margin)`);
+  lines.push(`Depreciation:      ${cu(totalDeprecCents)}`);
+  lines.push(`Interest:          ${cu(totalInterestCents)}`);
+  lines.push(`Income Tax:        ${cu(totalTaxesCents)}`);
+  lines.push(`Net Income:        ${cu(netIncomeCents)}`);
+  lines.push(`Ending Cash:       ${cu(endingCashY1)}`);
 
   // Quarterly revenue
   lines.push("\nQuarterly Revenue (Year 1)");
@@ -504,7 +508,7 @@ export function assembleFinancialPlan(
   ];
   for (const q of quarters) {
     const qRev = q.months.reduce((s, r) => s + r.net_revenue_cents, 0);
-    if (qRev > 0) lines.push(`${q.label}: ${centsToUsd(qRev)}`);
+    if (qRev > 0) lines.push(`${q.label}: ${cu(qRev)}`);
   }
 
   // 5-year summary
@@ -516,7 +520,7 @@ export function assembleFinancialPlan(
     const yrNet = yrSlices.reduce((s, r) => s + r.net_income_cents, 0);
     const yrEndCash = yrSlices[yrSlices.length - 1].cash_cents;
     lines.push(
-      `Year ${yr}: Revenue ${centsToUsd(yrRev)}, Net ${centsToUsd(yrNet)}, Ending Cash ${centsToUsd(yrEndCash)}`
+      `Year ${yr}: Revenue ${cu(yrRev)}, Net ${cu(yrNet)}, Ending Cash ${cu(yrEndCash)}`
     );
   }
 

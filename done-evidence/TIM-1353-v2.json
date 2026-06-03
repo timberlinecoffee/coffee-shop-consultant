@@ -1,0 +1,24 @@
+{
+  "issue": "TIM-1353",
+  "title": "Platform-Wide: Strengthen Section-Header Visual Hierarchy (v2)",
+  "commits": [
+    "132bb9f fix(TIM-1353 v2): push section-header hierarchy on size + weight + spacing",
+    "d61aa41 Merge remote-tracking branch 'origin/main' into feat/tim-1353-v2-section-headers"
+  ],
+  "shipped_to_main": "d61aa41d457752f65f90995619c111d66c96f4b5",
+  "prod_deployment": "dpl_82xT5PUCckagGhwT3q5pkmg9oRmh",
+  "prod_url": "https://coffee-shop-consultant.vercel.app/",
+  "deployment_state": "READY",
+  "verification": {
+    "prod_homepage_200": true,
+    "css_bundle_token_live": ".section-eyebrow{text-transform:uppercase;letter-spacing:.08em;color:var(--teal);margin-bottom:.75rem;font-size:.875rem;font-weight:700;line-height:1.2}",
+    "css_divider_variant_live": ".section-eyebrow--divider{border-top:1px solid var(--border);margin-top:.5rem;padding-top:1rem}"
+  },
+  "hierarchy_axes": {
+    "size": "10px → 14px (text-sm) — +40%",
+    "weight": "semibold 600 → bold 700",
+    "spacing": "mb-1/2 → mb-3 + leading-tight",
+    "contrast": "new .section-eyebrow--divider opt-in for border-top section breaks"
+  },
+  "files_changed": 24
+}

@@ -15,6 +15,11 @@ import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -38,6 +43,7 @@ import {
   applyForwardMonthIndices,
   manualOverrideCountsByLine,
   computeMenuBlendedCogsPct,
+  buildMenuCogsBreakdown,
   type ApplyForwardRange,
 } from "@/lib/financial-projection";
 import { createClient } from "@/lib/supabase/client";
@@ -1729,40 +1735,17 @@ export function FinancialsWorkspace({
     setIsRefreshingMenu(true);
     try {
       const supabase = createClient();
+      // TIM-1799: include expected_popularity and recompute via the shared
+      // helpers so an in-app refresh matches the server load exactly (shared-read,
+      // no stale snapshot) and surfaces every priced item incl. Beverages.
       const { data } = await supabase
         .from("menu_items_with_cogs")
-        .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, archived")
+        .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
         .eq("plan_id", planId)
         .eq("archived", false);
       if (data) {
         setLiveMenuBlendedCogsPct(computeMenuBlendedCogsPct(data));
-        const items = data
-          .filter(
-            (it) =>
-              !it.archived &&
-              typeof it.price_cents === "number" &&
-              (it.price_cents as number) > 0 &&
-              typeof it.expected_mix_pct === "number" &&
-              (it.expected_mix_pct as number) > 0
-          )
-          .map((it) => {
-            const effectiveCogs =
-              typeof it.computed_cogs_cents === "number"
-                ? it.computed_cogs_cents
-                : typeof it.cogs_cents === "number"
-                ? it.cogs_cents
-                : 0;
-            return {
-              name: it.name as string,
-              price_cents: it.price_cents as number,
-              cogs_cents: effectiveCogs as number,
-              expected_mix_pct: it.expected_mix_pct as number,
-              cogs_pct: (it.price_cents as number)
-                ? ((effectiveCogs as number) / (it.price_cents as number)) * 100
-                : 0,
-            };
-          });
-        setLiveMenuCogsItems(items);
+        setLiveMenuCogsItems(buildMenuCogsBreakdown(data));
       }
     } catch {
       // silently ignore — stale data is better than an error state
@@ -2172,75 +2155,63 @@ export function FinancialsWorkspace({
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-6 pt-8 pb-16">
-        {/* TIM-1745: action toolbar (saved-status + Guided setup / Export PDF /
-            Export Excel / Save) lives top-right on the same band as the title,
-            relocated out of the row beneath the tabs. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart2 className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Financials
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Plan your startup costs, forecast revenue, and project Year 1–5 performance.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
-            <SaveIndicator
-              saving={saveState.kind === "saving"}
-              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
-              error={saveState.kind === "error" ? saveState.message : null}
-              unsaved={saveState.kind === "dirty"}
-              onRetry={handleManualSave}
-            />
-            {canEdit && (
-              <button
-                type="button"
-                onClick={openWizard}
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-3 py-1.5 hover:bg-[var(--teal-deep)] transition-colors"
-                title="Walk through your forecast inputs step by step, with a hint on each field"
+        {/* TIM-1745 / TIM-1894: action toolbar (saved-status + Guided setup /
+            Export PDF / Export Excel / Save) lives top-right on the same band as
+            the title via the canonical WorkspaceHeader. This page is the board's
+            reference, so it renders through the shared component too. */}
+        <WorkspaceHeader
+          Icon={BarChart2}
+          title="Financials"
+          description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
+          actions={
+            <>
+              <SaveIndicator
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+                error={saveState.kind === "error" ? saveState.message : null}
+                unsaved={saveState.kind === "dirty"}
+                onRetry={handleManualSave}
+              />
+              {canEdit && (
+                <WorkspaceActionButton
+                  variant="primary"
+                  onClick={openWizard}
+                  title="Walk through your forecast inputs step by step, with a hint on each field"
+                >
+                  <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  Guided setup
+                </WorkspaceActionButton>
+              )}
+              <WorkspaceActionButton
+                onClick={() =>
+                  window.location.assign("/api/workspaces/financials/export/pdf")
+                }
+                title="Download financials as PDF (landscape monthly views)"
               >
-                <Compass size={12} aria-hidden="true" />
-                Guided setup
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() =>
-                window.location.assign("/api/workspaces/financials/export/pdf")
-              }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
-              title="Download financials as PDF (landscape monthly views)"
-            >
-              <FileDown size={12} aria-hidden="true" />
-              Export PDF
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                window.location.assign("/api/workspaces/financials/export/xlsx")
-              }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors"
-              title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
-            >
-              <Sheet size={12} aria-hidden="true" />
-              Export Excel
-            </button>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={handleManualSave}
-                disabled={saveState.kind === "saving"}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
+                <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Export PDF
+              </WorkspaceActionButton>
+              <WorkspaceActionButton
+                onClick={() =>
+                  window.location.assign("/api/workspaces/financials/export/xlsx")
+                }
+                title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
               >
-                <Save size={12} aria-hidden="true" />
-                Save
-              </button>
-            )}
-          </div>
-        </header>
+                <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Export Excel
+              </WorkspaceActionButton>
+              {canEdit && (
+                <WorkspaceActionButton
+                  onClick={handleManualSave}
+                  disabled={saveState.kind === "saving"}
+                >
+                  <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  Save
+                </WorkspaceActionButton>
+              )}
+            </>
+          }
+        />
 
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">

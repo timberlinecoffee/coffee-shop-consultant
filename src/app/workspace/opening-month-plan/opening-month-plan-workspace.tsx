@@ -15,11 +15,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Rocket, Calendar, List, ChevronDown, ChevronRight, Check, X,
+  Rocket, ChevronDown, ChevronRight, Check, X,
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
+import {
+  WorkspaceSubNav,
+  type WorkspaceSubNavTab,
+} from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+
+// TIM-1888 H-8: list/calendar view toggle as canonical text-only pills.
+const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
+  { key: "list", label: "List" },
+  { key: "calendar", label: "Calendar" },
+];
+import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { consumeSseFrames } from "@/components/copilot/sse";
@@ -835,11 +847,11 @@ export function OpeningMonthPlanWorkspace({
         return;
       }
       if (!res.ok) {
-        showToast("error", "Couldn't seed the playbook. Try again or contact support.");
+        showToast("error", "Couldn't generate the playbook. Try again or contact support.");
         return;
       }
       await reloadPlaybook();
-      showToast("success", "Opening Month Plan seeded. Edit anything that doesn't fit your shop.");
+      showToast("success", "Opening Month Plan generated. Edit anything that doesn't fit your shop.");
     } catch {
       showToast("error", "Couldn't seed the playbook. Try again or contact support.");
     } finally {
@@ -1030,7 +1042,7 @@ export function OpeningMonthPlanWorkspace({
     section === "milestones"
       ? (hasContent ? "Regenerate Launch Milestones" : "Generate Launch Milestones")
       : section === "playbook"
-      ? (playbookItems.length > 0 ? "Reseed Opening Month Plan" : "Seed Opening Month Plan")
+      ? (playbookItems.length > 0 ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan")
       : (hasContent ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan");
   const onCtaClick =
     section === "milestones" ? handleGenerateMilestones
@@ -1051,19 +1063,13 @@ export function OpeningMonthPlanWorkspace({
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
-        {/* Header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            {(() => {
-              const HeaderIcon = headerIcon;
-              return <HeaderIcon className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />;
-            })()}
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">{headerTitle}</h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            {headerSubtitle}
-          </p>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader (title-only; icon/title/subtitle
+            are page-state-driven for the two Launch Plan sub-pages). */}
+        <WorkspaceHeader
+          Icon={headerIcon}
+          title={headerTitle}
+          description={headerSubtitle}
+        />
 
         {/* TIM-1634: standard suite sub-nav between the two pages in this
             suite, replacing the old two-card landing. Only rendered for the
@@ -1122,7 +1128,7 @@ export function OpeningMonthPlanWorkspace({
             /* Playbook: simple Seed CTA, no date input. */
             <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-                Seed a starter playbook of pre-open, opening-week, and first-30-day tasks. Edit anything that doesn&apos;t fit your shop.
+                Generate a starter playbook of pre-open, opening-week, and first-30-day tasks. Edit anything that doesn&apos;t fit your shop.
               </div>
               <div className="flex flex-col gap-1.5 sm:items-end">
                 <button
@@ -1131,10 +1137,10 @@ export function OpeningMonthPlanWorkspace({
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-dark)] disabled:opacity-50 transition-colors"
                 >
                   <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-                  {generating ? "Seeding..." : ctaLabel}
+                  {generating ? "Generating..." : ctaLabel}
                 </button>
                 {!canEdit && (
-                  <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to seed</p>
+                  <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to generate</p>
                 )}
               </div>
             </div>
@@ -1203,31 +1209,14 @@ export function OpeningMonthPlanWorkspace({
               The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates.
             </p>
 
-            {/* View toggle */}
-            <div className="flex items-center gap-0 mb-4 border-b border-[var(--border)]">
-              <button
-                onClick={() => handleViewToggle("list")}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                  view === "list"
-                    ? "border-[var(--teal)] text-[var(--teal)]"
-                    : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <List size={14} />
-                List
-              </button>
-              <button
-                onClick={() => handleViewToggle("calendar")}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                  view === "calendar"
-                    ? "border-[var(--teal)] text-[var(--teal)]"
-                    : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <Calendar size={14} />
-                Calendar
-              </button>
-            </div>
+            {/* View toggle — canonical pill nav (TIM-1888 H-8) */}
+            <WorkspaceSubNav
+              tabs={VIEW_TABS}
+              active={view}
+              onSelect={(v) => handleViewToggle(v)}
+              ariaLabel="Milestones view"
+              className="mb-4"
+            />
 
             {view === "list" ? (
               <ListView
@@ -1247,6 +1236,18 @@ export function OpeningMonthPlanWorkspace({
               />
             )}
           </section>
+          )}
+
+          {/* TIM-1880: re-wire the cross-workspace launch readiness check
+              (TIM-736). It was orphaned when the suite was restructured
+              (TIM-1521/TIM-1634 turned the umbrella into a redirect). It lives
+              at the foot of the Milestones tab — the default Launch Plan tab —
+              and populates the dashboard readiness banner via
+              POST /api/copilot/launch-readiness. */}
+          {showMilestones && (
+            <div className="pt-8">
+              <LaunchReadinessButton planId={planId} />
+            </div>
           )}
 
           {/* ── Section 2: Playbook ──────────────────────────────────────── */}
@@ -1269,7 +1270,7 @@ export function OpeningMonthPlanWorkspace({
                     <p className="text-sm text-[var(--foreground)] font-semibold">Start with a tactical playbook</p>
                     <p className="text-sm text-[var(--muted-foreground)]">
                       {section === "playbook"
-                        ? "Use the Seed Opening Month Plan button above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."
+                        ? "Use the Generate Opening Month Plan button above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."
                         : "Use Generate Opening Month Plan above to drop in starter pre-open, opening-week, and first-30-day tasks. Edit anything that doesn't fit your shop."}
                     </p>
                   </div>

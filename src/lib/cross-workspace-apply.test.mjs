@@ -53,8 +53,8 @@ test("reprice produces one editable primary + two linked derived cards", () => {
   assert.equal(primary.workspaceKey, "buildout_equipment");
   assert.ok(!primary.derived);
   assert.ok(primary.fieldId.startsWith(EQUIPMENT_COST_FIELD_PREFIX));
-  assert.equal(primary.originalValue, "$9,000.00");
-  assert.equal(primary.proposedValue, "$11,000.00");
+  assert.equal(primary.originalValue, "$9,000");
+  assert.equal(primary.proposedValue, "$11,000");
   assert.ok(primary.recompute);
 
   // Linked Financials line: derived, read-only (fieldId "derived"), provenance.
@@ -62,13 +62,13 @@ test("reprice produces one editable primary + two linked derived cards", () => {
   assert.equal(line.derived, true);
   assert.equal(line.fieldId, "derived");
   assert.equal(line.provenance, EQUIPMENT_PROVENANCE);
-  assert.equal(line.originalValue, "$9,000.00");
-  assert.equal(line.proposedValue, "$11,000.00");
+  assert.equal(line.originalValue, "$9,000");
+  assert.equal(line.proposedValue, "$11,000");
 
   // Linked total: old 9,000 + (2 * 1,200) grinder = 11,400 -> new 11,000 + 2,400 = 13,400.
   assert.equal(total.derived, true);
-  assert.equal(total.originalValue, "$11,400.00");
-  assert.equal(total.proposedValue, "$13,400.00");
+  assert.equal(total.originalValue, "$11,400");
+  assert.equal(total.proposedValue, "$13,400");
 });
 
 test("reprice with quantity > 1 multiplies the line and total correctly", () => {
@@ -83,12 +83,12 @@ test("reprice with quantity > 1 multiplies the line and total correctly", () => 
     currentItems: ITEMS,
   });
   const [primary, line, total] = suggestions;
-  assert.equal(primary.proposedValue, "$1,500.00"); // unit cost
-  assert.equal(line.originalValue, "$2,400.00"); // 2 * 1,200
-  assert.equal(line.proposedValue, "$3,000.00"); // 2 * 1,500
+  assert.equal(primary.proposedValue, "$1,500"); // unit cost
+  assert.equal(line.originalValue, "$2,400"); // 2 * 1,200
+  assert.equal(line.proposedValue, "$3,000"); // 2 * 1,500
   // total old = 9,000 + 2,400 = 11,400; new = 9,000 + 3,000 = 12,000.
-  assert.equal(total.originalValue, "$11,400.00");
-  assert.equal(total.proposedValue, "$12,000.00");
+  assert.equal(total.originalValue, "$11,400");
+  assert.equal(total.proposedValue, "$12,000");
 });
 
 // ── Add proposal ──────────────────────────────────────────────────────────────
@@ -107,12 +107,12 @@ test("add produces a primary with no existing value and grows the total", () => 
   const [primary, line, total] = suggestions;
   assert.match(primary.fieldLabel, /Add Cold Brew Tank/);
   assert.equal(primary.originalValue, "Not on the list yet");
-  assert.equal(primary.proposedValue, "$2,000.00");
-  assert.equal(line.originalValue, "$0.00");
-  assert.equal(line.proposedValue, "$2,000.00");
+  assert.equal(primary.proposedValue, "$2,000");
+  assert.equal(line.originalValue, "$0");
+  assert.equal(line.proposedValue, "$2,000");
   // total old 11,400 -> new 13,400.
-  assert.equal(total.originalValue, "$11,400.00");
-  assert.equal(total.proposedValue, "$13,400.00");
+  assert.equal(total.originalValue, "$11,400");
+  assert.equal(total.proposedValue, "$13,400");
   assert.match(context.section, /Adding Cold Brew Tank/);
 });
 
@@ -133,9 +133,9 @@ test("recomputeEquipmentLinked recomputes line + total from an edited price", ()
   // Owner edits the price down to $9,500.
   const updates = recomputeEquipmentLinked(primary.recompute, 950_000);
   const byId = new Map(updates.map((u) => [u.id, u.proposedValue]));
-  assert.equal(byId.get(primary.recompute.lineDerivedId), "$9,500.00");
+  assert.equal(byId.get(primary.recompute.lineDerivedId), "$9,500");
   // total = base (grinder 2,400) + 9,500 = 11,900.
-  assert.equal(byId.get(primary.recompute.totalDerivedId), "$11,900.00");
+  assert.equal(byId.get(primary.recompute.totalDerivedId), "$11,900");
 });
 
 // ── fieldId round-trip ─────────────────────────────────────────────────────────
@@ -173,5 +173,5 @@ test("reprice falls back to name match when item_id is missing", () => {
   });
   const meta = parseEquipmentCostFieldId(suggestions[0].fieldId);
   assert.equal(meta.item_id, "espresso-1");
-  assert.equal(suggestions[0].originalValue, "$9,000.00");
+  assert.equal(suggestions[0].originalValue, "$9,000");
 });

@@ -13,8 +13,14 @@ const EASE = [0.25, 0.46, 0.45, 0.94] as const;
    replaced by the on-brand line-art illustration (TIM-1578 asset, TIM-1579 verified),
    placed cleanly in the same right-column slot with the same entrance animation.
    Direct placement (matching prior main behavior) rather than the getAsset() manifest,
-   which renders nothing until the recipe asset is registered. */
-const HERO_ILLUSTRATION = "/images/illustrations/hero/hero-your-coffee-shop.webp";
+   which renders nothing until the recipe asset is registered.
+   TIM-1866: GENUINE gpt-image-1.5 portrait hero (Candidate D), 1024×1536, transparent
+   alpha, rendered through OpenAI with the exact canonical recipe that produced the
+   board-loved landscape (subject hero-interior, uniform 1.5px off-white stroke,
+   outline-only) — just recomposed vertical. No vector fallback, no hand-editing.
+   CEO-confirmed pick. Replaces the interim landscape placeholder and the rejected
+   vector (TIM-1858). Rendered by scripts/render-hero-portrait-openai.mjs. */
+const HERO_ILLUSTRATION = "/images/illustrations/hero/hero-your-coffee-shop-tall.webp";
 
 export default function HomepageHero() {
   return (
@@ -150,11 +156,11 @@ export default function HomepageHero() {
         >
           <Image
             src={HERO_ILLUSTRATION}
-            alt="Continuous line illustration of a coffee shop interior with an espresso machine, pour-over station, plants, and a pendant lamp, drawn in off-white line art on Groundwork teal."
-            width={1536}
-            height={1024}
+            alt="Continuous line illustration of a coffee shop interior viewed across the counter, composed vertically from the counter up to hanging pendant lamps, with an espresso machine, pour-over station, window with a trailing plant, and a chalkboard menu, drawn in off-white line art that floats on the Groundwork teal gradient."
+            width={1024}
+            height={1536}
             priority
-            className="w-full h-auto"
+            className="w-full h-auto max-w-[480px] mx-auto"
             sizes="(min-width: 1024px) 50vw, 100vw"
           />
         </motion.div>

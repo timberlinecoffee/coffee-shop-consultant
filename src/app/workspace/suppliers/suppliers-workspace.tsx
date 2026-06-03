@@ -22,6 +22,12 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+import { TABLE_CELL_TEXT, TABLE_HEADER_TEXT, TABLE_ACTION_ICON_SIZE } from "@/lib/workspace-table";
+import {
+  WorkspaceActionButton,
+  WORKSPACE_ACTION_ICON_SIZE,
+} from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
@@ -569,29 +575,23 @@ export function SuppliersWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
-        {/* TIM-1787: canonical two-column header matching Financials / Operations Playbook
-            pattern — icon+title+description on the left, chosen-vendor summary on the right. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Truck className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Suppliers &amp; Vendors
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief.
-            </p>
-          </div>
-          {chosenCount > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 mt-1">
-              <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
-              <span className="text-xs text-[var(--muted-foreground)]">
-                of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
-              </span>
-            </div>
-          )}
-        </header>
+        {/* TIM-1787 / TIM-1894: canonical WorkspaceHeader — icon+title+description
+            on the left, chosen-vendor summary in the top-right actions slot. */}
+        <WorkspaceHeader
+          Icon={Truck}
+          title="Suppliers & Vendors"
+          description="Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief."
+          actions={
+            chosenCount > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
+                </span>
+              </div>
+            ) : undefined
+          }
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
           {/* Category nav */}
@@ -742,29 +742,26 @@ export function SuppliersWorkspace({
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
+                    {/* TIM-1846: canonical WorkspaceActionButton chrome (were hand-rolled). */}
+                    <WorkspaceActionButton
                       onClick={() => handleSeed(activeCategory, activeRows.length > 0 ? "append" : "replace")}
                       disabled={!canEdit || seedingCategory === activeCategory}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title={activeRows.length > 0 ? "Generate more AI-suggested vendors" : "Generate AI suggestions"}
                     >
-                      <Sparkles size={12} aria-hidden="true" />
+                      <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                       {seedingCategory === activeCategory
                         ? "Generating..."
                         : activeRows.length > 0
                           ? "Suggest more"
                           : "Suggest vendors"}
-                    </button>
-                    <button
-                      type="button"
+                    </WorkspaceActionButton>
+                    <WorkspaceActionButton
                       onClick={() => handleAddRow(activeCategory)}
                       disabled={!canEdit}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] border border-[var(--teal)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Plus size={12} aria-hidden="true" />
+                      <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                       Add vendor
-                    </button>
+                    </WorkspaceActionButton>
                   </div>
                 </div>
                 {seedError && (
@@ -803,7 +800,7 @@ export function SuppliersWorkspace({
               ) : (
                 <div className="overflow-x-auto">
                   <table
-                    className="w-full text-sm"
+                    className={`w-full ${TABLE_CELL_TEXT}`}
                     style={{ tableLayout: "fixed", minWidth: orderedCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}
                   >
                     <colgroup>
@@ -812,7 +809,7 @@ export function SuppliersWorkspace({
                       ))}
                     </colgroup>
                     <thead>
-                      <tr className="bg-[var(--neutral-cool-50)] text-[11px] uppercase tracking-wide text-[var(--dark-grey)]">
+                      <tr className={`bg-[var(--neutral-cool-50)] ${TABLE_HEADER_TEXT} text-[var(--dark-grey)]`}>
                         {orderedCols.map((c) => (
                           <th
                             key={c.id}
@@ -956,7 +953,7 @@ function CandidateRow({
             className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors p-1"
             aria-label="Delete vendor"
           >
-            <Trash2 size={14} />
+            <Trash2 size={TABLE_ACTION_ICON_SIZE} />
           </button>
         ) : null;
     }
@@ -1003,7 +1000,7 @@ function Input({
         const next = e.target.value;
         if (next !== value) onChange(next);
       }}
-      className="w-full min-w-0 text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus-visible:outline-none focus:bg-white disabled:opacity-50"
+      className={`w-full min-w-0 ${TABLE_CELL_TEXT} bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus-visible:outline-none focus:bg-white disabled:opacity-50`}
     />
   );
 }
