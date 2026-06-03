@@ -1,16 +1,9 @@
 // TIM-1942: CSV export of the member list.
+// TIM-1957: csvEscape moved to src/lib/csv.ts to neutralize formula injection.
 
 import { requireAdmin } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
-
-function csvEscape(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  const s = String(value);
-  if (s.includes(",") || s.includes("\"") || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
+import { csvEscape } from "@/lib/csv";
 
 export async function GET() {
   const auth = await requireAdmin();
