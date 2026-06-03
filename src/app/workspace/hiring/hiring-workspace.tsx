@@ -32,6 +32,7 @@ import { useCurrency } from "@/components/CurrencyProvider";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
@@ -2673,18 +2674,12 @@ export function HiringWorkspace({
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
-        {/* Page header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Users className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Hiring &amp; Onboarding
-            </h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Build your org structure, run scored interviews, plan onboarding, and evaluate staff competencies.
-          </p>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader (title-only — no page-level actions). */}
+        <WorkspaceHeader
+          Icon={Users}
+          title="Hiring & Onboarding"
+          description="Build your org structure, run scored interviews, plan onboarding, and evaluate staff competencies."
+        />
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
             TIM-1888 H-6: text-only pills (no Icon). T-1: default mb-5 spacing. */}
