@@ -53,13 +53,13 @@ function StatRow({ label, values, bold, negative, indent, highlight, pctValues, 
   const stickyBg = memo ? "bg-white" : highlight ? "bg-[var(--teal-tint-50)]" : "bg-white";
   return (
     <tr className={highlight ? "bg-[var(--teal-tint-50)]" : ""}>
-      <td className={`py-2.5 pr-4 text-sm sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""}`}>
+      <td className={`py-2.5 pr-4 text-xs sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""}`}>
         {label}
       </td>
       {values.map((v, i) => (
         <td
           key={i}
-          className={`py-2.5 px-3 text-right text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
+          className={`py-2.5 px-3 text-right text-xs whitespace-nowrap ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""} ${!memo && v !== undefined && isNeg(v) ? "text-red-600" : ""}`}
         >
           {/* TIM-1309: stack the % beneath the absolute value, both right-aligned,
               so the totals line up in a consistent column instead of being shoved
@@ -185,7 +185,7 @@ function EditableLineRow({
   return (
     <tr className={`group/row ${manual ? "bg-[var(--warning-bg-7)]" : ""}`}>
       <td
-        className={`py-2 pr-4 text-sm sticky left-0 z-10 ${manual ? "bg-[var(--warning-bg-7)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
+        className={`py-2 pr-4 text-xs sticky left-0 z-10 ${manual ? "bg-[var(--warning-bg-7)]" : "bg-white"} ${indent ? "pl-8" : "pl-4"}`}
       >
         <span className="inline-flex items-center gap-1.5">
           <span>{label}</span>
@@ -263,7 +263,7 @@ function EditableLineRow({
                   if (e.key === "Enter") commit(i);
                   else if (e.key === "Escape") setEditingCol(null);
                 }}
-                className="w-24 text-right text-sm border border-[var(--teal)] rounded px-1.5 py-1 focus-visible:outline-none"
+                className="w-24 text-right text-xs border border-[var(--teal)] rounded px-1.5 py-1 focus-visible:outline-none"
               />
             </td>
           );
@@ -276,7 +276,7 @@ function EditableLineRow({
             ref={(el) => {
               cellRefs.current[i] = el;
             }}
-            className={`py-2 px-3 text-right text-sm whitespace-nowrap relative ${
+            className={`py-2 px-3 text-right text-xs whitespace-nowrap relative ${
               overridden ? "bg-[var(--teal-bg-300)]" : ""
             } ${canEditCell ? "cursor-pointer hover:bg-[var(--teal-bg-200)] group" : ""}`}
             onClick={() => canEditCell && startEdit(i, cell.amount)}
@@ -598,14 +598,14 @@ export function PLTab({
         </div>
       ) : (
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="py-3 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-48">
+              <th className="py-3 pl-4 pr-4 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide sticky left-0 z-20 bg-white w-48">
                 Line Item
               </th>
               {columns.map((c) => (
-                <th key={c.label} className="py-3 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
+                <th key={c.label} className="py-3 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide whitespace-nowrap">
                   {c.label}
                 </th>
               ))}

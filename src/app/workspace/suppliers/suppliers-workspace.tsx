@@ -22,6 +22,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+import { TABLE_CELL_TEXT, TABLE_HEADER_TEXT, TABLE_ACTION_ICON_SIZE } from "@/lib/workspace-table";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -804,7 +805,7 @@ export function SuppliersWorkspace({
               ) : (
                 <div className="overflow-x-auto">
                   <table
-                    className="w-full text-sm"
+                    className={`w-full ${TABLE_CELL_TEXT}`}
                     style={{ tableLayout: "fixed", minWidth: orderedCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}
                   >
                     <colgroup>
@@ -813,7 +814,7 @@ export function SuppliersWorkspace({
                       ))}
                     </colgroup>
                     <thead>
-                      <tr className="bg-[var(--neutral-cool-50)] text-[11px] uppercase tracking-wide text-[var(--dark-grey)]">
+                      <tr className={`bg-[var(--neutral-cool-50)] ${TABLE_HEADER_TEXT} text-[var(--dark-grey)]`}>
                         {orderedCols.map((c) => (
                           <th
                             key={c.id}
@@ -957,7 +958,7 @@ function CandidateRow({
             className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors p-1"
             aria-label="Delete vendor"
           >
-            <Trash2 size={14} />
+            <Trash2 size={TABLE_ACTION_ICON_SIZE} />
           </button>
         ) : null;
     }
@@ -1004,7 +1005,7 @@ function Input({
         const next = e.target.value;
         if (next !== value) onChange(next);
       }}
-      className="w-full min-w-0 text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus-visible:outline-none focus:bg-white disabled:opacity-50"
+      className={`w-full min-w-0 ${TABLE_CELL_TEXT} bg-transparent border border-transparent rounded-md px-2 py-1.5 hover:border-[var(--neutral-cool-200)] focus:border-[var(--teal)] focus-visible:outline-none focus:bg-white disabled:opacity-50`}
     />
   );
 }

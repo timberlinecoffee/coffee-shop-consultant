@@ -256,25 +256,25 @@ export function DepreciationTab({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--background)]">
-                  <th className="py-2 px-4 text-left font-semibold text-[var(--muted-foreground)] sticky left-0 bg-[var(--background)]">
+                  <th className="py-2 px-4 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] sticky left-0 bg-[var(--background)]">
                     Asset
                   </th>
-                  <th className="py-2 px-3 text-left font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                  <th className="py-2 px-3 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] whitespace-nowrap">
                     Category
                   </th>
-                  <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                  <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] whitespace-nowrap">
                     Cost
                   </th>
-                  <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                  <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] whitespace-nowrap">
                     Useful Life
                   </th>
-                  <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                  <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] whitespace-nowrap">
                     Purchase
                   </th>
-                  <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                  <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] whitespace-nowrap">
                     Monthly Dep.
                   </th>
-                  <th className="py-2 px-3 text-right font-semibold text-[var(--muted-foreground)] whitespace-nowrap">
+                  <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] whitespace-nowrap">
                     5-Yr Accumulated
                   </th>
                 </tr>
