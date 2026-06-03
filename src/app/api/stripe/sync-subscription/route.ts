@@ -5,7 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { stripe, tierFromPriceId, MONTHLY_CREDITS } from "@/lib/stripe";
+import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS } from "@/lib/stripe";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -33,11 +33,22 @@ function extractSub(sub: Stripe.Subscription): SubLite {
   };
 }
 
+// Maps Stripe subscription status → subscriptions.status (DB enum).
 function mapStatus(stripeStatus: string): string {
   if (stripeStatus === "active") return "active";
   if (stripeStatus === "trialing") return "trialing";
   if (stripeStatus === "past_due") return "past_due";
   if (stripeStatus === "canceled") return "cancelled";
+  return "cancelled";
+}
+
+// Maps Stripe subscription status → users.subscription_status (different enum:
+// 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused').
+// TIM-1947: "trialing" is not a valid users.subscription_status value — use "free_trial".
+function mapUserStatus(stripeStatus: string): "free_trial" | "active" | "cancelled" | "expired" | "paused" {
+  if (stripeStatus === "active") return "active";
+  if (stripeStatus === "trialing") return "free_trial";
+  if (stripeStatus === "past_due") return "active"; // still entitled; payment in grace period
   return "cancelled";
 }
 
@@ -125,15 +136,20 @@ export async function POST() {
   }, { onConflict: "user_id" });
 
   const newPeriod = periodEndIso !== (existing?.current_period_end ?? null);
-  const shouldAllocate = status === "active" && tier !== "free" && newPeriod;
+  // TIM-1947: grant credits on both active renewals and the initial trialing checkout.
+  const isTrial = sub.status === "trialing";
+  const shouldAllocate = (sub.status === "active" || isTrial) && tier !== "free" && newPeriod;
+  const creditAmount = isTrial ? TRIAL_CREDITS : (MONTHLY_CREDITS[tier] ?? 0);
 
   const updates: Record<string, unknown> = {
-    subscription_status: status,
-    subscription_tier: status === "active" ? tier : "free",
+    // TIM-1947: use tier-aware status map — "trialing" is not a valid users enum value.
+    subscription_status: mapUserStatus(sub.status),
+    // TIM-1947: always persist the actual tier, never force "free" for trialing.
+    subscription_tier: tier,
   };
 
   if (shouldAllocate) {
-    updates.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+    updates.ai_credits_remaining = creditAmount;
   }
 
   await service.from("users").update(updates).eq("id", user.id);
@@ -141,18 +157,21 @@ export async function POST() {
   if (shouldAllocate) {
     await service.from("credit_transactions").insert({
       user_id: user.id,
-      amount: MONTHLY_CREDITS[tier] ?? 0,
+      amount: creditAmount,
       type: "monthly_allocation",
-      description: `${tier} plan: sync from Stripe (TIM-1500)`,
+      description: isTrial
+        ? `${tier} plan: trial grant (TIM-1947)`
+        : `${tier} plan: sync from Stripe (TIM-1500)`,
     });
   }
 
   return Response.json({
     synced: true,
     tier,
-    status,
+    status: mapUserStatus(sub.status),
     subscriptionId: sub.id,
     creditsAllocated: shouldAllocate,
+    creditsAmount: shouldAllocate ? creditAmount : 0,
     currentPeriodEnd: periodEndIso,
   });
 }

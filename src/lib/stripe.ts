@@ -102,6 +102,9 @@ export const MONTHLY_CREDITS: Record<Tier, number> = {
   free: 0,
 };
 
+// TIM-1947: one-time credit grant for trialing subscriptions.
+export const TRIAL_CREDITS = 75;
+
 // TIM-1544: Pause plan price — $2.99/mo. Set via STRIPE_PAUSE_MONTHLY_PRICE_ID.
 export const PAUSE_PRICE_ID = process.env.STRIPE_PAUSE_MONTHLY_PRICE_ID ?? "";
 
