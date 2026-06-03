@@ -5,14 +5,13 @@
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart2, X, AlertTriangle, Save, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
+import { BarChart2, X, AlertTriangle, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
-import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -20,6 +19,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
   type MonthlyProjections,
   type FinancialProjections,
@@ -2156,23 +2156,19 @@ export function FinancialsWorkspace({
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-6 pt-8 pb-16">
-        {/* TIM-1745 / TIM-1894: action toolbar (saved-status + Guided setup /
-            Export PDF / Export Excel / Save) lives top-right on the same band as
-            the title via the canonical WorkspaceHeader. This page is the board's
-            reference, so it renders through the shared component too. */}
+        {/* TIM-1745 / TIM-1894 / TIM-1937: action toolbar (Guided setup /
+            Export PDF / Export Excel / SaveStatusAndButton) lives top-right on
+            the same band as the title via the canonical WorkspaceHeader.
+            TIM-1937: the saved-status text + Save button render through the
+            paired SaveStatusAndButton at the end of the row so the indicator
+            sits immediately to the left of Save with no other action between
+            them (the board reopened the chrome ship over this gap). */}
         <WorkspaceHeader
           Icon={BarChart2}
           title="Financials"
           description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
           actions={
             <>
-              <SaveIndicator
-                saving={saveState.kind === "saving"}
-                savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
-                error={saveState.kind === "error" ? saveState.message : null}
-                unsaved={saveState.kind === "dirty"}
-                onRetry={handleManualSave}
-              />
               {canEdit && (
                 <WorkspaceActionButton
                   variant="primary"
@@ -2201,15 +2197,14 @@ export function FinancialsWorkspace({
                 <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 Export Excel
               </WorkspaceActionButton>
-              {canEdit && (
-                <WorkspaceActionButton
-                  onClick={handleManualSave}
-                  disabled={saveState.kind === "saving"}
-                >
-                  <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  Save
-                </WorkspaceActionButton>
-              )}
+              <SaveStatusAndButton
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+                error={saveState.kind === "error" ? saveState.message : null}
+                unsaved={saveState.kind === "dirty"}
+                canEdit={canEdit}
+                onSave={handleManualSave}
+              />
             </>
           }
         />
