@@ -9,7 +9,6 @@
 // layout matches every other Groundwork workspace. The old underline tab style
 // was the board-flagged drift example.
 
-import { Wrench, Package } from "lucide-react";
 import {
   WorkspaceSubNav,
   type WorkspaceSubNavTab,
@@ -17,9 +16,10 @@ import {
 
 type Active = "equipment" | "supplies";
 
+// TIM-1888 H-6: text-only pills (no leading icon) to match the Financials canonical.
 const TABS: ReadonlyArray<WorkspaceSubNavTab<Active>> = [
-  { key: "equipment", label: "Equipment", href: "/workspace/buildout-equipment", Icon: Wrench },
-  { key: "supplies", label: "Supplies", href: "/workspace/buildout-equipment/supplies", Icon: Package },
+  { key: "equipment", label: "Equipment", href: "/workspace/buildout-equipment" },
+  { key: "supplies", label: "Supplies", href: "/workspace/buildout-equipment/supplies" },
 ];
 
 export function EquipmentSuppliesSubNav({ active }: { active: Active }) {
