@@ -9,10 +9,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Lightbulb, X } from "lucide-react";
+import { Lightbulb, Sparkles, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -77,6 +78,12 @@ export function ConceptWorkspace({
     initialTrialMessagesUsed ?? 0
   );
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  // TIM-1872: suite-level "Review with AI" — reviews the whole concept and routes
+  // per-field suggestions through the shared unified review modal.
+  const [reviewStatus, setReviewStatus] = useState<"idle" | "loading">("idle");
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -226,6 +233,87 @@ export function ConceptWorkspace({
     });
   }
 
+  // TIM-1872: run a suite-level AI review. Fetches per-field suggestions, then
+  // hands them to the unified review modal for per-change accept/reject/edit.
+  // AI never auto-applies — accepted changes flow back through updateContent.
+  const runConceptReview = useCallback(async () => {
+    if (!canEdit || reviewStatus === "loading") return;
+    setReviewStatus("loading");
+    setReviewError(null);
+    try {
+      const res = await fetch("/api/workspaces/concept/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, content: latestDocRef.current }),
+      });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setReviewError(data.error ?? "Could not run the review. Try again.");
+        return;
+      }
+      const data = (await res.json()) as {
+        suggestions: Array<{
+          fieldId: ConceptComponentId;
+          fieldLabel: string;
+          originalValue: string;
+          proposedValue: string;
+        }>;
+      };
+      if (initialTrialMessagesUsed !== undefined) {
+        setTrialMessagesUsed((n) => n + 1);
+      }
+      if (!data.suggestions || data.suggestions.length === 0) {
+        setReviewError("Your concept already looks sharp. No changes suggested.");
+        return;
+      }
+      openAIReviewModal({
+        suggestions: data.suggestions.map((s) => ({
+          id: `concept-${s.fieldId}`,
+          fieldId: s.fieldId,
+          fieldLabel: s.fieldLabel,
+          originalValue: s.originalValue,
+          proposedValue: s.proposedValue,
+          isStructured: false,
+        })),
+        context: { workspace: "Concept" },
+        onApply: async (accepted) => {
+          if (accepted.length === 0) return;
+          // Batch every accepted field into one doc update + one save.
+          setDoc((prev) => {
+            let next = prev;
+            for (const change of accepted) {
+              const id = change.fieldId as ConceptComponentId;
+              next = {
+                ...next,
+                components: {
+                  ...next.components,
+                  [id]: { ...next.components[id], content: change.finalValue },
+                },
+              };
+            }
+            scheduleSave(next);
+            return next;
+          });
+        },
+      });
+    } catch {
+      setReviewError("Could not run the review. Try again.");
+    } finally {
+      setReviewStatus("idle");
+    }
+  }, [
+    canEdit,
+    reviewStatus,
+    planId,
+    initialTrialMessagesUsed,
+    openAIReviewModal,
+    scheduleSave,
+  ]);
+
   const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
@@ -235,19 +323,44 @@ export function ConceptWorkspace({
         {/* Page header */}
         <header className="mb-8">
           {/* TIM-1099: icon matches the sidebar entry for this workspace. */}
-          <div className="flex items-center gap-2 mb-1">
-            <Lightbulb className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              {shopName ? (
-                shopName
-              ) : (
-                <span className="italic text-[var(--dark-grey)]">Your shop name</span>
-              )}
-            </h1>
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <Lightbulb className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight truncate">
+                {shopName ? (
+                  shopName
+                ) : (
+                  <span className="italic text-[var(--dark-grey)]">Your shop name</span>
+                )}
+              </h1>
+            </div>
+            {/* TIM-1872: suite-level AI review/suggest control, cohesive with the
+                Financial Suite "AI Assessment" and Business Plan "Improve" controls. */}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={runConceptReview}
+                disabled={reviewStatus === "loading" || progress.filled === 0}
+                title={
+                  progress.filled === 0
+                    ? "Fill in a section first"
+                    : "Get AI feedback and suggested improvements across your concept"
+                }
+                className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
+              </button>
+            )}
           </div>
           <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
             Shape the identity of your shop. Every other workspace builds on this.
           </p>
+          {reviewError && (
+            <p className="mt-2 text-xs text-[var(--error)]" role="alert">
+              {reviewError}
+            </p>
+          )}
 
           {/* Progress row */}
           <div className="mt-5 flex items-center gap-3 flex-wrap">
@@ -523,6 +636,9 @@ export function ConceptWorkspace({
         onClose={() => setPaywallOpen(false)}
         variant="copilot_trial"
       />
+
+      {/* TIM-1872 / TIM-1561: suite-level review routes through the unified modal. */}
+      {AIReviewModalNode}
 
       {/* TIM-881: AIAssistCallout — per-field improvement modal */}
       <AIAssistCallout
