@@ -7,11 +7,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
-import { Wrench, X, Save, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
+import { Wrench, X, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
@@ -23,6 +22,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
@@ -401,22 +401,29 @@ export function BuildoutEquipmentWorkspace({
           description="Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page."
           actions={
             <>
+            {/* TIM-1937: Equipment & Supplies has 6 header chips — the most of any
+                workspace. To keep them on the title row at the board's 1200px
+                and 1440px targets (the page sits in a sidebar layout that
+                reduces the usable content width by ~175px), the long labels
+                collapse to icon-only below 1536px and re-expand on wide
+                monitors. The title= tooltip preserves discoverability on hover
+                and aria-label preserves the action name for screen readers. */}
             {canEdit && (
-            <WorkspaceActionButton onClick={() => setSettingsOpen(true)}>
+            <WorkspaceActionButton onClick={() => setSettingsOpen(true)} aria-label="Manage Stations" title="Manage Stations">
               <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Manage Stations
+              <span className="hidden min-[1536px]:inline">Manage Stations</span>
             </WorkspaceActionButton>
           )}
           {canEdit && (
-            <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)}>
+            <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)} aria-label="Describe your setup" title="Describe your setup">
               <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Describe your setup
+              <span className="hidden min-[1536px]:inline">Describe your setup</span>
             </WorkspaceActionButton>
           )}
           {canEdit && (
-            <WorkspaceActionButton onClick={() => setImportOpen(true)}>
+            <WorkspaceActionButton onClick={() => setImportOpen(true)} aria-label="Import from spreadsheet" title="Import from spreadsheet">
               <FileSpreadsheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Import from spreadsheet
+              <span className="hidden min-[1536px]:inline">Import from spreadsheet</span>
             </WorkspaceActionButton>
           )}
           {/* View options: toggle recommendations and AI markings */}
@@ -430,9 +437,10 @@ export function BuildoutEquipmentWorkspace({
                   : "text-[var(--muted-foreground)] border-[var(--neutral-cool-200)] hover:bg-[var(--background)]"
               }`}
               aria-label="View options"
+              title="View options"
             >
               <Eye size={12} aria-hidden="true" />
-              View
+              <span className="hidden min-[1536px]:inline">View</span>
             </button>
             {viewOptionsOpen && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
@@ -458,22 +466,16 @@ export function BuildoutEquipmentWorkspace({
               </div>
             )}
           </div>
-          <SaveIndicator
+          {/* TIM-1937: SaveStatusAndButton renders the saved-status text +
+              Save as one adjacent unit at the END of the action cluster. */}
+          <SaveStatusAndButton
             saving={saveState.kind === "saving"}
             savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
             error={saveState.kind === "error" ? saveState.message : null}
             unsaved={saveState.kind === "dirty"}
-            onRetry={handleManualSave}
+            canEdit={canEdit}
+            onSave={handleManualSave}
           />
-          {canEdit && (
-            <WorkspaceActionButton
-              onClick={handleManualSave}
-              disabled={saveState.kind === "saving"}
-            >
-              <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Save
-            </WorkspaceActionButton>
-          )}
             </>
           }
         />
