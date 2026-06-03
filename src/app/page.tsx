@@ -192,54 +192,35 @@ const PRICING: PricingPlan[] = [
     name: "Starter",
     price: "$39",
     period: "/month",
-    note: "$25/mo billed annually ($299/year). 7-day money-back; non-refundable after; cancel anytime.",
+    note: "$299/yr billed annually. 7-day free trial. Cancel before day 7 and you won't be charged.",
     features: [
-      "All planning modules",
-      "25 AI planning credits per month",
-      "Complete every exercise",
-      "Business plan and financial model generation",
-      "Export to PDF",
-      "Email support",
+      "All planning workspaces",
+      "Scout AI assistant: chat and section generation",
+      "Investor-ready PDF export",
+      "100 AI planning credits/month",
     ],
-    cta: "Start Building",
-    href: "/pricing",
+    cta: "Start your 7-day free trial",
+    href: "/signup",
     recommended: false,
     accent: false,
-  },
-  {
-    name: "Growth",
-    price: "$99",
-    period: "/month",
-    note: "$67/mo billed annually ($799/year). 7-day money-back; non-refundable after; cancel anytime.",
-    features: [
-      "Everything in Starter",
-      "100 AI planning credits per month",
-      "Weekly async Q&A with Trent",
-      "Financial model stress-testing",
-      "Priority support",
-    ],
-    cta: "Start With Growth",
-    href: "/pricing",
-    recommended: true,
-    accent: true,
   },
   {
     name: "Pro",
-    price: "$199",
+    price: "$99",
     period: "/month",
-    note: "$133/mo billed annually ($1,599/year). 7-day money-back; non-refundable after; cancel anytime.",
+    note: "$799/yr billed annually. 7-day free trial. Cancel before day 7 and you won't be charged.",
     features: [
-      "Everything in Growth",
-      "500 AI planning credits per month",
-      "Equipment sourcing assistance",
-      "Roaster matching recommendations",
-      "30-min 1-on-1 call at plan completion",
-      "White-glove onboarding",
+      "Everything in Starter",
+      "Deep market research",
+      "Pricing benchmarks vs. real shops",
+      "Unlimited locations and projects",
+      "Priority support",
+      "500 AI planning credits/month",
     ],
-    cta: "Start With Pro",
-    href: "/pricing",
-    recommended: false,
-    accent: false,
+    cta: "Start your 7-day free trial",
+    href: "/signup",
+    recommended: true,
+    accent: true,
   },
 ];
 
@@ -779,10 +760,10 @@ export default function LandingPage() {
                 color: "var(--teal)",
               }}
             >
-              Start Free. Go Deeper When You&apos;re Ready.
+              Two plans. One goal: open with a plan that works.
             </h2>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {PRICING.map((plan) => (
               <StaggerItem key={plan.name} className="h-full">
                 <PricingCard plan={plan} />
@@ -790,12 +771,15 @@ export default function LandingPage() {
             ))}
           </StaggerContainer>
           <FadeUp delay={0.3}>
-            <p className="text-center text-neutral-500 mt-8" style={{ fontSize: "13px" }}>
-              New accounts get 5 free AI planning messages to try Scout before subscribing. No credit card required for the preview. See{" "}
+            <p className="text-center text-neutral-500 mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
+              Try Pro free for 7 days. We&apos;ll remind you before your trial ends.
+            </p>
+            <p className="text-center text-neutral-400 mt-2" style={{ fontSize: "12px" }}>
+              A card is required at signup. Cancel before day 7 and you won&apos;t be charged. See{" "}
               <Link href="/subscription-terms" className="underline">
                 Subscription Terms
-              </Link>{" "}
-              for billing details.
+              </Link>
+              .
             </p>
           </FadeUp>
         </div>
