@@ -11,12 +11,37 @@ import {
   buildEquipmentCostProposal,
   recomputeEquipmentLinked,
   parseEquipmentCostFieldId,
+  isEquipmentCostChangeIntent,
 } from "./cross-workspace-apply.ts";
 
 const ITEMS = [
   { id: "espresso-1", name: "Espresso Machine", quantity: 1, unit_cost_cents: 900_000 },
   { id: "grinder-1", name: "Grinder", quantity: 2, unit_cost_cents: 120_000 },
 ];
+
+// ── Intent gate (regression: the flagship prompt MUST match) ──────────────────
+
+test("intent gate matches the flagship reprice prompts", () => {
+  // The exact prompt that silently failed the old \b$ / \bcost\b regex on prod.
+  assert.equal(
+    isEquipmentCostChangeIntent(
+      "In my equipment list, reprice the espresso machine to $11,000 and update my financials and startup costs to match.",
+    ),
+    true,
+  );
+  assert.equal(isEquipmentCostChangeIntent("make the espresso machine cost $11,000"), true);
+  assert.equal(isEquipmentCostChangeIntent("lower the grinder cost to $1,200"), true);
+  assert.equal(isEquipmentCostChangeIntent("set the espresso machine price to 9500 dollars"), true);
+  assert.equal(isEquipmentCostChangeIntent("add a $5000 cold brew tank"), true);
+  assert.equal(isEquipmentCostChangeIntent("buy a new espresso machine"), true);
+});
+
+test("intent gate does NOT fire on questions or unrelated asks", () => {
+  assert.equal(isEquipmentCostChangeIntent("what's the espresso machine price?"), false);
+  assert.equal(isEquipmentCostChangeIntent("how much does the grinder cost right now?"), false);
+  assert.equal(isEquipmentCostChangeIntent("reorganize my equipment by station"), false);
+  assert.equal(isEquipmentCostChangeIntent("write me a latte recipe"), false);
+});
 
 // ── Registry integrity ────────────────────────────────────────────────────────
 

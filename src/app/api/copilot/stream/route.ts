@@ -26,7 +26,7 @@ import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { loadPlanContext } from "@/lib/plan-context"
-import { buildEquipmentCostProposal, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
+import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -433,14 +433,9 @@ const PROPOSE_EQUIPMENT_CHANGE_TOOL: Anthropic.Tool = {
 // tool when the request is genuinely about an equipment cost.
 function shouldOfferEquipmentChangeTool(messages: Array<{ role: string; content: string }>): boolean {
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  // Cost-change intent: a price/cost verb near a cost word.
-  const costChange =
-    /\b(reprice|re-price|chang|updat|set|raise|lower|increase|decrease|drop|bump|adjust|make)\b.{0,60}\b(cost|price|budget|\$|dollar|cheaper|expensive|pricier)\b/i.test(lastUser) ||
-    /\b(cost|price|budget)\b.{0,40}\b(to|at|of)\b.{0,20}(\$|\d)/i.test(lastUser)
-  // Add-equipment intent.
-  const addEquip =
-    /\b(add|buy|include|get|purchase)\b.{0,60}\b(machine|grinder|espresso|fridge|refrigerat|oven|equipment|pos|register|furniture|smallware)\b/i.test(lastUser)
-  return costChange || addEquip
+  // Intent detection is the pure, unit-tested isEquipmentCostChangeIntent (a prior
+  // fragile inline regex silently dropped "reprice ... to $11,000" on prod).
+  return isEquipmentCostChangeIntent(lastUser)
 }
 
 // TIM-1670: detect questions that need real web research (competitors, local market,

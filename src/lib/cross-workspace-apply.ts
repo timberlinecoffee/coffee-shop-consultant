@@ -144,6 +144,28 @@ function lineValueCents(unitCostCents: number, quantity: number): number {
   return Math.max(0, Math.round(unitCostCents)) * Math.max(1, Math.round(quantity));
 }
 
+// ── Intent gate ───────────────────────────────────────────────────────────────
+
+// Whether a user message expresses intent to change an equipment item's cost or
+// add a new piece of equipment — the gate for offering propose_equipment_change.
+// Pure + tested because the previous inline regex silently failed on the flagship
+// "reprice ... to $11,000" (a `\b$` boundary never matches a `$` after a space,
+// and `\bcost\b` misses the plural "costs"). Two independent signals beat a
+// fragile adjacency regex. "price" is intentionally not a mutation verb so a
+// question ("what's the espresso machine price?") does not trigger a proposal.
+export function isEquipmentCostChangeIntent(text: string): boolean {
+  // A mutate verb (reprice/lower/set/...) or an acquire verb (add/buy/...).
+  const actionVerb =
+    /\b(reprice|re-price|change|changing|update|updating|set|setting|raise|lower|increase|decrease|reduce|cut|drop|bump|adjust|mark\s?up|mark\s?down|make|charge|add|buy|purchase|include)\b/i.test(text);
+  const moneySignal =
+    /(\$\s?\d|\b(costs?|price[ds]?|pricing|budget|dollars?|cheaper|expensive|pricier|spend)\b)/i.test(text);
+  // Acquire verb + an equipment noun (covers "add a new espresso machine" with no
+  // price stated).
+  const addEquip =
+    /\b(add|buy|include|purchase)\b.{0,60}\b(machine|grinder|espresso|fridge|refrigerat|oven|equipment|pos|register|furniture|smallware|brewer|kettle|blender)\b/i.test(text);
+  return (actionVerb && moneySignal) || addEquip;
+}
+
 // ── Proposal builder ──────────────────────────────────────────────────────────
 
 // Build the coordinated set of cross-workspace changes for an equipment-cost
