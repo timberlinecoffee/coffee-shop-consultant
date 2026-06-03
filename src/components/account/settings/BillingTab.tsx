@@ -269,7 +269,7 @@ export function BillingTab() {
                 ).map(({ label, align }) => (
                   <th
                     key={label}
-                    className={`${TABLE_HEADER_TEXT} px-4 py-2 text-[var(--muted-foreground)] text-${align}`}
+                    className={`${TABLE_HEADER_TEXT} px-4 py-2 text-[var(--muted-foreground)] ${align === "right" ? "text-right" : "text-left"}`}
                   >
                     {label}
                   </th>
@@ -292,7 +292,7 @@ export function BillingTab() {
                     {inv.amount}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--success-bg-2)] text-[var(--success-medium)]">
                       {inv.status}
                     </span>
                   </td>
