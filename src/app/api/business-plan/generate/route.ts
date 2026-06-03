@@ -5,6 +5,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -311,7 +312,7 @@ Write a complete, usable draft of this section now. Generate from whatever conte
 
       try {
         const response = await client.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: PLATFORM_AI_MODEL,
           max_tokens: maxTokens,
           system: systemPrompt,
           messages: [{ role: "user", content: userMessage }],

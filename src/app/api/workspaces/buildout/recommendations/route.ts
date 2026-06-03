@@ -6,6 +6,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -151,7 +152,7 @@ Return ONLY valid JSON, no markdown:
 
   try {
     const msg = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });

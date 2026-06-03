@@ -4,6 +4,7 @@
 // the concept document (free text) + location; market-research enrichment is
 // noted as v2 (see the PR). Reuses the AI integration + access pattern from the
 // TIM-1321 recipe suggestion and TIM-1020 price suggestion.
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -114,7 +115,7 @@ Rules: no commentary outside the JSON. Every category value must match a listed 
   let suggestions
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     })

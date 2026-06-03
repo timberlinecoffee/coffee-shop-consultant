@@ -9,6 +9,7 @@
 // TIM-1698: Checks curated public industry dataset first; falls back to AI only
 // when no industry record exists for the item. Returns source:"industry_benchmark"
 // for items covered by the dataset, "ai_estimated" otherwise.
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
@@ -229,7 +230,7 @@ Return ONLY the JSON object.`
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     })

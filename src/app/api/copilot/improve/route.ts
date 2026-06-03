@@ -7,6 +7,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -273,7 +274,7 @@ export async function POST(request: NextRequest) {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
         const stream = anthropic.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: PLATFORM_AI_MODEL,
           max_tokens: 1_024,
           system: systemPrompt,
           messages: [{ role: "user", content: userMessage }],
@@ -318,7 +319,7 @@ export async function POST(request: NextRequest) {
               .eq("id", user.id);
             send(
               sse("done", {
-                modelUsed: "claude-sonnet-4-6",
+                modelUsed: PLATFORM_AI_MODEL,
                 trial_messages_used: newTrialCount,
                 cost_usd: costUsd,
               }),
@@ -345,7 +346,7 @@ export async function POST(request: NextRequest) {
               upstream_status: 200,
               details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
             }).then(() => {});
-            send(sse("done", { modelUsed: "claude-sonnet-4-6" }));
+            send(sse("done", { modelUsed: PLATFORM_AI_MODEL }));
           }
           controller.close();
         }

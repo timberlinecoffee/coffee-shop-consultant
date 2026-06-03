@@ -12,6 +12,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -155,7 +156,7 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
   let parsed: { suggestions?: Array<{ fieldId?: string; proposedValue?: string }> };
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 2_000,
       messages: [{ role: "user", content: prompt }],
     });
