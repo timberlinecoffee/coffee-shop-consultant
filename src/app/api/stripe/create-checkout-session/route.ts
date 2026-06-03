@@ -57,6 +57,18 @@ export async function POST(request: NextRequest) {
   // session would otherwise skip it for a trialing subscription. Trial credits
   // (75) and Pro-feature unlock during the trial are granted by the webhook;
   // see src/app/api/stripe/webhook/route.ts.
+  //
+  // FTC Negative Option Rule auto-renew disclosure (TIM-1905 §1, Marketing +
+  // Legal signed off). MUST render on Stripe Checkout before the user clicks
+  // "Start free trial". Verbatim copy — do not edit without re-clearing with
+  // Marketing/Legal. Stripe's custom_text.submit.message supports a markdown
+  // subset including [text](url) hyperlinks; limit is 1200 chars (we use ~370).
+  const ftcDisclosure =
+    `Your free trial includes full Pro access for 7 days. A credit card is required at signup. ` +
+    `After your trial, your card will be charged automatically for the plan you selected at signup: ` +
+    `Starter at $39/month or Pro at $99/month. Cancel in Settings > Billing at any time before day 7 ` +
+    `to avoid a charge. [Subscription Terms](${origin}/subscription-terms) apply.`;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card"],
@@ -70,6 +82,9 @@ export async function POST(request: NextRequest) {
     subscription_data: {
       trial_period_days: TRIAL_PERIOD_DAYS,
       metadata: { userId: user.id, planKey, tier: plan.tier, interval: plan.interval },
+    },
+    custom_text: {
+      submit: { message: ftcDisclosure },
     },
   });
 
