@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
+import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { consumeSseFrames } from "@/components/copilot/sse";
@@ -1247,6 +1248,18 @@ export function OpeningMonthPlanWorkspace({
               />
             )}
           </section>
+          )}
+
+          {/* TIM-1880: re-wire the cross-workspace launch readiness check
+              (TIM-736). It was orphaned when the suite was restructured
+              (TIM-1521/TIM-1634 turned the umbrella into a redirect). It lives
+              at the foot of the Milestones tab — the default Launch Plan tab —
+              and populates the dashboard readiness banner via
+              POST /api/copilot/launch-readiness. */}
+          {showMilestones && (
+            <div className="pt-8">
+              <LaunchReadinessButton planId={planId} />
+            </div>
           )}
 
           {/* ── Section 2: Playbook ──────────────────────────────────────── */}
