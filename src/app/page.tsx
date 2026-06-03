@@ -768,7 +768,7 @@ export default function LandingPage() {
               Start Free. Go Deeper When You&apos;re Ready.
             </h2>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {PRICING.map((plan) => (
               <StaggerItem key={plan.name} className="h-full">
                 <PricingCard plan={plan} />
