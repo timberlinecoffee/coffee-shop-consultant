@@ -1,12 +1,15 @@
 // TIM-1942: Update a support message's status (new → open → closed → spam).
 
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, assertAdminRequestSecurity } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { recordAdminAction } from "@/lib/admin-audit";
 
 const ALLOWED_STATUS = new Set(["new", "open", "closed", "spam"]);
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const csrfError = assertAdminRequestSecurity(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 

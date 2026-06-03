@@ -2,10 +2,20 @@
 
 import { requireAdmin } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { recordAdminAction } from "@/lib/admin-audit";
+
+// TIM-1958: Neutralize spreadsheet formula injection (CWE-1236).
+// Fields like full_name and signup_source are user-controlled; a value
+// starting with = + - @ or a tab/CR would execute as a formula in Excel/Sheets.
+// Prefix with a single quote so the cell is treated as a literal string.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const s = String(value);
+  let s = String(value);
+  if (FORMULA_TRIGGER.test(s)) {
+    s = "'" + s;
+  }
   if (s.includes(",") || s.includes("\"") || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
@@ -23,6 +33,8 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) return Response.json({ error: "Failed to load members" }, { status: 500 });
+
+  const row_count = profiles?.length ?? 0;
 
   const header = [
     "id",
@@ -44,6 +56,13 @@ export async function GET() {
     );
   }
   const csv = lines.join("\n") + "\n";
+
+  // TIM-1958: Bulk PII extraction warrants an audit record even though it is read-only.
+  await recordAdminAction({
+    actor: { userId: auth.userId, email: auth.email },
+    action: "members_export",
+    metadata: { row_count },
+  });
 
   const filename = `groundwork-members-${new Date().toISOString().slice(0, 10)}.csv`;
   return new Response(csv, {

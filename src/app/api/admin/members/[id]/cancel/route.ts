@@ -3,7 +3,7 @@
 // when=period_end: schedule cancel_at_period_end so the user keeps access
 // until the paid-through date, then drops to free.
 
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, assertAdminRequestSecurity } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { recordAdminAction } from "@/lib/admin-audit";
 import { stripe } from "@/lib/stripe";
@@ -12,6 +12,9 @@ import type { CancelRequest } from "@/types/admin";
 export const runtime = "nodejs";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const csrfError = assertAdminRequestSecurity(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 

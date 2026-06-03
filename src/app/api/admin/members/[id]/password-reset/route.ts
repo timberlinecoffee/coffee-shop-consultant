@@ -3,13 +3,16 @@
 // reset link follows the normal token-expiration policy configured on the
 // auth project (default 1h), not a custom long-lived link.
 
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, assertAdminRequestSecurity } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { recordAdminAction } from "@/lib/admin-audit";
 
 export const runtime = "nodejs";
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const csrfError = assertAdminRequestSecurity(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
