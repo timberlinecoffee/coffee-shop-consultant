@@ -123,10 +123,12 @@ const sectionLabelCls =
 
 // TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
 // so the ingredient grid stays flat and scannable.
+// TIM-1894: ingredient grid is a dense data table → cells use text-xs to match
+// the Equipment-table reference (was text-sm/14px, the board-flagged "too large").
 const cellInputCls =
-  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus-visible:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
+  "w-full text-xs bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus-visible:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
 const quickInputCls =
-  "w-full text-sm bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
+  "w-full text-xs bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
 // Shared column template so the header, data rows, and quick-add row stay aligned.
 const ingGridCls =
   "grid grid-cols-[minmax(0,1fr)_5rem_5.5rem_6rem_6.5rem_3.5rem] gap-2 items-center";
@@ -1544,10 +1546,11 @@ function RecipeLineRow({
   if (!canEdit) {
     return (
       <div className="flex items-baseline gap-3 py-1.5">
-        <span className="flex-1 min-w-0 text-sm font-medium text-[var(--foreground)] break-words">
+        {/* TIM-1894: read-only recipe row matches its editable path + Equipment (text-xs, was text-sm). */}
+        <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
           {ingredient?.name ?? "Unknown"}
         </span>
-        <span className="text-sm text-[var(--muted-foreground)] shrink-0">
+        <span className="text-xs text-[var(--muted-foreground)] shrink-0">
           {line.amount} {line.unit}
         </span>
         {needsCost ? (
