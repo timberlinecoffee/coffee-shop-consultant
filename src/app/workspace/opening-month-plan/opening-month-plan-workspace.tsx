@@ -15,11 +15,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Rocket, Calendar, List, ChevronDown, ChevronRight, Check, X,
+  Rocket, ChevronDown, ChevronRight, Check, X,
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
+import {
+  WorkspaceSubNav,
+  type WorkspaceSubNavTab,
+} from "@/components/workspace/WorkspaceSubNav";
+
+// TIM-1888 H-8: list/calendar view toggle as canonical text-only pills.
+const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
+  { key: "list", label: "List" },
+  { key: "calendar", label: "Calendar" },
+];
 import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -1204,31 +1214,14 @@ export function OpeningMonthPlanWorkspace({
               The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates.
             </p>
 
-            {/* View toggle */}
-            <div className="flex items-center gap-0 mb-4 border-b border-[var(--border)]">
-              <button
-                onClick={() => handleViewToggle("list")}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                  view === "list"
-                    ? "border-[var(--teal)] text-[var(--teal)]"
-                    : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <List size={14} />
-                List
-              </button>
-              <button
-                onClick={() => handleViewToggle("calendar")}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                  view === "calendar"
-                    ? "border-[var(--teal)] text-[var(--teal)]"
-                    : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <Calendar size={14} />
-                Calendar
-              </button>
-            </div>
+            {/* View toggle — canonical pill nav (TIM-1888 H-8) */}
+            <WorkspaceSubNav
+              tabs={VIEW_TABS}
+              active={view}
+              onSelect={(v) => handleViewToggle(v)}
+              ariaLabel="Milestones view"
+              className="mb-4"
+            />
 
             {view === "list" ? (
               <ListView

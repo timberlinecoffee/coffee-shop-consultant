@@ -2686,13 +2686,13 @@ export function HiringWorkspace({
           </p>
         </header>
 
-        {/* Tab nav — canonical WorkspaceSubNav (TIM-1793) */}
+        {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
+            TIM-1888 H-6: text-only pills (no Icon). T-1: default mb-5 spacing. */}
         <WorkspaceSubNav
-          tabs={tabs.map((t) => ({ key: t.id, label: t.label, Icon: t.Icon }))}
+          tabs={tabs.map((t) => ({ key: t.id, label: t.label }))}
           active={activeTab}
           onSelect={setActiveTab}
           ariaLabel="Hiring sections"
-          className="mb-6"
         />
 
         {/* Tab content */}
