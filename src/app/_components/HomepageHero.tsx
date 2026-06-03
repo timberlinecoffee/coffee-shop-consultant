@@ -47,13 +47,8 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.52, delay: 0.18, ease: EASE }}
           >
-            From <span style={{ whiteSpace: "nowrap" }}>Coffee Shop Idea</span>
-            <br />
-            to{" "}
-            <span style={{ whiteSpace: "nowrap", color: "var(--sage)" }}>
-              Open Sign
-            </span>
-            .
+            Plan your coffee shop{" "}
+            <span style={{ color: "var(--sage)" }}>like you&apos;ve done it before.</span>
           </motion.h1>
 
           <motion.p
@@ -69,9 +64,8 @@ export default function HomepageHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.28, ease: EASE }}
           >
-            Build your coffee shop plan, even without a business background.
-            Groundwork shows you what to plan next, checks it against real
-            shops, and points to your next move.
+            Every number, plan, and document a new owner needs, built with you
+            by an AI that knows the coffee business. Try it free for 7 days.
           </motion.p>
 
           <motion.div
@@ -89,7 +83,7 @@ export default function HomepageHero() {
                 boxShadow: "0 2px 12px rgba(0,0,0,0.18)",
               }}
             >
-              Start Your Plan
+              Start your 7-day free trial
             </Link>
             <Link
               href="#how-it-works"
@@ -100,9 +94,19 @@ export default function HomepageHero() {
             </Link>
           </motion.div>
 
-          {/* Platform feature blurbs (replaces false stats) */}
+          <motion.p
+            className="mt-3 text-white"
+            style={{ fontSize: "12px", opacity: 0.6, fontWeight: 400 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.44, ease: "easeOut" }}
+          >
+            Full access. Cancel anytime before day 7 and you won&apos;t be charged.
+          </motion.p>
+
+          {/* Platform capability blurbs */}
           <motion.ul
-            className="mt-10 space-y-3"
+            className="mt-8 space-y-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.52, ease: "easeOut" }}
