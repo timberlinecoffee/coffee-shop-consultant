@@ -22,7 +22,22 @@ if (!DB_URL) {
   process.exit(1);
 }
 
-const client = new Client({ connectionString: DB_URL });
+// Supabase pooler "Tenant or user not found" means the URL format is stale.
+// Extract the password and try the direct (non-pooler) connection, which
+// uses the plain postgres user and the db.{ref} hostname.
+let connectionConfig;
+try {
+  const url = new URL(DB_URL);
+  const password = url.password;
+  const directUrl = `postgresql://postgres:${password}@db.ltmcttjftxzpgynhnrpg.supabase.co:5432/postgres`;
+  console.log("Using direct connection: db.ltmcttjftxzpgynhnrpg.supabase.co:5432");
+  connectionConfig = { connectionString: directUrl, ssl: { rejectUnauthorized: false } };
+} catch {
+  console.log("URL parse failed — using SUPABASE_DB_URL as-is with SSL");
+  connectionConfig = { connectionString: DB_URL, ssl: { rejectUnauthorized: false } };
+}
+
+const client = new Client(connectionConfig);
 
 async function run() {
   await client.connect();
