@@ -31,16 +31,19 @@ interface PromptContent {
   ref: string;
 }
 
+// TIM-1903: copy refreshed to TIM-1905 §4 verbatim (marketing-locked,
+// founder-voice, no em dashes, no jargon). Title/body wording matches the
+// copy doc one-for-one so the implementation does not drift from sign-off.
 const CONTENT: Record<ProFeatureKey, PromptContent> = {
   coffee_shop_world: {
-    title: "Compare your shop against real coffee shops",
-    body: "See how your numbers compare to real coffee shops in your area.",
-    ref: "coffee-shop-world",
+    title: "Pricing Benchmarks",
+    body: "See how your prices compare to real shops in your area. Available on Pro.",
+    ref: "pricing-benchmarks",
   },
   deeper_insights: {
-    title: "Deeper market research with Scout",
-    body: "Upgrade to Pro for deeper insights: longer research, deeper market analysis, more data in your plan.",
-    ref: "scout-research",
+    title: "Deep Research",
+    body: "This pulls live market and competitor data into your plan. Available on Pro.",
+    ref: "deep-research",
   },
   office_hours: {
     title: "Weekly live Office Hours Q&A",
@@ -48,13 +51,13 @@ const CONTENT: Record<ProFeatureKey, PromptContent> = {
     ref: "office-hours",
   },
   multi_project: {
-    title: "Plan more than one shop",
-    body: "Pro plans cover unlimited projects, so you can map out a second concept or location side-by-side without losing the first.",
-    ref: "multi-project",
+    title: "Multiple Projects",
+    body: "Planning a second location? Manage unlimited projects on Pro.",
+    ref: "multiple-projects",
   },
   generic: {
     title: "This is a Pro feature",
-    body: "Upgrade to Pro to unlock this and the rest of the Pro toolkit.",
+    body: "Upgrade to keep access after your trial.",
     ref: "generic",
   },
 };
