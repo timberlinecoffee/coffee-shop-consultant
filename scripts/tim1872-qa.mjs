@@ -54,6 +54,13 @@ page.on("console", (m) => { if (m.type() === "error") console.log("PAGE ERR:", m
 await page.goto(`${BASE}/workspace/concept`, { waitUntil: "networkidle", timeout: 60000 });
 await page.waitForTimeout(1500);
 
+// Dismiss the cookie consent banner so it doesn't intercept clicks.
+const consent = page.locator('[role="dialog"][aria-label="Cookie consent"]');
+if (await consent.count()) {
+  const acc = consent.getByRole("button", { name: /Accept All/i });
+  if (await acc.count()) { await acc.first().click(); await page.waitForTimeout(800); console.log("dismissed cookie banner"); }
+}
+
 const visionBefore = await page.locator("#concept-vision").inputValue().catch(() => "(no vision field)");
 console.log("VISION BEFORE:", JSON.stringify(visionBefore.slice(0, 80)));
 
