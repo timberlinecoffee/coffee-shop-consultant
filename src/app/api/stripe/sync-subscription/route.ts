@@ -148,6 +148,16 @@ export async function POST() {
     subscription_tier: tier,
   };
 
+  // TIM-1947: trial_ends_at is load-bearing — hasWriteAccess() / effectiveTierForRead()
+  // in src/lib/access.ts require a future trial_ends_at to treat a free_trial user as
+  // write-capable and Pro-feature-entitled. Without this, every trial signup is
+  // read-only and starter trialists never see Pro surfaces. Mirrors the webhook
+  // path at src/app/api/stripe/webhook/route.ts:120.
+  if (isTrial) {
+    updates.trial_ends_at = periodEndIso;
+    updates.trial_credits_granted = true;
+  }
+
   if (shouldAllocate) {
     updates.ai_credits_remaining = creditAmount;
   }
