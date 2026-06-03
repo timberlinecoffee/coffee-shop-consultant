@@ -13,6 +13,10 @@
  */
 
 import pg from "pg";
+import { setDefaultResultOrder } from "dns";
+
+// Force IPv4 — GitHub Actions runners can have IPv6 but with no route to Supabase IPv6 addresses.
+setDefaultResultOrder("ipv4first");
 
 const { Client } = pg;
 
@@ -22,26 +26,48 @@ if (!DB_URL) {
   process.exit(1);
 }
 
-// Supabase pooler "Tenant or user not found" means the URL format is stale.
-// Extract the password and try the direct (non-pooler) connection, which
-// uses the plain postgres user and the db.{ref} hostname.
-let connectionConfig;
-try {
-  const url = new URL(DB_URL);
-  const password = url.password;
-  const directUrl = `postgresql://postgres:${password}@db.ltmcttjftxzpgynhnrpg.supabase.co:5432/postgres`;
-  console.log("Using direct connection: db.ltmcttjftxzpgynhnrpg.supabase.co:5432");
-  connectionConfig = { connectionString: directUrl, ssl: { rejectUnauthorized: false } };
-} catch {
-  console.log("URL parse failed — using SUPABASE_DB_URL as-is with SSL");
-  connectionConfig = { connectionString: DB_URL, ssl: { rejectUnauthorized: false } };
+// Strategy: try the original SUPABASE_DB_URL first, then fall back to
+// the new Supabase pooler format (postgres.{ref}@aws-0-*.pooler) and
+// finally the direct db.{ref}.supabase.co connection.
+async function tryConnect(config, label) {
+  const c = new Client(config);
+  try {
+    await c.connect();
+    console.log(`Connected via ${label}`);
+    return c;
+  } catch (err) {
+    console.log(`${label} failed: ${err.message}`);
+    try { await c.end(); } catch {}
+    return null;
+  }
 }
 
-const client = new Client(connectionConfig);
+const REF = "ltmcttjftxzpgynhnrpg";
+let password = "";
+try {
+  password = new URL(DB_URL).password;
+} catch {}
+
+const configs = [
+  [{ connectionString: DB_URL, ssl: { rejectUnauthorized: false } }, "SUPABASE_DB_URL as-is"],
+  [{ connectionString: `postgresql://postgres.${REF}:${password}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`, ssl: { rejectUnauthorized: false } }, "session pooler (us-east-1)"],
+  [{ connectionString: `postgresql://postgres.${REF}:${password}@aws-0-us-west-1.pooler.supabase.com:5432/postgres`, ssl: { rejectUnauthorized: false } }, "session pooler (us-west-1)"],
+  [{ connectionString: `postgresql://postgres:${password}@db.${REF}.supabase.co:5432/postgres`, ssl: { rejectUnauthorized: false } }, "direct db host"],
+];
+
+let client = null;
+for (const [cfg, label] of configs) {
+  client = await tryConnect(cfg, label);
+  if (client) break;
+}
+
+if (!client) {
+  console.error("FATAL: Could not connect via any method. Check SUPABASE_DB_URL secret value.");
+  process.exit(1);
+}
 
 async function run() {
-  await client.connect();
-  console.log("Connected to database.");
+  // client is already connected from the tryConnect loop above
 
   // ── Step 1: Apply DDL ────────────────────────────────────────────────────────
   console.log("\n=== Step 1: Applying DDL ===");
@@ -149,4 +175,4 @@ async function run() {
 
 run()
   .catch(err => { console.error("Script error:", err.message); process.exit(1); })
-  .finally(() => client.end());
+  .finally(() => { try { client.end(); } catch {} });
