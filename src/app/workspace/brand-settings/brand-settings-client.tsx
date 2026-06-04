@@ -73,13 +73,13 @@ export function BrandSettingsClient({
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      setLogoError("File too large — max 2 MB")
+      setLogoError("File too large (max 2 MB)")
       e.target.value = ""
       return
     }
     const accepted = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"]
     if (!accepted.includes(file.type)) {
-      setLogoError("Unsupported format — use PNG, JPEG, or SVG")
+      setLogoError("Unsupported format. Use PNG, JPEG, or SVG.")
       e.target.value = ""
       return
     }
