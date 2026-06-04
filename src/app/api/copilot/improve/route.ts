@@ -14,6 +14,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
+import { rateLimit } from "@/lib/rate-limit";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
 
@@ -78,6 +79,16 @@ export async function POST(request: NextRequest) {
     return new Response(
       sse("error", { code: "unauthorized", message: "Authentication required." }),
       { status: 401, headers: { "Content-Type": "text/event-stream" } },
+    );
+  }
+
+  // TIM-2246: per-user cap on AI-improve to bound paid-API spend on a
+  // runaway-loop client (improve fires on every "Improve with AI" click).
+  const rl = await rateLimit({ bucket: "copilot:improve", id: user.id, limit: 30, windowSec: 60 });
+  if (!rl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: rl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(rl.retryAfterSec) } },
     );
   }
 

@@ -6,12 +6,13 @@
 // chrome (text-xs labels, teal focus, rounded-lg, WorkspaceActionButton for
 // the submit) so it sits next to the docs index without any drift.
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Send } from "lucide-react";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
 
 type FieldErrors = Partial<
   Record<"name" | "email" | "subject" | "message", string>
@@ -31,6 +32,9 @@ const LABEL_CLS =
 
 export function ContactForm() {
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
+  // TIM-2246: Turnstile token; null until the widget completes or unset env.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const onTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
 
   const submitting = state.kind === "submitting";
   const fieldErrors = state.kind === "error" ? state.fields ?? {} : {};
@@ -50,6 +54,7 @@ export function ContactForm() {
       hp: String(fd.get("hp") ?? ""),
       page_url:
         typeof window !== "undefined" ? window.location.href : "",
+      cf_turnstile_token: turnstileToken,
     };
 
     try {
@@ -266,6 +271,8 @@ export function ContactForm() {
           {state.message}
         </p>
       )}
+
+      <TurnstileWidget onVerify={onTurnstile} className="mt-4" />
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <p className="text-[11px] text-[var(--muted-foreground)]">

@@ -17,6 +17,7 @@ import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
+import { rateLimit } from "@/lib/rate-limit"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
 
@@ -63,6 +64,16 @@ export async function POST(request: NextRequest) {
       status: 401,
       headers: { "Content-Type": "text/event-stream" },
     })
+  }
+
+  // TIM-2246: paid-API rate limit on launch-plan generate (long Anthropic
+  // streaming call). 10/min per user is well above human use.
+  const rl = await rateLimit({ bucket: "opening-month-plan:generate", id: user.id, limit: 10, windowSec: 60 })
+  if (!rl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: rl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(rl.retryAfterSec) } },
+    )
   }
 
   let planId: string

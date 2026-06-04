@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
 
 const COOLDOWN_SECONDS = 60;
 
@@ -11,6 +12,9 @@ export function ForgotPasswordForm({ errorMessage }: { errorMessage?: string | n
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  // TIM-2246: Turnstile token passed to Supabase Auth via captchaToken.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const onTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -25,7 +29,12 @@ export function ForgotPasswordForm({ errorMessage }: { errorMessage?: string | n
     setError(null);
     const supabase = createClient();
     const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+      // TIM-2246: CAPTCHA attestation; verified server-side by Supabase Auth
+      // when the project-level CAPTCHA setting is on. Skipped pre-provision.
+      ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
+    });
     setLoading(false);
     if (error) {
       // Do not leak whether the email exists; show a generic confirmation unless it's a
@@ -87,6 +96,8 @@ export function ForgotPasswordForm({ errorMessage }: { errorMessage?: string | n
       {error && (
         <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
+
+      <TurnstileWidget onVerify={onTurnstile} />
 
       <button
         type="submit"

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/app/_components/Logo";
+import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
 
 const ROLES = [
   { value: "educator", label: "Coffee Educator / Barista Trainer" },
@@ -50,6 +51,9 @@ export default function AffiliateApplyPage() {
   const [formState, setFormState] = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  // TIM-2246: Turnstile bot-protection token (null until widget renders + completes).
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const onTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +75,7 @@ export default function AffiliateApplyPage() {
           whyReferring,
           affiliateAgreement,
           caslConsent,
+          cf_turnstile_token: turnstileToken,
         }),
       });
       const data = await res.json();
@@ -350,6 +355,8 @@ export default function AffiliateApplyPage() {
                   {errorMsg}
                 </p>
               )}
+
+              <TurnstileWidget onVerify={onTurnstile} className="mb-4" />
 
               <div className="flex justify-end">
                 <button

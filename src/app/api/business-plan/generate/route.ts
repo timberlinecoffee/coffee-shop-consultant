@@ -29,6 +29,7 @@ import {
   type BusinessPlanSectionData,
 } from "@/lib/business-plan";
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -44,6 +45,17 @@ export async function POST(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // TIM-2246: per-user paid-API rate limit. Credit balance is the hard
+  // cost cap; this just keeps a runaway client from churning credits faster
+  // than a human ever would.
+  const rl = await enforceRateLimit({
+    bucket: "business-plan:generate",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rl) return rl;
 
   const { data: profile } = await supabase
     .from("users")

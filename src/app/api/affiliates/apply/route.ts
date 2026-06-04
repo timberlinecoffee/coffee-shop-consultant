@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const KLAVIYO_API_URL = "https://a.klaviyo.com/api/events/";
 const KLAVIYO_REVISION = "2024-10-15";
@@ -46,11 +48,33 @@ async function sendKlaviyoEvent(
 }
 
 export async function POST(request: NextRequest) {
+  // TIM-2246: 3 affiliate submissions per IP per hour is plenty.
+  const ipFromHeaders = clientIp(request.headers);
+  const rl = await enforceRateLimit({
+    bucket: "affiliates:apply",
+    id: ipFromHeaders,
+    limit: 3,
+    windowSec: 3600,
+  });
+  if (rl) return rl;
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
+  }
+
+  // TIM-2246: Turnstile (skipped pre-provision).
+  const captcha = await verifyTurnstileToken(
+    typeof body.cf_turnstile_token === "string" ? body.cf_turnstile_token : null,
+    ipFromHeaders,
+  );
+  if (!captcha.ok) {
+    return Response.json(
+      { error: "Bot protection check failed. Please refresh and try again." },
+      { status: 400 },
+    );
   }
 
   const {

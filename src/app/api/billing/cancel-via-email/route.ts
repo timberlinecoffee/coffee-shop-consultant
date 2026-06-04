@@ -14,11 +14,21 @@ import type { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyCancelToken } from "@/lib/email/trial-reminders";
+import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  // TIM-2246: throttle anyone trying to brute-force HMAC tokens.
+  const rl = await enforceRateLimit({
+    bucket: "billing:cancel-email",
+    id: clientIp(request.headers),
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rl) return rl;
+
   const token = new URL(request.url).searchParams.get("token") ?? "";
   if (!token) {
     return Response.redirect(
