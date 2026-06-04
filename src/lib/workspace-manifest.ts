@@ -16,7 +16,8 @@ export type NavIcon =
   | "file-text"
   | "truck"
   | "clipboard-list"
-  | "package";
+  | "package"
+  | "palette";
 
 // TIM-1142: phase-based categories for the workspace sidebar.
 // Order here is the order rendered in the sidebar.
@@ -77,6 +78,7 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   // rows + RLS keep working without a migration.
   { moduleNumber: 6,  workspaceKey: "opening_month_plan",   label: "Launch Plan",            href: "/workspace/launch-plan",          icon: "rocket",         category: "launch",  blurb: "Map the dated milestones to opening day and the tactical playbook for your first month." },
   { moduleNumber: 11, workspaceKey: "operations_playbook",  label: "Operations Playbook",    href: "/workspace/operations-playbook",  icon: "clipboard-list", category: "operate", blurb: "Document the daily routines that keep the shop running." },
+  { moduleNumber: 12, workspaceKey: "brand_settings",       label: "Brand Settings",          href: "/workspace/brand-settings",       icon: "palette",        category: "plan",    blurb: "Set your shop name, logo, and colors for every export." },
 ];
 
 export function buildNavItems(
