@@ -16,6 +16,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendSupportEmail } from "@/lib/email/send-support";
 import { effectivePlanForGating } from "@/lib/access";
+import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,6 +41,13 @@ function clean(value: unknown, max: number): string {
 }
 
 export async function POST(request: NextRequest) {
+  // TIM-2246: IP-based rate limit before any work. 5 per minute / 30 per hour.
+  const ip = clientIp(request.headers);
+  const minLimit = await enforceRateLimit({ bucket: "support:1m", id: ip, limit: 5, windowSec: 60 });
+  if (minLimit) return minLimit;
+  const hourLimit = await enforceRateLimit({ bucket: "support:1h", id: ip, limit: 30, windowSec: 3600 });
+  if (hourLimit) return hourLimit;
+
   let payload: Record<string, unknown> = {};
   try {
     payload = (await request.json()) as Record<string, unknown>;
@@ -50,6 +59,16 @@ export async function POST(request: NextRequest) {
   // the bot, no row created, no email sent.
   if (typeof payload.hp === "string" && payload.hp.trim().length > 0) {
     return json({ ok: true, dropped: true });
+  }
+
+  // TIM-2246: Turnstile attestation. Skipped when TURNSTILE_SECRET_KEY is
+  // unset (dev/preview), enforced once Trent provisions Cloudflare.
+  const captcha = await verifyTurnstileToken(
+    typeof payload.cf_turnstile_token === "string" ? payload.cf_turnstile_token : null,
+    ip,
+  );
+  if (!captcha.ok) {
+    return json({ error: "captcha_failed", details: captcha.errors }, { status: 400 });
   }
 
   const name = clean(payload.name, LIMITS.name);

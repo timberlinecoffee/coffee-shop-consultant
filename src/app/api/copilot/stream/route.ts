@@ -35,6 +35,7 @@ import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { loadPlanContext } from "@/lib/plan-context"
 import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
+import { rateLimit } from "@/lib/rate-limit"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -520,6 +521,24 @@ export async function POST(request: NextRequest) {
       status: 401,
       headers: { "Content-Type": "text/event-stream" },
     })
+  }
+
+  // TIM-2246: per-user cap on AI streaming requests. 30/min + 200/hour is more
+  // generous than any human interaction pattern and tight enough to stop a
+  // runaway client loop from burning paid credits.
+  const minRl = await rateLimit({ bucket: "copilot:stream:1m", id: user.id, limit: 30, windowSec: 60 })
+  if (!minRl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: minRl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(minRl.retryAfterSec) } },
+    )
+  }
+  const hourRl = await rateLimit({ bucket: "copilot:stream:1h", id: user.id, limit: 200, windowSec: 3600 })
+  if (!hourRl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: hourRl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(hourRl.retryAfterSec) } },
+    )
   }
 
   // ── Parse body ──────────────────────────────────────────────────────────────

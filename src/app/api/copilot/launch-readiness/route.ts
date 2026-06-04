@@ -18,6 +18,7 @@ import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { rateLimit } from "@/lib/rate-limit"
 import type { NextRequest } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -137,6 +138,16 @@ export async function POST(request: NextRequest) {
       status: 401,
       headers: { "Content-Type": "text/event-stream" },
     })
+  }
+
+  // TIM-2246: paid-API spend cap. Launch-readiness is full-plan synthesis,
+  // so a tight per-user cap protects us from a runaway client.
+  const rl = await rateLimit({ bucket: "copilot:launch-readiness", id: user.id, limit: 10, windowSec: 60 })
+  if (!rl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: rl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(rl.retryAfterSec) } },
+    )
   }
 
   let planId: string

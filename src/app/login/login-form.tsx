@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
 
 export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
   const [email, setEmail] = useState("");
@@ -12,6 +13,11 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [consent, setConsent] = useState(false);
+  // TIM-2246: Turnstile attestation token, passed to Supabase Auth via
+  // options.captchaToken. Supabase verifies it against the project-level
+  // CAPTCHA secret (Turnstile, configured in the Supabase dashboard).
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const onTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
   const router = useRouter();
 
   function getSignupSource(): string {
@@ -32,6 +38,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?signup_source=${encodeURIComponent(signupSource)}`,
+        // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
+        // OAuth honors the project-level CAPTCHA setting on the initiate call.
+        ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
       },
     });
     if (error) setError(error.message);
@@ -56,6 +65,10 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: { signup_source: signupSource },
+          // TIM-2246: Turnstile token forwarded to Supabase Auth when present.
+          // Supabase's project-level CAPTCHA setting handles enforcement;
+          // pre-provision (token=null) Supabase ignores the field.
+          ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
         },
       });
       if (error) {
@@ -65,7 +78,13 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         router.refresh();
       }
     } else {
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        // TIM-2246: also pass CAPTCHA on sign-in to throttle credential-stuffing
+        // attempts. Supabase Auth verifies when project-level CAPTCHA is on.
+        ...(turnstileToken ? { options: { captchaToken: turnstileToken } } : {}),
+      });
       if (error) {
         setError(error.message);
       } else {
@@ -178,6 +197,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         {error && (
           <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
         )}
+
+        <TurnstileWidget onVerify={onTurnstile} />
 
         <button
           type="submit"
