@@ -47,13 +47,13 @@ const PEXELS = {
 };
 
 export const metadata: Metadata = {
-  title: "Groundwork.AI — Almost Here. Join the Waitlist.",
+  title: "Groundwork.AI: The Coffee Shop Planning Platform With AI Built In",
   description:
-    "Groundwork.AI is almost here. Join the waitlist and lock in your exclusive launch price, permanently below public plans.",
+    "Plan your concept, menu, financials, hiring, and launch in one coffee planning workspace. Scout reads every module you build and grounds its feedback in real coffee-shop benchmarks. Join the waitlist to lock in your exclusive launch price.",
   openGraph: {
-    title: "Groundwork.AI — Almost Here. Join the Waitlist.",
+    title: "Groundwork.AI: The Coffee Shop Planning Platform With AI Built In",
     description:
-      "Join the waitlist and lock in your exclusive launch price, permanently below public plans.",
+      "Plan your coffee shop concept, menu, financials, hiring, and launch in one workspace. Scout reads everything you build and gives feedback grounded in real coffee-shop benchmarks. Join the waitlist to lock in your exclusive launch price.",
     siteName: "Groundwork",
   },
   robots: { index: false, follow: false },
@@ -72,20 +72,20 @@ const VALUE_PROPS = [
   },
   {
     accent: "sage" as const,
-    title: "Built for Real Owners",
-    body: "Everything you see below is shipped today — no roadmap claims, no landing-page fiction.",
+    title: "Built for Coffee Operators",
+    body: "Every coffee planning tool below is shipped today, designed for the way coffee shop owners actually decide.",
   },
 ];
 
 const EIGHT_MODULES = [
-  { label: "Concept" },
-  { label: "Location & Lease" },
-  { label: "Menu Pricing" },
-  { label: "Build-Out & Equipment" },
-  { label: "Hiring" },
-  { label: "Financials" },
-  { label: "Operations Playbook" },
-  { label: "Launch Plan" },
+  { label: "Coffee Concept" },
+  { label: "Cafe Location & Lease" },
+  { label: "Coffee Menu Pricing" },
+  { label: "Cafe Build-Out & Equipment" },
+  { label: "Barista Hiring" },
+  { label: "Coffee Shop Financials" },
+  { label: "Cafe Operations Playbook" },
+  { label: "Coffee Shop Launch Plan" },
 ];
 
 const FOUNDER_QUOTE = {
@@ -156,7 +156,7 @@ export default function ComingSoonPage() {
                   color: "var(--sage)",
                 }}
               >
-                Groundwork.AI &mdash; Waitlist Open
+                Coming Soon
               </p>
             </FadeUp>
             <FadeUp delay={0.08}>
@@ -170,36 +170,50 @@ export default function ComingSoonPage() {
                   textWrap: "balance",
                 }}
               >
-                Groundwork.AI is{" "}
-                <span style={{ color: "var(--sage)" }}>almost here.</span>
+                The Coffee Shop Planning Platform{" "}
+                <span style={{ color: "var(--sage)" }}>With AI Built In</span>
               </h1>
             </FadeUp>
             <FadeUp delay={0.18}>
               <p
-                className="mb-8 text-white"
+                className="mb-6 text-white"
                 style={{
                   fontSize: "1.1875rem",
                   lineHeight: 1.6,
                   opacity: 0.86,
                   fontWeight: 400,
-                  maxWidth: "480px",
+                  maxWidth: "520px",
                 }}
               >
-                Join the waitlist and lock in your exclusive launch price,
-                permanently below public plans.
+                Plan your concept, menu, financials, hiring, and launch in one
+                workspace. Scout reads everything you build and grounds its
+                feedback in real coffee-shop benchmarks.
               </p>
             </FadeUp>
-            <FadeUp delay={0.28}>
+            <FadeUp delay={0.24}>
+              <p
+                className="mb-4 font-medium"
+                style={{
+                  fontSize: "14px",
+                  lineHeight: 1.5,
+                  color: "var(--sage)",
+                  maxWidth: "520px",
+                }}
+              >
+                Join the waitlist to lock in your exclusive launch price, permanently below public plans.
+              </p>
+            </FadeUp>
+            <FadeUp delay={0.32}>
               <WaitlistForm />
             </FadeUp>
 
             {/* Trust strip */}
-            <FadeUp delay={0.4}>
+            <FadeUp delay={0.42}>
               <ul className="mt-8 space-y-2.5" aria-label="What waitlist members get">
                 {[
                   "Locked-in launch price, permanently below public plans",
-                  "Onboard the day Groundwork.AI opens — no public queue",
-                  "Every feature below is live in the platform today",
+                  "Onboard the day Groundwork.AI opens, ahead of the public queue",
+                  "Every coffee planning tool below is live in the platform today",
                 ].map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5">
                     <span
@@ -258,7 +272,7 @@ export default function ComingSoonPage() {
                   </svg>
                 </div>
                 <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>
-                  Waitlist members lock in launch pricing
+                  Coffee planning, AI built in
                 </p>
               </div>
             </div>
@@ -335,21 +349,21 @@ export default function ComingSoonPage() {
                 color: "var(--teal)",
               }}
             >
-              Real Tools, Shipped Today
+              Real Coffee Planning Tools, Shipped Today
             </h2>
             <p
               className="mx-auto mt-4 text-neutral-600"
-              style={{ fontSize: "17px", lineHeight: 1.55, maxWidth: "560px" }}
+              style={{ fontSize: "17px", lineHeight: 1.55, maxWidth: "600px" }}
             >
-              Every module below is live in the platform right now. Waitlist members get in
-              first, at the lowest price.
+              Every module below is live in the coffee planning platform today, and Scout
+              reads every one of them. Waitlist members get in first, at the lowest price.
             </p>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StaggerItem className="h-full">
               <ModuleCard
-                title="Financials"
-                description="Startup costs and 12-month projections, benchmarked live."
+                title="Coffee Shop Financials"
+                description="Coffee shop startup costs and 12-month revenue projections, benchmarked against real shops in your market size."
                 mockup={<FinancialsMockup />}
                 thumbnailSrc={PEXELS.espressoMachine}
                 thumbnailAlt="Coffee shop owner reviewing financial spreadsheets"
@@ -357,8 +371,8 @@ export default function ComingSoonPage() {
             </StaggerItem>
             <StaggerItem className="h-full">
               <ModuleCard
-                title="Menu Pricing"
-                description="Cost-per-cup analysis with margin targets and industry benchmarks."
+                title="Coffee Menu Pricing"
+                description="Cost-per-cup analysis for your coffee bar with margin targets and real coffee-shop benchmarks Scout uses to flag drift."
                 mockup={<MenuMockup />}
                 thumbnailSrc={PEXELS.menuBoard}
                 thumbnailAlt="Barista preparing espresso drinks at a coffee bar"
@@ -366,8 +380,8 @@ export default function ComingSoonPage() {
             </StaggerItem>
             <StaggerItem className="h-full">
               <ModuleCard
-                title="Launch Plan"
-                description="Milestone-based plan tied to your open date, with next actions always visible."
+                title="Coffee Shop Launch Plan"
+                description="Milestone-based coffee shop launch plan tied to your open date, with the next action always visible."
                 mockup={<LaunchMockup />}
                 thumbnailSrc={PEXELS.teamLaunch}
                 thumbnailAlt="Coffee shop team reviewing their launch plan together"
@@ -386,7 +400,7 @@ export default function ComingSoonPage() {
                 className="font-semibold uppercase mb-4"
                 style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
               >
-                Scout, AI Planning Assistant
+                Scout, AI for Your Coffee Plan
               </p>
               <h2
                 className="font-bold mb-5"
@@ -397,18 +411,20 @@ export default function ComingSoonPage() {
                   color: "var(--teal)",
                 }}
               >
-                A Coffee-Specific AI, Not Generic Small-Business Advice
+                Scout Reads Your Coffee Shop Plan as You Build It
               </h2>
               <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
-                Ask about your lease terms, equipment list, menu costs, or opening
-                timeline. Scout reads your plan and answers in coffee terms — the
-                vocabulary an operator actually uses.
+                Concept, menu, financials, hiring, equipment, launch. Scout has access
+                to every module you fill in, so the answer to your lease, ticket size,
+                or staffing question is grounded in your actual plan and real
+                coffee-shop benchmarks, not generic small-business advice.
               </p>
               <div className="flex flex-wrap gap-3">
                 {[
-                  { label: "Coffee-Specific Guidance", color: "sage" as const },
-                  { label: "Tied to Your Plan", color: "teal" as const },
-                  { label: "Benchmarked, Not Vibes", color: "sage" as const },
+                  { label: "Reads Your Coffee Menu", color: "sage" as const },
+                  { label: "Reads Your Financials", color: "teal" as const },
+                  { label: "Reads Your Launch Plan", color: "sage" as const },
+                  { label: "Grounded in Coffee Benchmarks", color: "teal" as const },
                 ].map((tag) => (
                   <span
                     key={tag.label}
@@ -481,10 +497,10 @@ export default function ComingSoonPage() {
                   className="font-semibold uppercase mb-1"
                   style={{ fontSize: "10px", letterSpacing: "0.12em", color: "var(--sage)" }}
                 >
-                  Eight modules, one plan
+                  Eight Modules, One Coffee Plan
                 </p>
                 <p style={{ fontSize: "12px", color: "var(--teal)", fontWeight: 600 }}>
-                  Sequenced the way owners actually decide
+                  Sequenced the way coffee shop owners actually decide
                 </p>
               </div>
             </ScaleIn>
@@ -495,7 +511,7 @@ export default function ComingSoonPage() {
                   className="font-semibold uppercase mb-3"
                   style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
                 >
-                  Eight-Module Planning Suite
+                  The Coffee Shop Planning Suite
                 </p>
                 <h2
                   className="font-bold mb-4"
@@ -509,9 +525,10 @@ export default function ComingSoonPage() {
                   Every Module a Lender Expects
                 </h2>
                 <p className="text-neutral-600 mb-7 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
-                  Concept, location, menu, equipment, hiring, financials, operations,
-                  and launch — wired to the same source of truth so updates in one
-                  module flow through the rest.
+                  Coffee concept, cafe location, menu, build-out, barista hiring,
+                  financials, operations, and launch all live in one workspace, wired
+                  to the same source of truth so updates in one module flow through
+                  the rest. Scout reads the whole plan.
                 </p>
               </FadeUp>
               <StaggerContainer className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -666,7 +683,7 @@ export default function ComingSoonPage() {
                 letterSpacing: "-0.01em",
               }}
             >
-              Be First Through the Door
+              Be First Through the Coffee Shop Door
             </h2>
             <p
               className="mx-auto mb-10"
@@ -677,8 +694,8 @@ export default function ComingSoonPage() {
                 maxWidth: "540px",
               }}
             >
-              Drop your email. We&rsquo;ll send one note when Groundwork.AI opens, with
-              your locked-in price.
+              Drop your email. We&rsquo;ll send one note when the coffee planning
+              platform opens, with your locked-in launch price.
             </p>
           </FadeUp>
           <FadeUp delay={0.12}>
