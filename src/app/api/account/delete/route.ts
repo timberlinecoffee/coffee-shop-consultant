@@ -101,6 +101,22 @@ export async function POST(req: Request) {
       email: user.email,
     });
 
+    // F3: If auth.users anonymisation didn't land, the account is not truly
+    // deleted — log and return 500 so the caller knows to retry/contact support.
+    if (!summary.authUserAnonymised) {
+      await svc.from("account_deletion_audit_log").insert({
+        action: "delete_failed",
+        user_hash: hashWithSalt(user.id),
+        email_hash: hashWithSalt(user.email),
+        stripe_subscription_id: stripeSubscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        request_ip_hash: ipHash,
+        error_message: "auth.users anonymisation did not complete",
+        data_summary: { ...summary },
+      });
+      return sanitised(500, "Deletion incomplete. Contact support@timberline.coffee.");
+    }
+
     // Best-effort confirmation email — must dispatch BEFORE the auth row is
     // banned/anonymised in case Resend cares about the address ownership.
     // The email body itself is generic so even if delivery is delayed, no PII

@@ -10,6 +10,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   hashWithSalt,
   timingSafeEqualStr,
@@ -111,4 +112,32 @@ test("PLAN_SCOPED_TABLES does NOT include payment-retention tables", () => {
 test("PLAN_SCOPED_BUCKETS does NOT include the invoices bucket", () => {
   // Invoice PDFs are payment records — retained for 7 years per spec §8.
   assert.ok(!PLAN_SCOPED_BUCKETS.includes("invoices"));
+});
+
+test("PLAN_SCOPED_BUCKETS does NOT need account-exports (handled separately)", () => {
+  // account-exports is purged by an explicit branch inside executeDeletionSequence
+  // because objects are <userId>/-keyed, not <plan_id>/-keyed. The test below
+  // pins that the source file references the bucket name in cleanup.
+  const src = readFileSync("./src/lib/account-deletion.ts", "utf8");
+  assert.ok(
+    /from\("account-exports"\)\s*\.list/.test(src),
+    "executeDeletionSequence MUST list account-exports for cleanup",
+  );
+  assert.ok(
+    /account_export_requests/.test(src) && /redacted/.test(src),
+    "executeDeletionSequence MUST redact account_export_requests rows",
+  );
+});
+
+test("hashWithSalt throws when NODE_ENV=production and salt is missing (F2)", () => {
+  const prev = process.env.NODE_ENV;
+  const prevSalt = process.env.ACCOUNT_DELETION_AUDIT_SALT;
+  try {
+    process.env.NODE_ENV = "production";
+    delete process.env.ACCOUNT_DELETION_AUDIT_SALT;
+    assert.throws(() => hashWithSalt("any"), /ACCOUNT_DELETION_AUDIT_SALT/);
+  } finally {
+    process.env.NODE_ENV = prev;
+    if (prevSalt !== undefined) process.env.ACCOUNT_DELETION_AUDIT_SALT = prevSalt;
+  }
 });

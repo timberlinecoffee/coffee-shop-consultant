@@ -25,7 +25,7 @@ import crypto from "node:crypto";
 //   - support_messages         (3-year retention, PII redacted in-place)
 //   - admin_audit_log          (admin actions log, not user data)
 //   - account_deletion_audit_log (this audit log, no PII)
-//   - account_export_requests  (the user's own request log, expired by worker)
+//   - account_export_requests  (redacted in-place during deletion — see F1 block)
 //   - stripe_processed_events  (webhook dedup, not user data)
 //   - auth_users_audit         (auth admin audit, not user-scoped)
 //   - public reference tables  (standard_*, pricing_benchmarks, etc.)
@@ -97,8 +97,13 @@ export const PLAN_SCOPED_BUCKETS = [
 export function hashWithSalt(input: string): string {
   const salt = process.env.ACCOUNT_DELETION_AUDIT_SALT;
   if (!salt || salt.length < 16) {
-    // Use a fallback dev-only salt so unit tests + local dev work; production
-    // verify routes assert the env var is present at startup.
+    // F2 fix: fail closed in production. Dev/test/preview keep the deterministic
+    // fallback so unit tests + local dev don't need a key configured.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "ACCOUNT_DELETION_AUDIT_SALT must be set to >=16 chars in production",
+      );
+    }
     return crypto
       .createHash("sha256")
       .update(`${input}:dev-salt-not-for-prod`)
@@ -126,6 +131,7 @@ export type DeletionSummary = {
   klaviyoSuppressed: boolean;
   supportMessagesRedacted: number;
   authSessionsRevoked: boolean;
+  authUserAnonymised: boolean; // F3: did step 9 succeed?
 };
 
 // Runs the full deletion sequence for a verified user. The caller is
@@ -146,6 +152,7 @@ export async function executeDeletionSequence(args: {
     klaviyoSuppressed: false,
     supportMessagesRedacted: 0,
     authSessionsRevoked: false,
+    authUserAnonymised: false,
   };
 
   // 1. Invalidate active sessions. We sign-out via the admin client which
@@ -323,6 +330,40 @@ export async function executeDeletionSequence(args: {
     }
   }
 
+  // F1: wipe the account-exports bucket + redact account_export_requests rows so
+  // a prior export bundle does not survive deletion. Per-user prefix is <userId>/.
+  try {
+    const { data: exportList } = await svc.storage
+      .from("account-exports")
+      .list(args.userId, { limit: 1000 });
+    if (exportList && exportList.length > 0) {
+      const paths = exportList.map((f) => `${args.userId}/${f.name}`);
+      const { error: rmErr } = await svc.storage.from("account-exports").remove(paths);
+      if (!rmErr) {
+        summary.storageObjectsDeleted += paths.length;
+        if (!summary.storageBuckets.includes("account-exports"))
+          summary.storageBuckets.push("account-exports");
+      }
+    }
+  } catch (err) {
+    console.error("[account-deletion] account-exports cleanup failed", err);
+  }
+
+  try {
+    await svc
+      .from("account_export_requests")
+      .update({
+        status: "expired",
+        delivery_email: "[redacted]",
+        storage_path: null,
+        size_bytes: null,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("user_id", args.userId);
+  } catch (err) {
+    console.error("[account-deletion] account_export_requests redact failed", err);
+  }
+
   // 7. Redact PII on retained support_messages (3-year retention per spec §9).
   try {
     const { count } = await svc
@@ -386,6 +427,7 @@ export async function executeDeletionSequence(args: {
         app_metadata: { deleted_at: new Date().toISOString() },
         ban_duration: "876000h", // ~100 years, effectively permanent ban
       });
+      summary.authUserAnonymised = true; // F3: pin success
     }
   } catch (err) {
     console.error("[account-deletion] anonymise auth.users failed", err);
