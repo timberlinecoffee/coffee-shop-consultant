@@ -355,5 +355,8 @@ export function InvoicePdf({ content }: { content: InvoicePdfContent }) {
 export async function renderInvoicePdf(content: InvoicePdfContent): Promise<Buffer> {
   const { renderToBuffer } = await import("@react-pdf/renderer");
   const element = React.createElement(InvoicePdf, { content });
-  return renderToBuffer(element) as Promise<Buffer>;
+  // @react-pdf/renderer types require DocumentProps directly; the renderer
+  // traverses the tree to find the Document wrapper — cast is safe at runtime.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return renderToBuffer(element as any) as Promise<Buffer>;
 }
