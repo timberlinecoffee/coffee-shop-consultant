@@ -6,6 +6,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS } from "@/lib/stripe";
+import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -141,9 +142,17 @@ export async function POST() {
   const shouldAllocate = (sub.status === "active" || isTrial) && tier !== "free" && newPeriod;
   const creditAmount = isTrial ? TRIAL_CREDITS : (MONTHLY_CREDITS[tier] ?? 0);
 
+  const mappedUserStatus = mapUserStatus(sub.status);
+  // TIM-2287: guard against future drift in mapUserStatus that could leak a
+  // Stripe-native value into the users CHECK enum.
+  assertUserSubscriptionStatus(mappedUserStatus, {
+    caller: "stripe.sync-subscription.POST",
+    userId: user.id,
+    stripeSubscriptionId: sub.id,
+  });
   const updates: Record<string, unknown> = {
     // TIM-1947: use tier-aware status map — "trialing" is not a valid users enum value.
-    subscription_status: mapUserStatus(sub.status),
+    subscription_status: mappedUserStatus,
     // TIM-1947: always persist the actual tier, never force "free" for trialing.
     subscription_tier: tier,
   };

@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { recordAdminAction } from "@/lib/admin-audit";
 import { stripe, PLANS, type PlanKey } from "@/lib/stripe";
+import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import type { ChangePlanRequest } from "@/types/admin";
 import type Stripe from "stripe";
 
@@ -113,6 +114,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
   };
   await svc.from("subscriptions").upsert(updates, { onConflict: "user_id" });
+  assertUserSubscriptionStatus("active", {
+    caller: "admin.members.change-plan",
+    userId: id,
+    stripeSubscriptionId: stripeSubId,
+  });
   await svc
     .from("users")
     .update({ subscription_status: "active", subscription_tier: plan.tier })

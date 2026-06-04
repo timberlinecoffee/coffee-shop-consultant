@@ -1,6 +1,7 @@
 import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
 import { creditsForPackKey } from "@/lib/credits/packs";
 import { createServiceClient } from "@/lib/supabase/service";
+import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { computeTax, taxAmountCents, taxLabel } from "@/lib/billing/tax";
@@ -116,6 +117,13 @@ export async function POST(request: NextRequest) {
         // the user chose to convert to (Starter or Pro). Pro-feature unlock for
         // the trial window is handled in src/lib/access.ts (effectiveTierForRead
         // returns 'pro' while free_trial + trial_ends_at is future).
+        assertUserSubscriptionStatus("free_trial", {
+          caller: "stripe.webhook.checkout.session.completed:trialing",
+          userId,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscriptionId,
+        });
         await supabase.from("users").update({
           subscription_status: "free_trial",
           subscription_tier: tier,
@@ -133,6 +141,13 @@ export async function POST(request: NextRequest) {
       } else {
         // Non-trial path (e.g. resubscribe after a previous cancel): grant the
         // chosen plan's monthly allotment immediately.
+        assertUserSubscriptionStatus("active", {
+          caller: "stripe.webhook.checkout.session.completed:non_trial",
+          userId,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscriptionId,
+        });
         await supabase.from("users").update({
           subscription_status: "active",
           subscription_tier: tier,
@@ -181,6 +196,13 @@ export async function POST(request: NextRequest) {
           // tier is intentionally NOT updated
         }).eq("stripe_subscription_id", subscription.id);
 
+        assertUserSubscriptionStatus("paused", {
+          caller: "stripe.webhook.customer.subscription.updated:pause",
+          userId: sub.user_id,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscription.id,
+        });
         await supabase.from("users").update({
           subscription_status: "paused",
           // subscription_tier intentionally NOT changed — access.ts reads paused_from_tier
@@ -201,6 +223,13 @@ export async function POST(request: NextRequest) {
           current_period_end: newPeriodEnd,
         }).eq("stripe_subscription_id", subscription.id);
 
+        assertUserSubscriptionStatus("active", {
+          caller: "stripe.webhook.customer.subscription.updated:resume",
+          userId: sub.user_id,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscription.id,
+        });
         await supabase.from("users").update({
           subscription_status: "active",
           subscription_tier: tier,
@@ -230,8 +259,21 @@ export async function POST(request: NextRequest) {
         current_period_end: newPeriodEnd,
       }).eq("stripe_subscription_id", subscription.id);
 
+      const userStatus = status === "trialing" ? "free_trial" : status;
+      // TIM-2287: the only dynamic users.subscription_status write in this file.
+      // Guard catches the case where a future change to the status-mapping
+      // ternary leaks a Stripe-native value ("trialing", "incomplete", etc.)
+      // into the column, surfacing the offender before the CHECK constraint
+      // fires.
+      assertUserSubscriptionStatus(userStatus, {
+        caller: "stripe.webhook.customer.subscription.updated:default",
+        userId: sub.user_id,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        stripeSubscriptionId: subscription.id,
+      });
       const usersUpdate: Record<string, unknown> = {
-        subscription_status: status === "trialing" ? "free_trial" : status,
+        subscription_status: userStatus,
         subscription_tier: status === "active" || status === "trialing" ? tier : "free",
       };
 
@@ -289,6 +331,13 @@ export async function POST(request: NextRequest) {
       }).eq("stripe_subscription_id", subscription.id);
 
       // Downgrade immediately on hard cancellation; clear trial + dunning state.
+      assertUserSubscriptionStatus("cancelled", {
+        caller: "stripe.webhook.customer.subscription.deleted",
+        userId: sub.user_id,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        stripeSubscriptionId: subscription.id,
+      });
       await supabase.from("users").update({
         subscription_status: "cancelled",
         subscription_tier: "free",
@@ -334,6 +383,13 @@ export async function POST(request: NextRequest) {
         .eq("id", sub.user_id)
         .single();
 
+      assertUserSubscriptionStatus("past_due", {
+        caller: "stripe.webhook.invoice.payment_failed",
+        userId: sub.user_id,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        stripeSubscriptionId: stripeSubscriptionId,
+      });
       const usersUpdate: Record<string, unknown> = { subscription_status: "past_due" };
       if (!existing?.past_due_since) {
         usersUpdate.past_due_since = new Date().toISOString();
