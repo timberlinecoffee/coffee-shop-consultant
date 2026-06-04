@@ -231,7 +231,7 @@ export function BrandSettingsClient({
           <div className="px-5 pt-5 pb-4">
             <h2 className="text-sm font-semibold text-[var(--foreground)] mb-1">Shop Logo</h2>
             <p className="text-xs text-[var(--muted-foreground)] mb-4">
-              PNG, JPEG, or SVG — max 2 MB. Shows on PDF cover pages.
+              PNG, JPEG, or SVG, max 2 MB. Shows on PDF cover pages.
             </p>
 
             {logoState === "uploading" ? (
@@ -258,7 +258,7 @@ export function BrandSettingsClient({
                     size="sm"
                     onClick={handleLogoRemove}
                     disabled={logoState === "removing"}
-                    className="text-[var(--error)] hover:text-[var(--error)] hover:bg-red-50"
+                    className="text-[var(--error)] hover:text-[var(--error)] hover:bg-[var(--destructive)]/10"
                   >
                     {logoState === "removing" ? "Removing..." : "Remove"}
                   </Button>
@@ -271,7 +271,7 @@ export function BrandSettingsClient({
                 className="w-full h-24 rounded-xl border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 transition-colors hover:border-[var(--teal)] hover:bg-[var(--teal)]/[0.03]"
               >
                 <span className="text-sm text-[var(--muted-foreground)]">Upload logo</span>
-                <span className="text-xs text-[var(--neutral-cool-400)]">PNG, JPEG, SVG — max 2 MB</span>
+                <span className="text-xs text-[var(--neutral-cool-400)]">PNG, JPEG, or SVG (max 2 MB)</span>
               </button>
             )}
 
