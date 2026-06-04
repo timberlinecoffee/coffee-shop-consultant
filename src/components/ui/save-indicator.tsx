@@ -52,11 +52,11 @@ export function SaveIndicator({
         onClick={onRetry}
         className={`text-xs text-[var(--error)] hover:underline ${className}`}
       >
-        Save failed — retry
+        {error}
       </button>
     ) : (
       <span className={`text-xs text-[var(--error)] ${className}`}>
-        Save failed — retry
+        {error}
       </span>
     )
   }
