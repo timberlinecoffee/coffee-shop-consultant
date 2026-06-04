@@ -103,7 +103,7 @@ async function fetchSse(
           full += chunk;
           onChunk(chunk);
         } else if (event === "done") {
-          onDone(full || ((parsed.text as string) ?? ""));
+          onDone(((parsed.text as string) ?? "") || full);
         } else if (event === "error") {
           onError((parsed.message as string) ?? "Error");
         }

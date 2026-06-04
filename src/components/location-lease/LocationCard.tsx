@@ -668,7 +668,7 @@ function AiFeedbackPanel({
             } else if (payload.code === 'error') {
               setError((payload.message as string) ?? 'AI feedback error.')
             } else if ('threadId' in payload) {
-              setFinalText(accumulated)
+              setFinalText((payload.text as string) || accumulated)
               setStreamText('')
             }
           } catch {

@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { loadPlanContext } from "@/lib/plan-context";
 import { buildPlanSnapshotForExecutiveSummary, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import {
@@ -367,7 +368,7 @@ Write a complete, usable draft of this section now. Generate from whatever conte
             .eq("id", user.id);
         }
 
-        controller.enqueue(enc.encode(sse("done", { text: fullText })));
+        controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText) })));
         controller.close();
       } catch (err) {
         cleanup();
