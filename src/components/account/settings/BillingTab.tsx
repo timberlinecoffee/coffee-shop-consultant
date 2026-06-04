@@ -1,8 +1,7 @@
 "use client";
 
-// TIM-1911: Billing tab for the Settings shell.
-// Plan card + Payment method card + Invoices card (mocked).
-// Real invoice wiring lands in TIM-1910b.
+// TIM-1912: Billing tab — wired to real /api/account/invoices + /api/account/invoices/[id]/download.
+// Plan card + Payment method card + Invoices card.
 //
 // Style-guide refs: Cards · Plan/Payment/Invoices; Tables · workspace-table tokens.
 // Visual reference: src/app/account/billing/page.tsx (paused card),
@@ -18,7 +17,6 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { TABLE_CELL_TEXT, TABLE_HEADER_TEXT } from "@/lib/workspace-table";
-import { MOCK_INVOICES } from "./mock-invoices";
 
 type BillingStatus = {
   status: string;
@@ -28,15 +26,44 @@ type BillingStatus = {
   resumePrice: string | null;
 };
 
+type Invoice = {
+  id: string;
+  invoice_number: string;
+  status: string;
+  amount_total_cents: number;
+  currency: string;
+  description: string;
+  invoice_date: string;
+  pdf_storage_path: string | null;
+};
+
 function capitalize(s: string | null | undefined): string {
   if (!s) return "";
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function fmtAmount(cents: number, currency: string): string {
+  const symbol = currency.toUpperCase() === "CAD" ? "CAD $" : "$";
+  return `${symbol}${(cents / 100).toFixed(2)}`;
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  paid: "bg-[var(--success-bg-2)] text-[var(--success-medium)]",
+  refunded: "bg-[var(--warning-bg)] text-[var(--warning-dark,#b45309)]",
+  void: "bg-[var(--muted)] text-[var(--muted-foreground)]",
+  uncollectible: "bg-red-50 text-red-600",
+};
+
 export function BillingTab() {
-  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(
-    null
-  );
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [cancelPauseLoading, setCancelPauseLoading] = useState(false);
@@ -45,19 +72,21 @@ export function BillingTab() {
   useEffect(() => {
     fetch("/api/billing/status", { credentials: "same-origin" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) setBillingStatus(data as BillingStatus);
-      })
+      .then((data) => { if (data) setBillingStatus(data as BillingStatus); })
       .catch(() => {});
+
+    fetch("/api/account/invoices", { credentials: "same-origin" })
+      .then((res) => (res.ok ? res.json() : { invoices: [] }))
+      .then((data) => setInvoices(data.invoices ?? []))
+      .catch(() => setInvoices([]))
+      .finally(() => setInvoicesLoading(false));
   }, []);
 
   async function openPortal() {
     setPortalLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/stripe/create-portal-session", {
-        method: "POST",
-      });
+      const res = await fetch("/api/stripe/create-portal-session", { method: "POST" });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
@@ -195,8 +224,7 @@ export function BillingTab() {
               {billingStatus?.resumePrice && (
                 <p className="text-xs text-[var(--muted-foreground)]">
                   Resuming restores your plan right away. Your{" "}
-                  {billingStatus.resumePrice}/mo billing resumes on your next
-                  billing date.
+                  {billingStatus.resumePrice}/mo billing resumes on your next billing date.
                 </p>
               )}
             </div>
@@ -217,9 +245,7 @@ export function BillingTab() {
             </div>
           ) : (
             <div className="h-12 flex items-center pt-1">
-              <span className="text-sm text-[var(--muted-foreground)]">
-                Loading…
-              </span>
+              <span className="text-sm text-[var(--muted-foreground)]">Loading…</span>
             </div>
           )}
           {actionError && (
@@ -249,66 +275,87 @@ export function BillingTab() {
         </CardContent>
       </Card>
 
-      {/* Invoices card — mocked; real rows via /api/account/invoices in TIM-1910b */}
+      {/* Invoices card — real data from /api/account/invoices (TIM-1912) */}
       <Card>
         <CardHeader>
           <CardTitle>Invoices</CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
-          <table className={`w-full ${TABLE_CELL_TEXT}`}>
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {(
-                  [
-                    { label: "Date", align: "left" },
-                    { label: "Description", align: "left" },
-                    { label: "Amount", align: "right" },
-                    { label: "Status", align: "left" },
-                    { label: "Download", align: "right" },
-                  ] as const
-                ).map(({ label, align }) => (
-                  <th
-                    key={label}
-                    className={`${TABLE_HEADER_TEXT} px-4 py-2 text-[var(--muted-foreground)] ${align === "right" ? "text-right" : "text-left"}`}
-                  >
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_INVOICES.map((inv, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-[var(--border)] last:border-0"
-                >
-                  <td className="px-4 py-3 text-[var(--dark-grey)] whitespace-nowrap">
-                    {inv.date}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--foreground)]">
-                    {inv.description}
-                  </td>
-                  <td className="px-4 py-3 text-right text-[var(--foreground)] whitespace-nowrap">
-                    {inv.amount}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--success-bg-2)] text-[var(--success-medium)]">
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <a
-                      href={inv.downloadUrl}
-                      className="text-[var(--teal)] hover:underline"
-                      aria-label={`Download invoice for ${inv.date}`}
+          {invoicesLoading ? (
+            <div className="px-4 py-8 text-center">
+              <span className="text-sm text-[var(--muted-foreground)]">Loading invoices…</span>
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-[var(--muted-foreground)]">
+                No invoices yet — your first charge will appear here on day 7 of the trial.
+              </p>
+            </div>
+          ) : (
+            <table className={`w-full ${TABLE_CELL_TEXT}`}>
+              <thead>
+                <tr className="border-b border-[var(--border)]">
+                  {(
+                    [
+                      { label: "Date", align: "left" },
+                      { label: "Description", align: "left" },
+                      { label: "Amount", align: "right" },
+                      { label: "Status", align: "left" },
+                      { label: "Download", align: "right" },
+                    ] as const
+                  ).map(({ label, align }) => (
+                    <th
+                      key={label}
+                      className={`${TABLE_HEADER_TEXT} px-4 py-2 text-[var(--muted-foreground)] ${align === "right" ? "text-right" : "text-left"}`}
                     >
-                      PDF
-                    </a>
-                  </td>
+                      {label}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => {
+                  const statusStyle = STATUS_STYLES[inv.status] ?? "bg-[var(--muted)] text-[var(--muted-foreground)]";
+                  return (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-[var(--border)] last:border-0"
+                    >
+                      <td className="px-4 py-3 text-[var(--dark-grey)] whitespace-nowrap">
+                        {fmtDate(inv.invoice_date)}
+                      </td>
+                      <td className="px-4 py-3 text-[var(--foreground)]">
+                        {inv.description}
+                      </td>
+                      <td className="px-4 py-3 text-right text-[var(--foreground)] whitespace-nowrap">
+                        {fmtAmount(inv.amount_total_cents, inv.currency)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyle}`}>
+                          {capitalize(inv.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {inv.pdf_storage_path ? (
+                          <a
+                            href={`/api/account/invoices/${inv.id}/download`}
+                            className="text-[var(--teal)] hover:underline"
+                            aria-label={`Download invoice ${inv.invoice_number}`}
+                          >
+                            PDF
+                          </a>
+                        ) : (
+                          <span className="text-xs text-[var(--muted-foreground)]" title="PDF is being generated">
+                            Generating…
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
     </div>
