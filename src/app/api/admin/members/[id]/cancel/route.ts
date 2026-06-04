@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { recordAdminAction } from "@/lib/admin-audit";
 import { stripe } from "@/lib/stripe";
+import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import type { CancelRequest } from "@/types/admin";
 
 export const runtime = "nodejs";
@@ -43,6 +44,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!existing?.stripe_subscription_id) {
     // No active Stripe sub; just mark the user as cancelled in DB.
+    assertUserSubscriptionStatus("cancelled", {
+      caller: "admin.members.cancel:no_stripe_sub",
+      userId: id,
+    });
     await svc
       .from("users")
       .update({ subscription_status: "cancelled", subscription_tier: "free" })
@@ -64,6 +69,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         prorate: false,
       });
       await svc.from("subscriptions").update({ status: "cancelled" }).eq("user_id", id);
+      assertUserSubscriptionStatus("cancelled", {
+        caller: "admin.members.cancel:immediate",
+        userId: id,
+        stripeSubscriptionId: existing.stripe_subscription_id,
+      });
       await svc
         .from("users")
         .update({ subscription_status: "cancelled", subscription_tier: "free" })
