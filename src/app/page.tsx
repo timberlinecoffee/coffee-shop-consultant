@@ -188,12 +188,16 @@ const PROOF_TILES = [
 ];
 
 // TIM-1902: collapsed to two plans with a 7-day card-required free trial.
+// TIM-1954 (TIM-1944 plan rev 2): annual prices moved to $399 / $999 (Save 15%
+// framing), Pro credits equalized to 100/mo, Pro feature mix swapped to
+// Coffee Shop World benchmarking + Office Hours + deeper insights + priority
+// support + multi-project.
 const PRICING: PricingPlan[] = [
   {
     name: "Starter",
     price: "$39",
     period: "/month",
-    note: "$25/mo billed annually ($299/year). 7-day free trial; cancel anytime.",
+    note: "$33/mo billed annually ($399/year, save 15%). 7-day free trial; cancel anytime.",
     features: [
       "All planning modules",
       "100 AI planning credits per month",
@@ -211,15 +215,14 @@ const PRICING: PricingPlan[] = [
     name: "Pro",
     price: "$99",
     period: "/month",
-    note: "$67/mo billed annually ($799/year). 7-day free trial; cancel anytime.",
+    note: "$83/mo billed annually ($999/year, save 15%). 7-day free trial; cancel anytime.",
     features: [
       "Everything in Starter",
-      "500 AI planning credits per month",
-      "Weekly async Q&A with Trent",
-      "Financial model stress-testing",
-      "Equipment sourcing assistance",
-      "30-min 1-on-1 call at plan completion",
+      "Coffee Shop World benchmarking vs. real shops",
+      "Weekly Live Office Hours Q&A + recordings",
+      "Deeper insights — deep market research, longer Scout chains",
       "Priority support",
+      "Unlimited locations and projects",
     ],
     cta: "Start 7-Day Free Trial",
     href: "/pricing",

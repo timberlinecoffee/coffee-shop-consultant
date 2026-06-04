@@ -24,10 +24,12 @@ test("every paid tier has a non-zero monthly credit cap", () => {
   assert.equal(MONTHLY_CREDITS.free, 0);
 });
 
-// TIM-1902: post-launch grants — Starter 100, Pro 500.
-test("monthly credit grants match the TIM-1902 plan", () => {
+// TIM-1954 (TIM-1944 plan rev 2 Decision 1): grants equalized — both Starter
+// and Pro get 100/mo. Pro's differentiation lives in features, not in a credit
+// ceiling. Trial grant (TRIAL_CREDITS=75) is unchanged.
+test("monthly credit grants match the TIM-1954 equalization", () => {
   assert.equal(MONTHLY_CREDITS.starter, 100);
-  assert.equal(MONTHLY_CREDITS.pro, 500);
+  assert.equal(MONTHLY_CREDITS.pro, 100);
 });
 
 test("tierFromPriceId returns free for unknown price IDs (safe fallback)", () => {

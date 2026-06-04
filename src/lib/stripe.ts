@@ -19,9 +19,12 @@ export const stripe = new Proxy({} as Stripe, {
 
 // Groundwork pricing: Starter / Pro x monthly / annual. Approved by board on
 // TIM-1898 §8 (confirmation 09434556, 2026-06-03). TIM-1902 collapsed the
-// three-tier ladder to two: the old Growth $99/$799 price IDs are repointed in
-// env to STRIPE_PRO_MONTHLY/ANNUAL_PRICE_ID so the platform Pro tier now lives
-// at $99/mo and $799/yr. The $199 Pro price is retired.
+// three-tier ladder to two. TIM-1954 (TIM-1944 plan rev 2 Decision 1) raised
+// the annual prices to $399 / $999 — monthly stays $39 / $99. The old $299 and
+// $799 annual prices are archived in Stripe; the env vars
+// STRIPE_STARTER_ANNUAL_PRICE_ID / STRIPE_PRO_ANNUAL_PRICE_ID are repointed to
+// the new $399 / $999 price IDs. Existing subscribers on archived prices keep
+// their original price for the lifetime of their current subscription.
 export const PLANS = {
   starter_monthly: {
     name: "Starter",
@@ -35,7 +38,7 @@ export const PLANS = {
     tier: "starter" as const,
     interval: "annual" as const,
     priceId: process.env.STRIPE_STARTER_ANNUAL_PRICE_ID ?? "",
-    amount: 29900,
+    amount: 39900,
   },
   pro_monthly: {
     name: "Pro",
@@ -49,7 +52,7 @@ export const PLANS = {
     tier: "pro" as const,
     interval: "annual" as const,
     priceId: process.env.STRIPE_PRO_ANNUAL_PRICE_ID ?? "",
-    amount: 79900,
+    amount: 99900,
   },
 } as const;
 
@@ -82,11 +85,19 @@ export function isAnnualPriceId(priceId: string | null | undefined): boolean {
 }
 
 // TIM-929: No tier is unlimited. Every paid tier has a hard monthly credit cap.
-// TIM-1902: Starter bumped 50 → 100; Pro stays 500. The 75-credit trial grant
-// (see TRIAL_CREDITS) is replaced by MONTHLY_CREDITS[tier] on day-7 conversion.
+// TIM-1902 bumped Starter 50 → 100. TIM-1954 (TIM-1944 plan rev 2 Decision 1)
+// equalized Pro down to 100/mo as well — both tiers now grant the same monthly
+// credits; the value-add of Pro lives in the Pro-only features (Coffee Shop
+// World benchmarking, deeper Scout insights, priority support, office hours,
+// multi-project), not in a credit ceiling. Existing Pro subscribers retain
+// their 500/mo grant until their next renewal under the existing subscription
+// (no in-place true-down per Decision 1).
+//
+// The 75-credit trial grant (see TRIAL_CREDITS) is replaced by
+// MONTHLY_CREDITS[tier] on day-7 conversion.
 export const MONTHLY_CREDITS: Record<Tier, number> = {
   starter: 100,
-  pro: 500,
+  pro: 100,
   free: 0,
 };
 
