@@ -221,6 +221,7 @@ export function BrandSettingsClient({
               value={shopName}
               onChange={(e) => setShopName(e.target.value)}
               placeholder="Your Coffee Shop"
+              maxLength={80}
               aria-label="Shop name"
             />
           </div>
