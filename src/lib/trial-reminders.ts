@@ -140,8 +140,8 @@ export function selectDueReminders(
   return due;
 }
 
-// Plan feature bullets as rendered in the day5/day8 emails. Matches the
-// TIM-1905 §1 pricing card bullets.
+// Plan feature bullets as rendered in the day5/day8 emails. Reconciled to
+// TIM-1944 plan rev 2 (Pro feature swap; credits equalized to 100/mo).
 export const PLAN_FEATURE_LIST: Record<string, string[]> = {
   starter: [
     "All planning workspaces",
@@ -151,11 +151,12 @@ export const PLAN_FEATURE_LIST: Record<string, string[]> = {
   ],
   pro: [
     "Everything in Starter",
-    "Deep market research",
-    "Pricing benchmarks vs. real shops",
+    "Coffee Shop World benchmarking vs. real shops",
+    "Weekly Live Office Hours Q&A + recordings",
+    "Deeper insights: deep market research and longer Scout chains",
     "Unlimited locations and projects",
     "Priority support",
-    "500 AI planning credits/month",
+    "100 AI planning credits/month",
   ],
 };
 

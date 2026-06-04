@@ -1175,13 +1175,9 @@ function CoachPanel({
             <div className="text-xs text-neutral-500">{sectionTitle}</div>
           </div>
           <div className="flex items-center gap-3">
-            {subscriptionTier === "pro" ? (
-              <span className="text-xs text-sage font-medium">500 credits/mo</span>
-            ) : (
-              <span className={`text-xs font-medium ${credits <= 10 && credits > 0 ? "text-amber-500" : "text-neutral-500"}`}>
-                {credits} credits
-              </span>
-            )}
+            <span className={`text-xs font-medium ${credits <= 10 && credits > 0 ? "text-amber-500" : "text-neutral-500"}`}>
+              {credits} credits
+            </span>
             <button
               onClick={onClose}
               className="w-7 h-7 rounded-lg bg-neutral-200 hover:bg-grey-light flex items-center justify-center transition-colors"

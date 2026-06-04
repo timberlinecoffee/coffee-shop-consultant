@@ -24,20 +24,21 @@ type Tier = {
 };
 
 // TIM-1902: collapsed to two tiers (Starter / Pro) with a 7-day card-required
-// free trial that unlocks Pro features for every trialist. Pricing locked by
-// board on TIM-1898 §8 (confirmation 09434556, 2026-06-03).
+// free trial that unlocks Pro features for every trialist.
+// TIM-1954 (TIM-1944 plan rev 2 Decision 1): annual prices $399 / $999 with a
+// "Save 15% with annual" framing; Pro credits equalized to 100/mo; Pro feature
+// mix swapped to Coffee Shop World + Office Hours + deeper insights + priority
+// support + multi-project.
 const TIERS: Tier[] = [
   {
     key: "starter",
     name: "Starter",
     monthlyPrice: "$39",
-    annualPrice: "$25",
-    annualBilled: "$299/year",
-    annualSavings: "Save $169",
+    annualPrice: "$33",
+    annualBilled: "$399/year",
+    annualSavings: "Save 15%",
     description: "Everything to plan and open one shop.",
     highlight: false,
-    // TIM-1903: feature bullets reconciled to TIM-1905 §1 marketing copy
-    // (locked 2026-06-03). Plan names canonical Starter / Pro per TIM-907.
     features: [
       "All planning workspaces",
       "Scout AI assistant: chat and section generation",
@@ -45,8 +46,9 @@ const TIERS: Tier[] = [
       "100 AI planning credits/month",
     ],
     notIncluded: [
-      "Deep market research",
-      "Pricing benchmarks vs. real shops",
+      "Coffee Shop World benchmarking",
+      "Weekly Live Office Hours Q&A",
+      "Deeper insights",
       "Unlimited locations and projects",
       "Priority support",
     ],
@@ -57,19 +59,19 @@ const TIERS: Tier[] = [
     key: "pro",
     name: "Pro",
     monthlyPrice: "$99",
-    annualPrice: "$67",
-    annualBilled: "$799/year",
-    annualSavings: "Save $389",
+    annualPrice: "$83",
+    annualBilled: "$999/year",
+    annualSavings: "Save 15%",
     description: "The full toolkit for owners who want every edge.",
     highlight: true,
-    // TIM-1903: feature bullets reconciled to TIM-1905 §1 marketing copy.
     features: [
       "Everything in Starter",
-      "Deep market research",
-      "Pricing benchmarks vs. real shops",
+      "Coffee Shop World benchmarking vs. real shops",
+      "Weekly Live Office Hours Q&A + recordings",
+      "Deeper insights: deep market research and longer Scout chains",
       "Unlimited locations and projects",
       "Priority support",
-      "500 AI planning credits/month",
+      "100 AI planning credits/month",
     ],
     notIncluded: [],
     cta: "Start 7-Day Free Trial",
@@ -88,15 +90,15 @@ const FAQ = [
   },
   {
     q: "What is the annual plan billed as?",
-    a: "Annual plans are charged as a single payment at the start of each year. You save roughly two months compared with paying monthly.",
+    a: "Annual plans are charged as a single payment at the start of each year and save about 15% versus paying monthly.",
   },
   {
     q: "What counts as an AI planning credit?",
-    a: "Credits are debited based on how much work Scout does on each turn — a short reply costs about one credit and a long research turn costs more. Trial accounts get 75 credits up front. Starter includes 100/month and Pro includes 500/month.",
+    a: "Credits are debited based on how much work Scout does on each turn — a short reply costs about one credit and a long research turn costs more. Trial accounts get 75 credits up front. Starter and Pro both include 100/month; Pro's value is in the additional features (Coffee Shop World, Office Hours, deeper insights, priority support, multi-project).",
   },
   {
-    q: "What is the weekly async Q&A?",
-    a: "Pro members can submit questions each week. Trent records a short video response delivered within 48 hours.",
+    q: "What is Weekly Live Office Hours?",
+    a: "Every week, Pro members get a live Office Hours call with Trent to bring questions or work through their plan. Sessions are recorded and shared with Pro members afterwards.",
   },
   {
     q: "What payment methods do you accept?",
@@ -249,7 +251,7 @@ function PricingPageInner() {
             >
               Annual
               <span className="ml-2 text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
-                ~2 months free
+                Save 15%
               </span>
             </button>
           </div>

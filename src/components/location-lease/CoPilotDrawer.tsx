@@ -143,20 +143,16 @@ export function CoPilotDrawer({
             <p className="text-xs text-[var(--neutral-cool-600)]">Location &amp; Lease workspace</p>
           </div>
           <div className="flex items-center gap-3">
-            {subscriptionTier === 'pro' ? (
-              <span className="text-xs text-emerald-600 font-medium">500 credits/mo</span>
-            ) : (
-              <span
-                className={cn(
-                  'text-xs font-medium',
-                  aiCreditsRemaining <= 10 && aiCreditsRemaining > 0
-                    ? 'text-amber-500'
-                    : 'text-[var(--neutral-cool-600)]'
-                )}
-              >
-                {aiCreditsRemaining} credits
-              </span>
-            )}
+            <span
+              className={cn(
+                'text-xs font-medium',
+                aiCreditsRemaining <= 10 && aiCreditsRemaining > 0
+                  ? 'text-amber-500'
+                  : 'text-[var(--neutral-cool-600)]'
+              )}
+            >
+              {aiCreditsRemaining} credits
+            </span>
             <button
               type="button"
               onClick={onClose}
