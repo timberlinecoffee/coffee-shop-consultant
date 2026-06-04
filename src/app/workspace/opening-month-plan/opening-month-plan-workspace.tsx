@@ -381,17 +381,30 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
         const doneInTrack = items.filter((m) => m.status === "done").length;
 
         return (
+          // TIM-2240: track group renders with the canonical neutral header
+          // (white bg, neutral border, foreground text) used by every other
+          // Groundwork suite — the per-track pastel bar that the board flagged
+          // on TIM-1407 is replaced with a small colored dot so the track
+          // identity is preserved without pastel chrome. Border-b is gated on
+          // the expanded state so a collapsed card doesn't carry a stray
+          // divider above its bottom edge.
           <div key={track} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
             <button
-              className={`w-full flex items-center gap-3 px-4 py-3 ${trackColor.bg} border-b ${trackColor.border} text-left`}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--neutral-cool-50)] transition-colors ${
+                isCollapsed ? "" : "border-b border-[var(--neutral-cool-100)]"
+              }`}
               onClick={() => toggleTrack(track)}
             >
               {isCollapsed ? (
-                <ChevronRight size={16} className={trackColor.text} />
+                <ChevronRight size={16} className="text-[var(--dark-grey)]" />
               ) : (
-                <ChevronDown size={16} className={trackColor.text} />
+                <ChevronDown size={16} className="text-[var(--dark-grey)]" />
               )}
-              <span className={`text-sm font-semibold ${trackColor.text}`}>
+              <span
+                className={`flex-shrink-0 w-2 h-2 rounded-full ${trackColor.dot}`}
+                aria-hidden="true"
+              />
+              <span className="text-sm font-semibold text-[var(--foreground)]">
                 {TRACK_LABELS[track]}
               </span>
               <span className="text-xs text-[var(--dark-grey)] ml-auto">
