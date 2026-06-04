@@ -406,13 +406,14 @@ export async function executeDeletionSequence(args: {
   //    cascade through public.users → invoices/subscriptions and destroy
   //    legally retained payment records (FKs are ON DELETE CASCADE).
   try {
+    type AdminUpdateResult = { data?: unknown; error?: unknown } | undefined | null;
     type AdminLike = {
       auth: {
         admin: {
           updateUserById?: (
             id: string,
             attrs: Record<string, unknown>,
-          ) => Promise<unknown>;
+          ) => Promise<AdminUpdateResult>;
         };
       };
     };
@@ -421,13 +422,24 @@ export async function executeDeletionSequence(args: {
       // Replace email with a deterministic, non-deliverable address so the
       // email can never be replayed for password reset.
       const placeholder = `deleted+${args.userId}@deleted.invalid`;
-      await adminLike.auth.admin.updateUserById(args.userId, {
+      // F3 (CTO second-look): supabase-js updateUserById returns
+      // { data, error } WITHOUT throwing on auth-layer errors (user not found,
+      // rate limit, invalid attrs, etc.). The await alone is not enough; we
+      // must inspect result.error before marking the row anonymised.
+      const result = await adminLike.auth.admin.updateUserById(args.userId, {
         email: placeholder,
         user_metadata: {},
         app_metadata: { deleted_at: new Date().toISOString() },
         ban_duration: "876000h", // ~100 years, effectively permanent ban
       });
-      summary.authUserAnonymised = true; // F3: pin success
+      if (result && (result as { error?: unknown }).error) {
+        console.error(
+          "[account-deletion] anonymise auth.users returned error",
+          (result as { error?: unknown }).error,
+        );
+      } else {
+        summary.authUserAnonymised = true; // F3: pin success only on clean result
+      }
     }
   } catch (err) {
     console.error("[account-deletion] anonymise auth.users failed", err);

@@ -141,3 +141,29 @@ test("hashWithSalt throws when NODE_ENV=production and salt is missing (F2)", ()
     if (prevSalt !== undefined) process.env.ACCOUNT_DELETION_AUDIT_SALT = prevSalt;
   }
 });
+
+test("step 9 only marks authUserAnonymised on a clean updateUserById result (F3)", () => {
+  // CTO second-look gap: supabase-js admin.updateUserById returns
+  // { data, error } and DOES NOT throw on auth-layer errors. The remediation
+  // must inspect result.error before pinning success; otherwise an
+  // AuthError-bearing response would still mark the auth row anonymised,
+  // letting the live email survive for password-reset replay.
+  //
+  // Source-text pin (behavioral mock would require importing the full module,
+  // which loads @/ aliases that .mjs cannot resolve). This guards against
+  // accidental removal of the result.error check.
+  const src = readFileSync("./src/lib/account-deletion.ts", "utf8");
+  assert.ok(
+    /updateUserById/.test(src) && /result.*\.error/.test(src),
+    "step 9 MUST read result.error before setting authUserAnonymised",
+  );
+  // Also pin: authUserAnonymised must be inside the !error branch.
+  const stepNine = src.slice(src.indexOf("// 9. Anonymise the auth.users row"));
+  const upToReturn = stepNine.slice(0, stepNine.indexOf("return summary"));
+  const setTrueIdx = upToReturn.indexOf("authUserAnonymised = true");
+  const elseIdx = upToReturn.indexOf("} else {");
+  assert.ok(
+    setTrueIdx > 0 && elseIdx > 0 && setTrueIdx > elseIdx,
+    "authUserAnonymised = true MUST live in the else (no-error) branch",
+  );
+});
