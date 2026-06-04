@@ -1,8 +1,8 @@
 // TIM-881: Single-field AI improvement endpoint.
 // SSE stream — same event format as /api/copilot/stream (text, thinking, error, done).
 // Does NOT create a thread record. Quota spend: 1 message unit per call.
-// TIM-1365 normalization: pure stream — no server-side text assembly. Client normalizes the
-// assembled field value via normalizeAIOutput() after stream ends. *.delta.text is exempt from the ESLint gate.
+// TIM-1382 normalization: server assembles fullText, normalizes via normalizeAIOutput(), and
+// emits it as done.text. Client prefers done.text over locally-accumulated deltas.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
+import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
 import { rateLimit } from "@/lib/rate-limit";
@@ -330,7 +331,7 @@ export async function POST(request: NextRequest) {
             upstream_status: 200,
             details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
           }).then(() => {});
-          send(sse("done", { modelUsed: PLATFORM_AI_MODEL }));
+          send(sse("done", { text: normalizeAIOutput(fullText), modelUsed: PLATFORM_AI_MODEL }));
           controller.close();
         }
       } catch (err: unknown) {

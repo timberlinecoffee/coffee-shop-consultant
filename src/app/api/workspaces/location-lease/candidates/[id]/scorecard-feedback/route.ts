@@ -3,8 +3,8 @@
 //           specific next step the owner can take, and a one-sentence why.
 // POST body: { planId: string }
 // Streams SSE with delta/error/done events (same shape as copilot/stream).
-// TIM-1365 normalization: pure stream — tokens are sent as-is. Client normalizes the assembled
-// text via normalizeAIOutput() after SSE stream ends. *.delta.text is exempt from the ESLint gate.
+// TIM-1382 normalization: server assembles fullText, normalizes via normalizeAIOutput(), and
+// emits it as done.text. Client prefers done.text over locally-accumulated deltas.
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -12,6 +12,7 @@ export const maxDuration = 60
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -135,17 +136,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             "You are a knowledgeable coffee shop business advisor. Give direct, specific, actionable feedback. Never name a problem, risk, or weakness without pairing it with a concrete recommendation, a single named next step, and a one-sentence why. No filler phrases, no hedging. Plain English — no consultant jargon (never use: leverage, synergy, curated, unlock, elevate, embark, delve). No emojis. Title case for any headings; sentence case for body copy.",
         })
 
+        let fullText = ""
         for await (const chunk of response) {
           if (
             chunk.type === "content_block_delta" &&
             chunk.delta.type === "text_delta"
           ) {
+            fullText += chunk.delta.text
             controller.enqueue(encoder.encode(sse("text", { delta: chunk.delta.text })))
           }
         }
 
         const finalMsg = await response.finalMessage()
-        controller.enqueue(encoder.encode(sse("done", { threadId: finalMsg.id })))
+        controller.enqueue(encoder.encode(sse("done", { threadId: finalMsg.id, text: normalizeAIOutput(fullText) })))
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "AI feedback failed."
         controller.enqueue(encoder.encode(sse("error", { code: "error", message: msg })))
