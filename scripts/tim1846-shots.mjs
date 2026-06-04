@@ -2,9 +2,10 @@ import { chromium } from "playwright";
 
 const BASE = "https://coffee-shop-consultant.vercel.app";
 const HOST = "coffee-shop-consultant.vercel.app";
-const SUPABASE_URL = "https://ltmcttjftxzpgynhnrpg.supabase.co";
-const ANON =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0bWN0dGpmdHh6cGd5bmhucnBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzOTA4NjcsImV4cCI6MjA5MTk2Njg2N30.EUgFAKZSbWRZmJBTHdX9E0oEQDOVjzf39ynDH7Fs5Ok";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+if (!SUPABASE_URL) throw new Error("NEXT_PUBLIC_SUPABASE_URL env var required");
+const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (!ANON) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY env var required");
 const EMAIL = "qa-agent@timberline.coffee";
 const PASSWORD = "QATim1729Test!";
 

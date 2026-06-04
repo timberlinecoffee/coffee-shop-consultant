@@ -17,9 +17,9 @@ import { test, expect, type Page } from "@playwright/test";
 
 const QA_EMAIL = "qa-agent@timberline.coffee";
 const QA_PASSWORD = "QATim1729Test!";
-const SUPABASE_URL = "https://ltmcttjftxzpgynhnrpg.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0bWN0dGpmdHh6cGd5bmhucnBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzOTA4NjcsImV4cCI6MjA5MTk2Njg2N30.EUgFAKZSbWRZmJBTHdX9E0oEQDOVjzf39ynDH7Fs5Ok";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? (() => { throw new Error("NEXT_PUBLIC_SUPABASE_URL env var required"); })();
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? (() => { throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY env var required"); })();
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? (() => { throw new Error("SUPABASE_SERVICE_ROLE_KEY env var required — never hard-code prod keys in source"); })();
 
 async function signIn(page: Page) {
   // Sign in via Supabase directly to get session tokens, then inject them as cookies.
@@ -56,8 +56,7 @@ async function signIn(page: Page) {
 async function seedConflict(page: Page) {
   // Seed the rent conflict via service role API before each test run.
   // Location & Lease: $3,000/mo; Financials: $2,500/mo
-  const SERVICE_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0bWN0dGpmdHh6cGd5bmhucnBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjM5MDg2NywiZXhwIjoyMDkxOTY2ODY3fQ.HsIx2BzWVKeZQYG8-VY74fEqasQuoFcRcroh34MHl7c";
+  const SERVICE_KEY = SUPABASE_SERVICE_KEY;
   const PLAN_ID = "f4958d74-b640-4e45-b3a8-043603c2340f";
 
   // Remove existing test candidates for idempotency
@@ -259,8 +258,7 @@ for (const viewport of VIEWPORTS) {
 
       // Step 3c: verify propagation via DB — both homes should now hold the same value.
       // This is a direct DB read, not dependent on UI state timing.
-      const SERVICE_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0bWN0dGpmdHh6cGd5bmhucnBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjM5MDg2NywiZXhwIjoyMDkxOTY2ODY3fQ.HsIx2BzWVKeZQYG8-VY74fEqasQuoFcRcroh34MHl7c";
+      const SERVICE_KEY = SUPABASE_SERVICE_KEY;
       const PLAN_ID = "f4958d74-b640-4e45-b3a8-043603c2340f";
 
       // Read Location & Lease rent
