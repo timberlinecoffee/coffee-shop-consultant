@@ -417,7 +417,7 @@ function SectionNavMobile({ active, onChange, doc, recipeCount }: SectionNavProp
             aria-selected={isActive}
             type="button"
             onClick={() => onChange(key)}
-            className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl whitespace-nowrap transition-colors ${
+            className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${
               isActive
                 ? "bg-[var(--teal)] text-white"
                 : "text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] hover:border-[var(--teal)]/40"
