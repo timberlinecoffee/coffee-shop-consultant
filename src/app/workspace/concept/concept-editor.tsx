@@ -852,7 +852,7 @@ function ConceptBriefInline({
           {/* Document footer */}
           <div className="px-7 py-4 border-t border-[var(--border)] flex items-center justify-between">
             <span className="text-xs text-[var(--dark-grey)]">
-              Timberline Coffee School
+              {shopName || ""}
             </span>
             <Link
               href="/workspace/concept/print"
