@@ -2,6 +2,11 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      { source: '/links', destination: '/l', permanent: true },
+    ];
+  },
   outputFileTracingIncludes: {
     '/api/**': ['./public/fonts/**/*'],
   },
