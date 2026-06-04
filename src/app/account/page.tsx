@@ -5,6 +5,7 @@ import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 import { getAccountSettings } from "@/lib/account-settings";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
+import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { effectivePlanForGating } from "@/lib/access";
 import { SettingsShell } from "@/components/account/settings/SettingsShell";
 
@@ -56,6 +57,8 @@ export default async function AccountPage() {
     );
   }
 
+  const userEmail = user.email ?? "";
+
   return (
     <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
@@ -103,15 +106,7 @@ export default async function AccountPage() {
 
         <ProFeatureEntries isPro={isPro} />
 
-        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
-          <h2 className="font-semibold text-[var(--foreground)] mb-4">Delete Account</h2>
-          <p className="text-sm text-[var(--dark-grey)] mb-4">
-            Permanently delete your account and all plan data. This cannot be undone.
-          </p>
-          <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
-            Delete My Account
-          </button>
-        </div>
+        <AccountDataControls userEmail={userEmail} variant="stacked-card" />
 
         <form action="/auth/signout" method="POST">
           <button

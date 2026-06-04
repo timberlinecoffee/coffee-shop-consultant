@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { BillingTab } from "@/components/account/settings/BillingTab";
+import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { SETTINGS_TABS } from "@/components/account/settings/tabs";
 import type { AccountSettings } from "@/lib/account-settings";
 
@@ -90,7 +91,13 @@ export function SettingsShell({
             {activeTab === "business-profile" && (
               <StubTab label="Business profile" />
             )}
-            {activeTab === "data" && <StubTab label="Data" />}
+            {activeTab === "data" && (
+              userEmail ? (
+                <AccountDataControls userEmail={userEmail} variant="tab" />
+              ) : (
+                <StubTab label="Data" />
+              )
+            )}
             {activeTab === "appearance" && <StubTab label="Appearance" />}
           </div>
         </div>
@@ -160,21 +167,7 @@ function AccountTabContent({
         </CardContent>
       </Card>
 
-      {/* Delete account card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Delete Account</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-[var(--dark-grey)] mb-4">
-            Permanently delete your account and all plan data. This cannot be
-            undone.
-          </p>
-          <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
-            Delete My Account
-          </button>
-        </CardContent>
-      </Card>
+      {/* Delete account moved to the Data tab (TIM-2254). */}
 
       {/* Sign out */}
       <form action="/auth/signout" method="POST">
