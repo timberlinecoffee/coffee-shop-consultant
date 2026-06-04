@@ -15,7 +15,7 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   default: "h-8 px-3 text-sm gap-1.5",
-  xs: "h-6 px-2 text-xs rounded gap-1",
+  xs: "h-6 px-2 text-xs rounded-xl gap-1",
   sm: "h-7 px-2.5 text-xs gap-1",
   lg: "h-9 px-4 text-sm gap-2",
   icon: "h-8 w-8 p-0",
@@ -38,7 +38,7 @@ function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-lg border font-medium transition-colors",
+        "inline-flex items-center justify-center rounded-xl border font-medium transition-colors",
         "disabled:opacity-50 disabled:pointer-events-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50",
         variantClasses[variant],
