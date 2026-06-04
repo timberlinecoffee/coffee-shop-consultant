@@ -56,7 +56,6 @@ export const metadata: Metadata = {
       "Plan your coffee shop concept, menu, financials, hiring, and launch in one workspace. Scout reads everything you build and gives feedback grounded in real coffee-shop benchmarks. Join the waitlist to lock in your exclusive launch price.",
     siteName: "Groundwork",
   },
-  robots: { index: false, follow: false },
 };
 
 const VALUE_PROPS = [
@@ -100,7 +99,7 @@ export default function ComingSoonPage() {
       {/* ── Top bar (white-on-dark, no sign-in CTA pre-launch) ───────────────── */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/coming-soon" className="flex items-center" aria-label="Groundwork.AI home">
+          <Link href="/" className="flex items-center" aria-label="Groundwork.AI home">
             <Logo variant="white" height={40} priority />
           </Link>
           <span
