@@ -33,7 +33,7 @@ export interface Database {
           full_name: string | null
           avatar_url: string | null
           signup_source: string | null
-          subscription_status: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused'
+          subscription_status: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'past_due' | 'paused'
           subscription_tier: 'free' | 'starter' | 'pro'
           ai_credits_remaining: number
           copilot_trial_messages_used: number
@@ -51,7 +51,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           signup_source?: string | null
-          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused'
+          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'past_due' | 'paused'
           subscription_tier?: 'free' | 'starter' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number
@@ -69,7 +69,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           signup_source?: string | null
-          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'paused'
+          subscription_status?: 'free_trial' | 'active' | 'cancelled' | 'expired' | 'past_due' | 'paused'
           subscription_tier?: 'free' | 'starter' | 'pro'
           ai_credits_remaining?: number
           copilot_trial_messages_used?: number

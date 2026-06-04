@@ -184,6 +184,8 @@ export async function POST(request: NextRequest) {
         await supabase.from("users").update({
           subscription_status: "paused",
           // subscription_tier intentionally NOT changed — access.ts reads paused_from_tier
+          paused_from_tier: sub.tier,
+          paused_at: new Date().toISOString(),
         }).eq("id", sub.user_id);
         break;
       }
@@ -202,6 +204,8 @@ export async function POST(request: NextRequest) {
         await supabase.from("users").update({
           subscription_status: "active",
           subscription_tier: tier,
+          paused_from_tier: null,
+          paused_at: null,
         }).eq("id", sub.user_id);
         break;
       }
@@ -290,6 +294,8 @@ export async function POST(request: NextRequest) {
         subscription_tier: "free",
         trial_ends_at: null,
         past_due_since: null,
+        paused_from_tier: null,
+        paused_at: null,
       }).eq("id", sub.user_id);
       break;
     }

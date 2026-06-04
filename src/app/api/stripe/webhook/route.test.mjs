@@ -97,6 +97,8 @@ async function handleSubscriptionUpdated(subscription, supabase) {
 
     await supabase.from("users").update({
       subscription_status: "paused",
+      paused_from_tier: sub.tier,
+      paused_at: new Date().toISOString(),
     }).eq("id", sub.user_id);
     return;
   }
@@ -115,6 +117,8 @@ async function handleSubscriptionUpdated(subscription, supabase) {
     await supabase.from("users").update({
       subscription_status: "active",
       subscription_tier: tier,
+      paused_from_tier: null,
+      paused_at: null,
     }).eq("id", sub.user_id);
     return;
   }
@@ -140,6 +144,8 @@ async function handleSubscriptionDeleted(subscription, supabase) {
   await supabase.from("users").update({
     subscription_status: "cancelled",
     subscription_tier: "free",
+    paused_from_tier: null,
+    paused_at: null,
   }).eq("id", sub.user_id);
 }
 
@@ -162,6 +168,8 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
       id: "user_test123",
       subscription_status: "active",
       subscription_tier: "pro",
+      paused_from_tier: null,
+      paused_at: null,
     };
   });
 
@@ -182,6 +190,9 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     assert.equal(usersRow.subscription_status, "paused", "users.subscription_status should be paused");
     // subscription_tier on users must not change either
     assert.equal(usersRow.subscription_tier, "pro", "users.subscription_tier must not change on pause");
+    // TIM-1541 follow-up: users.paused_from_tier/paused_at must mirror subscriptions.
+    assert.equal(usersRow.paused_from_tier, "pro", "users.paused_from_tier should mirror subscriptions");
+    assert.ok(usersRow.paused_at, "users.paused_at should be set");
   });
 
   test("resume event (tier priceId while paused) clears pause columns and restores active status", async () => {
@@ -210,6 +221,9 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     assert.equal(subscriptionsRow.paused_at, null, "paused_at should be cleared on resume");
     assert.equal(usersRow.subscription_status, "active", "users.subscription_status should be active");
     assert.equal(usersRow.subscription_tier, "starter", "users.subscription_tier should match resumed tier");
+    // TIM-1541 follow-up: pause columns on users cleared on resume.
+    assert.equal(usersRow.paused_from_tier, null, "users.paused_from_tier should be cleared on resume");
+    assert.equal(usersRow.paused_at, null, "users.paused_at should be cleared on resume");
   });
 
   test("subscription.deleted while paused → status=cancelled, pause columns cleared", async () => {
@@ -230,6 +244,9 @@ describe("TIM-1545: Stripe webhook pause/resume/cancelled-while-paused", () => {
     assert.equal(subscriptionsRow.paused_at, null, "paused_at should be cleared on cancel");
     assert.equal(usersRow.subscription_status, "cancelled", "users.subscription_status should be cancelled");
     assert.equal(usersRow.subscription_tier, "free", "users.subscription_tier should revert to free");
+    // TIM-1541 follow-up: pause columns on users cleared on hard cancel.
+    assert.equal(usersRow.paused_from_tier, null, "users.paused_from_tier should be cleared on cancel");
+    assert.equal(usersRow.paused_at, null, "users.paused_at should be cleared on cancel");
   });
 
   test("pause event does not trigger resume branch for an already-active subscription", async () => {
