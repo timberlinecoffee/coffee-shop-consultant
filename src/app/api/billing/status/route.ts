@@ -1,5 +1,8 @@
 // TIM-1546: Returns the current user's billing status so the /account/billing
 // page can render the paused-state card without relying on URL params.
+// TIM-1902: also surfaces the 7-day trial window (trial_ends_at) and the dunning
+// stamp (past_due_since) so the billing UI can render the trial countdown and
+// the update-payment banner.
 
 import { createClient } from "@/lib/supabase/server";
 import { PLANS } from "@/lib/stripe";
@@ -8,7 +11,6 @@ export const dynamic = "force-dynamic";
 
 const TIER_MONTHLY_CENTS: Record<string, number> = {
   starter: PLANS.starter_monthly.amount,
-  growth: PLANS.growth_monthly.amount,
   pro: PLANS.pro_monthly.amount,
 };
 
@@ -28,7 +30,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, subscription_tier, paused_from_tier")
+    .select("subscription_status, subscription_tier, paused_from_tier, trial_ends_at, past_due_since, ai_credits_remaining")
     .eq("id", user.id)
     .single();
 
@@ -45,5 +47,8 @@ export async function GET() {
     pausedFromTier: profile.paused_from_tier ?? null,
     resumeTier: resumeTier ?? null,
     resumePrice: resumePriceCents !== null ? centsToDollars(resumePriceCents) : null,
+    trialEndsAt: profile.trial_ends_at ?? null,
+    pastDueSince: profile.past_due_since ?? null,
+    creditsRemaining: profile.ai_credits_remaining ?? null,
   });
 }

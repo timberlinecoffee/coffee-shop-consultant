@@ -7,11 +7,12 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
-import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
@@ -112,10 +113,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Quota/billing gate ───────────────────────────────────────────────────────
+  // TIM-1902: trialists with a card on file count as active here. Gating is
+  // uniform across active and trial — both debit ai_credits_remaining.
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data",
+      "ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, trial_ends_at",
     )
     .eq("id", user.id)
     .single();
@@ -127,10 +130,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (
-    !isSubscriptionActive(profile.subscription_status) &&
-    profile.subscription_tier !== "free"
-  ) {
+  const hasAccess = hasWriteAccess({
+    subscription_status: profile.subscription_status,
+    trial_ends_at: profile.trial_ends_at,
+  });
+
+  if (!hasAccess) {
     return new Response(
       sse("error", {
         code: "paywall",
@@ -141,28 +146,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (profile.subscription_tier === "free") {
-    const used = profile.copilot_trial_messages_used ?? 0;
-    if (used >= COPILOT_FREE_TRIAL_LIMIT) {
-      return new Response(
-        sse("error", {
-          code: "trial_exhausted",
-          messages_used: COPILOT_FREE_TRIAL_LIMIT,
-          messages_allowed: COPILOT_FREE_TRIAL_LIMIT,
-        }),
-        { status: 402, headers: { "Content-Type": "text/event-stream" } },
-      );
-    }
-  }
-
-  const isUnlimited = profile.subscription_tier === "pro";
-
-  if (!isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
+  if (profile.ai_credits_remaining < 1) {
     return new Response(
       sse("error", {
-        code: "quota",
+        code: "out_of_credits",
         message:
-          "You've used all your AI credits for this month. Upgrade to Accelerator for unlimited coaching, or your credits reset next month.",
+          "You're out of AI credits for this month. Top up credits or upgrade to keep planning.",
       }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     );
@@ -273,7 +262,7 @@ export async function POST(request: NextRequest) {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
         const stream = anthropic.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: PLATFORM_AI_MODEL,
           max_tokens: 1_024,
           system: systemPrompt,
           messages: [{ role: "user", content: userMessage }],
@@ -303,50 +292,34 @@ export async function POST(request: NextRequest) {
           clearTimers();
           closed = true;
 
-          // Deduct 1 credit on successful completion.
-          const isFree = profile.subscription_tier === "free";
+          // TIM-1902: uniform credit debit for any access-holding account
+          // (active or card-on-file trialist). Subscription_tier=free is no
+          // longer reachable here — the gate above blocks it.
           const costPerInputM = 3;
           const costPerOutputM = 15;
           const costUsd =
             (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000;
 
-          if (isFree) {
-            const newTrialCount = (profile.copilot_trial_messages_used ?? 0) + 1;
-            await supabase
-              .from("users")
-              .update({ copilot_trial_messages_used: newTrialCount })
-              .eq("id", user.id);
-            send(
-              sse("done", {
-                modelUsed: "claude-sonnet-4-6",
-                trial_messages_used: newTrialCount,
-                cost_usd: costUsd,
-              }),
-            );
-          } else {
-            if (!isUnlimited) {
-              await supabase
-                .from("users")
-                .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
-                .eq("id", user.id);
+          await supabase
+            .from("users")
+            .update({ ai_credits_remaining: Math.max(0, profile.ai_credits_remaining - 1) })
+            .eq("id", user.id);
 
-              await supabase.from("credit_transactions").insert({
-                user_id: user.id,
-                amount: -1,
-                type: "usage",
-                description: `AI Assist: ${workspaceKey}/${fieldKey}`,
-              });
-            }
-            // Log cost for internal tracking (best-effort).
-            await svcClient.from("ai_errors").insert({
-              user_id: user.id,
-              workspace_key: workspaceKey,
-              error_code: "cost_log",
-              upstream_status: 200,
-              details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
-            }).then(() => {});
-            send(sse("done", { modelUsed: "claude-sonnet-4-6" }));
-          }
+          await supabase.from("credit_transactions").insert({
+            user_id: user.id,
+            amount: -1,
+            type: "usage",
+            description: `AI Assist: ${workspaceKey}/${fieldKey}`,
+          });
+          // Log cost for internal tracking (best-effort).
+          await svcClient.from("ai_errors").insert({
+            user_id: user.id,
+            workspace_key: workspaceKey,
+            error_code: "cost_log",
+            upstream_status: 200,
+            details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
+          }).then(() => {});
+          send(sse("done", { modelUsed: PLATFORM_AI_MODEL }));
           controller.close();
         }
       } catch (err: unknown) {

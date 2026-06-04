@@ -194,7 +194,7 @@ export function StartupTab({
   const totalMonthlyLoanPayment = loanLines.reduce((acc, l) => acc + monthlyPaymentFor(l), 0);
 
   const inputCls =
-    "w-32 text-sm text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-32 text-xs text-right border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
   return (
     <div className="space-y-4">
@@ -241,7 +241,7 @@ export function StartupTab({
             Enter each one-time cost below. The total adds itself up as you go.
           </p>
         </div>
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <tbody>
             {/* Capital Assets section — read-only, sourced */}
             {(capexRows.length > 0 || !hasLegacyLumpSums) && (
@@ -359,9 +359,10 @@ export function StartupTab({
               </tr>
             ))}
 
+            {/* TIM-1894: total row matches Equipment-table reference (text-xs, was text-lg on the amount). */}
             <tr className="border-t-2 border-[var(--teal)] bg-[var(--teal-tint-50)]">
-              <td className="py-3 pl-5 pr-4 font-semibold">Total Startup Cost</td>
-              <td className="py-3 pr-5 text-right font-bold text-lg">{f(totalStartup)}</td>
+              <td className="py-3 pl-5 pr-4 text-xs font-semibold">Total Startup Cost</td>
+              <td className="py-3 pr-5 text-right text-xs font-bold">{f(totalStartup)}</td>
             </tr>
           </tbody>
         </table>
@@ -373,7 +374,7 @@ export function StartupTab({
           <p className="text-base font-bold text-[var(--foreground)] leading-tight">Funding Sources</p>
           <p className="text-xs text-[var(--dark-grey)]">Edit in the Funding tab</p>
         </div>
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <tbody>
             {founderTotal > 0 && (
               <tr className="border-t border-[var(--neutral-cool-150)]">

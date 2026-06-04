@@ -6,7 +6,7 @@
 
 import { useRef, useState } from "react";
 import { X, Trash2, ChevronDown } from "lucide-react";
-import { formatCurrency } from "@/lib/financial-projection";
+import { useCurrency } from "@/components/CurrencyProvider";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
@@ -44,6 +44,7 @@ const EXAMPLE_DESCRIPTIONS = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function DescribeSetupModal({ sections, hasExistingItems, onClose, onCommitted }: Props) {
+  const { format } = useCurrency();
   const [step, setStep] = useState<Step>("input");
   const [description, setDescription] = useState("");
   const [includeConceptContext, setIncludeConceptContext] = useState(false);
@@ -285,7 +286,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                     <div className="h-8 w-px bg-[var(--border)]" />
                     <div>
                       <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Est. Total</p>
-                      <p className="text-sm font-bold text-[var(--foreground)]">{formatCurrency(totalCents / 100)}</p>
+                      <p className="text-sm font-bold text-[var(--foreground)]">{format(totalCents / 100)}</p>
                     </div>
                   </>
                 )}

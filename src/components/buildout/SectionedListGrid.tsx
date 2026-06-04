@@ -65,6 +65,7 @@ import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/wo
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
 import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { type VendorCandidate, type VendorCategoryKey, VENDOR_CATEGORY_KEYS, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
 
@@ -298,6 +299,7 @@ function SelectInput({
 function UsefulLifeInput({
   years, totalCostCents, disabled, onCommit,
 }: { years: number; totalCostCents: number; disabled: boolean; onCommit: (years: number) => void }) {
+  const { format } = useCurrency();
   const [draft, setDraft] = useState(String(years));
   useEffect(() => { setDraft(String(years)); }, [years]);
 
@@ -330,7 +332,7 @@ function UsefulLifeInput({
       />
       {annualDepreciation > 0 && (
         <span className="text-[10px] text-[var(--dark-grey)] leading-tight whitespace-nowrap">
-          ${annualDepreciation.toLocaleString()}/yr
+          {format(annualDepreciation, { compact: false })}/yr
         </span>
       )}
     </div>
@@ -2449,7 +2451,8 @@ export function SectionedListGrid({
                           Grand total
                         </td>
                       )}
-                      <td className="px-2 py-2.5 text-sm font-bold text-[var(--teal)] text-right">
+                      {/* TIM-1894: grand-total cell matches Equipment-table reference (text-xs, was text-sm). */}
+                      <td className="px-2 py-2.5 text-xs font-bold text-[var(--teal)] text-right">
                         {formatCurrencyAmount(grandTotal / 100, currencyCode)}
                       </td>
                       {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[var(--teal-tint-500)]" />}

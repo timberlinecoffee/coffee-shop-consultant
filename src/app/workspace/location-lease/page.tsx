@@ -63,7 +63,12 @@ export default async function LocationLeaseWorkspacePage() {
   return (
     <div className="bg-[var(--background)]">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-12">
-        <header className="mb-8">
+        {/* TIM-1894: matches the canonical WorkspaceHeader chrome (icon+title+
+            description, mb-6). Kept hand-rolled because this is a server
+            component and the shared client WorkspaceHeader can't take a lucide
+            Icon component as a prop across the server/client boundary. */}
+        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <MapPin
               className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
@@ -78,6 +83,7 @@ export default async function LocationLeaseWorkspacePage() {
             lease terms, and AI feedback. Shortlist the top contenders and
             run a trade-off when you&apos;re ready to compare.
           </p>
+          </div>
         </header>
 
         <CandidateListCard

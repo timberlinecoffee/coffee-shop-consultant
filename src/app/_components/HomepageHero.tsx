@@ -14,9 +14,12 @@ const EASE = [0.25, 0.46, 0.45, 0.94] as const;
    placed cleanly in the same right-column slot with the same entrance animation.
    Direct placement (matching prior main behavior) rather than the getAsset() manifest,
    which renders nothing until the recipe asset is registered.
-   TIM-1695: swapped to the taller portrait (2:3, 1024×1536) line-art variant so the
-   illustration fills the right-column slot vertically instead of reading as a thin
-   landscape band. Same canonical style, transparent background. */
+   TIM-1866: GENUINE gpt-image-1.5 portrait hero (Candidate D), 1024×1536, transparent
+   alpha, rendered through OpenAI with the exact canonical recipe that produced the
+   board-loved landscape (subject hero-interior, uniform 1.5px off-white stroke,
+   outline-only) — just recomposed vertical. No vector fallback, no hand-editing.
+   CEO-confirmed pick. Replaces the interim landscape placeholder and the rejected
+   vector (TIM-1858). Rendered by scripts/render-hero-portrait-openai.mjs. */
 const HERO_ILLUSTRATION = "/images/illustrations/hero/hero-your-coffee-shop-tall.webp";
 
 export default function HomepageHero() {
@@ -157,7 +160,7 @@ export default function HomepageHero() {
         >
           <Image
             src={HERO_ILLUSTRATION}
-            alt="Continuous line illustration of a coffee shop interior with a back-bar of stacked shelving, hanging pendant lamps, an espresso machine, pour-over station, and a trailing plant, drawn in off-white line art that floats on the Groundwork teal gradient."
+            alt="Continuous line illustration of a coffee shop interior viewed across the counter, composed vertically from the counter up to hanging pendant lamps, with an espresso machine, pour-over station, window with a trailing plant, and a chalkboard menu, drawn in off-white line art that floats on the Groundwork teal gradient."
             width={1024}
             height={1536}
             priority

@@ -3,6 +3,7 @@
 // hands the structured neighborhood snapshot to Claude so the response is
 // specific to the actual block, not generic boilerplate.
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -200,7 +201,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: PLATFORM_AI_MODEL,
       max_tokens: 600,
       messages: [{ role: "user", content: prompt }],
       system:

@@ -41,10 +41,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { recipeIdForItemName } from "@/lib/illustrations/recipes";
+import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -119,10 +123,12 @@ const sectionLabelCls =
 
 // TIM-1212: dense, spreadsheet-style cell input — borderless until hover/focus
 // so the ingredient grid stays flat and scannable.
+// TIM-1894: ingredient grid is a dense data table → cells use text-xs to match
+// the Equipment-table reference (was text-sm/14px, the board-flagged "too large").
 const cellInputCls =
-  "w-full text-sm bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus-visible:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
+  "w-full text-xs bg-transparent border border-transparent rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--gray-950)] hover:border-[var(--gray-500)] focus-visible:outline-none focus:border-[var(--teal)] focus:bg-white disabled:text-[var(--muted-foreground)] disabled:hover:border-transparent transition-colors";
 const quickInputCls =
-  "w-full text-sm bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
+  "w-full text-xs bg-white border border-[var(--teal-tint-cfe)] rounded-md px-2 py-1.5 text-[var(--foreground)] placeholder-[var(--teal-accent-2)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
 // Shared column template so the header, data rows, and quick-add row stay aligned.
 const ingGridCls =
   "grid grid-cols-[minmax(0,1fr)_5rem_5.5rem_6rem_6.5rem_3.5rem] gap-2 items-center";
@@ -359,10 +365,11 @@ function IngredientTableRow({
   const [notes, setNotes] = useState(ingredient.notes ?? "");
   const [notesOpen, setNotesOpen] = useState(false);
 
+  const { symbol } = useCurrency();
   const cpu = costPerUnit(ingredient);
   const cpuDisplay =
     ingredient.package_size > 0 && ingredient.package_cost_cents > 0
-      ? "$" + cpu.toFixed(4)
+      ? `${symbol}${cpu.toFixed(4)}`
       : "—";
   const hasNotes = (ingredient.notes ?? "").trim().length > 0;
 
@@ -503,11 +510,12 @@ function QuickAddRow({
   const submittingRef = useRef(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  const { symbol } = useCurrency();
   const sizeNum = parseFloat(size);
   const costNum = parseFloat(cost);
   const cpuPreview =
     !isNaN(sizeNum) && sizeNum > 0 && !isNaN(costNum) && costNum > 0
-      ? "$" + (costNum / sizeNum).toFixed(4)
+      ? `${symbol}${(costNum / sizeNum).toFixed(4)}`
       : "—";
   const canCommit = name.trim().length > 0 && !busy;
 
@@ -852,6 +860,7 @@ function ItemEditorPanel({
     item.price_cents > 0 ? (item.price_cents / 100).toFixed(2) : ""
   );
 
+  const { symbol } = useCurrency();
   const recipeLines = itemIngredients.filter(
     (ii) => ii.menu_item_id === item.id
   );
@@ -867,7 +876,7 @@ function ItemEditorPanel({
 
   const cogsDisplay =
     recipeLines.length > 0
-      ? "$" + computedCogs.toFixed(2)
+      ? `${symbol}${computedCogs.toFixed(2)}`
       : item.cogs_cents && item.cogs_cents > 0
       ? formatCents(item.cogs_cents)
       : "—";
@@ -1117,26 +1126,24 @@ function RecipeTabContent({
       {/* AI generators */}
       {canEdit && (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
+          <WorkspaceActionButton
+            variant="secondary"
             onClick={onSuggestRecipe}
             disabled={recipeLoading || noName}
             title={noName ? "Name the item first" : "Suggest a starting recipe with AI"}
-            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {recipeLoading ? "Building recipe…" : "Suggest recipe with AI"}
-          </button>
-          <button
-            type="button"
+          </WorkspaceActionButton>
+          <WorkspaceActionButton
+            variant="secondary"
             onClick={onSuggestPrepSteps}
             disabled={prepStepsLoading || noName}
             title={noName ? "Name the item first" : "Suggest preparation steps with AI"}
-            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {prepStepsLoading ? "Writing steps…" : "Suggest prep steps with AI"}
-          </button>
+          </WorkspaceActionButton>
         </div>
       )}
       {(recipeError || prepStepsError) && (
@@ -1336,6 +1343,7 @@ function CostOfGoodsTabContent({
   benchmarkResult: BenchmarkResult | null;
   benchmarkError: string | null;
 }) {
+  const { symbol } = useCurrency();
   const targetPct = (targetGrossMargin * 100).toFixed(0);
   const noPriceYet = item.price_cents === 0;
 
@@ -1412,16 +1420,15 @@ function CostOfGoodsTabContent({
           <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
             AI Price Suggestion
           </h3>
-          <button
-            type="button"
+          <WorkspaceActionButton
+            variant="primary"
             onClick={onSuggestPrice}
             disabled={priceLoading || effectiveCogs <= 0}
             title={effectiveCogs <= 0 ? "Add a recipe or manual COGS first" : "Suggest a retail price"}
-            className="flex items-center gap-2 text-xs font-semibold text-white bg-[var(--teal)] px-3 py-2 rounded-lg hover:bg-[var(--teal-dark)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {priceLoading ? "Thinking…" : "Suggest retail price"}
-          </button>
+          </WorkspaceActionButton>
         </section>
       )}
 
@@ -1431,16 +1438,15 @@ function CostOfGoodsTabContent({
           <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
             Local Benchmark
           </h3>
-          <button
-            type="button"
+          <WorkspaceActionButton
+            variant="secondary"
             onClick={onBenchmarkPrice}
             disabled={benchmarkLoading || noPriceYet}
             title={noPriceYet ? "Set a selling price first" : "Benchmark against cafés in my area"}
-            className="flex items-center gap-2 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Sparkles size={13} />
+            <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
             {benchmarkLoading ? "Reading local market…" : "Benchmark against cafés in my area"}
-          </button>
+          </WorkspaceActionButton>
           {benchmarkError && (
             <p className="text-[11px] text-[var(--error-accent)] mt-1.5">{benchmarkError}</p>
           )}
@@ -1451,7 +1457,7 @@ function CostOfGoodsTabContent({
                   Local range for{" "}
                   <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
                   <span className="font-semibold text-[var(--foreground)]">
-                    ${(benchmarkResult.low_cents / 100).toFixed(2)} to ${(benchmarkResult.high_cents / 100).toFixed(2)}
+                    {symbol}{(benchmarkResult.low_cents / 100).toFixed(2)} to {symbol}{(benchmarkResult.high_cents / 100).toFixed(2)}
                   </span>
                 </p>
                 {benchmarkResult.source === "industry_benchmark" && (
@@ -1471,7 +1477,7 @@ function CostOfGoodsTabContent({
               <p className="text-xs">
                 Your price{" "}
                 <span className="font-semibold text-[var(--foreground)]">
-                  ${(benchmarkResult.current_price_cents / 100).toFixed(2)}
+                  {symbol}{(benchmarkResult.current_price_cents / 100).toFixed(2)}
                 </span>{" "}
                 reads as{" "}
                 <span
@@ -1519,6 +1525,7 @@ function RecipeLineRow({
   onUpdate: (patch: { amount?: number; unit?: IngredientUnit }) => void;
   onDelete: () => void;
 }) {
+  const { symbol } = useCurrency();
   const [amount, setAmount] = useState(line.amount.toString());
 
   function handleAmountBlur() {
@@ -1539,10 +1546,11 @@ function RecipeLineRow({
   if (!canEdit) {
     return (
       <div className="flex items-baseline gap-3 py-1.5">
-        <span className="flex-1 min-w-0 text-sm font-medium text-[var(--foreground)] break-words">
+        {/* TIM-1894: read-only recipe row matches its editable path + Equipment (text-xs, was text-sm). */}
+        <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
           {ingredient?.name ?? "Unknown"}
         </span>
-        <span className="text-sm text-[var(--muted-foreground)] shrink-0">
+        <span className="text-xs text-[var(--muted-foreground)] shrink-0">
           {line.amount} {line.unit}
         </span>
         {needsCost ? (
@@ -1555,7 +1563,7 @@ function RecipeLineRow({
         ) : (
           lineCost !== null && (
             <span className="text-xs text-[var(--muted-foreground)] shrink-0 tabular-nums">
-              ${lineCost.toFixed(4)}
+              {symbol}{lineCost.toFixed(4)}
             </span>
           )
         )}
@@ -1596,7 +1604,7 @@ function RecipeLineRow({
       ) : (
         lineCost !== null && (
           <span className="text-xs text-[var(--muted-foreground)] shrink-0 min-w-[3rem] text-right">
-            ${lineCost.toFixed(4)}
+            {symbol}{lineCost.toFixed(4)}
           </span>
         )
       )}
@@ -2728,7 +2736,7 @@ function InsightsTab({
         ) : (
           <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={`w-full ${TABLE_CELL_TEXT}`}>
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--background)] border-b border-[var(--border)]">
                     <th className="text-left font-semibold px-4 py-2 w-8">#</th>
@@ -3060,6 +3068,7 @@ export function MenuWorkspace({
   initialTargetGrossMargin,
   conceptContext,
 }: Props) {
+  const { symbol } = useCurrency();
   const [items, setItems] = useState<MenuItemWithCogs[]>(initialItems);
   const [ingredients, setIngredients] = useState<MenuIngredient[]>(initialIngredients);
   const [itemIngredients, setItemIngredients] = useState<MenuItemIngredient[]>(initialItemIngredients);
@@ -3490,7 +3499,7 @@ export function MenuWorkspace({
         // TIM-1561: route through unified review modal (delete bespoke proposal box).
         const suggestedDollars = (data.suggested_price_cents / 100).toFixed(2);
         const currentDollars = item.price_cents > 0
-          ? `$${(item.price_cents / 100).toFixed(2)}`
+          ? `${symbol}${(item.price_cents / 100).toFixed(2)}`
           : "Not set";
         openAIReviewModal({
           suggestions: [
@@ -3499,7 +3508,7 @@ export function MenuWorkspace({
               fieldId: "price_cents",
               fieldLabel: `${item.name} - Retail Price`,
               originalValue: currentDollars,
-              proposedValue: `$${suggestedDollars}\n\nMarket range: $${(data.low_cents / 100).toFixed(2)} – $${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
+              proposedValue: `${symbol}${suggestedDollars}\n\nMarket range: ${symbol}${(data.low_cents / 100).toFixed(2)} – ${symbol}${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
               isStructured: false,
             },
           ],
@@ -3791,25 +3800,20 @@ export function MenuWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Utensils className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Menu &amp; Pricing
-            </h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices.
-          </p>
-        </header>
+        {/* TIM-1894: canonical WorkspaceHeader (title-only — no page-level actions). */}
+        <WorkspaceHeader
+          Icon={Utensils}
+          title="Menu & Pricing"
+          description="Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices."
+        />
 
-        {/* Tab nav — canonical WorkspaceSubNav (TIM-1793) */}
+        {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
+            TIM-1888 H-6: text-only pills (no Icon). T-1: default mb-5 spacing. */}
         <WorkspaceSubNav
-          tabs={tabs.map((t) => ({ key: t.id, label: t.label, Icon: t.Icon }))}
+          tabs={tabs.map((t) => ({ key: t.id, label: t.label }))}
           active={activeTab}
           onSelect={setActiveTab}
           ariaLabel="Menu & Pricing sections"
-          className="mb-6"
         />
 
         {activeTab === "menu" && (

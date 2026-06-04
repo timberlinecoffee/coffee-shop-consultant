@@ -7,8 +7,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X, Pencil, Sparkles, AlertCircle } from "lucide-react";
+import { Check, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
+import {
+  recomputeEquipmentLinked,
+  type EquipmentRecomputeParams,
+} from "@/lib/cross-workspace-apply";
+import { parseFactValue } from "@/lib/cross-workspace-sync";
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -19,6 +24,15 @@ export interface SuggestionPayload {
   originalValue: string;
   proposedValue: string;
   isStructured?: boolean;
+  // TIM-1798: cross-workspace coordinated proposals. When present, cards are
+  // grouped by workspaceLabel. A `derived` card is a linked figure (e.g. the
+  // Financials equipment line + startup-cost total that follow an equipment-cost
+  // change) — shown read-only with provenance, recomputed when the editable
+  // primary (the one carrying `recompute`) is edited.
+  workspaceLabel?: string;
+  derived?: boolean;
+  provenance?: string;
+  recompute?: EquipmentRecomputeParams;
 }
 
 export interface ApprovedChange {
@@ -186,6 +200,7 @@ function ChangeCard({
   sug,
   cardState,
   isMobile,
+  readOnly = false,
   onAccept,
   onReject,
   onEditStart,
@@ -196,6 +211,10 @@ function ChangeCard({
   sug: SuggestionPayload;
   cardState: CardState;
   isMobile: boolean;
+  // TIM-1798: derived/linked cards (Financials figures that follow an equipment
+  // cost change) render read-only with provenance — they apply together with the
+  // editable primary, so they are not separately acceptable.
+  readOnly?: boolean;
   onAccept: () => void;
   onReject: () => void;
   onEditStart: () => void;
@@ -209,11 +228,13 @@ function ChangeCard({
     if (cardState.status === "editing") textareaRef.current?.focus();
   }, [cardState.status]);
 
-  const isAccepted = cardState.status === "accepted";
-  const isRejected = cardState.status === "rejected";
-  const isEditing = cardState.status === "editing";
+  const isAccepted = !readOnly && cardState.status === "accepted";
+  const isRejected = !readOnly && cardState.status === "rejected";
+  const isEditing = !readOnly && cardState.status === "editing";
 
-  const cardCls = isAccepted
+  const cardCls = readOnly
+    ? "border border-dashed border-[var(--border)] rounded-xl p-4 space-y-3 bg-[var(--background)]"
+    : isAccepted
     ? "border border-[var(--teal)]/30 bg-[var(--teal-tint-500)] rounded-xl p-4 space-y-3"
     : isRejected
     ? "border border-[var(--border)] rounded-xl p-4 space-y-3 opacity-40"
@@ -221,9 +242,14 @@ function ChangeCard({
 
   return (
     <div className={cardCls}>
-      {/* Field label + accepted badge */}
+      {/* Field label + accepted / provenance badge */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-[var(--dark)]">{sug.fieldLabel}</p>
+        {readOnly && sug.provenance && (
+          <span className="flex items-center gap-1 text-xs font-medium text-[var(--dark-grey)] bg-white border border-[var(--border)] rounded-full px-2 py-0.5">
+            <Link2 size={11} aria-hidden /> {sug.provenance}
+          </span>
+        )}
         {isAccepted && (
           <div className="flex items-center gap-1">
             <span className="text-xs font-medium text-[var(--teal)] bg-white border border-[var(--teal)]/30 rounded-full px-2 py-0.5">
@@ -319,7 +345,11 @@ function ChangeCard({
       )}
 
       {/* Controls */}
-      {isEditing ? (
+      {readOnly ? (
+        <p className="text-xs text-[var(--dark-grey)] pt-0.5">
+          Updates automatically when you apply the equipment cost change.
+        </p>
+      ) : isEditing ? (
         <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
@@ -451,12 +481,16 @@ export function AIReviewModal({
     });
   }, []);
 
+  // TIM-1798: derived/linked cards apply with the primary and are never separately
+  // accepted, so counts reflect only the actionable (non-derived) changes.
+  const actionable = useMemo(() => suggestions.filter((s) => !s.derived), [suggestions]);
+
   const acceptedCount = useMemo(
-    () => [...cardStates.values()].filter((c) => c.status === "accepted").length,
-    [cardStates],
+    () => actionable.filter((s) => cardStates.get(s.id)?.status === "accepted").length,
+    [actionable, cardStates],
   );
 
-  const totalCount = suggestions.length;
+  const totalCount = actionable.length;
 
   const statusLabel = acceptedCount === 0
     ? "None accepted yet"
@@ -498,6 +532,59 @@ export function AIReviewModal({
 
   const subtitleParts = [context.workspace, context.section].filter(Boolean).join(" - ");
 
+  // TIM-1798: when the primary equipment-cost card is edited, recompute the linked
+  // Financials figures so the dependent totals stay coherent with the new price.
+  const onPrimaryEditSave = useCallback(
+    (sug: SuggestionPayload, editedValue: string) => {
+      updateCard(sug.id, { status: "accepted", wasEdited: editedValue !== sug.proposedValue });
+      if (!sug.recompute) return;
+      const cents = parseFactValue("currency_cents", editedValue);
+      if (typeof cents !== "number") return;
+      for (const u of recomputeEquipmentLinked(sug.recompute, cents)) {
+        updateCard(u.id, { editedValue: u.proposedValue });
+      }
+    },
+    [updateCard],
+  );
+
+  const renderCard = (sug: SuggestionPayload) => {
+    const cs = cardStates.get(sug.id) ?? initialCard(sug);
+    return (
+      <ChangeCard
+        key={sug.id}
+        sug={sug}
+        cardState={cs}
+        isMobile={isMobile}
+        readOnly={!!sug.derived}
+        onAccept={() => updateCard(sug.id, { status: "accepted" })}
+        onReject={() => updateCard(sug.id, { status: "rejected" })}
+        onEditStart={() => updateCard(sug.id, { status: "editing" })}
+        onEditSave={() => onPrimaryEditSave(sug, cs.editedValue)}
+        onEditDiscard={() =>
+          updateCard(sug.id, {
+            status: "unreviewed",
+            editedValue: sug.proposedValue,
+            wasEdited: false,
+          })
+        }
+        onEditChange={(v) => updateCard(sug.id, { editedValue: v })}
+      />
+    );
+  };
+
+  // TIM-1798: cross-workspace proposals carry a workspaceLabel per card — group
+  // them under a per-workspace header so the owner sees each change by suite.
+  const isCrossWorkspace = suggestions.some((s) => s.workspaceLabel);
+  const groups: Array<{ label: string; items: SuggestionPayload[] }> = [];
+  if (isCrossWorkspace) {
+    for (const s of suggestions) {
+      const label = s.workspaceLabel ?? context.workspace;
+      const g = groups.find((x) => x.label === label);
+      if (g) g.items.push(s);
+      else groups.push({ label, items: [s] });
+    }
+  }
+
   const cardList = (
     <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
       {isStreaming && suggestions.length === 0 ? (
@@ -524,35 +611,17 @@ export function AIReviewModal({
             Try adding more detail to your content first.
           </p>
         </div>
+      ) : isCrossWorkspace ? (
+        groups.map((g) => (
+          <div key={g.label} className="space-y-3">
+            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+              {g.label}
+            </p>
+            {g.items.map(renderCard)}
+          </div>
+        ))
       ) : (
-        suggestions.map((sug) => {
-          const cs = cardStates.get(sug.id) ?? initialCard(sug);
-          return (
-            <ChangeCard
-              key={sug.id}
-              sug={sug}
-              cardState={cs}
-              isMobile={isMobile}
-              onAccept={() => updateCard(sug.id, { status: "accepted" })}
-              onReject={() => updateCard(sug.id, { status: "rejected" })}
-              onEditStart={() => updateCard(sug.id, { status: "editing" })}
-              onEditSave={() =>
-                updateCard(sug.id, {
-                  status: "accepted",
-                  wasEdited: cs.editedValue !== sug.proposedValue,
-                })
-              }
-              onEditDiscard={() =>
-                updateCard(sug.id, {
-                  status: "unreviewed",
-                  editedValue: sug.proposedValue,
-                  wasEdited: false,
-                })
-              }
-              onEditChange={(v) => updateCard(sug.id, { editedValue: v })}
-            />
-          );
-        })
+        suggestions.map(renderCard)
       )}
     </div>
   );

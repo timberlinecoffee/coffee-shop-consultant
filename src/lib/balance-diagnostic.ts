@@ -16,6 +16,7 @@
 // not used in math/exports.
 
 import type { MonthlySlice, FinancialInputs } from "./financial-projection.ts";
+import { formatCurrencyAmount } from "./currency.ts";
 
 export const BALANCE_TOLERANCE_CENTS = 2;
 
@@ -76,14 +77,8 @@ export interface BalanceDiagnostic {
   suggested_fix: SuggestedFix | null;
 }
 
-// Format a cents value for inline use inside diagnostic strings. Avoids
-// pulling in the heavier currency module — the balance-sheet tab passes the
-// formatted strings in via a separate helper.
-function formatCentsRough(cents: number): string {
-  const sign = cents < 0 ? "-" : "";
-  const abs = Math.abs(cents);
-  const dollars = Math.round(abs / 100);
-  return `${sign}$${dollars.toLocaleString("en-US")}`;
+function formatCentsRough(cents: number, currencyCode: string): string {
+  return formatCurrencyAmount(Math.round(Math.abs(cents)) / 100, currencyCode, { compact: false });
 }
 
 interface DiagnoseArgs {
@@ -96,12 +91,14 @@ interface DiagnoseArgs {
   // input changes. Optional — diagnostic still works without it, just with
   // less specific fix suggestions.
   inputs?: Partial<FinancialInputs>;
+  currencyCode?: string;
 }
 
 export function diagnoseBalanceSheet({
   slice,
   allSlices,
   inputs,
+  currencyCode = "USD",
 }: DiagnoseArgs): BalanceDiagnostic {
   const gap = slice.total_assets_cents - slice.total_liabilities_and_equity_cents;
   const absGap = Math.abs(gap);
@@ -120,7 +117,8 @@ export function diagnoseBalanceSheet({
   }
 
   const direction: GapDirection = gap > 0 ? "assets_exceed" : "le_exceeds_assets";
-  const gapStr = formatCentsRough(absGap);
+  const fmt = (c: number) => formatCentsRough(c, currencyCode);
+  const gapStr = fmt(absGap);
 
   // ── Probe likely causes ─────────────────────────────────────────────────
 
@@ -207,7 +205,7 @@ export function diagnoseBalanceSheet({
       candidates.push({
         id: "cash_trough",
         label: "Cash runs out during the ramp",
-        explanation: `The model hits ${formatCentsRough(0)} cash in month ${lowestCashMonthIndex} (Year ${lowestSliceYear}, month ${lowestSliceMonth}). The balance sheet cannot show negative cash, so the deficit shows up as a gap of ${gapStr} between assets and liabilities + equity.`,
+        explanation: `The model hits ${fmt(0)} cash in month ${lowestCashMonthIndex} (Year ${lowestSliceYear}, month ${lowestSliceMonth}). The balance sheet cannot show negative cash, so the deficit shows up as a gap of ${gapStr} between assets and liabilities + equity.`,
         contribution_cents: Math.min(absGap, monthlyFixedCostsCents * 2 || absGap),
       });
     }
@@ -215,7 +213,7 @@ export function diagnoseBalanceSheet({
       candidates.push({
         id: "working_capital_unfunded",
         label: "Working capital is not funded",
-        explanation: `You are carrying ${formatCentsRough(netWorkingCapital)} in inventory and receivables but only ${formatCentsRough(apCents)} in payables. Until you set aside cash to cover that difference, the model has to plug the gap somewhere. That is what you are seeing here.`,
+        explanation: `You are carrying ${fmt(netWorkingCapital)} in inventory and receivables but only ${fmt(apCents)} in payables. Until you set aside cash to cover that difference, the model has to plug the gap somewhere. That is what you are seeing here.`,
         contribution_cents: Math.min(absGap, netWorkingCapital - workingCapitalReserve),
       });
     }
@@ -225,7 +223,7 @@ export function diagnoseBalanceSheet({
       candidates.push({
         id: "retained_earnings_drift",
         label: "Retained earnings do not match cumulative profits",
-        explanation: `Your stored equity total disagrees with owner capital + retained earnings by ${formatCentsRough(equityDrift)}. This usually means a forecast input was edited manually after the model was last recomputed.`,
+        explanation: `Your stored equity total disagrees with owner capital + retained earnings by ${fmt(equityDrift)}. This usually means a forecast input was edited manually after the model was last recomputed.`,
         contribution_cents: equityDrift,
       });
     }
@@ -235,7 +233,7 @@ export function diagnoseBalanceSheet({
       candidates.push({
         id: "funding_shortfall",
         label: "Funding sources exceed startup costs",
-        explanation: `Your owner capital plus loan adds up to ${formatCentsRough(-fundingShortfallCents)} more than your itemized startup costs. The extra cash sits on the assets side without a matching entry on the equity or debt side.`,
+        explanation: `Your owner capital plus loan adds up to ${fmt(-fundingShortfallCents)} more than your itemized startup costs. The extra cash sits on the assets side without a matching entry on the equity or debt side.`,
         contribution_cents: Math.min(absGap, -fundingShortfallCents),
       });
     }
@@ -273,7 +271,7 @@ export function diagnoseBalanceSheet({
     // cash trough plus a 1.5x cushion.
     const recommendedBuffer = Math.round(absGap * 1.5);
     suggested_fix = {
-      label: `Add ${formatCentsRough(recommendedBuffer)} to your opening cash buffer`,
+      label: `Add ${fmt(recommendedBuffer)} to your opening cash buffer`,
       rationale: `This covers the cash low point in month ${lowestCashMonthIndex} with a 50% safety margin so a slow month does not put you under.`,
       location: "startup_costs",
       adjustment: {
@@ -284,7 +282,7 @@ export function diagnoseBalanceSheet({
   } else if (top.id === "working_capital_unfunded") {
     const recommendedReserve = Math.max(netWorkingCapital, absGap);
     suggested_fix = {
-      label: `Set working capital reserve to ${formatCentsRough(recommendedReserve)}`,
+      label: `Set working capital reserve to ${fmt(recommendedReserve)}`,
       rationale:
         "Inventory you are holding and money customers owe you both tie up cash. A working capital reserve covers that gap so you are not constantly cash-strapped.",
       location: "startup_costs",

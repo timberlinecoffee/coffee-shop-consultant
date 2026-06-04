@@ -112,7 +112,7 @@ const WORKSPACE_LABELS: Record<string, string> = {
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
   buildout_equipment: "Equipment & Supplies",
-  opening_month_plan: "Opening Month Plan",
+  opening_month_plan: "Launch Plan",
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

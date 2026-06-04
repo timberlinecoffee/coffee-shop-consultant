@@ -9,8 +9,8 @@
 //
 // Design goals:
 //   1. A short, simple chat reply costs ~1 credit, so the existing monthly
-//      grants (starter 25 / growth 100 / pro 500, see MONTHLY_CREDITS in
-//      src/lib/stripe.ts) keep their rough "this many easy questions" meaning.
+//      grants (starter 100 / pro 500, see MONTHLY_CREDITS in src/lib/stripe.ts)
+//      keep their rough "this many easy questions" meaning.
 //   2. Heavier work costs proportionally more: long generations, the stronger
 //      model (which we route to for complex/research turns), web research, and
 //      discrete tool actions all add credits.
@@ -29,6 +29,12 @@
 //   - WEB SEARCH requests — real metered research depth; each hosted search is
 //     billed cost and signals a heavier turn.
 //   - TOOL CALLS — discrete actions Scout took on the user's plan.
+//
+// TIM-1897: the platform now runs entirely on Claude Haiku, so every live caller
+// passes the "default" (Haiku) tier. The "complex"/Sonnet tier below is retained
+// as the generic mechanism (and is still pinned by cost.test.mjs) so that
+// re-introducing a stronger model later is a one-line routing change rather than
+// a cost-model rewrite.
 
 export type CreditModelTier = "default" | "complex"
 

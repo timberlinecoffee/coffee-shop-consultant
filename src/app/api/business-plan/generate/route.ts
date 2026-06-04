@@ -5,10 +5,11 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { isSubscriptionActive, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
 import { buildPlanSnapshotForExecutiveSummary, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import {
@@ -46,27 +47,28 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, subscription_tier, copilot_trial_messages_used, ai_credits_remaining, onboarding_data, beta_waiver_until")
+    .select("subscription_status, subscription_tier, ai_credits_remaining, onboarding_data, beta_waiver_until, trial_ends_at")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!profile) return Response.json({ error: "Profile not found" }, { status: 404 });
 
+  // TIM-1902: trialists count as active here — gated on ai_credits_remaining.
   const isActive = isSubscriptionActive(profile.subscription_status);
-  const isFree = profile.subscription_tier === "free";
+  const hasAccess = hasWriteAccess({
+    subscription_status: profile.subscription_status,
+    trial_ends_at: profile.trial_ends_at,
+  });
   const betaWaivedUntil = profile.beta_waiver_until ? new Date(profile.beta_waiver_until) : null;
   const isBetaWaived = betaWaivedUntil ? betaWaivedUntil > new Date() : false;
 
-  if (!isActive && !isBetaWaived) {
-    if (isFree) {
-      const used = profile.copilot_trial_messages_used ?? 0;
-      if (used >= COPILOT_FREE_TRIAL_LIMIT) {
-        return Response.json({ reason: "trial_exhausted", tier_required: "starter" }, { status: 402 });
-      }
-    } else {
-      return Response.json({ reason: "no_subscription", tier_required: "starter" }, { status: 402 });
-    }
+  if (!hasAccess && !isBetaWaived) {
+    return Response.json({ reason: "no_subscription", tier_required: "starter" }, { status: 402 });
   }
+  if (hasAccess && !isBetaWaived && (profile.ai_credits_remaining ?? 0) < 1) {
+    return Response.json({ reason: "out_of_credits", tier_required: "pro" }, { status: 402 });
+  }
+  void isActive;
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
@@ -311,7 +313,7 @@ Write a complete, usable draft of this section now. Generate from whatever conte
 
       try {
         const response = await client.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: PLATFORM_AI_MODEL,
           max_tokens: maxTokens,
           system: systemPrompt,
           messages: [{ role: "user", content: userMessage }],
@@ -343,18 +345,13 @@ Write a complete, usable draft of this section now. Generate from whatever conte
 
         cleanup();
 
-        // Spend a credit if paid user
-        if (isActive && !isFree) {
+        // TIM-1902: debit one credit on any access-holding account (active or
+        // card-on-file trialist). Beta-waived skips billing.
+        if (hasAccess && !isBetaWaived) {
           const svc = createServiceClient();
           await svc
             .from("users")
             .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
-            .eq("id", user.id);
-        } else if (isFree) {
-          const svc = createServiceClient();
-          await svc
-            .from("users")
-            .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
             .eq("id", user.id);
         }
 

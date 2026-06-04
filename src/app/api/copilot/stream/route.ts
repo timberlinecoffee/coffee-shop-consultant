@@ -1,13 +1,15 @@
-// Streaming co-pilot route with thinking, model routing, and SSE.
-// TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
+// Streaming co-pilot route (SSE).
+// TIM-866: unified usage messaging — paid gates on ai_credits_remaining.
+// TIM-1902: free_trial users are now card-on-file trialists (7-day Stripe trial) granted
+// 75 credits up front and metered on the same ai_credits_remaining balance as paid users.
+// The legacy 5-message free-trial counter (COPILOT_FREE_TRIAL_LIMIT) has been retired.
 // SSE event names: text | thinking | suggestions | status | error | done
 // TIM-1670: web_search server tool wired in so competitor/local-market queries do genuine
 // multi-source research (enumerate→verify→cite) instead of answering from priors; location
-// candidates surfaced for grounding; research queries route to sonnet; `status:searching` event.
+// candidates surfaced for grounding; the web_search tool is registered on isResearch turns; `status:searching` event.
 // INVARIANT: the research directive is injected ONLY on isResearch turns (same gate as the
 // web_search tool) — never tell the model it has a tool we didn't register, or it fabricates.
-// Model routing (TIM-1272): haiku-4-5 default; sonnet-4-6 when snapshot >8000 tokens OR 3+ workspace mentions OR a research query.
-// Thinking is only enabled on the sonnet tier (haiku-4-5 does not support extended thinking).
+// TIM-1897: all turns run on Claude Haiku (src/lib/ai/models.ts) — no Sonnet routing, no extended thinking.
 // TIM-1637: reorganize_equipment_list tool emits suggestions event when called.
 // TIM-1638: timeline inconsistency — groundss answers in plan's targetLaunchDate; emits suggestions on mismatch.
 // TIM-1648: propose_item tool lets Scout emit a structured menu-item proposal (beverage+recipe) into menu_pricing.
@@ -21,29 +23,17 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived, isTrialActive } from "@/lib/access"
 import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
+import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { loadPlanContext } from "@/lib/plan-context"
+import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const FREE_TRIAL_COPILOT_LIMIT = 5
-
-const WORKSPACE_KEYS: WorkspaceKey[] = [
-  "concept",
-  "location_lease",
-  "financials",
-  "menu_pricing",
-  "buildout_equipment",
-  "opening_month_plan",
-  "hiring",
-  "marketing",
-  "suppliers",
-]
 
 const TTFT_MS = 8_000
 const GAP_MS = 20_000
@@ -116,6 +106,17 @@ Keep the Problem → Recommendation Rule: after the competitor list, give the ow
 const PROPOSE_ITEM_DIRECTIVE = `## Adding Items to the Menu (use propose_item tool — do NOT describe it in text)
 You have a \`propose_item\` tool. When the owner asks you to add, save, apply, or put a beverage or menu item into their Menu & Pricing workspace — including when they refer back to something you designed earlier in this conversation (e.g. "add that to my menu", "save it", "put that beverage on the menu") — you MUST call the \`propose_item\` tool. Do NOT write a text-only response claiming the item was added. The tool emits a structured proposal the owner reviews and accepts or rejects before anything is saved. After calling the tool, briefly confirm what you proposed.`
 
+// TIM-1798: cross-workspace cost-change directive — injected ONLY when
+// offerEquipmentChangeTool (same gate as registering propose_equipment_change).
+// Directive presence ⟺ tool presence, always. This is what lets Scout act on a
+// request that spans suites ("reprice the espresso machine and update my
+// financials") instead of refusing because it is "only in Equipment".
+const EQUIPMENT_CHANGE_DIRECTIVE = `## Changing Equipment Costs (use propose_equipment_change — coordinated across workspaces)
+You have a \`propose_equipment_change\` tool. When the owner asks you to set, change, raise, or lower the cost of an equipment item, or to add a new piece of equipment with a cost — INCLUDING when they also ask you to update the Financials, startup costs, or budget to match ("reprice the espresso machine to $11k and update my financials") — you MUST call \`propose_equipment_change\`. Do NOT refuse or say you can only edit the current workspace, and do NOT tell them to change Financials by hand.
+- The equipment item's unit cost is the single source of truth: changing it automatically flows to the Financials equipment line and the startup-cost total. The tool builds ONE review proposal showing the equipment change AND the dependent Financials figures together; the owner accepts, edits, or rejects before anything is saved.
+- For a reprice, pass the item's number (the I# value from the Equipment List below) and the new unit cost in cents. For a new item, pass action "add" with a name, category, and unit cost.
+- After calling the tool, briefly confirm what you proposed in plain language.`
+
 // ── Equipment reorganize types / helpers ─────────────────────────────────────
 
 interface EquipmentItemCtx {
@@ -124,6 +125,10 @@ interface EquipmentItemCtx {
   section_id: string | null
   position: number
   category: string
+  // TIM-1798: cost + quantity power the cross-workspace cost-change proposal
+  // (equipment item ↔ Financials capex line ↔ startup-cost total).
+  unit_cost_cents: number
+  quantity: number
 }
 
 interface SectionCtx {
@@ -163,7 +168,11 @@ function formatEquipmentContext(items: EquipmentItemCtx[], sections: SectionCtx[
           ? `S${sectionIndex.get(i.section_id)}`
           : "Unsectioned"
         : "Unsectioned"
-      return `  I${idx}: ${i.name} | category: ${i.category} | current section: ${station}`
+      // TIM-1798: include current unit cost + quantity so propose_equipment_change
+      // can reason about relative price changes ("make it 20% cheaper").
+      const cost = `$${(i.unit_cost_cents / 100).toLocaleString("en-US")}`
+      const qty = i.quantity > 1 ? ` ×${i.quantity}` : ""
+      return `  I${idx}: ${i.name} | category: ${i.category} | unit cost: ${cost}${qty} | current section: ${station}`
     }),
   ]
   return lines.join("\n")
@@ -362,6 +371,74 @@ function shouldOfferProposeTool(messages: Array<{ role: string; content: string 
   return addToMenu || designItem
 }
 
+// ── propose_equipment_change tool (TIM-1798) ──────────────────────────────────
+// Offered in the buildout_equipment workspace when the owner expresses intent to
+// change an equipment cost or add equipment. Forces sonnet (haiku tool use is
+// unreliable). Emits a coordinated cross-workspace proposal (equipment item +
+// derived Financials line + startup-cost total) into the unified review modal.
+
+const PROPOSE_EQUIPMENT_CHANGE_TOOL: Anthropic.Tool = {
+  name: "propose_equipment_change",
+  description:
+    "Propose a coordinated change to an equipment item's cost that spans the " +
+    "Equipment & Supplies and Financials workspaces. Call this when the owner asks " +
+    "to set/raise/lower an equipment item's cost, or to add a new piece of equipment " +
+    "with a cost — including when they also ask to update the Financials or startup " +
+    "costs to match. The equipment unit cost is the single source of truth; the " +
+    "Financials equipment line and startup-cost total are derived from it. Do NOT " +
+    "call this for general discussion or for reordering the list (use " +
+    "reorganize_equipment_list for ordering).",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      action: {
+        type: "string",
+        enum: ["reprice", "add"],
+        description: "'reprice' to change an existing item's unit cost; 'add' for a new item.",
+      },
+      item: {
+        type: ["integer", "null"],
+        description:
+          "reprice only: the item number from the Equipment List (the I# value, e.g. 0 for I0). Null for 'add'.",
+      },
+      name: {
+        type: "string",
+        description:
+          "Item name in Title Case. For reprice, the existing item's name; for add, the new item's name.",
+      },
+      category: {
+        type: ["string", "null"],
+        description:
+          "add only: equipment category (e.g. 'Espresso', 'Grinder', 'Refrigeration', 'Furniture'). Null for reprice.",
+      },
+      quantity: {
+        type: "integer",
+        description: "Quantity for this item (default 1).",
+      },
+      unit_cost_cents: {
+        type: "integer",
+        description: "The proposed unit cost in cents (e.g. 1100000 for $11,000.00).",
+      },
+      rationale: {
+        type: "string",
+        description: "One sentence explaining the change.",
+      },
+    },
+    required: ["action", "name", "unit_cost_cents"],
+  },
+}
+
+// Offer the cost-change tool when the owner expresses cost-change / add-equipment
+// intent. Kept deliberately broad on the cost side because the flagship case is a
+// cross-suite ask ("...and update my financials"); the model still only calls the
+// tool when the request is genuinely about an equipment cost.
+function shouldOfferEquipmentChangeTool(messages: Array<{ role: string; content: string }>): boolean {
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  // Intent detection is the pure, unit-tested isEquipmentCostChangeIntent (a prior
+  // fragile inline regex silently dropped "reprice ... to $11,000" on prod).
+  return isEquipmentCostChangeIntent(lastUser)
+}
+
 // TIM-1670: detect questions that need real web research (competitors, local market,
 // suppliers, current prices/benchmarks) so we (a) route to the stronger model and
 // (b) lengthen the no-data watchdog while web_search runs server-side.
@@ -425,14 +502,6 @@ function buildLocalMarketContext(
   return lines.join("\n")
 }
 
-function countWorkspaceMentions(messages: Array<{ role: string; content: string }>): number {
-  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  const lower = lastUser.toLowerCase()
-  return WORKSPACE_KEYS.filter(
-    (k) => lower.includes(k.replace(/_/g, " ")) || lower.includes(k.replace(/_/g, "")),
-  ).length
-}
-
 // ── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -478,7 +547,7 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data, beta_waiver_until")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, beta_waiver_until, trial_ends_at")
     .eq("id", user.id)
     .single()
 
@@ -499,37 +568,32 @@ export async function POST(request: NextRequest) {
   // TIM-925: Beta waiver — bypass all paywall/credit gates for the beta window.
   const isWaived = isBetaWaived(profile.beta_waiver_until)
 
+  // TIM-1902: free_trial is now a card-on-file 7-day Stripe trial. Trialists
+  // are gated on ai_credits_remaining just like paid users (75-credit grant
+  // up front). If the trial window has expired but Stripe hasn't yet auto-
+  // charged (subscription.updated still pending), block with the expired
+  // paywall message so the user is funneled into the billing portal.
   const isTrial = profile.subscription_status === "free_trial"
   const isActive = isSubscriptionActive(profile.subscription_status)
+  const trialWindowOpen = isTrial && isTrialActive(profile.trial_ends_at)
 
-  // Free trial: allow up to FREE_TRIAL_COPILOT_LIMIT messages before showing paywall.
-  // Beta-waived accounts skip the trial gate.
-  if (!isWaived && isTrial) {
-    const used = profile.copilot_trial_messages_used ?? 0
-    const remaining = FREE_TRIAL_COPILOT_LIMIT - used
-    if (remaining <= 0) {
-      return new Response(
-        sse("error", {
-          code: "trial_exhausted",
-          message: "You've used your 5 trial messages — upgrade to keep planning with Copilot.",
-          trialUsed: used,
-          trialLimit: FREE_TRIAL_COPILOT_LIMIT,
-        }),
-        { status: 402, headers: { "Content-Type": "text/event-stream" } },
-      )
-    }
-  } else if (!isWaived && !isActive) {
+  if (!isWaived && isTrial && !trialWindowOpen) {
+    return new Response(
+      sse("error", { code: "paywall", reason: "expired", tier_required: "starter" }),
+      { status: 402, headers: { "Content-Type": "text/event-stream" } },
+    )
+  } else if (!isWaived && !isActive && !isTrial) {
     // Cancelled or expired subscriptions: paywall without trial messaging.
     return new Response(
       sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
-  } else if (!isWaived && profile.subscription_tier === "free") {
+  } else if (!isWaived && !isTrial && profile.subscription_tier === "free") {
     // Active status but free tier — shouldn't normally occur; gate for safety.
     return new Response(
       sse("error", {
         code: "quota",
-        message: `${COPILOT_NAME} requires a Starter, Growth, or Pro plan. Upgrade to start coaching.`,
+        message: `${COPILOT_NAME} requires a Starter or Pro plan. Upgrade to start coaching.`,
       }),
       { status: 403, headers: { "Content-Type": "text/event-stream" } },
     )
@@ -538,14 +602,15 @@ export async function POST(request: NextRequest) {
   // Beta-waived accounts skip credit deduction. All paid tiers have a defined monthly cap.
   const isUnlimited = isWaived
 
-  if (!isTrial && !isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
+  if (!isUnlimited && (isTrial || profile.subscription_tier !== "free") && profile.ai_credits_remaining < 1) {
+    // TIM-1902: trialists who burn their 75 credits hit out_of_credits the
+    // same way Starter / Pro users do — Buy-more-credits is the escape valve.
     const tier = profile.subscription_tier as string
-    const upgradeHint =
-      tier === "starter"
-        ? "Upgrade to Growth for more monthly credits, or your credits reset next month."
-        : tier === "growth"
-          ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
-          : "Your credits reset at the start of next month."
+    const upgradeHint = isTrial
+      ? "Top up credits or upgrade to keep planning during your trial."
+      : tier === "starter"
+        ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
+        : "Your credits reset at the start of next month."
     return new Response(
       // TIM-1687: distinct code so the client can offer Buy-more-credits alongside Upgrade.
       sse("error", {
@@ -575,7 +640,7 @@ export async function POST(request: NextRequest) {
       .eq("archived", false)
       .order("position", { ascending: true }),
   ])
-  const { snapshot: planSnapshot, estimatedTokens: snapshotTokens, targetLaunchDate } = snapshotResult
+  const { snapshot: planSnapshot, targetLaunchDate } = snapshotResult
 
   // TIM-1638: detect timeline mismatch between the authoritative plan date and
   // the stale onboarding estimate. Emit the inconsistency suggestion only when
@@ -597,7 +662,7 @@ export async function POST(request: NextRequest) {
     const [eqResult, secResult] = await Promise.all([
       svcClient
         .from("buildout_equipment_items")
-        .select("id, name, section_id, position, category")
+        .select("id, name, section_id, position, category, unit_cost_cents, quantity")
         .eq("plan_id", planId)
         .eq("archived", false)
         .order("position"),
@@ -614,7 +679,7 @@ export async function POST(request: NextRequest) {
 
   const equipmentContextAddendum =
     workspaceKey === "buildout_equipment" && equipmentItems.length > 0
-      ? `\n\n## Equipment List — Current Arrangement\nEach item and section below has a short number (I# / S#). The \`reorganize_equipment_list\` tool takes those numbers — pass the item number as \`item\` and the target section number as \`section\` (or null). Do NOT emit UUIDs.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Action available:** \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.`
+      ? `\n\n## Equipment List — Current Arrangement\nEach item and section below has a short number (I# / S#). The \`reorganize_equipment_list\` tool takes those numbers — pass the item number as \`item\` and the target section number as \`section\` (or null). Do NOT emit UUIDs.\n\n${formatEquipmentContext(equipmentItems, equipmentSections)}\n\n**Actions available:**\n- \`reorganize_equipment_list\` — call it ONLY when the user explicitly asks to reorganize, sort, reorder, or rearrange the equipment list. Never call it proactively. When you do call it, first send a brief text message explaining your grouping approach, then call the tool with all items in their proposed arrangement.\n- \`propose_equipment_change\` — call it when the user asks to change an item's cost or add a new item (pass the I# for a reprice). It updates the Financials equipment line and startup-cost total in the same reviewed proposal.`
       : ""
 
   // TIM-1670: ground competitor/market research in the owner's actual site(s) + segment.
@@ -636,17 +701,28 @@ export async function POST(request: NextRequest) {
     equipmentContextAddendum
 
   // ── Model routing ────────────────────────────────────────────────────────────
-  // TIM-1272: align routing with cost model (cheap → haiku, complex → sonnet).
-  // "Complex" = snapshot >8000 tokens OR user mentions 3+ workspaces in one turn.
-  // TIM-1670: research questions (competitors/local market) also route to sonnet —
-  // they need multi-step web_search + synthesis, which haiku handles poorly.
-  // Haiku 4.5 does not support extended thinking; thinking is only enabled for sonnet tier.
-  // TIM-1648: also force sonnet when offering propose_item tool (haiku tool use is unreliable).
-  const workspaceMentions = countWorkspaceMentions(messages)
+  // TIM-1897: board directive (Trent on TIM-1555) — ALL platform AI runs on Claude
+  // Haiku, no Sonnet routing. The single model constant lives in src/lib/ai/models.ts.
+  // What used to flip to Sonnet (large snapshots, 3+ workspace mentions, research,
+  // propose_item tool) now stays on Haiku. Two carry-over effects of that switch:
+  //   • Extended thinking is OFF — Haiku 4.5 does not support it (a `thinking` param
+  //     would 400). Removed below.
+  //   • Credit/cost metering is always the Haiku "default" tier (see cost block).
+  // Research depth (TIM-1670) and propose_item tool reliability (TIM-1648) were the
+  // original reasons for Sonnet; both are flagged to Trent on TIM-1897 as a quality
+  // re-check, but the directive is Haiku-everywhere.
   const isResearch = isResearchQuestion(messages)
   const offerProposeItemTool = shouldOfferProposeTool(messages)
-  const useComplexModel = snapshotTokens > 8_000 || workspaceMentions >= 3 || isResearch
-  const modelId = (useComplexModel || offerProposeItemTool) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
+  // TIM-1798: cross-workspace cost-change tool — only in the equipment workspace
+  // with items present (it references items by their I# index) and on cost-change
+  // intent. Per TIM-1897 (Haiku everywhere) this does NOT switch models; the tool
+  // runs on the platform model like propose_item. Directive presence ⟺ tool presence.
+  const offerEquipmentChangeTool =
+    workspaceKey === "buildout_equipment" &&
+    equipmentItems.length > 0 &&
+    shouldOfferEquipmentChangeTool(messages)
+  // TIM-1897: board directive — all platform AI runs on Claude Haiku, no Sonnet routing.
+  const modelId = PLATFORM_AI_MODEL
 
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
@@ -742,6 +818,7 @@ export async function POST(request: NextRequest) {
               STABLE_COACHING_STYLE,
               isResearch ? RESEARCH_DIRECTIVE : null,
               offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
+              offerEquipmentChangeTool ? EQUIPMENT_CHANGE_DIRECTIVE : null,
             ].filter(Boolean).join("\n\n"),
           },
           {
@@ -812,20 +889,36 @@ export async function POST(request: NextRequest) {
         const tools: Anthropic.ToolUnion[] = [
           ...(isResearch ? [webSearchTool] : []),
           ...(equipmentTool ? [equipmentTool] : []),
-          // TIM-1648: propose_item — offered on creation-intent messages (forces sonnet).
+          // TIM-1648: propose_item — offered on creation-intent messages. (TIM-1897: runs
+          // on Haiku like everything else; tool-use reliability flagged to Trent.)
           ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
+          // TIM-1798: propose_equipment_change — coordinated cross-workspace cost change.
+          ...(offerEquipmentChangeTool ? [PROPOSE_EQUIPMENT_CHANGE_TOOL] : []),
         ]
+
+        // TIM-1798: on Haiku 4.5 (TIM-1897, platform model) tool_choice:auto does NOT
+        // reliably call the tool — verified 0/5 fires on prod, so the cross-workspace
+        // proposal never appeared. The owner's message already passed the deterministic
+        // equipment cost/add intent gate (shouldOfferEquipmentChangeTool), so forcing
+        // the tool is correct: it guarantees the proposal is produced for review.
+        // Nothing auto-applies (the modal still gates every write), so a forced call is
+        // safe. Force only when the equipment tool is the unambiguous action this turn
+        // (not a research turn, where web_search must stay available under auto).
+        const toolChoice: Anthropic.ToolChoice =
+          offerEquipmentChangeTool && !isResearch
+            ? { type: "tool", name: "propose_equipment_change" }
+            : { type: "auto" }
 
         const stream = anthropic.messages.stream({
           model: modelId,
           max_tokens: 16_000,
-          // Extended thinking only available on sonnet and above (haiku-4-5 does not support it).
-          ...(useComplexModel ? { thinking: { type: "enabled", budget_tokens: 4_000 } } : {}),
+          // TIM-1897: no `thinking` — the platform runs on Haiku 4.5, which does not
+          // support extended thinking (passing the param is a 400).
           system: systemBlocks as Anthropic.TextBlockParam[],
           messages: anthropicMessages,
           // Only send tools/tool_choice when at least one tool applies — an empty tools
           // array with tool_choice is rejected by the API.
-          ...(tools.length > 0 ? { tools, tool_choice: { type: "auto" as const } } : {}),
+          ...(tools.length > 0 ? { tools, tool_choice: toolChoice } : {}),
         })
 
         for await (const event of stream) {
@@ -944,6 +1037,58 @@ export async function POST(request: NextRequest) {
               }
               activeToolName = null
               toolInputBuffer = ""
+            } else if (activeToolName === "propose_equipment_change" && toolInputBuffer) {
+              // TIM-1798: build the coordinated cross-workspace proposal (equipment
+              // item + derived Financials line + startup-cost total) and emit it.
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  action?: "reprice" | "add"
+                  item?: number | null
+                  name?: string
+                  category?: string | null
+                  quantity?: number
+                  unit_cost_cents?: number
+                  rationale?: string
+                }
+                const action = toolInput.action === "add" ? "add" : "reprice"
+                const idx = typeof toolInput.item === "number" ? toolInput.item : null
+                const target = idx != null ? equipmentItems[idx] : undefined
+                const name = toolInput.name ?? target?.name ?? ""
+                const unitCost =
+                  typeof toolInput.unit_cost_cents === "number" ? toolInput.unit_cost_cents : NaN
+                // Need a name and a valid cost to build a coherent proposal.
+                if (name && Number.isFinite(unitCost)) {
+                  const currentItems: EquipmentCostItem[] = equipmentItems.map((i) => ({
+                    id: i.id,
+                    name: i.name,
+                    quantity: i.quantity ?? 1,
+                    unit_cost_cents: i.unit_cost_cents ?? 0,
+                  }))
+                  const proposal = buildEquipmentCostProposal({
+                    change: {
+                      action,
+                      item_id: target?.id ?? null,
+                      name,
+                      category: toolInput.category ?? null,
+                      // Omit when the model didn't state one so a reprice preserves
+                      // the existing item's quantity (engine resolves the default).
+                      quantity: typeof toolInput.quantity === "number" ? toolInput.quantity : undefined,
+                      new_unit_cost_cents: Math.round(unitCost),
+                    },
+                    currentItems,
+                  })
+                  if (proposal.suggestions.length > 0) {
+                    send(sse("suggestions", {
+                      suggestions: proposal.suggestions,
+                      context: proposal.context,
+                    }))
+                  }
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
             }
           } else if (event.type === "content_block_delta") {
             if (event.delta.type === "input_json_delta") {
@@ -989,11 +1134,11 @@ export async function POST(request: NextRequest) {
           closed = true
 
           // Persist completed turn (only on clean stream close — dropped on disconnect).
-          // TIM-1272: haiku-4-5 = $0.80/$4.00 per M; sonnet-4-6 = $3/$15 per M.
+          // TIM-1897: all turns run on Haiku 4.5 = $0.80/$4.00 per M (no Sonnet tier).
           // input_tokens already excludes cached tokens; cache reads bill at 0.1x and cache
           // writes at 1.25x the base input rate, so fold them in to keep cost_usd honest.
-          const costPerInputM = useComplexModel ? 3 : 0.8
-          const costPerOutputM = useComplexModel ? 15 : 4
+          const costPerInputM = 0.8
+          const costPerOutputM = 4
           const costUsd =
             (inputTokens * costPerInputM +
               cacheReadTokens * costPerInputM * 0.1 +
@@ -1008,7 +1153,8 @@ export async function POST(request: NextRequest) {
           // than a flat 1-per-message. Cost model + launch-default pricing live
           // in src/lib/credits/cost.ts (flagged for product calibration).
           const creditBreakdown = computeCreditCost({
-            modelTier: useComplexModel ? "complex" : "default",
+            // TIM-1897: Haiku-everywhere → always the "default" (Haiku) cost basis.
+            modelTier: "default",
             outputTokens,
             webSearchRequests,
             toolCalls: toolCallCount,
@@ -1056,15 +1202,12 @@ export async function POST(request: NextRequest) {
 
           // TIM-1671: track post-turn credit balance so the chat meter can update
           // live from the `done` event. null when the account is not on the credit
-          // model (trial / beta-waived / unlimited).
+          // model (beta-waived / unlimited).
+          // TIM-1902: trialists are now on the credit model too — debited from
+          // their 75-credit grant exactly like paid users.
           let creditsRemaining: number | null = null
 
-          if (isTrial && !isWaived) {
-            await supabase
-              .from("users")
-              .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
-              .eq("id", user.id)
-          } else if (!isUnlimited) {
+          if (!isUnlimited) {
             // Floor at 0 — a single heavy turn can cost more than the remaining
             // balance; we let it finish (already streamed) but never go negative.
             creditsRemaining = Math.max(0, profile.ai_credits_remaining - creditCost)
@@ -1108,14 +1251,14 @@ export async function POST(request: NextRequest) {
             }))
           }
 
-          const trialRemaining = (isTrial && !isWaived)
-            ? FREE_TRIAL_COPILOT_LIMIT - ((profile.copilot_trial_messages_used ?? 0) + 1)
-            : null
-
+          // TIM-1902: trialRemaining is no longer a message-count — it is now
+          // the ai_credits_remaining balance for trialists, which the live
+          // creditsRemaining field below already carries. Kept null on the
+          // done event for clients that still read it, until they migrate.
           send(sse("done", {
             threadId: effectiveThreadId,
             modelUsed: modelId,
-            trialRemaining,
+            trialRemaining: null,
             // TIM-1671: live credit meter — what this turn cost and what's left.
             creditsSpent: creditsRemaining === null ? null : creditCost,
             creditsRemaining,

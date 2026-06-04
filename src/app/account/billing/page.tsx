@@ -17,7 +17,25 @@ type BillingStatus = {
   pausedFromTier: string | null;
   resumeTier: string | null;
   resumePrice: string | null;
+  trialEndsAt: string | null;
+  pastDueSince: string | null;
+  creditsRemaining: number | null;
 };
+
+// TIM-1902: how many whole days remain in the trial window. 0 when the window
+// has elapsed (Stripe webhook hasn't fired the conversion yet) or when there
+// is no trial. Computed at render time — refreshes when the user re-opens the page.
+function daysUntil(trialEndsAt: string | null): number {
+  if (!trialEndsAt) return 0;
+  const ms = new Date(trialEndsAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86400000));
+}
+
+function tierDisplay(tier: string | null): string {
+  if (tier === "starter") return "Starter ($39/mo)";
+  if (tier === "pro") return "Pro ($99/mo)";
+  return tier ?? "your plan";
+}
 
 function readSuccessParam(): boolean {
   if (typeof window === "undefined") return false;
@@ -140,11 +158,83 @@ export default function BillingPage() {
   }
 
   const isPaused = billingStatus?.status === "paused";
+  const isTrial = billingStatus?.status === "free_trial";
+  const isPastDue = billingStatus?.status === "past_due";
+  const trialDaysLeft = isTrial ? daysUntil(billingStatus?.trialEndsAt ?? null) : 0;
 
   return (
     <div className="bg-[var(--background)] flex flex-col min-h-full">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6 flex-1">
         <h1 className="text-2xl font-bold text-[var(--foreground)]">Billing</h1>
+
+        {/* TIM-1902: Free-trial card — countdown + cancel-anytime escape valve */}
+        {isTrial && !successParam && (
+          <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--teal-bg-850)] flex items-center justify-center mt-0.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ stroke: "var(--teal)" }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold text-[var(--foreground)] mb-1">
+                  Free trial active — {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"} left
+                </h2>
+                <p className="text-sm text-[var(--muted-foreground)] mb-5">
+                  You&#39;re on a 7-day free trial with full Pro features. On day 7 you&#39;ll convert to{" "}
+                  <span className="font-medium">{tierDisplay(billingStatus?.tier ?? null)}</span> — cancel any time before then with no charge.
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    onClick={openPortal}
+                    disabled={loading}
+                    className="text-sm bg-[var(--teal)] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
+                  >
+                    {loading ? "Opening portal…" : "Manage or cancel trial"}
+                  </button>
+                </div>
+                {actionError && (
+                  <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                    {actionError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TIM-1902: Past-due card — update-payment banner; Stripe is retrying */}
+        {isPastDue && (
+          <div className="bg-white rounded-xl border border-[var(--warning-dark)]/40 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center mt-0.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ stroke: "var(--warning-dark)" }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold text-[var(--foreground)] mb-1">Payment failed — update your card</h2>
+                <p className="text-sm text-[var(--muted-foreground)] mb-5">
+                  We couldn&#39;t charge your card. Stripe is retrying automatically — update your payment method to keep your plan and credits active. You have a 3-day grace period before your workspace switches to read-only.
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    onClick={openPortal}
+                    disabled={loading}
+                    className="text-sm bg-[var(--teal)] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
+                  >
+                    {loading ? "Opening portal…" : "Update payment method"}
+                  </button>
+                </div>
+                {actionError && (
+                  <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                    {actionError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Paused-state card — shown whenever the subscription is paused */}
         {isPaused && !successParam && (
@@ -242,7 +332,7 @@ export default function BillingPage() {
           </div>
         )}
 
-        {!isPaused && (
+        {!isPaused && !isTrial && !isPastDue && (
           <div className="bg-white rounded-xl border border-[var(--border)] p-6">
             <h2 className="font-semibold text-[var(--foreground)] mb-4">Manage Subscription</h2>
             <p className="text-sm text-[var(--dark-grey)] mb-4">

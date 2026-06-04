@@ -15,6 +15,7 @@ import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -657,7 +658,8 @@ function ForecastTab({
                   const hours = computeDayHours(sched);
                   return (
                     <tr key={day} className={!sched.open ? "bg-[var(--background)]" : ""}>
-                      <td className="py-2.5 pl-4 pr-2 text-sm font-medium text-[var(--foreground)]">
+                      {/* TIM-1894: body cells match Equipment-table reference (text-xs, was text-sm). */}
+                      <td className="py-2.5 pl-4 pr-2 text-xs font-medium text-[var(--foreground)]">
                         {DAY_LABELS[day]}
                       </td>
                       <td className="py-2.5 px-2">
@@ -680,7 +682,7 @@ function ForecastTab({
                             className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
-                          <span className="text-sm text-[var(--neutral-cool-400)]">Closed</span>
+                          <span className="text-xs text-[var(--neutral-cool-400)]">Closed</span>
                         )}
                       </td>
                       <td className="py-2 px-2">
@@ -696,7 +698,7 @@ function ForecastTab({
                           <span className="text-sm text-[var(--neutral-cool-400)]"></span>
                         )}
                       </td>
-                      <td className="py-2.5 pl-2 pr-4 text-right text-sm text-[var(--muted-foreground)]">
+                      <td className="py-2.5 pl-2 pr-4 text-right text-xs text-[var(--muted-foreground)]">
                         {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : ""}
                       </td>
                     </tr>
@@ -708,7 +710,7 @@ function ForecastTab({
                   <td colSpan={4} className="py-2.5 pl-4 pr-2 text-xs font-semibold text-[var(--muted-foreground)]">
                     Weekly total
                   </td>
-                  <td className="py-2.5 pl-2 pr-4 text-right text-sm font-semibold text-[var(--foreground)]">
+                  <td className="py-2.5 pl-2 pr-4 text-right text-xs font-semibold text-[var(--foreground)]">
                     {weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h
                   </td>
                 </tr>
@@ -2154,68 +2156,63 @@ export function FinancialsWorkspace({
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-6 pt-8 pb-16">
-        {/* TIM-1745: action toolbar (saved-status + Guided setup / Export PDF /
-            Export Excel / Save) lives top-right on the same band as the title,
-            relocated out of the row beneath the tabs. */}
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart2 className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Financials
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Plan your startup costs, forecast revenue, and project Year 1–5 performance.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
-            <SaveIndicator
-              saving={saveState.kind === "saving"}
-              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
-              error={saveState.kind === "error" ? saveState.message : null}
-              unsaved={saveState.kind === "dirty"}
-              onRetry={handleManualSave}
-            />
-            {canEdit && (
+        {/* TIM-1745 / TIM-1894: action toolbar (saved-status + Guided setup /
+            Export PDF / Export Excel / Save) lives top-right on the same band as
+            the title via the canonical WorkspaceHeader. This page is the board's
+            reference, so it renders through the shared component too. */}
+        <WorkspaceHeader
+          Icon={BarChart2}
+          title="Financials"
+          description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
+          actions={
+            <>
+              <SaveIndicator
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+                error={saveState.kind === "error" ? saveState.message : null}
+                unsaved={saveState.kind === "dirty"}
+                onRetry={handleManualSave}
+              />
+              {canEdit && (
+                <WorkspaceActionButton
+                  variant="primary"
+                  onClick={openWizard}
+                  title="Walk through your forecast inputs step by step, with a hint on each field"
+                >
+                  <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  Guided setup
+                </WorkspaceActionButton>
+              )}
               <WorkspaceActionButton
-                variant="primary"
-                onClick={openWizard}
-                title="Walk through your forecast inputs step by step, with a hint on each field"
+                onClick={() =>
+                  window.location.assign("/api/workspaces/financials/export/pdf")
+                }
+                title="Download financials as PDF (landscape monthly views)"
               >
-                <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                Guided setup
+                <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Export PDF
               </WorkspaceActionButton>
-            )}
-            <WorkspaceActionButton
-              onClick={() =>
-                window.location.assign("/api/workspaces/financials/export/pdf")
-              }
-              title="Download financials as PDF (landscape monthly views)"
-            >
-              <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Export PDF
-            </WorkspaceActionButton>
-            <WorkspaceActionButton
-              onClick={() =>
-                window.location.assign("/api/workspaces/financials/export/xlsx")
-              }
-              title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
-            >
-              <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Export Excel
-            </WorkspaceActionButton>
-            {canEdit && (
               <WorkspaceActionButton
-                onClick={handleManualSave}
-                disabled={saveState.kind === "saving"}
+                onClick={() =>
+                  window.location.assign("/api/workspaces/financials/export/xlsx")
+                }
+                title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
               >
-                <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                Save
+                <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Export Excel
               </WorkspaceActionButton>
-            )}
-          </div>
-        </header>
+              {canEdit && (
+                <WorkspaceActionButton
+                  onClick={handleManualSave}
+                  disabled={saveState.kind === "saving"}
+                >
+                  <Save size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  Save
+                </WorkspaceActionButton>
+              )}
+            </>
+          }
+        />
 
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">

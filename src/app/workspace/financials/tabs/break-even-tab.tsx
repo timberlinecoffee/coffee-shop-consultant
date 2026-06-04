@@ -60,12 +60,12 @@ function SensitivityRow({
 }) {
   return (
     <tr>
-      <td className="py-2.5 pl-4 pr-4 text-sm text-[var(--foreground)]">{label}</td>
-      <td className="py-2.5 px-3 text-right text-sm font-semibold">{baseValue.toLocaleString()}</td>
+      <td className="py-2.5 pl-4 pr-4 text-xs text-[var(--foreground)]">{label}</td>
+      <td className="py-2.5 px-3 text-right text-xs font-semibold">{baseValue.toLocaleString()}</td>
       {scenarios.map((s, i) => (
         <td
           key={i}
-          className={`py-2.5 px-3 text-right text-sm ${s.value > baseValue ? "text-green-700" : s.value < baseValue ? "text-red-600" : ""}`}
+          className={`py-2.5 px-3 text-right text-xs ${s.value > baseValue ? "text-green-700" : s.value < baseValue ? "text-red-600" : ""}`}
         >
           {isFinite(s.value) ? s.value.toLocaleString() : "N/A"}
         </td>
@@ -180,15 +180,15 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
           <p className="text-base font-bold text-[var(--foreground)] leading-tight">Sensitivity Analysis</p>
           <p className="text-xs text-[var(--dark-grey)] mt-0.5">How does break-even shift if key variables change?</p>
         </div>
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="py-2.5 pl-4 pr-4 text-left text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Scenario</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Base</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">-10%</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">-5%</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">+5%</th>
-              <th className="py-2.5 px-3 text-right text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">+10%</th>
+              <th className="py-2.5 pl-4 pr-4 text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Scenario</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">Base</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">-10%</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">-5%</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">+5%</th>
+              <th className="py-2.5 px-3 text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">+10%</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--neutral-cool-150)]">
