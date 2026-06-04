@@ -14,7 +14,7 @@ import {
   StaggerItem,
 } from "./_components/AnimatedElements";
 import ModuleCard from "./_components/ModuleCard";
-import PricingCard, { type PricingPlan } from "./_components/PricingCard";
+import PricingSection from "./_components/PricingSection";
 
 export const metadata: Metadata = {
   title: "Groundwork: From Coffee Shop Idea to Open Sign.",
@@ -184,50 +184,6 @@ const PROOF_TILES = [
     eyebrow: "Financial Model",
     title: "Stress-Test Lease and Pricing Scenarios",
     body: "Adjust rent, opening date, ticket size, or daily transactions and the projection refreshes immediately. Outputs are planning estimates only; review with a licensed accountant before signing.",
-  },
-];
-
-// TIM-1902: collapsed to two plans with a 7-day card-required free trial.
-// TIM-1954 (TIM-1944 plan rev 2): annual prices moved to $399 / $999 (Save 15%
-// framing), Pro credits equalized to 100/mo, Pro feature mix swapped to
-// Coffee Shop World benchmarking + Office Hours + deeper insights + priority
-// support + multi-project.
-const PRICING: PricingPlan[] = [
-  {
-    name: "Starter",
-    price: "$39",
-    period: "/month",
-    note: "$33/mo billed annually ($399/year, save 15%). 7-day free trial; cancel anytime.",
-    features: [
-      "All planning modules",
-      "100 AI planning credits per month",
-      "Complete every exercise",
-      "Business plan and financial model generation",
-      "Export to PDF",
-      "Email support",
-    ],
-    cta: "Start 7-Day Free Trial",
-    href: "/pricing",
-    recommended: false,
-    accent: false,
-  },
-  {
-    name: "Pro",
-    price: "$99",
-    period: "/month",
-    note: "$83/mo billed annually ($999/year, save 15%). 7-day free trial; cancel anytime.",
-    features: [
-      "Everything in Starter",
-      "Coffee Shop World benchmarking vs. real shops",
-      "Weekly Live Office Hours Q&A + recordings",
-      "Deeper insights — deep market research, longer Scout chains",
-      "Priority support",
-      "Unlimited locations and projects",
-    ],
-    cta: "Start 7-Day Free Trial",
-    href: "/pricing",
-    recommended: true,
-    accent: true,
   },
 ];
 
@@ -751,33 +707,8 @@ export default function LandingPage() {
 
       {/* ── Pricing ───────────────────────────────────────────────────────────── */}
       <section id="pricing" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
+        <PricingSection />
         <div className="max-w-6xl mx-auto">
-          <FadeUp className="text-center mb-14">
-            <p
-              className="font-semibold uppercase mb-3"
-              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
-            >
-              Pricing
-            </p>
-            <h2
-              className="font-bold"
-              style={{
-                fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
-                lineHeight: 1.2,
-                fontWeight: 700,
-                color: "var(--teal)",
-              }}
-            >
-              Two plans. One goal: open with a plan that works.
-            </h2>
-          </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {PRICING.map((plan) => (
-              <StaggerItem key={plan.name} className="h-full">
-                <PricingCard plan={plan} />
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
           <FadeUp delay={0.3}>
             <p className="text-center text-neutral-500 mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
               Try Pro free for 7 days. We&apos;ll remind you before your trial ends.
