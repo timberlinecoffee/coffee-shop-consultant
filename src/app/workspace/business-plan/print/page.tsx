@@ -175,7 +175,7 @@ export default async function BusinessPlanPrintPage({
       .order("position"),
     supabase
       .from("buildout_equipment_items")
-      .select("id, name, brand, model, supplier, cost_usd, category, notes")
+      .select("id, name, vendor, model, supplier, cost_usd, category, notes")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
@@ -651,7 +651,7 @@ function MenuSection({ items, currencyCode }: { items: MenuRow[]; currencyCode: 
 type EquipmentRow = {
   id: string;
   name: string;
-  brand: string | null;
+  vendor: string | null;
   model: string | null;
   supplier: string | null;
   cost_usd: number | null;
@@ -681,10 +681,10 @@ function EquipmentSection({ items, currencyCode }: { items: EquipmentRow[]; curr
                 <span className="flex-1 text-sm text-[var(--foreground)]">{item.name}</span>
                 <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">{formatCurrencyAmount(item.cost_usd ?? 0, currencyCode)}</span>
               </div>
-              {(item.brand?.trim() || item.model?.trim() || item.supplier?.trim()) && (
+              {(item.vendor?.trim() || item.model?.trim() || item.supplier?.trim()) && (
                 <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                   {[
-                    [item.brand?.trim(), item.model?.trim()].filter(Boolean).join(" "),
+                    [item.vendor?.trim(), item.model?.trim()].filter(Boolean).join(" "),
                     item.supplier?.trim() ? `Supplier: ${item.supplier.trim()}` : null,
                   ]
                     .filter(Boolean)
