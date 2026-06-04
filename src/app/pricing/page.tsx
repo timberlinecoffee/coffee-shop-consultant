@@ -384,6 +384,28 @@ function PricingPageInner() {
           })}
         </div>
 
+        {/* Trial reassurance + FTC auto-renew disclosure (required before card entry) */}
+        <div className="max-w-3xl mx-auto mb-16 text-center">
+          <p className="text-[var(--foreground)] font-medium mb-3" style={{ fontSize: "15px" }}>
+            Try Pro free for 7 days. We&apos;ll remind you before your trial ends.
+          </p>
+          <div
+            className="rounded-xl border border-[var(--border)] px-6 py-4 text-left"
+            style={{ background: "var(--background)" }}
+          >
+            <p className="text-[var(--muted-foreground)] leading-relaxed" style={{ fontSize: "13px" }}>
+              Your free trial includes full Pro access for 7 days. A credit card is required at
+              signup. After your trial, your card will be charged automatically for the plan you
+              selected at signup: Starter at $39/month or Pro at $99/month. Cancel in{" "}
+              <strong>Settings &gt; Billing</strong> at any time before day 7 to avoid a charge.{" "}
+              <a href="/subscription-terms" className="text-[var(--teal)] underline">
+                Subscription Terms
+              </a>{" "}
+              apply.
+            </p>
+          </div>
+        </div>
+
         {/* FAQ */}
         <div className="max-w-2xl mx-auto mb-16">
           <h2 className="text-2xl font-bold text-[var(--foreground)] text-center mb-8">Frequently Asked Questions</h2>

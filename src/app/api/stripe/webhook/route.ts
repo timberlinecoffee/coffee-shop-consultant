@@ -3,6 +3,9 @@ import { creditsForPackKey } from "@/lib/credits/packs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
+import { computeTax, taxAmountCents, taxLabel } from "@/lib/billing/tax";
+import { renderInvoicePdf } from "@/lib/pdf/templates/invoice";
+import type { InvoiceBillingAddress, InvoiceLineItem } from "@/lib/pdf/templates/invoice";
 
 export const runtime = "nodejs";
 
@@ -333,6 +336,270 @@ export async function POST(request: NextRequest) {
 
       // After Stripe exhausts retries it fires customer.subscription.deleted;
       // that handler downgrades to free. No grace-period timer needed here.
+      break;
+    }
+
+    // TIM-1912: Invoice PDF generation on successful payment.
+    case "invoice.payment_succeeded": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const inv = event.data.object as unknown as any;
+
+      const stripeInvoiceId: string = inv.id ?? "";
+      const stripeSubscriptionId: string =
+        inv.subscription ??
+        inv.parent?.subscription_details?.subscription ??
+        "";
+      if (!stripeInvoiceId || !stripeSubscriptionId) break;
+
+      // Resolve user_id from the subscriptions row.
+      const { data: subRow } = await supabase
+        .from("subscriptions")
+        .select("user_id")
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .single();
+      if (!subRow) {
+        console.warn(`[invoice.payment_succeeded] No subscription row for ${stripeSubscriptionId}`);
+        break;
+      }
+      const userId: string = subRow.user_id;
+
+      // Read platform settings (gst_registered, business name/address, gst_number).
+      const { data: platformSettings } = await supabase
+        .from("platform_settings")
+        .select("gst_registered, gst_number, business_name, business_address")
+        .eq("id", 1)
+        .single();
+
+      const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
+      const gstNumber: string | null = platformSettings?.gst_number ?? null;
+      const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+      const businessAddressObj = platformSettings?.business_address ?? null;
+      const businessAddressStr: string = businessAddressObj
+        ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")
+        : "Calgary, AB, Canada";
+
+      // Extract billing address from Stripe customer address.
+      const custAddr = inv.customer_address ?? {};
+      const billingAddr: InvoiceBillingAddress = {
+        name: inv.customer_name ?? null,
+        line1: custAddr.line1 ?? null,
+        line2: custAddr.line2 ?? null,
+        city: custAddr.city ?? null,
+        state: custAddr.state ?? null,
+        postalCode: custAddr.postal_code ?? null,
+        country: custAddr.country ?? null,
+      };
+
+      const province: string | null = custAddr.state ?? null;
+      const country: string | null = custAddr.country ?? null;
+
+      // Amounts (Stripe uses smallest currency unit = cents).
+      const subtotalCents: number = inv.subtotal ?? 0;
+      const currency: string = (inv.currency ?? "cad").toLowerCase();
+
+      const taxResult = computeTax({ province, country, gstRegistered, subtotalCents });
+      const computedTaxCents = taxResult.taxLineSuppressed ? 0 : taxAmountCents(subtotalCents, taxResult.rateBps);
+      // Prefer Stripe's own tax figure if present; fall back to computed.
+      const taxCents: number = inv.tax ?? computedTaxCents;
+      const totalCents: number = inv.total ?? subtotalCents + taxCents;
+
+      const invoiceNumber: string = inv.number ?? stripeInvoiceId;
+      const stripeChargeId: string | null = typeof inv.charge === "string" ? inv.charge : (inv.charge?.id ?? null);
+
+      // Build line items from Stripe invoice lines.
+      const lineItems: InvoiceLineItem[] = (inv.lines?.data ?? []).map((line: any) => ({
+        description: line.description ?? "Subscription",
+        quantity: line.quantity ?? 1,
+        unitAmountCents: line.unit_amount_excluding_tax ?? line.amount ?? 0,
+        totalCents: line.amount ?? 0,
+      }));
+
+      if (lineItems.length === 0) {
+        lineItems.push({
+          description: inv.description ?? "Pro plan subscription",
+          quantity: 1,
+          unitAmountCents: subtotalCents,
+          totalCents: subtotalCents,
+        });
+      }
+
+      // Build description from period (mirrors plan §2 example).
+      const periodStart: string | null = inv.period_start
+        ? new Date(inv.period_start * 1000).toISOString()
+        : null;
+      const periodEnd: string | null = inv.period_end
+        ? new Date(inv.period_end * 1000).toISOString()
+        : null;
+      const description: string = inv.description ?? "Subscription";
+
+      // Insert invoice row (status=paid).
+      const { data: invoiceRow, error: insertInvErr } = await supabase
+        .from("invoices")
+        .insert({
+          user_id: userId,
+          stripe_invoice_id: stripeInvoiceId,
+          stripe_charge_id: stripeChargeId,
+          invoice_number: invoiceNumber,
+          status: "paid",
+          amount_subtotal_cents: subtotalCents,
+          amount_tax_cents: taxCents,
+          amount_total_cents: totalCents,
+          currency,
+          tax_jurisdiction: taxResult.jurisdiction,
+          tax_rate_bps: taxResult.rateBps,
+          period_start: periodStart,
+          period_end: periodEnd,
+          description,
+          billing_address: billingAddr,
+          invoice_date: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (insertInvErr) {
+        console.error("[invoice.payment_succeeded] Failed to insert invoice row:", insertInvErr);
+        break;
+      }
+
+      // Render PDF and upload — failure must NOT roll back the invoice row.
+      try {
+        const pdfContent = {
+          businessName,
+          businessAddress: businessAddressStr,
+          gstRegistered,
+          gstNumber,
+          invoiceNumber,
+          invoiceDate: new Date().toISOString(),
+          supplyDateStart: periodStart,
+          supplyDateEnd: periodEnd,
+          status: "paid" as const,
+          customerName: inv.customer_name ?? null,
+          billingAddress: billingAddr,
+          lineItems,
+          subtotalCents,
+          taxCents,
+          totalCents,
+          currency,
+          jurisdiction: taxResult.jurisdiction,
+          taxRateBps: taxResult.rateBps,
+          taxLabel: taxLabel(taxResult.jurisdiction, taxResult.rateBps),
+          taxLineSuppressed: taxResult.taxLineSuppressed,
+        };
+
+        const pdfBuffer = await renderInvoicePdf(pdfContent);
+        const pdfPath = `${userId}/${invoiceNumber}.pdf`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from("invoices")
+          .upload(pdfPath, pdfBuffer, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+
+        if (uploadErr) {
+          console.error("[invoice.payment_succeeded] PDF upload failed:", uploadErr);
+        } else {
+          await supabase
+            .from("invoices")
+            .update({ pdf_storage_path: pdfPath, pdf_generated_at: new Date().toISOString() })
+            .eq("id", invoiceRow.id);
+        }
+      } catch (pdfErr) {
+        console.error("[invoice.payment_succeeded] PDF render failed:", pdfErr);
+        // Invoice row remains intact; pdf_storage_path stays null → UI shows "Generating…"
+      }
+
+      break;
+    }
+
+    // TIM-1912: Mark invoice refunded and re-render PDF with REFUNDED stamp.
+    case "charge.refunded": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const charge = event.data.object as unknown as any;
+      const chargeId: string = charge.id ?? "";
+      if (!chargeId) break;
+
+      const { data: invRow } = await supabase
+        .from("invoices")
+        .select("id, user_id, invoice_number, pdf_storage_path, amount_subtotal_cents, amount_tax_cents, amount_total_cents, currency, tax_jurisdiction, tax_rate_bps, tax_line_suppressed, period_start, period_end, description, billing_address, invoice_date")
+        .eq("stripe_charge_id", chargeId)
+        .single();
+
+      if (!invRow) {
+        console.warn(`[charge.refunded] No invoice row for charge ${chargeId}`);
+        break;
+      }
+
+      await supabase
+        .from("invoices")
+        .update({ status: "refunded" })
+        .eq("id", invRow.id);
+
+      // Re-render PDF with REFUNDED stamp.
+      try {
+        const { data: platformSettings } = await supabase
+          .from("platform_settings")
+          .select("gst_registered, gst_number, business_name, business_address")
+          .eq("id", 1)
+          .single();
+
+        const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
+        const gstNumber: string | null = platformSettings?.gst_number ?? null;
+        const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+        const businessAddressObj = platformSettings?.business_address ?? null;
+        const businessAddressStr: string = businessAddressObj
+          ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")
+          : "Calgary, AB, Canada";
+
+        const billingAddr: InvoiceBillingAddress = (invRow.billing_address as InvoiceBillingAddress) ?? {
+          name: null, line1: null, line2: null, city: null, state: null, postalCode: null, country: null,
+        };
+
+        const pdfContent = {
+          businessName,
+          businessAddress: businessAddressStr,
+          gstRegistered,
+          gstNumber,
+          invoiceNumber: invRow.invoice_number,
+          invoiceDate: invRow.invoice_date,
+          supplyDateStart: invRow.period_start ?? null,
+          supplyDateEnd: invRow.period_end ?? null,
+          status: "refunded" as const,
+          customerName: billingAddr.name,
+          billingAddress: billingAddr,
+          lineItems: [
+            {
+              description: invRow.description,
+              quantity: 1,
+              unitAmountCents: invRow.amount_subtotal_cents,
+              totalCents: invRow.amount_subtotal_cents,
+            },
+          ],
+          subtotalCents: invRow.amount_subtotal_cents,
+          taxCents: invRow.amount_tax_cents,
+          totalCents: invRow.amount_total_cents,
+          currency: invRow.currency,
+          jurisdiction: invRow.tax_jurisdiction ?? null,
+          taxRateBps: invRow.tax_rate_bps ?? 0,
+          taxLabel: taxLabel(invRow.tax_jurisdiction ?? null, invRow.tax_rate_bps ?? 0),
+          taxLineSuppressed: !gstRegistered,
+        };
+
+        const pdfBuffer = await renderInvoicePdf(pdfContent);
+        const pdfPath = `${invRow.user_id}/${invRow.invoice_number}.pdf`;
+
+        await supabase.storage
+          .from("invoices")
+          .upload(pdfPath, pdfBuffer, { contentType: "application/pdf", upsert: true });
+
+        await supabase
+          .from("invoices")
+          .update({ pdf_storage_path: pdfPath, pdf_generated_at: new Date().toISOString() })
+          .eq("id", invRow.id);
+      } catch (pdfErr) {
+        console.error("[charge.refunded] PDF re-render failed:", pdfErr);
+      }
+
       break;
     }
   }

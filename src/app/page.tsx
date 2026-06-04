@@ -768,7 +768,7 @@ export default function LandingPage() {
                 color: "var(--teal)",
               }}
             >
-              Start Free. Go Deeper When You&apos;re Ready.
+              Two plans. One goal: open with a plan that works.
             </h2>
           </FadeUp>
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -779,12 +779,15 @@ export default function LandingPage() {
             ))}
           </StaggerContainer>
           <FadeUp delay={0.3}>
-            <p className="text-center text-neutral-500 mt-8" style={{ fontSize: "13px" }}>
-              New accounts get 5 free AI planning messages to try Scout before subscribing. No credit card required for the preview. See{" "}
+            <p className="text-center text-neutral-500 mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
+              Try Pro free for 7 days. We&apos;ll remind you before your trial ends.
+            </p>
+            <p className="text-center text-neutral-400 mt-2" style={{ fontSize: "12px" }}>
+              A card is required at signup. Cancel before day 7 and you won&apos;t be charged. See{" "}
               <Link href="/subscription-terms" className="underline">
                 Subscription Terms
-              </Link>{" "}
-              for billing details.
+              </Link>
+              .
             </p>
           </FadeUp>
         </div>

@@ -6,6 +6,7 @@ import { getAccountSettings } from "@/lib/account-settings";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
 import { effectivePlanForGating } from "@/lib/access";
+import { SettingsShell } from "@/components/account/settings/SettingsShell";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,20 @@ export default async function AccountPage() {
   const FREE_TRIAL_COPILOT_LIMIT = 5;
   const isTrial = profile?.subscription_status === "free_trial";
   const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
+
+  // TIM-1911: tabbed shell behind feature flag; default off until prod verify (TIM-1910c).
+  if (process.env.NEXT_PUBLIC_BILLING_TAB === "1") {
+    return (
+      <SettingsShell
+        profile={profile}
+        userEmail={user.email ?? null}
+        accountSettings={accountSettings}
+        tierDisplayName={tierDisplayName}
+        isTrial={isTrial}
+        trialRemaining={trialRemaining}
+      />
+    );
+  }
 
   return (
     <div className="bg-[var(--background)]">
