@@ -1,8 +1,10 @@
 // TIM-1942: CSV export of the member list.
 // TIM-1957: csvEscape moved to src/lib/csv.ts to neutralize formula injection.
+// TIM-1958: bulk PII extraction is audit-logged for data-protection visibility.
 
 import { requireAdmin } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { recordAdminAction } from "@/lib/admin-audit";
 import { csvEscape } from "@/lib/csv";
 
 export async function GET() {
@@ -37,6 +39,12 @@ export async function GET() {
     );
   }
   const csv = lines.join("\n") + "\n";
+
+  await recordAdminAction({
+    actor: { userId: auth.userId, email: auth.email },
+    action: "members_export",
+    metadata: { row_count: profiles?.length ?? 0 },
+  });
 
   const filename = `groundwork-members-${new Date().toISOString().slice(0, 10)}.csv`;
   return new Response(csv, {
