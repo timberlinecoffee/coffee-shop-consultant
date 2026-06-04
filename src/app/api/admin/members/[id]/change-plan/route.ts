@@ -2,7 +2,7 @@
 // CSRF-safe: state-changing route + admin auth gate + JSON body parse + no
 // browser navigations consume this.
 
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, assertAdminRequestSecurity } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { recordAdminAction } from "@/lib/admin-audit";
 import { stripe, PLANS, type PlanKey } from "@/lib/stripe";
@@ -18,6 +18,9 @@ function planKey(tier: string, interval: string): PlanKey | null {
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const csrfError = assertAdminRequestSecurity(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
