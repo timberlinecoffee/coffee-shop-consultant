@@ -111,7 +111,13 @@ const FAQ = [
 ];
 
 function PricingPageInner() {
-  const [interval, setInterval] = useState<BillingInterval>("monthly");
+  const searchParams = useSearchParams();
+  // TIM-2280: annual is the default view; a `?interval=monthly` query param
+  // (typically set by the landing-page toggle when the visitor was viewing
+  // monthly) overrides the default so the cadence carries through to checkout.
+  const initialInterval: BillingInterval =
+    searchParams.get("interval") === "monthly" ? "monthly" : "annual";
+  const [interval, setInterval] = useState<BillingInterval>(initialInterval);
   const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -120,7 +126,6 @@ function PricingPageInner() {
   // /api/billing/change-plan (swap in place) instead of
   // /api/stripe/create-checkout-session (mint a new sub on top of the old).
   const [hasLiveSub, setHasLiveSub] = useState(false);
-  const searchParams = useSearchParams();
   const returnPath = searchParams.get("return");
 
   useEffect(() => {
