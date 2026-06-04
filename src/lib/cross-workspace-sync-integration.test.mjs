@@ -16,9 +16,8 @@ import {
   parseFactValue,
 } from "./cross-workspace-sync.ts";
 
-const SUPABASE_URL = "https://ltmcttjftxzpgynhnrpg.supabase.co";
-const SERVICE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0bWN0dGpmdHh6cGd5bmhucnBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjM5MDg2NywiZXhwIjoyMDkxOTY2ODY3fQ.HsIx2BzWVKeZQYG8-VY74fEqasQuoFcRcroh34MHl7c";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? (() => { throw new Error("NEXT_PUBLIC_SUPABASE_URL env var required"); })();
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? (() => { throw new Error("SUPABASE_SERVICE_ROLE_KEY env var required — never hard-code prod keys in source"); })();
 const QA_USER_ID = "0af5d99c-33c1-489c-805a-631acbb49178"; // qa-agent@timberline.coffee
 const PLAN_ID = "f4958d74-b640-4e45-b3a8-043603c2340f";
 
