@@ -3,16 +3,22 @@
 // TIM-2331: "Regenerate all" workspace-chrome action. Sits as a secondary in
 // the business-plan workspace header cluster (Export PDF stays primary).
 //
+// TIM-2385: Two-phase loading UX. While each section streams in, the unified
+// AI review modal stays CLOSED and a compact progress overlay shows
+// "Generating section N of M". On SSE `done` we close the overlay and open
+// the modal in one motion with every accepted section already populated.
+//
 // Flow:
 //   1. Click → POST /api/business-plan/regenerate-all to fetch the estimate
 //      (the route emits an `estimate` event first; we read just that, then
 //      either continue reading the stream or abort if the user cancels).
 //   2. Confirm dialog shows section count + credit estimate + sparse-section
 //      warning. Cancel closes the stream.
-//   3. Confirm → open the unified AI review modal in streaming mode. As each
-//      `section:complete` arrives, append a suggestion card. Per-section
-//      accept/reject/edit flows through the existing modal.
-//   4. Apply → PATCH each accepted section. Reuses /api/business-plan/sections.
+//   3. Confirm → open the progress overlay (not the modal). Buffer suggestions
+//      in component state, increment the counter on `section:complete`.
+//   4. On `done` → close overlay and open the AI review modal with every
+//      section. Per-section accept/reject flows through the existing modal.
+//   5. Apply → PATCH each accepted section. Reuses /api/business-plan/sections.
 
 import { useCallback, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
@@ -24,6 +30,7 @@ import type {
   ApprovedChange,
   SuggestionPayload,
 } from "@/components/ai-assist/AIReviewModal";
+import type { OpenProgressOverlayOptions } from "@/hooks/useBusinessPlanProgressOverlay";
 
 interface EstimatePayload {
   sections: Array<{ key: string; title: string }>;
@@ -43,23 +50,25 @@ export interface RegenerateAllButtonProps {
   disabled?: boolean;
   /** Current visible content per section, used as the originalValue for diff. */
   getCurrentSections: () => SectionCurrent[];
-  /** Hook to open the unified AI review modal. */
+  /** Open the unified AI review modal (Phase 2 — once `done` arrives). */
   openAIReviewModal: (opts: {
     suggestions: SuggestionPayload[];
     context: { workspace: string; section?: string };
     onApply: (accepted: ApprovedChange[]) => Promise<void>;
-    isStreaming?: boolean;
     error?: string | null;
   }) => void;
-  /** Hook to update the open modal as more sections stream in. */
-  updateAIReviewModal: (patch: {
-    suggestions?: SuggestionPayload[];
-    isStreaming?: boolean;
-    error?: string | null;
+  /** Open the progress overlay (Phase 1 — during streaming). */
+  openProgressOverlay: (opts: OpenProgressOverlayOptions) => void;
+  /** Increment counter / append failed-section title on the open overlay. */
+  updateProgressOverlay: (patch: {
+    completed?: number;
+    failedSectionTitle?: string;
   }) => void;
+  /** Close the progress overlay when streaming finishes or the user cancels. */
+  closeProgressOverlay: () => void;
   /** Called after accept; component owns the per-section PATCH. */
   onSectionApplied: (sectionKey: string, finalValue: string) => void;
-  /** Called when the user cancels mid-stream. */
+  /** Called when a non-recoverable error fires the run. */
   onError?: (msg: string) => void;
 }
 
@@ -78,7 +87,9 @@ export function RegenerateAllButton({
   disabled,
   getCurrentSections,
   openAIReviewModal,
-  updateAIReviewModal,
+  openProgressOverlay,
+  updateProgressOverlay,
+  closeProgressOverlay,
   onSectionApplied,
   onError,
 }: RegenerateAllButtonProps) {
@@ -190,7 +201,7 @@ export function RegenerateAllButton({
     }
   }, [phase, fail, getCurrentSections]);
 
-  const handleCancel = useCallback(async () => {
+  const handleCancelConfirm = useCallback(async () => {
     if (pending) {
       pending.abortController.abort();
       await pending.reader.cancel().catch(() => {});
@@ -206,9 +217,24 @@ export function RegenerateAllButton({
     setPhase("streaming");
     setPending(null);
 
-    // Suggestions accumulate as `section:complete` events land. The modal
-    // preserves user accept/reject choices when this array grows, per the
-    // TIM-2331 fix to AIReviewModal's card-state effect.
+    // TIM-2385: Phase 1 — render the progress overlay. The AI review modal
+    // stays closed until every section has streamed; the user sees only the
+    // counter incrementing.
+    let cancelledByUser = false;
+    const handleStreamCancel = () => {
+      cancelledByUser = true;
+      abortController.abort();
+      reader.cancel().catch(() => {});
+      closeProgressOverlay();
+    };
+    openProgressOverlay({
+      total: estimate.sections.length,
+      onCancel: handleStreamCancel,
+    });
+
+    // Suggestions buffered locally and handed to the modal in one motion on
+    // SSE `done`. Order matches estimate.sections (canonical section order)
+    // because we push in arrival order which mirrors the server's loop.
     const suggestions: SuggestionPayload[] = [];
     const currentByKey = new Map(
       sectionsRef.current.map((s) => [s.key, s.currentContent]),
@@ -221,6 +247,7 @@ export function RegenerateAllButton({
     // events arrive. On Apply, PATCH them alongside user_content so the
     // export-gate modal can read them back later.
     const claimsByKey = new Map<string, unknown[]>();
+    const failedTitles: string[] = [];
 
     const accept = async (accepted: ApprovedChange[]) => {
       for (const a of accepted) {
@@ -235,18 +262,10 @@ export function RegenerateAllButton({
           });
           onSectionApplied(a.fieldId, a.finalValue);
         } catch {
-          // Surface a soft error; user can retry individual sections inline.
           onError?.(`Failed to save ${titleByKey.get(a.fieldId) ?? a.fieldId}. Try again from the section card.`);
         }
       }
     };
-
-    openAIReviewModal({
-      suggestions: [],
-      isStreaming: true,
-      context: { workspace: "Business Plan", section: "Regenerate all" },
-      onApply: accept,
-    });
 
     try {
       while (true) {
@@ -277,17 +296,11 @@ export function RegenerateAllButton({
             const draft = (parsed.draft as string) ?? "";
             if (!sectionKey || !draft) continue;
 
-            // TIM-2342: pluck the per-section estimated_claims off the SSE
-            // payload so we can PATCH them when the user accepts. We don't
-            // surface them in the AI review modal — they only matter at
-            // export time, in the export-gate modal.
             const claims = Array.isArray(parsed.estimated_claims)
               ? (parsed.estimated_claims as unknown[])
               : [];
             claimsByKey.set(sectionKey, claims);
 
-            // TIM-2343: pluck unresolved self-consistency contradictions so the
-            // AI review modal renders them as an advisory band on the card.
             const consistencyRaw = Array.isArray(parsed.consistency_contradictions)
               ? parsed.consistency_contradictions
               : [];
@@ -315,47 +328,72 @@ export function RegenerateAllButton({
               isStructured: false,
               consistencyContradictions,
             });
-            updateAIReviewModal({ suggestions: [...suggestions] });
+            updateProgressOverlay({ completed: suggestions.length });
           } else if (event === "section:revised") {
             // TIM-2337: cross-section entity unification ran on the server.
-            // Patch the existing suggestion's proposedValue in place so the
-            // user sees the unified spelling. If the user has already
-            // accepted, this is a no-op for the saved draft (they got the
-            // per-section canonicalized version, just not cross-unified —
-            // edge case, not worth re-saving silently).
+            // Patch the existing buffered suggestion's proposedValue in place
+            // so the modal (opened after `done`) shows the unified spelling.
             const sectionKey = (parsed.sectionKey as string) ?? "";
             const draft = (parsed.draft as string) ?? "";
             if (!sectionKey || !draft) continue;
             const idx = suggestions.findIndex((s) => s.fieldId === sectionKey);
             if (idx >= 0) {
               suggestions[idx] = { ...suggestions[idx], proposedValue: draft };
-              updateAIReviewModal({ suggestions: [...suggestions] });
             }
           } else if (event === "section:error") {
             const sectionKey = (parsed.sectionKey as string) ?? "";
-            const message = (parsed.message as string) ?? "Section failed.";
             const title = titleByKey.get(sectionKey) ?? sectionKey;
-            onError?.(`${title}: ${message}`);
+            failedTitles.push(title);
+            updateProgressOverlay({ failedSectionTitle: title });
           } else if (event === "done") {
-            updateAIReviewModal({ isStreaming: false });
+            // Continue the loop so any trailing section:revised events on the
+            // same SSE chunk land before we close the stream.
           } else if (event === "error") {
             const message = (parsed.message as string) ?? "Stream error";
-            updateAIReviewModal({ isStreaming: false, error: message });
+            onError?.(message);
           }
         }
       }
     } catch (err) {
       if ((err as { name?: string })?.name !== "AbortError") {
-        updateAIReviewModal({
-          isStreaming: false,
-          error: err instanceof Error ? err.message : "Stream failed",
-        });
+        onError?.(err instanceof Error ? err.message : "Stream failed");
       }
     } finally {
+      closeProgressOverlay();
       setPhase("idle");
       abortController.abort();
     }
-  }, [pending, openAIReviewModal, updateAIReviewModal, onSectionApplied, onError]);
+
+    // TIM-2385: Phase 2 — only open the modal if the user didn't cancel and at
+    // least one section streamed successfully. Failed sections are surfaced
+    // via the modal banner below.
+    if (cancelledByUser) return;
+    if (suggestions.length === 0) {
+      if (failedTitles.length > 0) {
+        onError?.(`Regenerate all finished with no successful sections. Failed: ${failedTitles.join(", ")}.`);
+      }
+      return;
+    }
+
+    const errorBanner = failedTitles.length > 0
+      ? `${failedTitles.length} of ${estimate.sections.length} sections failed and are not shown: ${failedTitles.join(", ")}.`
+      : null;
+
+    openAIReviewModal({
+      suggestions: [...suggestions],
+      context: { workspace: "Business Plan", section: "Regenerate all" },
+      onApply: accept,
+      error: errorBanner,
+    });
+  }, [
+    pending,
+    openAIReviewModal,
+    openProgressOverlay,
+    updateProgressOverlay,
+    closeProgressOverlay,
+    onSectionApplied,
+    onError,
+  ]);
 
   const isBusy = phase !== "idle";
 
@@ -380,7 +418,7 @@ export function RegenerateAllButton({
       {phase === "confirming" && pending && (
         <RegenerateAllConfirmDialog
           estimate={pending.estimate}
-          onCancel={handleCancel}
+          onCancel={handleCancelConfirm}
           onConfirm={handleConfirm}
         />
       )}
