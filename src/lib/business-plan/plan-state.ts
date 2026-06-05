@@ -30,6 +30,13 @@ import type {
   BpEquipmentItem,
   BpHiringRole,
 } from "../business-plan.ts";
+import {
+  applyCoffeeShopVertical,
+  computeVerticalReport,
+  readCoffeeShopVerticalConfig,
+  formatVerticalReportForPrompt,
+  type CoffeeShopVerticalReport,
+} from "./coffee-shop-model.ts";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -163,6 +170,13 @@ export interface PlanState {
   tax: PlanStateTax;
   years: PlanStateYearSummary[];          // years 1..5 (sparse if upstream model is shorter)
   break_even: PlanStateBreakEven;
+  // TIM-2338: coffee-shop vertical model report — present when the financial
+  // model carries a coffee_shop_vertical_config. Surfaces daypart staffing,
+  // lease object summary, labor by year, depreciation schedule, working
+  // capital, and cost inflation rates. Narrative consumes these for the
+  // investor-grade structural detail; financial tables consume the same
+  // numbers via the engine's slices, so they cannot diverge.
+  vertical_model: CoffeeShopVerticalReport | null;
 }
 
 // ── Builder inputs (parallels what /generate already loads) ──────────────────
@@ -235,9 +249,21 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
   // 1. Normalize financial model — same call /generate already makes for tables.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fm = (inp.financialModel ?? {}) as any;
-  const mp: MonthlyProjections = normalizeMonthlyProjections(
+  let mp: MonthlyProjections = normalizeMonthlyProjections(
     fm.forecast_inputs ?? fm.monthly_projections
   );
+
+  // TIM-2338: apply coffee-shop vertical config (when present) BEFORE the
+  // engine pass. The apply() step rewrites the rent line with the escalator,
+  // adds wage growth onto personnel, weights COGS by product mix, synthesizes
+  // capex lines from the equipment list, and configures cost inflation on
+  // utilities/supplies/maintenance/insurance/marketing. Engine then runs over
+  // the resulting MP, so financial tables AND the vertical report read the
+  // same coherent monthly slices.
+  const verticalCfg = readCoffeeShopVerticalConfig(mp.coffee_shop_vertical_config);
+  if (verticalCfg) {
+    mp = applyCoffeeShopVertical(mp, verticalCfg).mp;
+  }
 
   // 2. Compute per-month slices — exactly the rollup the financial table renderer uses.
   const totalEquipCostUsd = (inp.equipment ?? []).reduce(
@@ -417,6 +443,11 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     first_profitable_month_index: firstProfitable?.month_index ?? null,
   };
 
+  // TIM-2338: compute the vertical report from the SAME slices the financial
+  // tables read, so labor-by-year, lease 5-yr total, working-capital deltas,
+  // and depreciation match the P&L line-for-line.
+  const verticalModel = verticalCfg ? computeVerticalReport(mp, verticalCfg, slices) : null;
+
   return {
     meta: {
       shop_name: inp.shopName,
@@ -434,6 +465,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     tax,
     years,
     break_even: breakEven,
+    vertical_model: verticalModel,
   };
 }
 
@@ -568,6 +600,15 @@ export function formatPlanStateForPrompt(state: PlanState): string {
     lines.push(`Break-even: first profitable month is month ${m} of operations (Year ${yr}, month ${monthInYr})`);
   } else {
     lines.push(`Break-even: no profitable month within the projection horizon`);
+  }
+
+  // TIM-2338: vertical model block — appended only when the plan has a
+  // coffee-shop vertical config. Adds daypart staffing, lease 5-yr total,
+  // labor by year, depreciation schedule, and working capital so the
+  // narrative quotes investor-grade structural detail verbatim.
+  if (state.vertical_model) {
+    lines.push("");
+    lines.push(formatVerticalReportForPrompt(state.vertical_model, cc));
   }
 
   return lines.join("\n").trim();
