@@ -558,9 +558,15 @@ export function computeVerticalReport(
       const startMonth = p.ramp?.enabled ? p.ramp.start_month : 1;
       return startMonth <= eom;
     });
+    // labor_cents on MonthlySlice is overhead-only labor; total payroll is
+    // overhead + cogs-labor (TIM-1206). Sum both so the report reflects the
+    // actual payroll burden seen in the P&L's gross-profit + opex picture.
     labor_by_year.push({
       year: yr,
-      total_labor_cents: yrSlices.reduce((a, r) => a + (r.labor_cents ?? 0), 0),
+      total_labor_cents: yrSlices.reduce(
+        (a, r) => a + (r.labor_overhead_cents ?? r.labor_cents ?? 0) + (r.labor_cogs_cents ?? 0),
+        0,
+      ),
       headcount_end_of_year: activePersonnel.reduce((a, p) => a + (p.headcount || 0), 0),
     });
   }
