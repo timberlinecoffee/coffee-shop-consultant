@@ -3,10 +3,17 @@
 // run. Reuses /generate's data-loading + prompt builder; charges one credit
 // per section as each completes (NOT all up front) so a partial failure
 // doesn't burn the whole quote.
+//
+// TIM-2360: parallelized with bounded concurrency (4 sections at a time) so
+// total wall-clock ~75s instead of ~300s. Idempotent upsert to
+// business_plan_sections before each section:complete so progress survives a
+// Lambda kill. Per-section 60s AbortController timeout so one stalled section
+// doesn't block the batch. Accepts optional { only: string[] } for resume.
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+import pLimit from "p-limit";
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -68,18 +75,28 @@ import {
   regenerateWithFixDirective,
 } from "@/lib/business-plan/self-consistency-runner";
 import type { BusinessPlanSectionKey } from "@/lib/business-plan";
+import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 const HEARTBEAT_MS = 15_000;
-const PER_SECTION_TTFT_MS = 12_000;
-const PER_SECTION_GAP_MS = 30_000;
+// TIM-2360: per-section timeout — 60s gives each section enough headroom even
+// under brief Anthropic back-pressure without stalling the whole batch.
+const PER_SECTION_TIMEOUT_MS = 60_000;
 const CREDIT_COST_PER_SECTION = 1;
 const SPARSE_AUTO_CONTENT_THRESHOLD = 120;
+// TIM-2360: concurrency cap — 4 parallel Anthropic calls stays within rate
+// limits on the Anthropic API Tier 2 plan while cutting wall-clock to ~75s.
+const SECTION_CONCURRENCY = 4;
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-export async function POST(): Promise<Response> {
+const RequestBodySchema = z.object({
+  only: z.array(z.string()).optional(),
+});
+
+export async function POST(request: NextRequest): Promise<Response> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -95,6 +112,15 @@ export async function POST(): Promise<Response> {
     windowSec: 3600,
   });
   if (rl) return rl;
+
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json().catch(() => ({}));
+  } catch {
+    rawBody = {};
+  }
+  const bodyParsed = RequestBodySchema.safeParse(rawBody);
+  const onlyKeys = bodyParsed.success ? (bodyParsed.data.only ?? null) : null;
 
   const { data: profile } = await supabase
     .from("users")
@@ -115,7 +141,12 @@ export async function POST(): Promise<Response> {
     return Response.json({ reason: "no_subscription", tier_required: "starter" }, { status: 402 });
   }
 
-  const sectionsToRegenerate = BP_REGENERABLE_SECTION_KEYS as BusinessPlanSectionKey[];
+  // TIM-2360: resume mode — if `only` is provided, limit to those keys.
+  const allRegenerableKeys = BP_REGENERABLE_SECTION_KEYS as BusinessPlanSectionKey[];
+  const sectionsToRegenerate = onlyKeys
+    ? allRegenerableKeys.filter((k) => onlyKeys.includes(k))
+    : allRegenerableKeys;
+
   const estimatedCredits = isBetaWaived
     ? 0
     : sectionsToRegenerate.length * CREDIT_COST_PER_SECTION;
@@ -276,6 +307,8 @@ export async function POST(): Promise<Response> {
       // Track running credit balance locally so we can refuse mid-stream if
       // the user runs out during the run (e.g. another tab burned credits).
       let creditsRemaining = profile.ai_credits_remaining ?? 0;
+      // Mutex for credit debit — parallel sections must not race on this.
+      let creditDebits = 0;
 
       send("estimate", {
         sections: sectionsToRegenerate.map((key) => ({
@@ -290,14 +323,18 @@ export async function POST(): Promise<Response> {
 
       const completed: Array<{ key: string; draft: string }> = [];
       const failed: Array<{ key: string; message: string }> = [];
+      // Mutex to serialize DB credit writes and creditsRemaining updates.
+      const creditLock = { locked: false };
 
-      for (const sectionKey of sectionsToRegenerate) {
-        if (closed) break;
+      // TIM-2360: generate and emit a single section. Runs inside p-limit
+      // so at most SECTION_CONCURRENCY sections run concurrently.
+      const generateSection = async (sectionKey: BusinessPlanSectionKey) => {
+        if (closed) return;
 
         const sectionMeta = sectionsByKey.get(sectionKey);
-        if (!sectionMeta) continue;
+        if (!sectionMeta) return;
 
-        if (!isBetaWaived && creditsRemaining < CREDIT_COST_PER_SECTION) {
+        if (!isBetaWaived && creditsRemaining - creditDebits < CREDIT_COST_PER_SECTION) {
           send("section:error", {
             sectionKey,
             sectionTitle: sectionMeta.title,
@@ -305,7 +342,7 @@ export async function POST(): Promise<Response> {
             code: "out_of_credits",
           });
           failed.push({ key: sectionKey, message: "out_of_credits" });
-          continue;
+          return;
         }
 
         send("section:start", {
@@ -329,44 +366,39 @@ export async function POST(): Promise<Response> {
         });
 
         let fullText = "";
-        let sectionDone = false;
         let sectionError: string | null = null;
 
-        // Per-section TTFT + gap timers so a stalled section doesn't take down
-        // the whole run. On timeout we record the section as failed and move on.
-        const ttftTimer = setTimeout(() => {
-          if (!sectionDone) sectionError = sectionError ?? "Section timed out before first token.";
-        }, PER_SECTION_TTFT_MS);
-        let gapTimer: ReturnType<typeof setTimeout> | null = null;
+        // TIM-2360: per-section 60s hard timeout via AbortController.
+        const sectionAbort = new AbortController();
+        const timeoutId = setTimeout(() => {
+          sectionAbort.abort();
+        }, PER_SECTION_TIMEOUT_MS);
 
         try {
-          const response = await client.messages.stream({
-            model: PLATFORM_AI_MODEL,
-            max_tokens: maxTokens,
-            system: systemPrompt,
-            messages: [{ role: "user", content: userMessage }],
-          });
-
-          clearTimeout(ttftTimer);
+          const response = await client.messages.stream(
+            {
+              model: PLATFORM_AI_MODEL,
+              max_tokens: maxTokens,
+              system: systemPrompt,
+              messages: [{ role: "user", content: userMessage }],
+            },
+            { signal: sectionAbort.signal },
+          );
 
           for await (const event of response) {
-            if (closed || sectionError) break;
-            if (gapTimer) { clearTimeout(gapTimer); gapTimer = null; }
-
+            if (closed) break;
             if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
               fullText += event.delta.text;
             }
-
-            gapTimer = setTimeout(() => {
-              if (!sectionDone) sectionError = sectionError ?? "Section stream stalled.";
-            }, PER_SECTION_GAP_MS);
           }
         } catch (err) {
-          sectionError = err instanceof Error ? err.message : "Unexpected error";
+          if ((err as { name?: string })?.name === "AbortError") {
+            sectionError = "Section timed out (60s budget exceeded).";
+          } else {
+            sectionError = err instanceof Error ? err.message : "Unexpected error";
+          }
         } finally {
-          clearTimeout(ttftTimer);
-          if (gapTimer) clearTimeout(gapTimer);
-          sectionDone = true;
+          clearTimeout(timeoutId);
         }
 
         if (sectionError || !fullText.trim()) {
@@ -374,34 +406,42 @@ export async function POST(): Promise<Response> {
             sectionKey,
             sectionTitle: sectionMeta.title,
             message: sectionError ?? "Empty response from model.",
+            reason: sectionError ? "timeout" : "empty",
           });
           failed.push({ key: sectionKey, message: sectionError ?? "empty_response" });
-          continue;
+          return;
         }
 
-        // Debit credits NOW (only on successful completion). Service client
-        // because anon RLS can't write to users.ai_credits_remaining.
+        // Debit credits NOW (only on successful completion). Serialize with
+        // a simple reservation pattern to avoid races across parallel sections.
         if (!isBetaWaived) {
-          const svc = createServiceClient();
-          const nextRemaining = Math.max(0, creditsRemaining - CREDIT_COST_PER_SECTION);
-          await svc
-            .from("users")
-            .update({ ai_credits_remaining: nextRemaining })
-            .eq("id", user.id);
-          creditsRemaining = nextRemaining;
+          creditDebits += CREDIT_COST_PER_SECTION;
+          // Serialize the actual DB write — wait for any in-flight debit.
+          while (creditLock.locked) {
+            await new Promise<void>((r) => setTimeout(r, 10));
+          }
+          creditLock.locked = true;
+          try {
+            const svc = createServiceClient();
+            const nextRemaining = Math.max(0, (profile.ai_credits_remaining ?? 0) - creditDebits);
+            await svc
+              .from("users")
+              .update({ ai_credits_remaining: nextRemaining })
+              .eq("id", user.id);
+            creditsRemaining = nextRemaining;
+          } finally {
+            creditLock.locked = false;
+          }
         }
 
         // TIM-2337: per-section canonicalization — rewrite registry-known
-        // aliases ("La Marzocko" → "La Marzocco") immediately so the user
-        // sees the corrected draft on first arrival. Cross-section
-        // unification runs below once every section has streamed.
+        // aliases immediately so the user sees the corrected draft on first
+        // arrival.
         let workingText = normalizeAIOutput(fullText);
         let draftCanon = canonicalizeNarrative(workingText, planState.entities);
 
-        // TIM-2343: self-consistency proofread. Run on the canonicalized
-        // (but still source-marker-laden) text. On hits, regen ONCE with the
-        // explicit fix directive, then re-check. Surviving contradictions
-        // surface via the section:complete payload as advisory.
+        // TIM-2343: self-consistency proofread. Run on the canonicalized text.
+        // On hits, regen ONCE with the explicit fix directive, then re-check.
         let contradictions = await runSelfConsistencyCheck({
           client,
           sectionKey,
@@ -430,13 +470,31 @@ export async function POST(): Promise<Response> {
           }
         }
 
-        // TIM-2342: parse source markers, strip them, prepend hedge prefixes
-        // to estimate-class claims that didn't already open with one, and
-        // extract the estimates for the export-gate modal. The marker-stripped
-        // rendered text is what we persist + surface to the user.
+        // TIM-2342: parse source markers, strip them, prepend hedge prefixes.
         const parsed = parseSourceMarkers(draftCanon.text);
         const estimatedClaims = extractEstimatedClaims(sectionKey, draftCanon.text);
         const draft = parsed.rendered;
+
+        // TIM-2360: idempotent upsert BEFORE emitting section:complete so
+        // persisted sections survive a Lambda kill mid-batch. The user can
+        // refresh and see completed sections rather than losing all work.
+        try {
+          const svc = createServiceClient();
+          await svc
+            .from("business_plan_sections")
+            .upsert(
+              {
+                plan_id: planId,
+                section_key: sectionKey,
+                user_content: draft,
+                ...(estimatedClaims.length > 0 ? { estimated_claims_json: estimatedClaims } : {}),
+              },
+              { onConflict: "plan_id,section_key" },
+            );
+        } catch {
+          // Non-fatal — section:complete still fires; user can accept manually.
+        }
+
         completed.push({ key: sectionKey, draft });
         send("section:complete", {
           sectionKey,
@@ -450,16 +508,24 @@ export async function POST(): Promise<Response> {
           consistency_contradictions: contradictions,
           consistency_regen_attempted: regenAttempted,
         });
-      }
+      };
+
+      // TIM-2360: bounded fan-out — 4 sections run concurrently so total
+      // wall-clock is ~3 batches × 25s ≈ 75s, well under maxDuration.
+      const limit = pLimit(SECTION_CONCURRENCY);
+      await Promise.all(
+        sectionsToRegenerate.map((sectionKey) =>
+          limit(() => generateSection(sectionKey as BusinessPlanSectionKey)),
+        ),
+      );
 
       // TIM-2337: cross-section unification. The per-section canonicalize
       // pass enforced the structured-data registry within each section, but
       // entities the model INVENTED (suppliers, advisors not entered in any
-      // workspace) can still appear with two spellings across sections —
-      // exactly the "Whitehouse Farms" vs "Whitehorse Farms" case investor
-      // flagged on TIM-2315 item #5. unifySections() clusters near-misses
-      // across the full set, picks the most-frequent variant as canonical,
-      // and emits a section:revised event for any section that changed.
+      // workspace) can still appear with two spellings across sections.
+      // unifySections() clusters near-misses across the full set, picks the
+      // most-frequent variant as canonical, and emits a section:revised event
+      // for any section that changed.
       const completedSections = completed.map((c) => ({ key: c.key, text: c.draft }));
       const unified = unifySections(completedSections, planState.entities);
       const byKey = new Map(completed.map((c) => [c.key, c.draft]));

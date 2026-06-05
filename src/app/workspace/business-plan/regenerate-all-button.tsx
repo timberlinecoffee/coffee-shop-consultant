@@ -8,6 +8,11 @@
 // "Generating section N of M". On SSE `done` we close the overlay and open
 // the modal in one motion with every accepted section already populated.
 //
+// TIM-2360: stall detection. If no SSE event arrives for 30s while streaming,
+// abort the stream, close the overlay, and surface "Connection stalled" with
+// a "Retry remaining N sections" button. Retry re-invokes the route with
+// { only: [missingSectionKeys] } so completed sections are not re-generated.
+//
 // Flow:
 //   1. Click → POST /api/business-plan/regenerate-all to fetch the estimate
 //      (the route emits an `estimate` event first; we read just that, then
@@ -72,7 +77,8 @@ export interface RegenerateAllButtonProps {
   onError?: (msg: string) => void;
 }
 
-type Phase = "idle" | "estimating" | "confirming" | "streaming";
+// TIM-2360: "stalled" added for connection-stall detection flow.
+type Phase = "idle" | "estimating" | "confirming" | "streaming" | "stalled";
 
 interface PendingEstimate {
   estimate: EstimatePayload;
@@ -81,7 +87,12 @@ interface PendingEstimate {
   decoder: TextDecoder;
   buf: string;
   abortController: AbortController;
+  /** Only regenerate these section keys — null means all sections. */
+  only: string[] | null;
 }
+
+// TIM-2360: 30s of silence → stall state.
+const STALL_TIMEOUT_MS = 30_000;
 
 export function RegenerateAllButton({
   disabled,
@@ -96,6 +107,11 @@ export function RegenerateAllButton({
   const [phase, setPhase] = useState<Phase>("idle");
   const [pending, setPending] = useState<PendingEstimate | null>(null);
   const sectionsRef = useRef<SectionCurrent[]>([]);
+  // TIM-2360: track section keys so retry can pass only= the remaining ones.
+  const completedKeysRef = useRef<Set<string>>(new Set());
+  const allEstimatedKeysRef = useRef<string[]>([]);
+  // Signals the stream was interrupted by the stall timer rather than user cancel.
+  const stalledRef = useRef(false);
 
   const fail = useCallback(
     (msg: string) => {
@@ -106,16 +122,15 @@ export function RegenerateAllButton({
     [onError],
   );
 
-  const handleClick = useCallback(async () => {
-    if (phase !== "idle") return;
-    setPhase("estimating");
-
+  // Shared fetch-and-estimate helper used by both handleClick and handleRetryRemaining.
+  const fetchEstimate = useCallback(async (onlyKeys: string[] | null): Promise<PendingEstimate | null> => {
     const abortController = new AbortController();
     try {
+      const body = onlyKeys ? JSON.stringify({ only: onlyKeys }) : "{}";
       const res = await fetch("/api/business-plan/regenerate-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body,
         signal: abortController.signal,
       });
 
@@ -134,72 +149,86 @@ export function RegenerateAllButton({
         } else {
           fail(((j.error as string) ?? "Request failed").toString());
         }
-        return;
+        return null;
       }
 
       const reader = res.body?.getReader();
-      if (!reader) {
-        fail("No response stream");
-        return;
-      }
+      if (!reader) { fail("No response stream"); return null; }
 
       const decoder = new TextDecoder();
       let buf = "";
       let estimate: EstimatePayload | null = null;
 
-      // Read until the `estimate` event lands, then pause the stream.
       while (estimate === null) {
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-
         const parts = buf.split("\n\n");
         buf = parts.pop() ?? "";
-
         for (const part of parts) {
           const lines = part.split("\n");
-          let event = "";
-          let data = "";
+          let event = ""; let data = "";
           for (const line of lines) {
             if (line.startsWith("event: ")) event = line.slice(7);
             if (line.startsWith("data: ")) data = line.slice(6);
           }
           if (event === "estimate" && data) {
-            try {
-              estimate = JSON.parse(data) as EstimatePayload;
-            } catch {
+            try { estimate = JSON.parse(data) as EstimatePayload; } catch {
               fail("Malformed estimate payload");
               await reader.cancel();
-              return;
+              return null;
             }
             break;
           }
           if (event === "error" && data) {
-            try {
-              const parsed = JSON.parse(data) as { message?: string };
-              fail(parsed.message ?? "Stream error");
-            } catch {
-              fail("Stream error");
-            }
+            try { const p = JSON.parse(data) as { message?: string }; fail(p.message ?? "Stream error"); }
+            catch { fail("Stream error"); }
             await reader.cancel();
-            return;
+            return null;
           }
         }
       }
 
-      if (estimate === null) {
-        fail("Server did not send an estimate.");
-        return;
-      }
-
-      sectionsRef.current = getCurrentSections();
-      setPending({ estimate, reader, decoder, buf, abortController });
-      setPhase("confirming");
+      if (!estimate) { fail("Server did not send an estimate."); return null; }
+      return { estimate, reader, decoder, buf, abortController, only: onlyKeys };
     } catch (err) {
-      if ((err as { name?: string })?.name === "AbortError") return;
-      fail(err instanceof Error ? err.message : "Request failed");
+      if ((err as { name?: string })?.name !== "AbortError") {
+        fail(err instanceof Error ? err.message : "Request failed");
+      }
+      return null;
     }
-  }, [phase, fail, getCurrentSections]);
+  }, [fail]);
+
+  const handleClick = useCallback(async () => {
+    if (phase !== "idle") return;
+    setPhase("estimating");
+    completedKeysRef.current = new Set();
+    allEstimatedKeysRef.current = [];
+    stalledRef.current = false;
+    sectionsRef.current = getCurrentSections();
+
+    const result = await fetchEstimate(null);
+    if (!result) { setPhase("idle"); return; }
+    allEstimatedKeysRef.current = result.estimate.sections.map((s) => s.key);
+    setPending(result);
+    setPhase("confirming");
+  }, [phase, fetchEstimate, getCurrentSections]);
+
+  // TIM-2360: retry remaining sections after a stall. Skips confirm dialog
+  // and goes straight to estimating → confirming with the remaining keys.
+  const handleRetryRemaining = useCallback(async () => {
+    const remaining = allEstimatedKeysRef.current.filter(
+      (k) => !completedKeysRef.current.has(k),
+    );
+    if (remaining.length === 0) { setPhase("idle"); return; }
+    stalledRef.current = false;
+    setPhase("estimating");
+
+    const result = await fetchEstimate(remaining);
+    if (!result) { setPhase("idle"); return; }
+    setPending(result);
+    setPhase("confirming");
+  }, [fetchEstimate]);
 
   const handleCancelConfirm = useCallback(async () => {
     if (pending) {
@@ -243,9 +272,7 @@ export function RegenerateAllButton({
       estimate.sections.map((s) => [s.key, s.title]),
     );
 
-    // TIM-2342: accumulate estimated_claims per section key as section:complete
-    // events arrive. On Apply, PATCH them alongside user_content so the
-    // export-gate modal can read them back later.
+    // TIM-2342: accumulate estimated_claims per section key.
     const claimsByKey = new Map<string, unknown[]>();
     const failedTitles: string[] = [];
 
@@ -267,7 +294,21 @@ export function RegenerateAllButton({
       }
     };
 
+    // TIM-2360: stall detection — abort stream and surface stall dialog
+    // if no meaningful SSE event arrives for 30s.
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+    const resetStallTimer = () => {
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        stalledRef.current = true;
+        abortController.abort();
+        reader.cancel().catch(() => {});
+      }, STALL_TIMEOUT_MS);
+    };
+
+    let streamError: string | null = null;
     try {
+      resetStallTimer();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -284,17 +325,21 @@ export function RegenerateAllButton({
             if (line.startsWith("data: ")) data = line.slice(6);
           }
           if (!event || !data) continue;
+          // Heartbeats keep the TCP connection open but don't indicate
+          // section progress — don't reset the stall timer for them.
+          if (event !== "heartbeat") resetStallTimer();
+
           let parsed: Record<string, unknown> = {};
-          try {
-            parsed = JSON.parse(data) as Record<string, unknown>;
-          } catch {
-            continue;
-          }
+          try { parsed = JSON.parse(data) as Record<string, unknown>; }
+          catch { continue; }
 
           if (event === "section:complete") {
             const sectionKey = (parsed.sectionKey as string) ?? "";
             const draft = (parsed.draft as string) ?? "";
             if (!sectionKey || !draft) continue;
+
+            // TIM-2360: track completed keys so retry knows what to skip.
+            completedKeysRef.current.add(sectionKey);
 
             const claims = Array.isArray(parsed.estimated_claims)
               ? (parsed.estimated_claims as unknown[])
@@ -331,8 +376,6 @@ export function RegenerateAllButton({
             updateProgressOverlay({ completed: suggestions.length });
           } else if (event === "section:revised") {
             // TIM-2337: cross-section entity unification ran on the server.
-            // Patch the existing buffered suggestion's proposedValue in place
-            // so the modal (opened after `done`) shows the unified spelling.
             const sectionKey = (parsed.sectionKey as string) ?? "";
             const draft = (parsed.draft as string) ?? "";
             if (!sectionKey || !draft) continue;
@@ -349,25 +392,34 @@ export function RegenerateAllButton({
             // Continue the loop so any trailing section:revised events on the
             // same SSE chunk land before we close the stream.
           } else if (event === "error") {
-            const message = (parsed.message as string) ?? "Stream error";
-            onError?.(message);
+            streamError = (parsed.message as string) ?? "Stream error";
           }
         }
       }
     } catch (err) {
       if ((err as { name?: string })?.name !== "AbortError") {
-        onError?.(err instanceof Error ? err.message : "Stream failed");
+        streamError = err instanceof Error ? err.message : "Stream failed";
       }
     } finally {
+      if (stallTimer) clearTimeout(stallTimer);
       closeProgressOverlay();
-      setPhase("idle");
       abortController.abort();
     }
 
-    // TIM-2385: Phase 2 — only open the modal if the user didn't cancel and at
-    // least one section streamed successfully. Failed sections are surfaced
-    // via the modal banner below.
-    if (cancelledByUser) return;
+    if (cancelledByUser) { setPhase("idle"); return; }
+
+    // TIM-2360: stall → show stall dialog instead of opening the modal.
+    if (stalledRef.current) {
+      setPhase("stalled");
+      return;
+    }
+
+    if (streamError) { onError?.(streamError); }
+
+    setPhase("idle");
+
+    // TIM-2385: Phase 2 — only open the modal if at least one section streamed
+    // successfully. Failed sections are surfaced via the modal banner below.
     if (suggestions.length === 0) {
       if (failedTitles.length > 0) {
         onError?.(`Regenerate all finished with no successful sections. Failed: ${failedTitles.join(", ")}.`);
@@ -420,6 +472,15 @@ export function RegenerateAllButton({
           estimate={pending.estimate}
           onCancel={handleCancelConfirm}
           onConfirm={handleConfirm}
+        />
+      )}
+
+      {phase === "stalled" && (
+        <RegenerateAllStalledDialog
+          completedCount={completedKeysRef.current.size}
+          totalCount={allEstimatedKeysRef.current.length}
+          onDismiss={() => setPhase("idle")}
+          onRetry={handleRetryRemaining}
         />
       )}
     </>
@@ -507,6 +568,64 @@ function RegenerateAllConfirmDialog({ estimate, onCancel, onConfirm }: ConfirmPr
           >
             Regenerate all
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// TIM-2360: stall detection dialog — shown when no SSE event arrives for 30s.
+interface StalledProps {
+  completedCount: number;
+  totalCount: number;
+  onDismiss: () => void;
+  onRetry: () => void;
+}
+
+function RegenerateAllStalledDialog({ completedCount, totalCount, onDismiss, onRetry }: StalledProps) {
+  const remaining = totalCount - completedCount;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="regen-stalled-title"
+    >
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-[var(--border)]">
+        <div className="px-5 py-4 border-b border-[var(--neutral-cool-150)]">
+          <h2 id="regen-stalled-title" className="text-base font-semibold text-[var(--foreground)]">
+            Connection stalled
+          </h2>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-sm text-[var(--foreground)] leading-relaxed">
+            {completedCount > 0
+              ? `${completedCount} of ${totalCount} sections completed and saved. The connection stopped before finishing the remaining ${remaining}.`
+              : "The connection to the generation server stopped before any sections completed."}
+          </p>
+          {remaining > 0 && (
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Completed sections were saved automatically. You can retry the remaining {remaining} section{remaining === 1 ? "" : "s"} without losing progress.
+            </p>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-[var(--neutral-cool-150)] flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-semibold hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            Dismiss
+          </button>
+          {remaining > 0 && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-deep)] transition-colors"
+            >
+              Retry remaining {remaining} section{remaining === 1 ? "" : "s"}
+            </button>
+          )}
         </div>
       </div>
     </div>
