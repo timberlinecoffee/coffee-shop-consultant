@@ -32,6 +32,7 @@ import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { QualityCheckPanel } from "./quality-check-panel";
 import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
 
 interface Props {
   planId: string;
@@ -947,6 +948,11 @@ interface SectionCardProps {
 // ── MarkdownContent ───────────────────────────────────────────────────────────
 
 function MarkdownContent({ content }: { content: string }) {
+  // TIM-2358: defensive strip of any <num src="…">…</num> marker that might
+  // have leaked into stored user_content (pre-TIM-2342 drafts, hand-edits,
+  // imports). The save path already strips, but this is the on-screen render
+  // boundary the issue's acceptance criteria pin.
+  const clean = stripSourceMarkers(content);
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -963,7 +969,7 @@ function MarkdownContent({ content }: { content: string }) {
         em: ({ children }) => <em className="italic">{children}</em>,
       }}
     >
-      {content}
+      {clean}
     </ReactMarkdown>
   );
 }

@@ -12,6 +12,7 @@ import {
   renderForExport,
   extractEstimatedClaims,
   stripMarkersRaw,
+  stripSourceMarkers,
 } from "./source-markers.ts";
 
 test("strips user_provided + computed + benchmark markers verbatim", () => {
@@ -118,6 +119,101 @@ test("ignores text with no markers (no-op)", () => {
 test("stripMarkersRaw strips markers without adding hedge prefixes", () => {
   const input = 'foo <num src="estimate">$99</num> bar';
   assert.equal(stripMarkersRaw(input), "foo $99 bar");
+});
+
+// TIM-2358: stripSourceMarkers — canonical lightweight stripper for every UI
+// render boundary that takes narrative text and pushes it into a React DOM.
+// Acceptance #4: simple value, multi-marker line, malformed marker still
+// renders the inner value, nested-like inputs.
+
+test("stripSourceMarkers: simple value", () => {
+  assert.equal(
+    stripSourceMarkers('We are raising <num src="user_provided">$250,000</num> in total capital.'),
+    "We are raising $250,000 in total capital.",
+  );
+});
+
+test("stripSourceMarkers: multi-marker line", () => {
+  const input = [
+    'Proceeds are allocated as follows: <num src="user_provided">$150,000</num> for build-out,',
+    '<num src="user_provided">$210,323</num> for equipment,',
+    '<num src="user_provided">$9,760</num> for lease deposit,',
+    '<num src="user_provided">$3,000</num> for licenses and permits.',
+  ].join(" ");
+  const out = stripSourceMarkers(input);
+  assert.ok(!out.includes("<num"), "no opening marker leaks");
+  assert.ok(!out.includes("</num>"), "no closing marker leaks");
+  assert.ok(out.includes("$150,000 for build-out"));
+  assert.ok(out.includes("$210,323 for equipment"));
+  assert.ok(out.includes("$9,760 for lease deposit"));
+  assert.ok(out.includes("$3,000 for licenses and permits"));
+});
+
+test("stripSourceMarkers: malformed marker still renders inner value", () => {
+  // Missing closing tag — leave the text alone rather than chew up the rest of
+  // the prose. The regex requires a matching </num> so this should be a no-op.
+  const lonelyOpen = 'We are raising <num src="user_provided">$250,000 in total capital.';
+  assert.equal(stripSourceMarkers(lonelyOpen), lonelyOpen);
+
+  // Marker with hedge but missing src — `[^>]*` is permissive on attribute
+  // shape, so the inner value is still extracted.
+  const noSrc = 'roughly <num hedge="approximately">$5</num> a cup';
+  assert.equal(stripSourceMarkers(noSrc), "roughly $5 a cup");
+
+  // Single-quoted attribute values must still strip.
+  const singleQuote = "the rent is <num src='user_provided'>$4,880/mo</num>";
+  assert.equal(stripSourceMarkers(singleQuote), "the rent is $4,880/mo");
+});
+
+test("stripSourceMarkers: nested-like inputs", () => {
+  // Non-greedy match means an inner `<num` opener inside content shouldn't eat
+  // the closer of the outer pair. The first `</num>` closes the outer marker;
+  // the dangling inner pair leaks through (and stripSourceMarkers strips that
+  // too on the next match in the same regex sweep).
+  const nested = '<num src="estimate">$10 <num src="estimate">$20</num></num>';
+  const out = stripSourceMarkers(nested);
+  assert.ok(!out.includes("<num"), "no marker survives");
+  assert.ok(!out.includes("</num>"), "no closing tag survives");
+  assert.ok(out.includes("$10"));
+  assert.ok(out.includes("$20"));
+});
+
+test("stripSourceMarkers: null / undefined / non-string returns empty string", () => {
+  assert.equal(stripSourceMarkers(null), "");
+  assert.equal(stripSourceMarkers(undefined), "");
+  assert.equal(stripSourceMarkers(42), "");
+});
+
+test("stripSourceMarkers: idempotent on already-stripped content", () => {
+  const clean = "We are raising $250,000 in total capital.";
+  assert.equal(stripSourceMarkers(clean), clean);
+  assert.equal(stripSourceMarkers(stripSourceMarkers(clean)), clean);
+});
+
+// TIM-2358 acceptance #1 + #5: render-side regression on the exact board-
+// screenshot string (TIM-2315 attachment 58d00508). The Internal Contradictions
+// Flagged panel must never put `<num src=` into the DOM, regardless of which
+// stripper path the consumer uses (stripSourceMarkers OR the wider
+// stripFindingTags sanitizer that composes it).
+
+test("regression: TIM-2315 board-screenshot contradiction renders clean", async () => {
+  const { stripFindingTags } = await import("./sanitize-finding-text.ts");
+  const claimA = 'We are raising <num src="user_provided">$250,000</num> in total capital';
+  const claimB = [
+    'Proceeds are allocated as follows: <num src="user_provided">$150,000</num> for build-out,',
+    '<num src="user_provided">$210,323</num> for equipment,',
+    '<num src="user_provided">$9,760</num> for lease deposit,',
+    '<num src="user_provided">$3,000</num> for licenses and permits',
+  ].join(" ");
+
+  for (const claim of [claimA, claimB]) {
+    for (const stripper of [stripSourceMarkers, stripFindingTags]) {
+      const out = stripper(claim);
+      assert.ok(!out.includes("<num"), `no opening marker in: ${out}`);
+      assert.ok(!out.includes("</num>"), `no closing marker in: ${out}`);
+      assert.ok(!out.includes('src="'), `no src attribute in: ${out}`);
+    }
+  }
 });
 
 test("handles single-quoted attribute values", () => {

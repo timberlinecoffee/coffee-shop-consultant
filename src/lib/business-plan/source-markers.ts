@@ -295,3 +295,37 @@ export function stripMarkersRaw(text: string): string {
   if (!text || typeof text !== "string") return text ?? "";
   return text.replace(MARKER_RE, (_full, _q1, _q2, _h1, _h2, content) => content as string);
 }
+
+// TIM-2358: canonical lightweight stripper for any UI render boundary.
+//
+// Board flagged the Internal Contradictions Flagged panel leaking
+// `<num src="user_provided">$250,000</num>` markers verbatim because the
+// proofreader pulled claim_a / claim_b directly from the still-marker-laden
+// section text (markers are stripped from the saved narrative, but the
+// contradictions captured on the SSE 'done' payload were sourced upstream).
+//
+// Rule: every consumer that puts narrative text into a React DOM MUST call
+// this (directly, or via the wider stripFindingTags() sanitizer in
+// sanitize-finding-text.ts which composes this strip with stray-tag cleanup).
+//
+// Permissive on attribute shape — matches any `<num … >…</num>` pair (single
+// or double quotes, any attribute set, multi-line inner content). Preserves
+// inner text verbatim; no hedge prefix added. Idempotent on already-stripped
+// content. Returns the input unchanged when there is no marker to find.
+
+const STRIP_SOURCE_MARKERS_RE = /<num\s+[^>]*>([\s\S]*?)<\/num>/gi;
+
+export function stripSourceMarkers(text: string | null | undefined): string {
+  if (text == null) return "";
+  if (typeof text !== "string") return "";
+  // Loop until idempotent so nested-like inputs (LLM mis-emit a marker inside
+  // a marker) strip the inner pair on the second pass. Bound at 8 passes so a
+  // pathological input can't hang the render. Real content tops out at 1 pass.
+  let prev = text;
+  for (let i = 0; i < 8; i++) {
+    const next = prev.replace(STRIP_SOURCE_MARKERS_RE, "$1");
+    if (next === prev) return next;
+    prev = next;
+  }
+  return prev;
+}
