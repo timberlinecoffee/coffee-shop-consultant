@@ -13,6 +13,7 @@ import type { PdfTemplate } from "../registry";
 import type { BusinessPlanSectionData } from "@/lib/business-plan";
 import { buildFinancialDocVisibility, type FinancialDocumentVisibility } from "@/lib/business-plan-financials";
 import { renderCover } from "@/lib/pdf/business-plan/covers";
+import { MarkdownBlocks } from "@/lib/pdf/business-plan/markdown-blocks";
 import { FinancialPlanPages } from "@/lib/pdf/business-plan/financial-plan-pages";
 import {
   assembleCompanyConcept,
@@ -119,12 +120,21 @@ function makeStyles(brand: BrandTokens) {
       fontSize: 10,
       color: brand.colors.muted,
     },
+    sectionEyebrow: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      fontWeight: 600,
+      letterSpacing: 1.6,
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
     sectionTitle: {
       fontFamily: brand.fonts.serif,
-      fontSize: 18,
+      fontSize: 22,
       fontWeight: 600,
       color: brand.colors.primary,
       marginBottom: 6,
+      lineHeight: 1.15,
     },
     sourceLabel: {
       fontSize: 8,
@@ -136,12 +146,6 @@ function makeStyles(brand: BrandTokens) {
       borderBottomWidth: 1,
       borderBottomColor: brand.colors.rule,
       marginBottom: 16,
-    },
-    body: {
-      fontSize: 10,
-      color: brand.colors.ink,
-      lineHeight: 1.55,
-      whiteSpace: "pre-wrap",
     },
     noContent: {
       fontSize: 10,
@@ -157,8 +161,9 @@ function makeStyles(brand: BrandTokens) {
 // TIM-1498: two-level TOC. Top-level sections (Executive Summary) appear in
 // their own row. Grouped subsections appear under a bold group header with
 // indented child rows. Page numbers are per subsection.
-function TocPage({ sections, shopName, date, brand }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; brand: BrandTokens }) {
+function TocPage({ sections, shopName, date, brand, accentColor }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; brand: BrandTokens; accentColor?: string | null }) {
   const S = makeStyles(brand);
+  const tocColor = accentColor || brand.colors.primary;
   const visible = sections.filter((s) => s.isVisible);
   const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
 
@@ -197,7 +202,7 @@ function TocPage({ sections, shopName, date, brand }: { sections: BusinessPlanSe
   return (
     <Page size={brand.page.size} style={S.page}>
       <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
-      <Text style={S.tocTitle}>Table of Contents</Text>
+      <Text style={[S.tocTitle, { color: tocColor }]}>Table of Contents</Text>
       {rows.map((row, i) => {
         if (row.kind === "group") {
           return (
@@ -232,27 +237,36 @@ function SectionPage({
   shopName,
   date,
   brand,
+  accentColor,
+  groupTitle,
 }: {
   section: BusinessPlanSectionData;
   shopName: string;
   date: string;
   brand: BrandTokens;
+  accentColor?: string | null;
+  groupTitle?: string;
 }) {
   const S = makeStyles(brand);
   const content = section.userContent ?? section.autoContent;
   const isEmpty = !content || content.includes("workspace to populate");
-
+  const titleColor = accentColor || brand.colors.primary;
+  // TIM-2315: render "Business Plan" in the running header (not the section
+  // title) so the body title isn't duplicated on every page.
   return (
     <Page size={brand.page.size} style={S.page}>
-      <PdfHeader shopName={shopName} workspaceName={section.title} brand={brand} />
+      <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
       <View style={{ marginBottom: 8 }}>
-        <Text style={S.sectionTitle}>{section.title}</Text>
+        {groupTitle ? (
+          <Text style={[S.sectionEyebrow, { color: brand.colors.muted }]}>{groupTitle}</Text>
+        ) : null}
+        <Text style={[S.sectionTitle, { color: titleColor }]}>{section.title}</Text>
         <Text style={S.sourceLabel}>{section.sourceLabel}</Text>
-        <View style={S.rule} />
+        <View style={[S.rule, { borderBottomColor: titleColor }]} />
         {isEmpty ? (
           <Text style={S.noContent}>{content}</Text>
         ) : (
-          <Text style={S.body}>{content}</Text>
+          <MarkdownBlocks content={content} brand={brand} accentColor={accentColor ?? null} />
         )}
       </View>
       <PdfFooter generatedDate={date} brand={brand} />
@@ -272,6 +286,9 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
 
+    const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
+    const groupTitleByKey = new Map(BUSINESS_PLAN_GROUPS.map((g) => [g.key, g.title]));
+
     return (
       <PdfDocument shopName={shopName}>
         {renderCover(cover.template_id, {
@@ -283,10 +300,22 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           accentColor: cover.accent_color ?? undefined,
           logo: cover.logo,
         }, brand)}
-        <TocPage sections={sections} shopName={displayName} date={date} brand={brand} />
-        {visible.map((section) => (
-          <SectionPage key={section.key} section={section} shopName={displayName} date={date} brand={brand} />
-        ))}
+        <TocPage sections={sections} shopName={displayName} date={date} brand={brand} accentColor={cover.accent_color} />
+        {visible.map((section) => {
+          const meta = sectionMetaByKey.get(section.key as never);
+          const groupTitle = meta?.groupKey ? groupTitleByKey.get(meta.groupKey) : undefined;
+          return (
+            <SectionPage
+              key={section.key}
+              section={section}
+              shopName={displayName}
+              date={date}
+              brand={brand}
+              accentColor={cover.accent_color}
+              groupTitle={groupTitle}
+            />
+          );
+        })}
         {financialData && (
           <FinancialPlanPages
             mp={financialData.mp}

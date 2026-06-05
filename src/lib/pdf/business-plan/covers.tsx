@@ -71,9 +71,12 @@ function makeClassicStyles(brand: BrandTokens) {
   return StyleSheet.create({
     page: {
       backgroundColor: brand.colors.paper,
+      // TIM-2315: 96/56pt page-safe margins (~33mm top, ~20mm sides). The cover
+      // previously had paddingTop/paddingBottom: 0 which let the title/accent
+      // bar bleed to the page edge.
       paddingHorizontal: 56,
-      paddingTop: 0,
-      paddingBottom: 0,
+      paddingTop: 96,
+      paddingBottom: 56,
       flexDirection: "column",
     },
     logoZone: {
