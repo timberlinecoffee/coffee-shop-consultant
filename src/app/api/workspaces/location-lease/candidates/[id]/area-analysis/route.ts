@@ -3,14 +3,23 @@
 // hands the structured neighborhood snapshot to Claude so the response is
 // specific to the actual block, not generic boilerplate.
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+// TIM-2361: route flipped from PLATFORM_AI_MODEL (Haiku) to RESEARCH_AI_MODEL
+// (Sonnet 4.6). Area analysis fuses an OSM neighborhood snapshot (counts +
+// named places + concept summary) into block-specific positioning advice;
+// Haiku tended to drift to generic boilerplate when the OSM mix was thin.
+// Credit charge scales 2x per output token via modelTier: "complex".
+import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
+
+const ROUTE_PATH = "/api/workspaces/location-lease/candidates/[id]/area-analysis"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -149,6 +158,13 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
+  // TIM-2361: pull plan-tier fields so ai_turn_metrics can attribute COGS.
+  const { data: profile } = await supabase
+    .from("users")
+    .select("subscription_tier, subscription_status, beta_waiver_until")
+    .eq("id", user.id)
+    .maybeSingle()
+
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
     .select("id")
@@ -201,12 +217,32 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
 
   try {
     const response = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
+      model: RESEARCH_AI_MODEL,
       max_tokens: 600,
       messages: [{ role: "user", content: prompt }],
       system:
         "You are a knowledgeable real estate advisor for small coffee shops. Be direct and specific. Plain English, no consultant jargon. Do not use emojis.",
     })
+
+    // TIM-2361: telemetry. Fire-and-forget — insert failures must not break
+    // the user-visible area-analysis response.
+    const telemetryClient = createServiceClient()
+    void recordTurnMetric(
+      {
+        async insert(row) {
+          return telemetryClient.from("ai_turn_metrics").insert(row)
+        },
+      },
+      {
+        route: ROUTE_PATH,
+        model: RESEARCH_AI_MODEL,
+        usage: response.usage,
+        webSearchRequests: 0,
+        toolCalls: 0,
+        userId: user.id,
+        planTier: resolvePlanTier(profile ?? {}),
+      },
+    )
 
     const block = response.content.find((b) => b.type === "text")
     const normalizedText = block && "text" in block ? normalizeAIOutput(block.text.trim()) : ""
