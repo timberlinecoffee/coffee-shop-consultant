@@ -279,6 +279,21 @@ export function RegenerateAllButton({
               isStructured: false,
             });
             updateAIReviewModal({ suggestions: [...suggestions] });
+          } else if (event === "section:revised") {
+            // TIM-2337: cross-section entity unification ran on the server.
+            // Patch the existing suggestion's proposedValue in place so the
+            // user sees the unified spelling. If the user has already
+            // accepted, this is a no-op for the saved draft (they got the
+            // per-section canonicalized version, just not cross-unified —
+            // edge case, not worth re-saving silently).
+            const sectionKey = (parsed.sectionKey as string) ?? "";
+            const draft = (parsed.draft as string) ?? "";
+            if (!sectionKey || !draft) continue;
+            const idx = suggestions.findIndex((s) => s.fieldId === sectionKey);
+            if (idx >= 0) {
+              suggestions[idx] = { ...suggestions[idx], proposedValue: draft };
+              updateAIReviewModal({ suggestions: [...suggestions] });
+            }
           } else if (event === "section:error") {
             const sectionKey = (parsed.sectionKey as string) ?? "";
             const message = (parsed.message as string) ?? "Section failed.";
