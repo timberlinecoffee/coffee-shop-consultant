@@ -60,6 +60,13 @@ import {
   extractEstimatedClaims,
 } from "@/lib/business-plan/source-markers";
 import { formatBenchmarksForPrompt } from "@/lib/business-plan/benchmarks";
+// TIM-2343: per-section self-consistency proofreader (BP Quality J). Same
+// pattern as /generate — run after each section streams, regen ONCE on hits,
+// surface surviving pairs via section:complete + the final done summary.
+import {
+  runSelfConsistencyCheck,
+  regenerateWithFixDirective,
+} from "@/lib/business-plan/self-consistency-runner";
 import type { BusinessPlanSectionKey } from "@/lib/business-plan";
 
 const HEARTBEAT_MS = 15_000;
@@ -388,8 +395,40 @@ export async function POST(): Promise<Response> {
         // aliases ("La Marzocko" → "La Marzocco") immediately so the user
         // sees the corrected draft on first arrival. Cross-section
         // unification runs below once every section has streamed.
-        const draftRaw = normalizeAIOutput(fullText);
-        const draftCanon = canonicalizeNarrative(draftRaw, planState.entities);
+        let workingText = normalizeAIOutput(fullText);
+        let draftCanon = canonicalizeNarrative(workingText, planState.entities);
+
+        // TIM-2343: self-consistency proofread. Run on the canonicalized
+        // (but still source-marker-laden) text. On hits, regen ONCE with the
+        // explicit fix directive, then re-check. Surviving contradictions
+        // surface via the section:complete payload as advisory.
+        let contradictions = await runSelfConsistencyCheck({
+          client,
+          sectionKey,
+          sectionTitle: sectionMeta.title,
+          sectionText: draftCanon.text,
+        });
+        let regenAttempted = false;
+        if (contradictions.length > 0) {
+          regenAttempted = true;
+          const regen = await regenerateWithFixDirective({
+            client,
+            baseSystemPrompt: systemPrompt,
+            baseUserMessage: userMessage,
+            contradictions,
+            maxTokens,
+          });
+          if (regen) {
+            workingText = normalizeAIOutput(regen);
+            draftCanon = canonicalizeNarrative(workingText, planState.entities);
+            contradictions = await runSelfConsistencyCheck({
+              client,
+              sectionKey,
+              sectionTitle: sectionMeta.title,
+              sectionText: draftCanon.text,
+            });
+          }
+        }
 
         // TIM-2342: parse source markers, strip them, prepend hedge prefixes
         // to estimate-class claims that didn't already open with one, and
@@ -407,6 +446,9 @@ export async function POST(): Promise<Response> {
           canon_substitutions: draftCanon.substitutions,
           source_markers: parsed.counts,
           estimated_claims: estimatedClaims,
+          // TIM-2343: contradictions surviving regen for this section.
+          consistency_contradictions: contradictions,
+          consistency_regen_attempted: regenAttempted,
         });
       }
 
