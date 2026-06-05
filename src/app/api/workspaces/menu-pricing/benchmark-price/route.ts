@@ -18,6 +18,7 @@ import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
@@ -63,20 +64,6 @@ function deriveRegionBucket(location?: string): string | null {
   if (loc.match(/\b(australia|sydney|melbourne|brisbane)\b/)) return "Australia"
   if (loc.match(/\b(canada|toronto|montreal|calgary|vancouver bc)\b/)) return "Canada"
   return "Other"
-}
-
-async function getPlanId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return data?.id ?? null
 }
 
 function deriveVerdict(
@@ -128,7 +115,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: {

@@ -1,20 +1,10 @@
 // TIM-1140: CRUD for menu_categories (per-plan, user-editable).
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { toTitleCase } from "@/lib/text"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
-
-async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return data?.id ?? null
-}
 
 const DEFAULT_SEED = [
   { name: "Espresso",      position: 0 },
@@ -54,7 +44,7 @@ export async function GET(_request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   await ensureDefaults(supabase, planId)
@@ -74,7 +64,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: Record<string, unknown>
@@ -121,7 +111,7 @@ export async function PATCH(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: Record<string, unknown>
@@ -184,7 +174,7 @@ export async function DELETE(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const id = request.nextUrl.searchParams.get("id")

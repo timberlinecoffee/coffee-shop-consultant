@@ -7,6 +7,7 @@
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { toTitleCase } from "@/lib/text"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
@@ -22,20 +23,6 @@ interface ConceptContext {
   location?: string
   target_customer?: string
   vision?: string
-}
-
-async function getPlanId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-) {
-  const { data } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return data?.id ?? null
 }
 
 export async function POST(request: Request) {
@@ -57,7 +44,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
   }
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: { concept_context?: ConceptContext }
