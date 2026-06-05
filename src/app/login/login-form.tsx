@@ -25,22 +25,23 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     return params.get("utm_source") || params.get("ref") || "direct";
   }
 
-  // TIM-2327: preserve `?next=` deep links through the OAuth round-trip so a
-  // user arriving at /login?next=/workspace/business-plan returns to that page
-  // after Google sign-in. The callback at /auth/callback enforces an allowlist
-  // (SAFE_NEXT_PREFIXES), so we forward whatever the user passed and let the
-  // server validate.
   function getNextParam(): string | null {
     const raw = new URLSearchParams(window.location.search).get("next");
     if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
     return raw;
   }
 
-  function buildOAuthCallbackUrl(signupSource: string): string {
-    const params = new URLSearchParams({ signup_source: signupSource });
-    const next = getNextParam();
-    if (next) params.set("next", next);
-    return `${window.location.origin}/auth/callback?${params.toString()}`;
+  // TIM-2327: hand off signup_source + next via short-lived first-party cookies
+  // instead of as query params on `redirectTo`. Supabase Auth's Additional
+  // Redirect URLs allowlist is exact-match (wildcards on query strings aren't
+  // reliable across regions/versions); with query params the redirect can fail
+  // allowlist matching and silently fall back to Site URL, dropping the user
+  // on apex (= coming-soon post TIM-2288) with no session. Bare `/auth/callback`
+  // is the minimal allowlist surface. Cookies survive the OAuth round-trip
+  // because /auth/callback is same-origin with /login.
+  function setHandoffCookie(name: string, value: string) {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
   }
 
   async function handleGoogleSignIn() {
@@ -51,11 +52,13 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const signupSource = getSignupSource();
+    setHandoffCookie("gw_oauth_signup_source", getSignupSource());
+    const next = getNextParam();
+    if (next) setHandoffCookie("gw_oauth_next", next);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: buildOAuthCallbackUrl(signupSource),
+        redirectTo: `${window.location.origin}/auth/callback`,
         // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
         // OAuth honors the project-level CAPTCHA setting on the initiate call.
         ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
