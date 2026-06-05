@@ -14,6 +14,7 @@ import {
   type EquipmentRecomputeParams,
 } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
+import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -364,10 +365,10 @@ function ChangeCard({
                 <span className="inline-block rounded-full bg-amber-200 px-1.5 py-0.5 mr-1.5 text-[10px] font-medium uppercase tracking-wide">
                   {c.kind}
                 </span>
-                <span className="italic">&ldquo;{c.claim_a}&rdquo;</span>
+                <span className="italic">&ldquo;{stripFindingTags(c.claim_a)}&rdquo;</span>
                 <span className="px-1">vs.</span>
-                <span className="italic">&ldquo;{c.claim_b}&rdquo;</span>
-                <span className="block mt-0.5 not-italic text-amber-800">{c.explanation}</span>
+                <span className="italic">&ldquo;{stripFindingTags(c.claim_b)}&rdquo;</span>
+                <span className="block mt-0.5 not-italic text-amber-800">{stripFindingTags(c.explanation)}</span>
               </li>
             ))}
           </ul>

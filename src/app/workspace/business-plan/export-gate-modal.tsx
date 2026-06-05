@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, X, Loader2 } from "lucide-react";
+import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
 // Mirrors the server-side `ValidationReport` shape from src/lib/business-plan/validate.ts.
 // Duplicated here to keep the modal a self-contained client component without
@@ -272,20 +273,20 @@ export function ExportGateModal({
                   )}
                 </div>
                 <div className="px-3.5 py-3 text-sm text-[var(--foreground)] leading-relaxed space-y-2">
-                  <p>{f.message}</p>
+                  <p>{stripFindingTags(f.message)}</p>
                   {f.quoted_text && (
                     <div className="text-xs grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-0.5">
                           In your plan
                         </p>
-                        <p className="font-mono text-[var(--foreground)]">{f.quoted_text}</p>
+                        <p className="font-mono text-[var(--foreground)]">{stripFindingTags(f.quoted_text)}</p>
                       </div>
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-0.5">
                           Plan model says
                         </p>
-                        <p className="font-mono text-[var(--foreground)]">{f.expected_text}</p>
+                        <p className="font-mono text-[var(--foreground)]">{stripFindingTags(f.expected_text)}</p>
                       </div>
                     </div>
                   )}
@@ -340,10 +341,10 @@ export function ExportGateModal({
                   >
                     <AlertCircle size={14} aria-hidden="true" className="text-[#92400E] flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <p className="leading-snug">{f.message}</p>
+                      <p className="leading-snug">{stripFindingTags(f.message)}</p>
                       {f.quoted_text && (
                         <p className="font-mono text-[var(--muted-foreground)] mt-0.5 break-words">
-                          “{f.quoted_text}”
+                          “{stripFindingTags(f.quoted_text)}”
                         </p>
                       )}
                     </div>
@@ -376,12 +377,12 @@ export function ExportGateModal({
                           {section?.title ?? c.section_key}
                         </p>
                         <p className="leading-snug">
-                          <span className="font-mono">{c.hedge} {c.content}</span>
+                          <span className="font-mono">{stripFindingTags(c.hedge)} {stripFindingTags(c.content)}</span>
                           <span className="text-[var(--muted-foreground)]"> — generator estimate, please verify or replace.</span>
                         </p>
                         {c.surrounding_sentence && (
                           <p className="font-mono text-[var(--muted-foreground)] mt-1 break-words">
-                            “{c.surrounding_sentence}”
+                            “{stripFindingTags(c.surrounding_sentence)}”
                           </p>
                         )}
                       </div>

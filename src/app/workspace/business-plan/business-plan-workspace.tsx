@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
+import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X, ShieldCheck } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -27,6 +27,10 @@ import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
+import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { QualityCheckPanel } from "./quality-check-panel";
+import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
+import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
 interface Props {
   planId: string;
@@ -166,6 +170,11 @@ export function BusinessPlanWorkspace({
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
   const { openAIReviewModal, updateAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  // TIM-2356: Plan Quality Check tab + report state.
+  const [activeTab, setActiveTab] = useState<"plan" | "quality-check">("plan");
+  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
+  const [isCheckingPlan, setIsCheckingPlan] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any section has user content.
@@ -479,6 +488,103 @@ export function BusinessPlanWorkspace({
     );
   }, []);
 
+  // TIM-2356: Plan Quality Check — kick off the audit + flip to the report tab.
+  const handleCheckPlan = useCallback(async () => {
+    setActiveTab("quality-check");
+    setAuditError(null);
+    setIsCheckingPlan(true);
+    try {
+      const res = await fetch("/api/business-plan/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Audit failed (${res.status})`);
+      }
+      const data = (await res.json()) as { report: AuditReport | null };
+      setAuditReport(data.report);
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : "Audit failed");
+    } finally {
+      setIsCheckingPlan(false);
+    }
+  }, []);
+
+  // TIM-2356: Apply suggestion — route the proposed replacement through the
+  // shared AI review modal. NEVER auto-applies (per platform rule + UX spec
+  // line 235). The modal handler PATCHes the section once the user accepts.
+  const handleApplyAuditFinding = useCallback((finding: AuditFinding) => {
+    if (!finding.suggested_replacement) return;
+    // For business-plan-section findings, splice the suggested replacement
+    // into the quoted text in the section body, then show the diff in the modal.
+    const sectionKey = finding.source.field;
+    if (!sectionKey) return;
+    const section = sections.find((s) => s.key === sectionKey);
+    if (!section) return;
+    const originalValue = section.userContent ?? section.autoContent ?? "";
+    const quoted = finding.quoted_text ?? "";
+    const replacement = finding.suggested_replacement;
+    let proposedValue: string;
+    if (quoted && originalValue.includes(quoted)) {
+      proposedValue = originalValue.replace(quoted, replacement);
+    } else {
+      proposedValue = `${originalValue}\n\n(Audit suggestion: ${stripFindingTags(replacement)})`;
+    }
+    openAIReviewModal({
+      suggestions: [
+        {
+          id: `audit-${finding.id}`,
+          fieldId: sectionKey,
+          fieldLabel: finding.source.field_label ?? sectionKey,
+          originalValue,
+          proposedValue,
+          isStructured: false,
+        },
+      ],
+      context: { workspace: "Plan Quality Check", section: finding.source.field_label ?? undefined },
+      onApply: async () => {
+        await fetch(`/api/business-plan/sections/${sectionKey}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_content: proposedValue }),
+        });
+        setSections((prev) =>
+          prev.map((s) => (s.key === sectionKey ? { ...s, userContent: proposedValue } : s)),
+        );
+      },
+    });
+  }, [openAIReviewModal, sections]);
+
+  // TIM-2356: Deep-link "Go to source". For business-plan findings we open
+  // the parent section in place by expanding it; for cross-workspace findings
+  // we navigate to the target workspace URL.
+  const handleGoToAuditSource = useCallback((finding: AuditFinding) => {
+    if (finding.target.workspace === "business-plan") {
+      const sectionKey = finding.target.field ?? finding.source.field;
+      if (!sectionKey) return;
+      setActiveTab("plan");
+      setSections((prev) =>
+        prev.map((s) => (s.key === sectionKey ? { ...s, isExpanded: true } : s)),
+      );
+      // Defer scroll to next frame so the section is rendered first.
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-section-key="${sectionKey}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+    // Other workspaces: navigate.
+    const workspaceHref: Record<string, string> = {
+      financials: "/workspace/financials",
+      labor: "/workspace/hiring",
+      "real-estate": "/workspace/real-estate",
+    };
+    const href = workspaceHref[finding.target.workspace];
+    if (href) window.location.href = href;
+  }, []);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
@@ -512,10 +618,24 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
+              {/* TIM-2356: Check Plan is the new primary (far left). Per UX spec
+                  rationale: owners should check quality BEFORE exporting. Export
+                  PDF demotes to secondary directly to its right. */}
+              <WorkspaceActionButton
+                variant="primary"
+                onClick={handleCheckPlan}
+                disabled={isCheckingPlan || !canEdit}
+                aria-label={isCheckingPlan ? "Checking..." : "Check Plan"}
+                title="Scan all workspaces for gaps, mismatches, and things to fix before launch"
+              >
+                <ShieldCheck size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                <span className="hidden min-[1536px]:inline">
+                  {isCheckingPlan ? "Checking..." : "Check Plan"}
+                </span>
+              </WorkspaceActionButton>
               {/* TIM-1937 (board refinement bae7ef73): primary first, then
                   secondaries. Labels collapse to icon-only below 1536px. */}
               <WorkspaceActionButton
-                variant="primary"
                 onClick={handleExportPdf}
                 disabled={isExportingPdf || isValidating || !canEdit}
                 aria-label="Export PDF"
@@ -563,6 +683,28 @@ export function BusinessPlanWorkspace({
           }
         />
 
+        {/* TIM-2356: Sub-nav between Business Plan editor and Plan Quality Check report. */}
+        <WorkspaceSubNav
+          tabs={[
+            { key: "plan", label: "Business Plan" },
+            { key: "quality-check", label: "Quality Check" },
+          ]}
+          active={activeTab}
+          onSelect={setActiveTab}
+          ariaLabel="Business Plan sections"
+        />
+
+        {activeTab === "quality-check" ? (
+          <QualityCheckPanel
+            report={auditReport}
+            isChecking={isCheckingPlan}
+            checkError={auditError}
+            onCheckPlan={handleCheckPlan}
+            onApply={handleApplyAuditFinding}
+            onGoToSource={handleGoToAuditSource}
+          />
+        ) : (
+          <>
         <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
           {visibleCount} of {sections.length} sections visible
         </p>
@@ -630,6 +772,8 @@ export function BusinessPlanWorkspace({
           onGenerateExec={(key) => handleGenerate(key)}
           onImprove={(key) => handleImprove(key)}
         />
+          </>
+        )}
       </div>
     </div>
     </>
