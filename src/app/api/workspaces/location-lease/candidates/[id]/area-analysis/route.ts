@@ -224,10 +224,12 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
         "You are a knowledgeable real estate advisor for small coffee shops. Be direct and specific. Plain English, no consultant jargon. Do not use emojis.",
     })
 
-    // TIM-2361: telemetry. Fire-and-forget — insert failures must not break
-    // the user-visible area-analysis response.
+    // TIM-2361: telemetry. Awaited — Vercel serverless freezes pending work
+    // once the response is sent, so a `void` here loses the row. The helper
+    // swallows its own insert errors so logging failures still cannot tank
+    // the user response.
     const telemetryClient = createServiceClient()
-    void recordTurnMetric(
+    await recordTurnMetric(
       {
         async insert(row) {
           return telemetryClient.from("ai_turn_metrics").insert(row)

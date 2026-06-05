@@ -262,10 +262,12 @@ Return ONLY the JSON object.`
       messages: [{ role: "user", content: prompt }],
     })
 
-    // TIM-2361: record the turn to ai_turn_metrics. Fire-and-forget; logging
-    // failures must never tank the user-visible benchmark response.
+    // TIM-2361: record the turn to ai_turn_metrics. Awaited (not fire-and-forget)
+    // because Vercel serverless freezes pending work the moment the response is
+    // sent — a `void` here loses the row. The helper swallows insert errors
+    // internally so a logging failure still cannot tank the user response.
     const telemetryClient = createServiceClient()
-    void recordTurnMetric(
+    await recordTurnMetric(
       {
         async insert(row) {
           return telemetryClient.from("ai_turn_metrics").insert(row)
