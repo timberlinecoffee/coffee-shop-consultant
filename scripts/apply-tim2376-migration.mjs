@@ -91,15 +91,15 @@ const POOLER_REGIONS = [
 const configs = [
   // Try the URL the secret was set with, in case it's already a working pooler URL.
   [{ connectionString: DB_URL, ssl, connectionTimeoutMillis: 10_000 }, "SUPABASE_DB_URL as-is"],
-  // Enumerate all pooler regions with the new username format (5432 = session pooler).
-  ...POOLER_REGIONS.map((region) => [
-    { ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-0-${region}.pooler.supabase.com`, port: 5432 },
-    `pooler ${region} (session 5432, postgres.${REF})`,
+  // New shared pooler (aws-1-*) — Supabase Supavisor v2, IPv4. Try first.
+  ...POOLER_REGIONS.flatMap((region) => [
+    [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-1-${region}.pooler.supabase.com`, port: 5432 }, `aws-1-${region} (session 5432, postgres.${REF})`],
+    [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-1-${region}.pooler.supabase.com`, port: 6543 }, `aws-1-${region} (txn 6543, postgres.${REF})`],
   ]),
-  // Transaction pooler (6543) as a fallback per region — same auth surface.
-  ...POOLER_REGIONS.map((region) => [
-    { ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-0-${region}.pooler.supabase.com`, port: 6543 },
-    `pooler ${region} (txn 6543, postgres.${REF})`,
+  // Legacy shared pooler (aws-0-*) — older projects.
+  ...POOLER_REGIONS.flatMap((region) => [
+    [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-0-${region}.pooler.supabase.com`, port: 5432 }, `aws-0-${region} (session 5432, postgres.${REF})`],
+    [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-0-${region}.pooler.supabase.com`, port: 6543 }, `aws-0-${region} (txn 6543, postgres.${REF})`],
   ]),
   // Direct-IPv4 fallback only if we managed to resolve one (we usually can't anymore).
   ...(directIPv4 ? [[{ ...base, user: "postgres", password: parsedPassword, host: directIPv4, port: 5432 }, `direct IPv4 ${directIPv4}`]] : []),
