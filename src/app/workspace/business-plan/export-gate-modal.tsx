@@ -44,10 +44,25 @@ export interface ValidationFinding {
   message: string;
 }
 
+// TIM-2342: estimate-class claims surfaced by the source-marker parser. Lives
+// in business_plan_sections.estimated_claims_json; the validate route reads it
+// and attaches it here. Advisory — never blocks export. Founder "looks right"
+// or rewrites the surrounding sentence in the section editor.
+export interface ValidationEstimatedClaim {
+  id: string;
+  section_key: string;
+  content: string;
+  hedge: string;
+  surrounding_sentence: string;
+}
+
 export interface ValidationReport {
   blocking: boolean;
   numeric_findings: ValidationFinding[];
   qualitative_findings: ValidationFinding[];
+  // TIM-2342: estimate-class claims, listed in their own panel for review.
+  // Optional so older clients reading a stale report don't blow up.
+  estimated_claims?: ValidationEstimatedClaim[];
   stats: { claims_extracted: number; claims_matched: number; sections_scanned: number };
 }
 
@@ -334,6 +349,45 @@ export function ExportGateModal({
                     </div>
                   </li>
                 ))}
+              </ul>
+            </div>
+          )}
+
+          {/* ── TIM-2342: AI-estimate claims to verify (advisory). ─────────── */}
+          {report.estimated_claims && report.estimated_claims.length > 0 && (
+            <div className="pt-3 border-t border-[var(--neutral-cool-150)]">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-2">
+                Estimated claims to verify
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)] mb-2 leading-snug">
+                The generator hedged these numbers because no source backed them. Lenders read them as estimates. Open the section and replace each with a sourced figure (or your own number) before export.
+              </p>
+              <ul className="space-y-2">
+                {report.estimated_claims.map((c) => {
+                  const section = sectionByKey.get(c.section_key);
+                  return (
+                    <li
+                      key={c.id}
+                      className="flex gap-2 text-xs text-[var(--foreground)] bg-[var(--neutral-cool-50)] border border-[var(--neutral-cool-150)] rounded-md px-2.5 py-2"
+                    >
+                      <AlertCircle size={14} aria-hidden="true" className="text-[#92400E] flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-0.5">
+                          {section?.title ?? c.section_key}
+                        </p>
+                        <p className="leading-snug">
+                          <span className="font-mono">{c.hedge} {c.content}</span>
+                          <span className="text-[var(--muted-foreground)]"> — generator estimate, please verify or replace.</span>
+                        </p>
+                        {c.surrounding_sentence && (
+                          <p className="font-mono text-[var(--muted-foreground)] mt-1 break-words">
+                            “{c.surrounding_sentence}”
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

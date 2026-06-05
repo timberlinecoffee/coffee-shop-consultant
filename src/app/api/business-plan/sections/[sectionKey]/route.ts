@@ -1,4 +1,7 @@
 // TIM-1037: Business Plan section upsert — save user edits and visibility toggles.
+// TIM-2342: accept estimated_claims_json so the export-gate modal can read the
+// AI-estimate-class claims surfaced by the narrative LLM's <num src="estimate">
+// markers (stored separately from user_content so the founder edits clean prose).
 
 export const dynamic = "force-dynamic";
 
@@ -6,6 +9,29 @@ import { createClient } from "@/lib/supabase/server";
 import type { NextRequest } from "next/server";
 
 type RouteContext = { params: Promise<{ sectionKey: string }> };
+
+// Defensive validator — only accept arrays of the EstimatedClaim shape. An
+// unknown blob is silently dropped (better than rejecting the whole PATCH).
+// Caps array length at 100 and string lengths at 1KB to keep the column tidy.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeEstimatedClaims(raw: any): unknown[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: Record<string, unknown>[] = [];
+  for (const item of raw.slice(0, 100)) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    out.push({
+      id: typeof o.id === "string" ? o.id.slice(0, 200) : "",
+      section_key: typeof o.section_key === "string" ? o.section_key.slice(0, 100) : "",
+      content: typeof o.content === "string" ? o.content.slice(0, 1024) : "",
+      hedge: typeof o.hedge === "string" ? o.hedge.slice(0, 64) : "approximately",
+      surrounding_sentence: typeof o.surrounding_sentence === "string"
+        ? o.surrounding_sentence.slice(0, 1024)
+        : "",
+    });
+  }
+  return out;
+}
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { sectionKey } = await params;
@@ -27,7 +53,15 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const body = await request.json() as {
     user_content?: string | null;
     is_visible?: boolean;
+    // TIM-2342: structured EstimatedClaim[] from source-markers.ts.
+    estimated_claims_json?: unknown;
   };
+
+  // Rule 3 — server-side validation. Drop unknown shapes silently rather
+  // than rejecting the PATCH, so a stale client can still save user_content.
+  const sanitizedClaims = body.estimated_claims_json !== undefined
+    ? sanitizeEstimatedClaims(body.estimated_claims_json)
+    : undefined;
 
   const { error } = await supabase
     .from("business_plan_sections")
@@ -37,6 +71,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         section_key: sectionKey,
         ...(body.user_content !== undefined ? { user_content: body.user_content } : {}),
         ...(body.is_visible !== undefined ? { is_visible: body.is_visible } : {}),
+        ...(sanitizedClaims !== undefined ? { estimated_claims_json: sanitizedClaims } : {}),
       },
       { onConflict: "plan_id,section_key" }
     );

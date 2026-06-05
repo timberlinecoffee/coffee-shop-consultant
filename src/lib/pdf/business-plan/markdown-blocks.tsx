@@ -11,6 +11,10 @@ import React from "react";
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
 import type { BrandTokens } from "../brand";
+// TIM-2342: defensive marker strip. The save path already strips markers
+// before persistence, but a hand-edit or import could re-introduce them.
+// Acceptance #4: no markers leak past the PDF render boundary.
+import { renderForExport } from "../../business-plan/source-markers";
 
 type Props = {
   content: string;
@@ -67,7 +71,11 @@ function renderInline(spans: InlineSpan[], baseStyle: Style): React.ReactNode {
   });
 }
 
-export function MarkdownBlocks({ content, brand, accentColor }: Props) {
+export function MarkdownBlocks({ content: rawContent, brand, accentColor }: Props) {
+  // TIM-2342: strip any stray <num src="…">…</num> markers and prepend
+  // hedge prefixes to estimate-class claims that didn't already open with
+  // one. Idempotent on already-stripped content (typical happy path).
+  const content = renderForExport(rawContent);
   const headingColor = accentColor || brand.colors.primary;
   const S = StyleSheet.create({
     h2: {

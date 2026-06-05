@@ -126,7 +126,9 @@ export async function POST(request: NextRequest) {
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
     supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
     supabase.from("financial_models").select("forecast_inputs, monthly_projections, startup_costs").eq("plan_id", planId).maybeSingle(),
-    supabase.from("business_plan_sections").select("section_key, user_content, is_visible").eq("plan_id", planId),
+    // TIM-2342: pull estimated_claims_json alongside user_content so the
+    // export-gate modal can show the "Estimated claims to verify" panel.
+    supabase.from("business_plan_sections").select("section_key, user_content, is_visible, estimated_claims_json").eq("plan_id", planId),
   ]);
 
   const shopName = plan.plan_name ?? "this coffee shop";
@@ -162,8 +164,16 @@ export async function POST(request: NextRequest) {
 
   // Assemble the section text exactly as the PDF will render it: user_content
   // when present, else the auto-assembled fallback.
+  // TIM-2342: estimated_claims_json now travels alongside user_content. We
+  // gather it per visible section and attach to the report below.
+  type SavedSectionRow = {
+    section_key: string;
+    user_content: string | null;
+    is_visible: boolean;
+    estimated_claims_json: unknown;
+  };
   const savedMap = new Map(
-    (savedSections ?? []).map((s: { section_key: string; user_content: string | null; is_visible: boolean }) => [s.section_key, s]),
+    (savedSections ?? []).map((s: SavedSectionRow) => [s.section_key, s]),
   );
   const autoContent: Record<string, string> = {
     "executive-summary": "",
@@ -191,13 +201,36 @@ export async function POST(request: NextRequest) {
   };
 
   const sectionTexts = new Map<string, string>();
+  // TIM-2342: accumulate estimated_claims_json across visible sections so the
+  // export-gate modal can list them. We trust the column shape (the PATCH
+  // route validated it on write); defensive shape-check here in case a hand
+  // import seeded the row.
+  const estimatedClaims: Array<{ id: string; section_key: string; content: string; hedge: string; surrounding_sentence: string }> = [];
   for (const meta of BUSINESS_PLAN_SECTIONS) {
-    const saved = savedMap.get(meta.key) as { user_content: string | null; is_visible: boolean } | undefined;
+    const saved = savedMap.get(meta.key) as SavedSectionRow | undefined;
     // Hidden sections aren't exported, so they aren't validated either.
     if (saved && saved.is_visible === false) continue;
     const text = (saved?.user_content ?? autoContent[meta.key] ?? "").trim();
-    if (text.length === 0) continue;
-    sectionTexts.set(meta.key, text);
+    if (text.length > 0) sectionTexts.set(meta.key, text);
+
+    // estimated_claims travels per-section. Empty array if absent or wrong shape.
+    const rawClaims = saved?.estimated_claims_json;
+    if (Array.isArray(rawClaims)) {
+      for (const c of rawClaims) {
+        if (!c || typeof c !== "object") continue;
+        const o = c as Record<string, unknown>;
+        const id = typeof o.id === "string" ? o.id : "";
+        const content = typeof o.content === "string" ? o.content : "";
+        if (!id || !content) continue;
+        estimatedClaims.push({
+          id,
+          section_key: typeof o.section_key === "string" ? o.section_key : meta.key,
+          content,
+          hedge: typeof o.hedge === "string" ? o.hedge : "approximately",
+          surrounding_sentence: typeof o.surrounding_sentence === "string" ? o.surrounding_sentence : "",
+        });
+      }
+    }
   }
 
   // ── Pass 1 — programmatic reconciliation (always runs, fast, no network). ──
@@ -272,6 +305,11 @@ export async function POST(request: NextRequest) {
       ];
     }
   }
+
+  // TIM-2342: attach the AI-estimate-class claims gathered above. The
+  // reconciliation pass left this empty; the route is the natural place to
+  // join the persisted column onto the report.
+  report.estimated_claims = estimatedClaims;
 
   return Response.json(report);
 }

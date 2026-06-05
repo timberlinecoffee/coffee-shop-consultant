@@ -43,6 +43,16 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import { buildBpSectionPrompt } from "@/lib/business-plan-prompts";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import { canonicalizeNarrative } from "@/lib/business-plan/entities";
+// TIM-2342: source-marker directive + parser + curated industry benchmarks.
+// Every numeric claim the narrative emits is wrapped in <num src="…">…</num>;
+// the parser strips markers, attaches a hedge prefix to estimate-class claims,
+// and surfaces them to the export-gate modal for review.
+import {
+  SOURCE_MARKER_DIRECTIVE,
+  parseSourceMarkers,
+  extractEstimatedClaims,
+} from "@/lib/business-plan/source-markers";
+import { formatBenchmarksForPrompt } from "@/lib/business-plan/benchmarks";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -232,6 +242,10 @@ export async function POST(request: NextRequest) {
     founderLocation: planContext.location_country ?? "not specified",
     founderStage: String(onboarding?.stage ?? "not specified"),
     planStateGroundTruth,
+    // TIM-2342: tell the LLM to source-tag every numeric claim, and surface
+    // the section-relevant subset of the curated industry benchmark dataset.
+    sourceMarkerDirective: SOURCE_MARKER_DIRECTIVE,
+    industryBenchmarks: formatBenchmarksForPrompt(sectionKey),
   });
 
   const client = new Anthropic();
@@ -313,7 +327,21 @@ export async function POST(request: NextRequest) {
         // draft is internally consistent before the founder ever opens it.
         const normalized = normalizeAIOutput(fullText);
         const canon = canonicalizeNarrative(normalized, planState.entities);
-        controller.enqueue(enc.encode(sse("done", { text: canon.text, canon_substitutions: canon.substitutions })));
+
+        // TIM-2342: parse the <num src="…">…</num> markers the LLM emitted.
+        // Acceptance #4: no markers leak past this boundary — parseSourceMarkers
+        // strips every marker and prepends a hedge prefix to estimate-class
+        // claims that didn't already open with one. The estimated_claims
+        // array surfaces to the export-gate modal for human review.
+        const parsed = parseSourceMarkers(canon.text);
+        const estimatedClaims = extractEstimatedClaims(sectionKey, canon.text);
+
+        controller.enqueue(enc.encode(sse("done", {
+          text: parsed.rendered,
+          canon_substitutions: canon.substitutions,
+          source_markers: parsed.counts,
+          estimated_claims: estimatedClaims,
+        })));
         controller.close();
       } catch (err) {
         cleanup();
