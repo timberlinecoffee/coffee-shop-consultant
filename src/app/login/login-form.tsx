@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
   const [email, setEmail] = useState("");
@@ -18,7 +20,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   // CAPTCHA secret (Turnstile, configured in the Supabase dashboard).
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const onTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
+  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
 
   function getSignupSource(): string {
     const params = new URLSearchParams(window.location.search);
@@ -80,7 +91,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
 
     if (mode === "signup") {
       const signupSource = getSignupSource();
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -94,6 +105,10 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       });
       if (error) {
         setError(error.message);
+      } else if (data.session === null) {
+        // Email confirmation is required — no session until the user clicks the link
+        setEmailConfirmationSent(true);
+        setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
         router.push("/onboarding");
         router.refresh();
@@ -128,6 +143,41 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       }
     }
     setLoading(false);
+  }
+
+  async function handleResendConfirmation() {
+    if (resendLoading || cooldown > 0) return;
+    setResendLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setResendLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    }
+  }
+
+  if (emailConfirmationSent) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-[var(--teal-bg-pale)] border border-[var(--teal-bg-900)] rounded-xl px-4 py-4 text-sm text-[var(--teal)]">
+          We sent a confirmation link to <span className="font-medium">{email}</span>. Open the email and click the link to activate your account.
+        </div>
+        {error && (
+          <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+        )}
+        <button
+          type="button"
+          onClick={handleResendConfirmation}
+          disabled={resendLoading || cooldown > 0}
+          className="w-full text-center text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50"
+        >
+          {resendLoading ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend confirmation email"}
+        </button>
+      </div>
+    );
   }
 
   const signupBlocked = mode === "signup" && !consent;
