@@ -77,13 +77,31 @@ async function tryConnect(config, label) {
 }
 
 const ssl = { rejectUnauthorized: false };
-const base = { database: "postgres", ssl };
+const base = { database: "postgres", ssl, connectionTimeoutMillis: 10_000, query_timeout: 60_000 };
+
+// Project region unknown — enumerate every Supabase pooler region with the new
+// `postgres.<ref>` username format. The first one whose tenant matches connects.
+const POOLER_REGIONS = [
+  "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+  "eu-central-1", "eu-central-2", "eu-west-1", "eu-west-2", "eu-west-3", "eu-north-1",
+  "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2", "ap-south-1",
+  "sa-east-1", "ca-central-1",
+];
 
 const configs = [
-  [{ connectionString: DB_URL, ssl }, "SUPABASE_DB_URL as-is"],
-  [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: "aws-0-us-east-1.pooler.supabase.com", port: 5432 }, "pooler us-east-1 (new username format)"],
-  [{ ...base, user: `postgres.${REF}`, password: parsedPassword, host: "aws-0-us-east-2.pooler.supabase.com", port: 5432 }, "pooler us-east-2"],
-  [{ ...base, user: "postgres", password: parsedPassword, host: "aws-0-us-east-1.pooler.supabase.com", port: 5432 }, "pooler us-east-1 (old username)"],
+  // Try the URL the secret was set with, in case it's already a working pooler URL.
+  [{ connectionString: DB_URL, ssl, connectionTimeoutMillis: 10_000 }, "SUPABASE_DB_URL as-is"],
+  // Enumerate all pooler regions with the new username format (5432 = session pooler).
+  ...POOLER_REGIONS.map((region) => [
+    { ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-0-${region}.pooler.supabase.com`, port: 5432 },
+    `pooler ${region} (session 5432, postgres.${REF})`,
+  ]),
+  // Transaction pooler (6543) as a fallback per region — same auth surface.
+  ...POOLER_REGIONS.map((region) => [
+    { ...base, user: `postgres.${REF}`, password: parsedPassword, host: `aws-0-${region}.pooler.supabase.com`, port: 6543 },
+    `pooler ${region} (txn 6543, postgres.${REF})`,
+  ]),
+  // Direct-IPv4 fallback only if we managed to resolve one (we usually can't anymore).
   ...(directIPv4 ? [[{ ...base, user: "postgres", password: parsedPassword, host: directIPv4, port: 5432 }, `direct IPv4 ${directIPv4}`]] : []),
 ];
 
