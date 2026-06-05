@@ -20,10 +20,14 @@ export function PdfHeader({ shopName, workspaceName, brand = BRAND }: Props) {
       marginBottom: brand.spacing.blockGap,
     },
     brandLine: {
+      // TIM-2333: running header carries the user's shop name. Default to
+      // neutral ink so the platform-primary green can never brand the user's
+      // own name. A per-plan brand_config.primary_color override still flows
+      // through brand.colors.primary if the owner has explicitly themed it.
       fontFamily: brand.fonts.sans,
       fontWeight: 700,
       fontSize: 14,
-      color: brand.colors.primary,
+      color: brand.colors.ink,
     },
     logoImage: {
       maxHeight: 32,
