@@ -24,6 +24,7 @@ type GroupKey = typeof GENERAL_GROUP_KEY | WorkspaceKey
 
 export const WORKSPACE_ORDER: WorkspaceKey[] = [
   "concept",
+  "business_plan",
   "location_lease",
   "financials",
   "menu_pricing",
@@ -37,6 +38,7 @@ export const WORKSPACE_ORDER: WorkspaceKey[] = [
 
 export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   concept: "Concept",
+  business_plan: "Business Plan",
   location_lease: "Location & Lease",
   financials: "Financials",
   menu_pricing: "Menu & Pricing",
@@ -196,6 +198,7 @@ export function ThreadBrowser({
     const groups: Record<GroupKey, ThreadBrowserItem[]> = {
       [GENERAL_GROUP_KEY]: [],
       concept: [],
+      business_plan: [],
       location_lease: [],
       financials: [],
       menu_pricing: [],

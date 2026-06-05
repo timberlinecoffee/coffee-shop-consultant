@@ -34,7 +34,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
@@ -687,8 +687,6 @@ function RoleRow({
   const [jdLoading, setJdLoading] = useState(false);
   const [jdLoaded, setJdLoaded] = useState(false);
   const [jdDirty, setJdDirty] = useState(false);
-  const [improvingField, setImprovingField] = useState<keyof JdFields | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   // Scorecard + competency form data (formerly RoleHubPanel)
   const [hubScorecards, setHubScorecards] = useState<InterviewScorecard[]>([]);
@@ -841,46 +839,6 @@ function RoleRow({
     }
   }
 
-  // TIM-1561: routes AI result through unified review modal before applying.
-  async function improveJdField(field: keyof JdFields) {
-    if (!jdFields) return;
-    setImprovingField(field);
-    try {
-      const res = await fetch("/api/workspaces/hiring/improve-jd", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          field,
-          content: jdFields[field],
-          roleTitle: role.role_title,
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { rewrite: string };
-        const fieldLabel = field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-        openAIReviewModal({
-          suggestions: [
-            {
-              id: `jd-${role.id}-${field}`,
-              fieldId: field,
-              fieldLabel,
-              originalValue: jdFields[field] ?? "",
-              proposedValue: data.rewrite,
-              isStructured: false,
-            },
-          ],
-          context: { workspace: "Hiring", section: role.role_title },
-          onApply: async () => {
-            setJdFields((prev) => prev ? { ...prev, [field]: data.rewrite } : prev);
-            setJdDirty(true);
-          },
-        });
-      }
-    } finally {
-      setImprovingField(null);
-    }
-  }
-
   // Lazy-load all expanded-section data on first expand (TIM-1486)
   useEffect(() => {
     if (!expanded) return;
@@ -952,8 +910,6 @@ function RoleRow({
   const parentOptions = roles.filter((r) => r.id !== role.id);
 
   return (
-    <>
-    {AIReviewModalNode}
     <div
       ref={registerRef}
       className={`transition-shadow ${highlighted ? "ring-2 ring-[var(--teal)] ring-inset" : ""}`}
@@ -1202,9 +1158,6 @@ function RoleRow({
               <FileText size={14} className="text-[var(--teal)]" />
               <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Job Description</p>
             </div>
-            <span className="sr-only" role="status">
-              {improvingField ? "Improving job description field with AI…" : ""}
-            </span>
             {jdLoading ? (
               <p className="text-sm text-[var(--dark-grey)]" role="status">Loading…</p>
             ) : (
@@ -1212,18 +1165,8 @@ function RoleRow({
                 <div className="space-y-4">
                   {JD_FIELD_DEFS.map(({ key, label, multiline }) => (
                     <div key={key}>
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="mb-1">
                         <label className={labelCls}>{label}</label>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            disabled={improvingField === key}
-                            onClick={() => improveJdField(key)}
-                            className="text-[10px] font-semibold text-[var(--teal)] hover:underline disabled:opacity-50"
-                          >
-                            {improvingField === key ? "Improving…" : "AI Improve"}
-                          </button>
-                        )}
                       </div>
                       {multiline ? (
                         <textarea
@@ -1447,7 +1390,6 @@ function RoleRow({
         </div>
       )}
     </div>
-    </>
   );
 }
 
@@ -2744,11 +2686,16 @@ export function HiringWorkspace({
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
-        {/* TIM-1894: canonical WorkspaceHeader (title-only — no page-level actions). */}
+        {/* TIM-1894: canonical WorkspaceHeader */}
         <WorkspaceHeader
           Icon={Users}
           title="Hiring & Onboarding"
           description="Build your org structure, run scored interviews, plan onboarding, and evaluate staff competencies."
+          actions={
+            canEdit ? (
+              <AskScoutButton workspaceKey="hiring" hasContent={roles.length > 0} />
+            ) : undefined
+          }
         />
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).

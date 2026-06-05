@@ -60,7 +60,7 @@ function SeverityChip({ level }: { level: AuditSeverity }) {
 
 interface FindingCardProps {
   finding: AuditFinding;
-  onApply: (finding: AuditFinding) => void;
+  onApply?: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
   onDismiss: (id: string) => void;
 }
@@ -96,7 +96,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss }: FindingCardP
         </div>
       </div>
       <div className="flex items-center gap-4 mt-3 pl-[76px]">
-        {canApply && (
+        {canApply && onApply && (
           <button
             type="button"
             className="text-xs font-semibold text-[var(--teal)] hover:underline"
@@ -132,7 +132,7 @@ export interface QualityCheckPanelProps {
   isChecking: boolean;
   checkError: string | null;
   onCheckPlan: () => void;
-  onApply: (finding: AuditFinding) => void;
+  onApply?: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
 }
 

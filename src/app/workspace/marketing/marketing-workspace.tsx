@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Megaphone,
   Check,
-  Sparkles,
   Plus,
   Trash2,
   ArrowUp,
@@ -23,7 +22,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -77,8 +76,6 @@ export function MarketingWorkspace({
   const [paywallReason, setPaywallReason] = useState<
     "no_subscription" | "paused" | "expired" | null
   >(null);
-  const [generating, setGenerating] = useState<MarketingSectionKey | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
@@ -137,60 +134,11 @@ export function MarketingWorkspace({
     [],
   );
 
-  // TIM-1561: routes AI result through unified review modal before applying.
-  async function handleGenerate(section: MarketingSectionKey) {
-    if (!canEdit || generating) return;
-    setGenerating(section);
-    try {
-      const res = await fetch("/api/workspaces/marketing/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section }),
-      });
-      if (res.status === 402) {
-        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
-        setPaywallReason(
-          (body?.reason as "no_subscription" | "paused" | "expired") ??
-            "no_subscription",
-        );
-        return;
-      }
-      if (!res.ok) return;
-      const body = (await res.json()) as { content: MarketingDocument };
-      const sectionLabel = section.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const currentSectionValue = typeof doc[section as keyof typeof doc] === "string"
-        ? (doc[section as keyof typeof doc] as string)
-        : JSON.stringify(doc[section as keyof typeof doc] ?? "");
-      const proposedValue = typeof body.content[section as keyof typeof body.content] === "string"
-        ? (body.content[section as keyof typeof body.content] as string)
-        : JSON.stringify(body.content[section as keyof typeof body.content] ?? "");
-      openAIReviewModal({
-        suggestions: [
-          {
-            id: `marketing-${section}`,
-            fieldId: section,
-            fieldLabel: sectionLabel,
-            originalValue: currentSectionValue,
-            proposedValue,
-            isStructured: false,
-          },
-        ],
-        context: { workspace: "Marketing", section: sectionLabel },
-        onApply: async () => {
-          setDoc(body.content);
-          setSavedAt(new Date().toISOString());
-        },
-      });
-    } finally {
-      setGenerating(null);
-    }
-  }
-
   const activeLabel = MARKETING_SECTION_LABELS[active];
 
+  const hasContent = doc.overview.narrative.trim().length > 0 || doc.channels.selected.length > 0;
+
   return (
-    <>
-    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* TIM-1894: canonical WorkspaceHeader — description sits in the left
@@ -202,6 +150,9 @@ export function MarketingWorkspace({
           description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
           actions={
             <>
+              {canEdit && (
+                <AskScoutButton workspaceKey="marketing" hasContent={hasContent} />
+              )}
               {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
               <WorkspaceActionButton
                 className="hidden sm:flex"
@@ -234,8 +185,6 @@ export function MarketingWorkspace({
             canEdit={canEdit}
             doc={doc}
             updateDoc={updateDoc}
-            onGenerate={() => handleGenerate(active)}
-            generating={generating === active}
           />
         </div>
       </div>
@@ -253,7 +202,6 @@ export function MarketingWorkspace({
         onClose={() => setPaywallReason(null)}
       />
     </div>
-    </>
   );
 }
 
@@ -306,31 +254,15 @@ interface SectionEditorProps {
   canEdit: boolean;
   doc: MarketingDocument;
   updateDoc: (mut: (d: MarketingDocument) => MarketingDocument) => void;
-  onGenerate: () => void;
-  generating: boolean;
 }
 
 function SectionEditor(props: SectionEditorProps) {
-  const { sectionKey, label, tagline, canEdit, onGenerate, generating } = props;
+  const { sectionKey, label, tagline } = props;
   return (
     <section className={`${cardCls} p-6`}>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0 flex items-center gap-1">
-          <h2 className={sectionLabelCls}>{label}</h2>
-          <SectionHelp title={label}>{tagline}</SectionHelp>
-        </div>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Drafting…" : "Draft with AI"}
-        </button>
-        <span className="sr-only" role="status">
-          {generating ? `Drafting the ${label} section with AI…` : ""}
-        </span>
+      <div className="flex items-start gap-1 mb-4">
+        <h2 className={sectionLabelCls}>{label}</h2>
+        <SectionHelp title={label}>{tagline}</SectionHelp>
       </div>
 
       {sectionKey === "overview" && <OverviewEditor {...props} />}

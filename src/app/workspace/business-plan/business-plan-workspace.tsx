@@ -24,8 +24,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
-import { RegenerateAllButton } from "./regenerate-all-button";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { QualityCheckPanel } from "./quality-check-panel";
@@ -166,10 +165,8 @@ export function BusinessPlanWorkspace({
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [pendingExportAction, setPendingExportAction] = useState<"export" | "print" | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
-  const { openAIReviewModal, updateAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   // TIM-2356: Plan Quality Check tab + report state.
   const [activeTab, setActiveTab] = useState<"plan" | "quality-check">("plan");
   const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
@@ -182,9 +179,6 @@ export function BusinessPlanWorkspace({
   useEffect(() => {
     if (hasContent) promoteOnEdit("business_plan");
   }, [hasContent, promoteOnEdit]);
-
-  const abortRef = useRef<AbortController | null>(null);
-  const streamBufRef = useRef<string>("");
 
   // ── Section helpers ────────────────────────────────────────────────────────
 
@@ -227,154 +221,10 @@ export function BusinessPlanWorkspace({
     });
   }, [updateSection]);
 
-  // ── AI streaming ───────────────────────────────────────────────────────────
-
-  const runStream = useCallback(async (
-    url: string,
-    body: Record<string, unknown>,
-    sectionKey: BusinessPlanSectionKey
-  ) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    streamBufRef.current = "";
-
-    updateSection(sectionKey, { isGenerating: true, isEditing: true, editBuffer: "" });
-    setStreamingKey(sectionKey);
-
-    try {
-      await fetchSse(
-        url,
-        body,
-        (chunk) => {
-          streamBufRef.current += chunk;
-          const buf = streamBufRef.current;
-          updateSection(sectionKey, { editBuffer: buf });
-        },
-        (full, extras) => {
-          setStreamingKey(null);
-          // TIM-1561: route AI result through unified review modal before applying.
-          const sectionMeta = BUSINESS_PLAN_SECTIONS.find((s) => s.key === sectionKey);
-          const currentSection = sections.find((s) => s.key === sectionKey);
-          const originalValue = currentSection?.userContent ?? currentSection?.autoContent ?? "";
-          // TIM-2342: capture estimated_claims off the SSE done payload so
-          // we PATCH them alongside user_content. The validator + export-gate
-          // modal pull them back out of the column to populate the "Estimated
-          // claims to verify" section.
-          const estimatedClaims = Array.isArray(extras.estimated_claims)
-            ? (extras.estimated_claims as unknown[])
-            : [];
-          // TIM-2343: surface unresolved self-consistency contradictions as
-          // an advisory inside the AI review modal card. Sanitize the shape
-          // defensively — anything malformed gets dropped rather than
-          // crashing the modal.
-          const consistencyRaw = Array.isArray(extras.consistency_contradictions)
-            ? extras.consistency_contradictions
-            : [];
-          const consistencyContradictions = consistencyRaw
-            .map((c) => {
-              if (!c || typeof c !== "object") return null;
-              const obj = c as Record<string, unknown>;
-              const kind = obj.kind;
-              const claimA = typeof obj.claim_a === "string" ? obj.claim_a : "";
-              const claimB = typeof obj.claim_b === "string" ? obj.claim_b : "";
-              const explanation = typeof obj.explanation === "string" ? obj.explanation : "";
-              if (!claimA || !claimB) return null;
-              const normalizedKind = (kind === "numerical" || kind === "categorical" || kind === "temporal" || kind === "other") ? kind : "other";
-              return { kind: normalizedKind as "numerical" | "categorical" | "temporal" | "other", claim_a: claimA, claim_b: claimB, explanation };
-            })
-            .filter((c): c is NonNullable<typeof c> => c !== null);
-          openAIReviewModal({
-            suggestions: [
-              {
-                id: `bp-${sectionKey}`,
-                fieldId: sectionKey,
-                fieldLabel: sectionMeta?.title ?? sectionKey,
-                originalValue,
-                proposedValue: full,
-                isStructured: false,
-                consistencyContradictions,
-              },
-            ],
-            context: { workspace: "Business Plan", section: sectionMeta?.title },
-            onApply: async () => {
-              // Inline save (avoids hoisting issue with handleSaveAfterImprove ref)
-              await fetch(`/api/business-plan/sections/${sectionKey}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  user_content: full,
-                  estimated_claims_json: estimatedClaims,
-                }),
-              });
-              setSections((prev) =>
-                prev.map((s) => {
-                  if (s.key !== sectionKey) return s;
-                  return { ...s, userContent: full };
-                })
-              );
-              updateSection(sectionKey, { isEditing: false, isGenerating: false });
-            },
-          });
-          // Clear the inline edit buffer — the modal owns the review step.
-          updateSection(sectionKey, { isGenerating: false, isEditing: false, editBuffer: originalValue });
-        },
-        (msg) => {
-          setStreamingKey(null);
-          updateSection(sectionKey, { isGenerating: false });
-          setGlobalError(msg);
-        },
-        controller.signal
-      );
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        setGlobalError(err.message);
-      }
-      setStreamingKey(null);
-      updateSection(sectionKey, { isGenerating: false });
-    }
-  }, [updateSection, sections, openAIReviewModal, setSections]);
-
-  const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
-    await runStream("/api/business-plan/generate", { sectionKey: key }, key);
-  }, [runStream]);
-
-  const handleImprove = useCallback(async (key: BusinessPlanSectionKey) => {
-    const section = sections.find((s) => s.key === key);
-    if (!section) return;
-    const content = section.userContent ?? section.autoContent;
-    await runStream("/api/business-plan/improve", {
-      sectionKey: key,
-      sectionTitle: section.title,
-      currentContent: content,
-      shopName,
-    }, key);
-  }, [sections, runStream, shopName]);
-
-  // After AI finishes editing, auto-save the result
-  const handleSaveAfterImprove = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
-    await fetch(`/api/business-plan/sections/${key}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_content: content }),
-    });
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.key !== key) return s;
-        return { ...s, userContent: content };
-      })
-    );
-  }, []);
-
   // ── PDF export / print ──────────────────────────────────────────────────────
 
   // TIM-1551: Both Print and Export drive through the same React-PDF renderer.
-  // TIM-2336: Both now run through the validation gate first. The gate runs
-  // Pass 1 (programmatic reconciliation) + Pass 2 (LLM critical-reader) before
-  // we hit the PDF route, and surfaces a modal when blocking numerical
-  // contradictions exist. Once the user resolves each (Apply / Override) we
-  // re-fire the export with ?force=1 — the server-side gate stays as a
-  // defense in depth, but the user's explicit confirmation suppresses it.
+  // TIM-2336: Both now run through the validation gate first.
   const performPdfFetch = useCallback(async (mode: "export" | "print", force: boolean): Promise<void> => {
     const url = force ? "/api/pdf/business_plan_full?force=1" : "/api/pdf/business_plan_full";
     const res = await fetch(url);
@@ -512,50 +362,6 @@ export function BusinessPlanWorkspace({
     }
   }, []);
 
-  // TIM-2356: Apply suggestion — route the proposed replacement through the
-  // shared AI review modal. NEVER auto-applies (per platform rule + UX spec
-  // line 235). The modal handler PATCHes the section once the user accepts.
-  const handleApplyAuditFinding = useCallback((finding: AuditFinding) => {
-    if (!finding.suggested_replacement) return;
-    // For business-plan-section findings, splice the suggested replacement
-    // into the quoted text in the section body, then show the diff in the modal.
-    const sectionKey = finding.source.field;
-    if (!sectionKey) return;
-    const section = sections.find((s) => s.key === sectionKey);
-    if (!section) return;
-    const originalValue = section.userContent ?? section.autoContent ?? "";
-    const quoted = finding.quoted_text ?? "";
-    const replacement = finding.suggested_replacement;
-    let proposedValue: string;
-    if (quoted && originalValue.includes(quoted)) {
-      proposedValue = originalValue.replace(quoted, replacement);
-    } else {
-      proposedValue = `${originalValue}\n\n(Audit suggestion: ${stripFindingTags(replacement)})`;
-    }
-    openAIReviewModal({
-      suggestions: [
-        {
-          id: `audit-${finding.id}`,
-          fieldId: sectionKey,
-          fieldLabel: finding.source.field_label ?? sectionKey,
-          originalValue,
-          proposedValue,
-          isStructured: false,
-        },
-      ],
-      context: { workspace: "Plan Quality Check", section: finding.source.field_label ?? undefined },
-      onApply: async () => {
-        await fetch(`/api/business-plan/sections/${sectionKey}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_content: proposedValue }),
-        });
-        setSections((prev) =>
-          prev.map((s) => (s.key === sectionKey ? { ...s, userContent: proposedValue } : s)),
-        );
-      },
-    });
-  }, [openAIReviewModal, sections]);
 
   // TIM-2356: Deep-link "Go to source". For business-plan findings we open
   // the parent section in place by expanding it; for cross-workspace findings
@@ -591,7 +397,6 @@ export function BusinessPlanWorkspace({
 
   return (
     <>
-    {AIReviewModalNode}
     {validationReport && (
       <ExportGateModal
         report={validationReport}
@@ -615,12 +420,13 @@ export function BusinessPlanWorkspace({
         <WorkspaceHeader
           Icon={FileText}
           title="Business Plan"
-          description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
+          description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with Scout."
           actions={
             <>
-              {/* TIM-2356: Check Plan is the new primary (far left). Per UX spec
-                  rationale: owners should check quality BEFORE exporting. Export
-                  PDF demotes to secondary directly to its right. */}
+              {canEdit && (
+                <AskScoutButton workspaceKey="business_plan" hasContent={hasContent} />
+              )}
+              {/* TIM-2356: Check Plan is the primary quality action. */}
               <WorkspaceActionButton
                 variant="primary"
                 onClick={handleCheckPlan}
@@ -633,8 +439,6 @@ export function BusinessPlanWorkspace({
                   {isCheckingPlan ? "Checking..." : "Check Plan"}
                 </span>
               </WorkspaceActionButton>
-              {/* TIM-1937 (board refinement bae7ef73): primary first, then
-                  secondaries. Labels collapse to icon-only below 1536px. */}
               <WorkspaceActionButton
                 onClick={handleExportPdf}
                 disabled={isExportingPdf || isValidating || !canEdit}
@@ -658,27 +462,6 @@ export function BusinessPlanWorkspace({
                   {isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
                 </span>
               </WorkspaceActionButton>
-              {/* TIM-2331: Regenerate every section from current platform data. */}
-              <RegenerateAllButton
-                disabled={!canEdit || streamingKey !== null}
-                getCurrentSections={() =>
-                  sections.map((s) => ({
-                    key: s.key,
-                    title: s.title,
-                    currentContent: s.userContent ?? s.autoContent,
-                  }))
-                }
-                openAIReviewModal={openAIReviewModal}
-                updateAIReviewModal={updateAIReviewModal}
-                onSectionApplied={(key, finalValue) => {
-                  setSections((prev) =>
-                    prev.map((s) =>
-                      s.key === key ? { ...s, userContent: finalValue } : s,
-                    ),
-                  );
-                }}
-                onError={(msg) => setGlobalError(msg)}
-              />
             </>
           }
         />
@@ -700,7 +483,6 @@ export function BusinessPlanWorkspace({
             isChecking={isCheckingPlan}
             checkError={auditError}
             onCheckPlan={handleCheckPlan}
-            onApply={handleApplyAuditFinding}
             onGoToSource={handleGoToAuditSource}
           />
         ) : (
@@ -735,7 +517,6 @@ export function BusinessPlanWorkspace({
         <SectionTree
           sections={sections}
           canEdit={canEdit}
-          streamingKey={streamingKey}
           collapsedGroups={collapsedGroups}
           onToggleGroup={(g) =>
             setCollapsedGroups((prev) => {
@@ -751,17 +532,10 @@ export function BusinessPlanWorkspace({
             updateSection(key, { isEditing: true, editBuffer: content })
           }
           onEditChange={(key, val) => updateSection(key, { editBuffer: val })}
-          onEditSave={(key, buf, isGenerating) => {
-            if (isGenerating) {
-              handleSaveAfterImprove(key, buf);
-              updateSection(key, { isEditing: false, isGenerating: false });
-            } else {
-              saveSection(key, buf || null);
-            }
+          onEditSave={(key, buf) => {
+            saveSection(key, buf || null);
           }}
           onEditCancel={(key, fallback) => {
-            if (abortRef.current) abortRef.current.abort();
-            setStreamingKey(null);
             updateSection(key, {
               isEditing: false,
               isGenerating: false,
@@ -769,8 +543,6 @@ export function BusinessPlanWorkspace({
             });
           }}
           onResetToAuto={(key) => saveSection(key, null)}
-          onGenerateExec={(key) => handleGenerate(key)}
-          onImprove={(key) => handleImprove(key)}
         />
           </>
         )}
@@ -785,7 +557,6 @@ export function BusinessPlanWorkspace({
 interface SectionTreeProps {
   sections: SectionState[];
   canEdit: boolean;
-  streamingKey: BusinessPlanSectionKey | null;
   collapsedGroups: Set<BusinessPlanGroupKey>;
   onToggleGroup: (group: BusinessPlanGroupKey) => void;
   onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
@@ -795,8 +566,6 @@ interface SectionTreeProps {
   onEditSave: (key: BusinessPlanSectionKey, buf: string, isGenerating: boolean) => void;
   onEditCancel: (key: BusinessPlanSectionKey, fallback: string) => void;
   onResetToAuto: (key: BusinessPlanSectionKey) => void;
-  onGenerateExec: (key: BusinessPlanSectionKey) => void;
-  onImprove: (key: BusinessPlanSectionKey) => void;
 }
 
 function SectionTree(props: SectionTreeProps) {
@@ -816,7 +585,7 @@ function SectionTree(props: SectionTreeProps) {
         section={section}
         canEdit={props.canEdit}
         exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
-        isStreaming={props.streamingKey === section.key}
+        isStreaming={false}
         onToggleVisible={() => props.onToggleVisibility(section.key, section.isVisible)}
         onToggleExpand={() => props.onToggleExpand(section.key, section.isExpanded)}
         onEditStart={() => props.onEditStart(section.key, section.userContent ?? section.autoContent)}
@@ -824,8 +593,6 @@ function SectionTree(props: SectionTreeProps) {
         onEditSave={() => props.onEditSave(section.key, section.editBuffer, section.isGenerating)}
         onEditCancel={() => props.onEditCancel(section.key, section.userContent ?? section.autoContent)}
         onResetToAuto={() => props.onResetToAuto(section.key)}
-        onGenerateExec={() => props.onGenerateExec(section.key)}
-        onImprove={() => props.onImprove(section.key)}
       />
     );
   }

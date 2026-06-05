@@ -16,6 +16,7 @@ const MAX_CHARS_PER_WORKSPACE = 600 * TOKEN_CHARS // ~600 tokens
 
 const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   concept: "Concept",
+  business_plan: "Business Plan",
   location_lease: "Location & Lease",
   financials: "Financials",
   menu_pricing: "Menu & Pricing",

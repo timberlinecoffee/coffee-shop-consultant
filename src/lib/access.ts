@@ -69,6 +69,7 @@ export function isBetaWaived(betaWaiverUntil: string | Date | null | undefined):
 // Equipment & Supplies suite, gated by the same 'buildout_equipment' key.
 export const MUTABLE_WORKSPACE_KEYS = new Set([
   'concept',
+  'business_plan',
   'location_lease',
   'financials',
   'menu_pricing',

@@ -12,14 +12,13 @@ import {
   ArrowDown,
   Trash2,
   Plus,
-  Sparkles,
   Check,
   ExternalLink,
   Printer,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -91,8 +90,6 @@ export function OperationsPlaybookWorkspace({
   const [paywallReason, setPaywallReason] = useState<
     "no_subscription" | "paused" | "expired" | null
   >(null);
-  const [generating, setGenerating] = useState<GeneratableSection | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
@@ -151,53 +148,13 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
-  // TIM-1561: routes AI result through unified review modal before applying.
-  async function handleGenerate(section: GeneratableSection) {
-    if (!canEdit || generating) return;
-    setGenerating(section);
-    try {
-      const res = await fetch("/api/workspaces/operations_playbook/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section }),
-      });
-      if (res.status === 402) {
-        const body = await res.json().catch(() => null);
-        setPaywallReason(body?.reason ?? "no_subscription");
-        return;
-      }
-      if (!res.ok) return;
-      const body = (await res.json()) as { content: OperationsPlaybookDocument };
-      const sectionLabel = section.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const currentVal = doc[section as keyof OperationsPlaybookDocument];
-      const proposedVal = body.content[section as keyof OperationsPlaybookDocument];
-      openAIReviewModal({
-        suggestions: [
-          {
-            id: `playbook-${section}`,
-            fieldId: section,
-            fieldLabel: sectionLabel,
-            originalValue: typeof currentVal === "string" ? currentVal : JSON.stringify(currentVal ?? ""),
-            proposedValue: typeof proposedVal === "string" ? proposedVal : JSON.stringify(proposedVal ?? ""),
-            isStructured: false,
-          },
-        ],
-        context: { workspace: "Operations Playbook", section: sectionLabel },
-        onApply: async () => {
-          setDoc(body.content);
-          setSavedAt(new Date().toISOString());
-        },
-      });
-    } finally {
-      setGenerating(null);
-    }
-  }
-
   const activeLabel = operationsSectionLabel(active);
 
+  const hasContent = Object.values(doc).some(
+    (v) => Array.isArray((v as { items?: unknown[] })?.items) && (v as { items: unknown[] }).items.length > 0,
+  );
+
   return (
-    <>
-    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-36 sm:pb-12">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
@@ -210,6 +167,9 @@ export function OperationsPlaybookWorkspace({
           description="Your planning binder: policies, schedules, and templates your team needs before opening day. Edit anything."
           actions={
             <>
+              {canEdit && (
+                <AskScoutButton workspaceKey="operations_playbook" hasContent={hasContent} />
+              )}
               {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
               <WorkspaceActionButton
                 className="hidden sm:flex"
@@ -264,8 +224,6 @@ export function OperationsPlaybookWorkspace({
                 canEdit={canEdit}
                 doc={doc}
                 updateDoc={updateDoc}
-                onGenerate={() => handleGenerate(active as SopCategoryKey)}
-                generating={generating === active}
               />
             )}
 
@@ -280,8 +238,6 @@ export function OperationsPlaybookWorkspace({
                 canEdit={canEdit}
                 doc={doc}
                 updateDoc={updateDoc}
-                onGenerate={() => handleGenerate("roles")}
-                generating={generating === "roles"}
               />
             )}
 
@@ -292,8 +248,6 @@ export function OperationsPlaybookWorkspace({
                 canEdit={canEdit}
                 doc={doc}
                 updateDoc={updateDoc}
-                onGenerate={() => handleGenerate("vendor_contacts")}
-                generating={generating === "vendor_contacts"}
               />
             )}
 
@@ -304,8 +258,6 @@ export function OperationsPlaybookWorkspace({
                 canEdit={canEdit}
                 doc={doc}
                 updateDoc={updateDoc}
-                onGenerate={() => handleGenerate("training")}
-                generating={generating === "training"}
               />
             )}
           </div>
@@ -325,7 +277,6 @@ export function OperationsPlaybookWorkspace({
         onClose={() => setPaywallReason(null)}
       />
     </div>
-    </>
   );
 }
 
@@ -445,8 +396,6 @@ interface CategoryEditorProps {
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
-  onGenerate: () => void;
-  generating: boolean;
 }
 
 function CategoryEditor({
@@ -456,8 +405,6 @@ function CategoryEditor({
   canEdit,
   doc,
   updateDoc,
-  onGenerate,
-  generating,
 }: CategoryEditorProps) {
   const category = doc[categoryKey];
   const useStation = categoryKey === "cleaning";
@@ -534,8 +481,6 @@ function CategoryEditor({
         label={label}
         tagline={tagline}
         canEdit={canEdit}
-        generating={generating}
-        onGenerate={onGenerate}
         printDocKey={categoryKey}
       />
 
@@ -656,16 +601,11 @@ function CategoryEditor({
 function SectionHeader({
   label,
   tagline,
-  canEdit,
-  generating,
-  onGenerate,
   printDocKey,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
-  generating: boolean;
-  onGenerate: () => void;
   printDocKey?: string;
 }) {
   return (
@@ -674,8 +614,8 @@ function SectionHeader({
         <h2 className={sectionLabelCls}>{label}</h2>
         <SectionHelp title={label}>{tagline}</SectionHelp>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {printDocKey && (
+      {printDocKey && (
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Link
             href={`/workspace/operations-playbook/print?doc=${printDocKey}`}
             target="_blank"
@@ -686,20 +626,8 @@ function SectionHeader({
             <Printer className="w-3.5 h-3.5" />
             Print
           </Link>
-        )}
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Improving…" : "Improve with AI"}
-        </button>
-      </div>
-      <span className="sr-only" role="status">
-        {generating ? `Improving the ${label} section with AI…` : ""}
-      </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1080,16 +1008,12 @@ function RolesEditor({
   canEdit,
   doc,
   updateDoc,
-  onGenerate,
-  generating,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
-  onGenerate: () => void;
-  generating: boolean;
 }) {
   const section = doc.roles;
 
@@ -1136,8 +1060,6 @@ function RolesEditor({
         label={label}
         tagline={tagline}
         canEdit={canEdit}
-        generating={generating}
-        onGenerate={onGenerate}
         printDocKey="roles"
       />
 
@@ -1245,16 +1167,12 @@ function VendorContactsEditor({
   canEdit,
   doc,
   updateDoc,
-  onGenerate,
-  generating,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
-  onGenerate: () => void;
-  generating: boolean;
 }) {
   const section = doc.vendor_contacts;
 
@@ -1313,8 +1231,6 @@ function VendorContactsEditor({
         label={label}
         tagline={tagline}
         canEdit={canEdit}
-        generating={generating}
-        onGenerate={onGenerate}
         printDocKey="vendor_contacts"
       />
 
@@ -1462,16 +1378,12 @@ function TrainingEditor({
   canEdit,
   doc,
   updateDoc,
-  onGenerate,
-  generating,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
-  onGenerate: () => void;
-  generating: boolean;
 }) {
   const section = doc.training;
 
@@ -1527,8 +1439,6 @@ function TrainingEditor({
         label={label}
         tagline={tagline}
         canEdit={canEdit}
-        generating={generating}
-        onGenerate={onGenerate}
         printDocKey="training"
       />
 

@@ -7,6 +7,7 @@
 // and read as orphans by the app.
 export type WorkspaceKey =
   | 'concept'
+  | 'business_plan'
   | 'location_lease'
   | 'financials'
   | 'menu_pricing'
