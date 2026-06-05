@@ -32,10 +32,10 @@ const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
   { key: "calendar", label: "Calendar" },
 ];
 import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessButton";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import { consumeSseFrames } from "@/components/copilot/sse";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -667,7 +667,6 @@ export function OpeningMonthPlanWorkspace({
   const [sourcesUpdatedAt] = useState<string | null>(initialSourcesUpdatedAt);
   const [view, setView] = useState<"list" | "calendar">(initialConfig.viewPreference);
   const [generating, setGenerating] = useState(false);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [launchDateInput, setLaunchDateInput] = useState(initialConfig.targetLaunchDate ?? "");
   const [editModal, setEditModal] = useState<{ milestone: Partial<Milestone> & { track: TrackKey }; isNew: boolean } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -745,107 +744,40 @@ export function OpeningMonthPlanWorkspace({
   }
 
   // ── Generate Launch Milestones (AI, SSE) ───────────────────────────────────
-  // TIM-1521: was bundled with the playbook seed in handleGenerateAll. Now its
-  // own CTA on the Launch Milestones sub-page so an AI failure can't take the
-  // playbook with it.
-  async function handleGenerateMilestones() {
-    if (!canEdit) { setPaywallOpen(true); return; }
-    if (!launchDateInput) return;
-    setGenerating(true);
-    setToast(null);
-
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), 90_000);
-
-    let milestonesUpdated = 0;
-    let paywallHit = false;
-
-    try {
-      const res = await fetch("/api/opening-month-plan/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planId,
-          targetLaunchDate: launchDateInput,
-          existingMilestones: milestones.map((m) => ({ id: m.id, user_edited: m.user_edited })),
-        }),
-        signal: abortController.signal,
-      });
-
-      if (!res.body) throw new Error("No response body");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const { events, rest } = consumeSseFrames(buf);
-        buf = rest;
-
-        for (const { data } of events) {
-          try {
-            const payload = JSON.parse(data);
-            if (payload.code === "paywall") {
-              paywallHit = true;
-              return;
-            }
-            if (
-              payload.code === "error" ||
-              payload.code === "db_error" ||
-              payload.code === "parse_error" ||
-              payload.code === "timeout" ||
-              payload.code === "upstream_error"
-            ) {
-              showToast("error", payload.message ?? "Couldn't generate milestones. Try again or contact support.");
-            }
-            if (payload.milestones) {
-              // TIM-1561: route through review modal before applying to state.
-              const proposedMilestones = payload.milestones as Milestone[];
-              const lastGeneratedAt = payload.lastGeneratedAt as string | undefined;
-              openAIReviewModal({
-                suggestions: [
-                  {
-                    id: "opening-month-milestones",
-                    fieldId: "milestones",
-                    fieldLabel: "Launch Milestones",
-                    originalValue: JSON.stringify(milestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
-                    proposedValue: JSON.stringify(proposedMilestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
-                    isStructured: true,
-                  },
-                ],
-                context: { workspace: "Opening Month Plan", section: "Launch Milestones" },
-                onApply: async () => {
-                  setMilestones(proposedMilestones);
-                  setConfig((c) => ({ ...c, lastGeneratedAt: lastGeneratedAt ?? c.lastGeneratedAt }));
-                  setStalesBannerDismissed(false);
-                },
-              });
-              milestonesUpdated = proposedMilestones.length;
-            }
-          } catch { /* non-JSON lines */ }
+  // TIM-2382: apply Scout suggest_workspace_changes proposals for milestones.
+  // fieldId = "milestones", proposedValue = JSON array of { title, track, target_date }.
+  // Creates each proposed milestone via API and appends to local state.
+  const handleApplyOpeningMonthSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    for (const c of accepted) {
+      if (c.fieldId !== "milestones") continue;
+      try {
+        const proposed = JSON.parse(c.finalValue) as Array<{
+          title: string;
+          track: string;
+          target_date: string | null;
+        }>;
+        const created: Milestone[] = [];
+        for (const m of proposed) {
+          const res = await fetch("/api/opening-month-plan/milestones", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: m.title,
+              track: m.track ?? "operations",
+              target_date: m.target_date ?? null,
+            }),
+          });
+          if (res.ok) {
+            const newM = (await res.json()) as Milestone;
+            created.push(newM);
+          }
         }
-      }
-
-      if (paywallHit) {
-        setPaywallOpen(true);
-      } else if (milestonesUpdated > 0) {
-        showToast("success", "Launch Milestones generated. Edit anything that doesn't fit your shop.");
-      }
-    } catch (err) {
-      const isAbort = err instanceof Error && err.name === "AbortError";
-      showToast(
-        "error",
-        isAbort
-          ? "Generation timed out. Try again or contact support."
-          : "Couldn't generate milestones. Try again or contact support.",
-      );
-    } finally {
-      clearTimeout(timeoutId);
-      setGenerating(false);
+        if (created.length > 0) {
+          setMilestones((prev) => [...prev, ...created]);
+        }
+      } catch { /* ignore parse/network errors */ }
     }
-  }
+  }, []);
 
   // ── Seed Opening Month Playbook (template, no AI) ──────────────────────────
   // TIM-1521: split out of the unified Generate. Idempotent on the server;
@@ -871,13 +803,6 @@ export function OpeningMonthPlanWorkspace({
     } finally {
       setGenerating(false);
     }
-  }
-
-  // ── Legacy unified handler (defensive fallback for section="all") ──────────
-  async function handleGenerateAll() {
-    if (!canEdit) { setPaywallOpen(true); return; }
-    if (!launchDateInput) return;
-    await Promise.all([handleGenerateMilestones(), handleSeedPlaybook()]);
   }
 
   // ── Milestone CRUD ──────────────────────────────────────────────────────────
@@ -1053,19 +978,8 @@ export function OpeningMonthPlanWorkspace({
       ? "The tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop."
       : "The dated milestones that gate opening day, plus the tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop.";
   const ctaLabel =
-    section === "milestones"
-      ? (hasContent ? "Regenerate Launch Milestones" : "Generate Launch Milestones")
-      : section === "playbook"
-      ? (playbookItems.length > 0 ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan")
-      : (hasContent ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan");
-  const onCtaClick =
-    section === "milestones" ? handleGenerateMilestones
-      : section === "playbook" ? handleSeedPlaybook
-      : handleGenerateAll;
-  const ctaDisabled =
-    generating ||
-    !canEdit ||
-    (section !== "playbook" && !launchDateInput);
+    playbookItems.length > 0 ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan";
+  const ctaDisabled = generating || !canEdit;
   const coPilotFocusLabel =
     section === "milestones" ? "Launch Milestones"
       : section === "playbook" ? "Opening Month Plan"
@@ -1073,7 +987,6 @@ export function OpeningMonthPlanWorkspace({
 
   return (
     <>
-    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
@@ -1083,6 +996,13 @@ export function OpeningMonthPlanWorkspace({
           Icon={headerIcon}
           title={headerTitle}
           description={headerSubtitle}
+          actions={showMilestones ? (
+            <AskScoutButton
+              workspaceKey="opening_month_plan"
+              focusLabel="launch milestones"
+              hasContent={hasContent}
+            />
+          ) : undefined}
         />
 
         {/* TIM-1634: standard suite sub-nav between the two pages in this
@@ -1112,9 +1032,8 @@ export function OpeningMonthPlanWorkspace({
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={onCtaClick}
-                  disabled={ctaDisabled}
-                  className="text-xs font-medium text-amber-700 hover:text-amber-900 underline disabled:opacity-50"
+                  onClick={() => window.dispatchEvent(new CustomEvent("copilot:open-with-prompt", { detail: { prompt: "Regenerate my launch milestones", workspaceKey: "opening_month_plan" } }))}
+                  className="text-xs font-medium text-amber-700 hover:text-amber-900 underline"
                 >
                   Regenerate
                 </button>
@@ -1138,7 +1057,8 @@ export function OpeningMonthPlanWorkspace({
           )}
 
           {/* TIM-1521: section-specific CTA block. */}
-          {section === "playbook" ? (
+          {/* TIM-2382: Milestones section now uses AskScoutButton (header) — no inline AI CTA. */}
+          {section === "playbook" || section === "all" ? (
             /* Playbook: simple Seed CTA, no date input. */
             <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-sm text-[var(--muted-foreground)] leading-relaxed">
@@ -1146,7 +1066,7 @@ export function OpeningMonthPlanWorkspace({
               </div>
               <div className="flex flex-col gap-1.5 sm:items-end">
                 <button
-                  onClick={onCtaClick}
+                  onClick={handleSeedPlaybook}
                   disabled={ctaDisabled}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-dark)] disabled:opacity-50 transition-colors"
                 >
@@ -1159,7 +1079,7 @@ export function OpeningMonthPlanWorkspace({
               </div>
             </div>
           ) : (
-            /* Milestones / unified: target date + generate. */
+            /* Milestones: target date input only — AI generation now via AskScoutButton in header. */
             <div className="bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-4">
               <div className="flex flex-col sm:flex-row sm:items-end gap-4">
                 <div className="flex-1">
@@ -1184,17 +1104,6 @@ export function OpeningMonthPlanWorkspace({
                   )}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <button
-                    onClick={onCtaClick}
-                    disabled={ctaDisabled}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-dark)] disabled:opacity-50 transition-colors"
-                  >
-                    <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-                    {generating ? "Generating..." : ctaLabel}
-                  </button>
-                  {!canEdit && (
-                    <p className="text-xs text-[var(--dark-grey)] text-center">Upgrade to generate</p>
-                  )}
                   {milestones.length > 0 && config.lastGeneratedAt && (
                     <p className="text-xs text-[var(--dark-grey)] text-center">
                       Generated {formatDate(config.lastGeneratedAt)}
@@ -1202,11 +1111,6 @@ export function OpeningMonthPlanWorkspace({
                   )}
                 </div>
               </div>
-              {hasContent && !generating && config.lastGeneratedAt && section === "all" && (
-                <p className="mt-2 text-xs text-[var(--dark-grey)]">
-                  Regenerating refreshes milestones and tops up the playbook if it&apos;s empty. Your edits are preserved.
-                </p>
-              )}
             </div>
           )}
 
@@ -1410,6 +1314,7 @@ export function OpeningMonthPlanWorkspace({
         planId={planId}
         currentFocus={{ anchor: "opening_month_plan", label: coPilotFocusLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={handleApplyOpeningMonthSuggestions}
       />
 
       {/* Edit modal */}

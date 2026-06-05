@@ -26,6 +26,7 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   suppliers: "Suppliers & Vendors",
   operations_playbook: "Operations Playbook",
   benchmarks: "Benchmarks",
+  business_plan: "Business Plan",
 }
 
 // TIM-1638: render opening_month_plan config with targetLaunchDate prominently

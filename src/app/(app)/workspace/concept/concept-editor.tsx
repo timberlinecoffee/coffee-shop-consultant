@@ -14,7 +14,9 @@ import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
+import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -88,12 +90,6 @@ export function ConceptWorkspace({
     initialTrialMessagesUsed ?? 0
   );
   const [paywallOpen, setPaywallOpen] = useState(false);
-
-  // TIM-1872: suite-level "Review with AI" — reviews the whole concept and routes
-  // per-field suggestions through the shared unified review modal.
-  const [reviewStatus, setReviewStatus] = useState<"idle" | "loading">("idle");
-  const [reviewError, setReviewError] = useState<string | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -276,86 +272,24 @@ export function ConceptWorkspace({
     });
   }
 
-  // TIM-1872: run a suite-level AI review. Fetches per-field suggestions, then
-  // hands them to the unified review modal for per-change accept/reject/edit.
-  // AI never auto-applies — accepted changes flow back through updateContent.
-  const runConceptReview = useCallback(async () => {
-    if (!canEdit || reviewStatus === "loading") return;
-    setReviewStatus("loading");
-    setReviewError(null);
-    try {
-      const res = await fetch("/api/workspaces/concept/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, content: latestDocRef.current }),
-      });
-      if (res.status === 402) {
-        setPaywallOpen(true);
-        return;
+  const handleApplyConceptSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    if (accepted.length === 0) return;
+    setDoc((prev) => {
+      let next = prev;
+      for (const change of accepted) {
+        const id = change.fieldId as ConceptComponentId;
+        next = {
+          ...next,
+          components: {
+            ...next.components,
+            [id]: { ...next.components[id], content: change.finalValue },
+          },
+        };
       }
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setReviewError(data.error ?? "Could not run the review. Try again.");
-        return;
-      }
-      const data = (await res.json()) as {
-        suggestions: Array<{
-          fieldId: ConceptComponentId;
-          fieldLabel: string;
-          originalValue: string;
-          proposedValue: string;
-        }>;
-      };
-      if (initialTrialMessagesUsed !== undefined) {
-        setTrialMessagesUsed((n) => n + 1);
-      }
-      if (!data.suggestions || data.suggestions.length === 0) {
-        setReviewError("Your concept already looks sharp. No changes suggested.");
-        return;
-      }
-      openAIReviewModal({
-        suggestions: data.suggestions.map((s) => ({
-          id: `concept-${s.fieldId}`,
-          fieldId: s.fieldId,
-          fieldLabel: s.fieldLabel,
-          originalValue: s.originalValue,
-          proposedValue: s.proposedValue,
-          isStructured: false,
-        })),
-        context: { workspace: "Concept" },
-        onApply: async (accepted) => {
-          if (accepted.length === 0) return;
-          // Batch every accepted field into one doc update + one save.
-          setDoc((prev) => {
-            let next = prev;
-            for (const change of accepted) {
-              const id = change.fieldId as ConceptComponentId;
-              next = {
-                ...next,
-                components: {
-                  ...next.components,
-                  [id]: { ...next.components[id], content: change.finalValue },
-                },
-              };
-            }
-            scheduleSave(next);
-            return next;
-          });
-        },
-      });
-    } catch {
-      setReviewError("Could not run the review. Try again.");
-    } finally {
-      setReviewStatus("idle");
-    }
-  }, [
-    canEdit,
-    reviewStatus,
-    planId,
-    initialTrialMessagesUsed,
-    openAIReviewModal,
-    scheduleSave,
-  ]);
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave]);
 
   const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
@@ -364,7 +298,7 @@ export function ConceptWorkspace({
     <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* TIM-2455: canonical WorkspaceHeader (matches Financials / Equipment /
-            Hiring chrome). Action cluster: [Primary: Review with AI] [Print
+            Hiring chrome). Action cluster: [Primary: Ask Scout] [Print
             document] [SaveStatusAndButton]. Replaces the bespoke ring + bar
             "100% into 100%" progress duo and the page-footer Print CTA the
             board flagged on TIM-2451. The page-level workspace status still
@@ -377,26 +311,16 @@ export function ConceptWorkspace({
           description="Shape the identity of your shop. Every other workspace builds on this."
           actions={
             <>
-              {/* TIM-1872 / TIM-2455: suite-level AI review stays as the primary
-                  CTA (far-left), cohesive with Financials "Guided setup" and
-                  Business Plan "Improve". */}
+              {/* TIM-2382: Scout-as-hub — replaces the bespoke "Review with AI"
+                  WorkspaceActionButton with AskScoutButton so concept review
+                  routes through the chat narration + AIReviewModal path
+                  ([[feedback_ai_never_auto_apply]]). */}
               {canEdit && (
-                <WorkspaceActionButton
-                  variant="primary"
-                  onClick={runConceptReview}
-                  disabled={reviewStatus === "loading" || progress.filled === 0}
-                  aria-label="Review with AI"
-                  title={
-                    progress.filled === 0
-                      ? "Fill in a section first"
-                      : "Get AI feedback and suggested improvements across your concept"
-                  }
-                >
-                  <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  <span>
-                    {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
-                  </span>
-                </WorkspaceActionButton>
+                <AskScoutButton
+                  workspaceKey="concept"
+                  focusLabel="concept"
+                  hasContent={progress.filled > 0}
+                />
               )}
               {/* TIM-2455: Print document moved from the page footer into the
                   canonical chrome action cluster. With a single secondary
@@ -703,9 +627,6 @@ export function ConceptWorkspace({
         variant="copilot_trial"
       />
 
-      {/* TIM-1872 / TIM-1561: suite-level review routes through the unified modal. */}
-      {AIReviewModalNode}
-
       {/* TIM-881: AIAssistCallout — per-field improvement modal */}
       <AIAssistCallout
         open={aiAssistField !== null}
@@ -729,6 +650,7 @@ export function ConceptWorkspace({
         workspaceKey="concept"
         currentFocus={{ label: "Concept" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={handleApplyConceptSuggestions}
       />
     </div>
   );

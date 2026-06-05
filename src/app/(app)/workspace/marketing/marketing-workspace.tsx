@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Megaphone,
   Check,
-  Sparkles,
   Plus,
   Trash2,
   ArrowUp,
@@ -23,7 +22,8 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -78,8 +78,6 @@ export function MarketingWorkspace({
   const [paywallReason, setPaywallReason] = useState<
     "no_subscription" | "paused" | "expired" | null
   >(null);
-  const [generating, setGenerating] = useState<MarketingSectionKey | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
@@ -138,60 +136,46 @@ export function MarketingWorkspace({
     [],
   );
 
-  // TIM-1561: routes AI result through unified review modal before applying.
-  async function handleGenerate(section: MarketingSectionKey) {
-    if (!canEdit || generating) return;
-    setGenerating(section);
-    try {
-      const res = await fetch("/api/workspaces/marketing/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section }),
-      });
-      if (res.status === 402) {
-        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
-        setPaywallReason(
-          (body?.reason as "no_subscription" | "paused" | "expired") ??
-            "no_subscription",
-        );
-        return;
+  // TIM-2382: apply Scout suggest_workspace_changes proposals for marketing.
+  // fieldId is a top-level section key (e.g. "overview") or dot-notation sub-field
+  // (e.g. "story.founder_story"). JSON proposedValues replace entire sections;
+  // string values update narrative/sub-fields in place. Doc autosaves via useEffect.
+  const handleApplyMarketingSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    setDoc((prev) => {
+      let next = { ...prev };
+      for (const c of accepted) {
+        const dotIdx = c.fieldId.indexOf(".");
+        const section = dotIdx === -1 ? c.fieldId : c.fieldId.slice(0, dotIdx);
+        const subField = dotIdx === -1 ? "" : c.fieldId.slice(dotIdx + 1);
+        if (subField) {
+          const sectionVal = next[section as keyof MarketingDocument] as unknown as Record<string, unknown>;
+          if (sectionVal && typeof sectionVal === "object") {
+            next = { ...next, [section]: { ...sectionVal, [subField]: c.finalValue } };
+          }
+        } else {
+          try {
+            const val = JSON.parse(c.finalValue) as MarketingDocument[keyof MarketingDocument];
+            next = { ...next, [section as keyof MarketingDocument]: val };
+          } catch {
+            if (section === "overview") {
+              next = { ...next, overview: { ...next.overview, narrative: c.finalValue } };
+            }
+          }
+        }
       }
-      if (!res.ok) return;
-      const body = (await res.json()) as { content: MarketingDocument };
-      const sectionLabel = section.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const currentSectionValue = typeof doc[section as keyof typeof doc] === "string"
-        ? (doc[section as keyof typeof doc] as string)
-        : JSON.stringify(doc[section as keyof typeof doc] ?? "");
-      const proposedValue = typeof body.content[section as keyof typeof body.content] === "string"
-        ? (body.content[section as keyof typeof body.content] as string)
-        : JSON.stringify(body.content[section as keyof typeof body.content] ?? "");
-      openAIReviewModal({
-        suggestions: [
-          {
-            id: `marketing-${section}`,
-            fieldId: section,
-            fieldLabel: sectionLabel,
-            originalValue: currentSectionValue,
-            proposedValue,
-            isStructured: false,
-          },
-        ],
-        context: { workspace: "Marketing", section: sectionLabel },
-        onApply: async () => {
-          setDoc(body.content);
-          setSavedAt(new Date().toISOString());
-        },
-      });
-    } finally {
-      setGenerating(null);
-    }
-  }
+      return next;
+    });
+  }, []);
 
   const activeLabel = MARKETING_SECTION_LABELS[active];
 
+  const hasContent = MARKETING_SECTION_KEYS.some((k) => {
+    const s = doc[k];
+    return Boolean(s);
+  });
+
   return (
     <>
-    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
         {/* TIM-1894: canonical WorkspaceHeader — description sits in the left
@@ -203,6 +187,12 @@ export function MarketingWorkspace({
           description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
           actions={
             <>
+              {/* TIM-2382: Scout-as-hub primary entry point for AI generation. */}
+              <AskScoutButton
+                workspaceKey="marketing"
+                focusLabel="marketing plan"
+                hasContent={hasContent}
+              />
               {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
               <WorkspaceActionButton
                 className="hidden sm:flex"
@@ -235,8 +225,6 @@ export function MarketingWorkspace({
             canEdit={canEdit}
             doc={doc}
             updateDoc={updateDoc}
-            onGenerate={() => handleGenerate(active)}
-            generating={generating === active}
           />
         </div>
       </div>
@@ -246,6 +234,7 @@ export function MarketingWorkspace({
         workspaceKey="marketing"
         currentFocus={{ label: activeLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
+        onApplySuggestions={handleApplyMarketingSuggestions}
       />
 
       <PaywallModal
@@ -307,12 +296,10 @@ interface SectionEditorProps {
   canEdit: boolean;
   doc: MarketingDocument;
   updateDoc: (mut: (d: MarketingDocument) => MarketingDocument) => void;
-  onGenerate: () => void;
-  generating: boolean;
 }
 
 function SectionEditor(props: SectionEditorProps) {
-  const { sectionKey, label, tagline, canEdit, onGenerate, generating } = props;
+  const { sectionKey, label, tagline } = props;
   return (
     <section className={`${cardCls} p-6`}>
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -320,18 +307,6 @@ function SectionEditor(props: SectionEditorProps) {
           <h2 className={sectionLabelCls}>{label}</h2>
           <SectionHelp title={label}>{tagline}</SectionHelp>
         </div>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Drafting…" : "Draft with AI"}
-        </button>
-        <span className="sr-only" role="status">
-          {generating ? `Drafting the ${label} section with AI…` : ""}
-        </span>
       </div>
 
       {sectionKey === "overview" && <OverviewEditor {...props} />}
