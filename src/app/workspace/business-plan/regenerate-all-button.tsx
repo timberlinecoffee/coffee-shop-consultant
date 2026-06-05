@@ -217,13 +217,21 @@ export function RegenerateAllButton({
       estimate.sections.map((s) => [s.key, s.title]),
     );
 
+    // TIM-2342: accumulate estimated_claims per section key as section:complete
+    // events arrive. On Apply, PATCH them alongside user_content so the
+    // export-gate modal can read them back later.
+    const claimsByKey = new Map<string, unknown[]>();
+
     const accept = async (accepted: ApprovedChange[]) => {
       for (const a of accepted) {
         try {
           await fetch(`/api/business-plan/sections/${a.fieldId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_content: a.finalValue }),
+            body: JSON.stringify({
+              user_content: a.finalValue,
+              estimated_claims_json: claimsByKey.get(a.fieldId) ?? [],
+            }),
           });
           onSectionApplied(a.fieldId, a.finalValue);
         } catch {
@@ -268,6 +276,15 @@ export function RegenerateAllButton({
             const sectionKey = (parsed.sectionKey as string) ?? "";
             const draft = (parsed.draft as string) ?? "";
             if (!sectionKey || !draft) continue;
+
+            // TIM-2342: pluck the per-section estimated_claims off the SSE
+            // payload so we can PATCH them when the user accepts. We don't
+            // surface them in the AI review modal — they only matter at
+            // export time, in the export-gate modal.
+            const claims = Array.isArray(parsed.estimated_claims)
+              ? (parsed.estimated_claims as unknown[])
+              : [];
+            claimsByKey.set(sectionKey, claims);
 
             const title = titleByKey.get(sectionKey) ?? sectionKey;
             suggestions.push({

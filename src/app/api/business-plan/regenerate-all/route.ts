@@ -51,6 +51,15 @@ import {
 } from "@/lib/business-plan-prompts";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import { canonicalizeNarrative, unifySections } from "@/lib/business-plan/entities";
+// TIM-2342: same source-marker pipeline as /generate — every regenerated
+// section gets parsed, stripped, hedged, and surfaces its estimate-class
+// claims to the export-gate modal via the section:complete payload.
+import {
+  SOURCE_MARKER_DIRECTIVE,
+  parseSourceMarkers,
+  extractEstimatedClaims,
+} from "@/lib/business-plan/source-markers";
+import { formatBenchmarksForPrompt } from "@/lib/business-plan/benchmarks";
 import type { BusinessPlanSectionKey } from "@/lib/business-plan";
 
 const HEARTBEAT_MS = 15_000;
@@ -307,6 +316,9 @@ export async function POST(): Promise<Response> {
           founderLocation,
           founderStage,
           planStateGroundTruth,
+          // TIM-2342: source-marker rule + section-relevant industry benchmarks.
+          sourceMarkerDirective: SOURCE_MARKER_DIRECTIVE,
+          industryBenchmarks: formatBenchmarksForPrompt(sectionKey),
         });
 
         let fullText = "";
@@ -378,7 +390,14 @@ export async function POST(): Promise<Response> {
         // unification runs below once every section has streamed.
         const draftRaw = normalizeAIOutput(fullText);
         const draftCanon = canonicalizeNarrative(draftRaw, planState.entities);
-        const draft = draftCanon.text;
+
+        // TIM-2342: parse source markers, strip them, prepend hedge prefixes
+        // to estimate-class claims that didn't already open with one, and
+        // extract the estimates for the export-gate modal. The marker-stripped
+        // rendered text is what we persist + surface to the user.
+        const parsed = parseSourceMarkers(draftCanon.text);
+        const estimatedClaims = extractEstimatedClaims(sectionKey, draftCanon.text);
+        const draft = parsed.rendered;
         completed.push({ key: sectionKey, draft });
         send("section:complete", {
           sectionKey,
@@ -386,6 +405,8 @@ export async function POST(): Promise<Response> {
           draft,
           credits_remaining: creditsRemaining,
           canon_substitutions: draftCanon.substitutions,
+          source_markers: parsed.counts,
+          estimated_claims: estimatedClaims,
         });
       }
 

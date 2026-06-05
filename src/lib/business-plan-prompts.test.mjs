@@ -69,3 +69,53 @@ test("empty section auto-content falls back to a hint string in the user message
   });
   assert.match(out.userMessage, /No section-specific data entered for this section yet/);
 });
+
+// TIM-2342: source-marker directive + industry benchmarks block.
+test("source-marker directive ships in the system prompt when provided", () => {
+  const out = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "execution-operations",
+    sectionTitle: "Operations",
+    sectionAutoContent: "Address: 100 Main St.",
+    sourceMarkerDirective: 'Source-marker rule (every quantitative claim must be tagged): use <num src="...">',
+  });
+  assert.match(out.systemPrompt, /Source-marker rule/);
+  assert.match(out.systemPrompt, /<num src=/);
+});
+
+test("industry benchmarks block ships in the user message when provided", () => {
+  const out = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "financial-plan-statements",
+    sectionTitle: "Financial Statements",
+    sectionAutoContent: "Year 1 revenue projected.",
+    industryBenchmarks: "Industry Benchmarks block:\n- Blended COGS: 28-32%",
+  });
+  assert.match(out.userMessage, /Industry Benchmarks/);
+  assert.match(out.userMessage, /Blended COGS: 28-32%/);
+});
+
+test("source-marker + benchmarks both ship for executive-summary path", () => {
+  const out = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "executive-summary",
+    sectionTitle: "Executive Summary",
+    sectionAutoContent: "",
+    sourceMarkerDirective: "Source-marker rule (every quantitative claim must be tagged)",
+    industryBenchmarks: "Industry Benchmarks block:\n- Avg ticket: $6-$9",
+  });
+  assert.match(out.systemPrompt, /Source-marker rule/);
+  assert.match(out.userMessage, /Industry Benchmarks/);
+  assert.match(out.userMessage, /Avg ticket: \$6-\$9/);
+});
+
+test("source-marker + benchmarks are absent when not provided (no extra empty lines)", () => {
+  const out = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "execution-operations",
+    sectionTitle: "Operations",
+    sectionAutoContent: "Address: 100 Main St.",
+  });
+  assert.ok(!out.systemPrompt.includes("Source-marker rule"));
+  assert.ok(!out.userMessage.includes("Industry Benchmarks"));
+});

@@ -49,11 +49,19 @@ interface SectionState extends BusinessPlanSectionData {
 
 // ── SSE fetch helper ──────────────────────────────────────────────────────────
 
+// TIM-2342: estimated_claims arrives on the "done" event from /generate. Pass
+// it back to onDone so the workspace can persist it via PATCH alongside
+// user_content. Shape mirrors EstimatedClaim in source-markers.ts; the SSE
+// helper keeps it opaque (the consumer types it).
+interface SseDoneExtras {
+  estimated_claims?: unknown;
+}
+
 async function fetchSse(
   url: string,
   body: Record<string, unknown>,
   onChunk: (text: string) => void,
-  onDone: (full: string) => void,
+  onDone: (full: string, extras: SseDoneExtras) => void,
   onError: (msg: string) => void,
   signal: AbortSignal
 ) {
@@ -105,7 +113,9 @@ async function fetchSse(
           full += chunk;
           onChunk(chunk);
         } else if (event === "done") {
-          onDone(((parsed.text as string) ?? "") || full);
+          onDone(((parsed.text as string) ?? "") || full, {
+            estimated_claims: parsed.estimated_claims,
+          });
         } else if (event === "error") {
           onError((parsed.message as string) ?? "Error");
         }
@@ -226,12 +236,19 @@ export function BusinessPlanWorkspace({
           const buf = streamBufRef.current;
           updateSection(sectionKey, { editBuffer: buf });
         },
-        (full) => {
+        (full, extras) => {
           setStreamingKey(null);
           // TIM-1561: route AI result through unified review modal before applying.
           const sectionMeta = BUSINESS_PLAN_SECTIONS.find((s) => s.key === sectionKey);
           const currentSection = sections.find((s) => s.key === sectionKey);
           const originalValue = currentSection?.userContent ?? currentSection?.autoContent ?? "";
+          // TIM-2342: capture estimated_claims off the SSE done payload so
+          // we PATCH them alongside user_content. The validator + export-gate
+          // modal pull them back out of the column to populate the "Estimated
+          // claims to verify" section.
+          const estimatedClaims = Array.isArray(extras.estimated_claims)
+            ? (extras.estimated_claims as unknown[])
+            : [];
           openAIReviewModal({
             suggestions: [
               {
@@ -249,7 +266,10 @@ export function BusinessPlanWorkspace({
               await fetch(`/api/business-plan/sections/${sectionKey}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_content: full }),
+                body: JSON.stringify({
+                  user_content: full,
+                  estimated_claims_json: estimatedClaims,
+                }),
               });
               setSections((prev) =>
                 prev.map((s) => {

@@ -1,0 +1,158 @@
+{
+  "$schema_note": "TIM-2342: Curated industry benchmarks the BP narrative LLM is allowed to cite as src=\"benchmark\". Keep this list short, sourced, and load-bearing — every entry will be passed verbatim into the prompt. When the data grows (TIM-1698), this file becomes a seed; the loader will then read from a real dataset. Until then, the narrative is forbidden from inventing a benchmark not in this file.",
+  "version": "2026-06-05",
+  "benchmarks": [
+    {
+      "key": "coffee_shop_blended_cogs_pct",
+      "label": "Specialty coffee blended COGS",
+      "value_range": "28% to 32%",
+      "unit": "percent of revenue",
+      "source": "Specialty Coffee Association annual cafe operating reports (2023, 2024)",
+      "note": "Blended across espresso, brewed, and food. Pure-espresso cafes trend toward 25%; food-forward cafes toward 33%.",
+      "applicable_sections": [
+        "financial-plan-statements",
+        "financial-plan-forecast",
+        "financial-plan-unit-economics",
+        "financial-plan-break-even"
+      ]
+    },
+    {
+      "key": "coffee_shop_labor_pct",
+      "label": "Specialty coffee labor as % of revenue",
+      "value_range": "28% to 35%",
+      "unit": "percent of revenue",
+      "source": "Specialty Coffee Association cafe benchmarking, Toast Restaurant Industry Report 2024",
+      "note": "Steady-state. Ramp-period labor runs higher because fixed staffing absorbs into thinner revenue.",
+      "applicable_sections": [
+        "financial-plan-statements",
+        "financial-plan-forecast",
+        "financial-plan-break-even"
+      ]
+    },
+    {
+      "key": "coffee_shop_rent_pct",
+      "label": "Specialty coffee rent (occupancy) as % of revenue",
+      "value_range": "6% to 10%",
+      "unit": "percent of revenue",
+      "source": "Specialty Coffee Association cafe benchmarking",
+      "note": "8% is the commonly-cited lender expectation. Tertiary-market cafes can sit at 4-6%; flagship urban locations at 10-12%.",
+      "applicable_sections": [
+        "financial-plan-statements",
+        "financial-plan-forecast",
+        "financial-plan-break-even",
+        "execution-operations"
+      ]
+    },
+    {
+      "key": "coffee_shop_avg_ticket_usd",
+      "label": "US specialty coffee average ticket",
+      "value_range": "$6 to $9",
+      "unit": "US dollars per transaction",
+      "source": "Toast Restaurant Industry Report 2024, Square Café data 2024",
+      "note": "Drink-only tickets cluster near $6-$7; food-attached tickets near $9-$11. Drive-through-heavy cafes trend lower.",
+      "applicable_sections": [
+        "financial-plan-unit-economics",
+        "financial-plan-break-even",
+        "opportunity-target-market"
+      ]
+    },
+    {
+      "key": "coffee_shop_daily_customers_neighborhood",
+      "label": "Neighborhood-cafe daily customer count (steady state)",
+      "value_range": "150 to 350",
+      "unit": "customers per day",
+      "source": "Specialty Coffee Association cafe benchmarking; trend reports from National Coffee Association",
+      "note": "Lower end for new-to-market neighborhood cafes in their first year; upper end for established or higher-traffic locations.",
+      "applicable_sections": [
+        "financial-plan-unit-economics",
+        "financial-plan-forecast",
+        "opportunity-target-market"
+      ]
+    },
+    {
+      "key": "coffee_shop_morning_daypart_share",
+      "label": "Morning-daypart share of cafe revenue (6am-11am)",
+      "value_range": "55% to 70%",
+      "unit": "percent of daily revenue",
+      "source": "Toast Restaurant Industry Report 2024",
+      "note": "Lender-recognized concentration. Plans should explicitly address how staffing and equipment throughput handle the morning peak.",
+      "applicable_sections": [
+        "financial-plan-unit-economics",
+        "execution-operations",
+        "execution-marketing-sales"
+      ]
+    },
+    {
+      "key": "coffee_shop_buildout_cost_per_sqft",
+      "label": "Cafe build-out cost (2nd-generation vs raw shell)",
+      "value_range": "$150 to $400",
+      "unit": "US dollars per square foot",
+      "source": "Cafe industry build-out surveys 2023-2024",
+      "note": "Lower end for second-generation cafe space; upper end for full conversion of raw shell incl. mechanical, plumbing, hood.",
+      "applicable_sections": [
+        "financial-plan-capex-schedule",
+        "execution-operations"
+      ]
+    },
+    {
+      "key": "coffee_shop_opening_cash_buffer_months",
+      "label": "Recommended opening cash buffer",
+      "value_range": "3 to 6",
+      "unit": "months of operating expense",
+      "source": "SBA small-business lending standards; SCA guidance",
+      "note": "Lenders look for at least 3 months of operating expense covered by an opening cash buffer line in the use-of-funds.",
+      "applicable_sections": [
+        "financial-plan-financing",
+        "financial-plan-working-capital"
+      ]
+    },
+    {
+      "key": "coffee_shop_dscr_threshold",
+      "label": "Commercial/SBA debt-service coverage ratio threshold",
+      "value_range": "1.20x to 1.25x",
+      "unit": "DSCR",
+      "source": "SBA SOP 50 10 7.1, commercial-bank coffee-shop underwriting (2024)",
+      "note": "1.20x is the SBA floor; commercial banks often look for 1.25x. Below 1.10x is generally unbankable without significant equity.",
+      "applicable_sections": [
+        "financial-plan-dscr",
+        "financial-plan-financing"
+      ]
+    },
+    {
+      "key": "coffee_shop_ramp_months",
+      "label": "Cafe revenue ramp to steady state",
+      "value_range": "6 to 12",
+      "unit": "months from opening",
+      "source": "Specialty Coffee Association cafe benchmarking",
+      "note": "First-month revenue typically lands at 40-60% of steady-state; reaches 90%+ by month 9-12.",
+      "applicable_sections": [
+        "financial-plan-forecast",
+        "execution-milestones-metrics"
+      ]
+    },
+    {
+      "key": "coffee_shop_food_waste_pct",
+      "label": "Cafe food-program waste",
+      "value_range": "5% to 12%",
+      "unit": "percent of food revenue",
+      "source": "Cafe operations benchmarking 2024",
+      "note": "Lower end with active end-of-day markdown and pastry-only food programs; upper end with full prepared-food programs and weak demand forecasting.",
+      "applicable_sections": [
+        "financial-plan-statements",
+        "execution-operations"
+      ]
+    },
+    {
+      "key": "coffee_shop_working_capital_inventory_days",
+      "label": "Cafe inventory turns (specialty coffee + food)",
+      "value_range": "14 to 21",
+      "unit": "days of inventory on hand",
+      "source": "Specialty Coffee Association cafe benchmarking",
+      "note": "Includes green and roasted coffee, milks, pastries-in-house. Shops with house-roasted coffee skew higher.",
+      "applicable_sections": [
+        "financial-plan-working-capital",
+        "financial-plan-statements"
+      ]
+    }
+  ]
+}

@@ -83,12 +83,29 @@ export interface QualitativeFinding {
   quoted_text: string | null;
 }
 
+// TIM-2342: AI-estimate-class claims pulled out of business_plan_sections
+// .estimated_claims_json. The export-gate modal renders these in their own
+// "Estimated claims to verify" panel (advisory — never blocks export). Shape
+// matches EstimatedClaim in source-markers.ts; duplicated here so the route
+// returning the report doesn't have to import the source-markers module.
+export interface ValidationEstimatedClaim {
+  id: string;
+  section_key: string;
+  content: string;
+  hedge: string;
+  surrounding_sentence: string;
+}
+
 export interface ValidationReport {
   // True iff at least one Pass 1 finding remains unresolved. The export
   // endpoint gates on this; Pass 2 findings are NEVER blocking by spec.
   blocking: boolean;
   numeric_findings: NumericFinding[];
   qualitative_findings: QualitativeFinding[];
+  // TIM-2342: estimate-class claims the AI generator hedged. The export-gate
+  // modal lists them with the surrounding sentence so the founder can
+  // "looks right" or rewrite before export. Advisory — does NOT set blocking.
+  estimated_claims: ValidationEstimatedClaim[];
   // Diagnostic — how many narrative claims the extractor saw vs how many it
   // matched to a plan_state dimension. Surfaces extraction coverage holes.
   stats: {
@@ -542,6 +559,10 @@ export function runReconciliation(inp: ReconciliationInput): ValidationReport {
     blocking: findings.length > 0,
     numeric_findings: findings,
     qualitative_findings: [],
+    // TIM-2342: caller (the route) attaches estimated_claims after reading
+    // business_plan_sections.estimated_claims_json; the pure reconciliation
+    // pass doesn't need narrative-side knowledge of source markers.
+    estimated_claims: [],
     stats: {
       claims_extracted: claimsExtracted,
       claims_matched: claimsMatched,

@@ -143,6 +143,13 @@ export interface BpPromptInputs {
   // (already serialized by formatPlanStateForPrompt) to keep this module
   // free of @/ imports so the node:test runner can load it directly.
   planStateGroundTruth?: string;
+  // TIM-2342: source-marker directive + industry-benchmark block. Pre-rendered
+  // strings the caller assembles (SOURCE_MARKER_DIRECTIVE and
+  // formatBenchmarksForPrompt(sectionKey)). When provided, the narrative LLM
+  // wraps every numeric claim in <num src="…">…</num> markers and is allowed
+  // to cite <num src="benchmark">…</num> only against the listed benchmarks.
+  sourceMarkerDirective?: string;
+  industryBenchmarks?: string;
 }
 
 export interface BpPromptOutput {
@@ -169,10 +176,21 @@ export function buildBpSectionPrompt(inp: BpPromptInputs): BpPromptOutput {
     ? `\n${BP_PLAN_STATE_DIRECTIVE}\n\n${inp.planStateGroundTruth.trim()}\n`
     : "";
 
+  // TIM-2342: source-marker directive in the SYSTEM prompt so it ranks
+  // alongside the voice rules. The industry-benchmarks block goes in the
+  // USER message next to the ground-truth block so the model sees both
+  // approved sources together when reaching for a number.
+  const sourceMarkerBlock = inp.sourceMarkerDirective?.trim()
+    ? `\n\n${inp.sourceMarkerDirective.trim()}`
+    : "";
+  const benchmarksBlock = inp.industryBenchmarks?.trim()
+    ? `\n${inp.industryBenchmarks.trim()}\n`
+    : "";
+
   if (inp.sectionKey === "executive-summary") {
     const systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan.
 
-${BP_SHARED_RULES}
+${BP_SHARED_RULES}${sourceMarkerBlock}
 
 Section spec:
 ${sectionSpec}`;
@@ -183,7 +201,7 @@ Founder context:
 - Budget: ${inp.founderBudget}
 - Location: ${inp.founderLocation}
 - Stage: ${inp.founderStage}
-${groundTruthBlock}
+${groundTruthBlock}${benchmarksBlock}
 Plan data:
 ${inp.planSnapshot || "The workspaces are mostly empty, so generate from the founder context above plus reasonable, clearly-grounded assumptions for a coffee shop at this stage and location. Write a complete four-paragraph executive summary now -- do not refuse or list what is missing."}`;
 
@@ -192,7 +210,7 @@ ${inp.planSnapshot || "The workspaces are mostly empty, so generate from the fou
 
   const systemPrompt = `You are an expert coffee shop business advisor writing the "${inp.sectionTitle}" section of a founder's business plan.
 
-${BP_SHARED_RULES}
+${BP_SHARED_RULES}${sourceMarkerBlock}
 
 Section spec:
 ${sectionSpec}`;
@@ -203,7 +221,7 @@ Founder context:
 - Budget: ${inp.founderBudget}
 - Location: ${inp.founderLocation}
 - Stage: ${inp.founderStage}
-${groundTruthBlock}
+${groundTruthBlock}${benchmarksBlock}
 Assembled plan data for this section:
 ${inp.sectionAutoContent || "(No section-specific data entered for this section yet.)"}
 
