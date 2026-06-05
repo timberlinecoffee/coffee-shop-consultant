@@ -60,6 +60,11 @@ import {
   type PlanStateCompetitor,
   type PlanStateLocalClaims,
 } from "./local-claims.ts";
+import {
+  buildLenderMetrics,
+  formatLenderMetricsForPrompt,
+  type LenderMetricsBundle,
+} from "./lender-metrics.ts";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -233,6 +238,12 @@ export interface PlanState {
   // "800 to 1,200 pedestrians per day", "Kawa Espresso Bar (11 Ave SE)",
   // "Bridgeland/Aspen Landing corridor" — exactly what this block prevents.
   local_claims: PlanStateLocalClaims;
+  // TIM-2341: lender-ready metrics computed from the same engine slices the
+  // financial tables read. Surfaces unit economics buildup, sensitivity (Y1
+  // net at ±10% ticket / ±20% COGS / ±3mo ramp), DSCR by year, break-even,
+  // CapEx schedule, depreciation schedule, and working capital — every
+  // table-stakes lender metric the investor flagged as missing on TIM-2315.
+  lender_metrics: LenderMetricsBundle;
 }
 
 // ── Builder inputs (parallels what /generate already loads) ──────────────────
@@ -598,6 +609,16 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     cityLabel: inp.cityLabel ?? fallbackCityLabel ?? null,
   });
 
+  // TIM-2341: lender-ready metrics. Same engine slices the financial tables
+  // already use — sensitivity re-runs the same engine with one perturbed
+  // input, DSCR pulls EBITDA + debt-service straight from the slices.
+  const lender_metrics = buildLenderMetrics({
+    mp,
+    slices,
+    equipment: equipSummary,
+    menuBlendedCogsPct: inp.menuBlendedCogsPct ?? null,
+  });
+
   return {
     meta: {
       shop_name: inp.shopName,
@@ -620,6 +641,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     vertical_model: verticalModel,
     entities,
     local_claims,
+    lender_metrics,
   };
 }
 
@@ -802,6 +824,13 @@ export function formatPlanStateForPrompt(state: PlanState): string {
   lines.push(LOCAL_CLAIMS_DIRECTIVE);
   lines.push("");
   lines.push(formatLocalClaimsForPrompt(state.local_claims));
+
+  // TIM-2341: lender-ready metrics block. Surfaces unit economics buildup,
+  // sensitivity, DSCR, break-even, CapEx schedule, depreciation schedule,
+  // and working-capital requirement so every lender-stakeholder claim the
+  // narrative makes matches the engine's own numbers verbatim.
+  lines.push("");
+  lines.push(formatLenderMetricsForPrompt(state.lender_metrics, cc));
 
   return lines.join("\n").trim();
 }

@@ -21,6 +21,15 @@ import {
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
+  // TIM-2341: lender-ready section assemblers.
+  assembleUnitEconomicsSection,
+  assembleBreakEvenSection,
+  assembleSensitivitySection,
+  assembleDscrSection,
+  assembleCapexScheduleSection,
+  assembleDepreciationScheduleSection,
+  assembleWorkingCapitalSection,
+  assembleRisksPlaceholderSection,
   type BpLocationCandidate,
   type BpEquipmentItem,
   type BpMenuItem,
@@ -125,43 +134,6 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
 
-  // TIM-1498: two-level taxonomy autoContent map. Subsections with no assembled
-  // source data (Problem & Solution, Competition, Financing) feed an empty
-  // string to the prompt so the model writes from the executive snapshot plus
-  // founder context only.
-  const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => ({
-    key: meta.key,
-    title: meta.title,
-    sourceLabel: meta.sourceLabel,
-    autoContent: ({
-      "executive-summary": "",
-      "opportunity-problem-solution": "",
-      "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
-      "opportunity-competition": "",
-      "execution-marketing-sales": assembleExecutionMarketingSales(
-        (menuRows ?? []) as BpMenuItem[],
-        toBpMarketingPlanning(marketingDoc?.content),
-      ),
-      "execution-operations": assembleExecutionOperations(
-        (locationRows ?? []) as BpLocationCandidate[],
-        (equipmentRows ?? []) as BpEquipmentItem[],
-        financialModel,
-      ),
-      "execution-milestones-metrics": assembleOperationsLaunch(
-        (launchRows ?? []) as BpLaunchItem[],
-      ),
-      "company-overview": assembleCompanyConcept(conceptDoc?.content),
-      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
-      "financial-plan-financing": "",
-      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
-      "appendix-monthly-statements": "",
-    } as Record<string, string>)[meta.key] ?? "",
-    userContent: null,
-    isVisible: meta.defaultVisible,
-  }));
-
-  const planSnapshot = buildPlanSnapshotForExecutiveSummary(sections);
   const shopName = plan.plan_name ?? "this coffee shop";
   const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
 
@@ -174,6 +146,8 @@ export async function POST(request: NextRequest) {
   // quantitative figure. Computed from the SAME engine the financial tables
   // consume, then injected into the prompt as ground truth so narrative
   // numbers and table numbers can never describe two different businesses.
+  // TIM-2341: lender_metrics on plan_state seeds the lender-ready section
+  // auto-content below so the same numbers reach the AI's prompt and the UI.
   const planState = buildPlanState({
     shopName,
     financialModel,
@@ -192,6 +166,57 @@ export async function POST(request: NextRequest) {
     cityLabel: planContext.city_label,
   });
   const planStateGroundTruth = formatPlanStateForPrompt(planState);
+  const currencyCode = planState.meta.currency_code;
+  const lenderMetrics = financialModel ? planState.lender_metrics : null;
+
+  // TIM-1498: two-level taxonomy autoContent map. Subsections with no assembled
+  // source data (Problem & Solution, Competition, Financing) feed an empty
+  // string to the prompt so the model writes from the executive snapshot plus
+  // founder context only.
+  // TIM-2341: lender-ready sections plug into plan_state.lender_metrics so
+  // the prompt's auto-content shows the EXACT same tables the workspace UI
+  // and the exported PDF will render below the AI narrative.
+  const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => ({
+    key: meta.key,
+    title: meta.title,
+    sourceLabel: meta.sourceLabel,
+    autoContent: ({
+      "executive-summary": "",
+      "opportunity-problem-solution": "",
+      "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
+      "opportunity-competition": "",
+      "opportunity-risks": assembleRisksPlaceholderSection(),
+      "execution-marketing-sales": assembleExecutionMarketingSales(
+        (menuRows ?? []) as BpMenuItem[],
+        toBpMarketingPlanning(marketingDoc?.content),
+      ),
+      "execution-operations": assembleExecutionOperations(
+        (locationRows ?? []) as BpLocationCandidate[],
+        (equipmentRows ?? []) as BpEquipmentItem[],
+        financialModel,
+      ),
+      "execution-milestones-metrics": assembleOperationsLaunch(
+        (launchRows ?? []) as BpLaunchItem[],
+      ),
+      "company-overview": assembleCompanyConcept(conceptDoc?.content),
+      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+      "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetrics, currencyCode),
+      "financial-plan-break-even": assembleBreakEvenSection(lenderMetrics, currencyCode),
+      "financial-plan-sensitivity": assembleSensitivitySection(lenderMetrics, currencyCode),
+      "financial-plan-financing": "",
+      "financial-plan-dscr": assembleDscrSection(lenderMetrics, currencyCode),
+      "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetrics, currencyCode),
+      "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetrics, currencyCode),
+      "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetrics, currencyCode),
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+      "appendix-monthly-statements": "",
+    } as Record<string, string>)[meta.key] ?? "",
+    userContent: null,
+    isVisible: meta.defaultVisible,
+  }));
+
+  const planSnapshot = buildPlanSnapshotForExecutiveSummary(sections);
 
   const targetSection = sections.find((s) => s.key === sectionKey);
   const sectionAutoContent = targetSection?.autoContent ?? "";
