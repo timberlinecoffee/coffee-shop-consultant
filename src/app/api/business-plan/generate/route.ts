@@ -32,6 +32,7 @@ import {
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { buildBpSectionPrompt } from "@/lib/business-plan-prompts";
+import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -168,6 +169,20 @@ export async function POST(request: NextRequest) {
   // onboarding_data for now.
   const planContext = await loadPlanContext(supabase, user.id);
 
+  // TIM-2334: plan_state — single canonical state object holding every
+  // quantitative figure. Computed from the SAME engine the financial tables
+  // consume, then injected into the prompt as ground truth so narrative
+  // numbers and table numbers can never describe two different businesses.
+  const planState = buildPlanState({
+    shopName,
+    financialModel,
+    locationCandidates: (locationRows ?? []) as BpLocationCandidate[],
+    equipment: (equipmentRows ?? []) as BpEquipmentItem[],
+    hiringRoles: (hiringRows ?? []) as BpHiringRole[],
+    menuBlendedCogsPct,
+  });
+  const planStateGroundTruth = formatPlanStateForPrompt(planState);
+
   const targetSection = sections.find((s) => s.key === sectionKey);
   const sectionAutoContent = targetSection?.autoContent ?? "";
   const sectionTitle = targetSection?.title ?? sectionKey;
@@ -181,6 +196,7 @@ export async function POST(request: NextRequest) {
     founderBudget: String(onboarding?.budget ?? "not specified"),
     founderLocation: planContext.location_country ?? "not specified",
     founderStage: String(onboarding?.stage ?? "not specified"),
+    planStateGroundTruth,
   });
 
   const client = new Anthropic();
