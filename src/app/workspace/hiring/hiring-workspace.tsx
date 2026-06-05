@@ -932,7 +932,7 @@ function RoleRow({
     }
   }
 
-  const { formatMinor } = useCurrency();
+  const { formatMinor, symbol } = useCurrency();
 
   // Live loaded cost preview (from entered fields, not just saved line)
   const compPreviewCents =
@@ -979,7 +979,7 @@ function RoleRow({
           <span className="text-xs text-[var(--muted-foreground)]">
             {role.headcount} headcount
             {role.monthly_cost_cents
-              ? ` · $${Math.round(role.monthly_cost_cents / 100)}/mo`
+              ? ` · ${formatMinor(role.monthly_cost_cents)}/mo`
               : ""}
             {parentTitle ? ` · Reports to ${parentTitle}` : ""}
           </span>
@@ -1131,7 +1131,7 @@ function RoleRow({
               <div className="w-32">
                 <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">{symbol}</span>
                   <input
                     className={inputCls + " pl-5"}
                     type="number"
