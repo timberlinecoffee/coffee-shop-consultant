@@ -7,11 +7,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Pricing — Groundwork",
   description:
-    "Starter and Pro plans, 7-day free trial, cancel anytime. Annual saves 15%.",
+    "Starter and Pro plans, 7-day free trial, cancel anytime. Annual saves 20%.",
   openGraph: {
     title: "Pricing — Groundwork",
     description:
-      "Starter and Pro plans, 7-day free trial, cancel anytime. Annual saves 15%.",
+      "Starter and Pro plans, 7-day free trial, cancel anytime. Annual saves 20%.",
   },
 };
 
