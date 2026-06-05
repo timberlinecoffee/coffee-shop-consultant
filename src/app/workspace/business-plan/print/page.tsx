@@ -242,7 +242,10 @@ export default async function BusinessPlanPrintPage({
   const visibleSections: SectionKey[] = SECTION_KEYS.filter((k) => !excluded.has(k));
 
   const coverTemplateId = coverRow?.template_id ?? "classic";
-  const coverAccent = coverRow?.accent_color ?? "var(--warning-amber)";
+  // TIM-2315: explicit hex fallback so cover/section accents render identical to
+  // the PDF (which defaults to brand.colors.accent = #E8C24A). Using a CSS var
+  // string here means it never resolves inside inline backgroundColor values.
+  const coverAccent = coverRow?.accent_color ?? "#E8C24A";
   const coverTagline = coverRow?.tagline ?? null;
   const coverPreparedFor = coverRow?.prepared_for ?? null;
   const coverAuthorName = coverRow?.author_name ?? null;
@@ -257,16 +260,23 @@ export default async function BusinessPlanPrintPage({
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Print stylesheet — preserves rich layout on Cmd+P */}
+      {/* Print stylesheet — preserves rich layout on Cmd+P. TIM-2315: 19mm page
+          margins per spec; widow/orphan control on body text; section heading
+          stays with its first paragraph; cover page gets explicit 0 margin so
+          full-bleed editorial header reaches the page edge. */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
               .no-print { display: none !important; }
               body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              @page { margin: 1.8cm 2cm; size: A4; }
-              .section-card { break-inside: avoid; }
+              @page { margin: 19mm; size: A4; }
+              .section-card { break-inside: avoid; orphans: 3; widows: 3; }
               .page-break { break-after: page; }
+              .cover-page { min-height: calc(100vh - 38mm); }
+              h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+              p { orphans: 3; widows: 3; }
+              img { max-width: 100%; height: auto; }
             }
           `,
         }}
@@ -304,7 +314,7 @@ export default async function BusinessPlanPrintPage({
 
         {/* ── Table of contents ────────────────────────────────────────────── */}
         <section className="page-break mb-16">
-          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--teal)] mb-4">
+          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-4" style={{ color: coverAccent }}>
             Contents
           </p>
           <div className="space-y-2">
@@ -326,7 +336,7 @@ export default async function BusinessPlanPrintPage({
 
         {/* ── Sections ─────────────────────────────────────────────────────── */}
         {visibleSections.map((key, i) => (
-          <SectionFrame key={key} index={i + 1} title={SECTION_LABELS[key]}>
+          <SectionFrame key={key} index={i + 1} title={SECTION_LABELS[key]} accent={coverAccent}>
             {key === "concept" && <ConceptSection concept={concept} />}
             {key === "team_hiring" && <TeamHiringSection roles={roles ?? []} currencyCode={currencyCode} />}
             {key === "menu" && <MenuSection items={menuItems ?? []} currencyCode={currencyCode} />}
@@ -378,16 +388,18 @@ export default async function BusinessPlanPrintPage({
 function SectionFrame({
   index,
   title,
+  accent,
   children,
 }: {
   index: number;
   title: string;
+  accent: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="page-break mb-14">
       <div className="mb-6">
-        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--teal)] mb-1">
+        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: accent }}>
           Section {String(index).padStart(2, "0")}
         </p>
         <h2
@@ -396,7 +408,7 @@ function SectionFrame({
         >
           {title}
         </h2>
-        <div className="mt-4 border-t border-[var(--border)]" />
+        <div className="mt-4 border-t" style={{ borderColor: accent, borderTopWidth: 2 }} />
       </div>
       {children}
     </section>
@@ -1265,8 +1277,10 @@ function PrintCoverPage(props: PrintCoverProps) {
 }
 
 function PrintCoverClassic({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
+  // TIM-2315: title + eyebrow + rules use the user-selected `accent` rather
+  // than the hardcoded brand green, so theme color flows through.
   return (
-    <header className="page-break mb-16 flex flex-col items-center text-center" style={{ paddingBottom: 0 }}>
+    <header className="page-break cover-page mb-16 flex flex-col items-center text-center">
       {logoUrl && (
         <div className="flex justify-center mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1274,10 +1288,10 @@ function PrintCoverClassic({ shopName, date, accent, tagline, preparedFor, autho
         </div>
       )}
 
-      <p className="text-sm font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--success)" }}>
+      <p className="text-sm font-semibold tracking-widest uppercase mb-3" style={{ color: accent }}>
         Business Plan
       </p>
-      <h1 className="font-bold leading-tight mb-3" style={{ fontSize: "40px", color: "var(--success)", letterSpacing: "-0.01em" }}>
+      <h1 className="font-bold leading-tight mb-3" style={{ fontSize: "40px", color: accent, letterSpacing: "-0.01em" }}>
         {shopName}
       </h1>
 
@@ -1302,10 +1316,10 @@ function PrintCoverClassic({ shopName, date, accent, tagline, preparedFor, autho
 
 function PrintCoverModern({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
   return (
-    <header className="page-break mb-16 relative" style={{ paddingLeft: 0 }}>
-      <div className="absolute top-0 left-0 bottom-0 w-[6px] rounded-sm" style={{ backgroundColor: "var(--success)" }} />
+    <header className="page-break cover-page mb-16 relative">
+      <div className="absolute top-0 left-0 bottom-0 w-[6px] rounded-sm" style={{ backgroundColor: accent }} />
       <div className="pl-16 pr-8 pt-16 pb-12 flex flex-col min-h-[500px]">
-        <h1 className="font-bold leading-tight mb-4" style={{ fontSize: "44px", color: "var(--success)", letterSpacing: "-0.01em" }}>
+        <h1 className="font-bold leading-tight mb-4" style={{ fontSize: "44px", color: accent, letterSpacing: "-0.01em" }}>
           {shopName}
         </h1>
         <p className="text-lg text-[var(--gray-1150)] mb-3">Business Plan</p>
@@ -1341,12 +1355,15 @@ function PrintCoverModern({ shopName, date, accent, tagline, preparedFor, author
 }
 
 function PrintCoverEditorial({ shopName, date, accent, tagline, preparedFor, authorName, logoUrl }: PrintCoverProps) {
+  // TIM-2315: header block uses `accent` (was hardcoded green). The "Business
+  // Plan" subtitle now uses a transparent-white overlay so it stays legible on
+  // any accent color the user picks.
   return (
-    <header className="page-break mb-16">
-      {/* Green header block */}
+    <header className="page-break cover-page mb-16">
+      {/* Accent header block */}
       <div
         className="w-full flex flex-col items-center justify-center text-center p-10"
-        style={{ backgroundColor: "var(--success)", minHeight: "320px" }}
+        style={{ backgroundColor: accent, minHeight: "320px" }}
       >
         {logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -1355,8 +1372,8 @@ function PrintCoverEditorial({ shopName, date, accent, tagline, preparedFor, aut
         <h1 className="font-bold text-white leading-tight mb-4" style={{ fontSize: "38px" }}>
           {shopName}
         </h1>
-        <p className="text-lg font-semibold mb-3" style={{ color: accent }}>Business Plan</p>
-        {tagline && <p className="text-sm" style={{ color: "var(--sage-bg)" }}>{tagline}</p>}
+        <p className="text-lg font-semibold text-white opacity-90 mb-3">Business Plan</p>
+        {tagline && <p className="text-sm text-white opacity-80">{tagline}</p>}
       </div>
 
       {/* White metadata block */}
