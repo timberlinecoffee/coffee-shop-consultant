@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { Logo } from "../_components/Logo";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +13,27 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; next?: string; error?: string }>;
 }) {
-  const { mode } = await searchParams;
+  const { mode, next, error } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
+
+  // TIM-2352: if the visitor is already authenticated, bounce them straight to
+  // their next destination so revisiting /login does not look like a re-login
+  // prompt. Skip the bounce when ?error= is present — they came here because
+  // an auth flow failed and the error message belongs in front of them.
+  if (!error) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const safeNext =
+        typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : "/dashboard";
+      redirect(safeNext);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center px-4 py-12">
