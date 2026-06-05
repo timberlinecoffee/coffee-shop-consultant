@@ -1,0 +1,27 @@
+name: TIM-2369 Apply office_hours_sessions migration (one-shot)
+
+# One-shot workflow — trigger manually, then delete after apply.
+# Applies the TIM-2369 DDL + seed to production Supabase via Supavisor v2.
+# Required secret: SUPABASE_DB_URL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply-migration:
+    name: Apply TIM-2369 office_hours_sessions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pg driver
+        run: npm install --no-save pg
+
+      - name: Apply migration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/apply-tim2369-migration.mjs
