@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Logo } from "@/app/_components/Logo";
@@ -18,6 +19,8 @@ import {
   BusinessPlanExportMockup,
 } from "@/app/_components/Mockups";
 import { WaitlistForm } from "./WaitlistForm";
+import { OAuthHashHandler } from "./OAuthHashHandler";
+import { buildAuthForwardUrl } from "./apex-auth-forward";
 
 // TIM-2285 v2: rebuilt to match landing-page design quality per board feedback
 // (Trent 2026-06-04). Reuses the exact landing-page vocabulary — the same
@@ -94,9 +97,26 @@ const FOUNDER_QUOTE = {
   role: "Founder, Timberline Coffee School",
 };
 
-export default function ComingSoonPage() {
+// TIM-2327: apex / coming-soon doubles as the Supabase Auth Site URL fallback
+// destination. When Supabase can't match the OAuth `redirectTo` against the
+// Additional Redirect URLs allowlist, it sends the browser here with the PKCE
+// `?code=...` query (or an `?error=...`). Intercept it server-side and forward
+// to /auth/callback so the existing code-exchange + cookie handoff runs. Hash-
+// flow tokens are handled by <OAuthHashHandler /> below (client component).
+export default async function ComingSoonPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  if (searchParams) {
+    const params = await searchParams;
+    const forwardUrl = buildAuthForwardUrl(params);
+    if (forwardUrl) redirect(forwardUrl);
+  }
+
   return (
     <main className="flex flex-col">
+      <OAuthHashHandler />
       {/* ── Top bar (white-on-dark, no sign-in CTA pre-launch) ───────────────── */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
