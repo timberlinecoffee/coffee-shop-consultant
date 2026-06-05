@@ -304,6 +304,15 @@ export function CoPilotDrawer({
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
+  // TIM-2311: success-return toast after Stripe credit-pack checkout.
+  // Stripe redirects back to {returnPath}?credits_added=1; this surfaces a
+  // confirmation + refetches the meter so the user sees the new balance without
+  // a manual reload. Lazy initializer reads the URL on the first client render so
+  // we don't have to call setState synchronously inside an effect.
+  const [creditsAddedToast, setCreditsAddedToast] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("credits_added") === "1";
+  });
   // Track the prop separately so a parent-driven workspace switch resets the active
   // workspace without us calling setState inside an effect body.
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
@@ -372,6 +381,29 @@ export function CoPilotDrawer({
       return { ...prev, trialUsed: used, trialRemaining };
     });
   }, [trialRemaining]);
+
+  // TIM-2311: paired with the lazy initializer above — when the URL flag is
+  // present on mount, refetch the meter, strip the param, and auto-dismiss the
+  // toast. setState calls here are either async (inside .then) or scheduled
+  // (setTimeout), so the effect never sets state synchronously in its body.
+  useEffect(() => {
+    if (!creditsAddedToast) return;
+    void fetch("/api/credits", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as CreditsState & Record<string, unknown>;
+        setCredits(data as CreditsState);
+      })
+      .catch(() => {});
+    const params = new URLSearchParams(window.location.search);
+    params.delete("credits_added");
+    const search = params.toString();
+    const next =
+      window.location.pathname + (search ? `?${search}` : "") + window.location.hash;
+    window.history.replaceState(null, "", next);
+    const t = setTimeout(() => setCreditsAddedToast(false), 6000);
+    return () => clearTimeout(t);
+  }, [creditsAddedToast]);
 
   const openDrawer = useCallback(() => {
     setOpen(true);
@@ -873,6 +905,52 @@ export function CoPilotDrawer({
       />
       {/* TIM-1687: one-off credit top-up. */}
       <CreditPacksModal open={buyCreditsOpen} onClose={() => setBuyCreditsOpen(false)} />
+      {/* TIM-2311: success toast after returning from Stripe credit-pack checkout. */}
+      {creditsAddedToast && (
+        <div
+          role="status"
+          data-testid="credits-added-toast"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[var(--teal)] text-white px-4 py-3 rounded-xl shadow-lg max-w-sm"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <p className="text-sm font-medium flex-1">
+            Credits added. Your balance is up to date.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCreditsAddedToast(false)}
+            className="text-white/80 hover:text-white"
+            aria-label="Dismiss"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      )}
       {!open && (
         <button
           type="button"
@@ -985,16 +1063,29 @@ export function CoPilotDrawer({
                         : `${credits.remaining} credits left`}
                     </span>
                   )}
-                  {/* TIM-1687: low/out of credits — offer a top-up next to the meter. */}
-                  {credits?.mode === "credits" && credits.remaining <= 5 && (
-                    <button
-                      type="button"
-                      onClick={() => setBuyCreditsOpen(true)}
-                      className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
-                    >
-                      Top up
-                    </button>
-                  )}
+                  {/* TIM-2311 (per TIM-2310 design): when remaining ≤ 20% of the
+                      monthly grant, surface paired "Buy more credits" + "Upgrade plan"
+                      CTAs next to the meter. Falls back to ≤5 if the grant is unknown. */}
+                  {credits?.mode === "credits" &&
+                    (credits.monthlyGrant
+                      ? credits.remaining <= Math.max(1, Math.floor(credits.monthlyGrant * 0.2))
+                      : credits.remaining <= 5) && (
+                      <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setBuyCreditsOpen(true)}
+                          className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                        >
+                          Buy more credits
+                        </button>
+                        <Link
+                          href={UPGRADE_PATH}
+                          className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                        >
+                          Upgrade plan
+                        </Link>
+                      </span>
+                    )}
                 </div>
                 <p className="text-[11px] text-[var(--neutral-cool-600)] truncate">
                   {scopeHeaderLabel}

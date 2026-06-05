@@ -109,8 +109,16 @@ export function CreditPacksModal({ open, onClose, returnPath }: CreditPacksModal
               className="flex items-center justify-between gap-4 bg-[var(--surface-warm-50)] hover:bg-[var(--neutral-cool-100)] border border-[var(--border)] rounded-xl px-4 py-3 text-left transition-colors disabled:opacity-60"
             >
               <span>
-                <span className="block text-sm font-semibold text-[var(--foreground)]">
-                  {pack.credits} credits
+                <span className="flex items-center gap-2">
+                  <span className="block text-sm font-semibold text-[var(--foreground)]">
+                    {pack.credits} credits
+                  </span>
+                  {/* TIM-2311 (per TIM-2310): highlight the recommended packs. */}
+                  {pack.badge && (
+                    <span className="inline-flex text-[10px] font-semibold uppercase tracking-wide text-[var(--teal)] bg-[var(--teal)]/10 px-1.5 py-0.5 rounded-full">
+                      {pack.badge === "balanced" ? "Best Balanced" : "Best Value"}
+                    </span>
+                  )}
                 </span>
                 <span className="block text-xs text-[var(--muted-foreground)]">{pack.name}</span>
               </span>

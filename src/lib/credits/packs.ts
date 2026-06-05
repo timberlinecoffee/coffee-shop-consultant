@@ -27,12 +27,14 @@ export interface CreditPackDef {
   credits: number
   /** Display price in cents (matches the Stripe price provisioned for this pack). */
   amountCents: number
+  /** TIM-2311 (per TIM-2310 design): optional badge — "Best Balanced" / "Best Value". */
+  badge?: "balanced" | "value"
 }
 
 export const CREDIT_PACK_LIST: CreditPackDef[] = [
   { key: "small", name: "Small Pack", credits: 100, amountCents: 1900 },
-  { key: "medium", name: "Medium Pack", credits: 500, amountCents: 7900 },
-  { key: "large", name: "Large Pack", credits: 1500, amountCents: 19900 },
+  { key: "medium", name: "Medium Pack", credits: 500, amountCents: 7900, badge: "balanced" },
+  { key: "large", name: "Large Pack", credits: 1500, amountCents: 19900, badge: "value" },
 ]
 
 export const CREDIT_PACKS_BY_KEY: Record<CreditPackKey, CreditPackDef> =
