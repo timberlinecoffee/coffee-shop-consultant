@@ -53,6 +53,13 @@ import {
   formatEntitiesForPrompt,
   type PlanStateEntity,
 } from "./entities.ts";
+import {
+  buildLocalClaims,
+  formatLocalClaimsForPrompt,
+  LOCAL_CLAIMS_DIRECTIVE,
+  type PlanStateCompetitor,
+  type PlanStateLocalClaims,
+} from "./local-claims.ts";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -218,6 +225,14 @@ export interface PlanState {
   // "Whitehorse Farms", "La Marzocko" vs "La Marzocco" — exactly the
   // typos this registry prevents.
   entities: PlanStateEntity[];
+  // TIM-2340: local-claim guardrails — user-entered competitors, the
+  // explicit "no direct competitors" toggle, and the resolved city the
+  // geography validator scopes to. The narrative is forbidden from inventing
+  // foot traffic, demographic stats, or competitor addresses; this block is
+  // the ONLY source for those claims. Investor critique #6 on Beaver & Beef:
+  // "800 to 1,200 pedestrians per day", "Kawa Espresso Bar (11 Ave SE)",
+  // "Bridgeland/Aspen Landing corridor" — exactly what this block prevents.
+  local_claims: PlanStateLocalClaims;
 }
 
 // ── Builder inputs (parallels what /generate already loads) ──────────────────
@@ -238,6 +253,13 @@ export interface BuildPlanStateInputs {
   // and OVERRIDES mp.income_tax_pct (only when the user is still on the engine
   // default 25%) so Y1 tax matches the regional rate.
   locationCountry?: string | null;
+  // TIM-2340: user-entered competitors + explicit "no competitors" toggle
+  // from the concept workspace, plus resolved city label for the geography
+  // validator. Surfaced into plan_state.local_claims so the narrative prompt
+  // names only real businesses and references only real adjacencies.
+  competitors?: PlanStateCompetitor[];
+  noDirectCompetitorsIdentified?: boolean;
+  cityLabel?: string | null;
 }
 
 // ── Builder ──────────────────────────────────────────────────────────────────
@@ -563,6 +585,19 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     fundingSources: extractFundingSourcesForEntities(mp),
   });
 
+  // TIM-2340: local-claims block — user-entered competitors + city label.
+  // If the caller didn't provide a cityLabel, fall back to the chosen
+  // location_candidate's city field (read defensively — the BpLocationCandidate
+  // type only declares address, but city is on the row via TIM-1145).
+  const fallbackCityLabel = chosen
+    ? ((chosen as unknown as { city?: string | null }).city ?? null)
+    : null;
+  const local_claims = buildLocalClaims({
+    competitors: inp.competitors ?? [],
+    noDirectCompetitorsIdentified: inp.noDirectCompetitorsIdentified ?? false,
+    cityLabel: inp.cityLabel ?? fallbackCityLabel ?? null,
+  });
+
   return {
     meta: {
       shop_name: inp.shopName,
@@ -584,6 +619,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     break_even: breakEven,
     vertical_model: verticalModel,
     entities,
+    local_claims,
   };
 }
 
@@ -757,6 +793,15 @@ export function formatPlanStateForPrompt(state: PlanState): string {
       lines.push(block);
     }
   }
+
+  // TIM-2340: local-claims directive + block. Forbids inventing pedestrian
+  // counts, demographic stats, competitor addresses, and cross-region
+  // neighborhood adjacencies; gives the LLM sentinel hedge phrases for the
+  // qualitative fallback so voice quality stays grounded.
+  lines.push("");
+  lines.push(LOCAL_CLAIMS_DIRECTIVE);
+  lines.push("");
+  lines.push(formatLocalClaimsForPrompt(state.local_claims));
 
   return lines.join("\n").trim();
 }

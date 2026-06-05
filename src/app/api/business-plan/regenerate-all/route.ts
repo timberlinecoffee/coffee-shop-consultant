@@ -187,6 +187,10 @@ export async function POST(): Promise<Response> {
     menuBlendedCogsPct,
     // TIM-2339: country drives the region-aware tax rate + lender allowlist.
     locationCountry: planContext.location_country,
+    // TIM-2340: competitors + city anchor the local-claim guardrails.
+    competitors: planContext.competitors,
+    noDirectCompetitorsIdentified: planContext.no_direct_competitors_identified,
+    cityLabel: planContext.city_label,
   });
   const planStateGroundTruth = formatPlanStateForPrompt(planState);
 
