@@ -23,6 +23,15 @@ import {
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
+  // TIM-2341: lender-ready section assemblers.
+  assembleUnitEconomicsSection,
+  assembleBreakEvenSection,
+  assembleSensitivitySection,
+  assembleDscrSection,
+  assembleCapexScheduleSection,
+  assembleDepreciationScheduleSection,
+  assembleWorkingCapitalSection,
+  assembleRisksPlaceholderSection,
   BUSINESS_PLAN_SECTIONS,
   BUSINESS_PLAN_GROUPS,
   type BpLocationCandidate,
@@ -34,9 +43,13 @@ import {
 } from "@/lib/business-plan";
 import {
   normalizeMonthlyProjections,
+  computeMenuBlendedCogsPct,
   type MonthlyProjections,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
+// TIM-2341: PDF dataLoader builds plan_state so the lender-ready sections
+// in the exported PDF read the same numbers the workspace UI shows.
+import { buildPlanState } from "@/lib/business-plan/plan-state";
 
 registerFonts();
 
@@ -355,9 +368,13 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     ] = await Promise.all([
       supabase.from("coffee_shop_plans").select("id, plan_name").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
-      supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes").eq("plan_id", planId).eq("archived", false).order("position"),
+      // TIM-2341: include city + country so plan_state.lender_metrics inherits
+      // the region-aware tax + lender posture in the exported PDF.
+      supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
       supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-      supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents").eq("plan_id", planId).order("position"),
+      // TIM-2341: include cogs columns so menuBlendedCogsPct is computed for
+      // the lender-metrics block (mirrors the regenerate-all path).
+      supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
       supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
       supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents, status").eq("plan_id", planId).order("created_at"),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
@@ -371,7 +388,26 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       (savedSections ?? []).map((s: { section_key: string; user_content: string | null; is_visible: boolean }) => [s.section_key, s])
     );
 
+    // TIM-2341: build plan_state ONCE so the lender-ready section auto-content
+    // in the PDF reads the same engine slices as the workspace UI + the AI
+    // regenerate-all path. Country is read off the chosen location candidate
+    // (plan_state's own resolveRegion handles the absent-country case).
+    const menuBlendedCogsPctPdf = computeMenuBlendedCogsPct((menuRows ?? []) as { name?: string; price_cents: number; cogs_cents?: number | null; computed_cogs_cents?: number | null; expected_mix_pct?: number | null; expected_popularity?: "low" | "medium" | "high" | null; archived?: boolean | null }[]);
+    const chosenLoc = (locationRows ?? []).find((c: { status?: string }) => c.status === "chosen") ?? (locationRows ?? [])[0];
+    const planState = buildPlanState({
+      shopName: plan?.plan_name ?? "this coffee shop",
+      financialModel,
+      locationCandidates: (locationRows ?? []) as BpLocationCandidate[],
+      equipment: (equipmentRows ?? []) as BpEquipmentItem[],
+      hiringRoles: (hiringRows ?? []) as BpHiringRole[],
+      menuBlendedCogsPct: menuBlendedCogsPctPdf,
+      locationCountry: (chosenLoc as { country?: string | null })?.country ?? null,
+    });
+    const currencyCodePdf = planState.meta.currency_code;
+    const lenderMetricsPdf = financialModel ? planState.lender_metrics : null;
+
     // TIM-1498: two-level taxonomy autoContent map.
+    // TIM-2341: lender-ready sections plug straight into plan_state.
     const autoContent: Record<string, string> = {
       "executive-summary":
         (savedMap.get("executive-summary") as { user_content: string | null } | undefined)?.user_content
@@ -379,6 +415,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       "opportunity-problem-solution": "",
       "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
       "opportunity-competition": "",
+      "opportunity-risks": assembleRisksPlaceholderSection(),
       "execution-marketing-sales": assembleExecutionMarketingSales(
         (menuRows ?? []) as BpMenuItem[],
         toBpMarketingPlanning(marketingDoc?.content),
@@ -393,9 +430,16 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       ),
       "company-overview": assembleCompanyConcept(conceptDoc?.content),
       "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
+      "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-break-even": assembleBreakEvenSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-sensitivity": assembleSensitivitySection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-financing": "",
-      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+      "financial-plan-dscr": assembleDscrSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
       "appendix-monthly-statements": "Monthly P&L, cash flow, and balance sheet statements appear in the Financial Appendix pages that follow.",
     };
 

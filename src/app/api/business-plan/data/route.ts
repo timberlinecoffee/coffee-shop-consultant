@@ -13,6 +13,15 @@ import {
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
+  // TIM-2341: lender-ready section assemblers.
+  assembleUnitEconomicsSection,
+  assembleBreakEvenSection,
+  assembleSensitivitySection,
+  assembleDscrSection,
+  assembleCapexScheduleSection,
+  assembleDepreciationScheduleSection,
+  assembleWorkingCapitalSection,
+  assembleRisksPlaceholderSection,
   type BusinessPlanSectionData,
   type BpLocationCandidate,
   type BpEquipmentItem,
@@ -22,6 +31,10 @@ import {
   toBpMarketingPlanning,
 } from "@/lib/business-plan";
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
+// TIM-2341: build plan_state so we can render the lender-metrics auto-content
+// from the same single source of truth the regenerate-all path uses.
+import { buildPlanState } from "@/lib/business-plan/plan-state";
+import { loadPlanContext } from "@/lib/plan-context";
 
 export async function GET() {
   const supabase = await createClient();
@@ -51,6 +64,7 @@ export async function GET() {
     { data: marketingDoc },
     { data: financialModel },
     { data: savedSections },
+    planContext,
   ] = await Promise.all([
     supabase
       .from("workspace_documents")
@@ -58,9 +72,11 @@ export async function GET() {
       .eq("plan_id", planId)
       .eq("workspace_key", "concept")
       .maybeSingle(),
+    // TIM-2341: also load city + country so plan_state can resolve the region
+    // and the lender-metrics block reflects the regional tax/lender posture.
     supabase
       .from("location_candidates")
-      .select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes")
+      .select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
@@ -104,6 +120,9 @@ export async function GET() {
       .from("business_plan_sections")
       .select("section_key, user_content, is_visible")
       .eq("plan_id", planId),
+    // TIM-2341: load plan context (country / city / competitors) so plan_state
+    // resolves the region for the lender-metrics block.
+    loadPlanContext(supabase, user.id),
   ]);
 
   const savedMap = new Map(
@@ -114,6 +133,26 @@ export async function GET() {
   // menu-linked COGS lines resolve against live menu costing.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+
+  // TIM-2341: assemble plan_state ONCE so the lender-ready sections render
+  // from the same engine slices the financial tables read. If the financial
+  // model isn't filled in, plan_state still builds (lender_metrics will reflect
+  // engine defaults; the section assemblers will note that the financials are
+  // empty rather than render a misleading number).
+  const planState = buildPlanState({
+    shopName: plan.plan_name ?? "this coffee shop",
+    financialModel,
+    locationCandidates: (locationRows ?? []) as BpLocationCandidate[],
+    equipment: (equipmentRows ?? []) as BpEquipmentItem[],
+    hiringRoles: (hiringRows ?? []) as BpHiringRole[],
+    menuBlendedCogsPct,
+    locationCountry: planContext.location_country,
+    competitors: planContext.competitors,
+    noDirectCompetitorsIdentified: planContext.no_direct_competitors_identified,
+    cityLabel: planContext.city_label,
+  });
+  const currencyCode = planState.meta.currency_code;
+  const lenderMetrics = financialModel ? planState.lender_metrics : null;
 
   // TIM-1498: two-level taxonomy. Subsections with no auto-assembled content
   // (Problem & Solution, Competition, Financing) render the click-to-generate
@@ -126,6 +165,7 @@ export async function GET() {
     "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
     "opportunity-competition":
       "Click Generate to identify the most relevant competitors in your catchment area.",
+    "opportunity-risks": assembleRisksPlaceholderSection(),
     "execution-marketing-sales": assembleExecutionMarketingSales(
       (menuRows ?? []) as BpMenuItem[],
       toBpMarketingPlanning(marketingDoc?.content),
@@ -140,10 +180,17 @@ export async function GET() {
     ),
     "company-overview": assembleCompanyConcept(conceptDoc?.content),
     "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+    "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetrics, currencyCode),
+    "financial-plan-break-even": assembleBreakEvenSection(lenderMetrics, currencyCode),
+    "financial-plan-sensitivity": assembleSensitivitySection(lenderMetrics, currencyCode),
     "financial-plan-financing":
       "Click Generate to draft this section from your plan data.",
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
+    "financial-plan-dscr": assembleDscrSection(lenderMetrics, currencyCode),
+    "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetrics, currencyCode),
+    "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetrics, currencyCode),
+    "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetrics, currencyCode),
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
     "appendix-monthly-statements":
       "Monthly P&L, cash flow, and balance sheet statements are rendered in the exported PDF appendix.",
   };

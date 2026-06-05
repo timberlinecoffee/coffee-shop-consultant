@@ -24,6 +24,17 @@ import {
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
+  // TIM-2341: lender-ready section assemblers — auto-content for these new
+  // sections is computed from plan_state.lender_metrics so narrative and
+  // tables read the same numbers.
+  assembleUnitEconomicsSection,
+  assembleBreakEvenSection,
+  assembleSensitivitySection,
+  assembleDscrSection,
+  assembleCapexScheduleSection,
+  assembleDepreciationScheduleSection,
+  assembleWorkingCapitalSection,
+  assembleRisksPlaceholderSection,
   toBpMarketingPlanning,
   type BpLocationCandidate,
   type BpEquipmentItem,
@@ -135,49 +146,16 @@ export async function POST(): Promise<Response> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
 
-  const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => ({
-    key: meta.key,
-    title: meta.title,
-    sourceLabel: meta.sourceLabel,
-    autoContent: ({
-      "executive-summary": "",
-      "opportunity-problem-solution": "",
-      "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
-      "opportunity-competition": "",
-      "execution-marketing-sales": assembleExecutionMarketingSales(
-        (menuRows ?? []) as BpMenuItem[],
-        toBpMarketingPlanning(marketingDoc?.content),
-      ),
-      "execution-operations": assembleExecutionOperations(
-        (locationRows ?? []) as BpLocationCandidate[],
-        (equipmentRows ?? []) as BpEquipmentItem[],
-        financialModel,
-      ),
-      "execution-milestones-metrics": assembleOperationsLaunch(
-        (launchRows ?? []) as BpLaunchItem[],
-      ),
-      "company-overview": assembleCompanyConcept(conceptDoc?.content),
-      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
-      "financial-plan-financing": "",
-      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
-      "appendix-monthly-statements": "",
-    } as Record<string, string>)[meta.key] ?? "",
-    userContent: null,
-    isVisible: meta.defaultVisible,
-  }));
-
-  const planSnapshot = buildPlanSnapshotForExecutiveSummary(sections);
   const shopName = plan.plan_name ?? "this coffee shop";
   const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
   const founderBudget = String(onboarding?.budget ?? "not specified");
   const founderLocation = planContext.location_country ?? "not specified";
   const founderStage = String(onboarding?.stage ?? "not specified");
 
-  // TIM-2334: compute plan_state ONCE up-front. Every section in this batch
-  // sees the same ground-truth numbers (same engine, same currency, same
-  // capital stack, same year-by-year P&L) so the regenerated narrative is
-  // consistent across sections — not just between narrative and tables.
+  // TIM-2334 + TIM-2341: compute plan_state ONCE up-front so it can seed both
+  // the lender-ready autoContent assemblers below AND the ground-truth prompt
+  // payload every AI section receives. Same engine slices, same currency,
+  // same capital stack — narrative + tables read one source of truth.
   const planState = buildPlanState({
     shopName,
     financialModel,
@@ -193,6 +171,53 @@ export async function POST(): Promise<Response> {
     cityLabel: planContext.city_label,
   });
   const planStateGroundTruth = formatPlanStateForPrompt(planState);
+  const currencyCode = planState.meta.currency_code;
+  // TIM-2341: lender_metrics is null when the financial model is empty — the
+  // assemblers render a "fill in the financial workspace" placeholder rather
+  // than a misleading $0 table.
+  const lenderMetrics = financialModel ? planState.lender_metrics : null;
+
+  const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => ({
+    key: meta.key,
+    title: meta.title,
+    sourceLabel: meta.sourceLabel,
+    autoContent: ({
+      "executive-summary": "",
+      "opportunity-problem-solution": "",
+      "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
+      "opportunity-competition": "",
+      "opportunity-risks": assembleRisksPlaceholderSection(),
+      "execution-marketing-sales": assembleExecutionMarketingSales(
+        (menuRows ?? []) as BpMenuItem[],
+        toBpMarketingPlanning(marketingDoc?.content),
+      ),
+      "execution-operations": assembleExecutionOperations(
+        (locationRows ?? []) as BpLocationCandidate[],
+        (equipmentRows ?? []) as BpEquipmentItem[],
+        financialModel,
+      ),
+      "execution-milestones-metrics": assembleOperationsLaunch(
+        (launchRows ?? []) as BpLaunchItem[],
+      ),
+      "company-overview": assembleCompanyConcept(conceptDoc?.content),
+      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+      "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetrics, currencyCode),
+      "financial-plan-break-even": assembleBreakEvenSection(lenderMetrics, currencyCode),
+      "financial-plan-sensitivity": assembleSensitivitySection(lenderMetrics, currencyCode),
+      "financial-plan-financing": "",
+      "financial-plan-dscr": assembleDscrSection(lenderMetrics, currencyCode),
+      "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetrics, currencyCode),
+      "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetrics, currencyCode),
+      "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetrics, currencyCode),
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+      "appendix-monthly-statements": "",
+    } as Record<string, string>)[meta.key] ?? "",
+    userContent: null,
+    isVisible: meta.defaultVisible,
+  }));
+
+  const planSnapshot = buildPlanSnapshotForExecutiveSummary(sections);
 
   // Sparse-section detection: assembled data ≤ threshold means the model
   // mostly improvises from founder context. Surface this in the estimate so

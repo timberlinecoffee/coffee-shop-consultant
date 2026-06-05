@@ -38,13 +38,26 @@ export type BusinessPlanSectionKey =
   | "opportunity-problem-solution"
   | "opportunity-target-market"
   | "opportunity-competition"
+  // TIM-2341: dedicated Risks section. Investor critique on TIM-2315 flagged
+  // risks "buried in Statements paragraph"; a lender expects them stand-alone.
+  | "opportunity-risks"
   | "execution-marketing-sales"
   | "execution-operations"
   | "execution-milestones-metrics"
   | "company-overview"
   | "company-team"
   | "financial-plan-forecast"
+  // TIM-2341: lender-ready default sections. Each computes from plan_state's
+  // lender_metrics so narrative + tables read the same numbers. Investor
+  // critique on TIM-2315: "missing financial concepts that any lender expects".
+  | "financial-plan-unit-economics"
+  | "financial-plan-break-even"
+  | "financial-plan-sensitivity"
   | "financial-plan-financing"
+  | "financial-plan-dscr"
+  | "financial-plan-capex-schedule"
+  | "financial-plan-depreciation"
+  | "financial-plan-working-capital"
   | "financial-plan-statements"
   | "appendix-monthly-statements";
 
@@ -64,6 +77,8 @@ export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
   { key: "opportunity-problem-solution",   title: "Problem & Solution",     groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
   { key: "opportunity-target-market",      title: "Target Market",          groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Concept workspace" },
   { key: "opportunity-competition",        title: "Competition",            groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  // TIM-2341: dedicated Risks section.
+  { key: "opportunity-risks",              title: "Risks",                  groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
 
   { key: "execution-marketing-sales",      title: "Marketing & Sales",      groupKey: "execution",      defaultVisible: true,  sourceLabel: "Menu & Pricing + Marketing workspaces" },
   { key: "execution-operations",           title: "Operations",             groupKey: "execution",      defaultVisible: true,  sourceLabel: "Location & Equipment workspaces" },
@@ -75,9 +90,18 @@ export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
   // TIM-1496 owns Financial Plan subsection content/structure. Stubbed here so
   // the taxonomy is complete and the UI/PDF render the group with placeholder
   // subsections that route handlers can fill in.
-  { key: "financial-plan-forecast",        title: "Forecast",               groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
-  { key: "financial-plan-financing",       title: "Financing",              groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Your inputs" },
-  { key: "financial-plan-statements",      title: "Statements",             groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
+  { key: "financial-plan-forecast",          title: "Forecast",                  groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
+  // TIM-2341: unit economics buildup is visible ABOVE the P&L (per investor
+  // critique on TIM-2315). Order places it right after Forecast.
+  { key: "financial-plan-unit-economics",    title: "Unit Economics",            groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
+  { key: "financial-plan-break-even",        title: "Break-even Analysis",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
+  { key: "financial-plan-sensitivity",       title: "Sensitivity Analysis",      groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
+  { key: "financial-plan-financing",         title: "Financing",                 groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Your inputs" },
+  { key: "financial-plan-dscr",              title: "DSCR & Debt Service",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your loan terms" },
+  { key: "financial-plan-capex-schedule",    title: "CapEx Schedule",            groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Equipment workspace" },
+  { key: "financial-plan-depreciation",      title: "Depreciation Schedule",     groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your CapEx" },
+  { key: "financial-plan-working-capital",   title: "Working Capital",           groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
+  { key: "financial-plan-statements",        title: "Statements",                groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
 
   { key: "appendix-monthly-statements",    title: "Monthly Statements",     groupKey: "appendix",       defaultVisible: true,  sourceLabel: "Financials workspace" },
 ];
@@ -617,4 +641,209 @@ export function buildPlanSnapshotForExecutiveSummary(sections: BusinessPlanSecti
     })
     .filter(Boolean)
     .join("\n\n");
+}
+
+// ── TIM-2341: Lender-ready section assemblers ─────────────────────────────────
+// Each builds compact Markdown from a LenderMetricsBundle (plan_state) that
+// MarkdownBlocks renders cleanly in the PDF. When the underlying financial
+// model isn't filled in yet, returns a placeholder hint rather than failing.
+
+import type { LenderMetricsBundle } from "@/lib/business-plan/lender-metrics";
+
+const LENDER_PLACEHOLDER_PREFIX =
+  "Complete the Financials workspace and re-open the Business Plan to populate this section.";
+
+function fmtCentsBusinessPlan(cents: number, currencyCode: string): string {
+  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+}
+
+export function assembleUnitEconomicsSection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const u = metrics.unit_economics;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const lines: string[] = [];
+  lines.push("## Steady-State Revenue Buildup");
+  lines.push(`- Average ticket: ${c(u.avg_ticket_cents)}`);
+  lines.push(`- Customers per day (average open day): ${u.customers_per_day_avg.toLocaleString()}`);
+  lines.push(`- Open days per week: ${u.open_days_per_week}`);
+  lines.push(`- Daily revenue: ${c(u.steady_state_daily_revenue_cents)} (ticket × customers)`);
+  lines.push(`- Monthly revenue: ${c(u.steady_state_monthly_revenue_cents)} (daily × ${u.open_days_per_week} open days × 4.33 weeks)`);
+  lines.push(`- Annual revenue (steady state): ${c(u.steady_state_annual_revenue_cents)} (monthly × 12)`);
+  if (u.daypart_lines.length > 0) {
+    lines.push("");
+    lines.push("## Daypart Contribution");
+    for (const d of u.daypart_lines) {
+      lines.push(`- ${d.label} (${d.start_hour}:00–${d.end_hour}:00): ${d.revenue_pct}% of daily revenue, ${c(d.daily_revenue_cents)}/day, ${d.recommended_baristas} barista(s) recommended`);
+    }
+  }
+  if (u.product_lines.length > 0) {
+    lines.push("");
+    lines.push("## Product Mix");
+    for (const p of u.product_lines) {
+      lines.push(`- ${p.label}: ${p.revenue_pct}% of revenue (${c(p.monthly_revenue_cents)}/mo), ${p.cogs_pct}% COGS, ${c(p.monthly_gross_profit_cents)} gross profit/mo`);
+    }
+  }
+  return lines.join("\n");
+}
+
+export function assembleBreakEvenSection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const be = metrics.break_even;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const lines: string[] = [];
+  lines.push("## Steady-State Break-even");
+  lines.push(`- Monthly revenue required: **${c(be.monthly_revenue_required_cents)}**`);
+  lines.push(`- Customers per day required (at the average ticket): **${be.customers_per_day_required.toLocaleString()}**`);
+  lines.push(`- Monthly fixed costs (operating expenses + interest): ${c(be.monthly_fixed_costs_cents)}`);
+  lines.push(`- Variable cost rate (blended COGS as a percentage of revenue): ${be.variable_cost_rate_pct}%`);
+  if (be.first_profitable_month_index != null) {
+    const m = be.first_profitable_month_index;
+    const yr = Math.ceil(m / 12);
+    const monthInYr = ((m - 1) % 12) + 1;
+    lines.push(`- First profitable month in the projection: month ${m} of operations (Year ${yr}, month ${monthInYr})`);
+  } else {
+    lines.push(`- No profitable month within the five-year projection window — see Sensitivity Analysis for the levers most likely to close the gap.`);
+  }
+  lines.push("");
+  lines.push("## Method");
+  lines.push("Break-even revenue is solved against the steady-state month set (months 9 through 12 of Year 1, past the ramp). The formula is monthly fixed cost divided by one minus the variable cost rate. Customers per day required is the implied volume at the chosen average ticket and weekly open-day count.");
+  return lines.join("\n");
+}
+
+export function assembleSensitivitySection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const s = metrics.sensitivity;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const cSigned = (n: number) => `${n >= 0 ? "+" : "−"}${fmtCentsBusinessPlan(Math.abs(n), currencyCode)}`;
+  const lines: string[] = [];
+  lines.push(`## Baseline`);
+  lines.push(`- Year 1 net income: **${c(s.baseline_y1_net_income_cents)}**`);
+  lines.push(`- Year 1 revenue: ${c(s.baseline_y1_revenue_cents)}`);
+  lines.push("");
+  lines.push(`## Scenarios (Y1 net income at each perturbation)`);
+  for (const sc of s.scenarios) {
+    lines.push(`- ${sc.label}: ${c(sc.y1_net_income_cents)} (Δ ${cSigned(sc.y1_net_income_delta_cents)})`);
+  }
+  lines.push("");
+  lines.push("## Method");
+  lines.push("Every scenario re-runs the same projection engine that drives the P&L tables, with one input perturbed and every other assumption held constant. COGS ±20% means the COGS rate moves by twenty percent of itself, not twenty absolute percentage points — so a 30% baseline becomes 36% (+20% relative) or 24% (−20% relative). Ramp scenarios shift the post-opening ramp window forward or backward by three months.");
+  return lines.join("\n");
+}
+
+export function assembleDscrSection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const d = metrics.dscr;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const lines: string[] = [];
+  lines.push(`## Coverage Standard`);
+  lines.push(`Most commercial and SBA underwriters require a Debt Service Coverage Ratio (DSCR) of at least ${d.threshold.toFixed(2)}× — meaning earnings before interest, taxes, depreciation, and amortization (EBITDA) must cover annual debt service (principal + interest) by at least ${Math.round((d.threshold - 1) * 100)} percent above the obligation itself.`);
+  lines.push("");
+  if (!d.has_term_debt) {
+    lines.push(`## DSCR Not Applicable`);
+    lines.push("No term debt sits in the capital stack as planned, so DSCR is not the relevant coverage metric. Lenders will instead evaluate the equity coverage of the project and the founder's contingency reserve.");
+    return lines.join("\n");
+  }
+  lines.push(`## Year-by-Year DSCR`);
+  for (const y of d.years) {
+    const flag = y.meets_threshold ? "meets the threshold" : "**below threshold**";
+    lines.push(`- Year ${y.year}: EBITDA ${c(y.ebitda_cents)} ÷ Debt service ${c(y.debt_service_cents)} = **${y.dscr_ratio.toFixed(2)}×** (${flag})`);
+  }
+  if (d.notes.length > 0) {
+    lines.push("");
+    lines.push(`## Notes`);
+    for (const n of d.notes) lines.push(`- ${n}`);
+  }
+  return lines.join("\n");
+}
+
+export function assembleCapexScheduleSection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const cx = metrics.capex;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const lines: string[] = [];
+  if (cx.rows.length === 0) {
+    lines.push("## CapEx Schedule");
+    lines.push("No capital expenditures are budgeted in the current financial model. Add equipment in the Equipment & Supplies workspace, or capex lines in the Financials workspace, to populate this schedule.");
+    return lines.join("\n");
+  }
+  lines.push(`## CapEx Schedule — total ${c(cx.total_cents)}`);
+  lines.push("");
+  for (const r of cx.rows) {
+    lines.push(`- **${r.label}**: ${c(r.cost_cents)} · ${r.useful_life_years}-year useful life · placed in service month ${r.purchase_month_index} · ${r.asset_category.replace(/_/g, " ")}`);
+  }
+  return lines.join("\n");
+}
+
+export function assembleDepreciationScheduleSection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const dp = metrics.depreciation;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const lines: string[] = [];
+  if (dp.rows.length === 0) {
+    lines.push("## Depreciation Schedule");
+    lines.push("No depreciable assets are budgeted in the current financial model. Add equipment or build-out to the financial workspace to populate this schedule.");
+    return lines.join("\n");
+  }
+  lines.push(`## Annual Depreciation — total ${c(dp.total_annual_depreciation_cents)}/yr`);
+  lines.push("");
+  for (const r of dp.rows) {
+    lines.push(`- **${r.label}**: ${c(r.cost_cents)} ÷ ${r.useful_life_years} years = ${c(r.annual_depreciation_cents)}/yr (straight-line)`);
+  }
+  lines.push("");
+  lines.push("## Method");
+  lines.push("All depreciable assets are amortized straight-line over their estimated useful life, beginning the month the asset is placed in service. This matches the depreciation expense the projected P&L shows in the Statements section.");
+  return lines.join("\n");
+}
+
+export function assembleWorkingCapitalSection(
+  metrics: LenderMetricsBundle | null,
+  currencyCode = "USD",
+): string {
+  if (!metrics) return LENDER_PLACEHOLDER_PREFIX;
+  const wc = metrics.working_capital;
+  const c = (n: number) => fmtCentsBusinessPlan(n, currencyCode);
+  const lines: string[] = [];
+  lines.push("## Working Capital Requirement");
+  lines.push(`- Inventory days on hand: **${wc.days_inventory_on_hand}** → ${c(wc.inventory_required_cents)}`);
+  lines.push(`- Days payable (vendor terms): **${wc.days_payable}** → ${c(wc.accounts_payable_cents)}`);
+  lines.push(`- Days receivable (customer/wholesale terms): **${wc.days_receivable}** → ${c(wc.accounts_receivable_cents)}`);
+  lines.push(`- Net working capital tied up in operations (inventory + receivables − payables): **${c(wc.net_working_capital_cents)}**`);
+  lines.push("");
+  lines.push("## Method");
+  lines.push(`Inventory and payables are computed against the Year 1 daily COGS run rate (${c(wc.daily_cogs_cents)}/day). Receivables are computed against daily revenue (${c(wc.daily_revenue_cents)}/day). Food-service operators typically need a positive net working capital buffer at opening so the first inventory drop is funded before the first weeks of cash receipts catch up.`);
+  return lines.join("\n");
+}
+
+export function assembleRisksPlaceholderSection(): string {
+  // Risks are generated by the AI prompt (see business-plan-prompts.ts).
+  // When no AI draft exists yet, render a structured prompt so the operator
+  // knows what to fill in.
+  const lines: string[] = [];
+  lines.push("Click Generate to produce a categorized risk register from your plan data. The draft covers four lender-standard risk categories:");
+  lines.push("");
+  lines.push("- **Operational**: opening delays, staffing gaps, supply disruption, equipment failures.");
+  lines.push("- **Market**: customer-acquisition pace, competitor moves, neighborhood foot-traffic changes.");
+  lines.push("- **Financial**: cost inflation outpacing pricing, longer-than-expected ramp, debt-service squeeze.");
+  lines.push("- **Regulatory**: health-code compliance, lease assignment clauses, licensing timelines.");
+  lines.push("");
+  lines.push("Each risk should pair a description with the owner's mitigation: insurance carried, reserve set aside, training cadence, or a specific contractual protection.");
+  return lines.join("\n");
 }
