@@ -283,10 +283,21 @@ export default async function BusinessPlanPrintPage({
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            /* TIM-2333: workspace chrome (sidebar + topbar) carries the
+               Groundwork mark; the printable should look like the user's
+               own document at every magnification. The action bar above
+               already provides a "Back to editing" link, so the workspace
+               nav is redundant on this route. Hide in all media. */
+            aside[aria-label="Workspace navigation"],
+            nav[aria-label="Workspace navigation"] { display: none !important; }
+            /* Workspace layout puts the lg:pl-[224px] padding on the flex-1
+               wrapper, not on <main>. With the sidebar hidden, undo that
+               offset so the printable centers correctly on screen. */
+            @media (min-width: 1024px) {
+              div.flex.min-h-screen > div.flex-1 { padding-left: 0 !important; }
+            }
             @media print {
-              .no-print,
-              aside[aria-label="Workspace navigation"],
-              nav[aria-label="Workspace navigation"] { display: none !important; }
+              .no-print { display: none !important; }
               body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               @page { margin: 19mm; size: A4; }
               .section-card { break-inside: avoid; orphans: 3; widows: 3; }
