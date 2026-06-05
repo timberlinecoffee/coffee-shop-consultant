@@ -25,6 +25,24 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     return params.get("utm_source") || params.get("ref") || "direct";
   }
 
+  // TIM-2327: preserve `?next=` deep links through the OAuth round-trip so a
+  // user arriving at /login?next=/workspace/business-plan returns to that page
+  // after Google sign-in. The callback at /auth/callback enforces an allowlist
+  // (SAFE_NEXT_PREFIXES), so we forward whatever the user passed and let the
+  // server validate.
+  function getNextParam(): string | null {
+    const raw = new URLSearchParams(window.location.search).get("next");
+    if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
+    return raw;
+  }
+
+  function buildOAuthCallbackUrl(signupSource: string): string {
+    const params = new URLSearchParams({ signup_source: signupSource });
+    const next = getNextParam();
+    if (next) params.set("next", next);
+    return `${window.location.origin}/auth/callback?${params.toString()}`;
+  }
+
   async function handleGoogleSignIn() {
     if (mode === "signup" && !consent) {
       setError("Please agree to the Terms of Service and Privacy Policy to continue.");
@@ -37,7 +55,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?signup_source=${encodeURIComponent(signupSource)}`,
+        redirectTo: buildOAuthCallbackUrl(signupSource),
         // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
         // OAuth honors the project-level CAPTCHA setting on the initiate call.
         ...(turnstileToken ? { captchaToken: turnstileToken } : {}),

@@ -1,18 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-
-const SAFE_NEXT_PREFIXES = ["/dashboard", "/onboarding", "/plan", "/account", "/reset-password"];
-
-function resolveNext(rawNext: string | null): string | null {
-  if (!rawNext) return null;
-  if (!rawNext.startsWith("/")) return null;
-  if (rawNext.startsWith("//")) return null;
-  return SAFE_NEXT_PREFIXES.some(
-    prefix => rawNext === prefix || rawNext.startsWith(`${prefix}/`) || rawNext.startsWith(`${prefix}?`)
-  )
-    ? rawNext
-    : null;
-}
+import { resolveNext } from "./safe-next";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
