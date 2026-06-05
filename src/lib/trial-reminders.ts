@@ -141,7 +141,8 @@ export function selectDueReminders(
 }
 
 // Plan feature bullets as rendered in the day5/day8 emails. Reconciled to
-// TIM-1944 plan rev 2 (Pro feature swap; credits equalized to 100/mo).
+// TIM-1898 plan rev 4 / TIM-2309 (Pro feature mix; Starter 100 / Pro 1,000
+// AI planning credits per month).
 export const PLAN_FEATURE_LIST: Record<string, string[]> = {
   starter: [
     "All planning workspaces",
@@ -156,7 +157,7 @@ export const PLAN_FEATURE_LIST: Record<string, string[]> = {
     "Deeper insights: deep market research and longer Scout chains",
     "Unlimited locations and projects",
     "Priority support",
-    "100 AI planning credits/month",
+    "1,000 AI planning credits/month",
   ],
 };
 

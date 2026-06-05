@@ -43,19 +43,19 @@ for (const viewport of [
     if (checked !== "true") throw new Error(`aria-checked=${checked}`);
   });
 
-  await check("landing: default cards show annual price ($33 / $83)", async () => {
+  await check("landing: default cards show annual price ($31 / $79)", async () => {
     const html = await page.locator("#pricing").innerText();
-    if (!html.includes("$33")) throw new Error("Starter $33 not visible");
-    if (!html.includes("$83")) throw new Error("Pro $83 not visible");
-    // Match $39 or $99 only when NOT followed by another digit, so $399 / $999 don't false-positive.
+    if (!html.includes("$31")) throw new Error("Starter $31 not visible");
+    if (!html.includes("$79")) throw new Error("Pro $79 not visible");
+    // Match $39 or $99 only when NOT followed by another digit, so $375 / $950 don't false-positive.
     if (/\$39(?!\d)/.test(html) || /\$99(?!\d)/.test(html))
       throw new Error("monthly price leaked into annual view");
   });
 
-  await check("landing: Save 15% pill present on toggle and cards", async () => {
+  await check("landing: Save 20% pill present on toggle and cards", async () => {
     const txt = await page.locator("#pricing").innerText();
-    const occurrences = (txt.match(/Save 15%/g) || []).length;
-    if (occurrences < 1) throw new Error("Save 15% missing");
+    const occurrences = (txt.match(/Save 20%/g) || []).length;
+    if (occurrences < 1) throw new Error("Save 20% missing");
   });
 
   await page.screenshot({ path: `${SHOTS}/tim2280-landing-annual-${viewport.name}.png`, fullPage: false });
@@ -68,7 +68,7 @@ for (const viewport of [
     const txt = await page.locator("#pricing").innerText();
     if (!/\$39(?!\d)/.test(txt)) throw new Error("Starter $39 missing");
     if (!/\$99(?!\d)/.test(txt)) throw new Error("Pro $99 missing");
-    if (txt.includes("$33") || txt.includes("$83")) throw new Error("annual price leaked into monthly view");
+    if (txt.includes("$31") || txt.includes("$79")) throw new Error("annual price leaked into monthly view");
   });
 
   await page.screenshot({ path: `${SHOTS}/tim2280-landing-monthly-${viewport.name}.png`, fullPage: false });
@@ -99,12 +99,12 @@ for (const viewport of [
     if (!cls.includes("bg-[var(--teal)]")) throw new Error(`class=${cls}`);
   });
 
-  await check("/pricing: cards default to annual ($33 + $83 + $399 + $999)", async () => {
+  await check("/pricing: cards default to annual ($31 + $79 + $375 + $950)", async () => {
     const txt = await page.locator("body").innerText();
-    if (!txt.includes("$33")) throw new Error("Starter $33 missing");
-    if (!txt.includes("$83")) throw new Error("Pro $83 missing");
-    if (!txt.includes("$399/year")) throw new Error("$399/year missing");
-    if (!txt.includes("$999/year")) throw new Error("$999/year missing");
+    if (!txt.includes("$31")) throw new Error("Starter $31 missing");
+    if (!txt.includes("$79")) throw new Error("Pro $79 missing");
+    if (!txt.includes("$375/year")) throw new Error("$375/year missing");
+    if (!txt.includes("$950/year")) throw new Error("$950/year missing");
   });
 
   await page.screenshot({ path: `${SHOTS}/tim2280-pricing-default-${viewport.name}.png`, fullPage: false });

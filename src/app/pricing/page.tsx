@@ -25,18 +25,20 @@ type Tier = {
 
 // TIM-1902: collapsed to two tiers (Starter / Pro) with a 7-day card-required
 // free trial that unlocks Pro features for every trialist.
-// TIM-1954 (TIM-1944 plan rev 2 Decision 1): annual prices $399 / $999 with a
-// "Save 15% with annual" framing; Pro credits equalized to 100/mo; Pro feature
-// mix swapped to Coffee Shop World + Office Hours + deeper insights + priority
-// support + multi-project.
+// TIM-2309 (TIM-1898 plan rev 4 / TIM-2306, approval 47745142, 2026-06-04):
+// annual prices re-priced at 20% discount — Starter $375/yr ($31/mo billed
+// annually) and Pro $950/yr ($79/mo billed annually). Pro grant restored to
+// 1,000 AI planning credits/month (10× Starter) so the Pro upgrade is
+// compelling on credits alone. Three one-time credit packs available to
+// either tier: 100/$19, 500/$79, 1,500/$199 (see /lib/credits/packs.ts).
 const TIERS: Tier[] = [
   {
     key: "starter",
     name: "Starter",
     monthlyPrice: "$39",
-    annualPrice: "$33",
-    annualBilled: "$399/year",
-    annualSavings: "Save 15%",
+    annualPrice: "$31",
+    annualBilled: "$375/year",
+    annualSavings: "Save 20%",
     description: "Everything to plan and open one shop.",
     highlight: false,
     features: [
@@ -59,9 +61,9 @@ const TIERS: Tier[] = [
     key: "pro",
     name: "Pro",
     monthlyPrice: "$99",
-    annualPrice: "$83",
-    annualBilled: "$999/year",
-    annualSavings: "Save 15%",
+    annualPrice: "$79",
+    annualBilled: "$950/year",
+    annualSavings: "Save 20%",
     description: "The full toolkit for owners who want every edge.",
     highlight: true,
     features: [
@@ -71,7 +73,7 @@ const TIERS: Tier[] = [
       "Deeper insights: deep market research and longer Scout chains",
       "Unlimited locations and projects",
       "Priority support",
-      "100 AI planning credits/month",
+      "1,000 AI planning credits/month",
     ],
     notIncluded: [],
     cta: "Start 7-Day Free Trial",
@@ -90,11 +92,11 @@ const FAQ = [
   },
   {
     q: "What is the annual plan billed as?",
-    a: "Annual plans are charged as a single payment at the start of each year and save about 15% versus paying monthly.",
+    a: "Annual plans are charged as a single payment at the start of each year and save 20% versus paying monthly. You can also top up with one-time credit packs (100, 500, or 1,500 credits) at any time without changing your plan.",
   },
   {
     q: "What counts as an AI planning credit?",
-    a: "Credits are debited based on how much work Scout does on each turn — a short reply costs about one credit and a long research turn costs more. Trial accounts get 75 credits up front. Starter and Pro both include 100/month; Pro's value is in the additional features (Coffee Shop World, Office Hours, deeper insights, priority support, multi-project).",
+    a: "Credits are debited based on how much work Scout does on each turn — a short reply costs about one credit and a long research turn costs more. Trial accounts get 75 credits up front. Starter includes 100/month, Pro includes 1,000/month. Need more this month? Buy a one-time pack (100 / 500 / 1,500 credits) without changing your plan.",
   },
   {
     q: "What is Weekly Live Office Hours?",
@@ -256,7 +258,7 @@ function PricingPageInner() {
             >
               Annual
               <span className="ml-2 text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
-                Save 15%
+                Save 20%
               </span>
             </button>
           </div>
