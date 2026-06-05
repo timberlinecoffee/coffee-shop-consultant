@@ -231,6 +231,146 @@ test("formatPlanStateForPrompt covers at least 20 numeric claims (acceptance #2)
   assert.match(text, /HEADCOUNT \d+/);
 });
 
+// ── TIM-2339: region-aware tax + lender plumbing ──────────────────────────────
+
+function fixtureWith(loc, overrides = {}) {
+  return {
+    ...FIXTURE_INPUT,
+    financialModel: {
+      forecast_inputs: {
+        ...FIXTURE_MP,
+        // Reset to engine default so the override fires and the assertions can
+        // check that plan_state actually swapped in the regional rate.
+        income_tax_pct: 25,
+      },
+      startup_costs: FIXTURE_MP.startup_costs,
+    },
+    locationCandidates: [loc],
+    ...overrides,
+  };
+}
+
+test("plan_state Calgary fixture: Alberta CCPC tax rate replaces engine default (acceptance #1)", () => {
+  const inp = fixtureWith({
+    id: "L-CGY",
+    name: "Beaver & Beef Calgary",
+    address: "1402 14 St SW, Calgary, AB T3C 1C9",
+    city: "Calgary",
+    country: "CA",
+    neighborhood: "Beltline",
+    sq_ft: 1200,
+    asking_rent_cents: 488000,
+    status: "chosen",
+    notes: null,
+  });
+  const st = buildPlanState(inp);
+  assert.equal(st.region.country, "CA");
+  assert.equal(st.region.state_or_province, "AB");
+  assert.equal(st.tax.region_profile.entity_type, "CA-CCPC");
+  // 11% (Alberta CCPC small-business rate), not the generic 25%.
+  assert.equal(st.tax.income_tax_pct, 11);
+  assert.equal(st.tax.engine_default_overridden, true);
+  // Y1 net income recomputes through the engine with the new rate — must NOT
+  // equal the 25%-rate slice rollup (sanity check the override actually flowed).
+  const y1 = st.years.find((y) => y.year === 1);
+  assert.ok(y1);
+});
+
+test("plan_state Calgary fixture: lender block forbids SBA, allows BDC (acceptance #4)", () => {
+  const inp = fixtureWith({
+    id: "L-CGY", name: "Beaver & Beef Calgary", address: "1402 14 St SW, Calgary, AB",
+    city: "Calgary", country: "CA", neighborhood: "Beltline",
+    sq_ft: 1200, asking_rent_cents: 488000, status: "chosen", notes: null,
+  });
+  const st = buildPlanState(inp);
+  assert.ok(st.lender_profile);
+  assert.ok(st.lender_profile.forbidden.some((f) => /SBA/i.test(f)));
+  assert.ok(st.lender_profile.allowed.some((a) => /BDC/i.test(a)));
+  const text = formatPlanStateForPrompt(st);
+  // The ground-truth block carries the SBA-forbidden directive AND the
+  // Alberta CCPC tax label so the narrative LLM cannot regress.
+  assert.match(text, /MUST NOT reference/);
+  assert.match(text, /SBA/);
+  assert.match(text, /BDC/);
+  assert.match(text, /Alberta CCPC/);
+});
+
+test("plan_state Seattle fixture: US C-corp profile flips on US country (acceptance #2)", () => {
+  const inp = fixtureWith({
+    id: "L-SEA", name: "Pioneer Square Coffee", address: "1400 5th Ave, Seattle, WA 98101",
+    city: "Seattle", country: "US", neighborhood: "Downtown",
+    sq_ft: 1500, asking_rent_cents: 700000, status: "chosen", notes: null,
+  });
+  const st = buildPlanState(inp);
+  assert.equal(st.region.country, "US");
+  assert.equal(st.region.state_or_province, "WA");
+  assert.equal(st.tax.region_profile.entity_type, "US-CCorp");
+  // WA has no state corporate income tax → federal 21% only.
+  assert.equal(st.tax.income_tax_pct, 21);
+  assert.equal(st.tax.engine_default_overridden, true);
+  // Lender block: SBA allowed, BDC forbidden.
+  assert.ok(st.lender_profile.allowed.some((a) => /SBA/i.test(a)));
+  assert.ok(st.lender_profile.forbidden.some((f) => /BDC/i.test(f)));
+});
+
+test("plan_state London fixture: UK Ltd profile flips on GB country (acceptance #3)", () => {
+  const inp = fixtureWith({
+    id: "L-LDN", name: "Soho Espresso", address: "10 Carnaby St, London W1F 9PR",
+    city: "London", country: "GB", neighborhood: "Soho",
+    sq_ft: 850, asking_rent_cents: 1500000, status: "chosen", notes: null,
+  });
+  const st = buildPlanState(inp);
+  assert.equal(st.region.country, "GB");
+  assert.equal(st.tax.region_profile.entity_type, "UK-Ltd");
+  // 19% small-profits rate, applied because Y1 income is well below £50K
+  // small-profits threshold (or in many cases negative in Y1 anyway).
+  assert.equal(st.tax.income_tax_pct, 19);
+  assert.equal(st.tax.engine_default_overridden, true);
+  // Lender block: British Business Bank allowed, SBA + BDC forbidden.
+  const text = formatPlanStateForPrompt(st);
+  assert.match(text, /British Business Bank/);
+  assert.match(text, /SBA/);
+  assert.match(text, /BDC/);
+});
+
+test("plan_state does NOT override income_tax_pct when user customized it", () => {
+  // User-set 30% — region-aware override must respect the explicit choice.
+  const inp = fixtureWith({
+    id: "L-CGY", name: "Beaver & Beef Calgary", address: "Calgary, AB",
+    city: "Calgary", country: "CA", neighborhood: "Beltline",
+    sq_ft: 1200, asking_rent_cents: 488000, status: "chosen", notes: null,
+  });
+  inp.financialModel = {
+    forecast_inputs: { ...FIXTURE_MP, income_tax_pct: 30 },
+    startup_costs: FIXTURE_MP.startup_costs,
+  };
+  const st = buildPlanState(inp);
+  assert.equal(st.tax.income_tax_pct, 30);
+  assert.equal(st.tax.engine_default_overridden, false);
+  // Region profile is still surfaced for the narrative; the rate just isn't
+  // forced to it.
+  assert.equal(st.region.country, "CA");
+  assert.equal(st.tax.region_profile.entity_type, "CA-CCPC");
+});
+
+test("plan_state with no country: region/lender are null, tax block uses model defaults", () => {
+  // locationCandidates with no country and no locationCountry → region is null.
+  const inp = {
+    ...FIXTURE_INPUT,
+    locationCandidates: [
+      { id: "L0", name: "TBD", address: "TBD", neighborhood: null, sq_ft: null,
+        asking_rent_cents: null, status: "shortlisted", notes: null },
+    ],
+  };
+  const st = buildPlanState(inp);
+  assert.equal(st.region, null);
+  assert.equal(st.lender_profile, null);
+  assert.equal(st.tax.region_profile, null);
+  assert.equal(st.tax.engine_default_overridden, false);
+  // Model's existing rate passes through unchanged.
+  assert.equal(st.tax.income_tax_pct, FIXTURE_MP.income_tax_pct);
+});
+
 test("buildPlanState handles an empty/zero financial model without throwing", () => {
   // New plans will have nearly-empty financial_models — plan_state should
   // surface zeros, not blow up the prompt builder.
