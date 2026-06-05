@@ -455,9 +455,19 @@ export function AIReviewModal({
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  // Reset card states when suggestions change.
+  // Reconcile card states when suggestions change. TIM-2331: streaming flows
+  // (Regenerate all) grow the suggestions array one card at a time -- we must
+  // preserve accept/reject choices on cards the user has already reviewed.
+  // Only add cards for newly-arrived IDs and drop cards whose IDs are gone.
   useEffect(() => {
-    setCardStates(new Map(suggestions.map((s) => [s.id, initialCard(s)])));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCardStates((prev) => {
+      const next = new Map<string, CardState>();
+      for (const s of suggestions) {
+        next.set(s.id, prev.get(s.id) ?? initialCard(s));
+      }
+      return next;
+    });
     setIsApplying(false);
     setApplyError(null);
   }, [suggestions]);

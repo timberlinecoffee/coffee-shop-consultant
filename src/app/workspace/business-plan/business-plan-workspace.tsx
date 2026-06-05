@@ -25,6 +25,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { RegenerateAllButton } from "./regenerate-all-button";
 
 interface Props {
   planId: string;
@@ -141,7 +142,7 @@ export function BusinessPlanWorkspace({
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  const { openAIReviewModal, updateAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any section has user content.
@@ -400,6 +401,27 @@ export function BusinessPlanWorkspace({
                   {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
                 </span>
               </WorkspaceActionButton>
+              {/* TIM-2331: Regenerate every section from current platform data. */}
+              <RegenerateAllButton
+                disabled={!canEdit || streamingKey !== null}
+                getCurrentSections={() =>
+                  sections.map((s) => ({
+                    key: s.key,
+                    title: s.title,
+                    currentContent: s.userContent ?? s.autoContent,
+                  }))
+                }
+                openAIReviewModal={openAIReviewModal}
+                updateAIReviewModal={updateAIReviewModal}
+                onSectionApplied={(key, finalValue) => {
+                  setSections((prev) =>
+                    prev.map((s) =>
+                      s.key === key ? { ...s, userContent: finalValue } : s,
+                    ),
+                  );
+                }}
+                onError={(msg) => setGlobalError(msg)}
+              />
             </>
           }
         />
