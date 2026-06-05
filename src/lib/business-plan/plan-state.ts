@@ -37,6 +37,16 @@ import {
   formatVerticalReportForPrompt,
   type CoffeeShopVerticalReport,
 } from "./coffee-shop-model.ts";
+import {
+  resolveRegion,
+  getTaxProfile,
+  getLenderProfile,
+  effectiveIncomeTaxPct,
+  formatRegionForPrompt,
+  type Region,
+  type TaxProfile,
+  type LenderProfile,
+} from "./tax-profiles.ts";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -132,6 +142,14 @@ export interface PlanStateCapex {
 export interface PlanStateTax {
   income_tax_pct: number;
   sales_tax_pct: number;
+  // TIM-2339: When a region was resolved, the engine's tax rate is set to the
+  // region-aware value (e.g. Alberta CCPC ~11% for Y1, not the generic 25%).
+  // engine_default_overridden is true when the user was at the engine default
+  // and we substituted the regional rate.
+  engine_default_overridden: boolean;
+  // Region-aware tax profile (entity type, tiered rates, sales-tax structure).
+  // Null when no region was resolvable from the workspace inputs.
+  region_profile: TaxProfile | null;
 }
 
 export interface PlanStateYearSummary {
@@ -168,6 +186,14 @@ export interface PlanState {
   opex: PlanStateOpex;
   capex: PlanStateCapex;
   tax: PlanStateTax;
+  // TIM-2339: resolved region (country + state/province) and lender profile.
+  // Drives the tax rate the engine uses for Y1 net income, and the lender
+  // references the narrative is allowed to cite. Null when the workspace has
+  // no country set yet — narrative falls back to a generic tax rate and the
+  // engine default. The narrative is forbidden from referencing SBA in non-US
+  // plans because of the lender block surfaced in formatPlanStateForPrompt.
+  region: Region | null;
+  lender_profile: LenderProfile | null;
   years: PlanStateYearSummary[];          // years 1..5 (sparse if upstream model is shorter)
   break_even: PlanStateBreakEven;
   // TIM-2338: coffee-shop vertical model report — present when the financial
@@ -191,6 +217,12 @@ export interface BuildPlanStateInputs {
   // Optional precomputed blended menu COGS — same value /generate passes to
   // assembleFinancialPlan, kept here so we don't have to re-walk the menu rows.
   menuBlendedCogsPct: number | null;
+  // TIM-2339: country (ISO-2) resolved by loadPlanContext from
+  // plan_hiring_settings.hiring_country OR a signed location_candidate. When
+  // provided, plan_state computes a region-aware tax profile and lender list
+  // and OVERRIDES mp.income_tax_pct (only when the user is still on the engine
+  // default 25%) so Y1 tax matches the regional rate.
+  locationCountry?: string | null;
 }
 
 // ── Builder ──────────────────────────────────────────────────────────────────
@@ -265,6 +297,46 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     mp = applyCoffeeShopVertical(mp, verticalCfg).mp;
   }
 
+  // TIM-2339: resolve region BEFORE running the engine so we can override the
+  // engine's flat 25% default with a region-aware rate (Alberta CCPC ~11%, US
+  // C-corp 21% + state, UK Ltd 19%, etc.). The override only fires when the
+  // user is at the engine default — if they explicitly customized the rate in
+  // the financials workspace, that customization wins.
+  const chosenForRegion = (inp.locationCandidates ?? []).find((c) => c.status === "chosen")
+    ?? (inp.locationCandidates ?? [])[0]
+    ?? null;
+  // location_candidates carry `city` + `country` via the TIM-1145 address
+  // autocomplete migration. They're not on the BpLocationCandidate type yet
+  // (only `address` is) — read them defensively from the row object.
+  const rawCity = chosenForRegion
+    ? (chosenForRegion as unknown as { city?: string | null }).city ?? null
+    : null;
+  const rawCountry = (chosenForRegion as unknown as { country?: string | null } | null)?.country
+    ?? inp.locationCountry
+    ?? null;
+  const region = resolveRegion({
+    country: rawCountry,
+    city: rawCity,
+    address: chosenForRegion?.address ?? null,
+  });
+
+  const engineDefaultTaxPct = 25; // financial-projection.ts default — keep in sync
+  let engineDefaultOverridden = false;
+  let regionTaxProfile: TaxProfile | null = null;
+  let regionLenderProfile: LenderProfile | null = null;
+  if (region) {
+    regionTaxProfile = getTaxProfile(region);
+    regionLenderProfile = getLenderProfile(region);
+    if (mp.income_tax_pct === engineDefaultTaxPct) {
+      // Use the small-business rate for the initial slice pass — most new
+      // shops sit well under the SBD threshold in Y1. effectiveIncomeTaxPct
+      // re-checks below once we know projected Y1 income, in case a bigger
+      // shop's projections push above the threshold.
+      mp = { ...mp, income_tax_pct: regionTaxProfile.small_business_rate_pct };
+      engineDefaultOverridden = true;
+    }
+  }
+
   // 2. Compute per-month slices — exactly the rollup the financial table renderer uses.
   const totalEquipCostUsd = (inp.equipment ?? []).reduce(
     (sum, e) => sum + (e.cost_usd ?? 0), 0
@@ -273,9 +345,23 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     total_cost_cents: Math.round(totalEquipCostUsd * 100),
     financed_cost_cents: Math.round(totalEquipCostUsd * 100),
   };
-  const slices: MonthlySlice[] = computeMonthlySlices(mp, equipSummary, {}, {
+  let slices: MonthlySlice[] = computeMonthlySlices(mp, equipSummary, {}, {
     menu_blended_cogs_pct: inp.menuBlendedCogsPct ?? null,
   });
+
+  // TIM-2339: if the initial Y1 projected income blows past the small-business
+  // threshold (rare for new shops, but possible), re-run with the general rate.
+  if (engineDefaultOverridden && regionTaxProfile && regionTaxProfile.small_business_threshold_cents != null) {
+    const y1Pre = slices.filter((s) => s.year === 1);
+    const projectedY1Income = y1Pre.reduce((a, r) => a + r.net_income_cents, 0);
+    const effective = effectiveIncomeTaxPct(regionTaxProfile, projectedY1Income);
+    if (Math.abs(effective - mp.income_tax_pct) > 0.001) {
+      mp = { ...mp, income_tax_pct: effective };
+      slices = computeMonthlySlices(mp, equipSummary, {}, {
+        menu_blended_cogs_pct: inp.menuBlendedCogsPct ?? null,
+      });
+    }
+  }
 
   // 3. Capital stack — funding_sources is the source of truth.
   const fundingSources = mp.funding_sources ?? [];
@@ -417,6 +503,8 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
   const tax: PlanStateTax = {
     income_tax_pct: mp.income_tax_pct ?? 0,
     sales_tax_pct: mp.sales_tax_pct ?? 0,
+    engine_default_overridden: engineDefaultOverridden,
+    region_profile: regionTaxProfile,
   };
 
   // 12. Years 1..5 — summed from the same slices the financial tables use,
@@ -463,6 +551,8 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     opex,
     capex,
     tax,
+    region,
+    lender_profile: regionLenderProfile,
     years,
     break_even: breakEven,
     vertical_model: verticalModel,
@@ -579,8 +669,14 @@ export function formatPlanStateForPrompt(state: PlanState): string {
 
   // Tax
   lines.push(`Tax`);
-  lines.push(`- Income tax: ${state.tax.income_tax_pct}%`);
+  lines.push(`- Income tax (rate the financial tables use for Y1 tax expense): ${state.tax.income_tax_pct}%`);
   lines.push(`- Sales tax (pass-through, not on P&L): ${state.tax.sales_tax_pct}%`);
+  if (state.tax.region_profile) {
+    lines.push(`- Entity type the rate assumes: ${state.tax.region_profile.entity_label}`);
+    if (state.tax.engine_default_overridden) {
+      lines.push(`- Rate was set from the region profile (${state.tax.region_profile.region_label}); the workspace was on the engine default before this regeneration.`);
+    }
+  }
   lines.push("");
 
   // 5-year summary
@@ -609,6 +705,16 @@ export function formatPlanStateForPrompt(state: PlanState): string {
   if (state.vertical_model) {
     lines.push("");
     lines.push(formatVerticalReportForPrompt(state.vertical_model, cc));
+  }
+
+  // TIM-2339: region + lender block. Investor critique called out the regen
+  // referencing SBA financing in a Calgary plan and applying a generic 25%
+  // tax rate. This block forces the narrative to (a) cite only lenders that
+  // exist in the region and (b) match the financial-table tax expense the
+  // engine just computed.
+  if (state.region && state.tax.region_profile && state.lender_profile) {
+    lines.push("");
+    lines.push(formatRegionForPrompt(state.region, state.tax.region_profile, state.lender_profile));
   }
 
   return lines.join("\n").trim();
