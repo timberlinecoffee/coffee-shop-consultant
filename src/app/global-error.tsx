@@ -55,7 +55,7 @@ export default function GlobalError({
                 marginBottom: "1.5rem",
               }}
             >
-              We ran into an unexpected error. Your plan data is safe — please refresh to continue.
+              We ran into an unexpected error. Your plan data is safe. Please refresh to continue.
             </p>
             <button
               onClick={reset}
