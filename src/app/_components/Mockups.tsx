@@ -246,6 +246,68 @@ export function MenuMockup() {
   );
 }
 
+/* ── BusinessPlanExportMockup ─────────────────────────────────────────────── */
+
+export function BusinessPlanExportMockup() {
+  const variants = [
+    { label: "Bank", note: "Lender package", accent: "teal" as const },
+    { label: "Investor", note: "Pitch-ready deck", accent: "sage" as const },
+    { label: "Internal", note: "Operating doc", accent: "teal" as const },
+    { label: "Printable", note: "Board copy", accent: "sage" as const },
+  ];
+  return (
+    <div className="p-4" style={{ background: "var(--neutral-50)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>Business Plan Export</p>
+        <span className="rounded px-2 py-0.5" style={{ background: "rgba(118,179,157,0.12)", color: "var(--sage)", fontSize: "10px", fontWeight: 600 }}>PDF</span>
+      </div>
+      <div className="rounded-lg p-3 mb-2" style={{ background: "white", border: "1px solid var(--border-subtle)" }}>
+        <p style={{ color: "var(--neutral-500)", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>Pulled from your plan</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {["Concept", "Market", "Menu", "Financials", "Hiring", "Launch"].map((m) => (
+            <div key={m} className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--sage)" }}>
+                <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+              </div>
+              <p style={{ fontSize: "10px", color: "var(--teal)", fontWeight: 500 }}>{m}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {variants.map((v) => (
+          <div
+            key={v.label}
+            className="rounded-lg px-3 py-2 flex items-center justify-between"
+            style={{ background: "white", border: "1px solid var(--border-subtle)" }}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                style={{ background: v.accent === "sage" ? "rgba(118,179,157,0.14)" : "rgba(21,94,99,0.08)" }}
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={v.accent === "sage" ? "var(--sage)" : "var(--teal)"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontSize: "11px", color: "var(--teal)", fontWeight: 600, lineHeight: 1.2 }}>{v.label}</p>
+                <p style={{ fontSize: "9px", color: "var(--neutral-500)", lineHeight: 1.2 }}>{v.note}</p>
+              </div>
+            </div>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── LaunchMockup ─────────────────────────────────────────────────────────── */
 
 export function LaunchMockup() {
