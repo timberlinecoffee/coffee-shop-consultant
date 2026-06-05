@@ -162,3 +162,149 @@ test("formatConceptForAI skips blank fields silently", () => {
   assert.doesNotMatch(out, /\*\*Target customer\*\*/);
   assert.doesNotMatch(out, /\*\*Brand voice & pillars\*\*/);
 });
+
+// ── TIM-2346: normalizeConceptV2 competitor parsing ──────────────────────────
+
+import { normalizeConceptV2 } from "./concept.ts";
+
+test("normalizeConceptV2 parses valid competitors array", () => {
+  const input = {
+    version: 2,
+    components: {
+      shop_identity:   { content: "Tide & Timber", included: true },
+      vision:          { content: "A cozy spot.", included: true },
+      target_customer: { content: "", included: true },
+      differentiation: { content: "Direct-trade.", included: true },
+      brand_voice:     { content: "Warm.", included: true },
+      location:        { content: "", included: false },
+      offering:        { content: "", included: false },
+    },
+    competitors: [
+      { id: "c-1", name: "Morning Light Coffee", address: "12 Oak St", what_they_do_well: "Great espresso", gaps: "Closes at 2pm" },
+      { id: "c-2", name: "Harbour Roast", address: "", what_they_do_well: null, gaps: undefined },
+    ],
+    no_direct_competitors_identified: false,
+  };
+  const doc = normalizeConceptV2(input);
+  assert.equal(doc.competitors?.length, 2);
+  assert.equal(doc.competitors?.[0].name, "Morning Light Coffee");
+  assert.equal(doc.competitors?.[0].address, "12 Oak St");
+  assert.equal(doc.competitors?.[0].what_they_do_well, "Great espresso");
+  assert.equal(doc.competitors?.[0].gaps, "Closes at 2pm");
+  // address is empty string — normalizer keeps it as-is (not undefined)
+  assert.equal(doc.competitors?.[1].name, "Harbour Roast");
+  assert.equal(doc.no_direct_competitors_identified, false);
+});
+
+test("normalizeConceptV2 drops competitor rows with missing or blank name", () => {
+  const input = {
+    version: 2,
+    components: {
+      shop_identity:   { content: "Test", included: true },
+      vision:          { content: "Vision.", included: true },
+      target_customer: { content: "", included: true },
+      differentiation: { content: "Diff.", included: true },
+      brand_voice:     { content: "Voice.", included: true },
+      location:        { content: "", included: false },
+      offering:        { content: "", included: false },
+    },
+    competitors: [
+      { id: "c-1", name: "  " },            // blank name — dropped
+      { id: "c-2", name: null },            // null name — dropped
+      { id: "c-3", name: 42 },              // non-string name — dropped
+      { id: "c-4", name: "Valid Shop" },    // kept
+      null,                                 // null entry — dropped
+      "not an object",                      // primitive — dropped
+    ],
+  };
+  const doc = normalizeConceptV2(input);
+  assert.equal(doc.competitors?.length, 1);
+  assert.equal(doc.competitors?.[0].name, "Valid Shop");
+});
+
+test("normalizeConceptV2 omits competitors key when all rows are malformed", () => {
+  const input = {
+    version: 2,
+    components: {
+      shop_identity:   { content: "Test", included: true },
+      vision:          { content: "Vision.", included: true },
+      target_customer: { content: "", included: true },
+      differentiation: { content: "Diff.", included: true },
+      brand_voice:     { content: "Voice.", included: true },
+      location:        { content: "", included: false },
+      offering:        { content: "", included: false },
+    },
+    competitors: [
+      { id: "c-1", name: "" },
+      null,
+      42,
+    ],
+  };
+  const doc = normalizeConceptV2(input);
+  assert.equal(doc.competitors, undefined);
+});
+
+test("normalizeConceptV2 omits competitors key when competitors is not an array", () => {
+  const input = {
+    version: 2,
+    components: {
+      shop_identity:   { content: "Test", included: true },
+      vision:          { content: "Vision.", included: true },
+      target_customer: { content: "", included: true },
+      differentiation: { content: "Diff.", included: true },
+      brand_voice:     { content: "Voice.", included: true },
+      location:        { content: "", included: false },
+      offering:        { content: "", included: false },
+    },
+    competitors: "not-an-array",
+  };
+  const doc = normalizeConceptV2(input);
+  assert.equal(doc.competitors, undefined);
+});
+
+test("normalizeConceptV2 reads no_direct_competitors_identified boolean", () => {
+  const base = {
+    version: 2,
+    components: {
+      shop_identity:   { content: "X", included: true },
+      vision:          { content: "V", included: true },
+      target_customer: { content: "", included: true },
+      differentiation: { content: "D", included: true },
+      brand_voice:     { content: "B", included: true },
+      location:        { content: "", included: false },
+      offering:        { content: "", included: false },
+    },
+  };
+  const docTrue = normalizeConceptV2({ ...base, no_direct_competitors_identified: true });
+  assert.equal(docTrue.no_direct_competitors_identified, true);
+
+  const docFalse = normalizeConceptV2({ ...base, no_direct_competitors_identified: false });
+  assert.equal(docFalse.no_direct_competitors_identified, false);
+
+  // Non-boolean values — field omitted
+  const docString = normalizeConceptV2({ ...base, no_direct_competitors_identified: "yes" });
+  assert.equal(docString.no_direct_competitors_identified, undefined);
+});
+
+test("normalizeConceptV2 assigns fallback id to competitor missing a string id", () => {
+  const input = {
+    version: 2,
+    components: {
+      shop_identity:   { content: "Test", included: true },
+      vision:          { content: "Vision.", included: true },
+      target_customer: { content: "", included: true },
+      differentiation: { content: "Diff.", included: true },
+      brand_voice:     { content: "Voice.", included: true },
+      location:        { content: "", included: false },
+      offering:        { content: "", included: false },
+    },
+    competitors: [
+      { name: "Shop One" },            // no id — gets fallback
+      { id: null, name: "Shop Two" },  // null id — gets fallback
+    ],
+  };
+  const doc = normalizeConceptV2(input);
+  assert.equal(doc.competitors?.length, 2);
+  assert.match(doc.competitors?.[0].id ?? "", /competitor-0/);
+  assert.match(doc.competitors?.[1].id ?? "", /competitor-1/);
+});

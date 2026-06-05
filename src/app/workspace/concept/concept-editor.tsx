@@ -27,9 +27,11 @@ import {
   getConceptV2Progress,
   isConceptV2Complete,
   type ConceptComponentId,
+  type ConceptCompetitor,
   type ConceptDocumentV2,
   type CustomerPersona,
 } from "@/lib/concept";
+import { CompetitorSection } from "@/components/concept/CompetitorSection";
 import { PersonaSection } from "@/components/concept/PersonaSection";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
@@ -209,6 +211,22 @@ export function ConceptWorkspace({
   function updatePersonas(personas: CustomerPersona[]) {
     setDoc((prev) => {
       const next: ConceptDocumentV2 = { ...prev, personas };
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  function updateCompetitors(competitors: ConceptCompetitor[]) {
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = { ...prev, competitors };
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  function toggleNoDirectCompetitors(value: boolean) {
+    setDoc((prev) => {
+      const next: ConceptDocumentV2 = { ...prev, no_direct_competitors_identified: value };
       scheduleSave(next);
       return next;
     });
@@ -617,6 +635,31 @@ export function ConceptWorkspace({
               </div>
             );
           })}
+        </div>
+
+        {/* ── Competitors card (TIM-2346) ──────────────────── */}
+        <div className="mt-4 group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30">
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-semibold text-[var(--foreground)]">
+                    Nearby competitors
+                  </span>
+                  <InfoTip label="Nearby competitors">
+                    Name the specific shops that compete for your customers. The business plan will only cite competitors you list here — it will not invent names. Leave blank and the plan discusses competition qualitatively.
+                  </InfoTip>
+                </div>
+              </div>
+            </div>
+            <CompetitorSection
+              competitors={doc.competitors ?? []}
+              noDirectCompetitors={doc.no_direct_competitors_identified ?? false}
+              canEdit={canEdit}
+              onUpdateCompetitors={updateCompetitors}
+              onToggleNoDirectCompetitors={toggleNoDirectCompetitors}
+            />
+          </div>
         </div>
 
         {/* ── Concept Brief (Section 5 — TIM-865) ─────────── */}
