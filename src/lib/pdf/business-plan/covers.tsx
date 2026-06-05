@@ -88,10 +88,13 @@ function makeClassicStyles(brand: BrandTokens) {
       objectFit: "contain",
     },
     shopName: {
+      // TIM-2333: no hardcoded platform teal default. The accent prop is
+      // always applied inline below; the StyleSheet baseline falls back to
+      // neutral ink so platform colors can never bleed through.
       fontFamily: "Source Serif Pro",
       fontSize: 36,
       fontWeight: "bold",
-      color: "#155E63",
+      color: brand.colors.ink,
       textAlign: "center",
     },
     subtitle: {
@@ -202,12 +205,14 @@ function makeModernStyles(brand: BrandTokens) {
       flexDirection: "row",
     },
     stripe: {
+      // TIM-2333: accent overrides this inline; neutral rule color baseline
+      // ensures no platform teal leak.
       position: "absolute",
       top: 0,
       left: 0,
       bottom: 0,
       width: 6,
-      backgroundColor: "#155E63",
+      backgroundColor: brand.colors.rule,
     },
     content: {
       flex: 1,
@@ -218,10 +223,11 @@ function makeModernStyles(brand: BrandTokens) {
       flexDirection: "column",
     },
     shopName: {
+      // TIM-2333: accent overrides inline; neutral ink baseline.
       fontFamily: "Source Serif Pro",
       fontSize: 44,
       fontWeight: "bold",
-      color: "#155E63",
+      color: brand.colors.ink,
       lineHeight: 1.1,
       marginBottom: 14,
     },
@@ -340,9 +346,11 @@ function makeEditorialStyles(brand: BrandTokens) {
       flexDirection: "column",
     },
     greenBlock: {
+      // TIM-2333: accent overrides this inline; neutral ink fallback ensures
+      // the platform teal never leaks if a future override is removed.
       width: "100%",
       height: 356,
-      backgroundColor: "#155E63",
+      backgroundColor: brand.colors.ink,
       padding: 40,
       flexDirection: "column",
       justifyContent: "center",
@@ -370,9 +378,13 @@ function makeEditorialStyles(brand: BrandTokens) {
       marginBottom: 12,
     },
     tagline: {
+      // TIM-2333: was hardcoded platform mint (#D4ECD7) which leaked even when
+      // the user picked a non-teal accent. Sits on the accent block, so a
+      // softened paper-on-accent tint works for any accent the user picks.
       fontFamily: "Inter",
       fontSize: 13,
-      color: "#D4ECD7",
+      color: brand.colors.paper,
+      opacity: 0.85,
       textAlign: "center",
     },
     whiteBlock: {
