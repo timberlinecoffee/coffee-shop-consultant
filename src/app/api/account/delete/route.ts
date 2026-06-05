@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         error_message: "auth.users anonymisation did not complete",
         data_summary: { ...summary },
       });
-      return sanitised(500, "Deletion incomplete. Contact support@timberline.coffee.");
+      return sanitised(500, "Deletion incomplete. Contact hello@timberline.coffee.");
     }
 
     // Best-effort confirmation email — must dispatch BEFORE the auth row is
@@ -166,6 +166,6 @@ export async function POST(req: Request) {
         500,
       ),
     });
-    return sanitised(500, "Deletion failed. Contact support@timberline.coffee.");
+    return sanitised(500, "Deletion failed. Contact hello@timberline.coffee.");
   }
 }

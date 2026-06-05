@@ -88,8 +88,8 @@ export default function SubscriptionTermsPage() {
             <h2 className="text-xl font-semibold mb-3">4. Cancellation</h2>
             <p>
               You may cancel your subscription at any time from your account settings or by contacting{" "}
-              <a href="mailto:support@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                support@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>
               .
             </p>
@@ -105,8 +105,8 @@ export default function SubscriptionTermsPage() {
             <p>
               We offer a 7-day money-back guarantee on your first subscription payment only. If you are
               unsatisfied within the first 7 days of a new paid subscription, contact{" "}
-              <a href="mailto:support@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                support@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>{" "}
               for a full refund.
             </p>
@@ -160,8 +160,8 @@ export default function SubscriptionTermsPage() {
             <h2 className="text-xl font-semibold mb-3">9. Disputes</h2>
             <p>
               If you believe a charge is incorrect, contact{" "}
-              <a href="mailto:billing@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                billing@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>{" "}
               within 60 days of the charge date. We will investigate and respond within 10 business
               days. Filing a chargeback before contacting us may result in account suspension.
@@ -183,8 +183,8 @@ export default function SubscriptionTermsPage() {
               Groundwork, a product of Timberline Coffee School
               <br />
               Email:{" "}
-              <a href="mailto:billing@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                billing@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>
             </p>
           </section>
