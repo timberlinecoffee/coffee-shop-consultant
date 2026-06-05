@@ -25,6 +25,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useBusinessPlanProgressOverlay } from "@/hooks/useBusinessPlanProgressOverlay";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -169,7 +170,15 @@ export function BusinessPlanWorkspace({
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
-  const { openAIReviewModal, updateAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  // TIM-2385: Two-phase loading UX. Phase 1 — this overlay covers the workspace
+  // while a Generate or Improve run streams. Phase 2 — the modal opens on done.
+  const {
+    openProgressOverlay,
+    updateProgressOverlay,
+    closeProgressOverlay,
+    ProgressOverlayNode,
+  } = useBusinessPlanProgressOverlay();
   // TIM-2356: Plan Quality Check tab + report state.
   const [activeTab, setActiveTab] = useState<"plan" | "quality-check">("plan");
   const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
@@ -184,7 +193,6 @@ export function BusinessPlanWorkspace({
   }, [hasContent, promoteOnEdit]);
 
   const abortRef = useRef<AbortController | null>(null);
-  const streamBufRef = useRef<string>("");
 
   // ── Section helpers ────────────────────────────────────────────────────────
 
@@ -237,22 +245,35 @@ export function BusinessPlanWorkspace({
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    streamBufRef.current = "";
 
-    updateSection(sectionKey, { isGenerating: true, isEditing: true, editBuffer: "" });
+    // TIM-2385: Phase 1 — keep the section card untouched. The overlay covers
+    // the workspace while the section streams; the modal opens on done.
+    let cancelledByUser = false;
+    const cancelOverlay = () => {
+      cancelledByUser = true;
+      controller.abort();
+      closeProgressOverlay();
+      setStreamingKey(null);
+      updateSection(sectionKey, { isGenerating: false });
+    };
+    openProgressOverlay({ total: 1, onCancel: cancelOverlay });
+    updateSection(sectionKey, { isGenerating: true });
     setStreamingKey(sectionKey);
 
     try {
       await fetchSse(
         url,
         body,
-        (chunk) => {
-          streamBufRef.current += chunk;
-          const buf = streamBufRef.current;
-          updateSection(sectionKey, { editBuffer: buf });
+        () => {
+          // Phase 1: deliberately do not surface the streaming buffer inline.
+          // The overlay is the only progress UX during generation.
         },
         (full, extras) => {
+          updateProgressOverlay({ completed: 1 });
+          closeProgressOverlay();
           setStreamingKey(null);
+          updateSection(sectionKey, { isGenerating: false, isEditing: false });
+          if (cancelledByUser) return;
           // TIM-1561: route AI result through unified review modal before applying.
           const sectionMeta = BUSINESS_PLAN_SECTIONS.find((s) => s.key === sectionKey);
           const currentSection = sections.find((s) => s.key === sectionKey);
@@ -316,24 +337,31 @@ export function BusinessPlanWorkspace({
               updateSection(sectionKey, { isEditing: false, isGenerating: false });
             },
           });
-          // Clear the inline edit buffer — the modal owns the review step.
-          updateSection(sectionKey, { isGenerating: false, isEditing: false, editBuffer: originalValue });
         },
         (msg) => {
+          closeProgressOverlay();
           setStreamingKey(null);
           updateSection(sectionKey, { isGenerating: false });
-          setGlobalError(msg);
+          if (!cancelledByUser) setGlobalError(msg);
         },
         controller.signal
       );
     } catch (err: unknown) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        setGlobalError(err.message);
-      }
+      closeProgressOverlay();
       setStreamingKey(null);
       updateSection(sectionKey, { isGenerating: false });
+      if (err instanceof Error && err.name !== "AbortError" && !cancelledByUser) {
+        setGlobalError(err.message);
+      }
     }
-  }, [updateSection, sections, openAIReviewModal, setSections]);
+  }, [
+    updateSection,
+    sections,
+    openAIReviewModal,
+    openProgressOverlay,
+    updateProgressOverlay,
+    closeProgressOverlay,
+  ]);
 
   const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
     await runStream("/api/business-plan/generate", { sectionKey: key }, key);
@@ -592,6 +620,7 @@ export function BusinessPlanWorkspace({
   return (
     <>
     {AIReviewModalNode}
+    {ProgressOverlayNode}
     {validationReport && (
       <ExportGateModal
         report={validationReport}
@@ -669,7 +698,9 @@ export function BusinessPlanWorkspace({
                   }))
                 }
                 openAIReviewModal={openAIReviewModal}
-                updateAIReviewModal={updateAIReviewModal}
+                openProgressOverlay={openProgressOverlay}
+                updateProgressOverlay={updateProgressOverlay}
+                closeProgressOverlay={closeProgressOverlay}
                 onSectionApplied={(key, finalValue) => {
                   setSections((prev) =>
                     prev.map((s) =>
