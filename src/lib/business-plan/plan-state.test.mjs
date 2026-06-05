@@ -392,3 +392,73 @@ test("buildPlanState handles an empty/zero financial model without throwing", ()
   const text = formatPlanStateForPrompt(st);
   assert.ok(text.length > 0);
 });
+
+// ── TIM-2340: local_claims surfaces into plan_state + prompt block ────────────
+
+test("buildPlanState attaches local_claims (default — no competitors, no city)", () => {
+  const st = buildPlanState({
+    shopName: "Beaver & Beef",
+    financialModel: { forecast_inputs: FIXTURE_MP, startup_costs: FIXTURE_MP.startup_costs },
+    locationCandidates: [],
+    equipment: [],
+    hiringRoles: [],
+    menuBlendedCogsPct: null,
+  });
+  // Default builder inputs leave competitors empty and toggle false — the
+  // narrative will fall into the qualitative-hedge branch of the directive.
+  assert.deepEqual(st.local_claims.competitors, []);
+  assert.equal(st.local_claims.no_direct_competitors_identified, false);
+  assert.equal(st.local_claims.city_label, null);
+});
+
+test("buildPlanState — TIM-2340 directive + sentinel phrases appear in prompt", () => {
+  const st = buildPlanState({
+    shopName: "Beaver & Beef",
+    financialModel: { forecast_inputs: FIXTURE_MP, startup_costs: FIXTURE_MP.startup_costs },
+    locationCandidates: [],
+    equipment: [],
+    hiringRoles: [],
+    menuBlendedCogsPct: null,
+    competitors: [
+      { id: "c1", name: "Phil & Sebastian", address: "618 Confederation Dr NW", what_they_do_well: "Roastery cred.", gaps: "Short hours." },
+    ],
+    noDirectCompetitorsIdentified: false,
+    cityLabel: "Calgary",
+  });
+  const text = formatPlanStateForPrompt(st);
+  // The directive itself MUST be present in the rendered prompt — investor
+  // critique #6 traces directly to whether the LLM was told these rules.
+  assert.match(text, /Local-claim and geography rule/);
+  assert.match(text, /pedestrian counts?/i);
+  assert.match(text, /competitor (names|addresses|hours)/i);
+  assert.match(text, /Inventing a specific number is worse than omitting one/i);
+  // At least one sentinel phrase must be carried so the LLM has voice-matched
+  // hedge language to fall back to.
+  assert.match(text, /consistently strong daytime traffic/);
+  // User-entered competitor renders by name + address.
+  assert.match(text, /Phil & Sebastian/);
+  assert.match(text, /618 Confederation Dr NW/);
+  // Resolved-city anchor for the geography validator.
+  assert.match(text, /Calgary/);
+});
+
+test("buildPlanState — empty competitors block tells the LLM to hedge", () => {
+  const st = buildPlanState({
+    shopName: "Beaver & Beef",
+    financialModel: { forecast_inputs: FIXTURE_MP, startup_costs: FIXTURE_MP.startup_costs },
+    locationCandidates: [],
+    equipment: [],
+    hiringRoles: [],
+    menuBlendedCogsPct: null,
+    competitors: [],
+    noDirectCompetitorsIdentified: false,
+    cityLabel: "Calgary",
+  });
+  const text = formatPlanStateForPrompt(st);
+  // Acceptance #2: "Zero competitor addresses or transaction counts unless
+  // user-entered." With an empty competitors list, the prompt MUST say
+  // "discuss qualitatively" and explicitly forbid invented businesses.
+  assert.match(text, /not entered a competitor list/i);
+  assert.match(text, /qualitatively/i);
+  assert.match(text, /Do NOT invent competitor businesses/i);
+});

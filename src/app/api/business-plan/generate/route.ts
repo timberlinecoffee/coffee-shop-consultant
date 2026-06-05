@@ -184,6 +184,12 @@ export async function POST(request: NextRequest) {
     // TIM-2339: pass country so plan_state can pick a region-aware tax rate
     // and lender list (no SBA in Canadian plans, etc.).
     locationCountry: planContext.location_country,
+    // TIM-2340: pass user-entered competitors + city label so the narrative
+    // prompt forbids fabricated foot traffic / competitor specifics and the
+    // geography validator scopes to the resolved city.
+    competitors: planContext.competitors,
+    noDirectCompetitorsIdentified: planContext.no_direct_competitors_identified,
+    cityLabel: planContext.city_label,
   });
   const planStateGroundTruth = formatPlanStateForPrompt(planState);
 

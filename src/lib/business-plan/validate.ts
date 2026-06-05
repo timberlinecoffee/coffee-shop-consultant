@@ -20,6 +20,12 @@ import type {
   PlanState,
   PlanStateYearSummary,
 } from "./plan-state.ts";
+import {
+  detectFabricatedLocalClaims,
+  resolveCityFromAddress,
+  validateGeography,
+  type CityGeography,
+} from "./local-claims.ts";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -60,7 +66,19 @@ export interface QualitativeFinding {
   section_key: string;
   severity: "advisory";              // always advisory by spec
   kind: "qualitative";
-  category: "contradiction" | "missing_section" | "credibility" | "typo" | "boilerplate" | "other";
+  // TIM-2340: extended categories cover fabricated foot-traffic / visitor /
+  // demographic claims and impossible neighborhood adjacencies. Both surface
+  // as advisory by spec — the export gate only blocks on Pass 1 numeric
+  // mismatches against plan_state.
+  category:
+    | "contradiction"
+    | "missing_section"
+    | "credibility"
+    | "typo"
+    | "boilerplate"
+    | "fabricated_local_claim"
+    | "geographic_fabrication"
+    | "other";
   message: string;
   quoted_text: string | null;
 }
@@ -595,13 +613,15 @@ function buildFinding(
 
 export const PASS2_SYSTEM_PROMPT = `You are a skeptical small-business lender reviewing a coffee-shop business plan before signing. Your only job is to flag credibility-killing issues a borrower would not want a lender to spot. Be specific and quote the exact prose.
 
-Look for FIVE categories of problems:
+Look for SEVEN categories of problems:
 
 1. CONTRADICTION — two claims within a single paragraph or adjacent paragraphs that cannot both be true ("Owner draws $3,000 per month from month five" + "Year 1 assumes no Owner draw").
 2. MISSING SECTION — sensitivity analysis absent, no DSCR, no break-even discussion, no risk section.
 3. CREDIBILITY TELL — vague generic phrasing ("we will leverage", "best-in-class"), unsourced claims, three-word taglines, marketing-speak that masquerades as analysis.
 4. TYPO — misspelled proper nouns ("La Marzocko", "Whitehouse"), wrong city/region names, inconsistent capitalization of branded products.
 5. BOILERPLATE — paragraphs that could appear in any coffee-shop plan; nothing specific to this concept, location, or numbers.
+6. FABRICATED LOCAL CLAIM (TIM-2340) — specific pedestrian counts, daily/weekly visitor numbers, demographic percentages, competitor transaction counts, competitor street addresses, or competitor hours that are not user-entered. Inventing a specific number is worse than omitting one. Flag any sentence that asserts foot-traffic figures or names a competitor business with an address/hours/transaction count unless the structured plan data backs it.
+7. GEOGRAPHIC FABRICATION (TIM-2340) — neighborhood names that are not actually adjacent paired as if they share a corridor ("Bridgeland/Aspen Landing corridor", "between Capitol Hill and West Seattle"), or neighborhoods cited in the wrong city for the plan's resolved location.
 
 You MUST respond with a single JSON object — no prose before or after — of the shape:
 
@@ -609,7 +629,7 @@ You MUST respond with a single JSON object — no prose before or after — of t
   "findings": [
     {
       "section_key": "<which section>",
-      "category": "contradiction" | "missing_section" | "credibility" | "typo" | "boilerplate" | "other",
+      "category": "contradiction" | "missing_section" | "credibility" | "typo" | "boilerplate" | "fabricated_local_claim" | "geographic_fabrication" | "other",
       "message": "One sentence describing the issue.",
       "quoted_text": "The exact verbatim text from the narrative, or null if the issue is a missing piece."
     }
@@ -680,10 +700,62 @@ export function parsePass2Response(raw: string): QualitativeFinding[] {
 
 function normalizeCategory(v: unknown): QualitativeFinding["category"] {
   const allowed: ReadonlyArray<QualitativeFinding["category"]> = [
-    "contradiction", "missing_section", "credibility", "typo", "boilerplate", "other",
+    "contradiction", "missing_section", "credibility", "typo", "boilerplate",
+    "fabricated_local_claim", "geographic_fabrication", "other",
   ];
   if (typeof v === "string" && (allowed as readonly string[]).includes(v)) {
     return v as QualitativeFinding["category"];
   }
   return "other";
+}
+
+// ── TIM-2340: programmatic local-claim pass ──────────────────────────────────
+//
+// Runs alongside the LLM Pass 2 as a deterministic safety net. Surfaces:
+//   - fabricated foot-traffic / visitor / demographic figures
+//   - cross-region neighborhood pairs declared adjacent
+// Both as advisory findings (never blocking — the export gate stays scoped to
+// Pass 1 numeric mismatches). The route concatenates these onto Pass 2 output.
+
+export function runLocalClaimsChecks(args: {
+  sections: Map<string, string>;
+  planState: PlanState;
+}): QualitativeFinding[] {
+  const findings: QualitativeFinding[] = [];
+  const city: CityGeography | null = resolveCityFromAddress(
+    args.planState.lease.chosen_address,
+    args.planState.region?.country ?? null,
+  );
+
+  for (const [sectionKey, text] of args.sections.entries()) {
+    if (!text || text.trim().length === 0) continue;
+
+    // (a) fabricated foot-traffic / visitor counts
+    for (const f of detectFabricatedLocalClaims({ sectionKey, text })) {
+      findings.push({
+        id: f.id,
+        section_key: f.section_key,
+        severity: "advisory",
+        kind: "qualitative",
+        category: "fabricated_local_claim",
+        message: f.message,
+        quoted_text: f.quoted_text,
+      });
+    }
+
+    // (b) geographic impossibility
+    for (const g of validateGeography({ sectionKey, text, city })) {
+      findings.push({
+        id: g.id,
+        section_key: g.section_key,
+        severity: "advisory",
+        kind: "qualitative",
+        category: "geographic_fabrication",
+        message: g.message,
+        quoted_text: g.quoted_text,
+      });
+    }
+  }
+
+  return findings;
 }

@@ -37,8 +37,10 @@ import {
 } from "@/lib/business-plan";
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { buildPlanState } from "@/lib/business-plan/plan-state";
+import { normalizeConceptV2 } from "@/lib/concept";
 import {
   runReconciliation,
+  runLocalClaimsChecks,
   parsePass2Response,
   buildPass2UserMessage,
   PASS2_SYSTEM_PROMPT,
@@ -130,6 +132,22 @@ export async function POST(request: NextRequest) {
   const shopName = plan.plan_name ?? "this coffee shop";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+  // TIM-2340: pull competitors + no-direct toggle off the concept document so
+  // the validator scopes Pass 2's geography check to the same city as the
+  // narrative prompt and surfaces local_claims in plan_state.
+  const concept = normalizeConceptV2(conceptDoc?.content);
+  const competitors = (concept.competitors ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    address: c.address ?? null,
+    what_they_do_well: c.what_they_do_well ?? null,
+    gaps: c.gaps ?? null,
+  }));
+  const noDirectCompetitorsIdentified = concept.no_direct_competitors_identified ?? false;
+  // Resolve a city label from the chosen-or-first non-archived location.
+  const locArr = (locationRows ?? []) as Array<{ city?: string | null; address?: string | null; status?: string | null; archived?: boolean | null }>;
+  const cityCandidate = locArr.find((l) => l.status === "signed") ?? locArr[0] ?? null;
+  const cityLabel = cityCandidate?.city?.trim() || null;
   const planState = buildPlanState({
     shopName,
     financialModel,
@@ -137,6 +155,9 @@ export async function POST(request: NextRequest) {
     equipment: (equipmentRows ?? []) as BpEquipmentItem[],
     hiringRoles: (hiringRows ?? []) as BpHiringRole[],
     menuBlendedCogsPct,
+    competitors,
+    noDirectCompetitorsIdentified,
+    cityLabel,
   });
 
   // Assemble the section text exactly as the PDF will render it: user_content
@@ -189,6 +210,20 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Validation failed; please retry." }, { status: 500 });
   }
 
+  // ── TIM-2340: programmatic local-claims + geography pass (advisory). ──────
+  // Runs even when Pass 2 LLM is degraded. Surfaces fabricated foot-traffic /
+  // visitor counts and impossible neighborhood adjacencies as advisory
+  // qualitative findings.
+  try {
+    const localFindings = runLocalClaimsChecks({ sections: sectionTexts, planState });
+    if (localFindings.length > 0) {
+      report.qualitative_findings = [...report.qualitative_findings, ...localFindings];
+    }
+  } catch (err) {
+    console.error("validate.runLocalClaimsChecks failed", { userId: user.id, err });
+    // Non-fatal — advisory pass, swallow and continue.
+  }
+
   // ── Pass 2 — critical-reader LLM (advisory; failures degrade silently). ────
   if (includePass2 && sectionTexts.size > 0) {
     try {
@@ -212,7 +247,9 @@ export async function POST(request: NextRequest) {
           .map((b) => b.text)
           .join("");
         const qualitative = parsePass2Response(text);
-        report.qualitative_findings = qualitative;
+        // TIM-2340: append rather than replace so the programmatic
+        // local-claims / geography findings stay in the report.
+        report.qualitative_findings = [...report.qualitative_findings, ...qualitative];
       } finally {
         clearTimeout(timer);
       }
@@ -222,6 +259,7 @@ export async function POST(request: NextRequest) {
       // review didn't run.
       console.error("validate Pass 2 failed", { userId: user.id, err });
       report.qualitative_findings = [
+        ...report.qualitative_findings,
         {
           id: "pass2:degraded",
           section_key: "executive-summary",
