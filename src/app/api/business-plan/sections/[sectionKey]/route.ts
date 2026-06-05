@@ -5,10 +5,18 @@
 
 export const dynamic = "force-dynamic";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { NextRequest } from "next/server";
 
 type RouteContext = { params: Promise<{ sectionKey: string }> };
+
+// Rule 3 — server-side body schema. user_content is capped at 100 KB (~25 000 words).
+const PatchBodySchema = z.object({
+  user_content: z.string().max(100_000).nullable().optional(),
+  is_visible: z.boolean().optional(),
+  estimated_claims_json: z.unknown().optional(),
+});
 
 // Defensive validator — only accept arrays of the EstimatedClaim shape. An
 // unknown blob is silently dropped (better than rejecting the whole PATCH).
@@ -50,12 +58,17 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
 
-  const body = await request.json() as {
-    user_content?: string | null;
-    is_visible?: boolean;
-    // TIM-2342: structured EstimatedClaim[] from source-markers.ts.
-    estimated_claims_json?: unknown;
-  };
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const parsed = PatchBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const body = parsed.data;
 
   // Rule 3 — server-side validation. Drop unknown shapes silently rather
   // than rejecting the PATCH, so a stale client can still save user_content.
