@@ -264,7 +264,7 @@ export function BusinessPlanExportMockup() {
       <div className="rounded-lg p-3 mb-2" style={{ background: "white", border: "1px solid var(--border-subtle)" }}>
         <p style={{ color: "var(--neutral-500)", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>Pulled from your plan</p>
         <div className="grid grid-cols-2 gap-1.5">
-          {["Concept", "Market", "Menu", "Financials", "Hiring", "Launch"].map((m) => (
+          {["Concept", "Lease", "Menu", "Equipment", "Hiring", "Launch"].map((m) => (
             <div key={m} className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--sage)" }}>
                 <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>

@@ -54,7 +54,7 @@ const SUITE_ITEMS: AccordionItem[] = [
     oneLiner:
       "Walks you through every owner decision in the right order.",
     bullets: [
-      "Concept, location, menu, financials, staffing, build-out, launch: eight modules in sequence",
+      "Coffee Concept, Location & Lease, Menu Pricing, Build-Out & Equipment, Barista Hiring, Financials, Operations Playbook, Launch Plan: eight modules in sequence",
       "Asks for the inputs that matter, skips the ones that don't",
       "Saves your answers and shows what's left",
     ],
@@ -114,13 +114,13 @@ const SUITE_ITEMS: AccordionItem[] = [
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
     ),
-    title: "Operational Tools",
+    title: "Ready For Opening Day",
     oneLiner:
       "Goes past pre-open paperwork through opening day.",
     bullets: [
-      "Hiring, onboarding and shift planning ready for week one",
+      "Hiring plan with roles, descriptions and labor cost before week one",
       "Menu pricing and recipe costing you can update as suppliers change",
-      "Launch-day checklist tied to your milestones",
+      "Operations playbook and launch checklist tied to your milestones",
     ],
   },
 ];
@@ -179,7 +179,7 @@ const PROOF_TILES = [
   {
     eyebrow: "Plan Coverage",
     title: "Every Module a Lender Expects",
-    body: "Concept, market, location, menu, equipment, hiring, financials, and launch plan are all wired to the same source of truth, so updates in one module flow through the rest.",
+    body: "Coffee Concept, Location & Lease, Menu Pricing, Build-Out & Equipment, Barista Hiring, Financials, Operations Playbook, and Launch Plan are all wired to the same source of truth, so updates in one module flow through the rest.",
   },
   {
     eyebrow: "Financial Model",
