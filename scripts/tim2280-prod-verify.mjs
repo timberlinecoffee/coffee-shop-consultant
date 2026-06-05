@@ -2,7 +2,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "fs";
 
-const BASE = "https://coffee-shop-consultant.vercel.app";
+const BASE = process.env.PROD_URL || "https://coffee-shop-consultant.vercel.app";
 const SHOTS = "scripts/shots";
 mkdirSync(SHOTS, { recursive: true });
 
@@ -28,7 +28,7 @@ for (const viewport of [
   const page = await ctx.newPage();
 
   // --- Landing page ---
-  await page.goto(`${BASE}/?cb=${Date.now()}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/landing?cb=${Date.now()}`, { waitUntil: "domcontentloaded" });
   await page.locator("#pricing").scrollIntoViewIfNeeded();
   await page.waitForTimeout(800);
 

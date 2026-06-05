@@ -150,6 +150,11 @@ async function dismissConsent() {
 }
 await dismissConsent();
 
+// Wait for React hydration — the CoPilotBeacon is only rendered after
+// the client bundle mounts, so waiting for networkidle ensures the
+// workspace-copilot-open listener is attached before we dispatch.
+await page.waitForLoadState("networkidle").catch(() => {});
+
 // Open the drawer by dispatching the CoPilotBeacon's custom event directly.
 // The CoPilotDrawer listens for "workspace-copilot-open" globally, so this
 // reliably opens the drawer regardless of FAB visibility / overlay siblings.
