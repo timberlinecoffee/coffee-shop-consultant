@@ -121,7 +121,8 @@ ${greetingP(input.firstName)}
 <p style="margin:0 0 8px;font-size:14px;line-height:1.55;color:#1a1a1a;">When your trial converts, here's what you'll have on ${escapeHtml(input.planName)}:</p>
 ${list.html}
 ${altPitch}
-<p style="margin:16px 0 0;font-size:14px;line-height:1.55;color:#1a1a1a;">Not ready to commit? Cancel before day 7 and you won't be charged.</p>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.55;color:#1a1a1a;">Running low on credits? <a href="${input.baseUrl}/account/billing" style="color:#155e63;">You can buy more anytime</a> — no plan upgrade needed.</p>
+<p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#1a1a1a;">Not ready to commit? Cancel before day 7 and you won't be charged.</p>
 ${cancelButton(url, "Cancel my trial")}
 ${signoff()}
       `,
@@ -134,6 +135,9 @@ ${signoff()}
       `When your trial converts, here's what you'll have on ${input.planName}:`,
       list.text,
       altPitchText.trim(),
+      `Running low on credits? You can buy more anytime — no plan upgrade needed.`,
+      `${input.baseUrl}/account/billing`,
+      ``,
       `Not ready to commit? Cancel before day 7 and you won't be charged.`,
       ``,
       `Cancel my trial: ${url}`,
