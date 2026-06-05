@@ -43,8 +43,8 @@ export default function TermsPage() {
               You must be 18 years or older to create an account. You are responsible for keeping
               your login credentials confidential and for all activity that occurs under your account.
               Notify us immediately at{" "}
-              <a href="mailto:support@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                support@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>{" "}
               if you believe your account has been compromised.
             </p>
@@ -132,8 +132,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold mb-3">7. Dispute Resolution</h2>
             <p>
               Before filing any formal legal claim, you agree to first contact us at{" "}
-              <a href="mailto:legal@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                legal@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>{" "}
               and give us 30 days to attempt to resolve the dispute informally.
             </p>
@@ -165,8 +165,8 @@ export default function TermsPage() {
               Timberline Coffee School
               <br />
               Email:{" "}
-              <a href="mailto:legal@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                legal@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>
             </p>
           </section>

@@ -192,8 +192,8 @@ export default function PrivacyPage() {
             </div>
             <p className="mt-3">
               You may request a copy of the relevant transfer safeguards by contacting us at{" "}
-              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                privacy@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>
               .
             </p>
@@ -272,8 +272,8 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3">
               To exercise any of these rights, email{" "}
-              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                privacy@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>
               . We will respond within 30 days.
             </p>
@@ -366,8 +366,8 @@ export default function PrivacyPage() {
               Timberline Coffee School
               <br />
               Email:{" "}
-              <a href="mailto:privacy@timberlinecoffeeschool.com" className="text-[var(--teal)] underline">
-                privacy@timberlinecoffeeschool.com
+              <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
+                hello@timberline.coffee
               </a>
             </p>
           </section>

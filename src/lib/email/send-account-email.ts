@@ -96,7 +96,7 @@ export async function sendExportReadyEmail(args: {
     `Download (expires ${safeExpiry}):`,
     args.signedUrl,
     "",
-    "If you did not request this export, contact support@timberline.coffee.",
+    "If you did not request this export, contact hello@timberline.coffee.",
   ].join("\n");
   return dispatch({
     to: args.to,
@@ -144,7 +144,7 @@ export async function sendCreditPackReceiptEmail(args: {
         <td style="padding:8px 0;text-align:right;font-weight:600;">${args.newBalance}</td>
       </tr>
     </table>
-    <p style="margin:0;font-size:12px;color:#6b6b6b;">Questions? Contact support@timberline.coffee.</p>
+    <p style="margin:0;font-size:12px;color:#6b6b6b;">Questions? Contact hello@timberline.coffee.</p>
   </td></tr>
 </table>`.trim();
   const text = [
@@ -155,7 +155,7 @@ export async function sendCreditPackReceiptEmail(args: {
     `Charged: ${currencyLabel} $${amountDollars}`,
     `New credit balance: ${args.newBalance}`,
     "",
-    "Questions? Contact support@timberline.coffee.",
+    "Questions? Contact hello@timberline.coffee.",
   ].join("\n");
   return dispatch({
     to: args.to,
@@ -179,7 +179,7 @@ export async function sendAccountDeletedEmail(args: {
       Active subscriptions have been cancelled. Past invoices are retained
       for seven years to meet legal requirements; everything else is gone.
     </p>
-    <p style="margin:0;font-size:13px;color:#6b6b6b;">If this was not you, contact support@timberline.coffee immediately.</p>
+    <p style="margin:0;font-size:13px;color:#6b6b6b;">If this was not you, contact hello@timberline.coffee immediately.</p>
   </td></tr>
 </table>`.trim();
   const text = [
@@ -188,7 +188,7 @@ export async function sendAccountDeletedEmail(args: {
     "Active subscriptions have been cancelled. Past invoices are retained for",
     "seven years to meet legal requirements; everything else is gone.",
     "",
-    "If this was not you, contact support@timberline.coffee immediately.",
+    "If this was not you, contact hello@timberline.coffee immediately.",
   ].join("\n");
   return dispatch({
     to: args.to,
