@@ -21,6 +21,8 @@ import {
 import { WaitlistForm } from "./WaitlistForm";
 import { OAuthHashHandler } from "./OAuthHashHandler";
 import { buildAuthForwardUrl } from "./apex-auth-forward";
+import { createClient } from "@/lib/supabase/server";
+import { resolveAccountChip } from "./account-chip";
 
 // TIM-2285 v2: rebuilt to match landing-page design quality per board feedback
 // (Trent 2026-06-04). Reuses the exact landing-page vocabulary — the same
@@ -114,6 +116,22 @@ export default async function ComingSoonPage({
     if (forwardUrl) redirect(forwardUrl);
   }
 
+  // TIM-2352: When the visitor has a live session, swap the "Coming Soon"
+  // chip for a one-click handoff to /dashboard. Persistence was already there
+  // (cookies with maxAge 400d) — what was missing was a visible indicator that
+  // the user is signed in.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let chip = resolveAccountChip(null, null);
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    chip = resolveAccountChip(profile?.full_name ?? null, user.email ?? null);
+  }
+
   return (
     <main className="flex flex-col">
       <OAuthHashHandler />
@@ -123,16 +141,48 @@ export default async function ComingSoonPage({
           <Link href="/" className="flex items-center" aria-label="Groundwork.AI home">
             <Logo variant="white" height={40} priority />
           </Link>
-          <span
-            className="font-semibold uppercase"
-            style={{
-              fontSize: "11px",
-              letterSpacing: "0.16em",
-              color: "rgba(255,255,255,0.7)",
-            }}
-          >
-            Coming Soon
-          </span>
+          {chip.kind === "account" ? (
+            <Link
+              href="/dashboard"
+              aria-label={`Open dashboard for ${chip.firstName}`}
+              className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+            >
+              <span
+                aria-hidden="true"
+                className="flex items-center justify-center rounded-full font-semibold"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  background: "var(--sage)",
+                  color: "var(--teal)",
+                  fontSize: "12px",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {chip.initial}
+              </span>
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: "13px",
+                  color: "rgba(255,255,255,0.92)",
+                }}
+              >
+                {chip.firstName}
+              </span>
+            </Link>
+          ) : (
+            <span
+              className="font-semibold uppercase"
+              style={{
+                fontSize: "11px",
+                letterSpacing: "0.16em",
+                color: "rgba(255,255,255,0.7)",
+              }}
+            >
+              Coming Soon
+            </span>
+          )}
         </div>
       </header>
 
