@@ -41,8 +41,21 @@ import {
   type VendorDecision,
 } from "@/lib/suppliers";
 import { PrintButton, SectionToggle } from "./print-button";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+// TIM-2333: override the root layout's "My Coffee Shop Consultant: Timberline
+// Coffee School" title so the printable's PDF metadata / browser-print header
+// / OG previews never carry the platform brand on a user's exported plan.
+// Static neutral title — generateMetadata would re-hit the DB for every
+// printable render; the cover page itself carries the shop name.
+export const metadata: Metadata = {
+  title: "Business Plan",
+  description: "Business Plan",
+  openGraph: { title: "Business Plan", description: "Business Plan", siteName: "" },
+  twitter: { title: "Business Plan", description: "Business Plan" },
+};
 
 // ── Section keys: stable URL toggles (e.g. ?exclude=appendix,marketing) ────────
 const SECTION_KEYS = [
@@ -263,12 +276,17 @@ export default async function BusinessPlanPrintPage({
       {/* Print stylesheet — preserves rich layout on Cmd+P. TIM-2315: 19mm page
           margins per spec; widow/orphan control on body text; section heading
           stays with its first paragraph; cover page gets explicit 0 margin so
-          full-bleed editorial header reaches the page edge. */}
+          full-bleed editorial header reaches the page edge.
+          TIM-2333: hide the workspace AppSidebar in print so the Groundwork
+          logo mark never reaches the user's exported PDF (the sidebar is
+          injected by the workspace layout, not by this page). */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              .no-print { display: none !important; }
+              .no-print,
+              aside[aria-label="Workspace navigation"],
+              nav[aria-label="Workspace navigation"] { display: none !important; }
               body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               @page { margin: 19mm; size: A4; }
               .section-card { break-inside: avoid; orphans: 3; widows: 3; }
