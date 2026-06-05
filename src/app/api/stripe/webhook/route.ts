@@ -1,5 +1,6 @@
 import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
-import { creditsForPackKey } from "@/lib/credits/packs";
+import { creditsForPackKey, isCreditPackKey, CREDIT_PACKS_BY_KEY } from "@/lib/credits/packs";
+import { sendCreditPackReceiptEmail } from "@/lib/email/send-account-email";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import { NextRequest } from "next/server";
@@ -73,6 +74,27 @@ export async function POST(request: NextRequest) {
           type: "purchase",
           description: `Credit top-up: ${packKey} pack (+${credits})`,
         });
+
+        // Send purchase receipt email. Failure is logged but must not block the
+        // webhook response — the balance and ledger are already committed.
+        const emailTo =
+          (session.customer_details as { email?: string } | null)?.email ??
+          session.customer_email ??
+          null;
+        const pack = isCreditPackKey(packKey) ? CREDIT_PACKS_BY_KEY[packKey] : null;
+        if (emailTo && pack) {
+          const emailResult = await sendCreditPackReceiptEmail({
+            to: emailTo,
+            packName: pack.name,
+            creditsAdded: credits,
+            amountCents: session.amount_total ?? pack.amountCents,
+            currency: session.currency ?? "cad",
+            newBalance: current + credits,
+          });
+          if (!emailResult.ok && !emailResult.skipped) {
+            console.error("[credit_pack] receipt email failed:", emailResult.error);
+          }
+        }
         break;
       }
 
