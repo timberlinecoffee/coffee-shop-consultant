@@ -53,6 +53,16 @@ import {
   extractEstimatedClaims,
 } from "@/lib/business-plan/source-markers";
 import { formatBenchmarksForPrompt } from "@/lib/business-plan/benchmarks";
+// TIM-2343: per-section self-consistency check (BP Quality J). After the
+// narrative streams, a lightweight LLM proofreader extracts every claim and
+// flags pairs within the same section that cannot both be true (owner-draws
+// contradiction was the prompt — see TIM-2315 investor critique). One regen
+// attempt is allowed if the first pass contradicts itself; surviving
+// contradictions surface to the export-gate modal as advisory.
+import {
+  runSelfConsistencyCheck,
+  regenerateWithFixDirective,
+} from "@/lib/business-plan/self-consistency-runner";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -325,8 +335,44 @@ export async function POST(request: NextRequest) {
         // aliases ("La Marzocko" → "La Marzocco") and Levenshtein ≤ 2
         // near-misses against the plan_state.entities registry so the saved
         // draft is internally consistent before the founder ever opens it.
-        const normalized = normalizeAIOutput(fullText);
-        const canon = canonicalizeNarrative(normalized, planState.entities);
+        let workingText = normalizeAIOutput(fullText);
+        let canon = canonicalizeNarrative(workingText, planState.entities);
+
+        // TIM-2343: per-section self-consistency — proofreader call on the
+        // canonicalized (but still source-marker-laden) text. We run BEFORE
+        // stripping markers so the proofreader sees the original prose as
+        // close to what the LLM emitted as possible; markers are XML-style
+        // and a careful proofreader can read through them. If contradictions
+        // appear, regenerate ONCE with the explicit fix directive, then
+        // re-check. Any surviving contradictions surface to the modal as
+        // advisory.
+        let contradictions = await runSelfConsistencyCheck({
+          client,
+          sectionKey,
+          sectionTitle,
+          sectionText: canon.text,
+        });
+        let regenAttempted = false;
+        if (contradictions.length > 0) {
+          regenAttempted = true;
+          const regen = await regenerateWithFixDirective({
+            client,
+            baseSystemPrompt: systemPrompt,
+            baseUserMessage: userMessage,
+            contradictions,
+            maxTokens,
+          });
+          if (regen) {
+            workingText = normalizeAIOutput(regen);
+            canon = canonicalizeNarrative(workingText, planState.entities);
+            contradictions = await runSelfConsistencyCheck({
+              client,
+              sectionKey,
+              sectionTitle,
+              sectionText: canon.text,
+            });
+          }
+        }
 
         // TIM-2342: parse the <num src="…">…</num> markers the LLM emitted.
         // Acceptance #4: no markers leak past this boundary — parseSourceMarkers
@@ -341,6 +387,12 @@ export async function POST(request: NextRequest) {
           canon_substitutions: canon.substitutions,
           source_markers: parsed.counts,
           estimated_claims: estimatedClaims,
+          // TIM-2343: contradictions surviving regen. Empty array means the
+          // first pass was clean, or the regen successfully resolved every
+          // flagged pair. consistency_regen_attempted lets the client tell
+          // the difference for telemetry.
+          consistency_contradictions: contradictions,
+          consistency_regen_attempted: regenAttempted,
         })));
         controller.close();
       } catch (err) {

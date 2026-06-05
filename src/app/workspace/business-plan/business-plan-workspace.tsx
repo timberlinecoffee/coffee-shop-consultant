@@ -53,8 +53,13 @@ interface SectionState extends BusinessPlanSectionData {
 // it back to onDone so the workspace can persist it via PATCH alongside
 // user_content. Shape mirrors EstimatedClaim in source-markers.ts; the SSE
 // helper keeps it opaque (the consumer types it).
+// TIM-2343: consistency_contradictions also arrives on the "done" event when
+// the self-consistency proofreader flagged pairs the regen couldn't resolve.
+// Surfaced in the AI review modal as an advisory band so the founder can
+// edit before applying. Not persisted — these are a generate-time signal.
 interface SseDoneExtras {
   estimated_claims?: unknown;
+  consistency_contradictions?: unknown;
 }
 
 async function fetchSse(
@@ -115,6 +120,7 @@ async function fetchSse(
         } else if (event === "done") {
           onDone(((parsed.text as string) ?? "") || full, {
             estimated_claims: parsed.estimated_claims,
+            consistency_contradictions: parsed.consistency_contradictions,
           });
         } else if (event === "error") {
           onError((parsed.message as string) ?? "Error");
@@ -249,6 +255,26 @@ export function BusinessPlanWorkspace({
           const estimatedClaims = Array.isArray(extras.estimated_claims)
             ? (extras.estimated_claims as unknown[])
             : [];
+          // TIM-2343: surface unresolved self-consistency contradictions as
+          // an advisory inside the AI review modal card. Sanitize the shape
+          // defensively — anything malformed gets dropped rather than
+          // crashing the modal.
+          const consistencyRaw = Array.isArray(extras.consistency_contradictions)
+            ? extras.consistency_contradictions
+            : [];
+          const consistencyContradictions = consistencyRaw
+            .map((c) => {
+              if (!c || typeof c !== "object") return null;
+              const obj = c as Record<string, unknown>;
+              const kind = obj.kind;
+              const claimA = typeof obj.claim_a === "string" ? obj.claim_a : "";
+              const claimB = typeof obj.claim_b === "string" ? obj.claim_b : "";
+              const explanation = typeof obj.explanation === "string" ? obj.explanation : "";
+              if (!claimA || !claimB) return null;
+              const normalizedKind = (kind === "numerical" || kind === "categorical" || kind === "temporal" || kind === "other") ? kind : "other";
+              return { kind: normalizedKind as "numerical" | "categorical" | "temporal" | "other", claim_a: claimA, claim_b: claimB, explanation };
+            })
+            .filter((c): c is NonNullable<typeof c> => c !== null);
           openAIReviewModal({
             suggestions: [
               {
@@ -258,6 +284,7 @@ export function BusinessPlanWorkspace({
                 originalValue,
                 proposedValue: full,
                 isStructured: false,
+                consistencyContradictions,
               },
             ],
             context: { workspace: "Business Plan", section: sectionMeta?.title },

@@ -33,6 +33,19 @@ export interface SuggestionPayload {
   derived?: boolean;
   provenance?: string;
   recompute?: EquipmentRecomputeParams;
+  // TIM-2343: per-section self-consistency findings the BP generator surfaced
+  // after its proofreader pass (and one regen attempt). Rendered as an
+  // advisory block inside the suggestion card so the founder can see the
+  // pairs the LLM still couldn't reconcile before accepting the draft.
+  // Advisory only — never blocks Accept.
+  consistencyContradictions?: SuggestionConsistencyContradiction[];
+}
+
+export interface SuggestionConsistencyContradiction {
+  kind: "numerical" | "categorical" | "temporal" | "other";
+  claim_a: string;
+  claim_b: string;
+  explanation: string;
 }
 
 export interface ApprovedChange {
@@ -334,6 +347,33 @@ function ChangeCard({
             aria-label={`Edit suggested text for ${sug.fieldLabel}`}
             className="w-full min-h-[80px] border border-[var(--teal)] rounded-lg p-3 text-sm resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
           />
+        </div>
+      )}
+
+      {/* TIM-2343: per-section self-consistency advisory. Surfaces narrative-
+          vs-itself contradictions the proofreader caught that survived the
+          regen attempt. Advisory only — Accept is not blocked. */}
+      {sug.consistencyContradictions && sug.consistencyContradictions.length > 0 && (
+        <div className="border border-amber-300 bg-amber-50 rounded-lg px-3 py-2 space-y-2">
+          <p className="text-xs font-medium text-amber-900 uppercase tracking-wide">
+            Internal contradictions flagged ({sug.consistencyContradictions.length})
+          </p>
+          <ul className="space-y-2">
+            {sug.consistencyContradictions.map((c, i) => (
+              <li key={i} className="text-xs text-amber-900">
+                <span className="inline-block rounded-full bg-amber-200 px-1.5 py-0.5 mr-1.5 text-[10px] font-medium uppercase tracking-wide">
+                  {c.kind}
+                </span>
+                <span className="italic">&ldquo;{c.claim_a}&rdquo;</span>
+                <span className="px-1">vs.</span>
+                <span className="italic">&ldquo;{c.claim_b}&rdquo;</span>
+                <span className="block mt-0.5 not-italic text-amber-800">{c.explanation}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-amber-800">
+            Review and edit before applying, or accept as-is if you intend the contrast.
+          </p>
         </div>
       )}
 
