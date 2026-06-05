@@ -11,9 +11,11 @@
 // metadata — never from Stripe price metadata. That keeps the grant
 // deterministic and independent of how the prices are provisioned.
 //
-// Credits + prices are LAUNCH DEFAULTS, flagged for Trent/product to calibrate
-// (see TIM-1687). Top-ups are intentionally priced at a per-credit premium over
-// the monthly plans so upgrading tier stays the better value for heavy users.
+// TIM-2309 (TIM-1898 plan rev 4 / TIM-2306, approval 47745142, 2026-06-04)
+// re-priced the three packs as launch SKUs: 100/$19, 500/$79, 1,500/$199.
+// Per-credit prices stay above the Starter ($0.39/credit) and Pro
+// ($0.099/credit) monthly grants so upgrading is still the better value for
+// heavy users.
 
 export type CreditPackKey = "small" | "medium" | "large"
 
@@ -28,9 +30,9 @@ export interface CreditPackDef {
 }
 
 export const CREDIT_PACK_LIST: CreditPackDef[] = [
-  { key: "small", name: "Small Pack", credits: 25, amountCents: 1200 },
-  { key: "medium", name: "Medium Pack", credits: 100, amountCents: 3900 },
-  { key: "large", name: "Large Pack", credits: 300, amountCents: 9900 },
+  { key: "small", name: "Small Pack", credits: 100, amountCents: 1900 },
+  { key: "medium", name: "Medium Pack", credits: 500, amountCents: 7900 },
+  { key: "large", name: "Large Pack", credits: 1500, amountCents: 19900 },
 ]
 
 export const CREDIT_PACKS_BY_KEY: Record<CreditPackKey, CreditPackDef> =

@@ -26,11 +26,11 @@ const TIERS: TierCopy[] = [
   {
     name: "Starter",
     monthlyPrice: "$39",
-    annualPrice: "$33",
+    annualPrice: "$31",
     monthlyNote:
       "Billed monthly. 7-day free trial; cancel anytime before day 7.",
     annualNote:
-      "$399/year (save 15%). 7-day free trial; cancel anytime before day 7.",
+      "$375/year (save 20%). 7-day free trial; cancel anytime before day 7.",
     features: [
       "All planning modules",
       "100 AI planning credits per month",
@@ -46,13 +46,14 @@ const TIERS: TierCopy[] = [
   {
     name: "Pro",
     monthlyPrice: "$99",
-    annualPrice: "$83",
+    annualPrice: "$79",
     monthlyNote:
       "Billed monthly. 7-day free trial; cancel anytime before day 7.",
     annualNote:
-      "$999/year (save 15%). 7-day free trial; cancel anytime before day 7.",
+      "$950/year (save 20%). 7-day free trial; cancel anytime before day 7.",
     features: [
       "Everything in Starter",
+      "1,000 AI planning credits per month",
       "Coffee Shop World benchmarking vs. real shops",
       "Weekly Live Office Hours Q&A + recordings",
       "Deeper insights — deep market research, longer Scout chains",
@@ -134,7 +135,7 @@ export default function PricingSection() {
             >
               Annual
               <span className="ml-2 text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
-                Save 15%
+                Save 20%
               </span>
             </button>
           </div>

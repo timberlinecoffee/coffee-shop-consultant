@@ -9,7 +9,7 @@
 //
 // Design goals:
 //   1. A short, simple chat reply costs ~1 credit, so the existing monthly
-//      grants (starter 100 / pro 100 post-TIM-1954, see MONTHLY_CREDITS in
+//      grants (starter 100 / pro 1000 post-TIM-2309, see MONTHLY_CREDITS in
 //      src/lib/stripe.ts) keep their rough "this many easy questions" meaning.
 //   2. Heavier work costs proportionally more: long generations, the stronger
 //      model (which we route to for complex/research turns), web research, and
