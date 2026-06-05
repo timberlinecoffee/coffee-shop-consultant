@@ -39,6 +39,7 @@ import {
   BP_REGENERABLE_SECTION_KEYS,
 } from "@/lib/business-plan-prompts";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
+import { canonicalizeNarrative, unifySections } from "@/lib/business-plan/entities";
 import type { BusinessPlanSectionKey } from "@/lib/business-plan";
 
 const HEARTBEAT_MS = 15_000;
@@ -342,20 +343,58 @@ export async function POST(): Promise<Response> {
           creditsRemaining = nextRemaining;
         }
 
-        const draft = normalizeAIOutput(fullText);
+        // TIM-2337: per-section canonicalization — rewrite registry-known
+        // aliases ("La Marzocko" → "La Marzocco") immediately so the user
+        // sees the corrected draft on first arrival. Cross-section
+        // unification runs below once every section has streamed.
+        const draftRaw = normalizeAIOutput(fullText);
+        const draftCanon = canonicalizeNarrative(draftRaw, planState.entities);
+        const draft = draftCanon.text;
         completed.push({ key: sectionKey, draft });
         send("section:complete", {
           sectionKey,
           sectionTitle: sectionMeta.title,
           draft,
           credits_remaining: creditsRemaining,
+          canon_substitutions: draftCanon.substitutions,
         });
+      }
+
+      // TIM-2337: cross-section unification. The per-section canonicalize
+      // pass enforced the structured-data registry within each section, but
+      // entities the model INVENTED (suppliers, advisors not entered in any
+      // workspace) can still appear with two spellings across sections —
+      // exactly the "Whitehouse Farms" vs "Whitehorse Farms" case investor
+      // flagged on TIM-2315 item #5. unifySections() clusters near-misses
+      // across the full set, picks the most-frequent variant as canonical,
+      // and emits a section:revised event for any section that changed.
+      const completedSections = completed.map((c) => ({ key: c.key, text: c.draft }));
+      const unified = unifySections(completedSections, planState.entities);
+      const byKey = new Map(completed.map((c) => [c.key, c.draft]));
+      let revisedCount = 0;
+      for (const s of unified.sections) {
+        const before = byKey.get(s.key);
+        if (before != null && before !== s.text) {
+          const title = sectionsByKey.get(s.key as BusinessPlanSectionKey)?.title ?? s.key;
+          send("section:revised", {
+            sectionKey: s.key,
+            sectionTitle: title,
+            draft: s.text,
+          });
+          revisedCount += 1;
+        }
       }
 
       send("done", {
         completed_count: completed.length,
         failed_count: failed.length,
+        revised_count: revisedCount,
         credits_remaining: creditsRemaining,
+        unified_entities: unified.unified_entities.map((e) => ({
+          canonical: e.canonical,
+          type: e.type,
+          aliases: e.aliases,
+        })),
       });
       safeClose();
     },

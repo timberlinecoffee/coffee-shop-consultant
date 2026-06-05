@@ -47,6 +47,12 @@ import {
   type TaxProfile,
   type LenderProfile,
 } from "./tax-profiles.ts";
+import {
+  buildPlanStateEntities,
+  extractFundingSourcesForEntities,
+  formatEntitiesForPrompt,
+  type PlanStateEntity,
+} from "./entities.ts";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -203,6 +209,15 @@ export interface PlanState {
   // investor-grade structural detail; financial tables consume the same
   // numbers via the engine's slices, so they cannot diverge.
   vertical_model: CoffeeShopVerticalReport | null;
+  // TIM-2337: canonical entity registry — every proper noun the narrative
+  // is allowed to reference (business name, equipment, locations, lenders,
+  // hiring roles, plus a built-in coffee-brand vocabulary with known
+  // misspellings). The prompt cites canonical spellings; a post-generation
+  // canonicalizer rewrites near-misses (Levenshtein ≤ 2) and aliases.
+  // Investor critique #5 on Beaver & Beef: "Whitehouse Farms" vs
+  // "Whitehorse Farms", "La Marzocko" vs "La Marzocco" — exactly the
+  // typos this registry prevents.
+  entities: PlanStateEntity[];
 }
 
 // ── Builder inputs (parallels what /generate already loads) ──────────────────
@@ -536,6 +551,18 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
   // and depreciation match the P&L line-for-line.
   const verticalModel = verticalCfg ? computeVerticalReport(mp, verticalCfg, slices) : null;
 
+  // TIM-2337: canonical entity registry — proper nouns the narrative is
+  // allowed to reference. Pulls from the same structured workspaces the
+  // financial side already trusts (equipment, location_candidates, hiring,
+  // funding_sources) plus a built-in coffee-brand vocabulary.
+  const entities = buildPlanStateEntities({
+    shopName: inp.shopName,
+    locationCandidates: inp.locationCandidates ?? [],
+    equipment: inp.equipment ?? [],
+    hiringRoles: inp.hiringRoles ?? [],
+    fundingSources: extractFundingSourcesForEntities(mp),
+  });
+
   return {
     meta: {
       shop_name: inp.shopName,
@@ -556,6 +583,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     years,
     break_even: breakEven,
     vertical_model: verticalModel,
+    entities,
   };
 }
 
@@ -715,6 +743,19 @@ export function formatPlanStateForPrompt(state: PlanState): string {
   if (state.region && state.tax.region_profile && state.lender_profile) {
     lines.push("");
     lines.push(formatRegionForPrompt(state.region, state.tax.region_profile, state.lender_profile));
+  }
+
+  // TIM-2337: controlled vocabulary block — canonical spellings for every
+  // proper noun the narrative is allowed to use. The post-generation
+  // canonicalizer rewrites aliases and Levenshtein ≤ 2 near-misses, but
+  // surfacing the registry into the prompt itself nudges the model away
+  // from inventing variants in the first place.
+  if (state.entities && state.entities.length > 0) {
+    const block = formatEntitiesForPrompt(state.entities);
+    if (block) {
+      lines.push("");
+      lines.push(block);
+    }
   }
 
   return lines.join("\n").trim();

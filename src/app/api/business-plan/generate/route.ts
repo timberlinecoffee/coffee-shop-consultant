@@ -33,6 +33,7 @@ import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { buildBpSectionPrompt } from "@/lib/business-plan-prompts";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
+import { canonicalizeNarrative } from "@/lib/business-plan/entities";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -275,7 +276,13 @@ export async function POST(request: NextRequest) {
             .eq("id", user.id);
         }
 
-        controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText) })));
+        // TIM-2337: post-generation canonicalization pass — rewrite known
+        // aliases ("La Marzocko" → "La Marzocco") and Levenshtein ≤ 2
+        // near-misses against the plan_state.entities registry so the saved
+        // draft is internally consistent before the founder ever opens it.
+        const normalized = normalizeAIOutput(fullText);
+        const canon = canonicalizeNarrative(normalized, planState.entities);
+        controller.enqueue(enc.encode(sse("done", { text: canon.text, canon_substitutions: canon.substitutions })));
         controller.close();
       } catch (err) {
         cleanup();
