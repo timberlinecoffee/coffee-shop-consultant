@@ -447,6 +447,107 @@ function shouldOfferEquipmentChangeTool(messages: Array<{ role: string; content:
   return isEquipmentCostChangeIntent(lastUser)
 }
 
+// ── suggest_workspace_changes tool (TIM-2381) ────────────────────────────────
+// Scout-as-hub Phase 1: single generic chat tool that proposes field-level changes
+// across all workspaces. The model reads the plan snapshot (already in system
+// prompt) and produces the proposals directly in the tool call — no secondary AI
+// call, no new prompts. Applies through the existing AIReviewModal accept path.
+// Directive presence ⟺ tool presence, always.
+
+const SUGGEST_WORKSPACE_CHANGES_DIRECTIVE = `## Proposing Workspace Changes (use suggest_workspace_changes — do NOT describe in text)
+You have a \`suggest_workspace_changes\` tool. When the owner asks you to improve, draft, rewrite, update, or suggest changes to sections or content in their plan workspaces, you MUST call this tool. Do NOT write the proposed content as text-only. The tool sends proposals to a review modal where the owner accepts, edits, or rejects each change before anything is saved.
+
+### How to use it
+1. Read the current field or section content from the plan snapshot above.
+2. Write improved content in \`proposedValue\`. Be concrete and specific.
+3. Populate \`originalValue\` with the current content (or "" if the section is empty).
+4. Include one change object per field or section you are proposing.
+5. Set \`workspaceKey\` to the workspace you're editing (e.g. "business_plan").
+6. After calling the tool, briefly explain the choices you made.
+
+### Rules
+- ALWAYS call this tool when asked to improve/generate workspace content. Never refuse by saying you cannot edit the plan.
+- Do NOT write a text-only answer when the tool applies — that bypasses the owner's review step.
+- Keep \`originalValue\` accurate (copy from the plan snapshot; use "" for blank sections).
+- Return Title Case for field labels (e.g. "Executive Summary", not "executive summary").`
+
+const SUGGEST_WORKSPACE_CHANGES_TOOL: Anthropic.Tool = {
+  name: "suggest_workspace_changes",
+  description:
+    "Propose field-level changes to a workspace for the owner to review and accept or reject. " +
+    "Call this when the owner asks you to improve, draft, update, or generate content in their plan " +
+    "(business plan sections, menu items, equipment, etc.). Never writes automatically — all changes " +
+    "go through the review modal. After calling this tool, explain your choices in a brief text response.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      workspaceKey: {
+        type: "string",
+        description:
+          "The workspace being proposed (e.g. 'business_plan', 'menu_pricing', 'buildout_equipment').",
+      },
+      scope: {
+        type: "string",
+        description:
+          "Which section or area you are targeting (e.g. 'executive-summary', 'all', 'espresso drinks').",
+      },
+      instruction: {
+        type: "string",
+        description: "One sentence describing what you are proposing and why.",
+      },
+      changes: {
+        type: "array",
+        description: "The proposed field-level changes — one object per field or section.",
+        items: {
+          type: "object",
+          properties: {
+            fieldId: {
+              type: "string",
+              description:
+                "Stable identifier for the field (e.g. 'executive-summary', 'company-overview'). " +
+                "For business_plan, use the section key. For other workspaces, use the field key.",
+            },
+            fieldLabel: {
+              type: "string",
+              description: "Human-readable field name in Title Case (e.g. 'Executive Summary').",
+            },
+            originalValue: {
+              type: "string",
+              description: "Current field content from the plan snapshot, or empty string if blank.",
+            },
+            proposedValue: {
+              type: "string",
+              description: "Proposed new content — complete replacement, not a diff.",
+            },
+          },
+          required: ["fieldId", "fieldLabel", "originalValue", "proposedValue"],
+        },
+      },
+    },
+    required: ["workspaceKey", "scope", "changes"],
+  },
+}
+
+// TIM-2381: offer suggest_workspace_changes when the owner asks Scout to improve
+// or generate content in a supported workspace. Kept deliberately broad — the
+// model's own system prompt narrows which tool applies on a given turn.
+const SUGGEST_TOOL_SUPPORTED_WORKSPACES: readonly string[] = [
+  "business_plan",
+  "menu_pricing",
+  "buildout_equipment",
+]
+
+function shouldOfferSuggestTool(
+  messages: Array<{ role: string; content: string }>,
+  workspaceKey: string | null,
+): boolean {
+  if (!workspaceKey || !SUGGEST_TOOL_SUPPORTED_WORKSPACES.includes(workspaceKey)) return false
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  return /\b(improve|generate|draft|write|suggest|update|rewrite|enhance|help|create|propose|revise|edit|review|fill in|flesh out|develop)\b.{0,120}\b(plan|section|summary|business|executive|company|overview|team|operations|marketing|menu|item|equipment|content|draft|workspace)\b/i.test(
+    lastUser,
+  )
+}
+
 // TIM-1670: detect questions that need real web research (competitors, local market,
 // suppliers, current prices/benchmarks) so we (a) route to the stronger model and
 // (b) lengthen the no-data watchdog while web_search runs server-side.
@@ -759,6 +860,13 @@ export async function POST(request: NextRequest) {
     workspaceKey === "buildout_equipment" &&
     equipmentItems.length > 0 &&
     shouldOfferEquipmentChangeTool(messages)
+  // TIM-2381: generic workspace-change tool. Not offered when other workspace-specific
+  // tools already cover the intent (propose_item, propose_equipment_change) — those
+  // carry tighter schemas and shouldn't be overridden by the generic one.
+  const offerSuggestTool =
+    !offerProposeItemTool &&
+    !offerEquipmentChangeTool &&
+    shouldOfferSuggestTool(messages, workspaceKey)
   // TIM-1897: board directive — all platform AI runs on Claude Haiku, no Sonnet routing.
   const modelId = PLATFORM_AI_MODEL
 
@@ -873,6 +981,8 @@ export async function POST(request: NextRequest) {
               isResearchAllowed ? RESEARCH_DIRECTIVE : null,
               offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
               offerEquipmentChangeTool ? EQUIPMENT_CHANGE_DIRECTIVE : null,
+              // TIM-2381: directive presence ⟺ tool presence, always.
+              offerSuggestTool ? SUGGEST_WORKSPACE_CHANGES_DIRECTIVE : null,
             ].filter(Boolean).join("\n\n"),
           },
           {
@@ -948,6 +1058,8 @@ export async function POST(request: NextRequest) {
           ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
           // TIM-1798: propose_equipment_change — coordinated cross-workspace cost change.
           ...(offerEquipmentChangeTool ? [PROPOSE_EQUIPMENT_CHANGE_TOOL] : []),
+          // TIM-2381: generic workspace-change proposal tool (Scout-as-hub Phase 1).
+          ...(offerSuggestTool ? [SUGGEST_WORKSPACE_CHANGES_TOOL] : []),
         ]
 
         // TIM-1798: on Haiku 4.5 (TIM-1897, platform model) tool_choice:auto does NOT
@@ -1137,6 +1249,45 @@ export async function POST(request: NextRequest) {
                       context: proposal.context,
                     }))
                   }
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            } else if (activeToolName === "suggest_workspace_changes" && toolInputBuffer) {
+              // TIM-2381: normalize the Scout-produced changes array to SuggestionPayload[]
+              // and emit a suggestions event for the unified review modal. sourceToolName
+              // lets the client show "Review changes →" instead of "Review N suggestions".
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  workspaceKey?: string
+                  scope?: string
+                  instruction?: string
+                  changes?: Array<{
+                    fieldId: string
+                    fieldLabel: string
+                    originalValue: string
+                    proposedValue: string
+                  }>
+                }
+                const changes = toolInput.changes ?? []
+                if (changes.length > 0) {
+                  const suggestions = changes.map((c) => ({
+                    id: `swc-${crypto.randomUUID()}`,
+                    fieldId: c.fieldId,
+                    fieldLabel: c.fieldLabel,
+                    originalValue: c.originalValue ?? "",
+                    proposedValue: c.proposedValue ?? "",
+                  }))
+                  send(sse("suggestions", {
+                    suggestions,
+                    context: {
+                      workspace: toolInput.workspaceKey ?? workspaceKey ?? "general",
+                      section: toolInput.scope ?? toolInput.instruction ?? "",
+                      sourceToolName: "suggest_workspace_changes",
+                    },
+                  }))
                 }
               } catch {
                 /* malformed tool JSON — skip silently */

@@ -19,7 +19,6 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarV2, type SidebarV2UserInfo } from "@/components/SidebarV2";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
-import { CoPilotBeacon } from "@/components/workspace/CoPilotBeacon";
 import {
   isWorkspaceStatus,
   type WorkspaceStatus,
@@ -203,8 +202,6 @@ export function WorkspaceProgressProvider({
           {/* TIM-2591: bottom padding clears the fixed tab bar on mobile */}
           <main className={`flex-1 ${uiRevamp ? "pb-20 lg:pb-0" : ""}`}>{children}</main>
         </div>
-        {/* TIM-1408: single global Co-pilot entry point */}
-        <CoPilotBeacon />
         {/* TIM-2591: mobile bottom tab bar (v2 only, self-gated on flag) */}
         <BottomTabBar />
       </div>

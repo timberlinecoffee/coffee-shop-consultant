@@ -53,6 +53,33 @@ import { crossSuiteConflictIdForAuditFinding } from "@/lib/cross-suite/audit-map
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
 
+// TIM-2381: write accepted suggest_workspace_changes proposals for the business
+// plan workspace. Each accepted change's fieldId is the section key; finalValue
+// is the new user_content. Throws on failure so the review modal stays open.
+async function applyBusinessPlanChanges(accepted: ApprovedChange[]): Promise<void> {
+  const failed: string[] = [];
+  for (const change of accepted) {
+    try {
+      const res = await fetch(`/api/business-plan/sections/${encodeURIComponent(change.fieldId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ user_content: change.finalValue }),
+      });
+      if (!res.ok) failed.push(change.fieldId);
+    } catch {
+      failed.push(change.fieldId);
+    }
+  }
+  if (failed.length > 0) {
+    throw new Error(
+      failed.length === accepted.length
+        ? "Couldn't save these changes. Please try again."
+        : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+    );
+  }
+}
+
 // TIM-1648: write an accepted propose_item suggestion to the menu_pricing APIs.
 // Only called for accepted cards; per-card errors are non-fatal.
 async function applyMenuPricingProposal(accepted: ApprovedChange[]): Promise<void> {
@@ -214,10 +241,9 @@ export interface CoPilotDrawerProps {
   planId: string;
   currentFocus?: CopilotFocus;
   initialTrialMessagesUsed?: number;
-  // TIM-1574: On workspace pages the global CoPilotBeacon is the desktop entry
-  // point, so the drawer's own floating button is hidden on desktop (lg+) to
-  // avoid stacking both at bottom-6 right-6. Standalone consumers without a
-  // Beacon (e.g. the copilot demo) opt back in by passing `true`.
+  // TIM-2381: CoPilotBeacon retired; this FAB is now the sole entry point on
+  // both mobile and desktop. showDesktopLauncher defaults to true. The prop is
+  // kept for backward compatibility with existing call sites.
   showDesktopLauncher?: boolean;
   // TIM-1637: workspace-specific callback invoked when the user accepts AI suggestions.
   onApplySuggestions?: (accepted: ApprovedChange[]) => Promise<void>;
@@ -313,7 +339,7 @@ export function CoPilotDrawer({
   planId,
   currentFocus,
   initialTrialMessagesUsed = 0,
-  showDesktopLauncher = false,
+  showDesktopLauncher = true,
   onApplySuggestions,
   defaultMode = "coach",
   defaultScopeOverride,
@@ -855,15 +881,27 @@ export function CoPilotDrawer({
   // External "Ask AI" hook (TIM-619): per-field buttons in workspace editors
   // dispatch `copilot:open-with-prompt` to open the drawer with a seeded prompt
   // so the user can refine a Concept field without retyping context.
+  // TIM-2381: extended to accept workspaceKey so AskScoutButton can scope the
+  // chat to "This Page" before the first message — no flash of unscoped chat.
   const [externalFocusLabel, setExternalFocusLabel] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ prompt?: string; focusLabel?: string }>).detail;
+      const detail = (event as CustomEvent<{
+        prompt?: string;
+        focusLabel?: string;
+        workspaceKey?: WorkspaceKey;
+        action?: string;
+      }>).detail;
       if (!detail) return;
       openDrawer();
       if (typeof detail.focusLabel === "string") {
         setExternalFocusLabel(detail.focusLabel);
+      }
+      // TIM-2381: set scope to the dispatching workspace so "This Page" context
+      // is correct before the first message. Only override when explicitly set.
+      if (detail.workspaceKey) {
+        setActiveScope(detail.workspaceKey);
       }
       if (typeof detail.prompt === "string" && detail.prompt.trim().length > 0) {
         setInput(detail.prompt);
@@ -1444,7 +1482,10 @@ export function CoPilotDrawer({
                             if (equipmentCost.length > 0) {
                               await applyEquipmentCostChanges(equipmentCost);
                             }
-                            if (context.workspace === "menu_pricing") {
+                            // TIM-2381: business_plan proposals write to sections API.
+                            if (context.workspace === "business_plan") {
+                              await applyBusinessPlanChanges(rest);
+                            } else if (context.workspace === "menu_pricing") {
                               await applyMenuPricingProposal(rest);
                             } else if (onApplySuggestions && rest.length > 0) {
                               await onApplySuggestions(rest);
@@ -1456,7 +1497,9 @@ export function CoPilotDrawer({
                       className="inline-flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
                     >
                       <Sparkles size={14} aria-hidden />
-                      {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
+                      {pendingSuggestions.context.sourceToolName === "suggest_workspace_changes"
+                        ? "Review changes →"
+                        : `Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
                     </button>
                   )}
                   {consistencyConflicts && (

@@ -17,9 +17,11 @@ const REVEAL_MAX_BACKLOG = 280; // cap unrevealed chars mid-stream so reveal nev
 const REVEAL_DRAIN_SECONDS = 0.5; // once the stream ends, finish the remaining reveal within this window
 
 // TIM-1561: typed suggestions payload emitted by the SSE `suggestions` event.
+// TIM-2381: sourceToolName differentiates suggest_workspace_changes proposals
+// (which get the "Review changes →" label) from lower-level tool results.
 export interface SuggestionsEvent {
   suggestions: SuggestionPayload[];
-  context: { workspace: string; section?: string };
+  context: { workspace: string; section?: string; sourceToolName?: string };
 }
 
 interface SendArgs {
