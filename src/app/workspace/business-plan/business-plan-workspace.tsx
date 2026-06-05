@@ -25,6 +25,9 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
+import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -47,101 +50,17 @@ interface SectionState extends BusinessPlanSectionData {
   isExpanded: boolean;
   isEditing: boolean;
   editBuffer: string;
-  isGenerating: boolean;
   isSaving: boolean;
-}
-
-// ── SSE fetch helper ──────────────────────────────────────────────────────────
-
-// TIM-2342: estimated_claims arrives on the "done" event from /generate. Pass
-// it back to onDone so the workspace can persist it via PATCH alongside
-// user_content. Shape mirrors EstimatedClaim in source-markers.ts; the SSE
-// helper keeps it opaque (the consumer types it).
-// TIM-2343: consistency_contradictions also arrives on the "done" event when
-// the self-consistency proofreader flagged pairs the regen couldn't resolve.
-// Surfaced in the AI review modal as an advisory band so the founder can
-// edit before applying. Not persisted — these are a generate-time signal.
-interface SseDoneExtras {
-  estimated_claims?: unknown;
-  consistency_contradictions?: unknown;
-}
-
-async function fetchSse(
-  url: string,
-  body: Record<string, unknown>,
-  onChunk: (text: string) => void,
-  onDone: (full: string, extras: SseDoneExtras) => void,
-  onError: (msg: string) => void,
-  signal: AbortSignal
-) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal,
-  });
-
-  if (!res.ok) {
-    const j = await res.json().catch(() => ({})) as Record<string, unknown>;
-    if (res.status === 402) {
-      onError("AI credits required. Upgrade your plan to use this feature.");
-    } else {
-      onError((j.error as string) ?? "Request failed");
-    }
-    return;
-  }
-
-  const reader = res.body?.getReader();
-  if (!reader) { onError("No response stream"); return; }
-
-  const dec = new TextDecoder();
-  let buf = "";
-  let full = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-
-    const parts = buf.split("\n\n");
-    buf = parts.pop() ?? "";
-
-    for (const part of parts) {
-      const lines = part.split("\n");
-      let event = "";
-      let data = "";
-      for (const line of lines) {
-        if (line.startsWith("event: ")) event = line.slice(7);
-        if (line.startsWith("data: ")) data = line.slice(6);
-      }
-      if (!data) continue;
-      try {
-        const parsed = JSON.parse(data) as Record<string, unknown>;
-        if (event === "text") {
-          const chunk = (parsed.text as string) ?? "";
-          full += chunk;
-          onChunk(chunk);
-        } else if (event === "done") {
-          onDone(((parsed.text as string) ?? "") || full, {
-            estimated_claims: parsed.estimated_claims,
-            consistency_contradictions: parsed.consistency_contradictions,
-          });
-        } else if (event === "error") {
-          onError((parsed.message as string) ?? "Error");
-        }
-      } catch {
-        // ignore malformed SSE
-      }
-    }
-  }
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BusinessPlanWorkspace({
+  planId,
   shopName,
   initialSections,
   canEdit,
+  initialTrialMessagesUsed,
   initialCoverSettings,
   logoPublicUrl,
   initialFinancialDocuments,
@@ -152,7 +71,6 @@ export function BusinessPlanWorkspace({
       isExpanded: true,
       isEditing: false,
       editBuffer: s.userContent ?? s.autoContent,
-      isGenerating: false,
       isSaving: false,
     }))
   );
@@ -166,7 +84,6 @@ export function BusinessPlanWorkspace({
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [pendingExportAction, setPendingExportAction] = useState<"export" | "print" | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
   const { openAIReviewModal, updateAIReviewModal, AIReviewModalNode } = useAIReviewModal();
@@ -182,9 +99,6 @@ export function BusinessPlanWorkspace({
   useEffect(() => {
     if (hasContent) promoteOnEdit("business_plan");
   }, [hasContent, promoteOnEdit]);
-
-  const abortRef = useRef<AbortController | null>(null);
-  const streamBufRef = useRef<string>("");
 
   // ── Section helpers ────────────────────────────────────────────────────────
 
@@ -226,145 +140,6 @@ export function BusinessPlanWorkspace({
       body: JSON.stringify({ is_visible: next }),
     });
   }, [updateSection]);
-
-  // ── AI streaming ───────────────────────────────────────────────────────────
-
-  const runStream = useCallback(async (
-    url: string,
-    body: Record<string, unknown>,
-    sectionKey: BusinessPlanSectionKey
-  ) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    streamBufRef.current = "";
-
-    updateSection(sectionKey, { isGenerating: true, isEditing: true, editBuffer: "" });
-    setStreamingKey(sectionKey);
-
-    try {
-      await fetchSse(
-        url,
-        body,
-        (chunk) => {
-          streamBufRef.current += chunk;
-          const buf = streamBufRef.current;
-          updateSection(sectionKey, { editBuffer: buf });
-        },
-        (full, extras) => {
-          setStreamingKey(null);
-          // TIM-1561: route AI result through unified review modal before applying.
-          const sectionMeta = BUSINESS_PLAN_SECTIONS.find((s) => s.key === sectionKey);
-          const currentSection = sections.find((s) => s.key === sectionKey);
-          const originalValue = currentSection?.userContent ?? currentSection?.autoContent ?? "";
-          // TIM-2342: capture estimated_claims off the SSE done payload so
-          // we PATCH them alongside user_content. The validator + export-gate
-          // modal pull them back out of the column to populate the "Estimated
-          // claims to verify" section.
-          const estimatedClaims = Array.isArray(extras.estimated_claims)
-            ? (extras.estimated_claims as unknown[])
-            : [];
-          // TIM-2343: surface unresolved self-consistency contradictions as
-          // an advisory inside the AI review modal card. Sanitize the shape
-          // defensively — anything malformed gets dropped rather than
-          // crashing the modal.
-          const consistencyRaw = Array.isArray(extras.consistency_contradictions)
-            ? extras.consistency_contradictions
-            : [];
-          const consistencyContradictions = consistencyRaw
-            .map((c) => {
-              if (!c || typeof c !== "object") return null;
-              const obj = c as Record<string, unknown>;
-              const kind = obj.kind;
-              const claimA = typeof obj.claim_a === "string" ? obj.claim_a : "";
-              const claimB = typeof obj.claim_b === "string" ? obj.claim_b : "";
-              const explanation = typeof obj.explanation === "string" ? obj.explanation : "";
-              if (!claimA || !claimB) return null;
-              const normalizedKind = (kind === "numerical" || kind === "categorical" || kind === "temporal" || kind === "other") ? kind : "other";
-              return { kind: normalizedKind as "numerical" | "categorical" | "temporal" | "other", claim_a: claimA, claim_b: claimB, explanation };
-            })
-            .filter((c): c is NonNullable<typeof c> => c !== null);
-          openAIReviewModal({
-            suggestions: [
-              {
-                id: `bp-${sectionKey}`,
-                fieldId: sectionKey,
-                fieldLabel: sectionMeta?.title ?? sectionKey,
-                originalValue,
-                proposedValue: full,
-                isStructured: false,
-                consistencyContradictions,
-              },
-            ],
-            context: { workspace: "Business Plan", section: sectionMeta?.title },
-            onApply: async () => {
-              // Inline save (avoids hoisting issue with handleSaveAfterImprove ref)
-              await fetch(`/api/business-plan/sections/${sectionKey}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  user_content: full,
-                  estimated_claims_json: estimatedClaims,
-                }),
-              });
-              setSections((prev) =>
-                prev.map((s) => {
-                  if (s.key !== sectionKey) return s;
-                  return { ...s, userContent: full };
-                })
-              );
-              updateSection(sectionKey, { isEditing: false, isGenerating: false });
-            },
-          });
-          // Clear the inline edit buffer — the modal owns the review step.
-          updateSection(sectionKey, { isGenerating: false, isEditing: false, editBuffer: originalValue });
-        },
-        (msg) => {
-          setStreamingKey(null);
-          updateSection(sectionKey, { isGenerating: false });
-          setGlobalError(msg);
-        },
-        controller.signal
-      );
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        setGlobalError(err.message);
-      }
-      setStreamingKey(null);
-      updateSection(sectionKey, { isGenerating: false });
-    }
-  }, [updateSection, sections, openAIReviewModal, setSections]);
-
-  const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
-    await runStream("/api/business-plan/generate", { sectionKey: key }, key);
-  }, [runStream]);
-
-  const handleImprove = useCallback(async (key: BusinessPlanSectionKey) => {
-    const section = sections.find((s) => s.key === key);
-    if (!section) return;
-    const content = section.userContent ?? section.autoContent;
-    await runStream("/api/business-plan/improve", {
-      sectionKey: key,
-      sectionTitle: section.title,
-      currentContent: content,
-      shopName,
-    }, key);
-  }, [sections, runStream, shopName]);
-
-  // After AI finishes editing, auto-save the result
-  const handleSaveAfterImprove = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
-    await fetch(`/api/business-plan/sections/${key}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_content: content }),
-    });
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.key !== key) return s;
-        return { ...s, userContent: content };
-      })
-    );
-  }, []);
 
   // ── PDF export / print ──────────────────────────────────────────────────────
 
@@ -585,6 +360,17 @@ export function BusinessPlanWorkspace({
     if (href) window.location.href = href;
   }, []);
 
+  // TIM-2382: apply Scout suggest_workspace_changes proposals for business plan.
+  // fieldId = BusinessPlanSectionKey; finalValue = proposed section text.
+  const handleApplyBusinessPlanSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    for (const c of accepted) {
+      const sectionKey = c.fieldId as BusinessPlanSectionKey;
+      const section = sections.find((s) => s.key === sectionKey);
+      if (!section) continue;
+      await saveSection(sectionKey, c.finalValue);
+    }
+  }, [sections, saveSection]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
@@ -660,7 +446,7 @@ export function BusinessPlanWorkspace({
               </WorkspaceActionButton>
               {/* TIM-2331: Regenerate every section from current platform data. */}
               <RegenerateAllButton
-                disabled={!canEdit || streamingKey !== null}
+                disabled={!canEdit}
                 getCurrentSections={() =>
                   sections.map((s) => ({
                     key: s.key,
@@ -678,6 +464,11 @@ export function BusinessPlanWorkspace({
                   );
                 }}
                 onError={(msg) => setGlobalError(msg)}
+              />
+              <AskScoutButton
+                workspaceKey="business_plan"
+                focusLabel="business plan"
+                hasContent={hasContent}
               />
             </>
           }
@@ -735,7 +526,6 @@ export function BusinessPlanWorkspace({
         <SectionTree
           sections={sections}
           canEdit={canEdit}
-          streamingKey={streamingKey}
           collapsedGroups={collapsedGroups}
           onToggleGroup={(g) =>
             setCollapsedGroups((prev) => {
@@ -751,31 +541,27 @@ export function BusinessPlanWorkspace({
             updateSection(key, { isEditing: true, editBuffer: content })
           }
           onEditChange={(key, val) => updateSection(key, { editBuffer: val })}
-          onEditSave={(key, buf, isGenerating) => {
-            if (isGenerating) {
-              handleSaveAfterImprove(key, buf);
-              updateSection(key, { isEditing: false, isGenerating: false });
-            } else {
-              saveSection(key, buf || null);
-            }
+          onEditSave={(key, buf) => {
+            saveSection(key, buf || null);
           }}
           onEditCancel={(key, fallback) => {
-            if (abortRef.current) abortRef.current.abort();
-            setStreamingKey(null);
             updateSection(key, {
               isEditing: false,
-              isGenerating: false,
               editBuffer: fallback,
             });
           }}
           onResetToAuto={(key) => saveSection(key, null)}
-          onGenerateExec={(key) => handleGenerate(key)}
-          onImprove={(key) => handleImprove(key)}
         />
           </>
         )}
       </div>
     </div>
+    <CoPilotDrawer
+      planId={planId}
+      workspaceKey="business_plan"
+      initialTrialMessagesUsed={initialTrialMessagesUsed}
+      onApplySuggestions={handleApplyBusinessPlanSuggestions}
+    />
     </>
   );
 }
@@ -785,18 +571,18 @@ export function BusinessPlanWorkspace({
 interface SectionTreeProps {
   sections: SectionState[];
   canEdit: boolean;
-  streamingKey: BusinessPlanSectionKey | null;
+  streamingKey?: BusinessPlanSectionKey | null;
   collapsedGroups: Set<BusinessPlanGroupKey>;
   onToggleGroup: (group: BusinessPlanGroupKey) => void;
   onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
   onToggleExpand: (key: BusinessPlanSectionKey, current: boolean) => void;
   onEditStart: (key: BusinessPlanSectionKey, content: string) => void;
   onEditChange: (key: BusinessPlanSectionKey, val: string) => void;
-  onEditSave: (key: BusinessPlanSectionKey, buf: string, isGenerating: boolean) => void;
+  onEditSave: (key: BusinessPlanSectionKey, buf: string) => void;
   onEditCancel: (key: BusinessPlanSectionKey, fallback: string) => void;
   onResetToAuto: (key: BusinessPlanSectionKey) => void;
-  onGenerateExec: (key: BusinessPlanSectionKey) => void;
-  onImprove: (key: BusinessPlanSectionKey) => void;
+  onGenerateExec?: (key: BusinessPlanSectionKey) => void;
+  onImprove?: (key: BusinessPlanSectionKey) => void;
 }
 
 function SectionTree(props: SectionTreeProps) {
@@ -821,11 +607,11 @@ function SectionTree(props: SectionTreeProps) {
         onToggleExpand={() => props.onToggleExpand(section.key, section.isExpanded)}
         onEditStart={() => props.onEditStart(section.key, section.userContent ?? section.autoContent)}
         onEditChange={(val) => props.onEditChange(section.key, val)}
-        onEditSave={() => props.onEditSave(section.key, section.editBuffer, section.isGenerating)}
+        onEditSave={() => props.onEditSave(section.key, section.editBuffer)}
         onEditCancel={() => props.onEditCancel(section.key, section.userContent ?? section.autoContent)}
         onResetToAuto={() => props.onResetToAuto(section.key)}
-        onGenerateExec={() => props.onGenerateExec(section.key)}
-        onImprove={() => props.onImprove(section.key)}
+        onGenerateExec={props.onGenerateExec ? () => props.onGenerateExec!(section.key) : undefined}
+        onImprove={props.onImprove ? () => props.onImprove!(section.key) : undefined}
       />
     );
   }
@@ -998,7 +784,7 @@ function SectionCard({
 
           <div className="flex items-center gap-2 shrink-0">
             {/* AI chips — inline from sm: up only; mobile row rendered below */}
-            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (
+            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && (
               <div className="hidden sm:flex items-center gap-2">
                 {onGenerateExec && (
                   <button
@@ -1060,7 +846,7 @@ function SectionCard({
         </div>
 
         {/* TIM-1679: AI chips second row — mobile (<640px) only, mirrors Menu Suite CategoryHeader pattern */}
-        {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (onGenerateExec || onImprove) && (
+        {canEdit && section.isExpanded && !section.isEditing && !isStreaming && (onGenerateExec || onImprove) && (
           <div className="sm:hidden flex flex-wrap items-center gap-2 mt-2 pl-6">
             {onGenerateExec && (
               <button
@@ -1088,7 +874,7 @@ function SectionCard({
       {section.isExpanded && (
         <div className="px-5 pb-5">
           <div className="border-t border-[var(--neutral-cool-150)] pt-4">
-            {(isStreaming || section.isGenerating) && !section.editBuffer && (
+            {isStreaming && !section.editBuffer && (
               <div className="flex items-center gap-2 mb-3" role="status">
                 <div className="flex gap-1" aria-hidden="true">
                   {[0, 1, 2].map((i) => (
@@ -1110,7 +896,7 @@ function SectionCard({
                   onChange={(e) => onEditChange(e.target.value)}
                   className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
                   placeholder="Add content for this section..."
-                  disabled={section.isGenerating && !section.editBuffer}
+                  disabled={false}
                 />
                 <div className="flex gap-2 mt-2">
                   <button
@@ -1124,7 +910,7 @@ function SectionCard({
                     onClick={onEditCancel}
                     className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
                   >
-                    {section.isGenerating ? "Stop" : "Cancel"}
+                    Cancel
                   </button>
                 </div>
               </div>

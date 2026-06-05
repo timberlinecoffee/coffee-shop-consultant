@@ -529,10 +529,16 @@ const SUGGEST_WORKSPACE_CHANGES_TOOL: Anthropic.Tool = {
 // TIM-2381: offer suggest_workspace_changes when the owner asks Scout to improve
 // or generate content in a supported workspace. Kept deliberately broad — the
 // model's own system prompt narrows which tool applies on a given turn.
+// TIM-2382: extended to all Scout-as-hub Phase 2 surfaces.
 const SUGGEST_TOOL_SUPPORTED_WORKSPACES: readonly string[] = [
   "business_plan",
   "menu_pricing",
   "buildout_equipment",
+  "marketing",
+  "operations_playbook",
+  "opening_month_plan",
+  "hiring",
+  "concept",
 ]
 
 function shouldOfferSuggestTool(
@@ -541,7 +547,7 @@ function shouldOfferSuggestTool(
 ): boolean {
   if (!workspaceKey || !SUGGEST_TOOL_SUPPORTED_WORKSPACES.includes(workspaceKey)) return false
   const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
-  return /\b(improve|generate|draft|write|suggest|update|rewrite|enhance|help|create|propose|revise|edit|review|fill in|flesh out|develop)\b.{0,120}\b(plan|section|summary|business|executive|company|overview|team|operations|marketing|menu|item|equipment|content|draft|workspace)\b/i.test(
+  return /\b(improve|generate|draft|write|suggest|update|rewrite|enhance|help|create|propose|revise|edit|review|fill in|flesh out|develop)\b.{0,120}\b(plan|section|summary|business|executive|company|overview|team|operations|marketing|menu|item|equipment|content|draft|workspace|concept|hiring|milestone|launch|opening|jd|job|description|playbook|sop)\b/i.test(
     lastUser,
   )
 }
