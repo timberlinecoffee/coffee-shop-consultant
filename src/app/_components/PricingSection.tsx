@@ -149,6 +149,12 @@ export default function PricingSection() {
           </StaggerItem>
         ))}
       </StaggerContainer>
+
+      <FadeUp delay={0.3} className="text-center mt-8">
+        <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>
+          Top up anytime — credit packs from $19. No plan upgrade required.
+        </p>
+      </FadeUp>
     </div>
   );
 }
