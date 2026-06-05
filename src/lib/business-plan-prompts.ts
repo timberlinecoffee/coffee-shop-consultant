@@ -88,6 +88,12 @@ export interface BpPromptInputs {
   founderBudget: string;
   founderLocation: string;
   founderStage: string;
+  // TIM-2334: optional plan_state ground-truth payload. When provided, the
+  // narrative is forbidden from inventing numbers — every quantitative claim
+  // must match this block so narrative + financial tables agree. Plain string
+  // (already serialized by formatPlanStateForPrompt) to keep this module
+  // free of @/ imports so the node:test runner can load it directly.
+  planStateGroundTruth?: string;
 }
 
 export interface BpPromptOutput {
@@ -96,9 +102,23 @@ export interface BpPromptOutput {
   maxTokens: number;
 }
 
+// TIM-2334: shared ground-truth directive injected when planStateGroundTruth is
+// provided. The narrative LLM must quote the numbers from the block verbatim
+// so narrative + financial tables can no longer describe two different
+// businesses (cf. investor critique on TIM-2315, Beaver & Beef regenerated plan).
+export const BP_PLAN_STATE_DIRECTIVE = `Quantitative ground-truth rule:
+- The "Ground Truth Numbers" block below holds the EXACT figures the financial tables will show.
+- Use those numbers verbatim. Do not round to different round numbers. Do not invent additional dollar figures, headcounts, percentages, capital totals, rent amounts, or year-by-year figures that are not in the block.
+- If the section calls for a number that is not in the block, prefer words ("the team", "a modest payroll") to a fabricated figure.
+- Every dollar figure or count you cite must round-trip cleanly against the block — narrative and tables must agree.`;
+
 export function buildBpSectionPrompt(inp: BpPromptInputs): BpPromptOutput {
   const sectionSpec = BP_SECTION_SPECS[inp.sectionKey] ?? "";
   const maxTokens = BP_MAX_TOKENS_BY_SECTION[inp.sectionKey] ?? 1200;
+
+  const groundTruthBlock = inp.planStateGroundTruth?.trim()
+    ? `\n${BP_PLAN_STATE_DIRECTIVE}\n\n${inp.planStateGroundTruth.trim()}\n`
+    : "";
 
   if (inp.sectionKey === "executive-summary") {
     const systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan.
@@ -114,7 +134,7 @@ Founder context:
 - Budget: ${inp.founderBudget}
 - Location: ${inp.founderLocation}
 - Stage: ${inp.founderStage}
-
+${groundTruthBlock}
 Plan data:
 ${inp.planSnapshot || "The workspaces are mostly empty, so generate from the founder context above plus reasonable, clearly-grounded assumptions for a coffee shop at this stage and location. Write a complete four-paragraph executive summary now -- do not refuse or list what is missing."}`;
 
@@ -134,7 +154,7 @@ Founder context:
 - Budget: ${inp.founderBudget}
 - Location: ${inp.founderLocation}
 - Stage: ${inp.founderStage}
-
+${groundTruthBlock}
 Assembled plan data for this section:
 ${inp.sectionAutoContent || "(No section-specific data entered for this section yet.)"}
 

@@ -38,6 +38,7 @@ import {
   buildBpSectionPrompt,
   BP_REGENERABLE_SECTION_KEYS,
 } from "@/lib/business-plan-prompts";
+import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import type { BusinessPlanSectionKey } from "@/lib/business-plan";
 
 const HEARTBEAT_MS = 15_000;
@@ -172,6 +173,20 @@ export async function POST(): Promise<Response> {
   const founderLocation = planContext.location_country ?? "not specified";
   const founderStage = String(onboarding?.stage ?? "not specified");
 
+  // TIM-2334: compute plan_state ONCE up-front. Every section in this batch
+  // sees the same ground-truth numbers (same engine, same currency, same
+  // capital stack, same year-by-year P&L) so the regenerated narrative is
+  // consistent across sections — not just between narrative and tables.
+  const planState = buildPlanState({
+    shopName,
+    financialModel,
+    locationCandidates: (locationRows ?? []) as BpLocationCandidate[],
+    equipment: (equipmentRows ?? []) as BpEquipmentItem[],
+    hiringRoles: (hiringRows ?? []) as BpHiringRole[],
+    menuBlendedCogsPct,
+  });
+  const planStateGroundTruth = formatPlanStateForPrompt(planState);
+
   // Sparse-section detection: assembled data ≤ threshold means the model
   // mostly improvises from founder context. Surface this in the estimate so
   // the user can cancel and fill those workspaces first.
@@ -259,6 +274,7 @@ export async function POST(): Promise<Response> {
           founderBudget,
           founderLocation,
           founderStage,
+          planStateGroundTruth,
         });
 
         let fullText = "";
