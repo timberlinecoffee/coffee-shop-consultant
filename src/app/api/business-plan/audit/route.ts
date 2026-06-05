@@ -68,6 +68,7 @@ import { runSelfConsistencyCheck, type SelfConsistencyContradiction } from "@/li
 import {
   buildAuditFindings,
   statsFromFindings,
+  applyFallbackSynthesis,
   type AuditFinding,
   type AuditReport,
 } from "@/lib/business-plan/audit";
@@ -400,6 +401,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       }
     });
   }
+
+  // Deterministic fallback for any finding the synthesis didn't reach
+  // (over the cap, Haiku timeout, or synthesis-disabled environment). Every
+  // card the UI renders must have all three plain-language fields populated
+  // — board QA gate.
+  for (const f of findings) applyFallbackSynthesis(f);
 
   const auditReport: AuditReport = {
     generated_at: new Date().toISOString(),

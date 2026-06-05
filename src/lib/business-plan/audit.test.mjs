@@ -7,6 +7,7 @@ import {
   fromSelfConsistencyContradiction,
   fromEstimatedClaim,
   statsFromFindings,
+  applyFallbackSynthesis,
 } from "./audit.ts";
 
 const numericBase = {
@@ -154,6 +155,55 @@ test("statsFromFindings counts bucket sizes", () => {
     { severity: "info" }, { severity: "info" }, { severity: "info" },
   ]);
   assert.deepEqual(stats, { critical: 2, warning: 1, info: 3, total: 6 });
+});
+
+test("applyFallbackSynthesis populates issue/why/fix on bare finding", () => {
+  const f = fromNumericFinding(numericBase);
+  applyFallbackSynthesis(f);
+  assert.equal(typeof f.issue, "string");
+  assert.equal(typeof f.why_it_matters, "string");
+  assert.equal(typeof f.suggested_fix, "string");
+  assert.equal(f.issue.length > 0, true);
+  assert.equal(f.why_it_matters.length > 0, true);
+  assert.equal(f.suggested_fix.length > 0, true);
+  assert.equal(f.suggested_fix.includes("Location"), true);
+  // No leaked tags from raw_message → issue.
+  assert.equal(f.issue.includes("<"), false);
+});
+
+test("applyFallbackSynthesis preserves LLM-populated fields", () => {
+  const f = fromNumericFinding(numericBase);
+  f.issue = "LLM-set issue";
+  f.why_it_matters = "LLM-set why";
+  f.suggested_fix = "LLM-set fix";
+  applyFallbackSynthesis(f);
+  assert.equal(f.issue, "LLM-set issue");
+  assert.equal(f.why_it_matters, "LLM-set why");
+  assert.equal(f.suggested_fix, "LLM-set fix");
+});
+
+test("applyFallbackSynthesis fills missing fields without overwriting set ones", () => {
+  const f = fromNumericFinding(numericBase);
+  f.issue = "LLM-set issue only";
+  // why_it_matters + suggested_fix left null
+  applyFallbackSynthesis(f);
+  assert.equal(f.issue, "LLM-set issue only");
+  assert.equal(typeof f.why_it_matters, "string");
+  assert.equal(typeof f.suggested_fix, "string");
+  assert.equal(f.why_it_matters.length > 0, true);
+});
+
+test("applyFallbackSynthesis covers every rule_id with non-empty fields", () => {
+  const ruleIds = ["numeric_mismatch", "sign_mismatch", "contradiction", "credibility", "typo", "boilerplate", "missing_section", "fabricated_local_claim", "geographic_fabrication", "self_consistency", "estimated_claim"];
+  for (const r of ruleIds) {
+    const f = fromNumericFinding({ ...numericBase, message: `raw for ${r}` });
+    f.rule_id = r;
+    f.issue = null; f.why_it_matters = null; f.suggested_fix = null;
+    applyFallbackSynthesis(f);
+    assert.equal(f.issue && f.issue.length > 0, true, `issue empty for ${r}`);
+    assert.equal(f.why_it_matters && f.why_it_matters.length > 0, true, `why empty for ${r}`);
+    assert.equal(f.suggested_fix && f.suggested_fix.length > 0, true, `fix empty for ${r}`);
+  }
 });
 
 test("regression: tags from validator never leak into AuditFinding strings", () => {

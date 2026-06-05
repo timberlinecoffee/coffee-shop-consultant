@@ -311,3 +311,81 @@ export function statsFromFindings(findings: AuditFinding[]): AuditReport["stats"
   }
   return { critical, warning, info, total: findings.length };
 }
+
+// ── Deterministic fallback synthesis ─────────────────────────────────────────
+//
+// When the Haiku synthesis pass fails or is skipped (budget cap, network
+// abort, rate limit), this fallback fills the three plain-language fields
+// from the structured AuditFinding so every card the UI renders has issue +
+// why_it_matters + suggested_fix populated. The QA gate requires it.
+//
+// The phrasing is intentionally generic but specific to the rule_id — it
+// gets the user moving even if the LLM step was unavailable.
+
+const RULE_FALLBACK_WHY: Readonly<Record<AuditRuleId, string>> = {
+  numeric_mismatch:
+    "A number in the narrative does not match what your workspace data shows. Lenders cross-check these and a mismatch erodes trust.",
+  sign_mismatch:
+    "Your narrative says one direction (profit or loss) but your financials show the other. This is the kind of contradiction a lender will catch on first read.",
+  contradiction:
+    "Two parts of your plan say different things. A reader can only follow one of them, and either way it weakens your case.",
+  credibility:
+    "This claim reads as a guess. Investors and lenders skim for sourced numbers; an unbacked one stops them.",
+  typo:
+    "Small surface issues add up. A few typos make the plan feel rushed.",
+  boilerplate:
+    "This section reads like a template. Specific, local detail is what makes a plan persuasive.",
+  missing_section:
+    "Lenders expect this section to be present. Leaving it blank looks like the analysis was not done.",
+  fabricated_local_claim:
+    "A claim about the local market does not appear to be supported. A lender who knows the area will notice and lose confidence.",
+  geographic_fabrication:
+    "A neighborhood or address detail does not check out. Lenders local to your market will catch it on first read.",
+  self_consistency:
+    "Two statements in the same section contradict each other. Either one alone is fine; together they make the plan look hasty.",
+  estimated_claim:
+    "This number is the generator's estimate, not yours. Replace it with a sourced figure before showing the plan to anyone outside your circle.",
+};
+
+const RULE_FALLBACK_FIX: Readonly<Record<AuditRuleId, (f: AuditFinding) => string>> = {
+  numeric_mismatch: (f) =>
+    `Open the ${f.target.workspace_label} workspace, confirm the actual ${f.target.field_label ?? "value"}, then go back to the ${f.source.workspace_label} and fix the ${f.source.field_label ?? "wording"} to match.`,
+  sign_mismatch: (f) =>
+    `Compare what your ${f.target.workspace_label} workspace shows against the narrative in ${f.source.field_label ?? f.source.workspace_label}. Update whichever side is wrong.`,
+  contradiction: (f) =>
+    `Re-read the ${f.source.field_label ?? f.source.workspace_label} section and pick one consistent answer. Edit the wording so both parts agree.`,
+  credibility: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and either back the claim with a source or remove it.`,
+  typo: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and clean up the wording.`,
+  boilerplate: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and replace generic language with details specific to your shop and your block.`,
+  missing_section: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and fill in the answer based on your own plan.`,
+  fabricated_local_claim: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and replace the claim with a specific local detail you can stand behind.`,
+  geographic_fabrication: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and fix the address or neighborhood reference so it matches the real map.`,
+  self_consistency: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and pick the version that is true. Edit the other line to match.`,
+  estimated_claim: (f) =>
+    `Open the ${f.source.field_label ?? f.source.workspace_label} section and replace the estimate with a sourced number, or your own.`,
+};
+
+// applyFallbackSynthesis fills issue/why_it_matters/suggested_fix for findings
+// whose synthesis pass did not run or returned null. Idempotent — does nothing
+// when all three fields are already populated.
+export function applyFallbackSynthesis(finding: AuditFinding): void {
+  if (finding.issue && finding.why_it_matters && finding.suggested_fix) return;
+  if (!finding.issue) finding.issue = finding.raw_message;
+  if (!finding.why_it_matters) {
+    finding.why_it_matters = RULE_FALLBACK_WHY[finding.rule_id]
+      ?? "This is the kind of detail a careful reader of your plan will notice.";
+  }
+  if (!finding.suggested_fix) {
+    const builder = RULE_FALLBACK_FIX[finding.rule_id];
+    finding.suggested_fix = builder
+      ? builder(finding)
+      : `Open the ${finding.source.workspace_label} workspace and review the ${finding.source.field_label ?? "relevant section"}.`;
+  }
+}
