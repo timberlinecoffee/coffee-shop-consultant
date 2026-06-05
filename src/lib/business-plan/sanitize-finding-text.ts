@@ -12,9 +12,10 @@
 //
 // Relative imports / no @/ aliases so node:test can load this module directly.
 
-// Matches <num src="..." hedge="...">inner</num> markers (TIM-2342 source markers).
-// Preserves the inner text — just removes the wrapper. Single OR double quotes.
-const NUM_MARKER_RE = /<num\s+[^>]*>([\s\S]*?)<\/num>/gi;
+// TIM-2358: source-marker stripping is canonical in source-markers.ts. This
+// module composes that strip with stray-tag cleanup for validator findings
+// that may emit other XML-ish attribution markers.
+import { stripSourceMarkers } from "./source-markers.ts";
 
 // Catch-all for any remaining XML/HTML-style attribution or template tags the
 // validator might emit (e.g. <src ...>, <claim ...>, <ref ...>, self-closing
@@ -31,7 +32,7 @@ const COLLAPSE_SPACES_RE = /[ \t]{2,}/g;
 export function stripFindingTags(text: string | null | undefined): string {
   if (text == null) return "";
   if (typeof text !== "string") return "";
-  let out = text.replace(NUM_MARKER_RE, "$1");
+  let out = stripSourceMarkers(text);
   out = out.replace(STRAY_TAG_RE, "");
   out = out.replace(COLLAPSE_SPACES_RE, " ");
   return out;
