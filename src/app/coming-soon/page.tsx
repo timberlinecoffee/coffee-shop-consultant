@@ -15,6 +15,7 @@ import {
   FinancialsMockup,
   MenuMockup,
   LaunchMockup,
+  BusinessPlanExportMockup,
 } from "@/app/_components/Mockups";
 import { WaitlistForm } from "./WaitlistForm";
 
@@ -49,11 +50,11 @@ const PEXELS = {
 export const metadata: Metadata = {
   title: "Groundwork.AI: The Coffee Shop Planning Platform With AI Built In",
   description:
-    "Plan your concept, menu, financials, hiring, and launch in one coffee planning workspace. Scout reads every module you build and grounds its feedback in real coffee-shop benchmarks. Join the waitlist to lock in your exclusive launch price.",
+    "Plan your concept, menu, financials, hiring, and launch in one coffee planning workspace. Scout reads your entire plan — every module — and gives you plan-specific guidance, not generic advice. Join the waitlist to lock in your exclusive launch price.",
   openGraph: {
     title: "Groundwork.AI: The Coffee Shop Planning Platform With AI Built In",
     description:
-      "Plan your coffee shop concept, menu, financials, hiring, and launch in one workspace. Scout reads everything you build and gives feedback grounded in real coffee-shop benchmarks. Join the waitlist to lock in your exclusive launch price.",
+      "Plan your coffee shop concept, menu, financials, hiring, and launch in one workspace. Scout reads your entire plan — every module — and gives you plan-specific guidance, not generic advice. Join the waitlist to lock in your exclusive launch price.",
     siteName: "Groundwork",
   },
 };
@@ -185,8 +186,8 @@ export default function ComingSoonPage() {
                 }}
               >
                 Plan your concept, menu, financials, hiring, and launch in one
-                workspace. Scout reads everything you build and grounds its
-                feedback in real coffee-shop benchmarks.
+                workspace. Scout reads your entire plan — every module — and
+                gives you plan-specific guidance, not generic advice.
               </p>
             </FadeUp>
             <FadeUp delay={0.24}>
@@ -358,11 +359,11 @@ export default function ComingSoonPage() {
               reads every one of them. Waitlist members get in first, at the lowest price.
             </p>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <StaggerItem className="h-full">
               <ModuleCard
                 title="Coffee Shop Financials"
-                description="Coffee shop startup costs and 12-month revenue projections, benchmarked against real shops in your market size."
+                description="Startup costs and 12-month revenue projections — fully itemized, with category defaults."
                 mockup={<FinancialsMockup />}
                 thumbnailSrc={PEXELS.espressoMachine}
                 thumbnailAlt="Coffee shop owner reviewing financial spreadsheets"
@@ -384,6 +385,13 @@ export default function ComingSoonPage() {
                 mockup={<LaunchMockup />}
                 thumbnailSrc={PEXELS.teamLaunch}
                 thumbnailAlt="Coffee shop team reviewing their launch plan together"
+              />
+            </StaggerItem>
+            <StaggerItem className="h-full">
+              <ModuleCard
+                title="Business Plan Export"
+                description="Pull every module into a lender-ready PDF. Bank, investor, internal, and printable variants."
+                mockup={<BusinessPlanExportMockup />}
               />
             </StaggerItem>
           </StaggerContainer>
@@ -415,15 +423,15 @@ export default function ComingSoonPage() {
               <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
                 Concept, menu, financials, hiring, equipment, launch. Scout has access
                 to every module you fill in, so the answer to your lease, ticket size,
-                or staffing question is grounded in your actual plan and real
-                coffee-shop benchmarks, not generic small-business advice.
+                or staffing question is grounded in your plan and real-market research,
+                not generic small-business advice.
               </p>
               <div className="flex flex-wrap gap-3">
                 {[
                   { label: "Reads Your Coffee Menu", color: "sage" as const },
                   { label: "Reads Your Financials", color: "teal" as const },
                   { label: "Reads Your Launch Plan", color: "sage" as const },
-                  { label: "Grounded in Coffee Benchmarks", color: "teal" as const },
+                  { label: "Grounded in Your Plan & Research", color: "teal" as const },
                 ].map((tag) => (
                   <span
                     key={tag.label}
