@@ -26,6 +26,7 @@ import {
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { RegenerateAllButton } from "./regenerate-all-button";
+import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 
 interface Props {
   planId: string;
@@ -139,6 +140,12 @@ export function BusinessPlanWorkspace({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  // TIM-2336: export-time validation gate. When the validate endpoint returns
+  // blocking findings, we hold the export action in `pendingExportAction` and
+  // show the gate modal. On Continue we replay the action with ?force=1.
+  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
+  const [pendingExportAction, setPendingExportAction] = useState<"export" | "print" | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
@@ -306,55 +313,124 @@ export function BusinessPlanWorkspace({
   // ── PDF export / print ──────────────────────────────────────────────────────
 
   // TIM-1551: Both Print and Export drive through the same React-PDF renderer.
-  // Print opens the PDF in a new tab so the user can print from the browser viewer.
+  // TIM-2336: Both now run through the validation gate first. The gate runs
+  // Pass 1 (programmatic reconciliation) + Pass 2 (LLM critical-reader) before
+  // we hit the PDF route, and surfaces a modal when blocking numerical
+  // contradictions exist. Once the user resolves each (Apply / Override) we
+  // re-fire the export with ?force=1 — the server-side gate stays as a
+  // defense in depth, but the user's explicit confirmation suppresses it.
+  const performPdfFetch = useCallback(async (mode: "export" | "print", force: boolean): Promise<void> => {
+    const url = force ? "/api/pdf/business_plan_full?force=1" : "/api/pdf/business_plan_full";
+    const res = await fetch(url);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+      if (res.status === 402) {
+        setGlobalError("PDF export requires a paid subscription.");
+      } else if (res.status === 422 && j.error === "validation_blocked") {
+        // Server-side gate fired (force=false). Surface the modal with the
+        // report — the validate endpoint typically runs first client-side
+        // and supersedes this, but keep the fallback intact.
+        setValidationReport(j.report as ValidationReport);
+        setPendingExportAction(mode);
+      } else {
+        setGlobalError((j.error as string) ?? "PDF generation failed");
+      }
+      return;
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    if (mode === "print") {
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } else {
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const slug = shopName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "business-plan";
+      a.download = `${slug}-business-plan.pdf`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    }
+  }, [shopName]);
+
+  const runValidationThen = useCallback(async (mode: "export" | "print"): Promise<void> => {
+    setIsValidating(true);
+    try {
+      const res = await fetch("/api/business-plan/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ include_pass2: true }),
+      });
+      if (!res.ok) {
+        // Validation itself failing should not block export — fall back to
+        // the server-side gate in /api/pdf/business_plan_full which will
+        // re-run Pass 1 cheaply. Surface the error to the user.
+        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+        if (res.status === 402) {
+          setGlobalError("Validation requires a paid subscription. Export is paused until you upgrade.");
+          return;
+        }
+        if (res.status === 429) {
+          setGlobalError("Validation rate-limited. Please wait a moment and try again.");
+          return;
+        }
+        setGlobalError((j.error as string) ?? "Validation failed. Try again or use Override below.");
+        return;
+      }
+      const report = (await res.json()) as ValidationReport;
+      if (report.blocking || report.qualitative_findings.length > 0) {
+        // Show the modal even for advisory-only (qualitative) findings so the
+        // user sees the critical-reader notes before exporting.
+        setValidationReport(report);
+        setPendingExportAction(mode);
+        return;
+      }
+      await performPdfFetch(mode, false);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [performPdfFetch]);
+
   const handlePrintPlan = useCallback(async () => {
     setIsPrintingPdf(true);
     try {
-      const res = await fetch("/api/pdf/business_plan_full");
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
-        if (res.status === 402) {
-          setGlobalError("PDF export requires a paid subscription.");
-        } else {
-          setGlobalError((j.error as string) ?? "PDF generation failed");
-        }
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      // Revoke after a brief delay so the new tab has time to load the blob.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      await runValidationThen("print");
     } finally {
       setIsPrintingPdf(false);
     }
-  }, []);
+  }, [runValidationThen]);
 
   const handleExportPdf = useCallback(async () => {
     setIsExportingPdf(true);
     try {
-      const res = await fetch("/api/pdf/business_plan_full");
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
-        if (res.status === 402) {
-          setGlobalError("PDF export requires a paid subscription.");
-        } else {
-          setGlobalError((j.error as string) ?? "PDF export failed");
-        }
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const slug = shopName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "business-plan";
-      a.download = `${slug}-business-plan.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await runValidationThen("export");
     } finally {
       setIsExportingPdf(false);
     }
-  }, [shopName]);
+  }, [runValidationThen]);
+
+  const handleGateContinue = useCallback(async () => {
+    const mode = pendingExportAction;
+    setValidationReport(null);
+    setPendingExportAction(null);
+    if (!mode) return;
+    if (mode === "print") setIsPrintingPdf(true); else setIsExportingPdf(true);
+    try {
+      await performPdfFetch(mode, true);
+    } finally {
+      if (mode === "print") setIsPrintingPdf(false); else setIsExportingPdf(false);
+    }
+  }, [pendingExportAction, performPdfFetch]);
+
+  const handleGateCancel = useCallback(() => {
+    setValidationReport(null);
+    setPendingExportAction(null);
+  }, []);
+
+  const handleSectionPatchedFromGate = useCallback((sectionKey: string, newContent: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.key === sectionKey ? { ...s, userContent: newContent, editBuffer: newContent } : s)),
+    );
+  }, []);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -363,6 +439,20 @@ export function BusinessPlanWorkspace({
   return (
     <>
     {AIReviewModalNode}
+    {validationReport && (
+      <ExportGateModal
+        report={validationReport}
+        shopName={shopName}
+        sections={sections.map((s) => ({
+          key: s.key,
+          title: s.title,
+          currentContent: s.userContent ?? s.autoContent,
+        }))}
+        onSectionPatched={handleSectionPatchedFromGate}
+        onCancel={handleGateCancel}
+        onContinue={handleGateContinue}
+      />
+    )}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-20">
         {/* TIM-1894: canonical WorkspaceHeader — actions live top-right on the
@@ -380,25 +470,25 @@ export function BusinessPlanWorkspace({
               <WorkspaceActionButton
                 variant="primary"
                 onClick={handleExportPdf}
-                disabled={isExportingPdf || !canEdit}
+                disabled={isExportingPdf || isValidating || !canEdit}
                 aria-label="Export PDF"
                 title="Export PDF"
               >
                 <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 <span className="hidden min-[1536px]:inline">
-                  {isExportingPdf ? "Exporting..." : "Export PDF"}
+                  {isExportingPdf || isValidating ? "Checking..." : "Export PDF"}
                 </span>
               </WorkspaceActionButton>
               {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
               <WorkspaceActionButton
                 onClick={handlePrintPlan}
-                disabled={isPrintingPdf || !canEdit}
+                disabled={isPrintingPdf || isValidating || !canEdit}
                 aria-label="Print Business Plan"
                 title="Print Business Plan"
               >
                 <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 <span className="hidden min-[1536px]:inline">
-                  {isPrintingPdf ? "Preparing..." : "Print Business Plan"}
+                  {isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
                 </span>
               </WorkspaceActionButton>
               {/* TIM-2331: Regenerate every section from current platform data. */}
