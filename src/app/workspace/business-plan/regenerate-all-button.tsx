@@ -26,7 +26,7 @@
 //   5. Apply → PATCH each accepted section. Reuses /api/business-plan/sections.
 
 import { useCallback, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ShieldAlert } from "lucide-react";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -36,6 +36,7 @@ import type {
   SuggestionPayload,
 } from "@/components/ai-assist/AIReviewModal";
 import type { OpenProgressOverlayOptions } from "@/hooks/useBusinessPlanProgressOverlay";
+import type { AuditReport } from "@/lib/business-plan/audit";
 
 interface EstimatePayload {
   sections: Array<{ key: string; title: string }>;
@@ -75,10 +76,25 @@ export interface RegenerateAllButtonProps {
   onSectionApplied: (sectionKey: string, finalValue: string) => void;
   /** Called when a non-recoverable error fires the run. */
   onError?: (msg: string) => void;
+  /**
+   * TIM-2394 pre-flight gate. Runs the Plan Quality Check v2 audit against the
+   * SOURCE suites before any regen happens. Returns the AuditReport so this
+   * component can decide whether to surface the preflight dialog (when findings
+   * exist) or jump straight to the estimate step. Implementations should hit
+   * /api/business-plan/audit which already caches by source-suite state hash.
+   */
+  runPreflightAudit?: () => Promise<AuditReport | null>;
+  /**
+   * TIM-2394 — invoked when the user clicks "Fix these first" in the preflight
+   * dialog. Parent should switch the workspace to the Quality Check tab,
+   * surface the report findings, and dismiss the regen flow.
+   */
+  onFixFirst?: (report: AuditReport) => void;
 }
 
 // TIM-2360: "stalled" added for connection-stall detection flow.
-type Phase = "idle" | "estimating" | "confirming" | "streaming" | "stalled";
+// TIM-2394: "preflighting" + "preflight" added for the source-suite quality gate.
+type Phase = "idle" | "preflighting" | "preflight" | "estimating" | "confirming" | "streaming" | "stalled";
 
 interface PendingEstimate {
   estimate: EstimatePayload;
@@ -103,9 +119,14 @@ export function RegenerateAllButton({
   closeProgressOverlay,
   onSectionApplied,
   onError,
+  runPreflightAudit,
+  onFixFirst,
 }: RegenerateAllButtonProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [pending, setPending] = useState<PendingEstimate | null>(null);
+  // TIM-2394: AuditReport captured in the preflight step. We hold it in state
+  // so the dialog can render the findings and pass them to onFixFirst.
+  const [preflightReport, setPreflightReport] = useState<AuditReport | null>(null);
   const sectionsRef = useRef<SectionCurrent[]>([]);
   // TIM-2360: track section keys so retry can pass only= the remaining ones.
   const completedKeysRef = useRef<Set<string>>(new Set());
@@ -199,20 +220,62 @@ export function RegenerateAllButton({
     }
   }, [fail]);
 
-  const handleClick = useCallback(async () => {
-    if (phase !== "idle") return;
-    setPhase("estimating");
+  // TIM-2394: shared step that fetches the estimate and pivots the UI into
+  // the existing confirm dialog. Extracted so both the cold-start path and the
+  // "Generate anyway" continuation from the preflight dialog reuse it.
+  const advanceToEstimate = useCallback(async () => {
     completedKeysRef.current = new Set();
     allEstimatedKeysRef.current = [];
     stalledRef.current = false;
     sectionsRef.current = getCurrentSections();
-
+    setPhase("estimating");
     const result = await fetchEstimate(null);
     if (!result) { setPhase("idle"); return; }
     allEstimatedKeysRef.current = result.estimate.sections.map((s) => s.key);
     setPending(result);
     setPhase("confirming");
-  }, [phase, fetchEstimate, getCurrentSections]);
+  }, [fetchEstimate, getCurrentSections]);
+
+  const handleClick = useCallback(async () => {
+    if (phase !== "idle") return;
+
+    // TIM-2394 pre-flight gate. If a runPreflightAudit handler is wired and the
+    // returned report carries findings, surface the preflight dialog instead of
+    // jumping straight to the estimate. If the audit fails or has no findings,
+    // proceed directly to the existing estimate-then-confirm flow.
+    if (runPreflightAudit) {
+      setPhase("preflighting");
+      let report: AuditReport | null = null;
+      try {
+        report = await runPreflightAudit();
+      } catch {
+        report = null;
+      }
+      if (report && report.findings.length > 0) {
+        setPreflightReport(report);
+        setPhase("preflight");
+        return;
+      }
+    }
+
+    await advanceToEstimate();
+  }, [phase, runPreflightAudit, advanceToEstimate]);
+
+  // TIM-2394 — user accepted the preflight findings and chose to fix the
+  // source suites first. Hand the report back to the parent and dismiss the
+  // regen flow entirely.
+  const handlePreflightFixFirst = useCallback(() => {
+    if (preflightReport) onFixFirst?.(preflightReport);
+    setPreflightReport(null);
+    setPhase("idle");
+  }, [preflightReport, onFixFirst]);
+
+  // TIM-2394 — user dismissed the preflight gate and chose to regenerate
+  // anyway. Continue with the existing estimate-then-confirm flow.
+  const handlePreflightGenerateAnyway = useCallback(async () => {
+    setPreflightReport(null);
+    await advanceToEstimate();
+  }, [advanceToEstimate]);
 
   // TIM-2360: retry remaining sections after a stall. Skips confirm dialog
   // and goes straight to estimating → confirming with the remaining keys.
@@ -459,13 +522,24 @@ export function RegenerateAllButton({
       >
         <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
         <span className="hidden min-[1536px]:inline">
-          {phase === "estimating"
-            ? "Estimating..."
-            : phase === "streaming"
-              ? "Regenerating..."
-              : "Regenerate all"}
+          {phase === "preflighting"
+            ? "Checking..."
+            : phase === "estimating"
+              ? "Estimating..."
+              : phase === "streaming"
+                ? "Regenerating..."
+                : "Regenerate all"}
         </span>
       </WorkspaceActionButton>
+
+      {phase === "preflight" && preflightReport && (
+        <RegenerateAllPreflightDialog
+          report={preflightReport}
+          onFixFirst={handlePreflightFixFirst}
+          onGenerateAnyway={handlePreflightGenerateAnyway}
+          onCancel={() => { setPreflightReport(null); setPhase("idle"); }}
+        />
+      )}
 
       {phase === "confirming" && pending && (
         <RegenerateAllConfirmDialog
@@ -484,6 +558,108 @@ export function RegenerateAllButton({
         />
       )}
     </>
+  );
+}
+
+// TIM-2394 — pre-flight dialog. Surfaced when the source-suite quality check
+// found issues BEFORE the user pays for a regen run. Two actions: route the
+// user into Quality Check to fix the source workspaces, or proceed anyway.
+interface PreflightProps {
+  report: AuditReport;
+  onFixFirst: () => void;
+  onGenerateAnyway: () => void;
+  onCancel: () => void;
+}
+
+function RegenerateAllPreflightDialog({ report, onFixFirst, onGenerateAnyway, onCancel }: PreflightProps) {
+  const { critical, warning, info, total } = report.stats;
+  const bullets = report.findings.slice(0, 3);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="regen-preflight-title"
+    >
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-[var(--border)]">
+        <div className="px-5 py-4 border-b border-[var(--neutral-cool-150)] flex items-start gap-3">
+          <ShieldAlert
+            className="w-5 h-5 mt-0.5 text-amber-600 flex-shrink-0"
+            aria-hidden="true"
+          />
+          <div>
+            <h2 id="regen-preflight-title" className="text-base font-semibold text-[var(--foreground)]">
+              Check your plan before regenerating
+            </h2>
+            <p className="text-xs text-[var(--muted-foreground)] mt-1">
+              We found {total} {total === 1 ? "item" : "items"} worth fixing in your source workspaces.
+              Your Business Plan will be generated from this data, so fixing them first means a stronger plan.
+            </p>
+          </div>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div className="rounded-lg bg-[var(--neutral-cool-50)] border border-[var(--neutral-cool-150)] px-3 py-2.5 text-xs text-[var(--foreground)] space-y-1">
+            {critical > 0 && (
+              <div className="flex justify-between">
+                <span className="text-red-700 font-semibold">Fix before launch</span>
+                <span className="font-semibold">{critical}</span>
+              </div>
+            )}
+            {warning > 0 && (
+              <div className="flex justify-between">
+                <span className="text-amber-700 font-semibold">Worth a look</span>
+                <span className="font-semibold">{warning}</span>
+              </div>
+            )}
+            {info > 0 && (
+              <div className="flex justify-between">
+                <span className="text-neutral-600 font-semibold">Heads-up</span>
+                <span className="font-semibold">{info}</span>
+              </div>
+            )}
+          </div>
+          {bullets.length > 0 && (
+            <ul className="space-y-1.5 text-xs text-[var(--foreground)]">
+              {bullets.map((f) => (
+                <li key={f.id} className="leading-snug">
+                  &middot; {f.issue ?? f.raw_message}
+                </li>
+              ))}
+              {total > bullets.length && (
+                <li className="text-[var(--muted-foreground)] leading-snug">
+                  &middot; {total - bullets.length} more in the Quality Check tab
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-[var(--neutral-cool-150)] flex justify-between gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg text-[var(--muted-foreground)] text-xs font-semibold hover:text-[var(--foreground)] transition-colors"
+          >
+            Cancel
+          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onGenerateAnyway}
+              className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-semibold hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              Generate anyway
+            </button>
+            <button
+              type="button"
+              onClick={onFixFirst}
+              className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-deep)] transition-colors"
+            >
+              Fix these first
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

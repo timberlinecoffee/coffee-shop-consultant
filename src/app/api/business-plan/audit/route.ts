@@ -1,22 +1,24 @@
-// TIM-2356: Plan Quality Check — standalone audit endpoint.
+// TIM-2394 Plan Quality Check v2 — source-suite-only audit endpoint.
 //
 // POST /api/business-plan/audit
 //   body: {}
 //   returns: { report: AuditReport, cached: boolean }
 //
-// Aggregates current workspace state, runs the existing validator rule set
-// (TIM-2336 reconciliation + Pass 2 critic + TIM-2340 local-claims + TIM-2343
-// self-consistency) and TIM-2342 estimate-class claims, normalizes everything
-// into the AuditFinding shape, then runs a per-finding Haiku synthesis pass
-// to produce owner-facing plain-language fields.
+// v2 audits the source suites (Financials, Hiring, Equipment, Menu, Launch,
+// Lease) against each other and against industry benchmarks. It does NOT load
+// or evaluate business-plan section text — the BP suite is a downstream
+// narrative output of the source suites and auditing it against the source it
+// was generated from is unhelpful. Correct flow is: edit source suites → run
+// quality check → fix findings → THEN regenerate Business Plan from clean
+// source.
 //
-// Caching keyed on sha256(canonical plan_state JSON + concatenated section text
-// + voice-guide hash). A re-click without any workspace mutation returns the
-// cached report instantly with `cached: true`. Any input change forces a
-// recompute.
+// Caching keyed on sha256(canonical plan_state JSON + raw source rows JSON +
+// voice-guide hash). A re-click without any source-suite mutation returns the
+// cached report instantly with `cached: true`. The plan_revision is no longer
+// part of the cache key — regenerating BP does not invalidate v2 audits.
 //
 // Standing Rules:
-//   Rule 1 — table RLS deny-by-default in migration (TIM-2356 cache).
+//   Rule 1 — table RLS deny-by-default in migration (reused from v1).
 //   Rule 2 — re-checks ownership + plan tier server-side.
 //   Rule 3 — input body validated; every string field passed to renderer
 //            stripped via stripFindingTags at the audit-module boundary.
@@ -37,53 +39,34 @@ import { createClient } from "@/lib/supabase/server";
 import { hasWriteAccess } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
-  BUSINESS_PLAN_SECTIONS,
-  assembleCompanyConcept,
-  assembleTargetMarket,
-  assembleExecutionOperations,
-  assembleExecutionMarketingSales,
-  assembleOperationsLaunch,
-  assembleTeamHiring,
-  assembleFinancialPlan,
-  toBpMarketingPlanning,
   type BpLocationCandidate,
   type BpEquipmentItem,
-  type BpMenuItem,
-  type BpLaunchItem,
   type BpHiringRole,
 } from "@/lib/business-plan";
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { buildPlanState } from "@/lib/business-plan/plan-state";
 import { normalizeConceptV2 } from "@/lib/concept";
 import {
-  runReconciliation,
-  runLocalClaimsChecks,
-  parsePass2Response,
-  buildPass2UserMessage,
-  PASS2_SYSTEM_PROMPT,
-  type ValidationReport,
-  type ValidationEstimatedClaim,
-} from "@/lib/business-plan/validate";
-import { runSelfConsistencyCheck, type SelfConsistencyContradiction } from "@/lib/business-plan/self-consistency-runner";
+  runSourceSuiteAudit,
+  type SourceSuiteHiringRow,
+  type SourceSuiteEquipmentRow,
+  type SourceSuiteMenuRow,
+  type SourceSuiteLaunchRow,
+} from "@/lib/business-plan/source-suite-checks";
 import {
-  buildAuditFindings,
   statsFromFindings,
   applyFallbackSynthesis,
   type AuditFinding,
   type AuditReport,
 } from "@/lib/business-plan/audit";
+import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 import {
   synthesizeFinding,
   voiceGuideHash,
 } from "@/lib/business-plan/audit-synthesis";
 
 // Budgets — keep total time under maxDuration with slack.
-const PASS2_MAX_TOKENS = 2_000;
-const PASS2_TIMEOUT_MS = 25_000;
 const SYNTHESIS_TIMEOUT_MS = 8_000;
-// Each Haiku synthesis call runs concurrent with up to MAX_SYNTHESIS_CONCURRENCY
-// peers. Cap total synth calls so a pathological report (50+ findings) can't
-// blow the budget — the route synthesizes the top-priority findings first.
 const MAX_SYNTHESIS_CONCURRENCY = 4;
 const MAX_SYNTHESIS_PER_AUDIT = 30;
 
@@ -97,18 +80,17 @@ async function loadVoiceGuide(): Promise<string> {
   return cachedGuideBytes;
 }
 
-// Canonical state hash: stable JSON of plan_state plus alphabetized section
-// text plus the voice-guide hash. Used as the cache key and surfaced on the
-// report so the UI can prove staleness.
+// Canonical state hash: stable JSON of plan_state + raw source rows + voice-guide
+// hash. Used as the cache key — surfaced on the report so the UI can prove
+// staleness.
 function computeStateHash(args: {
   planState: unknown;
-  sectionTexts: Map<string, string>;
+  sourceRows: unknown;
   voiceGuideHashStr: string;
 }): string {
-  const ordered = Array.from(args.sectionTexts.entries()).sort(([a], [b]) => a.localeCompare(b));
   const payload = JSON.stringify({
     ps: args.planState,
-    s: ordered,
+    src: args.sourceRows,
     g: args.voiceGuideHashStr,
   });
   return createHash("sha256").update(payload).digest("hex");
@@ -119,24 +101,40 @@ interface AuditCacheRow {
   report_json: AuditReport;
 }
 
+// Strip every string field on every finding through stripFindingTags so the UI
+// never receives a stray template marker. Run once per finding, not per render.
+function sanitizeFinding(f: AuditFinding): AuditFinding {
+  return {
+    ...f,
+    raw_message: stripFindingTags(f.raw_message),
+    quoted_text: f.quoted_text ? stripFindingTags(f.quoted_text) : null,
+    expected_text: f.expected_text ? stripFindingTags(f.expected_text) : null,
+    suggested_replacement: f.suggested_replacement
+      ? stripFindingTags(f.suggested_replacement)
+      : null,
+    issue: f.issue ? stripFindingTags(f.issue) : null,
+    why_it_matters: f.why_it_matters ? stripFindingTags(f.why_it_matters) : null,
+    suggested_fix: f.suggested_fix ? stripFindingTags(f.suggested_fix) : null,
+  };
+}
+
 export async function POST(request: NextRequest): Promise<Response> {
   void request;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Rule 4 — per-user rate limit. Audit is more expensive than validate
-  // (multiple Anthropic calls per run); bucket conservatively.
+  // Rule 4 — per-user rate limit. Audit is cheaper than v1 (no Pass 2 / no
+  // self-consistency LLM call) but synthesis still hits Anthropic per finding.
   const rl = await enforceRateLimit({
     bucket: "business-plan:audit",
     id: user.id,
-    limit: 6,
+    limit: 12,
     windowSec: 60,
   });
   if (rl) return rl;
 
-  // Rule 2 — server-side gate. Mirrors validate route: paid-API path, treat
-  // same as /generate so non-paying users can't burn LLM tokens here.
+  // Rule 2 — server-side gate. Same as /validate and /generate.
   const { data: profile } = await supabase
     .from("users")
     .select("subscription_status, trial_ends_at, beta_waiver_until")
@@ -164,27 +162,24 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
   const planId = plan.id;
 
-  // ── Load workspace data (mirrors /validate route load order). ──────────────
+  // ── Load source-suite data. business_plan_sections is intentionally NOT in
+  // this list — v2 reads only source-of-truth workspaces.
   const [
     { data: locationRows },
     { data: equipmentRows },
     { data: menuRows },
     { data: hiringRows },
-    { data: marketingDoc },
     { data: conceptDoc },
     { data: launchRows },
     { data: financialModel },
-    { data: savedSections },
   ] = await Promise.all([
     supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents, status").eq("plan_id", planId).order("created_at"),
-    supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
     supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
     supabase.from("financial_models").select("forecast_inputs, monthly_projections, startup_costs").eq("plan_id", planId).maybeSingle(),
-    supabase.from("business_plan_sections").select("section_key, user_content, is_visible, estimated_claims_json").eq("plan_id", planId),
   ]);
 
   const shopName = plan.plan_name ?? "this coffee shop";
@@ -214,64 +209,6 @@ export async function POST(request: NextRequest): Promise<Response> {
     cityLabel,
   });
 
-  type SavedSectionRow = {
-    section_key: string;
-    user_content: string | null;
-    is_visible: boolean;
-    estimated_claims_json: unknown;
-  };
-  const savedMap = new Map((savedSections ?? []).map((s: SavedSectionRow) => [s.section_key, s]));
-  const autoContent: Record<string, string> = {
-    "executive-summary": "",
-    "opportunity-problem-solution": "",
-    "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
-    "opportunity-competition": "",
-    "execution-marketing-sales": assembleExecutionMarketingSales(
-      (menuRows ?? []) as BpMenuItem[],
-      toBpMarketingPlanning(marketingDoc?.content),
-    ),
-    "execution-operations": assembleExecutionOperations(
-      (locationRows ?? []) as BpLocationCandidate[],
-      (equipmentRows ?? []) as BpEquipmentItem[],
-      financialModel,
-    ),
-    "execution-milestones-metrics": assembleOperationsLaunch(
-      (launchRows ?? []) as BpLaunchItem[],
-    ),
-    "company-overview": assembleCompanyConcept(conceptDoc?.content),
-    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
-    "financial-plan-financing": "",
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
-    "appendix-monthly-statements": "",
-  };
-
-  const sectionTexts = new Map<string, string>();
-  const estimatedClaims: ValidationEstimatedClaim[] = [];
-  for (const meta of BUSINESS_PLAN_SECTIONS) {
-    const saved = savedMap.get(meta.key) as SavedSectionRow | undefined;
-    if (saved && saved.is_visible === false) continue;
-    const text = (saved?.user_content ?? autoContent[meta.key] ?? "").trim();
-    if (text.length > 0) sectionTexts.set(meta.key, text);
-    const rawClaims = saved?.estimated_claims_json;
-    if (Array.isArray(rawClaims)) {
-      for (const c of rawClaims) {
-        if (!c || typeof c !== "object") continue;
-        const o = c as Record<string, unknown>;
-        const id = typeof o.id === "string" ? o.id : "";
-        const content = typeof o.content === "string" ? o.content : "";
-        if (!id || !content) continue;
-        estimatedClaims.push({
-          id,
-          section_key: typeof o.section_key === "string" ? o.section_key : meta.key,
-          content,
-          hedge: typeof o.hedge === "string" ? o.hedge : "approximately",
-          surrounding_sentence: typeof o.surrounding_sentence === "string" ? o.surrounding_sentence : "",
-        });
-      }
-    }
-  }
-
   // ── Cache lookup. ──────────────────────────────────────────────────────────
   let voiceGuide: string;
   try {
@@ -281,7 +218,26 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ error: "Audit unavailable; please retry." }, { status: 500 });
   }
   const voiceGuideHashStr = voiceGuideHash(voiceGuide);
-  const stateHash = computeStateHash({ planState, sectionTexts, voiceGuideHashStr });
+
+  // Source rows captured in the hash so any source-suite mutation invalidates
+  // the cache. Snapshot only the audited fields — keeps the hash stable when
+  // an unrelated workspace column ships.
+  const sourceRows = {
+    hiring: (hiringRows ?? []).map((r) => ({
+      id: r.id, role_title: r.role_title, headcount: r.headcount, start_date: r.start_date,
+    })),
+    equipment: (equipmentRows ?? []).map((r) => ({
+      id: r.id, name: r.name, cost_usd: r.cost_usd,
+    })),
+    menu: (menuRows ?? []).map((r) => ({
+      id: r.id, name: r.name, price_cents: r.price_cents, archived: r.archived,
+      expected_mix_pct: r.expected_mix_pct, expected_popularity: r.expected_popularity,
+    })),
+    launch: (launchRows ?? []).map((r) => ({
+      id: r.id, milestone: r.milestone, target_date: r.target_date, status: r.status,
+    })),
+  };
+  const stateHash = computeStateHash({ planState, sourceRows, voiceGuideHashStr });
 
   const { data: cacheRow } = await supabase
     .from("plan_quality_audit_cache")
@@ -297,81 +253,55 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ report: cached.report_json, cached: true });
   }
 
-  // ── Run validators. ────────────────────────────────────────────────────────
-  let report: ValidationReport;
+  // ── Run source-suite audit. ────────────────────────────────────────────────
+  const hiringIn: SourceSuiteHiringRow[] = (hiringRows ?? []).map((r) => ({
+    id: r.id ?? "",
+    role_title: r.role_title ?? null,
+    headcount: r.headcount ?? null,
+    start_date: r.start_date ?? null,
+  }));
+  const equipmentIn: SourceSuiteEquipmentRow[] = (equipmentRows ?? []).map((r) => ({
+    id: r.id ?? "",
+    name: r.name ?? null,
+    cost_usd: r.cost_usd ?? null,
+  }));
+  const menuIn: SourceSuiteMenuRow[] = (menuRows ?? []).map((r) => ({
+    id: r.id ?? "",
+    name: r.name ?? null,
+    price_cents: r.price_cents ?? null,
+    expected_mix_pct: r.expected_mix_pct ?? null,
+    expected_popularity: (r.expected_popularity ?? null) as SourceSuiteMenuRow["expected_popularity"],
+    archived: r.archived ?? false,
+  }));
+  const launchIn: SourceSuiteLaunchRow[] = (launchRows ?? []).map((r) => ({
+    id: r.id ?? "",
+    milestone: r.milestone ?? null,
+    target_date: r.target_date ?? null,
+    status: r.status ?? null,
+  }));
+
+  let findings: AuditFinding[];
   try {
-    report = runReconciliation({ planState, sections: sectionTexts });
+    findings = runSourceSuiteAudit({
+      planState,
+      hiring: hiringIn,
+      equipment: equipmentIn,
+      menu: menuIn,
+      launch: launchIn,
+    });
   } catch (err) {
-    console.error("audit runReconciliation failed", { userId: user.id, err });
+    console.error("audit runSourceSuiteAudit failed", { userId: user.id, err });
     return Response.json({ error: "Audit failed; please retry." }, { status: 500 });
   }
-  try {
-    const localFindings = runLocalClaimsChecks({ sections: sectionTexts, planState });
-    if (localFindings.length > 0) {
-      report.qualitative_findings = [...report.qualitative_findings, ...localFindings];
-    }
-  } catch (err) {
-    console.error("audit runLocalClaimsChecks failed", { userId: user.id, err });
-  }
 
-  const client = new Anthropic();
-  // Pass 2 LLM critic — still advisory.
-  if (sectionTexts.size > 0) {
-    try {
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), PASS2_TIMEOUT_MS);
-      try {
-        const resp = await client.messages.create(
-          {
-            model: PLATFORM_AI_MODEL,
-            max_tokens: PASS2_MAX_TOKENS,
-            system: PASS2_SYSTEM_PROMPT,
-            messages: [{ role: "user", content: buildPass2UserMessage(shopName, sectionTexts) }],
-          },
-          { signal: ac.signal },
-        );
-        const text = resp.content
-          .filter((b): b is Anthropic.TextBlock => b.type === "text")
-          .map((b) => b.text)
-          .join("");
-        const qualitative = parsePass2Response(text);
-        report.qualitative_findings = [...report.qualitative_findings, ...qualitative];
-      } finally {
-        clearTimeout(timer);
-      }
-    } catch (err) {
-      console.error("audit Pass 2 failed", { userId: user.id, err });
-    }
-  }
-  report.estimated_claims = estimatedClaims;
-
-  // Self-consistency: per-section. Best-effort, swallows errors.
-  const selfConsistencyResults: SelfConsistencyContradiction[] = [];
-  const sectionEntries = Array.from(sectionTexts.entries());
-  // Run section-level consistency in batches so we don't burn parallel quota.
-  for (let i = 0; i < sectionEntries.length; i += MAX_SYNTHESIS_CONCURRENCY) {
-    const batch = sectionEntries.slice(i, i + MAX_SYNTHESIS_CONCURRENCY);
-    const meta = new Map<string, string>(BUSINESS_PLAN_SECTIONS.map((m) => [m.key as string, m.title]));
-    const results = await Promise.all(
-      batch.map(([key, text]) =>
-        runSelfConsistencyCheck({
-          client,
-          sectionKey: key,
-          sectionTitle: meta.get(key) ?? key,
-          sectionText: text,
-        }),
-      ),
-    );
-    for (const arr of results) selfConsistencyResults.push(...arr);
-  }
-
-  // ── Normalize to AuditFinding[]. ───────────────────────────────────────────
-  const findings = buildAuditFindings({
-    report,
-    selfConsistencyContradictions: selfConsistencyResults,
-  });
+  // Critical findings sort to the top. Severity bucket order is enforced by the
+  // existing UI grouping; ensure we hand it findings in that same order so the
+  // pre-flight gate's `findings[0]` is the most serious one.
+  const order: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+  findings.sort((a, b) => order[a.severity] - order[b.severity]);
 
   // ── Plain-language synthesis (top N findings, concurrent batches). ─────────
+  const client = new Anthropic();
   const synthTargets = findings.slice(0, MAX_SYNTHESIS_PER_AUDIT);
   for (let i = 0; i < synthTargets.length; i += MAX_SYNTHESIS_CONCURRENCY) {
     const batch = synthTargets.slice(i, i + MAX_SYNTHESIS_CONCURRENCY);
@@ -402,17 +332,18 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
   }
 
-  // Deterministic fallback for any finding the synthesis didn't reach
-  // (over the cap, Haiku timeout, or synthesis-disabled environment). Every
-  // card the UI renders must have all three plain-language fields populated
-  // — board QA gate.
+  // Deterministic fallback for any finding the synthesis didn't reach. Every
+  // card the UI renders must have all three plain-language fields populated.
   for (const f of findings) applyFallbackSynthesis(f);
+
+  // Final defensive scrub at the route boundary — Rule 3.
+  const sanitized = findings.map(sanitizeFinding);
 
   const auditReport: AuditReport = {
     generated_at: new Date().toISOString(),
     state_hash: stateHash,
-    findings,
-    stats: statsFromFindings(findings),
+    findings: sanitized,
+    stats: statsFromFindings(sanitized),
   };
 
   // ── Persist cache. Best-effort — RLS scopes by user_id, owner_insert policy
@@ -434,7 +365,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
 // ── GET: read cached report only ─────────────────────────────────────────────
 // Lets the report screen render instantly without re-running the audit if a
-// recent cache row exists. Returns 404 when no cache exists.
+// recent cache row exists. Returns { report: null } when no cache exists.
 
 export async function GET(): Promise<Response> {
   const supabase = await createClient();
