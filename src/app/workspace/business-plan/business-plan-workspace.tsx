@@ -604,14 +604,50 @@ export function BusinessPlanWorkspace({
       });
       return;
     }
-    // Other workspaces: navigate.
+    // Other workspaces: navigate. Slugs match the directory names under
+    // src/app/workspace/ — keep this map authoritative so audit findings from
+    // TIM-2394 source-suite checks deep-link correctly.
     const workspaceHref: Record<string, string> = {
       financials: "/workspace/financials",
       labor: "/workspace/hiring",
-      "real-estate": "/workspace/real-estate",
+      hiring: "/workspace/hiring",
+      "buildout-equipment": "/workspace/buildout-equipment",
+      "menu-pricing": "/workspace/menu-pricing",
+      "launch-plan": "/workspace/launch-plan",
+      "location-lease": "/workspace/location-lease",
+      "real-estate": "/workspace/location-lease",
     };
     const href = workspaceHref[finding.target.workspace];
     if (href) window.location.href = href;
+  }, []);
+
+  // TIM-2394: pre-flight handler invoked by RegenerateAllButton before any
+  // estimate is fetched. Hits the same /api/business-plan/audit endpoint
+  // QualityCheckPanel uses, so a recent run is served from cache.
+  const runPreflightAudit = useCallback(async (): Promise<AuditReport | null> => {
+    try {
+      const res = await fetch("/api/business-plan/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { report: AuditReport | null };
+      return data.report;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // TIM-2394: when the user accepts the pre-flight gate's "Fix these first"
+  // recommendation, surface the same report inside the existing Quality Check
+  // tab so the finding cards (and their "Go to source" deep-links) are one
+  // click away.
+  const handlePreflightFixFirst = useCallback((report: AuditReport) => {
+    setAuditReport(report);
+    setAuditError(null);
+    setIsCheckingPlan(false);
+    setActiveTab("quality-check");
   }, []);
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -710,6 +746,8 @@ export function BusinessPlanWorkspace({
                   );
                 }}
                 onError={(msg) => setGlobalError(msg)}
+                runPreflightAudit={runPreflightAudit}
+                onFixFirst={handlePreflightFixFirst}
               />
             </>
           }

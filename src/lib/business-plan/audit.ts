@@ -42,7 +42,10 @@ export type AuditRuleId =
   | "fabricated_local_claim"
   | "geographic_fabrication"
   | "self_consistency"
-  | "estimated_claim";
+  | "estimated_claim"
+  // TIM-2394 Plan Quality Check v2 — source-suite-only rules.
+  | "cross_suite_mismatch"
+  | "benchmark_out_of_range";
 
 export interface AuditSourceRef {
   // Canonical workspace key (matches the URL slug in /workspace/*).
@@ -345,6 +348,10 @@ const RULE_FALLBACK_WHY: Readonly<Record<AuditRuleId, string>> = {
     "Two statements in the same section contradict each other. Either one alone is fine; together they make the plan look hasty.",
   estimated_claim:
     "This number is the generator's estimate, not yours. Replace it with a sourced figure before showing the plan to anyone outside your circle.",
+  cross_suite_mismatch:
+    "Two of your workspaces describe the same fact differently. Lenders cross-check across the plan and a mismatch reads as carelessness.",
+  benchmark_out_of_range:
+    "Your number sits outside the industry-typical range a lender expects. They will not always reject it, but they will ask you to defend it.",
 };
 
 const RULE_FALLBACK_FIX: Readonly<Record<AuditRuleId, (f: AuditFinding) => string>> = {
@@ -370,6 +377,10 @@ const RULE_FALLBACK_FIX: Readonly<Record<AuditRuleId, (f: AuditFinding) => strin
     `Open the ${f.source.field_label ?? f.source.workspace_label} section and pick the version that is true. Edit the other line to match.`,
   estimated_claim: (f) =>
     `Open the ${f.source.field_label ?? f.source.workspace_label} section and replace the estimate with a sourced number, or your own.`,
+  cross_suite_mismatch: (f) =>
+    `Open the ${f.source.workspace_label} workspace, decide which value is correct, then update the ${f.target.workspace_label} workspace so both agree.`,
+  benchmark_out_of_range: (f) =>
+    `Open the ${f.source.workspace_label} workspace, review the ${f.source.field_label ?? "value"}, and either adjust it or be ready to explain why this plan sits outside the typical range.`,
 };
 
 // applyFallbackSynthesis fills issue/why_it_matters/suggested_fix for findings
