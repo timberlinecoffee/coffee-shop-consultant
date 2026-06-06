@@ -223,7 +223,7 @@ export function SuppliesWorkspace({
             <div className="relative" ref={viewOptionsRef}>
             {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled
                 button); active state keeps the teal tint when a view filter is on. */}
-            {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
+            {/* TIM-2395: labels render at every viewport (icon-only default reverted). */}
             <WorkspaceActionButton
               onClick={() => setViewOptionsOpen((o) => !o)}
               className={!showAiMarkings ? "bg-[var(--teal)]/5" : ""}
@@ -231,7 +231,7 @@ export function SuppliesWorkspace({
               title="View options"
             >
               <Eye size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span className="hidden min-[1536px]:inline">View</span>
+              <span>View</span>
             </WorkspaceActionButton>
             {viewOptionsOpen && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">

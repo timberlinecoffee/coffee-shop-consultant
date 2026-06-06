@@ -376,8 +376,8 @@ export function ConceptWorkspace({
                 }
               >
                 <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
-                <span className="hidden min-[1536px]:inline">
+                {/* TIM-2395: labels render at every viewport (icon-only default reverted). */}
+                <span>
                   {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
                 </span>
               </WorkspaceActionButton>

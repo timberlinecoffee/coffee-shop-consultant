@@ -521,7 +521,7 @@ export function RegenerateAllButton({
         title="Regenerate all sections from current platform data"
       >
         <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-        <span className="hidden min-[1536px]:inline">
+        <span>
           {phase === "preflighting"
             ? "Checking..."
             : phase === "estimating"

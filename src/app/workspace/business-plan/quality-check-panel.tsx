@@ -221,7 +221,7 @@ export function QualityCheckPanel({
         </p>
         <WorkspaceActionButton onClick={onCheckPlan} disabled={isChecking} aria-label="Re-check">
           <RefreshCw size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-          <span className="hidden min-[1536px]:inline">Re-check</span>
+          <span>Re-check</span>
         </WorkspaceActionButton>
       </div>
 
