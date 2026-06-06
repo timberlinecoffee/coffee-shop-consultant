@@ -2180,7 +2180,7 @@ export function FinancialsWorkspace({
                   title="Walk through your forecast inputs step by step, with a hint on each field"
                 >
                   <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  <span className="hidden min-[1536px]:inline">Guided setup</span>
+                  <span>Guided setup</span>
                 </WorkspaceActionButton>
               )}
               <WorkspaceActionButton
@@ -2191,7 +2191,7 @@ export function FinancialsWorkspace({
                 title="Download financials as PDF (landscape monthly views)"
               >
                 <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">Export PDF</span>
+                <span>Export PDF</span>
               </WorkspaceActionButton>
               <WorkspaceActionButton
                 onClick={() =>
@@ -2201,7 +2201,7 @@ export function FinancialsWorkspace({
                 title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
               >
                 <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">Export Excel</span>
+                <span>Export Excel</span>
               </WorkspaceActionButton>
               <SaveStatusAndButton
                 saving={saveState.kind === "saving"}

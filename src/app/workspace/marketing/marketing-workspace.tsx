@@ -216,7 +216,7 @@ export function MarketingWorkspace({
                 title="Open a print-friendly view of your marketing plan"
               >
                 <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">Print view</span>
+                <span>Print view</span>
               </WorkspaceActionButton>
               <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
             </>

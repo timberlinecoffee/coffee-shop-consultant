@@ -376,19 +376,19 @@ export function BuildoutEquipmentWorkspace({
             {canEdit && (
             <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)} aria-label="Describe your setup" title="Describe your setup">
               <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span className="hidden min-[1536px]:inline">Describe your setup</span>
+              <span>Describe your setup</span>
             </WorkspaceActionButton>
           )}
           {canEdit && (
             <WorkspaceActionButton onClick={() => setSettingsOpen(true)} aria-label="Manage Stations" title="Manage Stations">
               <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span className="hidden min-[1536px]:inline">Manage Stations</span>
+              <span>Manage Stations</span>
             </WorkspaceActionButton>
           )}
           {canEdit && (
             <WorkspaceActionButton onClick={() => setImportOpen(true)} aria-label="Import from spreadsheet" title="Import from spreadsheet">
               <FileSpreadsheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span className="hidden min-[1536px]:inline">Import from spreadsheet</span>
+              <span>Import from spreadsheet</span>
             </WorkspaceActionButton>
           )}
           {/* View options: toggle recommendations and AI markings */}
@@ -405,7 +405,7 @@ export function BuildoutEquipmentWorkspace({
               title="View options"
             >
               <Eye size={12} aria-hidden="true" />
-              <span className="hidden min-[1536px]:inline">View</span>
+              <span>View</span>
             </button>
             {viewOptionsOpen && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">

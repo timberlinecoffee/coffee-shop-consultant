@@ -224,7 +224,7 @@ export function OperationsPlaybookWorkspace({
                 title="Open a print-friendly view of your operations playbook"
               >
                 <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">Print all</span>
+                <span>Print all</span>
               </WorkspaceActionButton>
               <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
             </>

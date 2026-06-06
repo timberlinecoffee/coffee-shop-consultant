@@ -695,12 +695,12 @@ export function BusinessPlanWorkspace({
                 title="Scan all workspaces for gaps, mismatches, and things to fix before launch"
               >
                 <ShieldCheck size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">
+                <span>
                   {isCheckingPlan ? "Checking..." : "Check Plan"}
                 </span>
               </WorkspaceActionButton>
-              {/* TIM-1937 (board refinement bae7ef73): primary first, then
-                  secondaries. Labels collapse to icon-only below 1536px. */}
+              {/* TIM-1937 + TIM-2395: primary first, then secondaries.
+                  Labels render at every viewport (icon-only default reverted). */}
               <WorkspaceActionButton
                 onClick={handleExportPdf}
                 disabled={isExportingPdf || isValidating || !canEdit}
@@ -708,7 +708,7 @@ export function BusinessPlanWorkspace({
                 title="Export PDF"
               >
                 <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">
+                <span>
                   {isExportingPdf || isValidating ? "Checking..." : "Export PDF"}
                 </span>
               </WorkspaceActionButton>
@@ -720,7 +720,7 @@ export function BusinessPlanWorkspace({
                 title="Print Business Plan"
               >
                 <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span className="hidden min-[1536px]:inline">
+                <span>
                   {isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
                 </span>
               </WorkspaceActionButton>
