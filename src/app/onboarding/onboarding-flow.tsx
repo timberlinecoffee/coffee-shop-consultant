@@ -717,19 +717,24 @@ export function OnboardingFlow({
               )}
 
               {currentStep.type === "city-autocomplete" && (
-                <CityAutocompleteInput
-                  value={currentAnswer as LocationSelection | null}
-                  onChange={(v) =>
-                    setAnswers((prev) => {
-                      if (!v) {
-                        const next = { ...prev };
-                        delete next[currentStep.id];
-                        return next;
-                      }
-                      return { ...prev, [currentStep.id]: v };
-                    })
-                  }
-                />
+                <>
+                  <CityAutocompleteInput
+                    value={currentAnswer as LocationSelection | null}
+                    onChange={(v) =>
+                      setAnswers((prev) => {
+                        if (!v) {
+                          const next = { ...prev };
+                          delete next[currentStep.id];
+                          return next;
+                        }
+                        return { ...prev, [currentStep.id]: v };
+                      })
+                    }
+                  />
+                  <p className="text-xs text-[var(--dark-grey)] mt-2">
+                    Search any city worldwide
+                  </p>
+                </>
               )}
 
               {currentStep.type === "textarea" && (
