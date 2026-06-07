@@ -123,7 +123,10 @@ async function mintSessionCookies() {
 const WORKSPACES = [
   { key: "financials", path: "/workspace/financials", expectsHamburger: true, primaryLabel: "Guided setup" },
   { key: "buildout-equipment", path: "/workspace/buildout-equipment", expectsHamburger: true, primaryLabel: "Describe your setup" },
-  { key: "business-plan", path: "/workspace/business-plan", expectsHamburger: true, primaryLabel: "Check Plan" },
+  // Business Plan: TIM-2416 removed the standalone Check Plan CTA — the
+  // hamburger is now the only header control. Spec §10.6 "No primary CTA"
+  // case: cluster = [⋯] alone (no Save model on this workspace either).
+  { key: "business-plan", path: "/workspace/business-plan", expectsHamburger: true, primaryLabel: null },
   { key: "marketing", path: "/workspace/marketing", expectsHamburger: false, primaryLabel: null },
   { key: "hiring", path: "/workspace/hiring", expectsHamburger: false, primaryLabel: null },
   { key: "menu-pricing", path: "/workspace/menu-pricing", expectsHamburger: false, primaryLabel: null },
@@ -209,39 +212,39 @@ async function visitAndShoot(ctx, ws, vp) {
   return shotPath;
 }
 
-async function openMenuAndShoot(ctx) {
+async function openMenuAndAssertItems(ctx, opts) {
+  // opts: { path, key, label, mustContain: string[], escTest?: boolean, shootSuffix?: string }
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${BASE}/workspace/financials`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+  await page.goto(`${BASE}${opts.path}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
   await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => {});
   await page.waitForTimeout(800);
 
   const trigger = page.locator('button[aria-label="More actions"]').first();
   const has = await trigger.count();
   if (has === 0) {
-    assert("Financials hamburger opens", false, "trigger not found");
+    assert(`${opts.key} hamburger opens`, false, "trigger not found");
     await page.close();
     return null;
   }
   await trigger.click();
-  // Look for the open menu container.
   await page.locator('[role="menu"][aria-label="More actions"]').waitFor({ state: "visible", timeout: 5_000 }).catch(() => {});
   const menuRows = await page.locator('[role="menu"] [role="menuitem"]').allTextContents();
-  const hasExportPdf = menuRows.some((t) => /Export PDF/i.test(t));
-  const hasExportExcel = menuRows.some((t) => /Export Excel/i.test(t));
+  const missing = opts.mustContain.filter((needle) => !menuRows.some((t) => new RegExp(needle, "i").test(t)));
   assert(
-    "Financials hamburger contains Export PDF + Export Excel",
-    hasExportPdf && hasExportExcel,
-    `items=${JSON.stringify(menuRows)}`,
+    `${opts.key} hamburger contains ${opts.mustContain.join(" + ")}`,
+    missing.length === 0,
+    missing.length ? `missing=${JSON.stringify(missing)} items=${JSON.stringify(menuRows)}` : `items=${JSON.stringify(menuRows)}`,
   );
-  const shotPath = join(SHOT_DIR, `financials-1440-open.png`);
+  const shotPath = join(SHOT_DIR, `${opts.key}-1440-open${opts.shootSuffix ?? ""}.png`);
   await page.screenshot({ path: shotPath, fullPage: false });
 
-  // ESC closes the menu.
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(300);
-  const stillOpen = await page.locator('[role="menu"][aria-label="More actions"]').count();
-  assert("ESC closes the hamburger menu", stillOpen === 0, `count=${stillOpen}`);
+  if (opts.escTest) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    const stillOpen = await page.locator('[role="menu"][aria-label="More actions"]').count();
+    assert(`ESC closes the ${opts.key} hamburger menu`, stillOpen === 0, `count=${stillOpen}`);
+  }
 
   await page.close();
   return shotPath;
@@ -262,7 +265,30 @@ for (const ws of WORKSPACES) {
   }
 }
 
-await openMenuAndShoot(ctx);
+// TIM-2413 §10.8: per-workspace item content pin (Financials gets ESC test).
+await openMenuAndAssertItems(ctx, {
+  path: "/workspace/financials",
+  key: "financials",
+  mustContain: ["Export PDF", "Export Excel"],
+  escTest: true,
+});
+
+// TIM-2417: E&S menu-item content pin — required by §10.8 for parity with
+// Financials. Source has 4 items inside; we pin the first two non-toggle
+// actions explicitly. (Toggle labels stay open on click so a separate test
+// covering them isn't part of the close criterion.)
+await openMenuAndAssertItems(ctx, {
+  path: "/workspace/buildout-equipment",
+  key: "buildout-equipment",
+  mustContain: ["Manage stations", "Import from spreadsheet"],
+});
+
+// Business Plan parity pin.
+await openMenuAndAssertItems(ctx, {
+  path: "/workspace/business-plan",
+  key: "business-plan",
+  mustContain: ["Export PDF", "Print Business Plan", "Regenerate all"],
+});
 
 await browser.close();
 
