@@ -44,6 +44,7 @@ import {
   ModeStrip,
   type CompanionMode,
 } from "./CompanionPanels";
+import { ImportPanel } from "./ImportPanel";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
 import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCrossSuiteConflictResolver";
@@ -1289,6 +1290,25 @@ export function CoPilotDrawer({
                   onGoToSource={handleGoToFindingSource}
                   resolverConflictIdFor={resolverConflictIdFor}
                   onOpenCrossSuite={handleOpenCrossSuiteResolver}
+                />
+              )}
+              {/* TIM-2434: Document Import mode. Reuses the unified
+                  AIReviewModal so accepted changes flow through the same
+                  review surface as every other AI proposal. */}
+              {activeMode === "import" && (
+                <ImportPanel
+                  planId={planId}
+                  source="companion"
+                  creditBalance={
+                    credits?.mode === "credits" ? credits.remaining : null
+                  }
+                  openReview={({ suggestions, onApply }) =>
+                    openAIReviewModal({
+                      suggestions: suggestions as SuggestionPayload[],
+                      context: { workspace: "document_import" },
+                      onApply,
+                    })
+                  }
                 />
               )}
               {/* Coach mode keeps every prior surface: empty state, history,

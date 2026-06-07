@@ -107,6 +107,24 @@ export default async function AccountPage() {
 
         <ProFeatureEntries isPro={isPro} />
 
+        {/* TIM-2434: Imported Documents entry. Persistent access to
+            re-import, re-run extraction, or remove past imports. */}
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
+          <h2 className="font-semibold text-[var(--foreground)] mb-2">
+            Imported Documents
+          </h2>
+          <p className="text-sm text-[var(--dark-grey)] mb-4">
+            Upload existing business plans, financials, or branding files.
+            We&apos;ll map them into your planning suites.
+          </p>
+          <Link
+            href="/account/documents"
+            className="inline-block text-sm text-[var(--teal)] font-medium hover:underline"
+          >
+            Manage imports →
+          </Link>
+        </div>
+
         <GuidedNoticesCard variant="stacked-card" />
 
         <AccountDataControls userEmail={userEmail} variant="stacked-card" />
