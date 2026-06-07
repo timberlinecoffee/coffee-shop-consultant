@@ -67,6 +67,7 @@ export function CrossSuiteConflictResolverModal({
         <Header conflict={conflict} onClose={onClose} />
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           <Zone1Statement statement={conflict.statement} />
+          {conflict.bandBreachAlert && <BandBreachAlert message={conflict.bandBreachAlert} />}
           <Zone2Snapshots
             suiteA={conflict.suiteA}
             suiteB={conflict.suiteB}
@@ -114,6 +115,24 @@ function Zone1Statement({ statement }: { statement: string }) {
   return (
     <section aria-label="What's wrong">
       <p className="text-base text-[var(--foreground)] leading-relaxed">{statement}</p>
+    </section>
+  );
+}
+
+// ── Band-breach alert (TIM-2452 fix #4) ──────────────────────────────────────
+//
+// When the canonical labor % is outside the SCA band, the band breach is the
+// load-bearing problem. Without this alert the dollar gap label (which may
+// read "$515/month under budget") makes the modal feel exonerating.
+
+function BandBreachAlert({ message }: { message: string }) {
+  return (
+    <section
+      aria-label="Benchmark band alert"
+      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2"
+    >
+      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+      <p className="text-sm text-amber-900 leading-relaxed">{message}</p>
     </section>
   );
 }

@@ -97,6 +97,10 @@ export interface CrossSuiteConflict {
   suiteC?: CrossSuiteSnapshot;
   // Optional gap summary, e.g. "Gap: $6,100/month over budget".
   gapLabel?: string;
+  // Optional headline-grade alert surfaced above the snapshots. Used when a
+  // benchmark band breach exists and would otherwise read as exonerated by a
+  // dollar-slack gap label. Voice: leads with the problem, names the source.
+  bandBreachAlert?: string;
   benchmark: CrossSuiteBenchmark | null;
   paths: ResolutionPath[];
   // id of the path the modal marks "Recommended". MUST match a paths[].id.

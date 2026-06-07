@@ -355,6 +355,68 @@ async function applyFinancialsPayrollChange(
   return !error;
 }
 
+// TIM-2452 (Path B sync) — bump financials personnel headcount so the total
+// headcount line on the financial plan matches the target. We scale every
+// existing personnel row's headcount proportionally; rows are integer-valued
+// so we apply the scale first, then nudge the longest-running role to absorb
+// any remaining delta. Preserves per-row pay assumptions (the sibling
+// payroll-budget suggestion handles dollar changes).
+async function applyFinancialsHeadcountChange(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string,
+  finalValue: string,
+): Promise<boolean> {
+  const target = Number(finalValue.replace(/[^\d]/g, ""));
+  if (!Number.isFinite(target) || target <= 0 || target > 500) return false;
+
+  const { data: fm } = await supabase
+    .from("financial_models")
+    .select("forecast_inputs")
+    .eq("plan_id", planId)
+    .maybeSingle();
+  if (!fm?.forecast_inputs) return false;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fi = fm.forecast_inputs as any;
+  const personnel = Array.isArray(fi.personnel) ? fi.personnel : [];
+  if (personnel.length === 0) return false;
+
+  const currentTotal = personnel.reduce(
+    (acc: number, p: Record<string, unknown>) => acc + Math.max(0, Number(p.headcount ?? 0)),
+    0,
+  );
+  if (currentTotal <= 0) return false;
+
+  const scale = target / currentTotal;
+  const scaled = personnel.map((p: Record<string, unknown>) => ({
+    ...p,
+    headcount: Math.max(0, Math.round(Number(p.headcount ?? 0) * scale)),
+  }));
+  let scaledTotal = scaled.reduce(
+    (acc: number, p: Record<string, unknown>) => acc + Math.max(0, Number(p.headcount ?? 0)),
+    0,
+  );
+  // Resolve any rounding drift by nudging the row with the largest current
+  // headcount one unit at a time until totals match. Bounded loop: at most
+  // |personnel.length| iterations under integer scaling of small fleets.
+  let safety = personnel.length * 2 + 5;
+  while (scaledTotal !== target && safety-- > 0) {
+    const diff = target - scaledTotal;
+    let idx = 0;
+    for (let i = 1; i < scaled.length; i++) {
+      if (Number(scaled[i].headcount ?? 0) > Number(scaled[idx].headcount ?? 0)) idx = i;
+    }
+    scaled[idx].headcount = Math.max(0, Number(scaled[idx].headcount ?? 0) + Math.sign(diff));
+    scaledTotal += Math.sign(diff);
+  }
+
+  fi.personnel = scaled;
+  const { error } = await supabase
+    .from("financial_models")
+    .upsert({ plan_id: planId, forecast_inputs: fi }, { onConflict: "plan_id" });
+  return !error;
+}
+
 export async function POST(request: NextRequest) {
   const resolved = await resolvePlan();
   if (!resolved.ok) {
@@ -390,6 +452,8 @@ export async function POST(request: NextRequest) {
         ok = await applyHiringChange(resolved.supabase, resolved.ctx.planId, field, change.finalValue);
       } else if (field.suiteKey === "financials" && field.recordId === "payroll" && field.column === "monthly_cents") {
         ok = await applyFinancialsPayrollChange(resolved.supabase, resolved.ctx.planId, change.finalValue);
+      } else if (field.suiteKey === "financials" && field.recordId === "personnel" && field.column === "headcount") {
+        ok = await applyFinancialsHeadcountChange(resolved.supabase, resolved.ctx.planId, change.finalValue);
       }
       (ok ? applied : failed).push(change.fieldId);
     }
