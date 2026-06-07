@@ -151,6 +151,7 @@ const STEPS: Step[] = [
       "Roastery cafe",
       "Drive-through or kiosk",
       "Mobile cart or pop-up",
+      "Co-working / Hybrid space",
     ],
   },
   {

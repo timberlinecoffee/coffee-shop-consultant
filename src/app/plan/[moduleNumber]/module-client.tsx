@@ -95,6 +95,7 @@ const SHOP_MODELS = [
   { id: "drive_through", label: "Drive-Through / Kiosk", desc: "High volume, low overhead, location-dependent", costRange: "$50K–$150K", example: "Dutch Bros model, airport kiosks" },
   { id: "mobile_popup", label: "Mobile / Pop-Up", desc: "Lowest barrier to entry, builds community", costRange: "$20K–$80K", example: "Farmers market cart, office pop-ups" },
   { id: "specialty_bar", label: "Specialty Bar", desc: "Single origin focus, pour-over, education-forward", costRange: "$100K–$250K", example: "Intelligentsia, George Howell" },
+  { id: "coworking_hybrid", label: "Co-working / Hybrid", desc: "Coffee + desk space, memberships, event bookings, community focus", costRange: "$150K–$350K", example: "Workbar, Canopy co-working cafes" },
 ];
 
 // ── Auto-save hook ────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function SectionShopType({
       <p className="text-sm italic text-neutral-500 leading-relaxed">{SECTION_1_CONTEXT.shop_type}</p>
       {/* Learn */}
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-3">The 6 Shop Models</h3>
+        <h3 className="font-semibold text-neutral-950 mb-3">The 7 Shop Models</h3>
         <p className="text-sm text-neutral-500 mb-5 leading-relaxed">
           Your shop model shapes every decision that follows: staffing, equipment, lease requirements, and your daily rhythm. Choose based on your budget, lifestyle, and the gap you&apos;ve identified, not just what sounds exciting.
         </p>
@@ -177,6 +178,12 @@ function SectionShopType({
             </p>
             <p className="text-xs text-neutral-500">Answer a few follow-up questions to sharpen your concept.</p>
           </div>
+
+          {model === "coworking_hybrid" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-relaxed">
+              <span className="font-semibold">Heads up for co-working founders:</span> The current financial model uses a cafe baseline. Membership fees, desk booking revenue, event income, and member churn tracking are on the roadmap. For now, use the revenue projections section to model your membership tiers manually alongside drink revenue.
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-neutral-950 mb-2">Square footage / size</label>
