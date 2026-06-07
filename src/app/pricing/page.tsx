@@ -5,6 +5,21 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Logo } from "../_components/Logo";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrencyAmount } from "@/lib/currency";
+
+type GeoData = {
+  countryCode: string;
+  currencyCode: string;
+  rate: number;
+} | null;
+
+function localEquiv(usdStr: string, geo: GeoData): string | null {
+  if (!geo || geo.currencyCode === "USD" || geo.rate <= 0) return null;
+  const usd = parseFloat(usdStr.replace(/[^0-9.]/g, ""));
+  if (!usd) return null;
+  const local = Math.round(usd * geo.rate);
+  return formatCurrencyAmount(local, geo.currencyCode, { compact: false });
+}
 
 type BillingInterval = "monthly" | "annual";
 
@@ -84,7 +99,7 @@ const TIERS: Tier[] = [
 const FAQ = [
   {
     q: "How does the 7-day free trial work?",
-    a: "Pick the plan you'd like to convert to, add a card, and you get 7 days of full Pro access plus 75 AI planning credits to try Scout. Cancel anytime in your billing settings before day 7 and you won't be charged. If you don't cancel, we charge the plan you picked on day 7 — Starter at $39/mo or Pro at $99/mo.",
+    a: "Pick the plan you'd like to convert to, add a card, and you get 7 days of full Pro access plus 75 AI planning credits to try Scout. Cancel anytime in your billing settings before day 7 and you won't be charged. If you don't cancel, we charge the plan you picked on day 7 — Starter at USD $39/mo or Pro at USD $99/mo (billed in USD).",
   },
   {
     q: "Can I switch plans later?",
@@ -123,6 +138,7 @@ function PricingPageInner() {
   const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [geoData, setGeoData] = useState<GeoData>(null);
   // TIM-1933: Track whether the logged-in viewer already has a live (trialing
   // / active / past_due) subscription. If yes, the CTA must call
   // /api/billing/change-plan (swap in place) instead of
@@ -145,6 +161,16 @@ function PricingPageInner() {
         })
         .catch(() => {});
     });
+
+    // TIM-2485: Detect visitor country and show local currency equivalent.
+    fetch("/api/geo/currency")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { countryCode: string; currencyCode: string; rate: number } | null) => {
+        if (data && data.currencyCode !== "USD") {
+          setGeoData(data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   async function startCheckout(tier: string) {
@@ -290,11 +316,25 @@ function PricingPageInner() {
                     {tier.name}
                   </h2>
 
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-bold">
-                      {interval === "annual" ? tier.annualPrice : tier.monthlyPrice}
-                    </span>
-                    <span className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>/month</span>
+                  <div className="mb-1">
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-xs font-semibold ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>USD</span>
+                      <span className="text-4xl font-bold">
+                        {interval === "annual" ? tier.annualPrice : tier.monthlyPrice}
+                      </span>
+                      <span className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>/month</span>
+                    </div>
+                    {(() => {
+                      const equiv = localEquiv(
+                        interval === "annual" ? tier.annualPrice : tier.monthlyPrice,
+                        geoData,
+                      );
+                      return equiv ? (
+                        <p className={`text-xs mt-0.5 ${tier.highlight ? "text-white/60" : "text-[var(--muted-foreground)]"}`}>
+                          ~{equiv}/month
+                        </p>
+                      ) : null;
+                    })()}
                   </div>
 
                   {interval === "annual" && (
@@ -308,7 +348,7 @@ function PricingPageInner() {
                         </span>
                       </div>
                       <p className={`text-xs mb-2 ${tier.highlight ? "text-white/70" : "text-[var(--dark-grey)]"}`}>
-                        7-day free trial — card required, cancel anytime before day 7 with no charge. After the trial, billed once at $
+                        7-day free trial — card required, cancel anytime before day 7 with no charge. After the trial, billed once at USD $
                         {tier.annualBilled.replace(/[^0-9,]/g, "")}{" "}
                         for 12 months. Cancel anytime; access continues through the paid year. See{" "}
                         <a
@@ -403,7 +443,7 @@ function PricingPageInner() {
             <p className="text-[var(--muted-foreground)] leading-relaxed" style={{ fontSize: "13px" }}>
               Your free trial includes full Pro access for 7 days. A credit card is required at
               signup. After your trial, your card will be charged automatically for the plan you
-              selected at signup: Starter at $39/month or Pro at $99/month. Cancel in{" "}
+              selected at signup: Starter at USD $39/month or Pro at USD $99/month (billed in USD). Cancel in{" "}
               <strong>Settings &gt; Billing</strong> at any time before day 7 to avoid a charge.{" "}
               <a href="/subscription-terms" className="text-[var(--teal)] underline">
                 Subscription Terms
