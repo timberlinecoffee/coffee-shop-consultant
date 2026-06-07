@@ -38,7 +38,7 @@ export const TAXES_COMPLIANCE_STRINGS: Record<
     heading: "GST Applies to Your Revenue",
     subcopy:
       "Australia charges 10% GST on café meals and beverages. The figures above are ex-GST — you collect GST from customers and remit it to the ATO quarterly. Talk to a local accountant before you finalize your plan.",
-    actionLabel: "ATO — GST for small business",
+    actionLabel: "ATO: GST for small business",
     actionUrl: "https://www.ato.gov.au/business/gst/",
   },
   "mexico-city": {
@@ -46,7 +46,7 @@ export const TAXES_COMPLIANCE_STRINGS: Record<
     heading: "IVA Applies to Your Revenue",
     subcopy:
       "Mexico charges 16% IVA on most food and drink sales. The figures above are before IVA — you collect this from customers and report it to the SAT. Talk to a local accountant before you finalize your plan.",
-    actionLabel: "SAT — Información fiscal",
+    actionLabel: "SAT: Información fiscal",
     actionUrl: "https://www.sat.gob.mx",
   },
   "us-generic": {
@@ -62,7 +62,7 @@ export const TAXES_COMPLIANCE_STRINGS: Record<
     heading: "GST/HST Applies to Your Revenue",
     subcopy:
       "Canada charges 5% GST on most food and drink sales, plus provincial tax that varies by location. The figures above are pre-tax — you collect this from customers and remit it to the CRA. Talk to a local accountant before you finalize your plan.",
-    actionLabel: "CRA — GST/HST for businesses",
+    actionLabel: "CRA: GST/HST for businesses",
     actionUrl:
       "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses.html",
   },
@@ -71,7 +71,7 @@ export const TAXES_COMPLIANCE_STRINGS: Record<
     heading: "VAT Applies to Hot Drinks and Most Café Food",
     subcopy:
       "HMRC charges 20% VAT on hot drinks and most café food. The figures above are ex-VAT — you collect this from customers and report it quarterly once your turnover exceeds the VAT threshold. Talk to a local accountant before you finalize your plan.",
-    actionLabel: "HMRC — VAT for businesses",
+    actionLabel: "HMRC: VAT for businesses",
     actionUrl: "https://www.gov.uk/topic/business-tax/vat",
   },
   "australia-generic": {
@@ -79,7 +79,7 @@ export const TAXES_COMPLIANCE_STRINGS: Record<
     heading: "GST Applies to Your Revenue",
     subcopy:
       "Australia charges 10% GST on café meals and beverages. The figures above are ex-GST — you collect GST from customers and remit it to the ATO quarterly. Talk to a local accountant before you finalize your plan.",
-    actionLabel: "ATO — GST for small business",
+    actionLabel: "ATO: GST for small business",
     actionUrl: "https://www.ato.gov.au/business/gst/",
   },
   global: {
