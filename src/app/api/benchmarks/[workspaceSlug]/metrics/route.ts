@@ -3,8 +3,24 @@
 // Phase 1: mock data. Replace with real cohort-service calls when Phase 1 ships.
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { BenchmarkPageData } from "@/components/benchmark/types";
+
+const VALID_SLUGS = ["financials", "operations-playbook", "menu-pricing"] as const;
+
+const slugSchema = z.enum(VALID_SLUGS);
+
+const previewQuerySchema = z.object({
+  previewOnly: z.literal("1"),
+  shopModel: z.string().optional(),
+  locationType: z.string().optional(),
+  shopSize: z.string().optional(),
+});
+
+const mainQuerySchema = z.object({
+  previewOnly: z.string().optional(),
+});
 
 // Rate-limit: applied per Standing Engineering Rule 4 (TIM-2246).
 // Benchmark data is cached and not an LLM call, so limit is generous.
@@ -184,24 +200,43 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceSlug: string }> }
 ) {
-  // Auth check — must be signed in
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Engineering Rule 5: wrap auth in try-catch — Supabase connection errors must
+  // not surface raw stack traces.
+  let user: { id: string } | null = null;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    return NextResponse.json({ error: "Authentication error" }, { status: 500 });
+  }
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { workspaceSlug } = await params;
-  const url = new URL(request.url);
-  const previewOnly = url.searchParams.get("previewOnly") === "1";
+  // Engineering Rule 3: validate path param + query params before use.
+  const { workspaceSlug: rawSlug } = await params;
+  const slugResult = slugSchema.safeParse(rawSlug);
+  if (!slugResult.success) {
+    return NextResponse.json({ error: "Invalid workspace slug" }, { status: 400 });
+  }
+  const workspaceSlug = slugResult.data;
 
-  if (previewOnly) {
-    // Return sample-size preview for AdjustCohortModal
-    const shopModel = url.searchParams.get("shopModel")?.split(",") ?? [];
-    const locationType = url.searchParams.get("locationType") ?? "";
-    const shopSize = url.searchParams.get("shopSize")?.split(",") ?? [];
-    // Mock: return a number based on filter specificity
-    const n = Math.max(5, 80 - shopModel.length * 10 - (shopSize.length > 1 ? 5 : 0));
+  const url = new URL(request.url);
+  const rawQuery = Object.fromEntries(url.searchParams.entries());
+
+  if (rawQuery.previewOnly === "1") {
+    const queryResult = previewQuerySchema.safeParse(rawQuery);
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: queryResult.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+    const { shopModel, locationType: _locationType, shopSize } = queryResult.data;
+    const shopModelArr = shopModel ? shopModel.split(",") : [];
+    const shopSizeArr = shopSize ? shopSize.split(",") : [];
+    const n = Math.max(5, 80 - shopModelArr.length * 10 - (shopSizeArr.length > 1 ? 5 : 0));
     return NextResponse.json({ sampleSize: n });
   }
 

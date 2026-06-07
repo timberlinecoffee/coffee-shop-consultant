@@ -16,10 +16,13 @@ import {
   Check,
   ExternalLink,
   Printer,
+  TrendingUp,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -76,6 +79,7 @@ interface Props {
 }
 
 type GeneratableSection = SopCategoryKey | "roles" | "vendor_contacts" | "training";
+type OperationsView = "playbook" | "how-you-compare";
 
 export function OperationsPlaybookWorkspace({
   planId,
@@ -93,6 +97,14 @@ export function OperationsPlaybookWorkspace({
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  const { openAIReviewModal: openBenchmarkAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
+  const [activeView, setActiveView] = useState<OperationsView>("playbook");
+  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
+
+  const opsTabs: { id: OperationsView; label: string; Icon?: typeof TrendingUp; badge?: number }[] = [
+    { id: "playbook", label: "Playbook" },
+    { id: "how-you-compare", label: "How You Compare", Icon: TrendingUp, badge: benchmarkYellowCount || undefined },
+  ];
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
@@ -198,6 +210,7 @@ export function OperationsPlaybookWorkspace({
   return (
     <>
     {AIReviewModalNode}
+    {benchmarkAIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-36 sm:pb-12">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
@@ -231,91 +244,122 @@ export function OperationsPlaybookWorkspace({
           }
         />
 
-        {/* Mobile: horizontal scroll nav above content */}
-        <div className="md:hidden mb-4">
-          <SectionNavMobile
-            active={active}
-            onChange={setActive}
-            doc={doc}
-            recipeCount={initialRecipeCards.length}
+        {/* TIM-2472: top-level view switcher — Playbook vs How You Compare */}
+        <div className="mb-5">
+          <WorkspaceSubNav
+            tabs={opsTabs.map((t) => ({ key: t.id, label: t.label, Icon: t.Icon, badge: t.badge }))}
+            active={activeView}
+            onSelect={setActiveView}
+            ariaLabel="Operations Playbook views"
+            className="mb-0"
           />
         </div>
 
-        {/* Desktop: 2-col grid — sticky sidebar + content */}
-        <div className="md:grid md:grid-cols-[240px_minmax(0,1fr)] md:gap-8 md:items-start">
-          <aside className="hidden md:block">
-            <div className="sticky top-6">
-              <SectionNavSidebar
+        {activeView === "playbook" && (
+          <>
+            {/* Mobile: horizontal scroll nav above content */}
+            <div className="md:hidden mb-4">
+              <SectionNavMobile
                 active={active}
                 onChange={setActive}
                 doc={doc}
                 recipeCount={initialRecipeCards.length}
               />
             </div>
-          </aside>
 
-          <div className="space-y-6">
-            {SOP_CATEGORY_KEYS.includes(active as SopCategoryKey) && (
-              <CategoryEditor
-                key={active}
-                categoryKey={active as SopCategoryKey}
-                label={activeLabel}
-                tagline={operationsSectionTagline(active)}
-                canEdit={canEdit}
-                doc={doc}
-                updateDoc={updateDoc}
-                onGenerate={() => handleGenerate(active as SopCategoryKey)}
-                generating={generating === active}
-              />
-            )}
+            {/* Desktop: 2-col grid — sticky sidebar + content */}
+            <div className="md:grid md:grid-cols-[240px_minmax(0,1fr)] md:gap-8 md:items-start">
+              <aside className="hidden md:block">
+                <div className="sticky top-6">
+                  <SectionNavSidebar
+                    active={active}
+                    onChange={setActive}
+                    doc={doc}
+                    recipeCount={initialRecipeCards.length}
+                  />
+                </div>
+              </aside>
 
-            {active === RECIPES_SECTION_KEY && (
-              <RecipesPanel cards={initialRecipeCards} />
-            )}
+              <div className="space-y-6">
+                {SOP_CATEGORY_KEYS.includes(active as SopCategoryKey) && (
+                  <CategoryEditor
+                    key={active}
+                    categoryKey={active as SopCategoryKey}
+                    label={activeLabel}
+                    tagline={operationsSectionTagline(active)}
+                    canEdit={canEdit}
+                    doc={doc}
+                    updateDoc={updateDoc}
+                    onGenerate={() => handleGenerate(active as SopCategoryKey)}
+                    generating={generating === active}
+                  />
+                )}
 
-            {active === "roles" && (
-              <RolesEditor
-                label={activeLabel}
-                tagline={operationsSectionTagline(active)}
-                canEdit={canEdit}
-                doc={doc}
-                updateDoc={updateDoc}
-                onGenerate={() => handleGenerate("roles")}
-                generating={generating === "roles"}
-              />
-            )}
+                {active === RECIPES_SECTION_KEY && (
+                  <RecipesPanel cards={initialRecipeCards} />
+                )}
 
-            {active === "vendor_contacts" && (
-              <VendorContactsEditor
-                label={activeLabel}
-                tagline={operationsSectionTagline(active)}
-                canEdit={canEdit}
-                doc={doc}
-                updateDoc={updateDoc}
-                onGenerate={() => handleGenerate("vendor_contacts")}
-                generating={generating === "vendor_contacts"}
-              />
-            )}
+                {active === "roles" && (
+                  <RolesEditor
+                    label={activeLabel}
+                    tagline={operationsSectionTagline(active)}
+                    canEdit={canEdit}
+                    doc={doc}
+                    updateDoc={updateDoc}
+                    onGenerate={() => handleGenerate("roles")}
+                    generating={generating === "roles"}
+                  />
+                )}
 
-            {active === "training" && (
-              <TrainingEditor
-                label={activeLabel}
-                tagline={operationsSectionTagline(active)}
-                canEdit={canEdit}
-                doc={doc}
-                updateDoc={updateDoc}
-                onGenerate={() => handleGenerate("training")}
-                generating={generating === "training"}
-              />
-            )}
-          </div>
-        </div>
+                {active === "vendor_contacts" && (
+                  <VendorContactsEditor
+                    label={activeLabel}
+                    tagline={operationsSectionTagline(active)}
+                    canEdit={canEdit}
+                    doc={doc}
+                    updateDoc={updateDoc}
+                    onGenerate={() => handleGenerate("vendor_contacts")}
+                    generating={generating === "vendor_contacts"}
+                  />
+                )}
+
+                {active === "training" && (
+                  <TrainingEditor
+                    label={activeLabel}
+                    tagline={operationsSectionTagline(active)}
+                    canEdit={canEdit}
+                    doc={doc}
+                    updateDoc={updateDoc}
+                    onGenerate={() => handleGenerate("training")}
+                    generating={generating === "training"}
+                  />
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeView === "how-you-compare" && (
+          <BenchmarkDashboard
+            workspaceSlug="operations-playbook"
+            onAskBenchmark={(_metricId, _metricLabel) => {
+              // TIM-2416: open Scout drawer in Benchmark mode with metric pre-loaded.
+            }}
+            onApplySuggestion={(_metricId) => {
+              openBenchmarkAIReviewModal({
+                suggestions: [],
+                context: { workspace: "operations_playbook" },
+                onApply: async () => {},
+              });
+            }}
+          />
+        )}
       </div>
 
       <CoPilotDrawer
         planId={planId}
         workspaceKey="operations_playbook"
-        currentFocus={{ label: activeLabel }}
+        currentFocus={{ label: activeView === "how-you-compare" ? "How You Compare" : activeLabel }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
 
