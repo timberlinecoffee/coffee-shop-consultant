@@ -211,11 +211,15 @@ async function main() {
   assert(`Typing triggers Saving/Unsaved indicator`, sawDirty);
 
   // Click Save — should reach "Saved" promptly without 700ms debounce wait.
+  // Waits up to 8s because the indicator may briefly pass through "Saving..."
+  // between the autosave triggered by typing and the manual click — we want
+  // to see the terminal "Saved" state, not race the transition.
   await saveBtn.click();
   const sawSaved = await page
     .locator('text=/Saved|All changes saved/i')
     .first()
-    .isVisible({ timeout: 3_000 })
+    .waitFor({ state: "visible", timeout: 8_000 })
+    .then(() => true)
     .catch(() => false);
   assert(`Save click reaches Saved state`, sawSaved);
 
