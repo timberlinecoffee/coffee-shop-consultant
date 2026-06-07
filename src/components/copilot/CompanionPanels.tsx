@@ -19,7 +19,8 @@ import { ArrowRight, BarChart2, ExternalLink, ShieldCheck } from "lucide-react";
 import type { AuditFinding, AuditReport, AuditSeverity } from "@/lib/business-plan/audit";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
-export type CompanionMode = "coach" | "check" | "benchmark";
+// TIM-2434: "import" mode added for the document-import companion surface.
+export type CompanionMode = "coach" | "check" | "benchmark" | "import";
 
 const SEVERITY_CONFIG: Readonly<Record<AuditSeverity, { label: string; className: string }>> = {
   critical: {
@@ -182,6 +183,7 @@ const MODE_LABEL: Record<CompanionMode, string> = {
   coach: "Coach",
   check: "Check",
   benchmark: "Benchmark",
+  import: "Import",
 };
 
 export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {
@@ -192,7 +194,7 @@ export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {
         aria-label="Companion mode"
         className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1"
       >
-        {(["coach", "check", "benchmark"] as const).map((mode) => {
+        {(["coach", "check", "benchmark", "import"] as const).map((mode) => {
           const active = activeMode === mode;
           return (
             <button

@@ -22,6 +22,8 @@ import {
 import { TrialBanner } from "./_components/trial-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
+import { OpenImportFromQuery } from "./_components/open-import-from-query";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +53,12 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-16">
+        {/* TIM-2434: ?openImport=1 from Settings → Documents or onboarding
+            auto-opens the companion drawer in Import mode. Suspense wraps
+            the client useSearchParams call. */}
+        <Suspense fallback={null}>
+          <OpenImportFromQuery />
+        </Suspense>
         {profile?.subscription_status === "free_trial" &&
           isTrialActive(profile.trial_ends_at) && (
             <TrialBanner
