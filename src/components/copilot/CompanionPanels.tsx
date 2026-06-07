@@ -15,7 +15,7 @@
 //   - card container is `bg-white rounded-xl border px-3 py-3 space-y-2`.
 
 import { useCallback, useMemo, useState } from "react";
-import { BarChart2, ExternalLink, ShieldCheck } from "lucide-react";
+import { ArrowRight, BarChart2, ExternalLink, ShieldCheck } from "lucide-react";
 import type { AuditFinding, AuditReport, AuditSeverity } from "@/lib/business-plan/audit";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
@@ -54,6 +54,12 @@ interface CompanionFindingCardProps {
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
   onDismiss: (id: string) => void;
+  // TIM-2453: when the finding maps to a registered cross-suite resolver
+  // conflict AND that conflict is present in today's resolver response, the
+  // card swaps its primary CTA for "Review fix options" which dispatches the
+  // resolver modal on the same conflict id (no default-conflict fallback).
+  crossSuiteConflictId?: string | null;
+  onOpenCrossSuite?: (conflictId: string) => void;
 }
 
 function CompanionFindingCard({
@@ -61,6 +67,8 @@ function CompanionFindingCard({
   onApply,
   onGoToSource,
   onDismiss,
+  crossSuiteConflictId,
+  onOpenCrossSuite,
 }: CompanionFindingCardProps) {
   const canApply = Boolean(finding.suggested_replacement);
   const issue = stripFindingTags(finding.issue ?? finding.raw_message);
@@ -71,28 +79,77 @@ function CompanionFindingCard({
         ? `Apply the suggested fix to update ${finding.target.field_label ?? finding.target.workspace_label}.`
         : `Open the ${finding.target.workspace_label} workspace to address this.`),
   );
+  const hasResolver = Boolean(crossSuiteConflictId && onOpenCrossSuite);
+  const openResolver = useCallback(() => {
+    if (crossSuiteConflictId && onOpenCrossSuite) onOpenCrossSuite(crossSuiteConflictId);
+  }, [crossSuiteConflictId, onOpenCrossSuite]);
 
+  // When a resolver is available, the issue+why+fix region becomes a single
+  // interactive button so clicking the surfaced problem opens the modal — the
+  // board ask on TIM-2453: "make that link as well, too". Go-to-source and
+  // Dismiss stay outside the button so they don't trigger the modal.
   return (
-    <div className="bg-white rounded-xl border border-[var(--border)] px-3 py-3 space-y-2">
-      <div className="flex items-start gap-2 flex-wrap">
-        <SeverityChip level={finding.severity} />
-        <p className="text-sm font-medium text-neutral-950 leading-snug flex-1 min-w-0">
-          {issue}
-        </p>
-      </div>
-      {why && (
-        <p className="text-xs text-neutral-500 leading-snug">{why}</p>
+    <div
+      className={`bg-white rounded-xl border px-3 py-3 space-y-2 ${
+        hasResolver
+          ? "border-[var(--teal)]/30 hover:border-[var(--teal)]/60 transition-colors"
+          : "border-[var(--border)]"
+      }`}
+      data-cross-suite-conflict-id={crossSuiteConflictId ?? undefined}
+    >
+      {hasResolver ? (
+        <button
+          type="button"
+          onClick={openResolver}
+          aria-label={`Review fix options for: ${issue}`}
+          className="w-full text-left space-y-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)] rounded-lg"
+        >
+          <div className="flex items-start gap-2 flex-wrap">
+            <SeverityChip level={finding.severity} />
+            <p className="text-sm font-medium text-neutral-950 leading-snug flex-1 min-w-0">
+              {issue}
+            </p>
+          </div>
+          {why && (
+            <p className="text-xs text-neutral-500 leading-snug">{why}</p>
+          )}
+          <p className="text-xs text-[var(--teal)] leading-snug">{fix}</p>
+        </button>
+      ) : (
+        <>
+          <div className="flex items-start gap-2 flex-wrap">
+            <SeverityChip level={finding.severity} />
+            <p className="text-sm font-medium text-neutral-950 leading-snug flex-1 min-w-0">
+              {issue}
+            </p>
+          </div>
+          {why && (
+            <p className="text-xs text-neutral-500 leading-snug">{why}</p>
+          )}
+          <p className="text-xs text-[var(--teal)] leading-snug">{fix}</p>
+        </>
       )}
-      <p className="text-xs text-[var(--teal)] leading-snug">{fix}</p>
-      <div className="flex items-center gap-4 mt-2">
-        {canApply && (
+      <div className="flex items-center gap-4 mt-2 flex-wrap">
+        {hasResolver ? (
           <button
             type="button"
-            className="text-xs font-semibold text-[var(--teal)] hover:underline"
-            onClick={() => onApply(finding)}
+            className="text-xs font-semibold text-[var(--teal)] hover:underline inline-flex items-center gap-1"
+            onClick={openResolver}
+            data-testid="cross-suite-review-fix-options"
           >
-            Apply suggestion
+            Review fix options
+            <ArrowRight size={10} aria-hidden="true" />
           </button>
+        ) : (
+          canApply && (
+            <button
+              type="button"
+              className="text-xs font-semibold text-[var(--teal)] hover:underline"
+              onClick={() => onApply(finding)}
+            >
+              Apply suggestion
+            </button>
+          )
         )}
         <button
           type="button"
@@ -172,9 +229,21 @@ interface FindingListProps {
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
   onDismiss: (id: string) => void;
+  // TIM-2453: per-finding resolver binding. Resolver returns null when the
+  // finding has no registered conflict (or the conflict isn't present in
+  // today's resolver response).
+  resolverConflictIdFor?: (finding: AuditFinding) => string | null;
+  onOpenCrossSuite?: (conflictId: string) => void;
 }
 
-function FindingList({ findings, onApply, onGoToSource, onDismiss }: FindingListProps) {
+function FindingList({
+  findings,
+  onApply,
+  onGoToSource,
+  onDismiss,
+  resolverConflictIdFor,
+  onOpenCrossSuite,
+}: FindingListProps) {
   const groups = groupBySeverity(findings);
   const sections: Array<{ key: AuditSeverity; heading: string }> = [
     { key: "critical", heading: "Fix Before Launch" },
@@ -199,6 +268,8 @@ function FindingList({ findings, onApply, onGoToSource, onDismiss }: FindingList
                   onApply={onApply}
                   onGoToSource={onGoToSource}
                   onDismiss={onDismiss}
+                  crossSuiteConflictId={resolverConflictIdFor?.(f) ?? null}
+                  onOpenCrossSuite={onOpenCrossSuite}
                 />
               ))}
             </div>
@@ -218,6 +289,11 @@ export interface CheckPanelProps {
   onRun: () => void;
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
+  // TIM-2453: when a finding maps to a registered cross-suite conflict, the
+  // card swaps its primary CTA for "Review fix options" and dispatches the
+  // resolver modal via onOpenCrossSuite.
+  resolverConflictIdFor?: (finding: AuditFinding) => string | null;
+  onOpenCrossSuite?: (conflictId: string) => void;
 }
 
 export function CheckPanel({
@@ -227,6 +303,8 @@ export function CheckPanel({
   onRun,
   onApply,
   onGoToSource,
+  resolverConflictIdFor,
+  onOpenCrossSuite,
 }: CheckPanelProps) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const handleDismiss = useCallback((id: string) => {
@@ -326,6 +404,8 @@ export function CheckPanel({
         onApply={onApply}
         onGoToSource={onGoToSource}
         onDismiss={handleDismiss}
+        resolverConflictIdFor={resolverConflictIdFor}
+        onOpenCrossSuite={onOpenCrossSuite}
       />
     </div>
   );
@@ -341,6 +421,11 @@ export interface BenchmarkPanelProps {
   onRun: () => void;
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
+  // TIM-2453: same hook the Check panel uses — benchmark-mode cross-suite
+  // findings (none registered today, but the API is symmetrical so the next
+  // pair plugs in without touching this signature).
+  resolverConflictIdFor?: (finding: AuditFinding) => string | null;
+  onOpenCrossSuite?: (conflictId: string) => void;
 }
 
 export function BenchmarkPanel({
@@ -351,6 +436,8 @@ export function BenchmarkPanel({
   onRun,
   onApply,
   onGoToSource,
+  resolverConflictIdFor,
+  onOpenCrossSuite,
 }: BenchmarkPanelProps) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const handleDismiss = useCallback((id: string) => {
@@ -452,6 +539,8 @@ export function BenchmarkPanel({
         onApply={onApply}
         onGoToSource={onGoToSource}
         onDismiss={handleDismiss}
+        resolverConflictIdFor={resolverConflictIdFor}
+        onOpenCrossSuite={onOpenCrossSuite}
       />
     </div>
   );

@@ -39,6 +39,11 @@ export interface UseCrossSuiteConflictResolverResult {
   isLoading: boolean;
   // Open the resolver for the conflict at this index. No-op when out of range.
   openResolver: (index: number) => void;
+  // TIM-2453: open the resolver by conflict id (e.g. from a Check-mode card
+  // that mapped its audit finding to a known conflict). Returns true when a
+  // matching conflict was found and the modal opened, false otherwise — there
+  // is no default-conflict fallback per spec.
+  openResolverById: (conflictId: string) => boolean;
   // Refresh after an external edit (e.g. user changed a hiring row in a
   // sibling component). Cheap call; no spinner unless caller forces one.
   refresh: () => void;
@@ -89,6 +94,20 @@ export function useCrossSuiteConflictResolver(): UseCrossSuiteConflictResolverRe
     setActiveConflictIndex(index);
     setResolverOpen(true);
   }, [conflicts.length]);
+
+  // TIM-2453: id-keyed open path used by Check mode. Strict lookup — if the
+  // resolver's GET hasn't surfaced this conflict id, return false rather than
+  // falling back to conflict 0 (would otherwise misroute the user).
+  const openResolverById = useCallback(
+    (conflictId: string): boolean => {
+      const idx = conflicts.findIndex((c) => c.id === conflictId);
+      if (idx === -1) return false;
+      setActiveConflictIndex(idx);
+      setResolverOpen(true);
+      return true;
+    },
+    [conflicts],
+  );
 
   const closeResolver = useCallback(() => {
     setResolverOpen(false);
@@ -160,6 +179,7 @@ export function useCrossSuiteConflictResolver(): UseCrossSuiteConflictResolverRe
     conflicts,
     isLoading,
     openResolver,
+    openResolverById,
     refresh: fetchConflicts,
     ResolverNode,
     AIReviewModalNode,

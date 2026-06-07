@@ -46,6 +46,8 @@ import {
 } from "./CompanionPanels";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
+import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCrossSuiteConflictResolver";
+import { crossSuiteConflictIdForAuditFinding } from "@/lib/cross-suite/audit-mapping";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
@@ -397,6 +399,39 @@ export function CoPilotDrawer({
   } = useCopilotStream();
 
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+
+  // TIM-2453 — Check-mode cross-suite conflict resolver. The hook fetches the
+  // resolver's GET response once and exposes openResolverById; Check-mode
+  // cards that map to a known conflict id dispatch through this hook so the
+  // modal opens on the same conflict the Hiring/Financials badges point at.
+  // We render the resolver's own AIReviewModalNode (separate hook instance
+  // from the chat's; mounting both is safe — only one is ever open at a time).
+  const {
+    conflicts: crossSuiteConflicts,
+    openResolverById: openCrossSuiteResolverById,
+    ResolverNode: CrossSuiteResolverNode,
+    AIReviewModalNode: CrossSuiteAIReviewModalNode,
+  } = useCrossSuiteConflictResolver();
+
+  // Resolve an audit finding to a cross-suite conflict id ONLY when the
+  // resolver actually surfaced that conflict in today's response. Otherwise
+  // return null — the card keeps its standard Apply/Go-to-source behavior and
+  // never falls back to "open conflict 0". See audit-mapping.test.mjs.
+  const resolverConflictIdFor = useCallback(
+    (finding: AuditFinding): string | null => {
+      const id = crossSuiteConflictIdForAuditFinding(finding);
+      if (!id) return null;
+      return crossSuiteConflicts.some((c) => c.id === id) ? id : null;
+    },
+    [crossSuiteConflicts],
+  );
+
+  const handleOpenCrossSuiteResolver = useCallback(
+    (conflictId: string) => {
+      openCrossSuiteResolverById(conflictId);
+    },
+    [openCrossSuiteResolverById],
+  );
 
   // Keep local trial count in sync with the server after each message.
   useEffect(() => {
@@ -1039,6 +1074,11 @@ export function CoPilotDrawer({
     <>
       {/* TIM-1561: AI review modal for suggestions from chat. */}
       {AIReviewModalNode}
+      {/* TIM-2453: cross-suite resolver modal (+ its own AIReviewModal for
+          path-accept Apply round-trip). Mounted unconditionally so the modal
+          can open from any Check-mode card click without waiting on hydration. */}
+      {CrossSuiteResolverNode}
+      {CrossSuiteAIReviewModalNode}
       <PaywallModal
         open={trialModalOpen}
         onClose={() => setTrialModalOpen(false)}
@@ -1320,6 +1360,8 @@ export function CoPilotDrawer({
                   onRun={() => void runCheckScan()}
                   onApply={handleApplyFinding}
                   onGoToSource={handleGoToFindingSource}
+                  resolverConflictIdFor={resolverConflictIdFor}
+                  onOpenCrossSuite={handleOpenCrossSuiteResolver}
                 />
               )}
               {/* TIM-2416 — Benchmark mode panel. Scope label is the same
@@ -1334,6 +1376,8 @@ export function CoPilotDrawer({
                   onRun={() => void runBenchmarkScan(activeScope)}
                   onApply={handleApplyFinding}
                   onGoToSource={handleGoToFindingSource}
+                  resolverConflictIdFor={resolverConflictIdFor}
+                  onOpenCrossSuite={handleOpenCrossSuiteResolver}
                 />
               )}
               {/* Coach mode keeps every prior surface: empty state, history,
