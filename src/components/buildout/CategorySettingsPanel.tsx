@@ -21,7 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, Trash2, X } from "lucide-react";
-import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 
 // ── Sortable station row ───────────────────────────────────────────────────────

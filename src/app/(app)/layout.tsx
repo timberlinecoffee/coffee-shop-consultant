@@ -9,12 +9,10 @@ import { getAccountSettings } from "@/lib/account-settings";
 
 export const dynamic = "force-dynamic";
 
-// TIM-1093: Only block on auth (fast JWT verify). Progress statuses are fetched
-// by <WorkspaceStatusBootstrap> behind a Suspense boundary so a slow or failing
-// Supabase query never prevents the sidebar shell from rendering.
-// TIM-1748: CurrencyProvider hydrated server-side so all workspace money display
-// uses the account's selected currency instead of a hardcoded "$".
-export default async function WorkspaceLayout({
+// TIM-2461: shared shell for every authenticated surface. The sidebar mounts
+// here so it persists across /dashboard ↔ /workspace/* transitions instead of
+// remounting in each leaf layout.
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;

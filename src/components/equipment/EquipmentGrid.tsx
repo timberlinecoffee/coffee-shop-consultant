@@ -28,7 +28,7 @@ import type {
   EquipmentItem,
   EquipmentCategory,
   FinancingMethod,
-} from "@/app/workspace/financials/financials-workspace";
+} from "@/app/(app)/workspace/financials/financials-workspace";
 import { formatCurrency } from "@/lib/financial-projection";
 import { useCurrency } from "@/components/CurrencyProvider";
 import {

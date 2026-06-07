@@ -61,7 +61,7 @@ import {
   ChevronUp,
   X,
 } from "lucide-react";
-import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
 import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
