@@ -16,10 +16,10 @@
 // Idempotency: re-running on the same day overwrites rows via the unique
 // constraint on (metric_id, cohort_id, source_url, extraction_date).
 
-import { config as loadDotenv } from "dotenv"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@supabase/supabase-js"
 import { resolve } from "node:path"
+import { readFileSync, existsSync } from "node:fs"
 import { BENCHMARK_SOURCES, filterSources } from "../src/lib/benchmarking/sources.ts"
 import { buildExtractionPrompt } from "../src/lib/benchmarking/prompts.ts"
 import { runExtraction } from "../src/lib/benchmarking/extract.ts"
@@ -42,10 +42,28 @@ function fmtDate(d) {
   return d.toISOString().slice(0, 10)
 }
 
+/**
+ * Minimal .env loader — no external dep required. Skips comment lines and
+ * preserves quote-stripped values; existing process.env wins so a shell
+ * override always beats the file.
+ */
+function loadEnvFile(path) {
+  if (!existsSync(path)) return
+  const lines = readFileSync(path, "utf8").split(/\r?\n/)
+  for (const line of lines) {
+    if (!line || line.trim().startsWith("#")) continue
+    const eq = line.indexOf("=")
+    if (eq <= 0) continue
+    const key = line.slice(0, eq).trim()
+    if (process.env[key] !== undefined && process.env[key] !== "") continue
+    process.env[key] = line.slice(eq + 1).trim().replace(/^["']|["']$/g, "")
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv)
   const env = args["env"] === "prod" ? ".env.prod" : ".env.local"
-  loadDotenv({ path: resolve(process.cwd(), env) })
+  loadEnvFile(resolve(process.cwd(), env))
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
