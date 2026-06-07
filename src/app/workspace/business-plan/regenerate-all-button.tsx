@@ -31,6 +31,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { WorkspaceActionMenuItem } from "@/components/workspace/WorkspaceActionMenu";
 import type {
   ApprovedChange,
   SuggestionPayload,
@@ -53,6 +54,14 @@ interface SectionCurrent {
 }
 
 export interface RegenerateAllButtonProps {
+  /**
+   * TIM-2413: render mode. `"button"` (default) keeps the standalone
+   * WorkspaceActionButton. `"menuitem"` renders inside a WorkspaceActionMenu
+   * popover and accepts a `closeMenu` callback so the menu dismisses on click.
+   */
+  renderAs?: "button" | "menuitem";
+  /** Required when `renderAs === "menuitem"`. */
+  closeMenu?: () => void;
   disabled?: boolean;
   /** Current visible content per section, used as the originalValue for diff. */
   getCurrentSections: () => SectionCurrent[];
@@ -111,6 +120,8 @@ interface PendingEstimate {
 const STALL_TIMEOUT_MS = 30_000;
 
 export function RegenerateAllButton({
+  renderAs = "button",
+  closeMenu,
   disabled,
   getCurrentSections,
   openAIReviewModal,
@@ -511,26 +522,41 @@ export function RegenerateAllButton({
   ]);
 
   const isBusy = phase !== "idle";
+  const label =
+    phase === "preflighting"
+      ? "Checking..."
+      : phase === "estimating"
+        ? "Estimating..."
+        : phase === "streaming"
+          ? "Regenerating..."
+          : "Regenerate all";
+
+  const runFromTrigger = () => {
+    closeMenu?.();
+    void handleClick();
+  };
 
   return (
     <>
-      <WorkspaceActionButton
-        onClick={handleClick}
-        disabled={disabled || isBusy}
-        aria-label="Regenerate all sections from current platform data"
-        title="Regenerate all sections from current platform data"
-      >
-        <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-        <span>
-          {phase === "preflighting"
-            ? "Checking..."
-            : phase === "estimating"
-              ? "Estimating..."
-              : phase === "streaming"
-                ? "Regenerating..."
-                : "Regenerate all"}
-        </span>
-      </WorkspaceActionButton>
+      {renderAs === "menuitem" ? (
+        <WorkspaceActionMenuItem
+          Icon={Sparkles}
+          label={label}
+          onClick={runFromTrigger}
+          disabled={disabled || isBusy}
+          aria-label="Regenerate all sections from current platform data"
+        />
+      ) : (
+        <WorkspaceActionButton
+          onClick={handleClick}
+          disabled={disabled || isBusy}
+          aria-label="Regenerate all sections from current platform data"
+          title="Regenerate all sections from current platform data"
+        >
+          <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+          <span>{label}</span>
+        </WorkspaceActionButton>
+      )}
 
       {phase === "preflight" && preflightReport && (
         <RegenerateAllPreflightDialog
