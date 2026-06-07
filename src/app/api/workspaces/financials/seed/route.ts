@@ -12,10 +12,35 @@ import { toTitleCase } from "@/lib/text";
 
 type ModelCode = "FC" | "KI" | "DT" | "BO" | "MO" | "RC" | "DW";
 
+// TIM-2489: structured shop_type selections map directly to model codes,
+// avoiding ambiguity in free-text concept matching for drive-thru vs kiosk.
+function modelCodeFromShopTypes(shopTypes: string[]): ModelCode | null {
+  // Drive-through is highest-priority signal: fixed-site, $50k+ buildout.
+  if (shopTypes.includes("Drive-through")) return "DT";
+  // Roastery overrides other small-format signals.
+  if (shopTypes.includes("Roastery cafe")) return "RC";
+  // Mobile cart or kiosk: small, portable/stationary standalone unit.
+  if (shopTypes.includes("Mobile cart or kiosk")) return "KI";
+  // Mobile cart or pop-up: truly mobile, lowest buildout cost.
+  if (shopTypes.includes("Mobile cart or pop-up")) return "MO";
+  // Espresso bar (no seating, drinks only).
+  if (shopTypes.includes("Espresso bar (drinks only)")) return "KI";
+  // Full cafe with food: full-service with seating.
+  if (shopTypes.includes("Full cafe with food")) return "FC";
+  return null;
+}
+
 function deriveModelCode(
   conceptContent: Record<string, unknown> | null,
-  menuContent: Record<string, unknown> | null
+  menuContent: Record<string, unknown> | null,
+  shopTypes?: string[]
 ): ModelCode {
+  // Prefer structured onboarding selection when available (TIM-2489).
+  if (shopTypes && shopTypes.length > 0) {
+    const code = modelCodeFromShopTypes(shopTypes);
+    if (code) return code;
+  }
+
   const concept = conceptContent ?? {};
 
   // Flatten the concept to a single searchable string
@@ -111,7 +136,7 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, beta_waiver_until, onboarding_data")
     .eq("id", user.id)
     .single();
 
@@ -153,9 +178,17 @@ export async function POST() {
     ? normalizeConceptV2(conceptDoc.content)
     : null;
 
+  // TIM-2489: use structured shop_type selection when present; fall back to text.
+  const onboardingShopTypes = (() => {
+    const od = profile.onboarding_data as Record<string, unknown> | null;
+    if (!od) return undefined;
+    return Array.isArray(od.shop_type) ? (od.shop_type as string[]) : undefined;
+  })();
+
   const modelCode = deriveModelCode(
     conceptNormalized as Record<string, unknown> | null,
-    menuDoc?.content as Record<string, unknown> | null
+    menuDoc?.content as Record<string, unknown> | null,
+    onboardingShopTypes
   );
 
   // Fetch all non-bundled reference items for this model code

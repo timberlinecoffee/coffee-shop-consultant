@@ -23,11 +23,13 @@ import Illustration from "@/components/illustrations/Illustration";
 // TIM-1697: one line-art mark per coffee-shop model type, shown beside each
 // option in the shop_type multiselect. Keyed by the option label; unmapped
 // options simply render no illustration.
+// TIM-2489: "Drive-through or kiosk" split into distinct options.
 const SHOP_TYPE_RECIPE: Record<string, string> = {
   "Full cafe with food": "model-full-cafe",
   "Espresso bar (drinks only)": "model-espresso-bar",
   "Roastery cafe": "model-roastery-cafe",
-  "Drive-through or kiosk": "model-drive-thru",
+  "Drive-through": "model-drive-thru",
+  "Mobile cart or kiosk": "model-mobile-cart",
   "Mobile cart or pop-up": "model-mobile-cart",
 };
 
@@ -149,7 +151,8 @@ const STEPS: Step[] = [
       "Full cafe with food",
       "Espresso bar (drinks only)",
       "Roastery cafe",
-      "Drive-through or kiosk",
+      "Drive-through",
+      "Mobile cart or kiosk",
       "Mobile cart or pop-up",
       "Co-working / Hybrid space",
     ],
