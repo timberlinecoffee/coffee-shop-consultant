@@ -22,6 +22,10 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
@@ -139,10 +143,8 @@ export function BuildoutEquipmentWorkspace({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [describeOpen, setDescribeOpen] = useState(false);
-  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAiMarkings, setShowAiMarkings] = useState(true);
-  const viewOptionsRef = useRef<HTMLDivElement>(null);
   const [recommendations, setRecommendations] = useState<Map<string, EquipmentRecommendation>>(new Map());
 
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,18 +203,6 @@ export function BuildoutEquipmentWorkspace({
     }
     void loadViewPrefs();
   }, []);
-
-  // Close view options dropdown on outside click.
-  useEffect(() => {
-    if (!viewOptionsOpen) return;
-    function handler(e: MouseEvent) {
-      if (viewOptionsRef.current && !viewOptionsRef.current.contains(e.target as Node)) {
-        setViewOptionsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [viewOptionsOpen]);
 
   function toggleRecommendations() {
     const next = !showRecommendations;
@@ -368,69 +358,55 @@ export function BuildoutEquipmentWorkspace({
           description="Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page."
           actions={
             <>
-            {/* TIM-1937 (board refinement bae7ef73): icon-only collapse below
-                1536px is the canonical action-cluster style platform-wide. At
-                wide monitors (>=1536px) the labels expand. title= tooltip +
-                aria-label preserve discoverability / a11y. Primary button is
-                the first item in the cluster, per the board's reordering ask. */}
+            {/* TIM-2413: primary hero CTA + SaveStatusAndButton stay outside;
+                secondary utilities (Manage Stations, Import, View options)
+                live inside the hamburger. View options become check-style menu
+                items so the existing toggle state surfaces inline without a
+                nested popover. */}
             {canEdit && (
             <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)} aria-label="Describe your setup" title="Describe your setup">
               <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
               <span>Describe your setup</span>
             </WorkspaceActionButton>
           )}
-          {canEdit && (
-            <WorkspaceActionButton onClick={() => setSettingsOpen(true)} aria-label="Manage Stations" title="Manage Stations">
-              <Settings2 size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span>Manage Stations</span>
-            </WorkspaceActionButton>
-          )}
-          {canEdit && (
-            <WorkspaceActionButton onClick={() => setImportOpen(true)} aria-label="Import from spreadsheet" title="Import from spreadsheet">
-              <FileSpreadsheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span>Import from spreadsheet</span>
-            </WorkspaceActionButton>
-          )}
-          {/* View options: toggle recommendations and AI markings */}
-          <div className="relative" ref={viewOptionsRef}>
-            <button
-              type="button"
-              onClick={() => setViewOptionsOpen((o) => !o)}
-              className={`flex items-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-1.5 transition-colors ${
-                (!showRecommendations || !showAiMarkings)
-                  ? "text-[var(--teal)] border-[var(--teal)]/50 bg-[var(--teal)]/5"
-                  : "text-[var(--muted-foreground)] border-[var(--neutral-cool-200)] hover:bg-[var(--background)]"
-              }`}
-              aria-label="View options"
-              title="View options"
-            >
-              <Eye size={12} aria-hidden="true" />
-              <span>View</span>
-            </button>
-            {viewOptionsOpen && (
-              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
-                <p className="px-3 py-1 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Show in workspace</p>
-                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[var(--background)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="accent-[var(--teal)] cursor-pointer shrink-0"
-                    checked={showRecommendations}
-                    onChange={toggleRecommendations}
+          <WorkspaceActionMenu>
+            {({ closeMenu }) => (
+              <>
+                {canEdit && (
+                  <WorkspaceActionMenuItem
+                    Icon={Settings2}
+                    label="Manage stations"
+                    onClick={() => {
+                      closeMenu();
+                      setSettingsOpen(true);
+                    }}
                   />
-                  <span className="text-xs text-[var(--foreground)]">Recommendations</span>
-                </label>
-                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[var(--background)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="accent-[var(--teal)] cursor-pointer shrink-0"
-                    checked={showAiMarkings}
-                    onChange={toggleAiMarkings}
+                )}
+                {canEdit && (
+                  <WorkspaceActionMenuItem
+                    Icon={FileSpreadsheet}
+                    label="Import from spreadsheet"
+                    onClick={() => {
+                      closeMenu();
+                      setImportOpen(true);
+                    }}
                   />
-                  <span className="text-xs text-[var(--foreground)]">AI markings</span>
-                </label>
-              </div>
+                )}
+                <WorkspaceActionMenuItem
+                  Icon={Eye}
+                  label="Show recommendations"
+                  checked={showRecommendations}
+                  onClick={toggleRecommendations}
+                />
+                <WorkspaceActionMenuItem
+                  Icon={Eye}
+                  label="Show AI markings"
+                  checked={showAiMarkings}
+                  onClick={toggleAiMarkings}
+                />
+              </>
             )}
-          </div>
+          </WorkspaceActionMenu>
           {/* TIM-1937: SaveStatusAndButton renders the saved-status text +
               Save as one adjacent unit at the END of the action cluster. */}
           <SaveStatusAndButton

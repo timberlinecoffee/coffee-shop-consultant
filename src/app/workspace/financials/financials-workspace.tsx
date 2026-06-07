@@ -21,6 +21,10 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import {
   type MonthlyProjections,
   type FinancialProjections,
   type MonthlySlice,
@@ -2169,9 +2173,10 @@ export function FinancialsWorkspace({
           description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
           actions={
             <>
-              {/* TIM-1937 (board refinement bae7ef73): icon-only collapse below
-                  1536px is canon — labels show only on wide monitors. Primary
-                  "Guided setup" is the first item in the cluster. */}
+              {/* TIM-2413: primary hero CTA + SaveStatusAndButton stay outside;
+                  Export PDF + Export Excel live inside the hamburger (2 secondary
+                  utilities meets the >=2 threshold). Cluster order:
+                  [Primary] [⋯] [SaveStatusAndButton]. */}
               {canEdit && (
                 <WorkspaceActionButton
                   variant="primary"
@@ -2183,26 +2188,28 @@ export function FinancialsWorkspace({
                   <span>Guided setup</span>
                 </WorkspaceActionButton>
               )}
-              <WorkspaceActionButton
-                onClick={() =>
-                  window.location.assign("/api/workspaces/financials/export/pdf")
-                }
-                aria-label="Export PDF"
-                title="Download financials as PDF (landscape monthly views)"
-              >
-                <FileDown size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>Export PDF</span>
-              </WorkspaceActionButton>
-              <WorkspaceActionButton
-                onClick={() =>
-                  window.location.assign("/api/workspaces/financials/export/xlsx")
-                }
-                aria-label="Export Excel"
-                title="Download financials as Excel (.xlsx) with P&L, Cash Flow, Balance Sheet, Assumptions"
-              >
-                <Sheet size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>Export Excel</span>
-              </WorkspaceActionButton>
+              <WorkspaceActionMenu>
+                {({ closeMenu }) => (
+                  <>
+                    <WorkspaceActionMenuItem
+                      Icon={FileDown}
+                      label="Export PDF"
+                      onClick={() => {
+                        closeMenu();
+                        window.location.assign("/api/workspaces/financials/export/pdf");
+                      }}
+                    />
+                    <WorkspaceActionMenuItem
+                      Icon={Sheet}
+                      label="Export Excel"
+                      onClick={() => {
+                        closeMenu();
+                        window.location.assign("/api/workspaces/financials/export/xlsx");
+                      }}
+                    />
+                  </>
+                )}
+              </WorkspaceActionMenu>
               <SaveStatusAndButton
                 saving={saveState.kind === "saving"}
                 savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}

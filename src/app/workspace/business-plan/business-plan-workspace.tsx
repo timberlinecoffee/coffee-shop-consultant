@@ -24,6 +24,10 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { useBusinessPlanProgressOverlay } from "@/hooks/useBusinessPlanProgressOverlay";
 import { RegenerateAllButton } from "./regenerate-all-button";
@@ -684,9 +688,9 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
-              {/* TIM-2356: Check Plan is the new primary (far left). Per UX spec
-                  rationale: owners should check quality BEFORE exporting. Export
-                  PDF demotes to secondary directly to its right. */}
+              {/* TIM-2413: Check Plan stays outside as the primary hero CTA;
+                  Export PDF, Print Business Plan, and Regenerate all live
+                  inside the hamburger (3 secondary utilities, >=2 threshold). */}
               <WorkspaceActionButton
                 variant="primary"
                 onClick={handleCheckPlan}
@@ -699,56 +703,56 @@ export function BusinessPlanWorkspace({
                   {isCheckingPlan ? "Checking..." : "Check Plan"}
                 </span>
               </WorkspaceActionButton>
-              {/* TIM-1937 + TIM-2395: primary first, then secondaries.
-                  Labels render at every viewport (icon-only default reverted). */}
-              <WorkspaceActionButton
-                onClick={handleExportPdf}
-                disabled={isExportingPdf || isValidating || !canEdit}
-                aria-label="Export PDF"
-                title="Export PDF"
-              >
-                <Download size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>
-                  {isExportingPdf || isValidating ? "Checking..." : "Export PDF"}
-                </span>
-              </WorkspaceActionButton>
-              {/* TIM-1551: Print drives through the same PDF renderer as Export. */}
-              <WorkspaceActionButton
-                onClick={handlePrintPlan}
-                disabled={isPrintingPdf || isValidating || !canEdit}
-                aria-label="Print Business Plan"
-                title="Print Business Plan"
-              >
-                <FileText size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>
-                  {isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
-                </span>
-              </WorkspaceActionButton>
-              {/* TIM-2331: Regenerate every section from current platform data. */}
-              <RegenerateAllButton
-                disabled={!canEdit || streamingKey !== null}
-                getCurrentSections={() =>
-                  sections.map((s) => ({
-                    key: s.key,
-                    title: s.title,
-                    currentContent: s.userContent ?? s.autoContent,
-                  }))
-                }
-                openAIReviewModal={openAIReviewModal}
-                openProgressOverlay={openProgressOverlay}
-                updateProgressOverlay={updateProgressOverlay}
-                closeProgressOverlay={closeProgressOverlay}
-                onSectionApplied={(key, finalValue) => {
-                  setSections((prev) =>
-                    prev.map((s) =>
-                      s.key === key ? { ...s, userContent: finalValue } : s,
-                    ),
-                  );
-                }}
-                onError={(msg) => setGlobalError(msg)}
-                runPreflightAudit={runPreflightAudit}
-                onFixFirst={handlePreflightFixFirst}
-              />
+              <WorkspaceActionMenu>
+                {({ closeMenu }) => (
+                  <>
+                    <WorkspaceActionMenuItem
+                      Icon={Download}
+                      label={isExportingPdf || isValidating ? "Checking..." : "Export PDF"}
+                      disabled={isExportingPdf || isValidating || !canEdit}
+                      onClick={() => {
+                        closeMenu();
+                        handleExportPdf();
+                      }}
+                    />
+                    <WorkspaceActionMenuItem
+                      Icon={FileText}
+                      label={isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
+                      disabled={isPrintingPdf || isValidating || !canEdit}
+                      onClick={() => {
+                        closeMenu();
+                        handlePrintPlan();
+                      }}
+                    />
+                    <RegenerateAllButton
+                      renderAs="menuitem"
+                      closeMenu={closeMenu}
+                      disabled={!canEdit || streamingKey !== null}
+                      getCurrentSections={() =>
+                        sections.map((s) => ({
+                          key: s.key,
+                          title: s.title,
+                          currentContent: s.userContent ?? s.autoContent,
+                        }))
+                      }
+                      openAIReviewModal={openAIReviewModal}
+                      openProgressOverlay={openProgressOverlay}
+                      updateProgressOverlay={updateProgressOverlay}
+                      closeProgressOverlay={closeProgressOverlay}
+                      onSectionApplied={(key, finalValue) => {
+                        setSections((prev) =>
+                          prev.map((s) =>
+                            s.key === key ? { ...s, userContent: finalValue } : s,
+                          ),
+                        );
+                      }}
+                      onError={(msg) => setGlobalError(msg)}
+                      runPreflightAudit={runPreflightAudit}
+                      onFixFirst={handlePreflightFixFirst}
+                    />
+                  </>
+                )}
+              </WorkspaceActionMenu>
             </>
           }
         />
