@@ -11,6 +11,7 @@ import {
   buildMenuCogsBreakdown,
 } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
+import { getAccountSettings } from "@/lib/account-settings";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
 
@@ -67,13 +68,22 @@ export default async function FinancialsWorkspacePage() {
 
   let modelRow = modelResult.data;
 
-  // Auto-create financial_models row if it doesn't exist
+  // Auto-create financial_models row if it doesn't exist.
+  // TIM-2463: inherit users.currency_code + fiscal_year_start_month so the
+  // Financials currency dropdown (and every downstream surface that reads
+  // forecast_inputs.currency_code) reflects the user's selected currency
+  // instead of always defaulting to USD.
   if (!modelRow) {
+    const accountSettings = await getAccountSettings(supabase, user.id);
+    const forecastInputs = defaultMonthlyProjections();
+    forecastInputs.currency_code = accountSettings.currencyCode;
+    forecastInputs.fiscal_year_start_month =
+      accountSettings.localization.fiscalYearStartMonth;
     const { data: created } = await supabase
       .from("financial_models")
       .insert({
         plan_id: plan.id,
-        forecast_inputs: defaultMonthlyProjections(),
+        forecast_inputs: forecastInputs,
         startup_costs: {},
       })
       .select()

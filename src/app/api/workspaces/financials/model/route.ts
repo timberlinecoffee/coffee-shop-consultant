@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { NextRequest } from "next/server";
 import { defaultMonthlyProjections } from "@/lib/financial-projection";
+import { getAccountSettings } from "@/lib/account-settings";
 
 export async function GET() {
   const supabase = await createClient();
@@ -32,12 +33,22 @@ export async function GET() {
 
   if (existing) return Response.json(existing);
 
-  // Auto-create with defaults
+  // TIM-2463: Inherit the account's currency_code and fiscal_year_start_month
+  // when first creating the plan's financial_models row. Without this, every
+  // new model was hard-coded to USD regardless of the user's selected currency,
+  // so the Financials currency dropdown (and every downstream surface that
+  // reads forecast_inputs.currency_code) showed "$" for non-USD accounts.
+  const accountSettings = await getAccountSettings(supabase, user.id);
+  const forecastInputs = defaultMonthlyProjections();
+  forecastInputs.currency_code = accountSettings.currencyCode;
+  forecastInputs.fiscal_year_start_month =
+    accountSettings.localization.fiscalYearStartMonth;
+
   const { data: created, error } = await supabase
     .from("financial_models")
     .insert({
       plan_id: plan.id,
-      forecast_inputs: defaultMonthlyProjections(),
+      forecast_inputs: forecastInputs,
       startup_costs: {},
     })
     .select()
