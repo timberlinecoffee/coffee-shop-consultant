@@ -33,6 +33,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
@@ -2750,6 +2751,11 @@ export function HiringWorkspace({
           title="Hiring & Onboarding"
           description="Build your org structure, run scored interviews, plan onboarding, and evaluate staff competencies."
         />
+
+        {/* TIM-2426: Cross-Suite Conflict Resolver entry point. */}
+        <div className="mb-4">
+          <ConflictNoticeBadge />
+        </div>
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
             TIM-1888 H-6: text-only pills (no Icon). T-1: default mb-5 spacing. */}
