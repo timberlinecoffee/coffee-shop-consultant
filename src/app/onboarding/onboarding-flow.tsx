@@ -23,13 +23,31 @@ import Illustration from "@/components/illustrations/Illustration";
 // TIM-1697: one line-art mark per coffee-shop model type, shown beside each
 // option in the shop_type multiselect. Keyed by the option label; unmapped
 // options simply render no illustration.
+// TIM-2489: "Drive-through or kiosk" split into distinct options.
 const SHOP_TYPE_RECIPE: Record<string, string> = {
   "Full cafe with food": "model-full-cafe",
   "Espresso bar (drinks only)": "model-espresso-bar",
   "Roastery cafe": "model-roastery-cafe",
-  "Drive-through or kiosk": "model-drive-thru",
+  "Drive-through": "model-drive-thru",
+  "Mobile cart or kiosk": "model-mobile-cart",
   "Mobile cart or pop-up": "model-mobile-cart",
 };
+
+// TIM-2492: gross margin defaults calibrated by shop type so new plans start
+// with a realistic number instead of the hardcoded 0.75.
+const SHOP_TYPE_DEFAULT_GM: Record<string, number> = {
+  "Full cafe with food": 0.62,
+  "Roastery cafe": 0.65,
+  "Mobile cart or kiosk": 0.72,
+  "Mobile cart or pop-up": 0.72,
+  "Drive-through": 0.74,
+  "Espresso bar (drinks only)": 0.76,
+};
+
+function defaultGrossMarginFromShopTypes(shopTypes: string[]): number {
+  const margins = shopTypes.map((t) => SHOP_TYPE_DEFAULT_GM[t]).filter((m): m is number => m !== undefined);
+  return margins.length > 0 ? Math.min(...margins) : 0.75;
+}
 
 // TIM-619: onboarding wizard.
 // TIM-821: mission / target_market / differentiation steps replaced by guided
@@ -149,7 +167,8 @@ const STEPS: Step[] = [
       "Full cafe with food",
       "Espresso bar (drinks only)",
       "Roastery cafe",
-      "Drive-through or kiosk",
+      "Drive-through",
+      "Mobile cart or kiosk",
       "Mobile cart or pop-up",
       "Co-working / Hybrid space",
     ],
@@ -425,9 +444,16 @@ export function OnboardingFlow({
       let planId = existingPlan?.id ?? null;
 
       if (!planId) {
+        const shopTypes = Array.isArray(wizardState.answers.shop_type)
+          ? (wizardState.answers.shop_type as string[])
+          : [];
         const { data: plan, error: planError } = await supabase
           .from("coffee_shop_plans")
-          .insert({ user_id: userId, plan_name: planName })
+          .insert({
+            user_id: userId,
+            plan_name: planName,
+            target_gross_margin: defaultGrossMarginFromShopTypes(shopTypes),
+          })
           .select("id")
           .single();
         if (planError || !plan) throw planError ?? new Error("Could not create plan");
