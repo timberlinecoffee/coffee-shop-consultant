@@ -95,6 +95,7 @@ const SHOP_MODELS = [
   { id: "drive_through", label: "Drive-Through / Kiosk", desc: "High volume, low overhead, location-dependent", costRange: "$50K–$150K", example: "Dutch Bros model, airport kiosks" },
   { id: "mobile_popup", label: "Mobile / Pop-Up", desc: "Lowest barrier to entry, builds community", costRange: "$20K–$80K", example: "Farmers market cart, office pop-ups" },
   { id: "specialty_bar", label: "Specialty Bar", desc: "Single origin focus, pour-over, education-forward", costRange: "$100K–$250K", example: "Intelligentsia, George Howell" },
+  { id: "coworking_hybrid", label: "Co-working / Hybrid", desc: "Café + dedicated workspace, membership revenue, desk bookings", costRange: "$150K–$350K", example: "Hybrid café-workspace, coworking café" },
 ];
 
 // ── Auto-save hook ────────────────────────────────────────────────────────
@@ -177,6 +178,13 @@ function SectionShopType({
             </p>
             <p className="text-xs text-neutral-500">Answer a few follow-up questions to sharpen your concept.</p>
           </div>
+
+          {model === "coworking_hybrid" && (
+            <div className="bg-teal/5 border border-teal/20 rounded-xl px-4 py-3">
+              <p className="text-sm font-semibold text-teal mb-1">Membership and Booking Revenue</p>
+              <p className="text-xs text-neutral-600 leading-relaxed">Dedicated workspace memberships, desk fees, and event booking revenue are on the Groundwork roadmap. For now, model your baseline café revenue in the sections below and treat membership income as additional upside not yet captured here.</p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-neutral-950 mb-2">Square footage / size</label>
