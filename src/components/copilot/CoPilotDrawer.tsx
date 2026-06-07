@@ -23,7 +23,6 @@ import {
   COPILOT_SUBTITLE,
 } from "@/lib/copilot/branding";
 import {
-  GENERAL_CONVERSATION_LABEL,
   ThreadBrowser,
   WORKSPACE_LABELS,
   type ConversationScope,
@@ -1033,9 +1032,7 @@ export function CoPilotDrawer({
   const scopeHeaderLabel = (() => {
     if (activeMode === "check") return `Checking ${scopeNoun}`;
     if (activeMode === "benchmark") return `Comparing ${scopeNoun} to industry averages`;
-    return activeScope === null
-      ? GENERAL_CONVERSATION_LABEL
-      : `Asking about ${WORKSPACE_LABELS[activeScope]}`;
+    return `Asking about ${scopeNoun}`;
   })();
 
   return (
