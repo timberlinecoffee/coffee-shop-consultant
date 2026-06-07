@@ -13,9 +13,9 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; next?: string; error?: string }>;
+  searchParams: Promise<{ mode?: string; next?: string; error?: string; diag?: string }>;
 }) {
-  const { mode, next, error } = await searchParams;
+  const { mode, next, error, diag } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
 
@@ -48,6 +48,17 @@ export default async function LoginPage({
         <p className="text-[var(--dark-grey)] text-sm text-center mb-8">
           {isSignup ? "Start your coffee shop journey for free" : "Sign in to your coffee shop plan"}
         </p>
+        {error === "auth_failed" && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <p className="font-medium mb-1">Sign-in didn&apos;t complete. Please try again.</p>
+            {typeof diag === "string" && diag.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-red-600 font-medium select-none">Diagnostic detail (TIM-2327)</summary>
+                <code className="block mt-1 text-[10px] break-all text-red-800 font-mono">{diag}</code>
+              </details>
+            )}
+          </div>
+        )}
         <LoginForm initialMode={initialMode} />
         <p className="text-center text-sm text-[var(--dark-grey)] mt-6">
           {isSignup ? (
