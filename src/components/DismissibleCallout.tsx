@@ -49,6 +49,8 @@ export interface DismissibleCalloutProps {
     label: string;
     onClick?: () => void;
     href?: string;
+    /** HTML target attribute — use "_blank" for external links. */
+    target?: string;
     /** "primary" = filled teal button; "link" = small teal text link. Default "link". */
     variant?: "primary" | "link";
   };
@@ -121,6 +123,8 @@ export function DismissibleCallout({
           <a
             href={action.href}
             onClick={action.onClick}
+            target={action.target}
+            rel={action.target === "_blank" ? "noopener noreferrer" : undefined}
             className={
               actionVariant === "primary"
                 ? "ml-3 flex-shrink-0 self-center text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
