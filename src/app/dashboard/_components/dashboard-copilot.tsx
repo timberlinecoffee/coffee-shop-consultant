@@ -14,7 +14,14 @@ export function DashboardCoPilot({ planId }: { planId: string }) {
   return (
     <>
       <CoPilotBeacon />
-      <CoPilotDrawer planId={planId} workspaceKey="concept" />
+      {/* TIM-2416 — Dashboard entry defaults to Check mode with whole-plan
+          scope (UX spec §5). User can switch modes from the in-drawer strip. */}
+      <CoPilotDrawer
+        planId={planId}
+        workspaceKey="concept"
+        defaultMode="check"
+        defaultScopeOverride={null}
+      />
     </>
   );
 }

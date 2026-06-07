@@ -39,6 +39,14 @@ import { useCopilotStream } from "./useCopilotStream";
 import { useAIReviewModal, type ApprovedChange, type SuggestionPayload } from "@/hooks/useAIReviewModal";
 import { parseEquipmentCostFieldId } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
+import {
+  BenchmarkPanel,
+  CheckPanel,
+  ModeStrip,
+  type CompanionMode,
+} from "./CompanionPanels";
+import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
@@ -212,6 +220,13 @@ export interface CoPilotDrawerProps {
   showDesktopLauncher?: boolean;
   // TIM-1637: workspace-specific callback invoked when the user accepts AI suggestions.
   onApplySuggestions?: (accepted: ApprovedChange[]) => Promise<void>;
+  // TIM-2416 — AI Companion v3. Per UX spec §5: Dashboard + Business Plan
+  // entries default to Check mode; source-workspace entries default to Coach.
+  // When omitted, the drawer defaults to Coach.
+  defaultMode?: CompanionMode;
+  // TIM-2416 — initial scope override. Dashboard + Business Plan pass null
+  // (whole plan); source workspaces inherit `workspaceKey` from the prop.
+  defaultScopeOverride?: ConversationScope;
 }
 
 function newThreadId(): string {
@@ -299,8 +314,19 @@ export function CoPilotDrawer({
   initialTrialMessagesUsed = 0,
   showDesktopLauncher = false,
   onApplySuggestions,
+  defaultMode = "coach",
+  defaultScopeOverride,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
+  // TIM-2416 — companion mode state. Coach mode keeps the existing chat UX;
+  // Check + Benchmark render finding-card panels.
+  const [activeMode, setActiveMode] = useState<CompanionMode>(defaultMode);
+  const [checkReport, setCheckReport] = useState<AuditReport | null>(null);
+  const [checkScanning, setCheckScanning] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [benchmarkReport, setBenchmarkReport] = useState<AuditReport | null>(null);
+  const [benchmarkScanning, setBenchmarkScanning] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
@@ -318,10 +344,14 @@ export function CoPilotDrawer({
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
     key: workspaceKey,
   }));
-  const [activeScope, setActiveScope] = useState<ConversationScope>(workspaceKey);
+  // TIM-2416 — Dashboard + Business Plan callers pass defaultScopeOverride=null
+  // (whole plan); source workspaces use the inherited workspaceKey.
+  const initialScope: ConversationScope =
+    defaultScopeOverride !== undefined ? defaultScopeOverride : workspaceKey;
+  const [activeScope, setActiveScope] = useState<ConversationScope>(initialScope);
   if (workspaceKeyVersion.key !== workspaceKey) {
     setWorkspaceKeyVersion({ key: workspaceKey });
-    setActiveScope(workspaceKey);
+    setActiveScope(initialScope);
   }
   const [activeThreadId, setActiveThreadId] = useState<string>(() => {
     if (typeof window === "undefined") return newThreadId();
@@ -345,10 +375,7 @@ export function CoPilotDrawer({
   const [credits, setCredits] = useState<CreditsState>(null);
   // TIM-1728: cross-workspace consistency conflicts surfaced through AIReviewModal.
   const [consistencyConflicts, setConsistencyConflicts] = useState<SuggestionPayload[] | null>(null);
-  const [consistencyChecking, setConsistencyChecking] = useState(false);
-  // TIM-1801: result feedback so the button never silently no-ops — a clean
-  // "no issues" state and a surfaced error replace the prior silent returns.
-  const [consistencyResult, setConsistencyResult] = useState<"idle" | "clean" | "error">("idle");
+  const [, setConsistencyChecking] = useState(false);
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
@@ -459,33 +486,10 @@ export function CoPilotDrawer({
     [activeThreadId, handleNewThread],
   );
 
-  // TIM-1728: fetch consistency conflicts and surface via AIReviewModal.
-  const handleConsistencyCheck = useCallback(async () => {
-    if (consistencyChecking) return;
-    setConsistencyChecking(true);
-    setConsistencyResult("idle");
-    try {
-      const res = await fetch("/api/copilot/consistency", { credentials: "same-origin" });
-      if (!res.ok) {
-        setConsistencyConflicts(null);
-        setConsistencyResult("error");
-        return;
-      }
-      const data = (await res.json()) as { suggestions: SuggestionPayload[] };
-      if (data.suggestions.length > 0) {
-        setConsistencyConflicts(data.suggestions);
-        setConsistencyResult("idle");
-      } else {
-        setConsistencyConflicts(null);
-        setConsistencyResult("clean");
-      }
-    } catch {
-      setConsistencyConflicts(null);
-      setConsistencyResult("error");
-    } finally {
-      setConsistencyChecking(false);
-    }
-  }, [consistencyChecking]);
+  // TIM-2416 — the manual "Check plan consistency" handler was retired with
+  // the inline Coach trigger (UX spec §3a). Run the consistency check via the
+  // companion Check mode; the auto on-open conflict fetch below still feeds
+  // the "Review N plan conflicts" CTA when conflicts already exist.
 
   // TIM-1728: apply a consistency resolution — POST the canonical value for each accepted conflict.
   // TIM-1731: per-call error handling. A failed write must NOT clear the conflict list; throwing
@@ -515,6 +519,137 @@ export function CoPilotDrawer({
     }
     setConsistencyConflicts(null);
   }, []);
+
+  // ── TIM-2416: Check + Benchmark scan handlers. ─────────────────────────────
+
+  const runCheckScan = useCallback(async () => {
+    setCheckError(null);
+    setCheckScanning(true);
+    try {
+      const res = await fetch("/api/business-plan/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Check failed (${res.status})`);
+      }
+      const data = (await res.json()) as { report: AuditReport | null };
+      setCheckReport(data.report);
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : "Check failed");
+    } finally {
+      setCheckScanning(false);
+    }
+  }, []);
+
+  const runBenchmarkScan = useCallback(async (scope: ConversationScope) => {
+    setBenchmarkError(null);
+    setBenchmarkScanning(true);
+    try {
+      const res = await fetch("/api/companion/benchmark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ scope }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Benchmark failed (${res.status})`);
+      }
+      const data = (await res.json()) as { report: AuditReport | null };
+      setBenchmarkReport(data.report);
+    } catch (err) {
+      setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed");
+    } finally {
+      setBenchmarkScanning(false);
+    }
+  }, []);
+
+  // TIM-2416 — Apply suggestion for a finding (Check or Benchmark). Routes
+  // through the unified AI review modal; never auto-applies (platform rule).
+  const handleApplyFinding = useCallback(
+    (finding: AuditFinding) => {
+      if (!finding.suggested_replacement) return;
+      const fieldId = finding.target.field ?? finding.source.field ?? finding.id;
+      const fieldLabel =
+        finding.target.field_label ?? finding.source.field_label ?? "Source value";
+      const replacement = stripFindingTags(finding.suggested_replacement);
+      const original = stripFindingTags(finding.quoted_text ?? "");
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `companion-${finding.id}`,
+            fieldId,
+            fieldLabel,
+            originalValue: original,
+            proposedValue: replacement,
+            isStructured: false,
+          },
+        ],
+        context: {
+          workspace: finding.target.workspace ?? "plan",
+          section: finding.target.field_label ?? undefined,
+        },
+        onApply: async () => {
+          // For companion findings the reviewed value is committed by the
+          // owning workspace; the modal still surfaces the reviewed change so
+          // the user can copy it into the source. No direct PATCH from here.
+        },
+      });
+    },
+    [openAIReviewModal],
+  );
+
+  // TIM-2416 — Go to source. Mirrors the BP workspace handleGoToAuditSource
+  // navigation map. Closes the drawer first so the destination workspace
+  // doesn't render behind a backdrop.
+  const handleGoToFindingSource = useCallback((finding: AuditFinding) => {
+    const target = finding.target.workspace;
+    const workspaceHref: Record<string, string> = {
+      financials: "/workspace/financials",
+      labor: "/workspace/hiring",
+      hiring: "/workspace/hiring",
+      "buildout-equipment": "/workspace/buildout-equipment",
+      buildout_equipment: "/workspace/buildout-equipment",
+      "menu-pricing": "/workspace/menu-pricing",
+      menu_pricing: "/workspace/menu-pricing",
+      "launch-plan": "/workspace/launch-plan",
+      opening_month_plan: "/workspace/opening-month-plan",
+      "location-lease": "/workspace/location-lease",
+      location_lease: "/workspace/location-lease",
+      lease: "/workspace/location-lease",
+      "real-estate": "/workspace/location-lease",
+      "business-plan": "/workspace/business-plan",
+      business_plan: "/workspace/business-plan",
+    };
+    const href = workspaceHref[target];
+    if (href) {
+      setOpen(false);
+      window.location.href = href;
+    }
+  }, []);
+
+  // TIM-2416 — open-in-mode external trigger. Inline benchmark deltas and the
+  // BP regen pre-flight "Fix first" branch dispatch this event so opening the
+  // companion in a specific mode + scope is a one-call path.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        mode?: CompanionMode;
+        scope?: ConversationScope;
+      }>).detail;
+      if (!detail) return;
+      openDrawer();
+      if (detail.mode) setActiveMode(detail.mode);
+      if (detail.scope !== undefined) setActiveScope(detail.scope);
+    };
+    window.addEventListener("copilot:open-in-mode", handler);
+    return () => window.removeEventListener("copilot:open-in-mode", handler);
+  }, [openDrawer]);
 
   const handleSelectThread = useCallback(
     async (item: ThreadBrowserItem) => {
@@ -889,10 +1024,19 @@ export function CoPilotDrawer({
     );
   }, [isExpanded, panelWidth, viewportWidth]);
 
-  const scopeHeaderLabel =
+  // TIM-2416 — per UX spec §5, scope header wording is mode-aware. Coach uses
+  // "Asking about", Check uses "Checking", Benchmark uses "Comparing".
+  const scopeNoun =
     activeScope === null
+      ? "your whole plan"
+      : `your ${WORKSPACE_LABELS[activeScope]}`;
+  const scopeHeaderLabel = (() => {
+    if (activeMode === "check") return `Checking ${scopeNoun}`;
+    if (activeMode === "benchmark") return `Comparing ${scopeNoun} to industry averages`;
+    return activeScope === null
       ? GENERAL_CONVERSATION_LABEL
-      : WORKSPACE_LABELS[activeScope];
+      : `Asking about ${WORKSPACE_LABELS[activeScope]}`;
+  })();
 
   return (
     <>
@@ -1136,6 +1280,10 @@ export function CoPilotDrawer({
               </button>
             </header>
 
+            {/* TIM-2416 — mode strip (UX spec §2). Sits below the header,
+                above the scroll/input column. Always visible, even mid-scan. */}
+            <ModeStrip activeMode={activeMode} onSelect={setActiveMode} />
+
             <div className="flex flex-1 overflow-hidden min-h-0">
               <AnimatePresence initial={false}>
                 {!isMobile && railOpen && (
@@ -1166,45 +1314,59 @@ export function CoPilotDrawer({
               </AnimatePresence>
               <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-              {loadingThread && (
+              {/* TIM-2416 — Check mode panel. Scoped per UX spec §3b. */}
+              {activeMode === "check" && (
+                <CheckPanel
+                  report={checkReport}
+                  isScanning={checkScanning}
+                  error={checkError}
+                  onRun={() => void runCheckScan()}
+                  onApply={handleApplyFinding}
+                  onGoToSource={handleGoToFindingSource}
+                />
+              )}
+              {/* TIM-2416 — Benchmark mode panel. Scope label is the same
+                  wording used in the header so the user sees one consistent
+                  scope line on the empty/zero states. */}
+              {activeMode === "benchmark" && (
+                <BenchmarkPanel
+                  scopeLabel={scopeHeaderLabel}
+                  report={benchmarkReport}
+                  isScanning={benchmarkScanning}
+                  error={benchmarkError}
+                  onRun={() => void runBenchmarkScan(activeScope)}
+                  onApply={handleApplyFinding}
+                  onGoToSource={handleGoToFindingSource}
+                />
+              )}
+              {/* Coach mode keeps every prior surface: empty state, history,
+                  streaming buffer, review/conflict CTAs, error banner. */}
+              {activeMode === "coach" && loadingThread && (
                 <p className="text-xs text-[var(--neutral-cool-600)]">Loading conversation…</p>
               )}
 
-              {showEmpty && (
+              {activeMode === "coach" && showEmpty && (
                 <div className="text-sm text-[var(--gray-1100)] bg-[var(--background)] border border-[var(--border)] rounded-xl p-4">
+                  {/* TIM-2416 — Coach scope eyebrow (UX spec §3a). */}
+                  <p className="text-xs font-semibold text-[var(--teal)] mb-2 uppercase tracking-wide">
+                    {activeScope === null
+                      ? "Asking about your whole plan"
+                      : `Asking about your ${WORKSPACE_LABELS[activeScope]}`}
+                  </p>
                   {activeScope === null
-                    ? `Ask ${COPILOT_NAME} anything about your plan. This conversation isn't tied to a specific workspace. Good for cross-cutting questions like cash flow, opening sequencing, or "is this realistic?"`
-                    : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()} plan. ${COPILOT_NAME} can see your plan snapshot across every workspace.`}
-                  {/* TIM-1728: manual consistency trigger in empty state. */}
-                  {!consistencyConflicts && !consistencyChecking && (
-                    <button
-                      type="button"
-                      onClick={() => void handleConsistencyCheck()}
-                      className="mt-3 flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
-                    >
-                      <Sparkles size={12} aria-hidden />
-                      Check plan consistency
-                    </button>
-                  )}
-                  {consistencyChecking && (
-                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">Checking plan consistency…</p>
-                  )}
-                  {/* TIM-1801: clean state so a no-conflict run is never silent. */}
-                  {!consistencyChecking && !consistencyConflicts && consistencyResult === "clean" && (
-                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">No plan inconsistencies found. Everything lines up across your workspaces.</p>
-                  )}
-                  {/* TIM-1801: surface failures instead of swallowing them. */}
-                  {!consistencyChecking && consistencyResult === "error" && (
-                    <p className="mt-3 text-xs text-red-700">Couldn&apos;t check plan consistency. Please try again.</p>
-                  )}
+                    ? `Ask anything. ${COPILOT_NAME} can see all your workspaces.`
+                    : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()}. ${COPILOT_NAME} can see your numbers across every workspace.`}
+                  {/* TIM-2416 — the standalone "Check plan consistency" trigger
+                      was removed from the Coach empty state (UX spec §3a). That
+                      function now lives in Check mode. */}
                 </div>
               )}
 
-              {messages.map((msg, idx) => (
+              {activeMode === "coach" && messages.map((msg, idx) => (
                 <MessageBubble key={idx} role={msg.role} content={msg.content} />
               ))}
 
-              {(assistantBuffer || isThinking) && (
+              {activeMode === "coach" && (assistantBuffer || isThinking) && (
                 <div className="space-y-2">
                   {isThinking && (
                     <div
@@ -1223,7 +1385,7 @@ export function CoPilotDrawer({
               )}
 
               {/* TIM-1561: "Review N suggestions" CTA when Scout emits a suggestions event. */}
-              {pendingSuggestions && !isStreaming && (
+              {activeMode === "coach" && pendingSuggestions && !isStreaming && (
                 <div className="flex">
                   <button
                     type="button"
@@ -1271,7 +1433,7 @@ export function CoPilotDrawer({
               )}
 
               {/* TIM-1728: "Review N conflicts" CTA when cross-workspace consistency check finds disagreements. */}
-              {consistencyConflicts && !isStreaming && (
+              {activeMode === "coach" && consistencyConflicts && !isStreaming && (
                 <div className="flex">
                   <button
                     type="button"
@@ -1291,7 +1453,7 @@ export function CoPilotDrawer({
                 </div>
               )}
 
-              {errorBanner && (
+              {activeMode === "coach" && errorBanner && (
                 <div className="border border-red-200 bg-red-50 text-red-700 rounded-xl p-3 text-sm flex items-start gap-3">
                   <span aria-hidden>!</span>
                   <div className="flex-1">
@@ -1337,6 +1499,9 @@ export function CoPilotDrawer({
               )}
             </div>
 
+            {/* TIM-2416 — the chat input is Coach-only. Check + Benchmark
+                modes are driven by their own buttons, not a text prompt. */}
+            {activeMode === "coach" && (
             <motion.div
               className="border-t border-[var(--border)] safe-area-pb"
               initial={{ opacity: 0 }}
@@ -1388,6 +1553,7 @@ export function CoPilotDrawer({
                 {COPILOT_AI_DISCLAIMER}
               </p>
             </motion.div>
+            )}
             </div>
             </div>
             <AnimatePresence>

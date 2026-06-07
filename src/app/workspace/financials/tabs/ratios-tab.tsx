@@ -256,8 +256,24 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
   const styles = STATUS_STYLES[ratio.status];
   const v = ratio.value;
 
+  // TIM-2416 — clicking a ratio card opens the AI companion in Benchmark
+  // mode scoped to Financials. Visual treatment is unchanged per UX spec §6.
+  const handleOpenInBenchmark = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent("copilot:open-in-mode", {
+        detail: { mode: "benchmark", scope: "financials" },
+      }),
+    );
+  };
+
   return (
-    <div className={`rounded-xl border px-5 py-4 ${styles.wrap}`}>
+    <button
+      type="button"
+      onClick={handleOpenInBenchmark}
+      aria-label={`Compare ${ratio.label} in Scout`}
+      className={`w-full text-left rounded-xl border px-5 py-4 ${styles.wrap} hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/40 transition`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-bold text-[var(--foreground)] leading-tight">{ratio.label}</p>
@@ -298,7 +314,7 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
       <p className="text-xs text-[var(--gray-1400)] mt-3 leading-relaxed">
         {ratio.takeaway}
       </p>
-    </div>
+    </button>
   );
 }
 

@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X, ShieldCheck } from "lucide-react";
+import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -19,10 +19,6 @@ import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import {
-  WorkspaceActionButton,
-  WORKSPACE_ACTION_ICON_SIZE,
-} from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   WorkspaceActionMenu,
@@ -32,10 +28,8 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { useBusinessPlanProgressOverlay } from "@/hooks/useBusinessPlanProgressOverlay";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
-import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
-import { QualityCheckPanel } from "./quality-check-panel";
-import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
-import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
 
 interface Props {
@@ -145,6 +139,7 @@ async function fetchSse(
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BusinessPlanWorkspace({
+  planId,
   shopName,
   initialSections,
   canEdit,
@@ -184,11 +179,10 @@ export function BusinessPlanWorkspace({
     closeProgressOverlay,
     ProgressOverlayNode,
   } = useBusinessPlanProgressOverlay();
-  // TIM-2356: Plan Quality Check tab + report state.
-  const [activeTab, setActiveTab] = useState<"plan" | "quality-check">("plan");
-  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
-  const [isCheckingPlan, setIsCheckingPlan] = useState(false);
-  const [auditError, setAuditError] = useState<string | null>(null);
+  // TIM-2416 — Plan Quality Check moved into the AI companion (Check mode).
+  // The BP workspace no longer owns the audit tab or its in-place panel; the
+  // companion is the single canonical entry. The pre-flight gate on regen
+  // still calls /api/business-plan/audit (`runPreflightAudit` below).
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any section has user content.
@@ -521,109 +515,11 @@ export function BusinessPlanWorkspace({
     );
   }, []);
 
-  // TIM-2356: Plan Quality Check — kick off the audit + flip to the report tab.
-  const handleCheckPlan = useCallback(async () => {
-    setActiveTab("quality-check");
-    setAuditError(null);
-    setIsCheckingPlan(true);
-    try {
-      const res = await fetch("/api/business-plan/audit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Audit failed (${res.status})`);
-      }
-      const data = (await res.json()) as { report: AuditReport | null };
-      setAuditReport(data.report);
-    } catch (err) {
-      setAuditError(err instanceof Error ? err.message : "Audit failed");
-    } finally {
-      setIsCheckingPlan(false);
-    }
-  }, []);
-
-  // TIM-2356: Apply suggestion — route the proposed replacement through the
-  // shared AI review modal. NEVER auto-applies (per platform rule + UX spec
-  // line 235). The modal handler PATCHes the section once the user accepts.
-  const handleApplyAuditFinding = useCallback((finding: AuditFinding) => {
-    if (!finding.suggested_replacement) return;
-    // For business-plan-section findings, splice the suggested replacement
-    // into the quoted text in the section body, then show the diff in the modal.
-    const sectionKey = finding.source.field;
-    if (!sectionKey) return;
-    const section = sections.find((s) => s.key === sectionKey);
-    if (!section) return;
-    const originalValue = section.userContent ?? section.autoContent ?? "";
-    const quoted = finding.quoted_text ?? "";
-    const replacement = finding.suggested_replacement;
-    let proposedValue: string;
-    if (quoted && originalValue.includes(quoted)) {
-      proposedValue = originalValue.replace(quoted, replacement);
-    } else {
-      proposedValue = `${originalValue}\n\n(Audit suggestion: ${stripFindingTags(replacement)})`;
-    }
-    openAIReviewModal({
-      suggestions: [
-        {
-          id: `audit-${finding.id}`,
-          fieldId: sectionKey,
-          fieldLabel: finding.source.field_label ?? sectionKey,
-          originalValue,
-          proposedValue,
-          isStructured: false,
-        },
-      ],
-      context: { workspace: "Plan Quality Check", section: finding.source.field_label ?? undefined },
-      onApply: async () => {
-        await fetch(`/api/business-plan/sections/${sectionKey}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_content: proposedValue }),
-        });
-        setSections((prev) =>
-          prev.map((s) => (s.key === sectionKey ? { ...s, userContent: proposedValue } : s)),
-        );
-      },
-    });
-  }, [openAIReviewModal, sections]);
-
-  // TIM-2356: Deep-link "Go to source". For business-plan findings we open
-  // the parent section in place by expanding it; for cross-workspace findings
-  // we navigate to the target workspace URL.
-  const handleGoToAuditSource = useCallback((finding: AuditFinding) => {
-    if (finding.target.workspace === "business-plan") {
-      const sectionKey = finding.target.field ?? finding.source.field;
-      if (!sectionKey) return;
-      setActiveTab("plan");
-      setSections((prev) =>
-        prev.map((s) => (s.key === sectionKey ? { ...s, isExpanded: true } : s)),
-      );
-      // Defer scroll to next frame so the section is rendered first.
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-section-key="${sectionKey}"]`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-      return;
-    }
-    // Other workspaces: navigate. Slugs match the directory names under
-    // src/app/workspace/ — keep this map authoritative so audit findings from
-    // TIM-2394 source-suite checks deep-link correctly.
-    const workspaceHref: Record<string, string> = {
-      financials: "/workspace/financials",
-      labor: "/workspace/hiring",
-      hiring: "/workspace/hiring",
-      "buildout-equipment": "/workspace/buildout-equipment",
-      "menu-pricing": "/workspace/menu-pricing",
-      "launch-plan": "/workspace/launch-plan",
-      "location-lease": "/workspace/location-lease",
-      "real-estate": "/workspace/location-lease",
-    };
-    const href = workspaceHref[finding.target.workspace];
-    if (href) window.location.href = href;
-  }, []);
+  // TIM-2416 — Plan Quality Check was removed from the BP workspace surface.
+  // Apply / Go-to-source / standalone "Check Plan" all live inside the AI
+  // companion now (Check mode). What remains here: the pre-flight gate that
+  // runs Check on source suites before regen and offers Fix-first / Generate-
+  // anyway. Fix-first opens the companion in Check mode (no in-page tab).
 
   // TIM-2394: pre-flight handler invoked by RegenerateAllButton before any
   // estimate is fetched. Hits the same /api/business-plan/audit endpoint
@@ -643,15 +539,21 @@ export function BusinessPlanWorkspace({
     }
   }, []);
 
-  // TIM-2394: when the user accepts the pre-flight gate's "Fix these first"
-  // recommendation, surface the same report inside the existing Quality Check
-  // tab so the finding cards (and their "Go to source" deep-links) are one
-  // click away.
+  // TIM-2416 — when the user accepts the pre-flight gate's "Fix first"
+  // recommendation, open the AI companion in Check mode. The companion's
+  // Check engine calls the same /api/business-plan/audit cache, so it returns
+  // the same finding set instantly. `report` arg is intentionally unused —
+  // the companion drives its own fetch so the cards round-trip through the
+  // companion's Apply path (the canonical Apply path going forward).
   const handlePreflightFixFirst = useCallback((report: AuditReport) => {
-    setAuditReport(report);
-    setAuditError(null);
-    setIsCheckingPlan(false);
-    setActiveTab("quality-check");
+    void report;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("copilot:open-in-mode", {
+          detail: { mode: "check", scope: null },
+        }),
+      );
+    }
   }, []);
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -688,21 +590,11 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
-              {/* TIM-2413: Check Plan stays outside as the primary hero CTA;
-                  Export PDF, Print Business Plan, and Regenerate all live
-                  inside the hamburger (3 secondary utilities, >=2 threshold). */}
-              <WorkspaceActionButton
-                variant="primary"
-                onClick={handleCheckPlan}
-                disabled={isCheckingPlan || !canEdit}
-                aria-label={isCheckingPlan ? "Checking..." : "Check Plan"}
-                title="Scan all workspaces for gaps, mismatches, and things to fix before launch"
-              >
-                <ShieldCheck size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>
-                  {isCheckingPlan ? "Checking..." : "Check Plan"}
-                </span>
-              </WorkspaceActionButton>
+              {/* TIM-2416: the standalone "Check Plan" header CTA was removed.
+                  Plan Quality Check now lives in the AI companion (Check mode)
+                  reachable from every workspace via the floating affordance.
+                  The hamburger keeps Export PDF, Print Business Plan, and
+                  Regenerate all as before. */}
               <WorkspaceActionMenu>
                 {({ closeMenu }) => (
                   <>
@@ -757,28 +649,9 @@ export function BusinessPlanWorkspace({
           }
         />
 
-        {/* TIM-2356: Sub-nav between Business Plan editor and Plan Quality Check report. */}
-        <WorkspaceSubNav
-          tabs={[
-            { key: "plan", label: "Business Plan" },
-            { key: "quality-check", label: "Quality Check" },
-          ]}
-          active={activeTab}
-          onSelect={setActiveTab}
-          ariaLabel="Business Plan sections"
-        />
-
-        {activeTab === "quality-check" ? (
-          <QualityCheckPanel
-            report={auditReport}
-            isChecking={isCheckingPlan}
-            checkError={auditError}
-            onCheckPlan={handleCheckPlan}
-            onApply={handleApplyAuditFinding}
-            onGoToSource={handleGoToAuditSource}
-          />
-        ) : (
-          <>
+        {/* TIM-2416 — sub-nav removed with the Quality Check tab. The
+            Business Plan workspace is now a single-view editor; the audit
+            engine lives in the companion. */}
         <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
           {visibleCount} of {sections.length} sections visible
         </p>
@@ -846,10 +719,17 @@ export function BusinessPlanWorkspace({
           onGenerateExec={(key) => handleGenerate(key)}
           onImprove={(key) => handleImprove(key)}
         />
-          </>
-        )}
       </div>
     </div>
+    {/* TIM-2416 — the AI companion mounts inside the Business Plan workspace
+        so Coach/Check/Benchmark are reachable from this view. Defaults to
+        Check mode with whole-plan scope per UX spec §5. */}
+    <CoPilotDrawer
+      planId={planId}
+      workspaceKey="concept"
+      defaultMode="check"
+      defaultScopeOverride={null}
+    />
     </>
   );
 }
