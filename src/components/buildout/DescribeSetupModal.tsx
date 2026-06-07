@@ -9,7 +9,7 @@ import { X, Trash2, ChevronDown } from "lucide-react";
 import { useCurrency } from "@/components/CurrencyProvider";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
-import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 
 // ── Step types ────────────────────────────────────────────────────────────────
 

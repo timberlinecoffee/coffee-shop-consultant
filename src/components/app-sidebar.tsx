@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LayoutDashboard } from "lucide-react";
 import type { WorkspaceNavItem, NavIcon, WorkspaceCategory } from "@/lib/workspace-manifest";
 import { Logo, LogoMark } from "@/app/_components/Logo";
 import {
@@ -399,6 +400,51 @@ function useShowStatus(): { showStatus: boolean; toggle: () => void } {
   return { showStatus, toggle };
 }
 
+// TIM-2461: Dashboard pin rendered above the category list. Highlights when
+// the user is on /dashboard (no workspace selected).
+function DashboardNavItem({
+  collapsed,
+  isActive,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  isActive: boolean;
+  onNavigate?: () => void;
+}) {
+  if (collapsed) {
+    return (
+      <Link
+        href="/dashboard"
+        aria-current={isActive ? "page" : undefined}
+        title="Dashboard"
+        onClick={onNavigate}
+        className={`relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors mx-auto mb-2 ${
+          isActive
+            ? "bg-[var(--teal)]/10 text-[var(--teal)]"
+            : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] hover:text-[var(--foreground)]"
+        }`}
+      >
+        <LayoutDashboard size={17} strokeWidth={1.75} aria-hidden="true" />
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/dashboard"
+      aria-current={isActive ? "page" : undefined}
+      onClick={onNavigate}
+      className={`flex items-center gap-2 px-3 py-2 mb-2 rounded-lg transition-colors ${
+        isActive
+          ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+          : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
+      }`}
+    >
+      <LayoutDashboard size={14} strokeWidth={1.75} aria-hidden="true" />
+      <span className="text-sm truncate flex-1 min-w-0">Dashboard</span>
+    </Link>
+  );
+}
+
 function SidebarContent({
   items,
   collapsed,
@@ -464,6 +510,13 @@ function SidebarContent({
         aria-label="Workspace navigation"
         className={`flex-1 overflow-y-auto py-4 ${collapsed ? "px-1" : "px-2"}`}
       >
+        {/* TIM-2461: Dashboard pin — always above category groups, active when
+            no workspace is selected. */}
+        <DashboardNavItem
+          collapsed={collapsed}
+          isActive={pathname === "/dashboard"}
+          onNavigate={onClose}
+        />
         {WORKSPACE_CATEGORY_ORDER.map((category, index) => {
           const groupItems = items.filter((item) => item.category === category);
           if (groupItems.length === 0) return null;
