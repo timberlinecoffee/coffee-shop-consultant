@@ -9,15 +9,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Lightbulb, Sparkles, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
-import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import { ReadinessRing } from "@/components/workspace/ReadinessRing";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -96,6 +97,7 @@ export function ConceptWorkspace({
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
   const { promoteOnEdit } = useWorkspaceStatus();
+  const router = useRouter();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
@@ -105,7 +107,6 @@ export function ConceptWorkspace({
     if (progress.filled > 0) promoteOnEdit("concept");
   }, [progress.filled, promoteOnEdit]);
   const shopName = doc.components.shop_identity.content.trim();
-  const pct = progress.total > 0 ? Math.round((progress.filled / progress.total) * 100) : 0;
 
   const lastSavedAt =
     saveState.kind === "saved"
@@ -164,6 +165,17 @@ export function ConceptWorkspace({
     },
     [persist]
   );
+
+  // TIM-2455: manual Save (paired with SaveStatusAndButton in the header
+  // chrome). Flush any pending debounce immediately so clicking Save while
+  // dirty persists the latest state right away.
+  const handleManualSave = useCallback(() => {
+    if (pendingSaveTimer.current) {
+      clearTimeout(pendingSaveTimer.current);
+      pendingSaveTimer.current = null;
+    }
+    void persist(latestDocRef.current);
+  }, [persist]);
 
   useEffect(() => {
     const handler = () => {
@@ -342,84 +354,79 @@ export function ConceptWorkspace({
   return (
     <div className="bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
-        {/* Page header. TIM-1894: header band normalized to the canonical mb-6 /
-            gap-4 chrome; the AI review control now uses the canonical
-            WorkspaceActionButton (filled-primary) instead of a hand-rolled
-            off-spec button (was px-4 py-2 / icon w-3.5). The progress row stays
-            below — it is concept-specific content, not header chrome. */}
-        <header className="mb-6">
-          {/* TIM-1099: icon matches the sidebar entry for this workspace. */}
-          <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <Lightbulb className="w-5 h-5 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight truncate">
-                {shopName ? (
-                  shopName
-                ) : (
-                  <span className="italic text-[var(--dark-grey)]">Your shop name</span>
-                )}
-              </h1>
-            </div>
-            {/* TIM-1872: suite-level AI review/suggest control, cohesive with the
-                Financial Suite "AI Assessment" and Business Plan "Improve" controls. */}
-            {canEdit && (
+        {/* TIM-2455: canonical WorkspaceHeader (matches Financials / Equipment /
+            Hiring chrome). Action cluster: [Primary: Review with AI] [Print
+            document] [SaveStatusAndButton]. Replaces the bespoke ring + bar
+            "100% into 100%" progress duo and the page-footer Print CTA the
+            board flagged on TIM-2451. The page-level workspace status still
+            promotes through `useWorkspaceStatus` on first edit — that's the
+            canonical metering surface (dashboard sidebar), shared with every
+            other workspace. */}
+        <WorkspaceHeader
+          Icon={Lightbulb}
+          title="Concept"
+          description="Shape the identity of your shop. Every other workspace builds on this."
+          actions={
+            <>
+              {/* TIM-1872 / TIM-2455: suite-level AI review stays as the primary
+                  CTA (far-left), cohesive with Financials "Guided setup" and
+                  Business Plan "Improve". */}
+              {canEdit && (
+                <WorkspaceActionButton
+                  variant="primary"
+                  onClick={runConceptReview}
+                  disabled={reviewStatus === "loading" || progress.filled === 0}
+                  aria-label="Review with AI"
+                  title={
+                    progress.filled === 0
+                      ? "Fill in a section first"
+                      : "Get AI feedback and suggested improvements across your concept"
+                  }
+                >
+                  <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  <span>
+                    {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
+                  </span>
+                </WorkspaceActionButton>
+              )}
+              {/* TIM-2455: Print document moved from the page footer into the
+                  canonical chrome action cluster. With a single secondary
+                  utility the TIM-2413 0/1-threshold rule keeps it inline (no
+                  hamburger needed); it still sits at the top of the page in
+                  the header band, addressing the board "Print at the TOP" ask
+                  on TIM-2451. */}
               <WorkspaceActionButton
-                variant="primary"
-                className="shrink-0"
-                onClick={runConceptReview}
-                disabled={reviewStatus === "loading" || progress.filled === 0}
-                aria-label="Review with AI"
-                title={
-                  progress.filled === 0
-                    ? "Fill in a section first"
-                    : "Get AI feedback and suggested improvements across your concept"
-                }
+                onClick={() => router.push("/workspace/concept/print")}
+                aria-label="Print document"
+                title="Open the printable concept brief"
               >
-                <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                {/* TIM-2395: labels render at every viewport (icon-only default reverted). */}
-                <span>
-                  {reviewStatus === "loading" ? "Reviewing..." : "Review with AI"}
-                </span>
+                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                <span>Print document</span>
               </WorkspaceActionButton>
-            )}
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Shape the identity of your shop. Every other workspace builds on this.
-          </p>
-          {reviewError && (
-            <p className="mt-2 text-xs text-[var(--error)]" role="alert">
-              {reviewError}
-            </p>
-          )}
-
-          {/* Progress row */}
-          <div className="mt-5 flex items-center gap-3 flex-wrap">
-            <ReadinessRing pct={pct} size={36} complete={complete} />
-            <div className="flex-1 min-w-[80px] h-1 bg-[var(--border)] rounded-full overflow-hidden">
-              <div
-                className="h-1 bg-[var(--teal)] rounded-full transition-all duration-500"
-                style={{ width: `${pct}%` }}
+              {/* TIM-2455: SaveStatusAndButton — adds the missing canonical
+                  auto-save indicator + manual Save button (board gap items 3
+                  and 4 on TIM-2451). */}
+              <SaveStatusAndButton
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+                error={saveState.kind === "error" ? saveState.message : null}
+                unsaved={saveState.kind === "dirty"}
+                canEdit={canEdit}
+                onSave={handleManualSave}
               />
-            </div>
-            {complete ? (
-              <span className="text-xs font-semibold text-[var(--teal)] shrink-0">
-                Ready to print
-              </span>
-            ) : (
-              <span className="text-xs text-[var(--dark-grey)] shrink-0">
-                {progress.filled} of {progress.total} sections filled
-              </span>
-            )}
-            <SaveIndicator
-              saving={saveState.kind === "saving"}
-              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
-              error={saveState.kind === "error" ? saveState.message : null}
-              unsaved={saveState.kind === "dirty"}
-              canEdit={canEdit}
-              className="shrink-0"
-            />
-          </div>
-        </header>
+            </>
+          }
+        />
+        {reviewError && (
+          <p className="mb-4 text-xs text-[var(--error)]" role="alert">
+            {reviewError}
+          </p>
+        )}
+        {shopName && (
+          <p className="mb-6 text-xs text-[var(--dark-grey)]">
+            {shopName} · {progress.filled} of {progress.total} sections filled
+          </p>
+        )}
 
         {/* Read-only banner */}
         {!canEdit && (
@@ -667,23 +674,18 @@ export function ConceptWorkspace({
           <ConceptBriefInline doc={doc} shopName={shopName} />
         )}
 
-        {/* Document footer CTA */}
-        <div className="mt-8 border-t border-[var(--border)] pt-6 text-center">
-          <Link
-            href="/workspace/concept/print"
-            className="inline-block bg-[var(--teal)] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
-          >
-            Print document
-          </Link>
-          {!complete && progress.total - progress.filled > 0 && (
-            <p className="text-xs text-[var(--dark-grey)] mt-2">
-              {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
-            </p>
-          )}
-          {complete && (saveState.kind === "saved" || saveState.kind === "idle") && (
-            <ConceptUnlockBanner />
-          )}
-        </div>
+        {/* TIM-2455: page-footer Print CTA removed — the canonical chrome
+            action cluster at the top of the page owns the Print entry point
+            (board "Print at the TOP" ask on TIM-2451). The unlock
+            celebration banner stays as a completion moment, not chrome. */}
+        {!complete && progress.total - progress.filled > 0 && (
+          <p className="mt-8 text-center text-xs text-[var(--dark-grey)]">
+            {progress.total - progress.filled} section{progress.total - progress.filled !== 1 ? "s" : ""} unfilled. Fill them in for a more complete concept.
+          </p>
+        )}
+        {complete && (saveState.kind === "saved" || saveState.kind === "idle") && (
+          <ConceptUnlockBanner />
+        )}
       </div>
 
       <PaywallModal
