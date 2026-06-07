@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { normalizeCurrencyCode } from "@/lib/currency";
-import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 import { BuildoutEquipmentWorkspace } from "./buildout-workspace";
 

@@ -26,7 +26,7 @@ import {
   WorkspaceActionMenu,
   WorkspaceActionMenuItem,
 } from "@/components/workspace/WorkspaceActionMenu";
-import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
 import { useCalloutDismissed } from "@/lib/use-callout-dismissed";

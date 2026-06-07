@@ -20,7 +20,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
-import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 
 type AnyItem = EquipmentItem | SuppliesItem;
 
