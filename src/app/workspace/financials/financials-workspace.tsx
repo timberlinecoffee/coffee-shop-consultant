@@ -409,27 +409,41 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
 };
 
 // TIM-1244: progressive-disclosure wrapper. Collapsible section with a teal
-// label header and a chevron; "advanced" tags rarely-used groups so the page
-// leads with the inputs that matter most and feels calm, not like a tax form.
+// label header and a chevron.
 // TIM-1438: optional `hint` renders the section description behind a "?" icon
 // so the input page stays scannable (founder feedback: instructions add
 // unnecessary clutter, move them behind a question-mark toggle).
+// TIM-2429: dropped the "Advanced" badge — every input is needed for thorough
+// financials, so labelling some as advanced discouraged owners from filling
+// fields we actually need. Open/closed state is now controlled by the parent
+// so it can persist per-user via /api/ui-prefs/financials.forecastInputs.sections.
 function Section({
   id,
   title,
-  defaultOpen = false,
-  advanced = false,
+  defaultOpen = true,
+  open: controlledOpen,
+  onOpenChange,
   help,
   children,
 }: {
   id?: string;
   title: string;
   defaultOpen?: boolean;
-  advanced?: boolean;
+  open?: boolean;
+  onOpenChange?: (next: boolean) => void;
   help?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (isControlled) onOpenChange?.(next);
+      else setUncontrolledOpen(next);
+    },
+    [isControlled, onOpenChange],
+  );
   // TIM-1244 (v2): the guided tour expands the section a target lives in before
   // spotlighting it. It dispatches a window event with the section id.
   useEffect(() => {
@@ -440,24 +454,19 @@ function Section({
     }
     window.addEventListener("financials-tour-expand", onExpand as EventListener);
     return () => window.removeEventListener("financials-tour-expand", onExpand as EventListener);
-  }, [id]);
+  }, [id, setOpen]);
   return (
     <div id={id}>
       <div className="flex items-center justify-between mb-3">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setOpen(!open)}
           aria-expanded={open}
           className="flex items-center gap-2 group"
         >
           <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
             {title}
           </span>
-          {advanced && (
-            <span className="text-[9px] font-medium uppercase tracking-wide text-[var(--dark-grey)] bg-[var(--gray-300)] rounded px-1.5 py-0.5">
-              Advanced
-            </span>
-          )}
           <ChevronDown
             size={15}
             className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
@@ -471,6 +480,59 @@ function Section({
       {open && children}
     </div>
   );
+}
+
+// TIM-2429: per-user persistence of Forecast Inputs accordion open/closed state.
+// Thin wrapper over the TIM-1215 `user_ui_prefs` table via /api/ui-prefs/:key.
+// One row per page; the JSON blob maps section slug -> boolean. Default state
+// (all open) is applied for any slug not present in the stored blob.
+const FORECAST_INPUTS_PREF_KEY = "financials.forecastInputs.sections";
+
+function useForecastSectionState(defaultOpen: boolean) {
+  const [state, setState] = useState<Record<string, boolean>>({});
+  const latestRef = useRef<Record<string, boolean>>({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/ui-prefs/${FORECAST_INPUTS_PREF_KEY}`);
+        if (!res.ok || cancelled) return;
+        const { data } = (await res.json()) as { data: unknown };
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          const next: Record<string, boolean> = {};
+          for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+            if (typeof v === "boolean") next[k] = v;
+          }
+          if (!cancelled) {
+            latestRef.current = next;
+            setState(next);
+          }
+        }
+      } catch {
+        /* non-blocking */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const isOpen = useCallback(
+    (slug: string) => (slug in state ? state[slug] : defaultOpen),
+    [state, defaultOpen],
+  );
+  const setOpen = useCallback((slug: string, next: boolean) => {
+    setState((prev) => {
+      const merged = { ...prev, [slug]: next };
+      latestRef.current = merged;
+      void fetch(`/api/ui-prefs/${FORECAST_INPUTS_PREF_KEY}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(merged),
+      }).catch(() => {});
+      return merged;
+    });
+  }, []);
+  return { isOpen, setOpen };
 }
 
 function ForecastTab({
@@ -529,6 +591,10 @@ function ForecastTab({
   function updateForecastLines(next: ForecastLine[]) {
     update({ forecast_lines: next });
   }
+
+  // TIM-2429: per-user persisted accordion state for this tab. Defaults all
+  // open on a clean load; collapses survive reload + new session for the user.
+  const sections = useForecastSectionState(true);
 
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
   const totalWeeklyCustomers = openDays.reduce((sum, d) => sum + (mp.daily_flow[d] || 0), 0);
@@ -598,7 +664,13 @@ function ForecastTab({
       )}
 
       {/* Customer Flow */}
-      <Section id="section-customer-flow" title="Customer Flow by Day" defaultOpen help="Estimated customers per open day. Closed days are excluded from revenue calculations.">
+      <Section
+        id="section-customer-flow"
+        title="Customer Flow by Day"
+        open={sections.isOpen("customer-flow")}
+        onOpenChange={(n) => sections.setOpen("customer-flow", n)}
+        help="Estimated customers per open day. Closed days are excluded from revenue calculations."
+      >
         <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
             {DAY_KEYS.map((day) => {
@@ -644,7 +716,11 @@ function ForecastTab({
       </Section>
 
       {/* Operating Schedule */}
-      <Section title="Operating Schedule" advanced>
+      <Section
+        title="Operating Schedule"
+        open={sections.isOpen("operating-schedule")}
+        onOpenChange={(n) => sections.setOpen("operating-schedule", n)}
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px]">
@@ -726,7 +802,13 @@ function ForecastTab({
       </Section>
 
       {/* Primary Revenue Streams (TIM-1245) — was "Revenue Drivers" */}
-      <Section id="section-revenue" title="Primary Revenue Streams" defaultOpen help="Your day-to-day food & beverage sales. Customers per day (above) × average sale is your primary revenue. Keep it as one number, or split it into beverage and food to plan each separately.">
+      <Section
+        id="section-revenue"
+        title="Primary Revenue Streams"
+        open={sections.isOpen("primary-revenue")}
+        onOpenChange={(n) => sections.setOpen("primary-revenue", n)}
+        help="Your day-to-day food & beverage sales. Customers per day (above) × average sale is your primary revenue. Keep it as one number, or split it into beverage and food to plan each separately."
+      >
         <div id="tour-revenue" className="rounded-xl border border-[var(--border)] bg-white p-4">
           {(baseRevenueOverrides > 0 || baseRevenueManual) && (
             <div className="mb-4 rounded-lg border border-[var(--teal-bg-950)] bg-[var(--teal-bg-subtle)] px-3 py-2.5 flex items-start justify-between gap-3 flex-wrap">
@@ -899,7 +981,12 @@ function ForecastTab({
       </Section>
 
       {/* Additional Revenue Streams (TIM-1245) — promoted to a first-class section */}
-      <Section title="Additional Revenue Streams" defaultOpen help="Income beyond your primary food & beverage sales. Use the quick-add chips to start a common stream, or add your own. Each line can be a fixed monthly amount; click the arrow to expand a line and ramp it up or grow it over time.">
+      <Section
+        title="Additional Revenue Streams"
+        open={sections.isOpen("additional-revenue")}
+        onOpenChange={(n) => sections.setOpen("additional-revenue", n)}
+        help="Income beyond your primary food & beverage sales. Use the quick-add chips to start a common stream, or add your own. Each line can be a fixed monthly amount; click the arrow to expand a line and ramp it up or grow it over time."
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <ForecastLinesEditor
             lines={mp.forecast_lines}
@@ -919,7 +1006,13 @@ function ForecastTab({
       </Section>
 
       {/* Costs & Expenses — COGS / Overhead / Capex */}
-      <Section id="section-costs" title="Costs & Expenses" defaultOpen help={<>Add, rename, or remove any line. For COGS lines, toggle <strong>$</strong> (static monthly amount) or <strong>%</strong> (percent of revenue). For operating expenses, pick the basis from the <strong>% of</strong> dropdown: a fixed monthly amount, percent of overall revenue, or percent of a specific revenue stream. Click the arrow to expand a line and configure a ramp-up period or month-over-month growth.</>}>
+      <Section
+        id="section-costs"
+        title="Costs & Expenses"
+        open={sections.isOpen("costs")}
+        onOpenChange={(n) => sections.setOpen("costs", n)}
+        help={<>Add, rename, or remove any line. For COGS lines, toggle <strong>$</strong> (static monthly amount) or <strong>%</strong> (percent of revenue). For operating expenses, pick the basis from the <strong>% of</strong> dropdown: a fixed monthly amount, percent of overall revenue, or percent of a specific revenue stream. Click the arrow to expand a line and configure a ramp-up period or month-over-month growth.</>}
+      >
         <div id="tour-costs" className="rounded-xl border border-[var(--border)] bg-white p-4">
           <ForecastLinesEditor
             lines={mp.forecast_lines}
@@ -942,7 +1035,12 @@ function ForecastTab({
       </Section>
 
       {/* Other Operating Costs — TIM-1180 */}
-      <Section title="Other Operating Costs" advanced help="Costs that scale with sales but aren't line items above. These flow into your P&L, break-even, and ratios.">
+      <Section
+        title="Other Operating Costs"
+        open={sections.isOpen("other-operating-costs")}
+        onOpenChange={(n) => sections.setOpen("other-operating-costs", n)}
+        help="Costs that scale with sales but aren't line items above. These flow into your P&L, break-even, and ratios."
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -1016,7 +1114,12 @@ function ForecastTab({
       </Section>
 
       {/* Owner Activity — TIM-1169 */}
-      <Section title="Owner Activity" advanced help="Money you (the owner) take out of the business each month, plus any extra cash you put back in later on. These move equity and cash without touching net income.">
+      <Section
+        title="Owner Activity"
+        open={sections.isOpen("owner-activity")}
+        onOpenChange={(n) => sections.setOpen("owner-activity", n)}
+        help="Money you (the owner) take out of the business each month, plus any extra cash you put back in later on. These move equity and cash without touching net income."
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -1064,7 +1167,12 @@ function ForecastTab({
 
       {/* Startup & opening costs — TIM-1258: entry moved to the Startup Costs tab
           so owners find it where they expect it, led by equipment. */}
-      <Section id="section-startup" title="Startup & Opening Costs" advanced>
+      <Section
+        id="section-startup"
+        title="Startup & Opening Costs"
+        open={sections.isOpen("startup")}
+        onOpenChange={(n) => sections.setOpen("startup", n)}
+      >
         <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 p-4 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-2.5 min-w-0">
             <Compass size={18} className="text-[var(--teal)] shrink-0 mt-0.5" aria-hidden="true" />
@@ -1098,7 +1206,8 @@ function ForecastTab({
       <Section
         id="section-taxes"
         title="Taxes"
-        defaultOpen
+        open={sections.isOpen("taxes")}
+        onOpenChange={(n) => sections.setOpen("taxes", n)}
         help={<>Two different taxes. <strong>Income tax</strong> is your cost and reduces net income. <strong>Sales tax</strong> is collected on sales and remitted to the state: money that passes through you, not income.</>}
       >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4 space-y-4">
@@ -1159,7 +1268,11 @@ function ForecastTab({
       </Section>
 
       {/* Fiscal Year Start — TIM-1100 / Currency — TIM-1101 */}
-      <Section title="Fiscal Year & Currency" advanced>
+      <Section
+        title="Fiscal Year & Currency"
+        open={sections.isOpen("fiscal-year-currency")}
+        onOpenChange={(n) => sections.setOpen("fiscal-year-currency", n)}
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -1210,7 +1323,12 @@ function ForecastTab({
       </Section>
 
       {/* Ramp Period */}
-      <Section title="Ramp Period" advanced help="Reduced revenue assumptions while you build awareness in the first months.">
+      <Section
+        title="Ramp Period"
+        open={sections.isOpen("ramp-period")}
+        onOpenChange={(n) => sections.setOpen("ramp-period", n)}
+        help="Reduced revenue assumptions while you build awareness in the first months."
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="mb-4">
             <LabelWithHint
@@ -1283,7 +1401,11 @@ function ForecastTab({
       </Section>
 
       {/* Monthly Growth Rate */}
-      <Section title="Monthly Growth Rate" advanced>
+      <Section
+        title="Monthly Growth Rate"
+        open={sections.isOpen("monthly-growth")}
+        onOpenChange={(n) => sections.setOpen("monthly-growth", n)}
+      >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
           <div className="flex items-center gap-1 mb-4 bg-[var(--background)] border border-[var(--border-medium)] rounded-lg p-1 w-fit">
             {(["simple", "custom"] as const).map((mode) => (
