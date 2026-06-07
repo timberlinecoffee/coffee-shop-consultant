@@ -173,22 +173,54 @@ test("hiring start date after opening milestone — warning", () => {
   assert.match(f.raw_message, /1 hiring role has/);
 });
 
-test("benchmark — COGS at 50% triggers critical", () => {
+test("benchmark — COGS at 50% triggers critical (TIM-2428: reads ingredient-only menu_blended_pct, not labor-included blended_pct)", () => {
   const ps = basePlanState();
-  ps.cogs.blended_pct = 50;             // way above 28-32 band, > 1.5x span
+  // TIM-2428: bench reads state.cogs.menu_blended_pct (the Forecast Inputs
+  // page's value) — not state.cogs.blended_pct (which includes COGS-labor and
+  // would always over-fire). Setting blended_pct alone must NOT trigger.
+  ps.cogs.blended_pct = 80;             // labor-included; must be IGNORED by bench
+  ps.cogs.menu_blended_pct = 50;        // ingredient-only; what the bench reads
   const out = runBenchmarkChecks(baseSourceInputs({ planState: ps }));
   const f = out.find((x) => x.id === "bench:coffee_shop_blended_cogs_pct");
-  assert.ok(f, "high COGS should fire");
+  assert.ok(f, "high ingredient-only COGS should fire");
   assert.equal(f.rule_id, "benchmark_out_of_range");
   assert.equal(f.severity, "critical");
   assert.equal(f.units, "percent");
+  // The cited source field label points the user at the Forecast Inputs page.
+  assert.equal(f.source.workspace, "financials");
+  assert.match(f.source.field_label ?? "", /Forecast Inputs|blended menu COGS/);
 });
 
 test("benchmark — COGS at 30% (in band) does not fire", () => {
   const ps = basePlanState();
-  ps.cogs.blended_pct = 30;
+  ps.cogs.menu_blended_pct = 30;
   const out = runBenchmarkChecks(baseSourceInputs({ planState: ps }));
   assert.equal(out.find((x) => x.id === "bench:coffee_shop_blended_cogs_pct"), undefined);
+});
+
+test("benchmark — COGS bench IGNORES state.cogs.blended_pct (labor-included) when menu_blended_pct is in band (TIM-2428)", () => {
+  // Regression guard for the original board bug. trent's fixture had
+  // blended_pct=~69% (labor-included) and menu_blended_pct=31.5%
+  // (ingredient-only). The bench should NOT fire at 31.5%.
+  const ps = basePlanState();
+  ps.cogs.blended_pct = 69;              // labor-included; would over-fire if read
+  ps.cogs.menu_blended_pct = 31.5;       // matches the Forecast Inputs page exactly
+  const out = runBenchmarkChecks(baseSourceInputs({ planState: ps }));
+  assert.equal(
+    out.find((x) => x.id === "bench:coffee_shop_blended_cogs_pct"),
+    undefined,
+    "should not fire when ingredient-only COGS is in band, even with labor-included blended_pct out of band",
+  );
+});
+
+test("benchmark — COGS bench falls back to base_cogs_pct when menu_blended_pct is null (TIM-2428)", () => {
+  const ps = basePlanState();
+  ps.cogs.menu_blended_pct = null;
+  ps.cogs.base_cogs_pct = 50;
+  const out = runBenchmarkChecks(baseSourceInputs({ planState: ps }));
+  const f = out.find((x) => x.id === "bench:coffee_shop_blended_cogs_pct");
+  assert.ok(f, "should fall back to base_cogs_pct");
+  assert.equal(f.severity, "critical");
 });
 
 test("benchmark — ramp 24 months above 6-12 band", () => {
@@ -210,7 +242,7 @@ test("benchmark — USD-only checks skip non-USD currency", () => {
 
 test("runSourceSuiteAudit composes both layers", () => {
   const ps = basePlanState();
-  ps.cogs.blended_pct = 50;
+  ps.cogs.menu_blended_pct = 50;
   const inp = baseSourceInputs({
     planState: ps,
     hiring: [
@@ -230,7 +262,7 @@ test("runSourceSuiteAudit composes both layers", () => {
 
 test("benchmark — no business plan field is referenced in any finding source", () => {
   const ps = basePlanState();
-  ps.cogs.blended_pct = 50;
+  ps.cogs.menu_blended_pct = 50;
   ps.revenue.ramp_months = 24;
   const findings = runSourceSuiteAudit(baseSourceInputs({ planState: ps }));
   for (const f of findings) {

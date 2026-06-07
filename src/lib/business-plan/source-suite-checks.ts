@@ -81,6 +81,134 @@ function refWithField(ref: AuditSourceRef, field: string, label: string): AuditS
   return { ...ref, field, field_label: label };
 }
 
+// ── Metric bindings (TIM-2428) ──────────────────────────────────────────────
+//
+// Each AuditMetricKey is the contract between an audit check and the
+// user-facing source page it cites. `read()` returns the value the check
+// compares to a benchmark (or that the cross-suite finding will quote in its
+// message); `source` is the workspace + field the user is sent to. The unit
+// test `source-suite-checks.consistency.test.mjs` asserts these never drift.
+//
+// Rule (TIM-2428): if you cite a source page for a finding, the number you
+// quote in raw_message MUST equal what that page renders. No exceptions. If
+// you need to quote a different aggregate, cite a different page.
+//
+// The COGS bug: the benchmark check used to read state.cogs.blended_pct (the
+// labor-INCLUDED total — for trent's fixture, ~69%) while citing "Forecast
+// Inputs" (which renders the ingredient-only blended menu COGS — 31.5%). The
+// benchmark "Specialty coffee blended COGS (28-32%)" is SCA's ingredient-only
+// figure (labor lives in coffee_shop_labor_pct). Fix: read the ingredient-only
+// blended COGS so the value, the benchmark, and the cited page are all the
+// same metric.
+
+export type AuditMetricKey =
+  | "financials.cogs.ingredient_blended_pct"
+  | "financials.labor.annualized_pct_of_revenue"
+  | "financials.lease.annualized_rent_pct_of_revenue"
+  | "financials.revenue.avg_ticket_usd"
+  | "financials.revenue.ramp_months"
+  | "financials.opening_cash_buffer.months"
+  | "financials.lender_metrics.dscr_y1"
+  | "financials.use_of_funds.buildout_per_sqft";
+
+export interface MetricBinding {
+  // The plan_state field path the value comes from. Keep this human-readable —
+  // it's used in unit-test failure messages so you can find the field fast.
+  field_path: string;
+  // The cited source ref (workspace + field + label). What "Go to source"
+  // navigates to. The field_label is rendered in the finding card.
+  source: AuditSourceRef;
+  // Compute the value from the live PlanState + side data. Pure function — no
+  // I/O — so the consistency test can call it deterministically.
+  read: (ctx: MetricReadContext) => number | null;
+}
+
+export interface MetricReadContext {
+  state: PlanState;
+}
+
+const METRIC_BINDINGS: Record<AuditMetricKey, MetricBinding> = {
+  "financials.cogs.ingredient_blended_pct": {
+    field_path: "plan_state.cogs.menu_blended_pct (fallback: base_cogs_pct)",
+    source: refWithField(REF_FINANCIALS, "cogs", "Forecast Inputs: blended menu COGS"),
+    read: ({ state }) => {
+      // TIM-2428 fix: the benchmark is ingredient-only ("Specialty coffee
+      // blended COGS"); labor lives in coffee_shop_labor_pct. Read the
+      // canonical ingredient-only value that the Forecast Inputs page renders.
+      const menu = state.cogs.menu_blended_pct;
+      if (menu != null && Number.isFinite(menu)) return menu;
+      const base = state.cogs.base_cogs_pct;
+      if (Number.isFinite(base)) return base;
+      return null;
+    },
+  },
+  "financials.labor.annualized_pct_of_revenue": {
+    field_path: "plan_state.labor.monthly_loaded_cost_cents * 12 / years[0].revenue_cents",
+    source: refWithField(REF_FINANCIALS, "labor", "Financials: total labor as % of revenue"),
+    read: ({ state }) => {
+      const y1Revenue = state.years[0]?.revenue_cents ?? 0;
+      if (y1Revenue <= 0) return null;
+      const annualLaborCents = state.labor.monthly_loaded_cost_cents * 12;
+      return (annualLaborCents / y1Revenue) * 100;
+    },
+  },
+  "financials.lease.annualized_rent_pct_of_revenue": {
+    field_path: "plan_state.lease.monthly_rent_cents * 12 / years[0].revenue_cents",
+    source: refWithField(REF_LEASE, "rent", "Lease: monthly rent (annualized vs revenue)"),
+    read: ({ state }) => {
+      const y1Revenue = state.years[0]?.revenue_cents ?? 0;
+      if (y1Revenue <= 0) return null;
+      const annualRentCents = state.lease.monthly_rent_cents * 12;
+      return (annualRentCents / y1Revenue) * 100;
+    },
+  },
+  "financials.revenue.avg_ticket_usd": {
+    field_path: "plan_state.revenue.avg_ticket_cents / 100",
+    source: refWithField(REF_FINANCIALS, "avg_ticket", "Forecast Inputs: average ticket"),
+    read: ({ state }) => {
+      const cents = state.revenue.avg_ticket_cents;
+      return cents > 0 ? cents / 100 : null;
+    },
+  },
+  "financials.revenue.ramp_months": {
+    field_path: "plan_state.revenue.ramp_months",
+    source: refWithField(REF_FINANCIALS, "ramp_months", "Forecast Inputs: ramp months"),
+    read: ({ state }) => (state.revenue.ramp_months > 0 ? state.revenue.ramp_months : null),
+  },
+  "financials.opening_cash_buffer.months": {
+    field_path: "use_of_funds.opening_cash_buffer / opex.monthly_total_cents",
+    source: refWithField(REF_FINANCIALS, "opening_cash_buffer", "Use of Funds: opening cash buffer"),
+    read: ({ state }) => {
+      const line = state.use_of_funds.lines.find((l) => l.key === "opening_cash_buffer_cents");
+      const cashBufferCents = line?.amount_cents ?? 0;
+      const monthlyOpex = state.opex.monthly_total_cents;
+      if (monthlyOpex <= 0) return null;
+      return cashBufferCents / monthlyOpex;
+    },
+  },
+  "financials.lender_metrics.dscr_y1": {
+    field_path: "plan_state.lender_metrics.dscr.years[0].dscr_ratio (if has_term_debt)",
+    source: refWithField(REF_FINANCIALS, "dscr", "Financials: DSCR (Year 1)"),
+    read: ({ state }) => {
+      const dscr = state.lender_metrics.dscr;
+      if (!dscr?.has_term_debt) return null;
+      const y1 = dscr.years?.[0]?.dscr_ratio;
+      return typeof y1 === "number" && Number.isFinite(y1) ? y1 : null;
+    },
+  },
+  "financials.use_of_funds.buildout_per_sqft": {
+    field_path: "use_of_funds.buildout_cents / lease.sq_ft",
+    source: refWithField(REF_FINANCIALS, "buildout", "Use of Funds: build-out budget"),
+    read: ({ state }) => {
+      const line = state.use_of_funds.lines.find((l) => l.key === "buildout_cents");
+      const buildoutCents = line?.amount_cents ?? 0;
+      const sqFt = state.lease.sq_ft ?? null;
+      if (!sqFt || sqFt <= 0 || buildoutCents <= 0) return null;
+      return (buildoutCents / 100) / sqFt;
+    },
+  },
+};
+
 // ── Source data shape ───────────────────────────────────────────────────────
 
 export interface SourceSuiteHiringRow {
@@ -400,12 +528,19 @@ function severityForDeviation(value: number, range: BenchmarkRange, criticalFact
 
 interface BenchmarkCheckConfig {
   key: string;
+  // TIM-2428: typed reference to the metric being checked. Must match the
+  // identifier in METRIC_BINDINGS below, which fixes (a) where the value comes
+  // from in plan_state and (b) what cited source page renders that same value.
+  // The unit test pins (metric value) === (cited-source rendered value) so an
+  // audit can never quote a number that contradicts the page it points at.
+  metric: AuditMetricKey;
   // Computed value the benchmark is checked against (already in the unit the
   // benchmark expects: percent, USD, count, ratio).
   value: number | null;
   // Renderer for the actual value into a string for the message.
   format: (v: number) => string;
-  // The source workspace this value lives in.
+  // The source workspace this value lives in. Derived from METRIC_BINDINGS so
+  // the cited source always matches the metric — do not override per check.
   source: AuditSourceRef;
   // Severity scaling — some benchmarks are stricter than others.
   criticalFactor?: number;
@@ -443,95 +578,87 @@ function buildBenchmarkFinding(
   });
 }
 
+// TIM-2428: bench key → metric binding. Value + cited source are derived
+// together so a check can never quote a number that contradicts its source.
+// The benchmark JSON entry decides whether the value is OUT of range; this map
+// decides WHAT value is being checked and WHERE the user is sent to fix it.
+interface BenchmarkSpec {
+  benchKey: string;
+  metric: AuditMetricKey;
+  format: (v: number) => string;
+  criticalFactor?: number;
+  usdOnly?: boolean;
+}
+
+const BENCHMARK_SPECS: BenchmarkSpec[] = [
+  {
+    benchKey: "coffee_shop_blended_cogs_pct",
+    metric: "financials.cogs.ingredient_blended_pct",
+    format: (v) => pctRoundOne(v),
+  },
+  {
+    benchKey: "coffee_shop_labor_pct",
+    metric: "financials.labor.annualized_pct_of_revenue",
+    format: (v) => pctRoundOne(v),
+    criticalFactor: 1.5,
+  },
+  {
+    benchKey: "coffee_shop_rent_pct",
+    metric: "financials.lease.annualized_rent_pct_of_revenue",
+    format: (v) => pctRoundOne(v),
+    criticalFactor: 1.2,
+  },
+  {
+    benchKey: "coffee_shop_avg_ticket_usd",
+    metric: "financials.revenue.avg_ticket_usd",
+    format: (v) => `$${v.toFixed(2)}`,
+    usdOnly: true,
+  },
+  {
+    benchKey: "coffee_shop_ramp_months",
+    metric: "financials.revenue.ramp_months",
+    format: (v) => `${v} months`,
+  },
+  {
+    benchKey: "coffee_shop_opening_cash_buffer_months",
+    metric: "financials.opening_cash_buffer.months",
+    format: (v) => `${v.toFixed(1)} months`,
+    criticalFactor: 1.5,
+  },
+  {
+    benchKey: "coffee_shop_dscr_threshold",
+    metric: "financials.lender_metrics.dscr_y1",
+    format: (v) => `${v.toFixed(2)}x`,
+    criticalFactor: 1.2,
+  },
+  {
+    benchKey: "coffee_shop_buildout_cost_per_sqft",
+    metric: "financials.use_of_funds.buildout_per_sqft",
+    format: (v) => `$${Math.round(v).toLocaleString("en-US")}/sqft`,
+    usdOnly: true,
+  },
+];
+
 export function runBenchmarkChecks(input: SourceSuiteCheckInputs): AuditFinding[] {
   const ds = loadBenchmarks();
   const byKey = new Map<string, IndustryBenchmark>(ds.benchmarks.map((b) => [b.key, b]));
   const out: AuditFinding[] = [];
   const state = input.planState;
+  const ctx: MetricReadContext = { state };
 
-  const y1Revenue = state.years[0]?.revenue_cents ?? 0;
-  const annualLaborCents = state.labor.monthly_loaded_cost_cents * 12;
-  const annualRentCents = state.lease.monthly_rent_cents * 12;
-  const laborPct = y1Revenue > 0 ? (annualLaborCents / y1Revenue) * 100 : null;
-  const rentPct = y1Revenue > 0 ? (annualRentCents / y1Revenue) * 100 : null;
-
-  // Opening cash buffer months: opening_cash_buffer dollars / monthly opex.
-  const cashLine = state.use_of_funds.lines.find((l) => l.key === "opening_cash_buffer_cents");
-  const cashBufferCents = cashLine?.amount_cents ?? 0;
-  const cashBufferMonths = state.opex.monthly_total_cents > 0
-    ? cashBufferCents / state.opex.monthly_total_cents
-    : null;
-
-  // Build-out $/sqft: buildout cents / sq_ft.
-  const buildoutLine = state.use_of_funds.lines.find((l) => l.key === "buildout_cents");
-  const buildoutCents = buildoutLine?.amount_cents ?? 0;
-  const sqFt = state.lease.sq_ft ?? null;
-  const buildoutPerSqft = sqFt && sqFt > 0 ? (buildoutCents / 100) / sqFt : null;
-
-  // DSCR Y1: lender_metrics.dscr.years[0].
-  const dscrYears = state.lender_metrics.dscr?.years ?? [];
-  const dscrY1 = state.lender_metrics.dscr?.has_term_debt ? (dscrYears[0]?.dscr_ratio ?? null) : null;
-
-  const checks: BenchmarkCheckConfig[] = [
-    {
-      key: "coffee_shop_blended_cogs_pct",
-      value: state.cogs.blended_pct,
-      format: (v) => pctRoundOne(v),
-      source: refWithField(REF_FINANCIALS, "cogs", "Financials: COGS rate"),
-    },
-    {
-      key: "coffee_shop_labor_pct",
-      value: laborPct,
-      format: (v) => pctRoundOne(v),
-      source: refWithField(REF_FINANCIALS, "labor", "Financials: labor as % of revenue"),
-      criticalFactor: 1.5,
-    },
-    {
-      key: "coffee_shop_rent_pct",
-      value: rentPct,
-      format: (v) => pctRoundOne(v),
-      source: refWithField(REF_LEASE, "rent", "Lease: monthly rent"),
-      criticalFactor: 1.2,
-    },
-    {
-      key: "coffee_shop_avg_ticket_usd",
-      value: state.revenue.avg_ticket_cents > 0 ? state.revenue.avg_ticket_cents / 100 : null,
-      format: (v) => `$${v.toFixed(2)}`,
-      source: refWithField(REF_FINANCIALS, "avg_ticket", "Financials: average ticket"),
-      usdOnly: true,
-    },
-    {
-      key: "coffee_shop_ramp_months",
-      value: state.revenue.ramp_months > 0 ? state.revenue.ramp_months : null,
-      format: (v) => `${v} months`,
-      source: refWithField(REF_FINANCIALS, "ramp_months", "Financials: ramp months"),
-    },
-    {
-      key: "coffee_shop_opening_cash_buffer_months",
-      value: cashBufferMonths,
-      format: (v) => `${v.toFixed(1)} months`,
-      source: refWithField(REF_FINANCIALS, "opening_cash_buffer", "Financials: opening cash buffer"),
-      criticalFactor: 1.5,
-    },
-    {
-      key: "coffee_shop_dscr_threshold",
-      value: dscrY1,
-      format: (v) => `${v.toFixed(2)}x`,
-      source: refWithField(REF_FINANCIALS, "dscr", "Financials: DSCR"),
-      criticalFactor: 1.2,
-    },
-    {
-      key: "coffee_shop_buildout_cost_per_sqft",
-      value: buildoutPerSqft,
-      format: (v) => `$${Math.round(v).toLocaleString("en-US")}/sqft`,
-      source: refWithField(REF_FINANCIALS, "buildout", "Financials: build-out budget"),
-      usdOnly: true,
-    },
-  ];
-
-  for (const cfg of checks) {
-    const b = byKey.get(cfg.key);
+  for (const spec of BENCHMARK_SPECS) {
+    const b = byKey.get(spec.benchKey);
     if (!b) continue;
+    const binding = METRIC_BINDINGS[spec.metric];
+    const cfg: BenchmarkCheckConfig = {
+      key: spec.benchKey,
+      metric: spec.metric,
+      value: binding.read(ctx),
+      format: spec.format,
+      source: binding.source,
+      criticalFactor: spec.criticalFactor,
+      usdOnly: spec.usdOnly,
+    };
     const f = buildBenchmarkFinding(cfg, b, state);
     if (f) out.push(f);
   }
