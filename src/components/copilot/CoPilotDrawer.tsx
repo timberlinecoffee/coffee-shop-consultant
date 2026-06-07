@@ -11,7 +11,7 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
+import { Clock, Maximize2, Minimize2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -23,11 +23,11 @@ import {
   COPILOT_SUBTITLE,
 } from "@/lib/copilot/branding";
 import {
-  ThreadBrowser,
   WORKSPACE_LABELS,
   type ConversationScope,
   type ThreadBrowserItem,
 } from "./ThreadBrowser";
+import { PastChatsDrawer } from "./PastChatsDrawer";
 import { MarkdownMessage } from "./MarkdownMessage";
 import type {
   CopilotErrorState,
@@ -192,7 +192,6 @@ const PANEL_MAX_WIDTH = 1100;
 const PANEL_DEFAULT_WIDTH = 448;
 const PANEL_WIDTH_STORAGE_KEY = "copilot_panel_width_v1";
 const PANEL_EXPANDED_STORAGE_KEY = "copilot_panel_expanded_v1";
-const CONVERSATIONS_RAIL_STORAGE_KEY = "brew-conversations-open";
 
 function readNumber(key: string): number | null {
   if (typeof window === "undefined") return null;
@@ -365,8 +364,9 @@ export function CoPilotDrawer({
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
   const [isDragging, setIsDragging] = useState(false);
-  const [railOpen, setRailOpen] = useState<boolean>(false);
-  const [isConversationsSheetOpen, setIsConversationsSheetOpen] = useState<boolean>(false);
+  // TIM-2436 — Past chats moves out of the chat panel into a separate
+  // left-anchored drawer. Closed by default on page load (no persistence).
+  const [pastChatsOpen, setPastChatsOpen] = useState<boolean>(false);
   const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -483,7 +483,6 @@ export function CoPilotDrawer({
   const closeDrawer = useCallback(() => {
     abort();
     setOpen(false);
-    setIsConversationsSheetOpen(false);
   }, [abort]);
 
   const handleNewThread = useCallback(
@@ -924,8 +923,6 @@ export function CoPilotDrawer({
     }
     const storedExpanded = window.localStorage.getItem(PANEL_EXPANDED_STORAGE_KEY);
     if (storedExpanded === "1") setIsExpanded(true);
-    const storedRail = window.localStorage.getItem(CONVERSATIONS_RAIL_STORAGE_KEY);
-    if (storedRail === "1") setRailOpen(true);
   }, []);
 
   // TIM-1149: persist panel width and expanded state.
@@ -937,10 +934,6 @@ export function CoPilotDrawer({
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PANEL_EXPANDED_STORAGE_KEY, isExpanded ? "1" : "0");
   }, [isExpanded]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(CONVERSATIONS_RAIL_STORAGE_KEY, railOpen ? "1" : "0");
-  }, [railOpen]);
 
   // TIM-1149: track viewport width so we can clamp the panel responsively.
   useEffect(() => {
@@ -1197,77 +1190,18 @@ export function CoPilotDrawer({
               </div>
             )}
 
+            {/* TIM-2436 — simplified header (UX spec §3a). Brand left
+                (Sparkles + Scout name), context line below. Right cluster
+                holds Past chats / Expand / Close, capped at 4 interactive
+                elements. Credits + upgrade nudges moved to the input row. */}
             <header className="px-4 pt-4 pb-3 border-b border-[var(--border)] flex items-start gap-2">
-              <button
-                type="button"
-                aria-label="Conversations"
-                onClick={() => isMobile ? setIsConversationsSheetOpen(true) : setRailOpen((v) => !v)}
-                title="Conversations"
-                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
-              >
-                <Menu aria-hidden className="w-4 h-4" />
-              </button>
               <div className={cn("shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5", isStreaming ? "ai-streaming-avatar" : "bg-[var(--teal)]/10 text-[var(--teal)]")}>
                 <Sparkles aria-hidden className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-semibold text-[var(--foreground)] truncate">
-                    {COPILOT_NAME}
-                  </h2>
-                  <span className="text-[11px] uppercase tracking-wide text-[var(--neutral-cool-600)] font-medium">
-                    {COPILOT_SUBTITLE}
-                  </span>
-                  {credits?.mode === "trial" && (
-                    <span
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        credits.trialRemaining <= 1
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-[var(--teal)]/10 text-[var(--teal)]"
-                      }`}
-                    >
-                      {credits.trialRemaining} of {credits.trialLimit} trial messages left
-                    </span>
-                  )}
-                  {/* TIM-1671: live credit meter — balance updates after each turn. */}
-                  {credits?.mode === "credits" && (
-                    <span
-                      title="Credits are used based on how much work Scout does on each answer."
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        credits.remaining <= 5
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-[var(--teal)]/10 text-[var(--teal)]"
-                      }`}
-                    >
-                      {credits.monthlyGrant
-                        ? `${credits.remaining} of ${credits.monthlyGrant} credits`
-                        : `${credits.remaining} credits left`}
-                    </span>
-                  )}
-                  {/* TIM-2311 (per TIM-2310 design): when remaining ≤ 20% of the
-                      monthly grant, surface paired "Buy more credits" + "Upgrade plan"
-                      CTAs next to the meter. Falls back to ≤5 if the grant is unknown. */}
-                  {credits?.mode === "credits" &&
-                    (credits.monthlyGrant
-                      ? credits.remaining <= Math.max(1, Math.floor(credits.monthlyGrant * 0.2))
-                      : credits.remaining <= 5) && (
-                      <span className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setBuyCreditsOpen(true)}
-                          className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
-                        >
-                          Buy more credits
-                        </button>
-                        <Link
-                          href={UPGRADE_PATH}
-                          className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
-                        >
-                          Upgrade plan
-                        </Link>
-                      </span>
-                    )}
-                </div>
+                <h2 className="text-base font-semibold text-[var(--foreground)] truncate">
+                  {COPILOT_NAME}
+                </h2>
                 <p className="text-[11px] text-[var(--neutral-cool-600)] truncate">
                   {scopeHeaderLabel}
                   {externalFocusLabel && activeScope === workspaceKey
@@ -1278,26 +1212,27 @@ export function CoPilotDrawer({
                   {` · ${activeThreadLabel}`}
                 </p>
               </div>
-              {credits?.mode === "trial" && trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
-                <span
-                  className={`text-[11px] font-medium whitespace-nowrap mt-1 ${
-                    COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed <= 2
-                      ? "text-amber-600"
-                      : "text-[var(--neutral-cool-600)]"
-                  }`}
-                >
-                  {trialMessagesUsed === 0
-                    ? `${COPILOT_FREE_TRIAL_LIMIT} free`
-                    : `${COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed} free left`}
+              <button
+                type="button"
+                aria-label="Past chats"
+                aria-pressed={pastChatsOpen}
+                title="Past chats"
+                data-testid="past-chats-trigger"
+                onClick={() => setPastChatsOpen((v) => !v)}
+                className="mt-0.5 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center gap-1.5 text-[var(--neutral-cool-600)] shrink-0 px-2"
+              >
+                <Clock aria-hidden className="w-4 h-4" />
+                <span className="hidden md:inline text-xs font-medium">
+                  Past chats
                 </span>
-              )}
+              </button>
               {!isMobile && (
                 <button
                   type="button"
                   aria-label={isExpanded ? "Restore panel size" : "Expand panel"}
                   aria-pressed={isExpanded}
                   onClick={() => setIsExpanded((v) => !v)}
-                  className="ml-1 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)]"
+                  className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
                   title={isExpanded ? "Restore" : "Expand"}
                 >
                   {isExpanded ? (
@@ -1311,7 +1246,7 @@ export function CoPilotDrawer({
                 type="button"
                 aria-label="Close"
                 onClick={closeDrawer}
-                className="w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)]"
+                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1321,34 +1256,10 @@ export function CoPilotDrawer({
                 above the scroll/input column. Always visible, even mid-scan. */}
             <ModeStrip activeMode={activeMode} onSelect={setActiveMode} />
 
+            {/* TIM-2436 — the inline conversations rail was retired. Past
+                chats now live in the separate left-anchored drawer (see
+                PastChatsDrawer rendered at the root of this component). */}
             <div className="flex flex-1 overflow-hidden min-h-0">
-              <AnimatePresence initial={false}>
-                {!isMobile && railOpen && (
-                  <motion.div
-                    key="conversation-rail"
-                    initial={{ width: 0 }}
-                    animate={{ width: 240 }}
-                    exit={{ width: 0 }}
-                    transition={{ duration: 0.1, ease: "easeOut" }}
-                    className="shrink-0 border-r border-[var(--border)] overflow-hidden"
-                  >
-                    <div className="w-[240px] h-full flex flex-col bg-[var(--surface-warm-50)]">
-                      <ThreadBrowser
-                        variant="fill"
-                        planId={planId}
-                        activeScope={activeScope}
-                        activeThreadId={activeThreadId}
-                        currentWorkspaceKey={workspaceKey}
-                        onSelectThread={(item) => void handleSelectThread(item)}
-                        onNewThread={handleNewThread}
-                        onRenameThread={handleRenameThread}
-                        onDeleteThread={handleDeleteThread}
-                        refreshKey={browserRefreshKey}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
               <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {/* TIM-2416 — Check mode panel. Scoped per UX spec §3b. */}
@@ -1425,74 +1336,9 @@ export function CoPilotDrawer({
                 </div>
               )}
 
-              {/* TIM-1561: "Review N suggestions" CTA when Scout emits a suggestions event. */}
-              {activeMode === "coach" && pendingSuggestions && !isStreaming && (
-                <div className="flex">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!pendingSuggestions) return;
-                      const { suggestions, context } = pendingSuggestions;
-                      openAIReviewModal({
-                        suggestions,
-                        context,
-                        onApply: async (accepted: ApprovedChange[]) => {
-                          // timeline_mismatch / derived are informational — the
-                          // authoritative value already lives in (or derives from)
-                          // the plan, so no field write on accept.
-                          const actionable = accepted.filter(
-                            (c) => c.fieldId !== "timeline_mismatch" && c.fieldId !== "derived"
-                          );
-                          // TIM-1798: cross-workspace equipment-cost changes write the
-                          // equipment item (single source of truth); Financials derives.
-                          const equipmentCost = actionable.filter((c) =>
-                            parseEquipmentCostFieldId(c.fieldId)
-                          );
-                          const rest = actionable.filter(
-                            (c) => !parseEquipmentCostFieldId(c.fieldId)
-                          );
-                          if (equipmentCost.length > 0) {
-                            await applyEquipmentCostChanges(equipmentCost);
-                          }
-                          // TIM-1648: route menu_pricing proposals to the write API;
-                          // all other suggestions go through the workspace-level callback.
-                          if (context.workspace === "menu_pricing") {
-                            await applyMenuPricingProposal(rest);
-                          } else if (onApplySuggestions && rest.length > 0) {
-                            await onApplySuggestions(rest);
-                          }
-                          clearSuggestions();
-                        },
-                      });
-                    }}
-                    className="flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
-                  >
-                    <Sparkles size={14} aria-hidden />
-                    {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
-                  </button>
-                </div>
-              )}
-
-              {/* TIM-1728: "Review N conflicts" CTA when cross-workspace consistency check finds disagreements. */}
-              {activeMode === "coach" && consistencyConflicts && !isStreaming && (
-                <div className="flex">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!consistencyConflicts) return;
-                      openAIReviewModal({
-                        suggestions: consistencyConflicts,
-                        context: { workspace: "consistency", section: "Plan consistency" },
-                        onApply: handleConsistencyApply,
-                      });
-                    }}
-                    className="flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
-                  >
-                    <Sparkles size={14} aria-hidden />
-                    {`Review ${consistencyConflicts.length} plan ${consistencyConflicts.length === 1 ? "conflict" : "conflicts"}`}
-                  </button>
-                </div>
-              )}
+              {/* TIM-2436 — Review N suggestions / conflicts CTAs moved out
+                  of the message scroll into the pinned action row directly
+                  above the textarea (UX spec §3e). See further down. */}
 
               {activeMode === "coach" && errorBanner && (
                 <div className="border border-red-200 bg-red-50 text-red-700 rounded-xl p-3 text-sm flex items-start gap-3">
@@ -1549,6 +1395,70 @@ export function CoPilotDrawer({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15, delay: 0.1 }}
             >
+              {/* TIM-2436 — pinned action row above the textarea (UX spec
+                  §3e). Shows the suggestion / conflict review pills only
+                  when there is something to review, and they no longer
+                  steal vertical space inside the message scroll. */}
+              {(pendingSuggestions || consistencyConflicts) && !isStreaming && (
+                <div className="px-3 pt-3 pb-1 flex flex-wrap gap-2">
+                  {pendingSuggestions && (
+                    <button
+                      type="button"
+                      data-testid="copilot-review-suggestions"
+                      onClick={() => {
+                        if (!pendingSuggestions) return;
+                        const { suggestions, context } = pendingSuggestions;
+                        openAIReviewModal({
+                          suggestions,
+                          context,
+                          onApply: async (accepted: ApprovedChange[]) => {
+                            const actionable = accepted.filter(
+                              (c) => c.fieldId !== "timeline_mismatch" && c.fieldId !== "derived"
+                            );
+                            const equipmentCost = actionable.filter((c) =>
+                              parseEquipmentCostFieldId(c.fieldId)
+                            );
+                            const rest = actionable.filter(
+                              (c) => !parseEquipmentCostFieldId(c.fieldId)
+                            );
+                            if (equipmentCost.length > 0) {
+                              await applyEquipmentCostChanges(equipmentCost);
+                            }
+                            if (context.workspace === "menu_pricing") {
+                              await applyMenuPricingProposal(rest);
+                            } else if (onApplySuggestions && rest.length > 0) {
+                              await onApplySuggestions(rest);
+                            }
+                            clearSuggestions();
+                          },
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
+                    >
+                      <Sparkles size={14} aria-hidden />
+                      {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
+                    </button>
+                  )}
+                  {consistencyConflicts && (
+                    <button
+                      type="button"
+                      data-testid="copilot-review-conflicts"
+                      onClick={() => {
+                        if (!consistencyConflicts) return;
+                        openAIReviewModal({
+                          suggestions: consistencyConflicts,
+                          context: { workspace: "consistency", section: "Plan consistency" },
+                          onApply: handleConsistencyApply,
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
+                    >
+                      <Sparkles size={14} aria-hidden />
+                      {`Review ${consistencyConflicts.length} plan ${consistencyConflicts.length === 1 ? "conflict" : "conflicts"}`}
+                    </button>
+                  )}
+                </div>
+              )}
               <form
                 onSubmit={handleSubmit}
                 className="px-3 pt-3 pb-1 flex items-end gap-2"
@@ -1585,6 +1495,57 @@ export function CoPilotDrawer({
                   </button>
                 )}
               </form>
+              {/* TIM-2436 — low-water credits / trial indicator (UX spec
+                  §3c). Visible only when the user is near their cap so the
+                  header stays clean; pairs the count with upgrade nudges
+                  exactly where the user is about to send a message. */}
+              {credits?.mode === "trial" && credits.trialRemaining <= 2 && (
+                <div
+                  data-testid="copilot-credits-row"
+                  className="px-3 pt-1 pb-0.5 text-[11px] leading-tight text-center text-amber-700 flex items-center justify-center gap-2 flex-wrap"
+                >
+                  <span>
+                    {credits.trialRemaining} of {credits.trialLimit} free messages left
+                  </span>
+                  <span aria-hidden className="text-[var(--neutral-cool-400)]">·</span>
+                  <Link
+                    href={UPGRADE_PATH}
+                    className="font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                  >
+                    Upgrade
+                  </Link>
+                </div>
+              )}
+              {credits?.mode === "credits" &&
+                (credits.monthlyGrant
+                  ? credits.remaining <= Math.max(1, Math.floor(credits.monthlyGrant * 0.2))
+                  : credits.remaining <= 5) && (
+                  <div
+                    data-testid="copilot-credits-row"
+                    className="px-3 pt-1 pb-0.5 text-[11px] leading-tight text-center text-amber-700 flex items-center justify-center gap-2 flex-wrap"
+                  >
+                    <span>
+                      {credits.monthlyGrant
+                        ? `${credits.remaining} of ${credits.monthlyGrant} credits left`
+                        : `${credits.remaining} credits left`}
+                    </span>
+                    <span aria-hidden className="text-[var(--neutral-cool-400)]">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setBuyCreditsOpen(true)}
+                      className="font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                    >
+                      Buy more credits
+                    </button>
+                    <span aria-hidden className="text-[var(--neutral-cool-400)]">·</span>
+                    <Link
+                      href={UPGRADE_PATH}
+                      className="font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                    >
+                      Upgrade plan
+                    </Link>
+                  </div>
+                )}
               {/* TIM-1149: persistent AI-mistake disclaimer. Low-emphasis, doesn't
                   steal chat space. Visible on every conversation view. */}
               <p
@@ -1597,56 +1558,39 @@ export function CoPilotDrawer({
             )}
             </div>
             </div>
-            <AnimatePresence>
-              {isMobile && isConversationsSheetOpen && (
-                <>
-                  <motion.div
-                    className="absolute inset-0 z-10 bg-black/40"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setIsConversationsSheetOpen(false)}
-                  />
-                  <motion.div
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Conversations"
-                    className="absolute bottom-0 inset-x-0 z-20 flex flex-col bg-[var(--background)] rounded-t-2xl border-t border-[var(--border)]"
-                    style={{ height: "60vh" }}
-                    initial={{ y: "100%" }}
-                    animate={{ y: 0 }}
-                    exit={{ y: "100%" }}
-                    transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  >
-                    <div className="flex justify-center pt-2 pb-1 shrink-0" aria-hidden>
-                      <div className="w-10 h-1 rounded-full bg-[var(--neutral-cool-300)]" />
-                    </div>
-                    <ThreadBrowser
-                      variant="fill"
-                      planId={planId}
-                      activeScope={activeScope}
-                      activeThreadId={activeThreadId}
-                      currentWorkspaceKey={workspaceKey}
-                      onSelectThread={(item) => {
-                        setIsConversationsSheetOpen(false);
-                        void handleSelectThread(item);
-                      }}
-                      onNewThread={(scope) => {
-                        setIsConversationsSheetOpen(false);
-                        handleNewThread(scope);
-                      }}
-                      onRenameThread={handleRenameThread}
-                      onDeleteThread={handleDeleteThread}
-                      refreshKey={browserRefreshKey}
-                    />
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
           </motion.aside>
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* TIM-2436 — Past Chats Drawer. Independent, left-anchored, closed
+          by default. Reuses the existing ThreadBrowser in `variant="fill"`
+          so search/filter/grouping/rename/delete continue to work. Selecting
+          a thread auto-opens the chat panel if it isn't already open. */}
+      <PastChatsDrawer
+        open={pastChatsOpen}
+        onClose={() => setPastChatsOpen(false)}
+        viewportWidth={viewportWidth}
+        chatPanelOpen={open}
+        chatPanelWidth={computedPanelWidth}
+        planId={planId}
+        activeScope={activeScope}
+        activeThreadId={activeThreadId}
+        currentWorkspaceKey={workspaceKey}
+        onSelectThread={(item) => {
+          setPastChatsOpen(false);
+          if (!open) openDrawer();
+          void handleSelectThread(item);
+        }}
+        onNewThread={(scope) => {
+          setPastChatsOpen(false);
+          if (!open) openDrawer();
+          handleNewThread(scope);
+        }}
+        onRenameThread={handleRenameThread}
+        onDeleteThread={handleDeleteThread}
+        refreshKey={browserRefreshKey}
+      />
     </>
   );
 }
