@@ -29,6 +29,8 @@ import {
 import type { EquipmentItem } from "@/app/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
+import { useCalloutDismissed } from "@/lib/use-callout-dismissed";
+import type { CalloutKey } from "@/lib/callouts";
 
 type AnyItem = EquipmentItem | SuppliesItem;
 
@@ -53,6 +55,10 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
+// TIM-2423: the seed prompt is a callout with a stateful Generate action below
+// the copy (not a single right-aligned button), so it doesn't fit the standard
+// <DismissibleCallout> layout. It reuses the shared per-user dismissal hook
+// (`useCalloutDismissed`) so the X close persists like every other callout.
 function SeedBanner({
   canEdit,
   listType,
@@ -65,16 +71,23 @@ function SeedBanner({
   onSeed: () => Promise<void>;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [dismissed, setDismissed] = useState(hasAiItems);
+  const calloutKey: CalloutKey =
+    listType === "equipment"
+      ? "buildout-equipment.seed-equipment-prompt"
+      : "buildout-equipment.seed-supplies-prompt";
+  const { dismissed, dismiss } = useCalloutDismissed(calloutKey);
 
-  if (dismissed || !canEdit) return null;
+  // Hide while the user pref is still loading (dismissed === null) so a
+  // previously-dismissed prompt never flashes on reload. Also hide once we know
+  // the list has been seeded (hasAiItems) or the user can't edit.
+  if (dismissed === null || dismissed || hasAiItems || !canEdit) return null;
 
   async function handleSeed() {
     setStatus("loading");
     try {
       await onSeed();
       setStatus("done");
-      setDismissed(true);
+      dismiss();
     } catch {
       setStatus("error");
     }
@@ -97,11 +110,11 @@ function SeedBanner({
         </div>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
-          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0 mt-0.5"
-          aria-label="Dismiss"
+          onClick={dismiss}
+          aria-label="Dismiss this notice"
+          className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--dark-grey)] hover:bg-[var(--neutral-cool-100)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)] focus-visible:ring-offset-1 transition-colors shrink-0 mt-0.5"
         >
-          <X size={14} />
+          <X size={12} aria-hidden="true" />
         </button>
       </div>
       <div className="mt-3 flex items-center gap-3">

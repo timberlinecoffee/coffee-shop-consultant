@@ -6,6 +6,7 @@ import { getAccountSettings } from "@/lib/account-settings";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
+import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
 import { effectivePlanForGating } from "@/lib/access";
 import { SettingsShell } from "@/components/account/settings/SettingsShell";
 
@@ -105,6 +106,8 @@ export default async function AccountPage() {
         </div>
 
         <ProFeatureEntries isPro={isPro} />
+
+        <GuidedNoticesCard variant="stacked-card" />
 
         <AccountDataControls userEmail={userEmail} variant="stacked-card" />
 

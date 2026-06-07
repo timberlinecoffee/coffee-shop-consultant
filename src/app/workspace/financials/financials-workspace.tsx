@@ -16,6 +16,7 @@ import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
+import { DismissibleCallout } from "@/components/DismissibleCallout";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -643,24 +644,17 @@ function ForecastTab({
   return (
     <div className="space-y-6">
       {onStartWizard && (
-        <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-4 py-3.5 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-start gap-2.5">
-            <Compass size={18} className="text-[var(--teal)] shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">New here? Let us walk you through this page.</p>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                We&apos;ll highlight each field and explain it as you fill it in.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onStartWizard}
-            className="text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
-          >
-            Start guided setup
-          </button>
-        </div>
+        <DismissibleCallout
+          calloutKey="financials.guided-setup-intro"
+          icon={Compass}
+          heading="New here? Let us walk you through this page."
+          subcopy="We'll highlight each field and explain it as you fill it in."
+          action={{
+            label: "Start guided setup",
+            onClick: onStartWizard,
+            variant: "primary",
+          }}
+        />
       )}
 
       {/* Customer Flow */}
@@ -1173,30 +1167,21 @@ function ForecastTab({
         open={sections.isOpen("startup")}
         onOpenChange={(n) => sections.setOpen("startup", n)}
       >
-        <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 p-4 flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-start gap-2.5 min-w-0">
-            <Compass size={18} className="text-[var(--teal)] shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--foreground)]">
-                One-time costs to open the doors live on the Startup Costs tab.
-              </p>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                Start with your equipment, then add build-out and supplies. The total
-                builds up from what you actually need and flows into your balance sheet
-                and funding gap.
-              </p>
-            </div>
-          </div>
-          {onGoToStartup && (
-            <button
-              type="button"
-              onClick={onGoToStartup}
-              className="text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
-            >
-              Go to Startup Costs →
-            </button>
-          )}
-        </div>
+        <DismissibleCallout
+          calloutKey="financials.startup-costs-tab-pointer"
+          icon={Compass}
+          heading="One-time costs to open the doors live on the Startup Costs tab."
+          subcopy="Start with your equipment, then add build-out and supplies. The total builds up from what you actually need and flows into your balance sheet and funding gap."
+          action={
+            onGoToStartup
+              ? {
+                  label: "Go to Startup Costs →",
+                  onClick: onGoToStartup,
+                  variant: "primary",
+                }
+              : undefined
+          }
+        />
       </Section>
 
       {/* Tax rates — TIM-1247: sales tax and income tax are clearly separated */}
