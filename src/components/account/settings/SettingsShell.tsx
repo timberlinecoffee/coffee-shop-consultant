@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { BillingTab } from "@/components/account/settings/BillingTab";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
+import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
 import { SETTINGS_TABS } from "@/components/account/settings/tabs";
 import type { AccountSettings } from "@/lib/account-settings";
 
@@ -90,6 +91,9 @@ export function SettingsShell({
             )}
             {activeTab === "business-profile" && (
               <StubTab label="Business profile" />
+            )}
+            {activeTab === "preferences" && (
+              <GuidedNoticesCard variant="tab" />
             )}
             {activeTab === "data" && (
               userEmail ? (

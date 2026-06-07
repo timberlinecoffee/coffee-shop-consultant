@@ -3,6 +3,7 @@
 import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } from "@/lib/financial-projection";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
+import { DismissibleCallout } from "@/components/DismissibleCallout";
 
 interface Props {
   startupCosts: StartupCosts;
@@ -200,21 +201,23 @@ export function StartupTab({
     <div className="space-y-4">
       {/* Equipment-first guidance — only when nothing entered at all */}
       {nothingEntered && (
-        <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-5 py-4">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Start with your equipment.</p>
-          <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
-            Your espresso machine, grinders, fridge and POS are usually the biggest part of
-            opening. Build them in the Equipment &amp; Supplies workspace and they flow in
-            here automatically — then fill in the rest below. Your total builds up from what
-            you actually need, one line at a time.
-          </p>
-          <a
-            href="/workspace/buildout-equipment"
-            className="mt-3 inline-block text-xs font-semibold text-white bg-[var(--teal)] rounded-lg px-4 py-2 hover:bg-[var(--teal-deep)] transition-colors"
-          >
-            Add your equipment →
-          </a>
-        </div>
+        <DismissibleCallout
+          calloutKey="financials.startup-equipment-first-intro"
+          heading="Start with your equipment."
+          subcopy={
+            <>
+              Your espresso machine, grinders, fridge and POS are usually the biggest part of
+              opening. Build them in the Equipment &amp; Supplies workspace and they flow in
+              here automatically, then fill in the rest below. Your total builds up from what
+              you actually need, one line at a time.
+            </>
+          }
+          action={{
+            label: "Add your equipment →",
+            href: "/workspace/buildout-equipment",
+            variant: "primary",
+          }}
+        />
       )}
 
       {/* Legacy migration hint — shown when only lump-sum data exists */}
