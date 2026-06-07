@@ -15,6 +15,7 @@ import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -2221,6 +2222,13 @@ export function FinancialsWorkspace({
             </>
           }
         />
+
+        {/* TIM-2426: Cross-Suite Conflict Resolver entry point. Renders nothing
+            when there's no conflict; renders an amber pill + opens the resolver
+            modal when the consistency engine flags Hiring ↔ Financials drift. */}
+        <div className="mb-4">
+          <ConflictNoticeBadge />
+        </div>
 
         {showReviewBanner && (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
