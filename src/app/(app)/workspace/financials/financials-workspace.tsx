@@ -68,6 +68,8 @@ import { PersonnelEditor } from "./personnel-editor";
 import { OrgSyncPanel } from "./org-sync-panel";
 import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
+import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -212,7 +214,7 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup" | "depreciation";
+type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup" | "depreciation" | "how-you-compare";
 
 // TIM-1257: deriveFinancialInputs + findForecastLineByKey now live in
 // @/lib/financial-projection (single source of truth, unit-testable).
@@ -2249,7 +2251,10 @@ export function FinancialsWorkspace({
     setTourOpen(false);
   }
 
-  const tabs: { id: Tab; label: string }[] = [
+  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
+  const { openAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
+
+  const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: "forecast", label: "Forecast Inputs" },
     { id: "personnel", label: "Salaries" },
     { id: "funding", label: "Funding" },
@@ -2260,6 +2265,7 @@ export function FinancialsWorkspace({
     { id: "ratios", label: "Ratios" },
     { id: "startup", label: "Startup Costs" },
     { id: "depreciation", label: "Asset & Depreciation" },
+    { id: "how-you-compare", label: "How You Compare", badge: benchmarkYellowCount || undefined },
   ];
 
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
@@ -2363,7 +2369,7 @@ export function FinancialsWorkspace({
             used to share this row now lives in the page header (top-right). */}
         <div className="mb-5">
           <WorkspaceSubNav
-            tabs={tabs.map((t) => ({ key: t.id, label: t.label }))}
+            tabs={tabs.map((t) => ({ key: t.id, label: t.label, badge: t.badge }))}
             active={activeTab}
             onSelect={setActiveTab}
             ariaLabel="Financials sections"
@@ -2485,6 +2491,22 @@ export function FinancialsWorkspace({
             onGoToProjections={() => setActiveTab("projections")}
           />
         )}
+        {activeTab === "how-you-compare" && (
+          <BenchmarkDashboard
+            workspaceSlug="financials"
+            onAskBenchmark={(_metricId, _metricLabel) => {
+              // TIM-2416: open Scout drawer in Benchmark mode with metric pre-loaded.
+              // Wire up when TIM-2416 ships the benchmark focus API.
+            }}
+            onApplySuggestion={(_metricId) => {
+              openAIReviewModal({
+                suggestions: [],
+                context: { workspace: "financials" },
+                onApply: async () => {},
+              });
+            }}
+          />
+        )}
       </div>
 
       {tourOpen && canEdit && (
@@ -2499,6 +2521,7 @@ export function FinancialsWorkspace({
         />
       )}
 
+      {benchmarkAIReviewModalNode}
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
       <CoPilotDrawer
         planId={planId}

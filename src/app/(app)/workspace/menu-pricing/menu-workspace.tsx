@@ -52,6 +52,8 @@ import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
+import { BenchmarkChip } from "@/components/benchmark/BenchmarkChip";
 import { SectionHelp } from "@/components/ui/section-help";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -2748,12 +2750,16 @@ function InsightsTab({
                     <th className="text-left font-semibold px-3 py-2 w-[34%]">Gross Margin</th>
                     <th className="text-left font-semibold px-2 py-2">Popularity</th>
                     <th className="text-left font-semibold px-2 py-2">Class</th>
+                    <th className="text-left font-semibold px-2 py-2">How you compare</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranking.map((r, idx) => {
                     const item = items.find((i) => i.id === r.id);
                     const q = quadrantById.get(r.id);
+                    // Inline chip: map item margin to benchmark status (mock until cohort API ships).
+                    const bmStatus = r.marginPct >= 65 ? "green" : r.marginPct >= 50 ? "blue" : "yellow";
+                    const bmSourceType = "best-practice" as const;
                     return (
                       <tr key={r.id} className="border-b border-[var(--gray-200)] last:border-0 hover:bg-[var(--background)] transition-colors">
                         <td className="px-4 py-2 text-[var(--dark-grey)] tabular-nums">{idx + 1}</td>
@@ -2791,6 +2797,24 @@ function InsightsTab({
                             </span>
                           ) : (
                             <span className="text-[10px] text-[var(--dark-grey)]">Set popularity</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          {r.cogsCents != null ? (
+                            <div className="flex items-center gap-1.5">
+                              <BenchmarkChip
+                                metric="Gross margin"
+                                value={`${r.marginPct.toFixed(0)}%`}
+                                status={bmStatus}
+                                sourceType={bmSourceType}
+                                variant="inline"
+                              />
+                              <span className="text-[10px] text-[var(--teal)] hover:underline cursor-pointer whitespace-nowrap">
+                                see why
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-[var(--dark-grey)]">—</span>
                           )}
                         </td>
                       </tr>
@@ -3055,7 +3079,7 @@ function SuggestItemsModal({
   );
 }
 
-type Tab = "menu" | "ingredients" | "insights";
+type Tab = "menu" | "ingredients" | "insights" | "how-you-compare";
 
 export function MenuWorkspace({
   planId,
@@ -3120,10 +3144,13 @@ export function MenuWorkspace({
     if (items.length > 0) promoteOnEdit("menu_pricing");
   }, [items.length, promoteOnEdit]);
 
-  const tabs: { id: Tab; label: string; Icon: typeof Utensils }[] = [
+  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
+
+  const tabs: { id: Tab; label: string; Icon: typeof Utensils; badge?: number }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
     { id: "ingredients", label: "Ingredients", Icon: Package },
     { id: "insights", label: "Insights", Icon: LayoutGrid },
+    { id: "how-you-compare", label: "How You Compare", Icon: TrendingUp, badge: benchmarkYellowCount || undefined },
   ];
 
   async function refetchItems() {
@@ -3828,7 +3855,7 @@ export function MenuWorkspace({
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
             TIM-1888 H-6: text-only pills (no Icon). T-1: default mb-5 spacing. */}
         <WorkspaceSubNav
-          tabs={tabs.map((t) => ({ key: t.id, label: t.label }))}
+          tabs={tabs.map((t) => ({ key: t.id, label: t.label, badge: t.badge }))}
           active={activeTab}
           onSelect={setActiveTab}
           ariaLabel="Menu & Pricing sections"
@@ -3897,6 +3924,21 @@ export function MenuWorkspace({
             canEdit={canEdit}
             onUpdateItem={updateItem}
             onGoToMenu={() => setActiveTab("menu")}
+          />
+        )}
+        {activeTab === "how-you-compare" && (
+          <BenchmarkDashboard
+            workspaceSlug="menu-pricing"
+            onAskBenchmark={(_metricId, _metricLabel) => {
+              // TIM-2416: open Scout drawer in Benchmark mode.
+            }}
+            onApplySuggestion={(_metricId) => {
+              openAIReviewModal({
+                suggestions: [],
+                context: { workspace: "menu_pricing" },
+                onApply: async () => {},
+              });
+            }}
           />
         )}
       </div>
