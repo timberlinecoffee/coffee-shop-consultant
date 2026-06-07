@@ -70,6 +70,7 @@ import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
 import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { resolveTaxesComplianceStrings, type TaxesComplianceStrings } from "@/lib/taxes-compliance-location";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -269,6 +270,9 @@ interface Props {
   menuBlendedCogsPct?: number | null;
   // TIM-1168: per-item breakdown for the "How is this calculated?" reveal.
   menuCogsItems?: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  // TIM-2500: location fields for the Taxes & Compliance callout.
+  locationCity?: string | null;
+  locationCountry?: string | null;
 }
 
 
@@ -1625,6 +1629,7 @@ function ProjectionsTab({
   onClearOverride,
   onToggleManual,
   onApplyForward,
+  taxesComplianceStrings,
 }: {
   projections: FinancialProjections;
   slices: MonthlySlice[];
@@ -1638,6 +1643,7 @@ function ProjectionsTab({
   onClearOverride: (lineId: string, monthIndexAbs: number) => void;
   onToggleManual: (lineId: string, manual: boolean) => void;
   onApplyForward: (lineId: string, fromMonthIndexAbs: number, cents: number, range: ApplyForwardRange) => void;
+  taxesComplianceStrings: TaxesComplianceStrings;
 }) {
   const { year1: y1, year3: y3, year5: y5 } = projections;
   const [assessmentStatus, setAssessmentStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -1672,6 +1678,24 @@ function ProjectionsTab({
     <div className="space-y-6">
       {/* Inline revenue trajectory chart */}
       <RevenueChart slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
+
+      {/* TIM-2500: Taxes & Compliance location-aware callout */}
+      <DismissibleCallout
+        variant="warning"
+        calloutKey={taxesComplianceStrings.calloutKey}
+        heading={taxesComplianceStrings.heading}
+        subcopy={taxesComplianceStrings.subcopy}
+        action={{
+          label: taxesComplianceStrings.actionLabel,
+          href:
+            taxesComplianceStrings.actionUrl !== null
+              ? taxesComplianceStrings.actionUrl
+              : "/workspace/location-lease",
+          target:
+            taxesComplianceStrings.actionUrl !== null ? "_blank" : undefined,
+          variant: "link",
+        }}
+      />
 
       {/* Monthly / Quarterly / Annual P&L table — defaults to monthly Y1 */}
       <PLTab
@@ -1821,6 +1845,8 @@ export function FinancialsWorkspace({
   initialEquipmentItems = [],
   menuBlendedCogsPct = null,
   menuCogsItems = [],
+  locationCity = null,
+  locationCountry = null,
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
@@ -2254,6 +2280,9 @@ export function FinancialsWorkspace({
   const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
   const { openAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
 
+  // TIM-2500: resolve taxes-compliance callout strings once per render from location props.
+  const taxesComplianceStrings = resolveTaxesComplianceStrings(locationCity, locationCountry);
+
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: "forecast", label: "Forecast Inputs" },
     { id: "personnel", label: "Salaries" },
@@ -2442,6 +2471,7 @@ export function FinancialsWorkspace({
             onClearOverride={handleClearOverride}
             onToggleManual={handleToggleManual}
             onApplyForward={handleApplyForward}
+            taxesComplianceStrings={taxesComplianceStrings}
           />
         )}
         {activeTab === "balance-sheet" && (

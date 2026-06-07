@@ -35,7 +35,7 @@ export default async function FinancialsWorkspacePage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [modelResult, profileResult, menuItemsResult, equipmentResult] = await Promise.all([
+  const [modelResult, profileResult, menuItemsResult, equipmentResult, locationResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("*")
@@ -64,6 +64,13 @@ export default async function FinancialsWorkspacePage() {
       .eq("plan_id", plan.id)
       .eq("archived", false)
       .order("position"),
+    // TIM-2500: fetch location for the Taxes & Compliance callout.
+    // Prefer signed candidate; fall back to first non-archived.
+    supabase
+      .from("location_candidates")
+      .select("city, country, status, archived")
+      .eq("plan_id", plan.id)
+      .order("position", { ascending: true }),
   ]);
 
   let modelRow = modelResult.data;
@@ -108,6 +115,15 @@ export default async function FinancialsWorkspacePage() {
 
   const initialEquipmentItems = (equipmentResult.data ?? []) as EquipmentItem[];
   const rawMenuItems = menuItemsResult.data ?? [];
+
+  // TIM-2500: resolve location city + country for the Taxes & Compliance callout.
+  const locationCandidates = locationResult.data ?? [];
+  const chosenLocation =
+    locationCandidates.find((c) => c.status === "signed") ??
+    locationCandidates.find((c) => !c.archived) ??
+    null;
+  const locationCity = chosenLocation?.city ?? null;
+  const locationCountry = chosenLocation?.country ?? null;
   const menuBlendedCogsPct = computeMenuBlendedCogsPct(rawMenuItems);
 
   // TIM-1168: per-item breakdown for "How is this calculated?" reveal.
@@ -128,6 +144,8 @@ export default async function FinancialsWorkspacePage() {
       initialEquipmentItems={initialEquipmentItems}
       menuBlendedCogsPct={menuBlendedCogsPct}
       menuCogsItems={menuCogsItems}
+      locationCity={locationCity}
+      locationCountry={locationCountry}
     />
   );
 }

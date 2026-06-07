@@ -44,6 +44,39 @@ export const CALLOUT_REGISTRY: Record<CalloutKey, CalloutRegistryEntry> = {
     label: "Supplies starter-list prompt",
     workspace: "Equipment & Supplies",
   },
+  // TIM-2500: Taxes & Compliance callouts — location-specific and global fallback.
+  "financials.taxes-compliance-seattle-wa": {
+    label: "Seattle sales tax notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-melbourne-vic": {
+    label: "Melbourne GST notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-mexico-city": {
+    label: "Mexico City IVA notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-us-generic": {
+    label: "US sales tax notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-canada-generic": {
+    label: "Canada GST/HST notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-uk-generic": {
+    label: "UK VAT notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-australia-generic": {
+    label: "Australia GST notice",
+    workspace: "Financials",
+  },
+  "financials.taxes-compliance-global": {
+    label: "Tax obligations notice",
+    workspace: "Financials",
+  },
 };
 
 /**
