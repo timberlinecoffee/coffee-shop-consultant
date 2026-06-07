@@ -55,14 +55,22 @@ export default async function OperationsPlaybookPage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until, onboarding_data")
       .eq("id", user.id)
       .maybeSingle(),
     loadOperationsRecipeCards(supabase, planId),
   ]);
 
   const stored = normalizeOperationsPlaybook(doc?.content);
-  const initialDoc = isPlaybookEmpty(stored) ? seededPlaybook() : stored;
+  const shopType = (() => {
+    const od = profile?.onboarding_data as Record<string, unknown> | null | undefined;
+    if (!od) return undefined;
+    const raw = od.shop_type;
+    if (Array.isArray(raw) && raw.length > 0) return String(raw[0]);
+    if (typeof raw === "string" && raw.length > 0) return raw;
+    return undefined;
+  })();
+  const initialDoc = isPlaybookEmpty(stored) ? seededPlaybook(shopType) : stored;
 
   // TIM-1406: shop name comes from coffee_shop_plans.plan_name (SoT); concept
   // jsonb is the V2 shadow read via normalizer for V1/V2 safety.
