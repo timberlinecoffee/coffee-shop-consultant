@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+
+# TIM-2413 live-verify artifacts (local screenshots, not committed)
+verify-tim2413/
