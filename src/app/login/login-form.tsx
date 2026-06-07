@@ -5,8 +5,56 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
+import {
+  REMEMBER_ME_COOKIE,
+  REMEMBER_ME_MAX_AGE_SECONDS,
+  isSupabaseAuthCookie,
+} from "@/lib/auth/remember-me";
 
 const RESEND_COOLDOWN_SECONDS = 60;
+
+// TIM-2430: read the user's last "Keep me signed in" choice so the checkbox
+// reflects whatever they picked last sign-in. Absent cookie = default true,
+// which matches the pre-TIM-2430 status quo (Supabase SSR persists for 400d).
+function readInitialRememberPreference(): boolean {
+  if (typeof document === "undefined") return true;
+  const match = document.cookie.split(";").find(c => c.trim().startsWith(`${REMEMBER_ME_COOKIE}=`));
+  if (!match) return true;
+  const value = decodeURIComponent(match.trim().substring(REMEMBER_ME_COOKIE.length + 1));
+  return value !== "0";
+}
+
+// TIM-2430: write the preference itself with a long Max-Age so it survives the
+// current browser session and pre-fills the checkbox next time the user lands
+// on /login (even after they opted out and the auth cookies got cleared).
+function writeRememberPreference(remember: boolean) {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${REMEMBER_ME_COOKIE}=${remember ? "1" : "0"}; Path=/; Max-Age=${REMEMBER_ME_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+}
+
+// TIM-2430: @supabase/ssr's browser-side `setItem` hard-codes maxAge to its
+// 400-day default and ignores any cookieOptions override (see
+// node_modules/@supabase/ssr/dist/main/cookies.js — `setCookieOptions.maxAge`
+// is forcibly reset). So when the user unchecks "Keep me signed in", we
+// rewrite the freshly-set chunked auth cookies in place WITHOUT Max-Age/
+// Expires, turning them into session cookies that clear on browser close.
+// Server-side refreshes are kept session-scoped by the proxy + server.ts
+// `setAll` adapters reading the same gw_remember_me cookie.
+function downgradeAuthCookiesToSessionScope() {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  for (const raw of document.cookie.split(";")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const name = trimmed.substring(0, eq);
+    if (!isSupabaseAuthCookie(name)) continue;
+    const value = trimmed.substring(eq + 1);
+    // Re-set with the same value but no Max-Age / Expires attribute.
+    document.cookie = `${name}=${value}; Path=/; SameSite=Lax${secure}`;
+  }
+}
 
 export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
   const [email, setEmail] = useState("");
@@ -15,6 +63,10 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [consent, setConsent] = useState(false);
+  // TIM-2430: client-side state defaults to true on the server render so the
+  // checkbox SSR pre-fill never flickers off; useEffect below syncs it to the
+  // actual stored preference once the component mounts.
+  const [rememberMe, setRememberMe] = useState(true);
   // TIM-2246: Turnstile attestation token, passed to Supabase Auth via
   // options.captchaToken. Supabase verifies it against the project-level
   // CAPTCHA secret (Turnstile, configured in the Supabase dashboard).
@@ -24,6 +76,10 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [resendLoading, setResendLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    setRememberMe(readInitialRememberPreference());
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -66,6 +122,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setHandoffCookie("gw_oauth_signup_source", getSignupSource());
     const next = getNextParam();
     if (next) setHandoffCookie("gw_oauth_next", next);
+    // TIM-2430: write preference before redirecting to Google; it survives the
+    // OAuth round-trip and the proxy+server reads it on /auth/callback.
+    writeRememberPreference(rememberMe);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -88,6 +147,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    // TIM-2430: record the preference up front so server-side cookie writes
+    // during this same response (proxy / route handler) read the right value.
+    writeRememberPreference(rememberMe);
 
     if (mode === "signup") {
       const signupSource = getSignupSource();
@@ -110,6 +172,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         setEmailConfirmationSent(true);
         setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
+        // TIM-2430: Supabase SSR hard-codes 400d maxAge on the freshly-set
+        // auth cookies; downgrade them to session-scope if user opted out.
+        if (!rememberMe) downgradeAuthCookiesToSessionScope();
         router.push("/onboarding");
         router.refresh();
       }
@@ -124,6 +189,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       if (error) {
         setError(error.message);
       } else {
+        // TIM-2430: same downgrade hook as the signup path above.
+        if (!rememberMe) downgradeAuthCookiesToSessionScope();
         // Check onboarding status before redirecting
         if (data.user) {
           const { data: profile } = await supabase
@@ -240,6 +307,18 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
             className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--dark-grey)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
           />
         </div>
+
+        {/* TIM-2430: matches the consent-checkbox pattern in this same form
+            (token-only classes). Sentence-case copy per TIM-1537 Voice rules. */}
+        <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed pt-1">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={e => setRememberMe(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-[var(--dark-grey)] text-[var(--teal)] focus:ring-[var(--teal)]"
+          />
+          <span>Keep me signed in on this device</span>
+        </label>
 
         {mode === "signup" && (
           <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed pt-1">
