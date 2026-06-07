@@ -431,11 +431,23 @@ export async function POST(request: NextRequest) {
   if (rl) return rl;
 
   let body: z.infer<typeof ApplyBodySchema>;
+  let raw: unknown;
   try {
-    body = ApplyBodySchema.parse(await request.json());
+    raw = await request.json();
   } catch {
-    return Response.json({ error: "Invalid request body" }, { status: 400 });
+    return Response.json(
+      { error: "Invalid request body", fields: { _: ["request body is not valid JSON"] } },
+      { status: 400 },
+    );
   }
+  const parsed = ApplyBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Invalid request body", fields: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+  body = parsed.data;
 
   const applied: string[] = [];
   const failed: string[] = [];
