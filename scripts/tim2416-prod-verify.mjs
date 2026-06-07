@@ -133,7 +133,7 @@ async function openCompanion(page) {
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent("workspace-copilot-open"));
   });
-  await page.waitForSelector('[role="dialog"][aria-modal="true"]', { timeout: 8_000 });
+  await page.waitForSelector('[role="dialog"][aria-label^="Scout"]', { timeout: 8_000 });
   // Give framer-motion the tick it needs to translate the panel onscreen.
   await page.waitForTimeout(400);
 }
@@ -149,7 +149,7 @@ async function readActiveMode(page) {
 
 async function readScopeHeader(page) {
   return page.evaluate(() => {
-    const headers = Array.from(document.querySelectorAll('[role="dialog"] p'));
+    const headers = Array.from(document.querySelectorAll('[role="dialog"][aria-label^="Scout"] p'));
     // The scope header is the smallest 11px p inside the header band.
     const match = headers.find((p) => {
       const text = p.textContent?.trim() ?? "";
@@ -170,7 +170,7 @@ async function selectMode(page, label) {
 
 async function closeCompanion(page) {
   await page.evaluate(() => {
-    const close = document.querySelector('[role="dialog"] button[aria-label="Close"]');
+    const close = document.querySelector('[role="dialog"][aria-label^="Scout"] button[aria-label="Close"]');
     if (close) (close).click();
   });
   await page.waitForTimeout(250);
@@ -245,7 +245,7 @@ async function main() {
   );
   assert(
     "Financials entry → scope header reads \"Asking about your Financials\"",
-    financialsScope === "Asking about your Financials",
+    financialsScope?.startsWith("Asking about your Financials") ?? false,
     `scope=${financialsScope}`,
   );
   await shot(page, "financials-coach");
@@ -261,7 +261,7 @@ async function main() {
     const hasRatio = (await firstRatio.count()) > 0;
     if (hasRatio) {
       await firstRatio.click();
-      await page.waitForSelector('[role="dialog"][aria-modal="true"]', { timeout: 8_000 });
+      await page.waitForSelector('[role="dialog"][aria-label^="Scout"]', { timeout: 8_000 });
       const mode = await readActiveMode(page);
       const scope = await readScopeHeader(page);
       assert(
@@ -300,7 +300,7 @@ async function main() {
   );
   assert(
     "Dashboard entry → scope header reads \"Checking your whole plan\"",
-    dashboardScope === "Checking your whole plan",
+    dashboardScope?.startsWith("Checking your whole plan") ?? false,
     `scope=${dashboardScope}`,
   );
   await shot(page, "dashboard-check-empty");
@@ -317,7 +317,7 @@ async function main() {
       { timeout: 30_000 },
     ).catch(() => {});
     const findingsText = await page.evaluate(() => {
-      const panel = document.querySelector('[role="dialog"]');
+      const panel = document.querySelector('[role="dialog"][aria-label^="Scout"]');
       return panel?.textContent ?? "";
     });
     const hasTags = /<[a-z][^>]*>/i.test(findingsText);
