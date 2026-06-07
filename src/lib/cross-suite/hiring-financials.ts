@@ -180,10 +180,10 @@ export function detectHiringFinancialsConflict(
   const bandBreachAlert = (() => {
     if (!band || monthlyRevenue <= 0) return undefined;
     if (canonicalBandClass === "above") {
-      return `Your budgeted payroll runs at ${fmtPct(canonicalLaborPct)} of revenue — above the ${fmtPct(band.max)} ceiling for specialty cafes. Lenders flag this; either revenue needs to climb or labor needs to come down.`;
+      return `Your budgeted payroll runs at ${fmtPct(canonicalLaborPct)} of revenue, above the ${fmtPct(band.max)} ceiling for specialty cafes. Lenders flag this; either revenue needs to climb or labor needs to come down.`;
     }
     if (canonicalBandClass === "below") {
-      return `Your budgeted payroll runs at ${fmtPct(canonicalLaborPct)} of revenue — below the ${fmtPct(band.min)} floor. Double-check the headcount and pay assumptions are realistic.`;
+      return `Your budgeted payroll runs at ${fmtPct(canonicalLaborPct)} of revenue, below the ${fmtPct(band.min)} floor. Double-check the headcount and pay assumptions are realistic.`;
     }
     return undefined;
   })();
