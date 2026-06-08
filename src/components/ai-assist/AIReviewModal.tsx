@@ -141,7 +141,7 @@ function DiffText({ original, proposed }: { original: string; proposed: string }
           </span>
         );
         return (
-          <span key={i} className="bg-red-50 line-through text-red-600">
+          <span key={i} className="bg-[var(--error-bg)] line-through text-[var(--destructive)]">
             {text}
           </span>
         );
@@ -185,7 +185,7 @@ function StructuredDiff({ original, proposed }: { original: string; proposed: st
                   kind === "added"
                     ? "bg-[var(--teal-tint-500)]"
                     : kind === "removed"
-                    ? "bg-red-50"
+                    ? "bg-[var(--error-bg)]"
                     : "bg-white"
                 }
               >
@@ -272,7 +272,7 @@ function ChangeCard({
           </div>
         )}
         {cardState.appliedOk && (
-          <span className="text-xs font-medium text-green-700 bg-green-50 rounded-full px-2 py-0.5">Applied</span>
+          <span className="text-xs font-medium text-[var(--success-dark)] bg-[var(--success-bg-3)] rounded-full px-2 py-0.5">Applied</span>
         )}
       </div>
 
@@ -380,7 +380,7 @@ function ChangeCard({
 
       {/* Per-card error */}
       {cardState.applyError && (
-        <p className="text-xs text-red-600 border border-red-200 rounded-lg px-3 py-2 bg-red-50">
+        <p className="text-xs text-[var(--destructive)] border border-[var(--error-bg-9)] rounded-lg px-3 py-2 bg-[var(--error-bg)]">
           {cardState.applyError} <button type="button" className="underline ml-1" onClick={onAccept}>Try again</button>
         </p>
       )}
@@ -411,7 +411,7 @@ function ChangeCard({
         <div className="grid grid-cols-3 border-t border-[var(--border)] -mx-4 -mb-4 mt-1">
           {[
             { label: "Accept", icon: <Check size={13} />, action: onAccept, active: isAccepted, activeCls: "bg-[var(--teal)] text-white" },
-            { label: "Reject", icon: <X size={13} />, action: onReject, active: isRejected, activeCls: "bg-red-50 text-red-600" },
+            { label: "Reject", icon: <X size={13} />, action: onReject, active: isRejected, activeCls: "bg-[var(--error-bg)] text-[var(--destructive)]" },
             { label: "Edit", icon: <Pencil size={13} />, action: onEditStart, active: false, activeCls: "" },
           ].map(({ label, icon, action, active, activeCls }) => (
             <button
@@ -447,7 +447,7 @@ function ChangeCard({
             aria-label="Reject this suggestion"
             className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
               isRejected
-                ? "bg-red-50 text-red-600 border border-red-200"
+                ? "bg-[var(--error-bg)] text-[var(--destructive)] border border-[var(--error-bg-9)]"
                 : "border border-[var(--border)] text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--background)]"
             }`}
           >
@@ -710,7 +710,7 @@ export function AIReviewModal({
     <div className="border-t border-[var(--border)]">
       {/* TIM-1653: apply-level error (e.g. a non-OK API response). Accepted cards above stay visible for retry. */}
       {applyError && (
-        <p className="mx-6 mt-3 text-xs text-red-600 border border-red-200 rounded-lg px-3 py-2 bg-red-50 flex items-start gap-1.5">
+        <p className="mx-6 mt-3 text-xs text-[var(--destructive)] border border-[var(--error-bg-9)] rounded-lg px-3 py-2 bg-[var(--error-bg)] flex items-start gap-1.5">
           <AlertCircle size={14} className="shrink-0 mt-0.5" aria-hidden />
           <span>{applyError}</span>
         </p>
