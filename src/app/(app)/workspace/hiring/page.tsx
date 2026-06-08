@@ -115,13 +115,14 @@ export default async function HiringWorkspacePage() {
   function normalizeCountry(raw: string | null): HiringCountry | null {
     if (!raw) return null;
     const upper = raw.toUpperCase().trim() as HiringCountry;
-    const supported: HiringCountry[] = ["US", "GB", "CA", "AU"];
+    const supported: HiringCountry[] = ["US", "GB", "CA", "AU", "MX"];
     if (supported.includes(upper)) return upper;
     const MAP: Record<string, HiringCountry> = {
       "UNITED STATES": "US", "UNITED STATES OF AMERICA": "US", "USA": "US",
       "UNITED KINGDOM": "GB", "UK": "GB", "GREAT BRITAIN": "GB",
       "ENGLAND": "GB", "SCOTLAND": "GB", "WALES": "GB",
       "CANADA": "CA", "AUSTRALIA": "AU",
+      "MEXICO": "MX", "MÉXICO": "MX",
     };
     return MAP[upper] ?? null;
   }
