@@ -15,13 +15,12 @@
 // Relative imports (no @/ aliases) so node:test can load this module without
 // the Next.js path-alias resolver — mirrors plan-state.ts and entities.ts.
 
-// Embed the JSON synchronously so the module has no async init step. The
-// Node ESM "with" import attribute is gated on flag — using require() through
-// createRequire keeps the bundler happy and works in node:test runs too.
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
+// Static JSON import — Turbopack and Node 22 (--experimental-strip-types)
+// both handle this natively. Avoids `createRequire("node:module")`, which
+// Turbopack refuses to bundle for client chunks and broke prod after
+// TIM-2474 wired benchmark-bands.ts into the P&L/Ratios client tabs.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const RAW = require("./benchmarks.json") as any;
+import RAW from "./benchmarks.json" with { type: "json" };
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
