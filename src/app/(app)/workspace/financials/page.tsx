@@ -12,6 +12,7 @@ import {
 } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 import { getAccountSettings } from "@/lib/account-settings";
+import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
 
@@ -43,7 +44,7 @@ export default async function FinancialsWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, onboarding_data")
       .eq("id", user.id)
       .maybeSingle(),
     // TIM-1117: pull menu items so COGS lines can link to menu costing.
@@ -74,6 +75,10 @@ export default async function FinancialsWorkspacePage() {
   // forecast_inputs.currency_code) reflects the user's selected currency
   // instead of always defaulting to USD.
   if (!modelRow) {
+    const profileData = profileResult.data;
+    const shopTypes = Array.isArray(profileData?.onboarding_data?.shop_type)
+      ? (profileData.onboarding_data.shop_type as string[])
+      : [];
     const accountSettings = await getAccountSettings(supabase, user.id);
     const forecastInputs = defaultMonthlyProjections();
     forecastInputs.currency_code = accountSettings.currencyCode;
@@ -84,7 +89,7 @@ export default async function FinancialsWorkspacePage() {
       .insert({
         plan_id: plan.id,
         forecast_inputs: forecastInputs,
-        startup_costs: {},
+        startup_costs: seededStartupCosts(shopTypes),
       })
       .select()
       .single();

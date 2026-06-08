@@ -7,6 +7,7 @@ import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { NextRequest } from "next/server";
 import { defaultMonthlyProjections } from "@/lib/financial-projection";
 import { getAccountSettings } from "@/lib/account-settings";
+import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
 
 export async function GET() {
   const supabase = await createClient();
@@ -38,18 +39,24 @@ export async function GET() {
   // new model was hard-coded to USD regardless of the user's selected currency,
   // so the Financials currency dropdown (and every downstream surface that
   // reads forecast_inputs.currency_code) showed "$" for non-USD accounts.
-  const accountSettings = await getAccountSettings(supabase, user.id);
+  const [accountSettings, profileResult] = await Promise.all([
+    getAccountSettings(supabase, user.id),
+    supabase.from("users").select("onboarding_data").eq("id", user.id).maybeSingle(),
+  ]);
   const forecastInputs = defaultMonthlyProjections();
   forecastInputs.currency_code = accountSettings.currencyCode;
   forecastInputs.fiscal_year_start_month =
     accountSettings.localization.fiscalYearStartMonth;
+  const shopTypes = Array.isArray(profileResult.data?.onboarding_data?.shop_type)
+    ? (profileResult.data.onboarding_data.shop_type as string[])
+    : [];
 
   const { data: created, error } = await supabase
     .from("financial_models")
     .insert({
       plan_id: plan.id,
       forecast_inputs: forecastInputs,
-      startup_costs: {},
+      startup_costs: seededStartupCosts(shopTypes),
     })
     .select()
     .single();
