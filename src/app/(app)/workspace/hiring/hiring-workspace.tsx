@@ -1002,7 +1002,7 @@ function RoleRow({
           <span className="text-xs text-[var(--muted-foreground)]">
             {role.headcount} headcount
             {role.monthly_cost_cents
-              ? ` · $${Math.round(role.monthly_cost_cents / 100)}/mo`
+              ? ` · ${formatMinor(role.monthly_cost_cents)}/mo`
               : ""}
             {parentTitle ? ` · Reports to ${parentTitle}` : ""}
           </span>
