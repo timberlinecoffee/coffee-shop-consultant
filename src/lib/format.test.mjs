@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const { fmtPct, capitalizeFirst } = await import("./format.ts");
+const { fmtPct, capitalizeFirst, formatLocationScore } = await import("./format.ts");
 
 test("fmtPct: 0.305 → '30.5%' (1 dp, no rounding to integer)", () => {
   assert.strictEqual(fmtPct(0.305), "30.5%");
@@ -52,4 +52,46 @@ test("capitalizeFirst still works (sanity check after sharing format.ts)", () =>
   assert.strictEqual(capitalizeFirst("trent"), "Trent");
   assert.strictEqual(capitalizeFirst("Trent"), "Trent");
   assert.strictEqual(capitalizeFirst(""), "");
+});
+
+// TIM-2480: pin formatLocationScore.
+// LocationCard previously rendered the scorecard average as "3.4 / 5" via
+// (sum/count).toFixed(1); TradeoffPanel rendered the per-factor score as the
+// bare integer "${score}". For the same underlying score, the two surfaces
+// produced different strings (e.g. 3.0 vs 3). Shared helper is the contract.
+
+test("formatLocationScore: AC — 3.4 average renders 1 dp on both surfaces", () => {
+  // AC: "Enter 3.4 average, both surfaces render identical number."
+  const { display: locationCardDisplay } = formatLocationScore(3.4);
+  const { display: tradeoffPanelDisplay } = formatLocationScore(3.4);
+  assert.strictEqual(locationCardDisplay, "3.4");
+  assert.strictEqual(tradeoffPanelDisplay, "3.4");
+  assert.strictEqual(
+    locationCardDisplay,
+    tradeoffPanelDisplay,
+    "same average must render identically across surfaces",
+  );
+});
+
+test("formatLocationScore: whole-number average renders 1 dp (the divergence we pinned)", () => {
+  // Pre-fix: LocationCard rendered "3.0 / 5"; TradeoffPanel rendered "3".
+  assert.strictEqual(formatLocationScore(3).display, "3.0");
+  assert.strictEqual(formatLocationScore(5).display, "5.0");
+  assert.strictEqual(formatLocationScore(1).display, "1.0");
+});
+
+test("formatLocationScore: pct is (score/5)*100, clamped to 0..100", () => {
+  assert.strictEqual(formatLocationScore(0).pct, 0);
+  assert.strictEqual(formatLocationScore(5).pct, 100);
+  assert.strictEqual(formatLocationScore(3.4).pct, 68);
+  assert.strictEqual(formatLocationScore(2.5).pct, 50);
+  // Clamp guards: defensive against out-of-domain inputs.
+  assert.strictEqual(formatLocationScore(-1).pct, 0);
+  assert.strictEqual(formatLocationScore(7).pct, 100);
+});
+
+test("formatLocationScore: display rounds to nearest 1 dp", () => {
+  assert.strictEqual(formatLocationScore(3.44).display, "3.4");
+  assert.strictEqual(formatLocationScore(3.46).display, "3.5");
+  assert.strictEqual(formatLocationScore(3.05).display, "3.1");
 });

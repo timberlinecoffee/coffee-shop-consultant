@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { formatLocationScore } from '@/lib/format'
 import { X, Sparkles, Trophy, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Candidate } from './CandidateListCard'
@@ -97,7 +98,7 @@ function FactorBarRow({
           const score = scores[c.id]
           const color = colorByCandidate[c.id]
           const isWinner = winnerIds.has(c.id)
-          const widthPct = score != null ? (score / 5) * 100 : 0
+          const widthPct = score != null ? formatLocationScore(score).pct : 0
           return (
             <div key={c.id} className="flex items-center gap-2">
               <span
@@ -132,7 +133,7 @@ function FactorBarRow({
                   score == null ? 'text-[var(--neutral-cool-600)]/60' : isWinner ? color.text : 'text-foreground'
                 )}
               >
-                {score != null ? `${score}` : '—'}
+                {score != null ? formatLocationScore(score).display : '—'}
               </span>
             </div>
           )

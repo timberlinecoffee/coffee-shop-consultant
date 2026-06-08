@@ -20,6 +20,7 @@ import {
   Square,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { formatLocationScore } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
 import { AddressAutocomplete, type PlacePick } from './AddressAutocomplete'
@@ -115,7 +116,7 @@ function computeOverallScore(scores: ScoreMap): string {
     }
   }
   if (count === 0) return '—'
-  return `${(sum / count).toFixed(1)} / 5`
+  return `${formatLocationScore(sum / count).display} / 5`
 }
 
 // ── Lease terms types ────────────────────────────────────────────────────

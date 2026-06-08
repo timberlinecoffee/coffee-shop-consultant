@@ -17,3 +17,12 @@ export function capitalizeFirst(s: string): string {
 export function fmtPct(ratio: number): string {
   return `${(Math.round(ratio * 1000) / 10).toFixed(1)}%`;
 }
+
+// TIM-2480: shared 1-5 scorecard formatter. Both LocationCard (averages) and
+// TradeoffPanel (per-factor) must render the same underlying number identically.
+// `display` is 1 dp ("3.4"); `pct` is the bar-width ratio in percent (0-100).
+export function formatLocationScore(score: number): { display: string; pct: number } {
+  const display = (Math.round(score * 10) / 10).toFixed(1);
+  const pct = Math.max(0, Math.min(100, (score / 5) * 100));
+  return { display, pct };
+}
