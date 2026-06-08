@@ -296,6 +296,26 @@ export const RECIPES: IllustrationRecipe[] = [
     },
     recipeConfirmed: true,
   },
+  {
+    // TIM-1592: ingredient-table empty state. Replaces the external Pexels photo
+    // that was violating Lane A governance (off-brand, external URL, photorealistic).
+    id: "empty-state-ingredients",
+    slot: "empty-state",
+    title: "Empty State — Ingredients",
+    size: "1024x1024",
+    quality: "low",
+    subject: "A chalkboard frame outline with a header rail and three implied text lines, suggesting a blank ingredient board.",
+    alt: "Line-art illustration of a blank chalkboard with three empty text lines",
+    promptSlots: {
+      subject: "empty-ingredients",
+      orientation: "centered",
+      strokeWeight: "1px",
+      variant: "muted",
+      detail: "minimal iconographic",
+      aspectRatio: "1:1 square",
+    },
+    recipeConfirmed: true,
+  },
 ];
 
 export function getRecipe(id: string): IllustrationRecipe | undefined {

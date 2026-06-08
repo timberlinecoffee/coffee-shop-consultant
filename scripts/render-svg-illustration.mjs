@@ -106,6 +106,23 @@ function emptyNoData(stroke) {
   ].join("\n");
 }
 
+// Empty state — ingredients list (TIM-1592). A chalkboard frame outline with a
+// header rail and three implied text lines, suggesting a blank ingredient board.
+// Square 480×480, `muted` variant (sage stroke on off-white bg). (TIM-1579 §4.4)
+function emptyIngredients(stroke) {
+  const s = (d) => `    <path stroke="${stroke}" d="${d}"/>`;
+  return [
+    // Chalkboard outer frame (rounded rect)
+    s("M 124 90 Q 110 90 110 104 L 110 376 Q 110 390 124 390 L 356 390 Q 370 390 370 376 L 370 104 Q 370 90 356 90 Z"),
+    // Header rail — separates "title" area from body
+    s("M 110 148 H 370"),
+    // Three implied ingredient text lines (varying widths for natural look)
+    s("M 146 196 H 334"),
+    s("M 146 232 H 298"),
+    s("M 146 268 H 318"),
+  ].join("\n");
+}
+
 // ── Model-type selection icons (TIM-1697) ──────────────────────────────────
 // One line-art mark per coffee-shop model type from the onboarding "What kind of
 // shop are you imagining?" step. Each is composed on a shared 220x200 canvas with a
@@ -218,6 +235,7 @@ const SUBJECTS = {
   "flat-white": { slot: "recipe-card", w: 600, h: 800, sw: 5, draw: flatWhite, defVariant: "light" },
   espresso: { slot: "recipe-card", w: 640, h: 640, sw: 5, draw: espresso, defVariant: "light" },
   "empty-no-data": { slot: "empty-state", w: 480, h: 480, sw: 4, draw: emptyNoData, defVariant: "muted" },
+  "empty-ingredients": { slot: "empty-state", w: 480, h: 480, sw: 4, draw: emptyIngredients, defVariant: "muted" },
   // Model-type selection icons (TIM-1697): transparent bg, shared 220x200 canvas.
   "model-full-cafe": { slot: "model-type", w: 220, h: 200, sw: 6, draw: fullCafe, defVariant: "light", transparent: true },
   "model-espresso-bar": { slot: "model-type", w: 220, h: 200, sw: 6, draw: espressoBar, defVariant: "light", transparent: true },
