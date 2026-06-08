@@ -12,7 +12,7 @@ import { PdfFooter } from "../components/PdfFooter"
 import { PdfSection } from "../components/PdfSection"
 import { PdfTable, type ColumnDef, type Row } from "../components/PdfTable"
 import type { PdfTemplate } from "../registry"
-import { formatMinorUnits, formatCurrencyAmount, currencySymbol } from "@/lib/currency"
+import { formatMinorUnits } from "@/lib/currency"
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ export type MenuItemRow = {
   category_name: string | null
   price_cents: number
   cogs_cents: number
-  expected_mix_pct: number
+  expected_popularity: "low" | "medium" | "high" | null
   prep_time_seconds: number | null
   notes: string | null
   archived: boolean
@@ -51,13 +51,6 @@ function fmtPrice(cents: number, currencyCode: string): string {
   return formatMinorUnits(cents, currencyCode)
 }
 
-function fmtPct(val: number): string {
-  return `${val.toFixed(1)}%`
-}
-
-function fmtDollar(val: number, currencyCode: string): string {
-  return formatCurrencyAmount(val, currencyCode, { compact: false })
-}
 
 function fmtDateLong(d: Date): string {
   return d.toLocaleDateString("en-US", {
@@ -91,41 +84,9 @@ function computeMarginPct(price_cents: number, cogs_cents: number): number | nul
   return ((price_cents - cogs_cents) / price_cents) * 100
 }
 
-// Mirrors computeFooter from MenuItemsTable.tsx exactly so numbers match.
-function computeFooter(items: MenuItemRow[]) {
-  const active = items.filter((i) => !i.archived)
-  if (active.length === 0) return null
-
-  const totalMix = active.reduce((s, i) => s + i.expected_mix_pct, 0)
-
-  const pricedWithMix = active.filter(
-    (i) => i.price_cents > 0 && i.expected_mix_pct > 0
-  )
-  let weightedMargin: number | null = null
-  if (pricedWithMix.length > 0) {
-    const sumMix = pricedWithMix.reduce((s, i) => s + i.expected_mix_pct, 0)
-    const sumWeighted = pricedWithMix.reduce(
-      (s, i) => s + i.expected_mix_pct * computeMarginPct(i.price_cents, i.cogs_cents)!,
-      0
-    )
-    weightedMargin = sumMix > 0 ? sumWeighted / sumMix : null
-  }
-
-  let marginPer100: number | null = null
-  if (totalMix > 0) {
-    const sumContrib = active.reduce(
-      (s, i) => s + i.expected_mix_pct * (i.price_cents - i.cogs_cents),
-      0
-    )
-    marginPer100 = sumContrib / totalMix
-  }
-
-  return { count: active.length, weightedMargin, marginPer100, totalMix }
-}
-
-function itemContribPer100(item: MenuItemRow, totalMix: number): number | null {
-  if (totalMix <= 0) return null
-  return (item.expected_mix_pct * (item.price_cents - item.cogs_cents)) / totalMix
+function fmtPopularity(val: "low" | "medium" | "high" | null): string {
+  if (!val) return "—"
+  return val.charAt(0).toUpperCase() + val.slice(1)
 }
 
 function groupByCategory(items: MenuItemRow[]): Map<string, MenuItemRow[]> {
@@ -198,32 +159,6 @@ function makeStyles(brand: BrandTokens) {
       color: brand.colors.muted,
       marginTop: 12,
       fontStyle: "italic",
-    },
-    summaryRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      marginBottom: 10,
-    },
-    summaryCard: {
-      flex: 1,
-      minWidth: 120,
-      borderWidth: 1,
-      borderColor: brand.colors.rule,
-      padding: 8,
-      borderRadius: 4,
-    },
-    summaryLabel: {
-      fontSize: 8,
-      color: brand.colors.muted,
-      textTransform: "uppercase",
-      letterSpacing: 1,
-      marginBottom: 4,
-    },
-    summaryValue: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: brand.colors.ink,
     },
   })
 }
@@ -301,82 +236,43 @@ function OperatorPage({
 }) {
   const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived)
-  const footer = computeFooter(items)
-  const totalMix = footer?.totalMix ?? 0
 
-  // TIM-2486: label the contribution column with the active currency symbol so
-  // e.g. a CAD plan reads "CA$/100 covers" instead of "$/100 covers".
-  const sym = currencySymbol(currencyCode)
   const columns: ColumnDef[] = [
     { key: "category", label: "Category", width: 65 },
     { key: "name", label: "Item" },
     { key: "price", label: "Price", currency: true, width: 55 },
     { key: "cogs", label: "COGS", currency: true, width: 55 },
     { key: "margin_pct", label: "Margin%", width: 55 },
-    { key: "mix_pct", label: "Mix%", width: 40 },
-    { key: "contrib", label: `${sym}/100 covers`, width: 70 },
+    { key: "popularity", label: "Popularity", width: 60 },
   ]
 
   const rows: Row[] = active.map((item) => {
     const margin = computeMarginPct(item.price_cents, item.cogs_cents)
-    const contrib = itemContribPer100(item, totalMix)
     return {
       category: item.category_name ?? UNCATEGORIZED_LABEL,
       name: item.name,
       price: item.price_cents,
       cogs: item.cogs_cents,
       margin_pct: margin !== null ? `${margin.toFixed(1)}%` : "—",
-      mix_pct: `${item.expected_mix_pct.toFixed(1)}%`,
-      contrib: contrib !== null ? fmtDollar(contrib, currencyCode) : "—",
+      popularity: fmtPopularity(item.expected_popularity),
     }
   })
 
-  let totalsRow: Row | undefined
-  if (footer) {
-    totalsRow = {
-      category: "",
-      name: `${footer.count} items`,
-      price: "",
-      cogs: "",
-      margin_pct:
-        footer.weightedMargin !== null
-          ? `${fmtPct(footer.weightedMargin)} wtd`
-          : "—",
-      mix_pct:
-        footer.totalMix > 0
-          ? `${footer.totalMix.toFixed(0)}%`
-          : "—",
-      contrib:
-        footer.marginPer100 !== null
-          ? fmtDollar(footer.marginPer100, currencyCode)
-          : "—",
-    }
-  }
+  const totalsRow: Row | undefined =
+    active.length > 0
+      ? {
+          category: "",
+          name: `${active.length} items`,
+          price: "",
+          cogs: "",
+          margin_pct: "",
+          popularity: "",
+        }
+      : undefined
 
   return (
     <Page size={brand.page.size} style={styles.page}>
       <PdfHeader shopName={shopName} workspaceName="Menu — Cost analysis" brand={brand} />
-
-      {footer && (
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Weighted margin</Text>
-            <Text style={styles.summaryValue}>
-              {footer.weightedMargin !== null ? fmtPct(footer.weightedMargin) : "—"}
-            </Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Margin / 100 covers</Text>
-            <Text style={styles.summaryValue}>
-              {footer.marginPer100 !== null ? fmtDollar(footer.marginPer100, currencyCode) : "—"}
-            </Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Items</Text>
-            <Text style={styles.summaryValue}>{footer.count}</Text>
-          </View>
-        </View>
-      )}
 
       {active.length === 0 ? (
         <PdfSection title="Cost analysis" brand={brand}>
@@ -388,8 +284,7 @@ function OperatorPage({
         <PdfSection title="Item-level cost &amp; margin" brand={brand}>
           <PdfTable columns={columns} rows={rows} totalsRow={totalsRow} currencyCode={currencyCode} />
           <Text style={styles.footerNote}>
-            {sym}/100 covers = margin generated per 100 customers at the given mix.{"\n"}
-            Weighted margin = mix-weighted average margin across all priced items.
+            Margin% = (price − COGS) / price. Popularity set per item in the Menu workspace.
           </Text>
         </PdfSection>
       )}
