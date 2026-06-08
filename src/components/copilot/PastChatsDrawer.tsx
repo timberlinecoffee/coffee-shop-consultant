@@ -84,8 +84,7 @@ export function PastChatsDrawer({
                 className="absolute inset-0 bg-black/40 pointer-events-auto"
               />
               <motion.div
-                role="dialog"
-                aria-modal="true"
+                role="region"
                 aria-label="Past chats"
                 className="absolute bottom-0 inset-x-0 flex flex-col bg-[var(--background)] rounded-t-2xl border-t border-[var(--border)] pointer-events-auto"
                 style={{ height: "85vh" }}
