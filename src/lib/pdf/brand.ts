@@ -6,7 +6,7 @@ export const BRAND = {
     ink: "#0F1B11",
     paper: "#FFFFFF",
     primary: "#1A6E3B",
-    accent: "#E8C24A",
+    accent: "#155E63",
     muted: "#6B7B70",
     rule: "#D9DEDA",
   },

@@ -176,7 +176,7 @@ function makeStyles(brand: BrandTokens) {
 // indented child rows. Page numbers are per subsection.
 function TocPage({ sections, shopName, date, brand, accentColor }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; brand: BrandTokens; accentColor?: string | null }) {
   const S = makeStyles(brand);
-  const tocColor = accentColor || brand.colors.primary;
+  const tocColor = accentColor || brand.colors.accent;
   const visible = sections.filter((s) => s.isVisible);
   const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
 
@@ -263,7 +263,7 @@ function SectionPage({
   const S = makeStyles(brand);
   const content = section.userContent ?? section.autoContent;
   const isEmpty = !content || content.includes("workspace to populate");
-  const titleColor = accentColor || brand.colors.primary;
+  const titleColor = accentColor || brand.colors.accent;
   // TIM-2315: render "Business Plan" in the running header (not the section
   // title) so the body title isn't duplicated on every page.
   return (
