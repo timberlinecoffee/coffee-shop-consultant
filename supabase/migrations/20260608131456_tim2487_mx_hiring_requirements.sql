@@ -1,0 +1,71 @@
+-- TIM-2487: Add Mexico (MX) hiring requirements.
+-- Legal Analyst approved: 2026-06-08 (TIM-2550).
+-- Run after code change: add 'MX' to HiringCountry type and page.tsx normalizer first.
+-- Changes from original draft: added Employment Contract (order_index 15);
+--   updated IMSS Affiliation to include alta patronal prerequisite;
+--   corrected IMSS/INFONAVIT payment frequency from "bimonthly" to "monthly" for IMSS;
+--   corrected NOM-035 thresholds (16+ for full questionnaire, all workplaces for basic obligations);
+--   expanded PTU benefit to include prima dominical and natural-person PTU deadline.
+
+insert into public.hiring_requirement_sets
+  (country_code, category, title, body, citation_url, order_index)
+values
+  ('MX', 'Work Eligibility',
+   'IMSS Employer Registration and Worker Affiliation (Alta Patronal y Afiliacion al IMSS)',
+   'Before registering any worker, the employer must first obtain an employer registration number (numero de registro patronal) from the Instituto Mexicano del Seguro Social (IMSS). This one-time employer registration (alta patronal) is completed at the employer''s local IMSS Subdelegacion using the employer''s Registro Federal de Contribuyentes (RFC), legal identification, and proof of business address. Without an employer registration number, individual worker IMSS affiliations cannot be filed. Once registered as an employer, the employer must register each new worker with IMSS no later than the business day following the date on which the employment relationship begins, under Article 15, fraction I of the Ley del Seguro Social (LSS). Registration is completed through the IMSS Patrones portal (idse.imss.gob.mx) or via SUA (Sistema Unico de Autodeterminacion) software using the employer''s electronic signature (e.firma or FIEL) issued by SAT. The employer must also notify IMSS of each salary change and termination within five business days. Failure to register an employee exposes the employer to fines of 20 to 350 UMAS per violation (Art. 304-A LSS) and full retroactive liability for unpaid contributions, surcharges, and updates from the unregistered start date. IMSS registration simultaneously activates the worker''s INFONAVIT affiliation; separate INFONAVIT enrollment per worker is not required.',
+   'https://www.imss.gob.mx/patrones/afiliacion',
+   10),
+
+  ('MX', 'Work Eligibility',
+   'Employment Contract (Contrato Individual de Trabajo)',
+   'Before or on the first day of work, every employer must give each worker a written individual employment contract (contrato individual de trabajo) per Article 25 LFT. The contract must include the names and addresses of both the employer and worker, the start date, the job title and work location, the agreed salary and how it will be paid, the daily working hours and designated weekly rest day, training commitments, and any other agreed conditions. Both parties sign two copies; the worker keeps one. Employers must retain their signed copy for the full term of employment plus one year after termination. Failure to provide a written contract shifts the legal burden of proof in any labor dispute to the employer: under Article 804 LFT, courts presume that the worker is owed any benefit they claim that the employer cannot document. Coffee shops hiring workers for a defined project or a fixed term must state the limited duration clearly in the contract; any arrangement without a stated end date is presumed indefinite under Article 35 LFT.',
+   'https://www.stps.gob.mx/bp/secciones/conoce/marco_juridico/marco_juridico/pdf/LFT.pdf',
+   15),
+
+  ('MX', 'Work Eligibility',
+   'RFC and CURP Collection',
+   'Before the first payroll payment, employers must collect each worker''s Registro Federal de Contribuyentes (RFC) issued by the Servicio de Administracion Tributaria (SAT) and the worker''s Clave Unica de Registro de Poblacion (CURP). Both identifiers are required to issue a valid CFDI de nomina (digital payroll voucher) under Article 99, fraction III of the Ley del Impuesto sobre la Renta (LISR) and the SAT Anexo 20 technical specifications. Workers without an RFC may register at any SAT office or at sat.gob.mx; the process requires the CURP, a valid government-issued ID, and proof of address. Employers who issue payroll CFDI with an incorrect or missing RFC risk cancellation of the voucher and potential disallowance of the payroll expense deduction under Article 31 LISR. Both the RFC and CURP must be retained in each worker''s personnel file for the duration of employment plus five years under Article 30 of the Codigo Fiscal de la Federacion (CFF).',
+   'https://www.sat.gob.mx/personas/tramites/registro-en-el-rfc',
+   20),
+
+  ('MX', 'Payroll/Tax Registration',
+   'SAT Payroll Tax Withholding and CFDI Nomina',
+   'Employers must calculate and withhold Impuesto sobre la Renta (ISR) from each employee''s wages every pay period using the monthly tariff tables in Article 96 LISR, and must issue a stamped digital payroll voucher (CFDI de nomina version 1.2 or current SAT specification) through a SAT-authorized certification service provider (PAC) within 24 hours of each payroll payment, per the Resolucion Miscelanea Fiscal. Withheld ISR amounts are remitted via SIPARE or a bank debit instruction monthly by the 17th of the following month. An annual ISR adjustment must be prepared for each employee by February 28 of the year following the tax year (Art. 99, fraction III LISR). CFDI nomina records, including XML files, must be retained for at least five years (Art. 30 CFF). Microenterprises meeting SAT revenue thresholds may use the free Factura Electronica or Mis Cuentas platforms. Errors in the CFDI nomina (incorrect RFC, wrong salary concept codes, or missing data nodes) result in an invalid voucher and may trigger an audit.',
+   'https://www.sat.gob.mx/consultas/20872/conoce-los-comprobantes-de-nomina',
+   30),
+
+  ('MX', 'Payroll/Tax Registration',
+   'IMSS and INFONAVIT Contributions',
+   'Employers must calculate and remit IMSS contributions monthly, by the 17th calendar day of the month following each payroll period, per Article 39 LSS. Total employer IMSS contributions are approximately 20.40 percent of each worker''s Salario Base de Cotizacion (SBC), distributed across Enfermedades y Maternidad, Invalidez y Vida, Guarderias y Prestaciones Sociales, Retiro, Cesantia en Edad Avanzada y Vejez, and Riesgos de Trabajo (variable rate by employer risk classification). The INFONAVIT employer housing contribution is 5 percent of SBC under Article 29, fraction II of the Ley del INFONAVIT; the INFONAVIT law establishes a bimonthly (bimestral) payment cycle under Article 35, but in practice both IMSS and INFONAVIT amounts are calculated and paid together monthly through SUA software generating a Linea de Captura at SIPARE.imss.gob.mx. The SBC cannot be less than the applicable daily minimum wage, and is capped at 25 UMAS per day for most contribution programs. Late payment accrues actualizacion (cost-of-living indexation) and monthly recargos at the rate published under CFF Article 21. Employers must reconcile and confirm SBC values monthly; unresolved discrepancies may generate automatic penalty notices from IMSS.',
+   'https://www.imss.gob.mx/patrones/pago-cuotas',
+   40),
+
+  ('MX', 'Payroll/Tax Registration',
+   'Minimum Wage Compliance (Salario Minimo)',
+   'Mexico establishes two minimum daily wage rates, updated each January by the Comision Nacional de los Salarios Minimos (CONASAMI). From 1 January 2025, the general minimum wage is MXN 278.80 per calendar day, applicable to all workers outside the northern border zone. For workers in the Zona Libre de la Frontera Norte (ZLFN) covering municipalities bordering the United States in Baja California, Sonora, Chihuahua, Coahuila, Nuevo Leon, and Tamaulipas, the daily minimum is MXN 419.88. Workers paid by the hour must receive at least the daily rate divided by the contractual daily hours (Art. 83 LFT). Employers must verify CONASAMI''s current rates each December at conasami.gob.mx, as rates increase annually in January by government decree. Paying below the applicable minimum wage violates Article 90 LFT and is subject to inspection by the Secretaria del Trabajo y Prevision Social (STPS) and state labor authorities, with fines assessed per worker per day of non-compliance.',
+   'https://www.conasami.gob.mx/',
+   50),
+
+  ('MX', 'Required Notices',
+   'Reglamento Interior de Trabajo and NOM-035',
+   'Employers with more than 10 workers must prepare, deposit with the local Conciliacion y Arbitraje centre, and post a Reglamento Interior de Trabajo (internal workplace regulations) within two months of reaching that threshold, under Articles 422 to 425 LFT. The reglamento must specify working hours, meal and rest breaks, payday and payment method, disciplinary rules, and health and safety procedures. A current copy must be posted in a visible, accessible location in each workplace. All workplaces, regardless of worker count, must comply with the basic provisions of NOM-035-STPS-2018 (Psychosocial Risk Factors; DOF 23 October 2018), including identifying traumatic events at work and adopting preventive measures. Workplaces with 16 or more workers must also apply the standardized psychosocial risk screening questionnaire at least once every 12 months, post a policy statement on prevention of workplace violence and stress, and retain screening records for at least five years. Workplaces with more than 50 workers must carry out a full organizational environment evaluation and maintain a formal risk prevention program. Inspectors from the STPS Inspeccion del Trabajo directorate may request both the registered reglamento and NOM-035 documentation during routine or complaint-triggered inspections.',
+   'https://www.stps.gob.mx/',
+   60),
+
+  ('MX', 'Required Notices',
+   'Vacations, Aguinaldo, Sunday Premium, and Profit Sharing (PTU)',
+   'Four statutory benefits apply to all workers under the LFT, regardless of business size. First, vacations (Art. 76 LFT, as amended in 2023): workers earn at least 12 paid vacation days after the first completed year, 14 after the second, 16 after the third, 18 after the fourth, 20 after the fifth, and 2 additional days for every subsequent five-year period. A vacation premium (prima vacacional) of at least 25 percent of vacation-day salary is also mandatory (Art. 80 LFT). Second, aguinaldo (Art. 87 LFT): a year-end bonus of at least 15 days of base salary, proportional for workers with less than one year of service, must be paid before December 20 each year. Third, Sunday premium (prima dominical, Art. 71 LFT): any worker required to work on their designated weekly rest day is entitled to a premium of at least 25 percent above their regular daily salary. Coffee shops operating seven days a week must pay this premium to workers scheduled on their rest day; it must appear as a separate line item on the payroll CFDI. Fourth, profit sharing (PTU, Arts. 117 to 131 LFT; Art. 9 LISR): employers must distribute 10 percent of annual taxable income among eligible workers. Each worker''s PTU share is capped at three months of salary or the average PTU paid over the prior three years, whichever is greater (2021 LFT reform). PTU must be paid within 60 days of filing the annual ISR return. For employers structured as legal entities (personas morales), the ISR return is due March 31, making the PTU deadline May 30. For employers who are natural persons (personas fisicas con actividad empresarial), which is the most common structure for a small independent coffee shop, the ISR return is due April 30, making the PTU deadline June 29.',
+   'https://www.stps.gob.mx/bp/secciones/conoce/marco_juridico/marco_juridico/pdf/LFT.pdf',
+   70),
+
+  ('MX', 'Food Safety',
+   'Sanitary Operating Permit (COFEPRIS / State Health Secretariat)',
+   'Food and beverage establishments in Mexico must obtain a sanitary authorization before commencing operations. Coffee shops and food service businesses typically require an aviso de funcionamiento (health notice) or a licencia sanitaria from the state Secretaria de Salud, as jurisdiction over food service falls to state health authorities under the Ley General de Salud (LGS) and the Reglamento de Control Sanitario de Productos y Servicios. In Mexico City, applications are submitted to SEDESA (Secretaria de Salud de la Ciudad de Mexico). Documentation typically includes a floor plan showing food preparation and storage areas, a description of food activities, proof of potable water supply, and staff health certificates. Separate permits may be required from the municipal government: a licencia de uso de suelo and a licencia de funcionamiento (commercial operating permit). All health permits must be displayed prominently in the establishment and renewed annually or upon significant change to the premises. Operating without a valid permit is a sanitary offence under Article 368 LGS, subject to fines and immediate closure.',
+   'https://www.gob.mx/cofepris',
+   80),
+
+  ('MX', 'Food Safety',
+   'Food Handler Training (NOM-251-SSA1-2009)',
+   'Norma Oficial Mexicana NOM-251-SSA1-2009 (Practicas de higiene para el proceso de alimentos, bebidas o suplementos alimenticios; published in the DOF on 1 March 2010) establishes mandatory hygiene requirements for all food and beverage businesses. Employers must ensure that every food-handling employee receives documented training in personal hygiene, temperature control, cross-contamination prevention, and equipment cleaning and sanitization before beginning food handling work and at least annually thereafter. Training may be delivered by a qualified in-house trainer or an external food safety instructor. NOM-251 also requires employers to conduct daily health screenings for food handlers and to exclude any worker with symptoms of gastrointestinal illness, skin infection, or open wounds from food-contact tasks. State health authority inspectors verify NOM-251 compliance during routine inspections; documented deficiencies may result in a warning order (medida de seguridad), fine, or suspension of food handling operations until corrected.',
+   'https://www.dof.gob.mx/nota_detalle.php?codigo=5133449&fecha=01/03/2010',
+   90);
