@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } from "@/lib/financial-projection";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -77,6 +78,10 @@ export function StartupTab({
 }: Props) {
   const f = (v: number) => fmt(v, currencyCode);
 
+  // TIM-2524: track session-level "keep override" so the mismatch warning
+  // doesn't re-appear after the user explicitly acknowledges it.
+  const [keepEquipmentOverride, setKeepEquipmentOverride] = useState(false);
+
   // ── Capital Assets section ──────────────────────────────────────────────────
   const realCapexLines = (capexLines ?? []).filter(
     (l) => l.category === "capex" && !l.linked_equipment_item_id
@@ -88,6 +93,18 @@ export function StartupTab({
   const legacyBuildout = startupCosts.buildout_cents ?? 0;
   const legacyEquipment = startupCosts.equipment_cents ?? 0;
   const hasLegacyLumpSums = (legacyBuildout > 0 || legacyEquipment > 0) && !hasPerAssetData;
+
+  // TIM-2524: warn when the legacy startup_costs.equipment_cents lump sum and the
+  // buildout workspace total disagree by more than 10%. Only relevant when real
+  // equipment items exist (otherwise equipmentTotalCents IS equipment_cents, no mismatch).
+  const showEquipmentMismatch =
+    hasEquipmentItems &&
+    legacyEquipment > 0 &&
+    equipmentTotalCents > 0 &&
+    !keepEquipmentOverride &&
+    Math.abs(legacyEquipment - equipmentTotalCents) /
+      Math.max(legacyEquipment, equipmentTotalCents) >
+      0.10;
 
   const capexRows: CapexRow[] = [];
   if (hasPerAssetData) {
@@ -247,6 +264,37 @@ export function StartupTab({
           currencyCode={currencyCode}
           formatCurrency={f}
         />
+      )}
+
+      {/* TIM-2524: equipment mismatch warning — shown when startup_costs.equipment_cents
+          and the buildout workspace total disagree by more than 10%. */}
+      {showEquipmentMismatch && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-800">Equipment Totals Don&apos;t Match</p>
+          <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+            Your Startup Costs equipment line ({f(legacyEquipment)}) doesn&apos;t match the
+            equipment you&apos;ve added in Buildout &amp; Equipment ({f(equipmentTotalCents)}).
+            Update one to keep your plan accurate.
+          </p>
+          {canEdit && (
+            <div className="flex items-center gap-3 mt-3">
+              <button
+                type="button"
+                onClick={() => onUpdateField("equipment_cents", equipmentTotalCents)}
+                className="text-xs font-semibold text-white bg-amber-700 rounded-lg px-3 py-1.5 hover:bg-amber-800 transition-colors"
+              >
+                Use Buildout Total
+              </button>
+              <button
+                type="button"
+                onClick={() => setKeepEquipmentOverride(true)}
+                className="text-xs font-medium text-amber-800 hover:underline"
+              >
+                Keep Override
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Startup cost table */}
