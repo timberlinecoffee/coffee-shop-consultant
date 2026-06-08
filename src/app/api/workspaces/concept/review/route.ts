@@ -111,6 +111,23 @@ export async function POST(request: Request) {
     ? (onboarding.shop_type as string[]).join(", ")
     : String(onboarding?.shop_type ?? "not specified");
 
+  // TIM-2505: per-type framing so the AI does not suggest seating, neighborhood
+  // integration, or fixed-location considerations for mobile/drive-through types.
+  // Multi-select: if more than one type was selected, shopType is a comma-joined
+  // string; we match on the first recognised segment.
+  const SHOP_TYPE_CONTEXT: Record<string, string> = {
+    "Mobile cart or pop-up": "The owner operates a mobile unit. Questions about fixed seating, neighborhood integration, and walk-in foot traffic do not apply. Focus on pitch location, vehicle/trailer setup, permit status, and how quality holds at speed and volume.",
+    "Mobile cart or kiosk": "The owner operates a mobile unit. Questions about fixed seating, neighborhood integration, and walk-in foot traffic do not apply. Focus on pitch location, vehicle/trailer setup, permit status, and how quality holds at speed and volume.",
+    "Drive-through": "The owner operates a drive-through or kiosk. The customer experience is measured in seconds. Focus on throughput, queue management, site visibility, and how quality holds at drive-through pace.",
+    "Roastery cafe": "The owner runs a production roastery with a cafe component. Production scale, wholesale accounts, cupping program, and customer-facing roast visibility are central. The concept statement should reflect which revenue channel leads.",
+    "Espresso bar (drinks only)": "The owner runs a drinks-only espresso bar. No food program. The concept statement should reflect what the drinks-only focus signals and how the bar earns the visit without a food anchor.",
+    "Co-working / Hybrid space": "The owner operates a cafe designed for extended work sessions. Membership model, seating policy, noise policy, and power access are part of the product. The concept statement should describe the working environment as much as the coffee.",
+  };
+  const shopTypeNote =
+    Object.entries(SHOP_TYPE_CONTEXT).find(([key]) =>
+      shopType.includes(key),
+    )?.[1] ?? "";
+
   const fieldsBlock = targets
     .map(
       (id) =>
@@ -123,7 +140,7 @@ export async function POST(request: Request) {
 ## Founder profile
 - Budget: ${String(onboarding?.budget ?? "not specified")}
 - Stage: ${String(onboarding?.stage ?? "not specified")}
-- Shop type: ${shopType}
+- Shop type: ${shopType}${shopTypeNote ? `\n- Shop type context: ${shopTypeNote}` : ""}
 
 ## The full concept so far
 ${formatConceptV2ForAI(doc)}

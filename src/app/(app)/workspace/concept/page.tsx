@@ -38,7 +38,7 @@ export default async function ConceptWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, onboarding_data")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -61,6 +61,9 @@ export default async function ConceptWorkspacePage() {
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
 
+  const onboarding = (profile?.onboarding_data as Record<string, unknown>) ?? {};
+  const shopType = (onboarding.shop_type as string | string[] | undefined) ?? null;
+
   return (
     <ConceptWorkspace
       planId={plan.id}
@@ -68,6 +71,7 @@ export default async function ConceptWorkspacePage() {
       initialUpdatedAt={doc?.updated_at ?? null}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      shopType={shopType}
     />
   );
 }
