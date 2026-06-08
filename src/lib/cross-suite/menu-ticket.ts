@@ -126,7 +126,7 @@ export function detectMenuTicketMismatch(
       {
         id: suggestionId(["menu_ticket_mismatch", "sync_forecast_to_menu", "financials", "forecast", "avg_ticket_cents"]),
         fieldId: "cross_suite:menu_ticket_mismatch:sync_forecast_to_menu:financials:forecast:avg_ticket_cents",
-        fieldLabel: "Financials — Forecast avg ticket",
+        fieldLabel: "Financials -- Forecast avg ticket",
         originalValue: fmtCents(forecastCents, cc),
         proposedValue: fmtCents(menuCents, cc),
         isStructured: true,
@@ -193,7 +193,7 @@ function buildSyncForecastEffects(
     {
       suite: "Financials",
       field: "Revenue projection",
-      from: "—",
+      from: "(empty)",
       to: delta > 0
         ? `Daily and monthly revenue scale up proportionally with the higher ticket`
         : `Daily and monthly revenue scale down proportionally with the lower ticket`,
@@ -202,7 +202,7 @@ function buildSyncForecastEffects(
     {
       suite: "Plan",
       field: "Break-even point",
-      from: "—",
+      from: "(empty)",
       to: delta > 0
         ? "Break-even transactions drop (each ticket covers more fixed cost)"
         : "Break-even transactions rise (each ticket covers less fixed cost)",

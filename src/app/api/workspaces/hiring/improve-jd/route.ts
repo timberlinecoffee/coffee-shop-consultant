@@ -79,9 +79,9 @@ Respond with a JSON object in this exact format (no markdown fences):
 Rules:
 - No emojis.
 - Keep it concise and human — this is not a corporate HR document.
-- "gaps" is an array of objects (max 3). Empty array if none. Every gap MUST carry recommendation, next_step, and why — never list a gap without telling the owner exactly what to do.
+- "gaps" is an array of objects (max 3). Empty array if none. Every gap MUST carry recommendation, next_step, and why -- never list a gap without telling the owner exactly what to do.
 - "competitorNote" is null if not useful.
-- Voice: founder-direct. NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, actually, genuinely, honestly.`;
+- Voice: knowledgeable friend, not consultant. Plain English. Direct. NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, journey, seamlessly, robust, holistic, comprehensive, innovative, passionate about, actually, genuinely, honestly. NEVER use em dashes (—); use ( -- ) if you need a pause.`;
 
   try {
     const response = await anthropic.messages.create({

@@ -37,7 +37,8 @@ This section merges Menu & Pricing with Marketing -- treat them as one go-to-mar
 
   "execution-operations": `Length: 400 to 600 words. Four to six paragraphs covering both location/real estate and equipment.
 Structure: Paragraph 1 -- chosen location: address, neighborhood context, why this site. Paragraph 2 -- lease terms (sq ft, monthly rent, per-sq-ft rate, term length, renewal options, abatements). Paragraph 3 -- physical condition of the space and what the build-out entails. Paragraph 4 -- espresso program equipment (name specific machines). Paragraph 5 -- kitchen equipment and production capacity. Paragraph 6 -- service contracts and maintenance reserve.
-This section merges Location & Real Estate with Equipment & Supplies. State the actual rent, sq ft, and equipment cost numbers. Explain the reasoning behind major choices, not just what was purchased.`,
+This section merges Location & Real Estate with Equipment & Supplies. State the actual rent, sq ft, and equipment cost numbers. Explain the reasoning behind major choices, not just what was purchased.
+When referencing lease terms: spell out CAM as "common area maintenance (CAM)", NNN as "triple net (NNN)", and TI allowance as "tenant improvement allowance (TI allowance)" on first use. Never assume the owner knows the abbreviation.`,
 
   "execution-milestones-metrics": `Length: 300 to 450 words. Three to four paragraphs.
 Structure: Paragraph 1 -- overview of the timeline and how many milestones, with the date range. Paragraph 2 -- construction and procurement phase (what has long lead times, what must happen first). Paragraph 3 -- training phase (who trains when, what the readiness bar is). Paragraph 4 -- soft open, public opening, and the operational metrics tracked from day one (transactions per day target, average ticket, opening waste percentage, staff retention through month three).
