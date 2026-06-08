@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } from "@/lib/financial-projection";
+import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt, loanMonthlyPaymentCents } from "@/lib/financial-projection";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
@@ -205,14 +205,9 @@ export function StartupTab({
   const totalFunding = founderTotal + investorTotal + grantTotal + loanTotal;
   const fundingGap = totalStartup - totalFunding;
 
-  const monthlyPaymentFor = (line: FundingSourceLine) => {
-    const p = line.amount_cents;
-    const n = Math.max(0, line.term_months ?? 0);
-    const r = ((line.annual_rate_pct ?? 0) / 100) / 12;
-    if (p <= 0 || n <= 0) return 0;
-    if (r <= 0) return Math.round(p / n);
-    return Math.round((p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
-  };
+  // TIM-2479: annuity math centralized in src/lib/financial-projection.ts.
+  const monthlyPaymentFor = (line: FundingSourceLine) =>
+    loanMonthlyPaymentCents(line.amount_cents, line.annual_rate_pct ?? 0, line.term_months ?? 0);
   const totalMonthlyLoanPayment = loanLines.reduce((acc, l) => acc + monthlyPaymentFor(l), 0);
 
   const inputCls =

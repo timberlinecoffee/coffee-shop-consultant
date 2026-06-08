@@ -1570,6 +1570,19 @@ export function personnelLoadedMonthlyCents(line: PersonnelLine): number {
   );
 }
 
+// TIM-2479: single annuity formula for UI previews (Startup, Funding tabs).
+// Thin wrapper over loanMonthlyPaymentCentsFor that takes annual rate % so
+// callers don't have to remember the /100/12 conversion. Origination fees,
+// rounding tweaks, day-count changes happen here once.
+export function loanMonthlyPaymentCents(
+  principalCents: number,
+  annualRatePct: number,
+  termMonths: number
+): number {
+  const monthlyRate = ((annualRatePct ?? 0) / 100) / 12;
+  return loanMonthlyPaymentCentsFor(principalCents, monthlyRate, termMonths);
+}
+
 // One-time capex: charged in full on its start_month (or month 1 if no ramp).
 function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number {
   const startMonth = line.ramp?.enabled ? Math.max(1, line.ramp.start_month) : 1;

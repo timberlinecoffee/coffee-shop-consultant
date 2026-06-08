@@ -11,7 +11,7 @@ import type {
   FundingKind,
   FinancialInputs,
 } from "@/lib/financial-projection";
-import { fmt } from "@/lib/financial-projection";
+import { fmt, loanMonthlyPaymentCents } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -63,14 +63,11 @@ function newLine(kind: FundingKind): FundingSourceLine {
   }
 }
 
-function loanMonthlyPaymentCents(line: FundingSourceLine): number {
+// TIM-2479: annuity math moved to src/lib/financial-projection.ts. This local
+// wrapper preserves the (line) call shape; kind guard keeps non-loan rows safe.
+function paymentForLine(line: FundingSourceLine): number {
   if (line.kind !== "loan") return 0;
-  const p = line.amount_cents;
-  const n = Math.max(0, line.term_months ?? 0);
-  const r = ((line.annual_rate_pct ?? 0) / 100) / 12;
-  if (p <= 0 || n <= 0) return 0;
-  if (r <= 0) return Math.round(p / n);
-  return Math.round(p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+  return loanMonthlyPaymentCents(line.amount_cents, line.annual_rate_pct ?? 0, line.term_months ?? 0);
 }
 
 interface LineRowProps {
@@ -168,7 +165,7 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
             </div>
             <div className="text-xs text-[var(--muted-foreground)] pb-1.5">
               <span className="block text-[10px] uppercase tracking-wider text-[var(--dark-grey)]">Monthly Payment</span>
-              <span className="font-semibold text-[var(--teal)]">{fmt(loanMonthlyPaymentCents(line), currencyCode)}</span>
+              <span className="font-semibold text-[var(--teal)]">{fmt(paymentForLine(line), currencyCode)}</span>
             </div>
           </>
         )}
@@ -319,7 +316,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
     inputs.opening_cash_buffer_cents;
 
   const gap = totalUses - sourcesTotal;
-  const totalMonthlyLoanPayment = byKind.loan.reduce((s, l) => s + loanMonthlyPaymentCents(l), 0);
+  const totalMonthlyLoanPayment = byKind.loan.reduce((s, l) => s + paymentForLine(l), 0);
   const investorOwnership = byKind.investor_equity.reduce((s, l) => s + (l.pct_ownership ?? 0), 0);
 
   function setKindLines(kind: FundingKind, next: FundingSourceLine[]) {
