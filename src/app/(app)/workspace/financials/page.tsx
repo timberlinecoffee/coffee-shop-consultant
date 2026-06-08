@@ -15,6 +15,10 @@ import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
 import { calibrateStartupCosts } from "@/lib/financials/startup-cost-calibration";
 import { calibrateRevenue } from "@/lib/financials/revenue-calibration";
+import {
+  calibrateRent,
+  applyCalibratedRentToForecastLines,
+} from "@/lib/financials/rent-calibration";
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
@@ -115,6 +119,16 @@ export default async function FinancialsWorkspacePage() {
     });
     forecastInputs.daily_flow = calibratedRevenue.daily_flow;
     forecastInputs.avg_ticket_cents = calibratedRevenue.avg_ticket_cents;
+    // TIM-2522 (CQ-08): seed Rent from a shop-type × city-tier USD baseline,
+    // FX-converted into the plan's currency. Default $4,500/mo was wrong for
+    // 4 of 6 onboarded geographies.
+    const calibratedRentCents = calibrateRent({
+      shopTypes,
+      city: planGeo.city ?? onboardingLocation?.city ?? null,
+      countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
+      currencyCode: forecastInputs.currency_code,
+    });
+    applyCalibratedRentToForecastLines(forecastInputs.forecast_lines, calibratedRentCents);
     const { data: created } = await supabase
       .from("financial_models")
       .insert({
