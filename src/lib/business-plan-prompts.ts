@@ -138,6 +138,11 @@ export interface BpPromptInputs {
   founderBudget: string;
   founderLocation: string;
   founderStage: string;
+  // TIM-2466: shop_type (e.g. "Drive-through", "Mobile cart or kiosk",
+  // "Roastery cafe") is the strongest persona signal when the workspace
+  // modules are empty. Without it the prompt collapsed to a generic café
+  // and every persona rendered byte-identical content (CQ-06).
+  founderShopType: string;
   // TIM-2334: optional plan_state ground-truth payload. When provided, the
   // narrative is forbidden from inventing numbers — every quantitative claim
   // must match this block so narrative + financial tables agree. Plain string
@@ -199,6 +204,7 @@ ${sectionSpec}`;
     const userMessage = `Write the executive summary for ${inp.shopName}.
 
 Founder context:
+- Shop type: ${inp.founderShopType}
 - Budget: ${inp.founderBudget}
 - Location: ${inp.founderLocation}
 - Stage: ${inp.founderStage}
@@ -219,6 +225,7 @@ ${sectionSpec}`;
   const userMessage = `Write the "${inp.sectionTitle}" section for ${inp.shopName}.
 
 Founder context:
+- Shop type: ${inp.founderShopType}
 - Budget: ${inp.founderBudget}
 - Location: ${inp.founderLocation}
 - Stage: ${inp.founderStage}

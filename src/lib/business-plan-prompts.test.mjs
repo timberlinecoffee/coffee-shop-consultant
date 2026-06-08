@@ -15,6 +15,10 @@ const baseInputs = {
   founderBudget: "$300k",
   founderLocation: "United States",
   founderStage: "Lease signed",
+  // TIM-2466: shop_type — strongest persona signal when workspace modules
+  // are empty. Without it /generate and /regenerate-all collapsed to a
+  // generic café (CQ-06 byte-identical content).
+  founderShopType: "Full cafe with food",
 };
 
 test("executive-summary uses the executive-summary system + user message shape", () => {
@@ -107,6 +111,55 @@ test("source-marker + benchmarks both ship for executive-summary path", () => {
   assert.match(out.systemPrompt, /Source-marker rule/);
   assert.match(out.userMessage, /Industry Benchmarks/);
   assert.match(out.userMessage, /Avg ticket: \$6-\$9/);
+});
+
+// TIM-2466: shop_type belongs in the founder context block so persona
+// signal reaches the LLM even when workspace modules are empty.
+test("founder context includes shop_type line (executive-summary path)", () => {
+  const out = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "executive-summary",
+    sectionTitle: "Executive Summary",
+    sectionAutoContent: "",
+    founderShopType: "Drive-through",
+  });
+  assert.match(out.userMessage, /Shop type: Drive-through/);
+});
+
+test("founder context includes shop_type line (non-executive section path)", () => {
+  const out = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "execution-operations",
+    sectionTitle: "Operations",
+    sectionAutoContent: "Address: 100 Main St.",
+    founderShopType: "Mobile cart or kiosk",
+  });
+  assert.match(out.userMessage, /Shop type: Mobile cart or kiosk/);
+});
+
+test("shop_type lift makes two personas produce distinct prompts even with empty workspaces", () => {
+  // CQ-06 regression: every persona produced the same prompt because shop_type
+  // never reached the prompt. With the lift, two personas with different
+  // shop_type strings must produce distinct userMessage payloads.
+  const fullCafe = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "executive-summary",
+    sectionTitle: "Executive Summary",
+    sectionAutoContent: "",
+    planSnapshot: "",
+    founderShopType: "Full cafe with food",
+  });
+  const mobileCart = buildBpSectionPrompt({
+    ...baseInputs,
+    sectionKey: "executive-summary",
+    sectionTitle: "Executive Summary",
+    sectionAutoContent: "",
+    planSnapshot: "",
+    founderShopType: "Mobile cart or kiosk",
+  });
+  assert.notEqual(fullCafe.userMessage, mobileCart.userMessage);
+  assert.match(fullCafe.userMessage, /Shop type: Full cafe with food/);
+  assert.match(mobileCart.userMessage, /Shop type: Mobile cart or kiosk/);
 });
 
 test("source-marker + benchmarks are absent when not provided (no extra empty lines)", () => {

@@ -28,6 +28,7 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { useBusinessPlanProgressOverlay } from "@/hooks/useBusinessPlanProgressOverlay";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
+import { PreGenerateChecklist, type PreGenerateChecklistItem } from "./pre-generate-checklist";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
@@ -41,6 +42,10 @@ interface Props {
   initialCoverSettings: CoverSettings;
   logoPublicUrl: string | null;
   initialFinancialDocuments: FinancialDocumentState[];
+  // TIM-2466: Empty source workspaces produced byte-identical BP content
+  // across personas (CQ-06). The checklist names the unfinished workspaces
+  // and links to each so the founder can fill them before clicking Generate.
+  preGenerateChecklist: PreGenerateChecklistItem[];
 }
 
 interface SectionState extends BusinessPlanSectionData {
@@ -146,6 +151,7 @@ export function BusinessPlanWorkspace({
   initialCoverSettings,
   logoPublicUrl,
   initialFinancialDocuments,
+  preGenerateChecklist,
 }: Props) {
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
@@ -655,6 +661,11 @@ export function BusinessPlanWorkspace({
         <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
           {visibleCount} of {sections.length} sections visible
         </p>
+
+        {/* TIM-2466: pre-generate checklist. Renders only when at least one
+            source workspace (Concept, Menu & Pricing, Marketing, Hiring) is
+            empty — the trigger condition for CQ-06 byte-identical content. */}
+        <PreGenerateChecklist items={preGenerateChecklist} />
 
         {globalError && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">

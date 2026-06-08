@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { BusinessPlanWorkspace } from "./business-plan-workspace";
 import type { CoverSettings } from "./cover-branding-panel";
+import type { PreGenerateChecklistItem } from "./pre-generate-checklist";
 import { buildInitialFinancialDocuments } from "@/lib/business-plan-financials";
 import type { CoverTemplateId } from "@/lib/pdf/business-plan/covers";
 import {
@@ -208,6 +209,51 @@ export default async function BusinessPlanWorkspacePage() {
     (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
   );
 
+  // TIM-2466: Pre-generate checklist. The four source workspaces below feed
+  // the assembler functions that build BP autoContent. When they are all
+  // empty (the state of every test persona in TIM-2459), the assembled
+  // content collapses to empty strings and the LLM generates a generic café
+  // plan that reads byte-identical across personas. The banner nudges the
+  // founder to fill in whatever is missing before clicking Generate.
+  const conceptContent = conceptDoc?.content as Record<string, unknown> | null | undefined;
+  const marketingContent = marketingDoc?.content as Record<string, unknown> | null | undefined;
+  const hasAnyNonEmpty = (doc: Record<string, unknown> | null | undefined): boolean => {
+    if (!doc) return false;
+    return Object.values(doc).some((v) => {
+      if (v == null) return false;
+      if (typeof v === "string") return v.trim().length > 0;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "object") return Object.keys(v as object).length > 0;
+      return true;
+    });
+  };
+  const preGenerateChecklist: PreGenerateChecklistItem[] = [
+    {
+      key: "concept",
+      label: "Concept",
+      href: "/workspace/concept",
+      complete: hasAnyNonEmpty(conceptContent),
+    },
+    {
+      key: "menu",
+      label: "Menu & Pricing",
+      href: "/workspace/menu-pricing",
+      complete: (menuRows ?? []).length > 0,
+    },
+    {
+      key: "marketing",
+      label: "Marketing",
+      href: "/workspace/marketing",
+      complete: hasAnyNonEmpty(marketingContent),
+    },
+    {
+      key: "hiring",
+      label: "Hiring",
+      href: "/workspace/hiring",
+      complete: (hiringRows ?? []).length > 0,
+    },
+  ];
+
   // Get a signed URL for the logo preview (1 hour).
   let logoPublicUrl: string | null = null;
   if (coverRow?.logo_path) {
@@ -227,6 +273,7 @@ export default async function BusinessPlanWorkspacePage() {
       initialCoverSettings={initialCoverSettings}
       logoPublicUrl={logoPublicUrl}
       initialFinancialDocuments={initialFinancialDocuments}
+      preGenerateChecklist={preGenerateChecklist}
     />
   );
 }
