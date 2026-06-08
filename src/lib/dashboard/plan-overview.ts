@@ -65,6 +65,12 @@ export interface ConflictItem {
   href: string | null;
 }
 
+export interface NextWorkspace {
+  href: string;
+  label: string;
+  blurb: string;
+}
+
 export interface PlanOverview {
   planId: string | null;
   status: PlanStatus;
@@ -72,6 +78,7 @@ export interface PlanOverview {
   activity: ActivityItem[];
   conflicts: ConflictItem[];
   lastConflictCheckAt: string | null;
+  nextWorkspace: NextWorkspace | null;
 }
 
 interface CountedStatusRow {
@@ -338,6 +345,17 @@ export async function loadPlanOverview(
 
   const activity = buildActivity(statusRows, Date.now());
 
+  const sortedByModule = [...UNLOCKED_MANIFEST].sort((a, b) => a.moduleNumber - b.moduleNumber);
+  const nextWorkspace: NextWorkspace | null = (() => {
+    for (const item of sortedByModule) {
+      const s = statusByKey.get(item.workspaceKey);
+      if (!s || s === "not_started") {
+        return { href: item.href, label: item.label, blurb: item.blurb };
+      }
+    }
+    return null;
+  })();
+
   return {
     planId,
     status,
@@ -345,5 +363,6 @@ export async function loadPlanOverview(
     activity,
     conflicts,
     lastConflictCheckAt,
+    nextWorkspace,
   };
 }

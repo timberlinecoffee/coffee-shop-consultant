@@ -167,6 +167,7 @@ function NavItem({
   isActive,
   collapsed,
   showStatus,
+  isNextWorkspace,
   onNavigate,
 }: {
   item: WorkspaceNavItem;
@@ -174,6 +175,7 @@ function NavItem({
   collapsed: boolean;
   // TIM-1213: when false (Menu mode), suppress all per-item status chrome.
   showStatus: boolean;
+  isNextWorkspace: boolean;
   onNavigate?: () => void;
 }) {
   // TIM-1152: surface manual status as a color-coded pill on every workspace
@@ -250,6 +252,8 @@ function NavItem({
     );
   }
 
+  const showPill = status !== "not_started";
+
   return (
     <Link
       href={item.href}
@@ -270,9 +274,15 @@ function NavItem({
           </span>
         )}
       </div>
-      <div className="pl-[22px]">
-        <SidebarStatusPill status={status} />
-      </div>
+      {showPill ? (
+        <div className="pl-[22px]">
+          <SidebarStatusPill status={status} />
+        </div>
+      ) : isNextWorkspace ? (
+        <div className="pl-[22px]">
+          <span className="text-[10px] text-[var(--muted-foreground)]">Up next →</span>
+        </div>
+      ) : null}
     </Link>
   );
 }
@@ -463,6 +473,12 @@ function SidebarContent({
     useCategoryCollapsed();
   const { showStatus, toggle: toggleShowStatus } = useShowStatus();
 
+  const nextWorkspaceKey = (() => {
+    const sorted = [...items].sort((a, b) => a.moduleNumber - b.moduleNumber);
+    const next = sorted.find((i) => i.isUnlocked && i.status === "not_started");
+    return next?.moduleNumber ?? null;
+  })();
+
   return (
     <div className="flex flex-col h-full">
       {/* Brand header */}
@@ -575,6 +591,7 @@ function SidebarContent({
                           isActive={pathname.startsWith(item.href)}
                           collapsed={collapsed}
                           showStatus={showStatus}
+                          isNextWorkspace={showStatus && item.moduleNumber === nextWorkspaceKey}
                           onNavigate={onClose}
                         />
                       </li>

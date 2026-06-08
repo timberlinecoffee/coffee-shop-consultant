@@ -2761,8 +2761,8 @@ export function HiringWorkspace({
     { id: "org", label: "Org Structure", Icon: Network },
     { id: "interview", label: "Interview", Icon: ClipboardList },
     { id: "onboarding", label: "Onboarding", Icon: UserCheck },
-    { id: "competency", label: "Competency", Icon: Award },
-    { id: "requirements", label: "Requirements", Icon: Globe },
+    { id: "competency", label: "Staff Skills", Icon: Award },
+    { id: "requirements", label: "Hiring Laws", Icon: Globe },
   ];
 
   const handleRolesChange = useCallback(
@@ -2785,7 +2785,7 @@ export function HiringWorkspace({
         <WorkspaceHeader
           Icon={Users}
           title="Hiring & Onboarding"
-          description="Build your org structure, run scored interviews, plan onboarding, and evaluate staff competencies."
+          description="Figure out who you need on the team and what it'll cost to pay them."
         />
 
         {/* TIM-2426: Cross-Suite Conflict Resolver entry point. */}

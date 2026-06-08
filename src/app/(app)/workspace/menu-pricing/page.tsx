@@ -17,6 +17,25 @@ import type {
 
 export const dynamic = "force-dynamic";
 
+const SHOP_TYPE_MARGIN: Record<string, number> = {
+  "Full cafe with food": 0.62,
+  "Full cafe (dine-in, food menu)": 0.62,
+  "Roastery cafe": 0.65,
+  "Mobile cart or kiosk": 0.72,
+  "Kiosk (mall, airport, lobby)": 0.72,
+  "Mobile cart or pop-up": 0.72,
+  "Drive-through": 0.74,
+  "Drive-through window": 0.74,
+  "Espresso bar (drinks only)": 0.76,
+};
+
+function marginFromShopTypes(shopTypes: string[]): number {
+  const margins = shopTypes
+    .map((t) => SHOP_TYPE_MARGIN[t])
+    .filter((m): m is number => m !== undefined);
+  return margins.length > 0 ? Math.min(...margins) : 0.75;
+}
+
 const DEFAULT_CATEGORIES = [
   { name: "Espresso", position: 0 },
   { name: "Brewed Coffee", position: 1 },
@@ -33,13 +52,20 @@ export default async function MenuPricingWorkspacePage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id, target_gross_margin")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: plan }, { data: userProfile }] = await Promise.all([
+    supabase
+      .from("coffee_shop_plans")
+      .select("id, target_gross_margin")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("onboarding_data")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (!plan) redirect("/onboarding");
 
@@ -47,12 +73,23 @@ export default async function MenuPricingWorkspacePage() {
   // TIM-1471: workspace-level target gross margin drives MSRP in the Cost of
   // Goods tab. Column is non-null default 0.75 in the DB, but a numeric column
   // can come back as a string from PostgREST, so normalize.
-  const targetGrossMargin =
+  const rawMargin =
     typeof plan.target_gross_margin === "number"
       ? plan.target_gross_margin
       : typeof plan.target_gross_margin === "string"
         ? Number(plan.target_gross_margin)
         : 0.75;
+
+  // When plan still carries the stale 0.75 default (set before shop-type
+  // calibration existed), derive a better default from onboarding_data.
+  const targetGrossMargin = (() => {
+    if (rawMargin !== 0.75) return rawMargin;
+    const onboarding = (userProfile?.onboarding_data as Record<string, unknown> | null) ?? {};
+    const shopTypes = Array.isArray(onboarding.shop_type)
+      ? (onboarding.shop_type as string[])
+      : [];
+    return marginFromShopTypes(shopTypes);
+  })();
 
   // Auto-seed default categories if this plan has none yet. Belt-and-braces:
   // the migration seeded all plans that existed at the time, this covers any

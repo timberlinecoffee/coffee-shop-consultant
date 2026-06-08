@@ -70,20 +70,18 @@ export default async function LocationLeaseWorkspacePage() {
             the server/client boundary. */}
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4 min-[1200px]:flex-nowrap">
           <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <MapPin
-              className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
-              aria-hidden="true"
-            />
-            <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-              Location &amp; Lease
-            </h1>
-          </div>
-          <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-            Each card holds everything for one location — intake, scorecard,
-            lease terms, and AI feedback. Shortlist the top contenders and
-            run a trade-off when you&apos;re ready to compare.
-          </p>
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin
+                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
+                aria-hidden="true"
+              />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+                Location &amp; Lease
+              </h1>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Compare candidate sites and weigh lease terms before you sign.
+            </p>
           </div>
         </header>
 
