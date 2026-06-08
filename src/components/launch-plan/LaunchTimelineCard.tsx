@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLaunchPlanRows } from "./useLaunchPlanRows";
+import {
+  DEFAULT_WINDOW_MAX,
+  DEFAULT_WINDOW_MIN,
+  computeGanttWindow,
+  ganttAnchorsForWindow,
+  ganttPositionFromOffset,
+} from "./gantt-window";
 import type { LaunchItemStatus } from "@/types/supabase";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -49,28 +56,12 @@ const STATUS_PILL: Record<LaunchItemStatus, string> = {
   at_risk: "bg-[var(--error-bg-8)] text-[var(--error-light)]",
 };
 
-const GANTT_ANCHORS = [
-  { label: "T-90", offset: -90 },
-  { label: "T-60", offset: -60 },
-  { label: "T-30", offset: -30 },
-  { label: "T-7", offset: -7 },
-  { label: "Day 0", offset: 0 },
-  { label: "Day+30", offset: 30 },
-];
-
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function daysBetween(a: string, b: string): number {
   return Math.round(
     (new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24)
   );
-}
-
-function ganttPosition(targetDate: string, launchDate: string): number {
-  const diff = daysBetween(launchDate, targetDate);
-  const total = 120; // T-90 to Day+30 span
-  const pos = ((diff + 90) / total) * 100;
-  return Math.max(0, Math.min(100, pos));
 }
 
 function daysUntil(dateStr: string): number {
@@ -87,10 +78,33 @@ function formatDate(dateStr: string): string {
 function GanttStrip({
   items,
   launchDate,
+  windowMin = DEFAULT_WINDOW_MIN,
+  windowMax = DEFAULT_WINDOW_MAX,
 }: {
   items: TimelineItem[];
   launchDate: string | null;
+  windowMin?: number;
+  windowMax?: number;
 }) {
+  const datedItems = useMemo(
+    () => items.filter((i) => i.target_date),
+    [items],
+  );
+
+  // TIM-2483 (F8): derive the visible window from milestone offsets so dots
+  // past the legacy T-90 / Day+30 span render in-canvas. Defaults preserve the
+  // legacy span when the milestone set fits inside it.
+  const offsets = useMemo(() => {
+    if (!launchDate) return [] as number[];
+    return datedItems.map((i) => daysBetween(launchDate, i.target_date!));
+  }, [datedItems, launchDate]);
+
+  const { min, max } = useMemo(
+    () => computeGanttWindow(offsets, { defaultMin: windowMin, defaultMax: windowMax }),
+    [offsets, windowMin, windowMax],
+  );
+  const anchors = useMemo(() => ganttAnchorsForWindow(min, max), [min, max]);
+
   if (!launchDate) {
     return (
       <div className="mb-4 px-1 py-3 bg-[var(--background)] rounded-xl border border-[var(--border)] text-center">
@@ -101,14 +115,12 @@ function GanttStrip({
     );
   }
 
-  const datedItems = items.filter((i) => i.target_date);
-
   return (
     <div className="mb-5">
       <div className="relative h-2 bg-[var(--border)] rounded-full mb-1">
         {/* Anchor markers */}
-        {GANTT_ANCHORS.map((a) => {
-          const pct = ((a.offset + 90) / 120) * 100;
+        {anchors.map((a) => {
+          const pct = ganttPositionFromOffset(a.offset, min, max);
           return (
             <div
               key={a.label}
@@ -118,8 +130,8 @@ function GanttStrip({
           );
         })}
         {/* Milestone dots */}
-        {datedItems.map((item) => {
-          const pct = ganttPosition(item.target_date!, launchDate);
+        {datedItems.map((item, idx) => {
+          const pct = ganttPositionFromOffset(offsets[idx], min, max);
           return (
             <div
               key={item.id}
@@ -140,8 +152,8 @@ function GanttStrip({
       </div>
       {/* Anchor labels */}
       <div className="relative h-4">
-        {GANTT_ANCHORS.map((a) => {
-          const pct = ((a.offset + 90) / 120) * 100;
+        {anchors.map((a) => {
+          const pct = ganttPositionFromOffset(a.offset, min, max);
           return (
             <span
               key={a.label}
@@ -541,9 +553,17 @@ function FooterSummary({ items }: { items: TimelineItem[] }) {
 
 interface LaunchTimelineCardProps {
   launchDate?: string | null;
+  // TIM-2483 (F8): override the Gantt window. Defaults to T-90 → Day+30; the
+  // strip auto-expands past these when milestones extend further.
+  windowMin?: number;
+  windowMax?: number;
 }
 
-export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProps) {
+export function LaunchTimelineCard({
+  launchDate = null,
+  windowMin = DEFAULT_WINDOW_MIN,
+  windowMax = DEFAULT_WINDOW_MAX,
+}: LaunchTimelineCardProps) {
   const {
     loading,
     items,
@@ -655,7 +675,12 @@ export function LaunchTimelineCard({ launchDate = null }: LaunchTimelineCardProp
           </button>
         </header>
 
-        <GanttStrip items={sorted} launchDate={launchDate} />
+        <GanttStrip
+          items={sorted}
+          launchDate={launchDate}
+          windowMin={windowMin}
+          windowMax={windowMax}
+        />
 
         {loading ? (
           <p className="text-sm text-[var(--muted-foreground)] py-4">Loading…</p>
