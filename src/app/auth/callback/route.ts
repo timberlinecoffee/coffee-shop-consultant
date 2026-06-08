@@ -26,7 +26,10 @@ function buildDiag(parts: Record<string, string | number | boolean | null | unde
   const segments: string[] = [];
   for (const [k, v] of Object.entries(parts)) {
     if (v === undefined || v === null) continue;
-    segments.push(`${k}=${String(v).replace(/[\s&=]/g, "_").slice(0, 80)}`);
+    // sb_names can list multiple cookie names — give it more room than other
+    // fields which are short error / count values.
+    const cap = k === "sb_names" ? 240 : 80;
+    segments.push(`${k}=${String(v).replace(/[\s&=]/g, "_").slice(0, cap)}`);
   }
   return segments.join("|");
 }
@@ -38,16 +41,32 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
 
   // Probe the verifier cookie presence (NOT its value — that's secret). The
-  // verifier name pattern is `sb-<ref>-auth-token-code-verifier`.
+  // verifier name pattern is `sb-<ref>-auth-token-code-verifier`. Also count
+  // chunked variants (e.g. `-code-verifier.0`) in case @supabase/ssr split
+  // the value, plus list ALL sb-* cookie names for ground-truth diagnosis.
   const allCookies = cookieStore.getAll();
   const verifierCookies = allCookies.filter(c =>
     c.name.startsWith("sb-") && c.name.endsWith("-auth-token-code-verifier")
   );
-  const authTokenCookies = allCookies.filter(c =>
-    c.name.startsWith("sb-") && c.name.includes("-auth-token") && !c.name.endsWith("-code-verifier")
+  const verifierChunked = allCookies.filter(c =>
+    c.name.startsWith("sb-") && /-auth-token-code-verifier\.\d+$/.test(c.name)
   );
+  const authTokenCookies = allCookies.filter(c =>
+    c.name.startsWith("sb-") && c.name.includes("-auth-token") && !c.name.endsWith("-code-verifier") && !/-code-verifier\.\d+$/.test(c.name)
+  );
+  const sbNames = allCookies.filter(c => c.name.startsWith("sb-")).map(c => c.name).join(",");
   const handoffPresent = allCookies.filter(c => HANDOFF_COOKIES.includes(c.name as typeof HANDOFF_COOKIES[number])).length;
   const rememberMeRaw = cookieStore.get("gw_remember_me")?.value;
+  const userAgent = request.headers.get("user-agent") ?? "";
+  const browserHint = /Firefox\//.test(userAgent)
+    ? "firefox"
+    : /Edg\//.test(userAgent)
+    ? "edge"
+    : /Chrome\//.test(userAgent) && !/Edg\//.test(userAgent)
+    ? "chrome"
+    : /Safari\//.test(userAgent)
+    ? "safari"
+    : "other";
 
   // Prefer the cookie handoff (OAuth path); fall back to query param for the
   // email-link confirmation flow which still uses `?next=` on emailRedirectTo.
@@ -94,9 +113,12 @@ export async function GET(request: Request) {
       err_status: (error as { status?: number }).status,
       err_name: (error as { name?: string }).name,
       verifier_cookies: verifierCookies.length,
+      verifier_chunks: verifierChunked.length,
       auth_token_cookies: authTokenCookies.length,
       handoff_cookies: handoffPresent,
       remember_me: rememberMeRaw ?? "absent",
+      browser: browserHint,
+      sb_names: sbNames,
     });
     return clearHandoffCookies(
       NextResponse.redirect(`${origin}/login?error=auth_failed&diag=${encodeURIComponent(diag)}`)
@@ -108,9 +130,12 @@ export async function GET(request: Request) {
     err: errorParam ?? undefined,
     err_desc: searchParams.get("error_description") ?? undefined,
     verifier_cookies: verifierCookies.length,
+    verifier_chunks: verifierChunked.length,
     auth_token_cookies: authTokenCookies.length,
     handoff_cookies: handoffPresent,
     remember_me: rememberMeRaw ?? "absent",
+    browser: browserHint,
+    sb_names: sbNames,
     search_keys: [...searchParams.keys()].join(","),
   });
   return clearHandoffCookies(
