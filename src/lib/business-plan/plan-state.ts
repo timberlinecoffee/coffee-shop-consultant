@@ -387,7 +387,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
 
   // 2. Compute per-month slices — exactly the rollup the financial table renderer uses.
   const totalEquipCostUsd = (inp.equipment ?? []).reduce(
-    (sum, e) => sum + (e.cost_usd ?? 0), 0
+    (sum, e) => sum + (e.cost_local ?? 0), 0
   );
   const equipSummary: EquipmentSummary = {
     total_cost_cents: Math.round(totalEquipCostUsd * 100),

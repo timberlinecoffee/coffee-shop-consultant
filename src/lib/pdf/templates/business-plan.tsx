@@ -371,7 +371,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       // TIM-2341: include city + country so plan_state.lender_metrics inherits
       // the region-aware tax + lender posture in the exported PDF.
       supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
-      supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
+      supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
       // TIM-2341: include cogs columns so menuBlendedCogsPct is computed for
       // the lender-metrics block (mirrors the regenerate-all path).
       supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
@@ -419,17 +419,19 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       "execution-marketing-sales": assembleExecutionMarketingSales(
         (menuRows ?? []) as BpMenuItem[],
         toBpMarketingPlanning(marketingDoc?.content),
+        currencyCodePdf,
       ),
       "execution-operations": assembleExecutionOperations(
         (locationRows ?? []) as BpLocationCandidate[],
         (equipmentRows ?? []) as BpEquipmentItem[],
         financialModel,
+        currencyCodePdf,
       ),
       "execution-milestones-metrics": assembleOperationsLaunch(
         (launchRows ?? []) as BpLaunchItem[],
       ),
       "company-overview": assembleCompanyConcept(conceptDoc?.content),
-      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], currencyCodePdf),
       "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
       "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-break-even": assembleBreakEvenSection(lenderMetricsPdf, currencyCodePdf),
@@ -483,13 +485,13 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       const mp = normalizeMonthlyProjections(
         financialModel.forecast_inputs ?? financialModel.monthly_projections
       );
-      const totalEquipCostUsd = (equipmentRows ?? []).reduce(
-        (sum: number, e: { cost_usd?: number }) => sum + (e.cost_usd ?? 0),
+      const totalEquipCostLocal = (equipmentRows ?? []).reduce(
+        (sum: number, e: { cost_local?: number }) => sum + (e.cost_local ?? 0),
         0
       );
       const equipment: EquipmentSummary = {
-        total_cost_cents: Math.round(totalEquipCostUsd * 100),
-        financed_cost_cents: Math.round(totalEquipCostUsd * 100),
+        total_cost_cents: Math.round(totalEquipCostLocal * 100),
+        financed_cost_cents: Math.round(totalEquipCostLocal * 100),
       };
       financialData = { mp, equipment };
     }

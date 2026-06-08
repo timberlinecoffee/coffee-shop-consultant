@@ -221,7 +221,8 @@ export interface SourceSuiteHiringRow {
 export interface SourceSuiteEquipmentRow {
   id: string;
   name: string | null;
-  cost_usd: number | null;
+  // TIM-2488: was `cost_usd` — column renamed to be currency-neutral.
+  cost_local: number | null;
 }
 
 export interface SourceSuiteMenuRow {
@@ -390,7 +391,7 @@ export function runCrossSuiteChecks(input: SourceSuiteCheckInputs): AuditFinding
   // Check 2 — Equipment total vs CapEx equipment line. Lenders trace every
   // dollar in CapEx back to a real piece of equipment; if the totals diverge by
   // more than $100 / 1 percent, that trace breaks.
-  const equipTotalCents = input.equipment.reduce((acc, e) => acc + Math.round(Number(e.cost_usd ?? 0) * 100), 0);
+  const equipTotalCents = input.equipment.reduce((acc, e) => acc + Math.round(Number(e.cost_local ?? 0) * 100), 0);
   const capexEquipLine = input.planState.use_of_funds.lines.find((l) => l.key === "equipment_cents");
   const capexEquipCents = capexEquipLine?.amount_cents ?? 0;
   if (equipTotalCents > 0 && capexEquipCents > 0) {

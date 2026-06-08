@@ -188,7 +188,7 @@ export default async function BusinessPlanPrintPage({
       .order("position"),
     supabase
       .from("buildout_equipment_items")
-      .select("id, name, vendor, model, supplier, cost_usd, category, notes")
+      .select("id, name, vendor, model, supplier, cost_local, category, notes")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
@@ -695,7 +695,8 @@ type EquipmentRow = {
   vendor: string | null;
   model: string | null;
   supplier: string | null;
-  cost_usd: number | null;
+  // TIM-2488: was `cost_usd`. Local-currency line total.
+  cost_local: number | null;
   category: string | null;
   notes: string | null;
 };
@@ -706,7 +707,7 @@ function EquipmentSection({ items, currencyCode }: { items: EquipmentRow[]; curr
       <EmptyState message="No equipment yet. Visit the Equipment & Supplies workspace to add it." />
     );
   }
-  const total = items.reduce((s, e) => s + (e.cost_usd ?? 0), 0);
+  const total = items.reduce((s, e) => s + (e.cost_local ?? 0), 0);
   const major = items.filter((e) => e.category === "major");
   const minor = items.filter((e) => e.category !== "major");
   const hasSupplierData = items.some((e) => e.supplier?.trim());
@@ -720,7 +721,7 @@ function EquipmentSection({ items, currencyCode }: { items: EquipmentRow[]; curr
             <li key={item.id} className="py-2.5 first:pt-0 last:pb-0">
               <div className="flex items-baseline gap-3">
                 <span className="flex-1 text-sm text-[var(--foreground)]">{item.name}</span>
-                <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">{formatCurrencyAmount(item.cost_usd ?? 0, currencyCode)}</span>
+                <span className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">{formatCurrencyAmount(item.cost_local ?? 0, currencyCode)}</span>
               </div>
               {(item.vendor?.trim() || item.model?.trim() || item.supplier?.trim()) && (
                 <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
@@ -1123,10 +1124,11 @@ function FinancialsSection({
     financialModel.forecast_inputs ?? financialModel.monthly_projections,
   );
 
-  const totalEquipUsd = equipment.reduce((s, e) => s + (e.cost_usd ?? 0), 0);
+  // TIM-2488: was `totalEquipUsd` reading `e.cost_usd`. Same local-currency total.
+  const totalEquipLocal = equipment.reduce((s, e) => s + (e.cost_local ?? 0), 0);
   const equipSummary: EquipmentSummary = {
-    total_cost_cents: Math.round(totalEquipUsd * 100),
-    financed_cost_cents: Math.round(totalEquipUsd * 100),
+    total_cost_cents: Math.round(totalEquipLocal * 100),
+    financed_cost_cents: Math.round(totalEquipLocal * 100),
   };
   const monthRows = computeMonthlyProjections(projections, equipSummary);
 

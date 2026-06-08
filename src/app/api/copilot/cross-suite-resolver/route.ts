@@ -93,7 +93,7 @@ async function readAll(
       .select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country")
       .eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("buildout_equipment_items")
-      .select("id, name, cost_usd, category, notes")
+      .select("id, name, cost_local, category, notes")
       .eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("menu_items_with_cogs")
       .select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")

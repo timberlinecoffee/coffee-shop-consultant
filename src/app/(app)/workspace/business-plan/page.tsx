@@ -76,7 +76,7 @@ export default async function BusinessPlanWorkspacePage() {
       .order("position"),
     supabase
       .from("buildout_equipment_items")
-      .select("id, name, cost_usd, category, notes")
+      .select("id, name, cost_local, category, notes")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
@@ -130,6 +130,14 @@ export default async function BusinessPlanWorkspacePage() {
     (savedSections ?? []).map((s) => [s.section_key, s])
   );
 
+  // TIM-2488: resolve the plan's currency code so the suite-derived
+  // autoContent renders in the user's currency, not the assemblers' USD
+  // default. forecast_inputs.currency_code is initialized from account
+  // settings on financial-model insert (TIM-2463).
+  const currencyCode =
+    (((financialModel?.forecast_inputs as Record<string, unknown> | null | undefined)
+      ?.currency_code) as string | undefined) ?? "USD";
+
   // TIM-1498: two-level taxonomy autoContent map.
   const autoContent: Record<string, string> = {
     "executive-summary":
@@ -144,21 +152,23 @@ export default async function BusinessPlanWorkspacePage() {
     "execution-marketing-sales": assembleExecutionMarketingSales(
       (menuRows ?? []) as BpMenuItem[],
       toBpMarketingPlanning(marketingDoc?.content),
+      currencyCode,
     ),
     "execution-operations": assembleExecutionOperations(
       (locationRows ?? []) as BpLocationCandidate[],
       (equipmentRows ?? []) as BpEquipmentItem[],
       financialModel,
+      currencyCode,
     ),
     "execution-milestones-metrics": assembleOperationsLaunch(
       (launchRows ?? []) as BpLaunchItem[],
     ),
     "company-overview": assembleCompanyConcept(conceptDoc?.content),
-    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], currencyCode),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], null, currencyCode),
     "financial-plan-financing":
       "Click Generate to draft this section from your plan data.",
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], null, currencyCode),
     "appendix-monthly-statements":
       "Monthly P&L, cash flow, and balance sheet statements are rendered in the exported PDF appendix.",
   };

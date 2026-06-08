@@ -61,7 +61,7 @@ export async function loadWorkspaceInputs(
       .order("position"),
     supabase
       .from("buildout_equipment_items")
-      .select("id, name, cost_usd, category, notes")
+      .select("id, name, cost_local, category, notes")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),

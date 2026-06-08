@@ -179,8 +179,9 @@ export function buildPlanStateEntities(inp: BuildPlanStateEntitiesInputs): PlanS
       type: "equipment",
       aliases: [],
       source: "buildout_equipment_items",
-      ...(item.cost_usd != null
-        ? { value_cents: Math.round(item.cost_usd * 100) }
+      // TIM-2488: column renamed cost_usd → cost_local; same local-currency total.
+      ...(item.cost_local != null
+        ? { value_cents: Math.round(item.cost_local * 100) }
         : {}),
     });
   }
