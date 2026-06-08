@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   ClipboardList,
   Play,
@@ -17,6 +18,7 @@ import {
   type ConflictItem,
   type HealthState,
   type PlanOverview,
+  type NextWorkspace,
 } from "@/lib/dashboard/plan-overview";
 import { TrialBanner } from "./_components/trial-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
@@ -117,12 +119,22 @@ export default async function DashboardPage() {
 
         <div className="space-y-4">
           <PlanStatusCard overview={overview} />
-          <StatsRow overview={overview} />
-          <LastSevenDaysCard activity={overview.activity} />
-          <PlanConflictsCard
-            conflicts={overview.conflicts}
-            lastCheckedAt={overview.lastConflictCheckAt}
+          <NextStepCard
+            nextWorkspace={overview.nextWorkspace}
+            counts={overview.counts}
+            planStarted={overview.status.planStarted}
           />
+          {overview.activity.length > 0 ? (
+            <LastSevenDaysCard activity={overview.activity} />
+          ) : (
+            <GettingStartedCard />
+          )}
+          {(overview.counts.completed + overview.counts.inProgress >= 2) && (
+            <PlanConflictsCard
+              conflicts={overview.conflicts}
+              lastCheckedAt={overview.lastConflictCheckAt}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -158,6 +170,7 @@ function emptyOverview(): PlanOverview {
     activity: [],
     conflicts: [],
     lastConflictCheckAt: null,
+    nextWorkspace: { href: "/workspace/concept", label: "Concept", blurb: "Shape your shop's identity, story, and what sets it apart." },
   };
 }
 
@@ -221,77 +234,100 @@ function healthDotClass(state: HealthState): string {
   }
 }
 
-// ── Section 2 — Stats Row ───────────────────────────────────────────────────
+// ── Section 2 — Next Step Card ──────────────────────────────────────────────
 
-function StatsRow({ overview }: { overview: PlanOverview }) {
-  const { counts } = overview;
-  const pctOrDash = (n: number) =>
-    counts.total === 0 || !overview.status.planStarted ? "—" : `${n}%`;
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <StatCard
-        tone="teal"
-        count={counts.completed}
-        label="Completed"
-        pct={pctOrDash(counts.completedPct)}
-      />
-      <StatCard
-        tone="amber"
-        count={counts.inProgress}
-        label="In Progress"
-        pct={pctOrDash(counts.inProgressPct)}
-      />
-      <StatCard
-        tone="neutral"
-        count={
-          counts.completed === 0 && counts.inProgress === 0
-            ? counts.total
-            : counts.notStarted
-        }
-        label="Not Started"
-        pct={pctOrDash(counts.notStartedPct)}
-      />
-    </div>
-  );
-}
-
-function StatCard({
-  tone,
-  count,
-  label,
-  pct,
+function NextStepCard({
+  nextWorkspace,
+  counts,
+  planStarted,
 }: {
-  tone: "teal" | "amber" | "neutral";
-  count: number;
-  label: string;
-  pct: string;
+  nextWorkspace: NextWorkspace | null;
+  counts: PlanOverview["counts"];
+  planStarted: boolean;
 }) {
-  const shell =
-    tone === "teal"
-      ? "bg-[var(--teal)]/5 border-[var(--teal)]/20"
-      : tone === "amber"
-        ? "bg-amber-50 border-amber-200"
-        : "bg-[var(--surface-warm-100)] border-[var(--border)]";
-  const numberColor =
-    tone === "teal"
-      ? "text-[var(--teal)]"
-      : tone === "amber"
-        ? "text-amber-700"
-        : "text-[var(--dark-grey)]";
+  const started = counts.completed + counts.inProgress;
+  const total = counts.total;
+
+  if (!nextWorkspace) {
+    return (
+      <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 p-5">
+        <p className="text-sm font-semibold text-[var(--teal)] mb-1">
+          All sections started
+        </p>
+        <p className="text-xs text-[var(--muted-foreground)]">
+          {started} of {total} plan sections started. Keep going!
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className={`rounded-xl border p-4 ${shell}`}>
-      <p className={`text-2xl font-bold ${numberColor}`}>{count}</p>
-      <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-        {label}
-        <span className="ml-1.5 font-medium text-[var(--foreground)]">
-          {pct}
-        </span>
+    <div className="rounded-xl border border-[var(--border)] bg-white p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-2">
+        Your next step
       </p>
+      <Link
+        href={nextWorkspace.href}
+        className="group flex items-center justify-between gap-3 rounded-lg border border-[var(--teal)]/20 bg-[var(--teal)]/5 px-4 py-3 hover:bg-[var(--teal)]/10 transition-colors mb-3"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[var(--teal)] truncate">
+            {nextWorkspace.label}
+          </p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">
+            {nextWorkspace.blurb}
+          </p>
+        </div>
+        <ArrowRight
+          size={16}
+          className="text-[var(--teal)] flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
+          aria-hidden="true"
+        />
+      </Link>
+      {planStarted && (
+        <p className="text-xs text-[var(--muted-foreground)]">
+          {started} of {total} plan sections started
+        </p>
+      )}
     </div>
   );
 }
 
-// ── Section 3 — Last 7 Days ────────────────────────────────────────────────
+// ── Section 3 — Activity ────────────────────────────────────────────────────
+
+function GettingStartedCard() {
+  const steps = [
+    { href: "/workspace/concept", label: "Complete your concept", desc: "Define your shop type, vision, and customer." },
+    { href: "/workspace/financials", label: "Model your startup costs", desc: "Estimate what it takes to open." },
+    { href: "/workspace/location-lease", label: "Compare 2 location options", desc: "Start a shortlist of candidate sites." },
+  ];
+  return (
+    <div className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--border)]">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">Getting started</h2>
+      </div>
+      <ul className="divide-y divide-[var(--border)]">
+        {steps.map((step) => (
+          <li key={step.href}>
+            <Link
+              href={step.href}
+              className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--surface-warm-100)] transition-colors"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] flex-shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-[var(--foreground)]">{step.label}</p>
+                <p className="text-xs text-[var(--muted-foreground)] truncate">{step.desc}</p>
+              </div>
+              <ArrowRight size={12} className="text-[var(--muted-foreground)] flex-shrink-0 ml-auto" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── Section 3b — Last 7 Days ───────────────────────────────────────────────
 
 function LastSevenDaysCard({ activity }: { activity: ActivityItem[] }) {
   return (

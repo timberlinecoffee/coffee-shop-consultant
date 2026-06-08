@@ -25,22 +25,22 @@ import Illustration from "@/components/illustrations/Illustration";
 // options simply render no illustration.
 // TIM-2489: "Drive-through or kiosk" split into distinct options.
 const SHOP_TYPE_RECIPE: Record<string, string> = {
-  "Full cafe with food": "model-full-cafe",
+  "Full cafe (dine-in, food menu)": "model-full-cafe",
   "Espresso bar (drinks only)": "model-espresso-bar",
   "Roastery cafe": "model-roastery-cafe",
-  "Drive-through": "model-drive-thru",
-  "Mobile cart or kiosk": "model-mobile-cart",
+  "Drive-through window": "model-drive-thru",
+  "Kiosk (mall, airport, lobby)": "model-mobile-cart",
   "Mobile cart or pop-up": "model-mobile-cart",
 };
 
 // TIM-2492: gross margin defaults calibrated by shop type so new plans start
 // with a realistic number instead of the hardcoded 0.75.
 const SHOP_TYPE_DEFAULT_GM: Record<string, number> = {
-  "Full cafe with food": 0.62,
+  "Full cafe (dine-in, food menu)": 0.62,
   "Roastery cafe": 0.65,
-  "Mobile cart or kiosk": 0.72,
+  "Kiosk (mall, airport, lobby)": 0.72,
   "Mobile cart or pop-up": 0.72,
-  "Drive-through": 0.74,
+  "Drive-through window": 0.74,
   "Espresso bar (drinks only)": 0.76,
 };
 
@@ -164,13 +164,12 @@ const STEPS: Step[] = [
     question: "What kind of shop are you imagining?",
     hint: "Pick everything that resonates. You can change this any time.",
     options: [
-      "Full cafe with food",
+      "Full cafe (dine-in, food menu)",
       "Espresso bar (drinks only)",
-      "Roastery cafe",
-      "Drive-through",
-      "Mobile cart or kiosk",
+      "Drive-through window",
+      "Kiosk (mall, airport, lobby)",
       "Mobile cart or pop-up",
-      "Co-working / Hybrid space",
+      "Roastery cafe",
     ],
   },
   {
@@ -744,19 +743,24 @@ export function OnboardingFlow({
               )}
 
               {currentStep.type === "city-autocomplete" && (
-                <CityAutocompleteInput
-                  value={currentAnswer as LocationSelection | null}
-                  onChange={(v) =>
-                    setAnswers((prev) => {
-                      if (!v) {
-                        const next = { ...prev };
-                        delete next[currentStep.id];
-                        return next;
-                      }
-                      return { ...prev, [currentStep.id]: v };
-                    })
-                  }
-                />
+                <>
+                  <CityAutocompleteInput
+                    value={currentAnswer as LocationSelection | null}
+                    onChange={(v) =>
+                      setAnswers((prev) => {
+                        if (!v) {
+                          const next = { ...prev };
+                          delete next[currentStep.id];
+                          return next;
+                        }
+                        return { ...prev, [currentStep.id]: v };
+                      })
+                    }
+                  />
+                  <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                    Works for any city worldwide.
+                  </p>
+                </>
               )}
 
               {currentStep.type === "textarea" && (
