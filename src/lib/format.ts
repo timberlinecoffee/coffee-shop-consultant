@@ -10,3 +10,10 @@ export function capitalizeFirst(s: string): string {
   }
   return s;
 }
+
+// TIM-2475: shared percentage formatter — 1 dp, expects a 0-1 ratio.
+// Matches the canonical `fmtPct` used in src/lib/cross-suite/hiring-financials.ts:76
+// so identical underlying values render identically across surfaces.
+export function fmtPct(ratio: number): string {
+  return `${(Math.round(ratio * 1000) / 10).toFixed(1)}%`;
+}

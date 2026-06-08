@@ -77,6 +77,7 @@ import {
   classifyMenu,
   marginRanking,
 } from "@/lib/menu-engineering";
+import { fmtPct } from "@/lib/format";
 
 interface ConceptContext {
   shop_identity?: string;
@@ -1990,11 +1991,11 @@ function MetricsBar({
         <>
           <div>
             <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg COGS</span>{" "}
-            <span className="text-base font-bold text-[var(--foreground)] ml-1">{agg.avgCogsPct?.toFixed(1)}%</span>
+            <span className="text-base font-bold text-[var(--foreground)] ml-1">{fmtPct((agg.avgCogsPct ?? 0) / 100)}</span>
           </div>
           <div>
             <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg Gross Profit</span>{" "}
-            <span className="text-base font-bold text-[var(--teal)] ml-1">{agg.avgGpPct?.toFixed(1)}%</span>
+            <span className="text-base font-bold text-[var(--teal)] ml-1">{fmtPct((agg.avgGpPct ?? 0) / 100)}</span>
           </div>
         </>
       ) : (
@@ -2109,9 +2110,9 @@ function CategoryMetrics({ items }: { items: MenuItemWithCogs[] }) {
   if (agg.count === 0) return null;
   return (
     <span className="text-[10px] text-[var(--muted-foreground)]">
-      Avg COGS <span className="font-semibold text-[var(--foreground)]">{agg.avgCogsPct?.toFixed(0)}%</span>
+      Avg COGS <span className="font-semibold text-[var(--foreground)]">{fmtPct((agg.avgCogsPct ?? 0) / 100)}</span>
       <span className="mx-1.5 text-[var(--neutral-cool-350)]">·</span>
-      GP <span className="font-semibold text-[var(--teal)]">{agg.avgGpPct?.toFixed(0)}%</span>
+      GP <span className="font-semibold text-[var(--teal)]">{fmtPct((agg.avgGpPct ?? 0) / 100)}</span>
     </span>
   );
 }
