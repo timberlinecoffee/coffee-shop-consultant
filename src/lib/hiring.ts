@@ -179,7 +179,7 @@ export const PHASE_ORDER: OnboardingPhase[] = [
 
 // ── TIM-1300: Country requirements ───────────────────────────────────────────
 
-export type HiringCountry = 'US' | 'GB' | 'CA' | 'AU'
+export type HiringCountry = 'US' | 'GB' | 'CA' | 'AU' | 'MX'
 
 export interface PlanHiringSettings {
   hiring_country: HiringCountry | null
@@ -202,6 +202,7 @@ export const HIRING_COUNTRY_OPTIONS: Array<{ code: HiringCountry; label: string 
   { code: 'GB', label: 'United Kingdom' },
   { code: 'CA', label: 'Canada' },
   { code: 'AU', label: 'Australia' },
+  { code: 'MX', label: 'Mexico' },
 ]
 
 // Default onboarding tasks seeded when a new onboarding plan instance is created.
