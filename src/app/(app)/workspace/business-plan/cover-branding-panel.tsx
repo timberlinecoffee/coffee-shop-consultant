@@ -28,7 +28,7 @@ interface Props {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PRESET_SWATCHES = ["#E8C24A", "#1F7A80", "#2563EB", "#EF4444", "#7C3AED"];
+const PRESET_SWATCHES = ["#155E63", "#1F7A80", "#2563EB", "#EF4444", "#7C3AED"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
 // Each pack: [primary, secondary, supporting, neutral]
