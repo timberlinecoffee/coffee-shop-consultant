@@ -13,6 +13,7 @@ import {
 import type { CritiqueResult } from "@/lib/financials";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
+import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
 
@@ -74,13 +75,20 @@ export default async function FinancialsWorkspacePage() {
   // Financials currency dropdown (and every downstream surface that reads
   // forecast_inputs.currency_code) reflects the user's selected currency
   // instead of always defaulting to USD.
+  // TIM-2518: also resolved upfront so the personnel editor can warn on
+  // sub-minimum entries the user types after the row exists.
+  const planMinimumWage = await resolvePlanMinimumWage(supabase, plan.id);
+
   if (!modelRow) {
     const profileData = profileResult.data;
     const shopTypes = Array.isArray(profileData?.onboarding_data?.shop_type)
       ? (profileData.onboarding_data.shop_type as string[])
       : [];
     const accountSettings = await getAccountSettings(supabase, user.id);
-    const forecastInputs = defaultMonthlyProjections();
+    // TIM-2518: seed barista wage at-or-above the resolved local minimum so a
+    // brand-new Seattle plan never starts with the $17 default (below the
+    // $19.97 Seattle 2026 floor).
+    const forecastInputs = defaultMonthlyProjections(planMinimumWage);
     forecastInputs.currency_code = accountSettings.currencyCode;
     forecastInputs.fiscal_year_start_month =
       accountSettings.localization.fiscalYearStartMonth;
@@ -133,6 +141,7 @@ export default async function FinancialsWorkspacePage() {
       initialEquipmentItems={initialEquipmentItems}
       menuBlendedCogsPct={menuBlendedCogsPct}
       menuCogsItems={menuCogsItems}
+      minimumWage={planMinimumWage}
     />
   );
 }

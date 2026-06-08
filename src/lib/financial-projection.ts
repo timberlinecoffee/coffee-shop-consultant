@@ -12,6 +12,7 @@
 
 import { formatCurrencyAmount, normalizeCurrencyCode } from "./currency.ts";
 import type { ExpectedPopularity } from "./menu-engineering.ts";
+import { defaultBaristaWageMinorUnits, type MinWageInfo } from "./wages/minimum-wage.ts";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -522,14 +523,23 @@ export function defaultFundingSources(): FundingSourceLine[] {
 // users can re-designate any role as COGS-labor. Realistic loaded labor here is
 // intentionally higher than the old 30%-of-revenue line, which understated labor
 // and break-even (see TIM-1178). Role names are Title Case (TIM-1002).
-export function defaultPersonnel(): PersonnelLine[] {
+// TIM-2518: optional `minimumWage` raises the barista hourly default when the
+// resolved local floor is above $17 (e.g. Seattle 2026 = $19.97). Without the
+// bump a new Seattle plan would seed with an illegal wage.
+export const SYSTEM_DEFAULT_BARISTA_WAGE_CENTS = 1700;
+
+export function defaultPersonnel(minimumWage?: MinWageInfo | null): PersonnelLine[] {
+  const baristaPay = defaultBaristaWageMinorUnits(
+    SYSTEM_DEFAULT_BARISTA_WAGE_CENTS,
+    minimumWage ?? null,
+  );
   return [
     {
       id: "staff:baristas",
       role: "Baristas",
       headcount: 2,
       pay_basis: "hourly",
-      pay_amount_cents: 1700, // $17.00/hr
+      pay_amount_cents: baristaPay,
       hours_per_week: 28,
       benefits_pct: 12,
       cost_category: "overhead",
@@ -572,7 +582,7 @@ export function defaultStartupCosts(): StartupCosts {
   };
 }
 
-export function defaultMonthlyProjections(): MonthlyProjections {
+export function defaultMonthlyProjections(minimumWage?: MinWageInfo | null): MonthlyProjections {
   return {
     daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
     avg_ticket_cents: 750,
@@ -580,7 +590,7 @@ export function defaultMonthlyProjections(): MonthlyProjections {
     cogs_pct: 30,
     forecast_lines: defaultForecastLines(),
     funding_sources: defaultFundingSources(),
-    personnel: defaultPersonnel(),
+    personnel: defaultPersonnel(minimumWage),
     startup_costs: defaultStartupCosts(),
     income_tax_pct: 25,
     sales_tax_pct: 0,

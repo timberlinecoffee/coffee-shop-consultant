@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
+import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { HiringWorkspace } from "./hiring-workspace";
 import type {
   OrgRole,
@@ -154,6 +155,10 @@ export default async function HiringWorkspacePage() {
     effective_country: effectiveCountry,
   };
 
+  // TIM-2518: resolve the local minimum wage from plan_hiring_settings +
+  // location_candidates so the comp wage input can warn on sub-minimum entries.
+  const planMinimumWage = await resolvePlanMinimumWage(supabase, planId);
+
   const canEdit = isSubscriptionActive(profile?.subscription_status);
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
@@ -176,6 +181,7 @@ export default async function HiringWorkspacePage() {
       initialCompetencyEvals={(evalsData ?? []) as CompetencyEvaluation[]}
       initialHiringSettings={initialHiringSettings}
       initialRequirementSets={initialRequirementSets}
+      minimumWage={planMinimumWage}
     />
   );
 }

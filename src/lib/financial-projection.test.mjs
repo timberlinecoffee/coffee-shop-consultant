@@ -1868,3 +1868,53 @@ test("TIM-1762: a deferred-draw loan does not inflate opening cash", () => {
   const firstPayment = open1.loan_repayment_cents + open1.loan_interest_cents;
   assert.equal(open1.cash_cents - def1.cash_cents, 6000000 - firstPayment);
 });
+
+// TIM-2518: the barista default wage must not be left below a passed-in
+// local minimum wage. Without the bump a new Seattle plan would seed with
+// the system $17 default (illegal under the city's $19.97 2026 floor).
+test("TIM-2518: defaultPersonnel raises the barista wage to a Seattle minimum", () => {
+  const baseline = defaultPersonnel();
+  const baristaBaseline = baseline.find((p) => p.id === "staff:baristas");
+  assert.ok(baristaBaseline);
+  assert.equal(baristaBaseline.pay_amount_cents, 1700);
+
+  const seattleFloor = {
+    hourlyMinorUnits: 1997,
+    currency: "USD",
+    jurisdictionLabel: "Seattle",
+    year: 2026,
+    source: "city",
+  };
+  const bumped = defaultPersonnel(seattleFloor);
+  const baristaBumped = bumped.find((p) => p.id === "staff:baristas");
+  assert.ok(baristaBumped);
+  assert.equal(baristaBumped.pay_amount_cents, 1997);
+});
+
+test("TIM-2518: defaultPersonnel leaves the wage alone when the minimum is below default", () => {
+  const usFloor = {
+    hourlyMinorUnits: 725,
+    currency: "USD",
+    jurisdictionLabel: "United States",
+    year: 2026,
+    source: "national",
+  };
+  const personnel = defaultPersonnel(usFloor);
+  const barista = personnel.find((p) => p.id === "staff:baristas");
+  assert.ok(barista);
+  assert.equal(barista.pay_amount_cents, 1700);
+});
+
+test("TIM-2518: defaultMonthlyProjections threads the minimum-wage bump through to personnel", () => {
+  const seattleFloor = {
+    hourlyMinorUnits: 1997,
+    currency: "USD",
+    jurisdictionLabel: "Seattle",
+    year: 2026,
+    source: "city",
+  };
+  const mp = defaultMonthlyProjections(seattleFloor);
+  const barista = mp.personnel.find((p) => p.id === "staff:baristas");
+  assert.ok(barista);
+  assert.equal(barista.pay_amount_cents, 1997);
+});

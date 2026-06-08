@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { defaultMonthlyProjections } from "@/lib/financial-projection";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
+import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 
 export async function GET() {
   const supabase = await createClient();
@@ -39,11 +40,13 @@ export async function GET() {
   // new model was hard-coded to USD regardless of the user's selected currency,
   // so the Financials currency dropdown (and every downstream surface that
   // reads forecast_inputs.currency_code) showed "$" for non-USD accounts.
-  const [accountSettings, profileResult] = await Promise.all([
+  const [accountSettings, profileResult, planMinimumWage] = await Promise.all([
     getAccountSettings(supabase, user.id),
     supabase.from("users").select("onboarding_data").eq("id", user.id).maybeSingle(),
+    // TIM-2518: seed barista wage at-or-above the resolved local minimum.
+    resolvePlanMinimumWage(supabase, plan.id),
   ]);
-  const forecastInputs = defaultMonthlyProjections();
+  const forecastInputs = defaultMonthlyProjections(planMinimumWage);
   forecastInputs.currency_code = accountSettings.currencyCode;
   forecastInputs.fiscal_year_start_month =
     accountSettings.localization.fiscalYearStartMonth;

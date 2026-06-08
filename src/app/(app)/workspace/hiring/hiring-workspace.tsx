@@ -40,6 +40,7 @@ import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
+import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -86,6 +87,8 @@ interface Props {
   initialCompetencyEvals: CompetencyEvaluation[];
   initialHiringSettings: PlanHiringSettings;
   initialRequirementSets: HiringRequirementSet[];
+  // TIM-2518: resolved local minimum wage for the comp wage input.
+  minimumWage?: MinWageInfo | null;
 }
 
 function makeLocalId() {
@@ -464,11 +467,13 @@ function OrgTab({
   canEdit,
   roles,
   onRolesChange,
+  minimumWage,
 }: {
   planId: string;
   canEdit: boolean;
   roles: OrgRole[];
   onRolesChange: (r: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => void;
+  minimumWage?: MinWageInfo | null;
 }) {
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [highlightedRoleId, setHighlightedRoleId] = useState<string | null>(null);
@@ -650,6 +655,7 @@ function OrgTab({
                   if (node) rowRefs.current.set(role.id, node);
                   else rowRefs.current.delete(role.id);
                 }}
+                minimumWage={minimumWage}
               />
             ))}
           </div>
@@ -671,6 +677,7 @@ function RoleRow({
   onUpdate,
   onDelete,
   registerRef,
+  minimumWage,
 }: {
   planId: string;
   role: OrgRole;
@@ -683,6 +690,7 @@ function RoleRow({
   onUpdate: (patch: Partial<OrgRole>) => void;
   onDelete: () => void;
   registerRef: (node: HTMLDivElement | null) => void;
+  minimumWage?: MinWageInfo | null;
 }) {
   const [jdFields, setJdFields] = useState<JdFields | null>(null);
   const [jdLoading, setJdLoading] = useState(false);
@@ -796,6 +804,20 @@ function RoleRow({
   const [compPayAmount, setCompPayAmount] = useState<number | "">(0);
   const [compHoursPerWeek, setCompHoursPerWeek] = useState<number | "">(30);
   const [compBenefitsPct, setCompBenefitsPct] = useState<number | "">(0);
+
+  // TIM-2518: sub-minimum wage check on the comp draft. Convert salary inputs
+  // to an hourly equivalent so the floor applies uniformly to all pay bases.
+  const compHourlyForCompare = (() => {
+    if (typeof compPayAmount !== "number" || compPayAmount <= 0) return 0;
+    if (compPayBasis === "hourly") return Math.round(compPayAmount * 100);
+    const hoursPerWeek = typeof compHoursPerWeek === "number" && compHoursPerWeek > 0 ? compHoursPerWeek : 40;
+    const monthlyHours = (hoursPerWeek * 52) / 12;
+    if (monthlyHours <= 0) return 0;
+    if (compPayBasis === "monthly") return Math.round((compPayAmount * 100) / monthlyHours);
+    if (compPayBasis === "annual") return Math.round((compPayAmount * 100) / 12 / monthlyHours);
+    return 0;
+  })();
+  const compWageBelowFloor = isBelowMinimumWage(compHourlyForCompare, minimumWage ?? null);
 
   async function loadJd() {
     setJdLoading(true);
@@ -1195,6 +1217,18 @@ function RoleRow({
                 </button>
               )}
             </div>
+            {/* TIM-2518: sub-minimum wage warning for the comp draft. */}
+            {compWageBelowFloor && minimumWage && (
+              <p
+                role="alert"
+                className="mt-2 flex items-start gap-2 rounded-lg border border-[var(--error)]/40 bg-[var(--error)]/5 px-3 py-2 text-xs leading-snug text-[var(--error)]"
+              >
+                <AlertTriangle size={14} className="mt-[1px] shrink-0" aria-hidden="true" />
+                <span>
+                  {formatHourlyWage(compHourlyForCompare, minimumWage.currency)}/hr is below {minimumWage.jurisdictionLabel}&apos;s {minimumWage.year} minimum wage of {formatHourlyWage(minimumWage.hourlyMinorUnits, minimumWage.currency)}/hr. This wage is non-compliant.
+                </span>
+              </p>
+            )}
           </section>
 
           {/* 3) Job Description */}
@@ -2700,6 +2734,7 @@ export function HiringWorkspace({
   initialCompetencyEvals,
   initialHiringSettings,
   initialRequirementSets,
+  minimumWage = null,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("org");
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -2773,6 +2808,7 @@ export function HiringWorkspace({
             canEdit={canEdit}
             roles={roles}
             onRolesChange={handleRolesChange}
+            minimumWage={minimumWage}
           />
         )}
         {activeTab === "interview" && (

@@ -54,6 +54,7 @@ import {
 } from "@/lib/financial-projection";
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
+import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
@@ -270,6 +271,9 @@ interface Props {
   menuBlendedCogsPct?: number | null;
   // TIM-1168: per-item breakdown for the "How is this calculated?" reveal.
   menuCogsItems?: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  // TIM-2518: resolved local minimum wage. Threaded to PersonnelEditor so the
+  // hourly wage input warns when the entered rate is below the legal floor.
+  minimumWage?: MinWageInfo | null;
 }
 
 
@@ -1822,6 +1826,7 @@ export function FinancialsWorkspace({
   initialEquipmentItems = [],
   menuBlendedCogsPct = null,
   menuCogsItems = [],
+  minimumWage = null,
 }: Props) {
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
@@ -2433,6 +2438,7 @@ export function FinancialsWorkspace({
               canEdit={canEdit}
               currencyCode={currencyCode}
               onChange={handlePersonnelUpdate}
+              minimumWage={minimumWage}
             />
           </>
         )}

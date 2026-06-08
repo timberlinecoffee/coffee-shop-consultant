@@ -7,12 +7,13 @@
 // P&L, cash flow, and break-even via the projection engine.
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Users, AlertTriangle } from "lucide-react";
 import type { PersonnelLine, PersonnelPayBasis, PersonnelSeasonal } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents, fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
+import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
 
 // TIM-1260: calendar months (1=Jan) and common-season quick picks for the
 // recurring seasonal staffing pattern.
@@ -50,9 +51,13 @@ interface RowProps {
   currencyCode: string;
   onChange: (next: PersonnelLine) => void;
   onDelete: () => void;
+  // TIM-2518: resolved local minimum wage. When the entered hourly rate is
+  // below the floor, surface an inline warning so a Seattle plan never saves
+  // a $17/hr wage (below the city's $19.97 2026 minimum).
+  minimumWage?: MinWageInfo | null;
 }
 
-function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowProps) {
+function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimumWage }: RowProps) {
   const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const isHourly = line.pay_basis === "hourly";
@@ -102,6 +107,20 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
 
   // Pay amount is shown in whole currency units for salary, dollars for hourly rate.
   const payValue = line.pay_amount_cents ? line.pay_amount_cents / 100 : "";
+
+  // TIM-2518: flag a sub-minimum hourly entry. Only fires on hourly roles
+  // with a non-zero rate so the empty input stays clean. The salary/monthly
+  // paths convert to an hourly equivalent for the comparison.
+  const hourlyForCompare = (() => {
+    if (line.pay_basis === "hourly") return line.pay_amount_cents;
+    const hoursPerWeek = line.hours_per_week ?? 40;
+    const monthlyHours = (hoursPerWeek * 52) / 12;
+    if (monthlyHours <= 0) return 0;
+    if (line.pay_basis === "monthly") return Math.round(line.pay_amount_cents / monthlyHours);
+    if (line.pay_basis === "annual") return Math.round(line.pay_amount_cents / 12 / monthlyHours);
+    return 0;
+  })();
+  const wageBelowFloor = isBelowMinimumWage(hourlyForCompare, minimumWage ?? null);
 
   return (
     <div className="border border-[var(--border)] rounded-xl bg-white">
@@ -263,6 +282,20 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete }: RowPr
             <p className="text-sm font-semibold text-[var(--teal)]">{fmt(loaded, currencyCode)}/mo</p>
           </div>
         </div>
+
+        {/* TIM-2518: sub-minimum wage warning. Cites the resolved jurisdiction
+            so the founder can verify the floor against their own source. */}
+        {wageBelowFloor && minimumWage && (
+          <div
+            role="alert"
+            className="mt-2 ml-6 flex items-start gap-2 rounded-lg border border-[var(--error)]/40 bg-[var(--error)]/5 px-3 py-2 text-xs text-[var(--error)]"
+          >
+            <AlertTriangle size={14} className="mt-[1px] shrink-0" aria-hidden="true" />
+            <p className="leading-snug">
+              {formatHourlyWage(hourlyForCompare, minimumWage.currency)}/hr is below {minimumWage.jurisdictionLabel}&apos;s {minimumWage.year} minimum wage of {formatHourlyWage(minimumWage.hourlyMinorUnits, minimumWage.currency)}/hr. This wage is non-compliant.
+            </p>
+          </div>
+        )}
       </div>
 
       {expanded && (
@@ -532,9 +565,12 @@ interface Props {
   canEdit: boolean;
   onChange: (next: PersonnelLine[]) => void;
   currencyCode?: string;
+  // TIM-2518: optional resolved local minimum wage. Threaded to each row so
+  // the wage input warns when the entered hourly rate sits below the floor.
+  minimumWage?: MinWageInfo | null;
 }
 
-export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "USD" }: Props) {
+export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "USD", minimumWage = null }: Props) {
   function addRole() {
     const newRole: PersonnelLine = {
       id: genId(),
@@ -606,6 +642,7 @@ export function PersonnelEditor({ personnel, canEdit, onChange, currencyCode = "
                 currencyCode={currencyCode}
                 onChange={(next) => updateRole(idx, next)}
                 onDelete={() => deleteRole(idx)}
+                minimumWage={minimumWage}
               />
             ))
           )}
