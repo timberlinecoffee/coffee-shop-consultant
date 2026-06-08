@@ -61,6 +61,7 @@ import { CashFlowTab } from "./tabs/cash-flow-tab";
 import { BreakEvenTab } from "./tabs/break-even-tab";
 import { RatiosTab } from "./tabs/ratios-tab";
 import { StartupTab } from "./tabs/startup-tab";
+import { computeOpeningRunway } from "@/lib/business-plan/opening-runway";
 import { FundingTab } from "./tabs/funding-tab";
 import { DepreciationTab } from "./tabs/depreciation-tab";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
@@ -2045,6 +2046,22 @@ export function FinancialsWorkspace({
     return computeMonthlySlices(mpForProjection, equipment, balanceSheetInputs, projectionCtx);
   }, [mpForProjection, equipment, projectionCtx]);
 
+  // TIM-2517: opening cash runway during ramp — drives the Startup-tab callout
+  // that warns founders when their working-capital + cash buffer cannot absorb
+  // the projected loss months before break-even.
+  const openingRunway = useMemo(() => {
+    const sc = mp.startup_costs ?? defaultStartupCosts();
+    const openingCashCents =
+      (sc.working_capital_reserve_cents ?? 0) + (sc.opening_cash_buffer_cents ?? 0);
+    const rampMonths = Math.max(0, Math.min(12, mp.ramp_months ?? 0));
+    // Use either the configured ramp window or, when none is set, scan the
+    // first 6 months for the loss-period regardless. Either way the helper
+    // filters to negative net-income months only.
+    const window = rampMonths > 0 ? rampMonths : 6;
+    const rampMonthlyNetIncomeCents = slices.slice(0, window).map((s) => s.net_income_cents);
+    return computeOpeningRunway({ openingCashCents, rampMonthlyNetIncomeCents });
+  }, [mp.startup_costs, mp.ramp_months, slices]);
+
   const lastSavedAt =
     saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null;
 
@@ -2472,6 +2489,7 @@ export function FinancialsWorkspace({
             currencyCode={currencyCode}
             canEdit={canEdit}
             onUpdateField={handleStartupCostUpdate}
+            openingRunway={openingRunway}
           />
         )}
         {activeTab === "depreciation" && (

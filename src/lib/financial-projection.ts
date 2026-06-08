@@ -561,8 +561,12 @@ export function defaultStartupCosts(): StartupCosts {
     // plan's total — owners build them up from their own real inputs.
     startup_supplies_cents: 0,
     professional_fees_cents: 0,
-    working_capital_reserve_cents: 1500000,
-    opening_cash_buffer_cents: 1000000,
+    // TIM-2517: defaults raised so a new plan with factory ramp defaults
+    // (3 months at 30/55/80%) stays solvent through ramp. Prior $15k/$10k
+    // left cash negative by month 2. SBA/SCORE puts full-café opening
+    // reserve at $40-60k; we land in the middle of that band.
+    working_capital_reserve_cents: 4500000,
+    opening_cash_buffer_cents: 2000000,
     buildout_useful_life_years: 15,
     equipment_useful_life_years: 7,
   };
