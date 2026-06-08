@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive } from "@/lib/access";
+import { normalizeMonthlyProjections } from "@/lib/financial-projection";
 import type { NextRequest } from "next/server";
 
 async function getAuthedPlanId() {
@@ -36,7 +37,44 @@ export async function GET() {
     .order("created_at", { ascending: true });
 
   if (error) return Response.json({ error: "Failed to load" }, { status: 500 });
-  return Response.json({ items: data ?? [] });
+
+  // TIM-2477 / TIM-2454 F5: hydrate `benefits_pct` / `benefits_fixed_cents`
+  // from the matching PersonnelLine (via `org_role_id`). The Launch Plan
+  // payroll total uses the canonical `personnelLoadedMonthlyCents` selector
+  // and needs these fields to match the Hiring workspace and Financials. If
+  // the role has no matching PersonnelLine, the client falls back to
+  // `DEFAULT_BENEFITS_PCT` so the total still reflects a sensible burden.
+  const { data: modelRow } = await supabase
+    .from("financial_models")
+    .select("forecast_inputs")
+    .eq("plan_id", planId)
+    .maybeSingle();
+
+  const personnel = modelRow
+    ? normalizeMonthlyProjections(modelRow.forecast_inputs).personnel
+    : [];
+  const benefitsByRoleId = new Map<string, { benefits_pct: number; benefits_fixed_cents?: number }>();
+  for (const line of personnel) {
+    if (typeof line.org_role_id === "string" && line.org_role_id.length > 0) {
+      benefitsByRoleId.set(line.org_role_id, {
+        benefits_pct: line.benefits_pct,
+        benefits_fixed_cents: line.benefits_fixed_cents,
+      });
+    }
+  }
+
+  const items = (data ?? []).map((row) => {
+    const match = benefitsByRoleId.get(row.id);
+    return match
+      ? {
+          ...row,
+          benefits_pct: match.benefits_pct,
+          benefits_fixed_cents: match.benefits_fixed_cents ?? null,
+        }
+      : row;
+  });
+
+  return Response.json({ items });
 }
 
 export async function POST(request: NextRequest) {

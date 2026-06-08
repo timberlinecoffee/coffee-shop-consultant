@@ -1,6 +1,7 @@
 "use client";
 
 import { useLaunchPlanRows } from "./useLaunchPlanRows";
+import { totalLoadedMonthlyCents } from "./hiring-payroll";
 import type { HiringRoleStatus } from "@/types/supabase";
 import { useCurrency } from "@/components/CurrencyProvider";
 
@@ -11,6 +12,12 @@ type HiringRole = {
   headcount: number;
   start_date: string | null;
   monthly_cost_cents: number | null;
+  // TIM-2477: hydrated from the matching PersonnelLine via `org_role_id` in
+  // the GET route so the loaded-payroll selector can pick up the role's real
+  // benefits load instead of a flat default. Optional — direct Launch Plan
+  // entries without a linked PersonnelLine fall back to DEFAULT_BENEFITS_PCT.
+  benefits_pct?: number | null;
+  benefits_fixed_cents?: number | null;
   status: HiringRoleStatus;
   notes: string | null;
   created_at: string;
@@ -49,10 +56,11 @@ export function HiringPlanCard() {
   const { loading, items, error, paywall, addItem, updateItem, removeItem } =
     useLaunchPlanRows<HiringRole>("/api/opening-month-plan/hiring-plan");
 
-  const totalPayrollCents = items.reduce(
-    (sum, r) => sum + (r.monthly_cost_cents ?? 0) * r.headcount,
-    0,
-  );
+  // TIM-2477 / TIM-2454 F5: use the canonical loaded-payroll selector so the
+  // footer total matches the Hiring workspace and Financials instead of
+  // dropping the 12–18% benefits load that monthly_cost_cents * headcount
+  // ignored.
+  const totalPayrollCents = totalLoadedMonthlyCents(items);
   const totalHeadcount = items.reduce((sum, r) => sum + r.headcount, 0);
 
   const handleAdd = () => {
