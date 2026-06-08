@@ -145,7 +145,10 @@ export interface BpLocationCandidate {
 export interface BpEquipmentItem {
   id: string;
   name: string;
-  cost_usd: number | null;
+  // TIM-2488: was `cost_usd` — renamed to be currency-neutral. The column is
+  // generated from unit_cost_cents × quantity and carries the plan's local
+  // currency, not USD. See migration 20260608014500_tim2488_rename_cost_usd_to_cost_local.sql.
+  cost_local: number | null;
   category: string | null;
   notes: string | null;
 }
@@ -210,7 +213,11 @@ export function toBpMarketingPlanning(content: unknown): BpMarketingPlanning | n
 
 // ── Auto-content assemblers ───────────────────────────────────────────────────
 
-function centsToUsd(cents: number, currencyCode = "USD"): string {
+// TIM-2488: was `centsToUsd` — renamed to `centsToCurrency` so the helper
+// name does not imply USD. The default `currencyCode` is still "USD" as a
+// safe last-resort; every assembler call site now threads through the plan's
+// `currency_code` so non-USD plans never fall back to it.
+function centsToCurrency(cents: number, currencyCode = "USD"): string {
   return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
 }
 
@@ -284,7 +291,7 @@ export function assembleLocationSection(candidates: BpLocationCandidate[], curre
     if (chosen.address) lines.push(`Address: ${chosen.address}`);
     if (chosen.neighborhood) lines.push(`Neighborhood: ${chosen.neighborhood}`);
     if (chosen.sq_ft) lines.push(`Size: ${chosen.sq_ft.toLocaleString()} sq ft`);
-    if (chosen.asking_rent_cents) lines.push(`Rent: ${centsToUsd(chosen.asking_rent_cents, currencyCode)}/month`);
+    if (chosen.asking_rent_cents) lines.push(`Rent: ${centsToCurrency(chosen.asking_rent_cents, currencyCode)}/month`);
     if (chosen.notes) lines.push(`\nNotes\n${chosen.notes}`);
   }
 
@@ -310,16 +317,21 @@ export function assembleBuildoutEquipment(
   const lines: string[] = [];
 
   if (equipment && equipment.length > 0) {
-    const totalCost = equipment.reduce((sum, e) => sum + (e.cost_usd ?? 0), 0);
+    const totalCost = equipment.reduce((sum, e) => sum + (e.cost_local ?? 0), 0);
     lines.push(`Equipment (${equipment.length} items, total ${formatCurrencyAmount(totalCost, currencyCode, { compact: false })})`);
 
     const major = equipment.filter((e) => e.category === "major");
     const minor = equipment.filter((e) => e.category === "minor");
 
+    // TIM-2488: per-item cost was rendered as `$${value.toLocaleString()}`,
+    // which baked a USD sign into the BP prompt and PDF for every founder
+    // regardless of currency. Route the value through formatCurrencyAmount
+    // with the plan's currencyCode so CAD/AUD/GBP/EUR plans render their
+    // own ISO code (e.g. "CA$18,500") instead of a bare "$".
     if (major.length > 0) {
       lines.push(`\nMajor Equipment`);
       for (const e of major.slice(0, 10)) {
-        lines.push(`- ${e.name}${e.cost_usd ? ` — $${e.cost_usd.toLocaleString()}` : ""}`);
+        lines.push(`- ${e.name}${e.cost_local ? ` — ${formatCurrencyAmount(e.cost_local, currencyCode, { compact: false })}` : ""}`);
       }
       if (major.length > 10) lines.push(`  … and ${major.length - 10} more`);
     }
@@ -327,7 +339,7 @@ export function assembleBuildoutEquipment(
     if (minor.length > 0) {
       lines.push(`\nMinor Equipment`);
       for (const e of minor.slice(0, 8)) {
-        lines.push(`- ${e.name}${e.cost_usd ? ` — $${e.cost_usd.toLocaleString()}` : ""}`);
+        lines.push(`- ${e.name}${e.cost_local ? ` — ${formatCurrencyAmount(e.cost_local, currencyCode, { compact: false })}` : ""}`);
       }
       if (minor.length > 8) lines.push(`  … and ${minor.length - 8} more`);
     }
@@ -343,9 +355,9 @@ export function assembleBuildoutEquipment(
     const depositsCents = typeof sc.deposits_cents === "number" ? sc.deposits_cents : 0;
     if (buildOutCents || licensesCents || depositsCents) {
       lines.push(`\nBuild-out Budget`);
-      if (buildOutCents) lines.push(`- Build-out: ${centsToUsd(buildOutCents, currencyCode)}`);
-      if (licensesCents) lines.push(`- Licenses & permits: ${centsToUsd(licensesCents, currencyCode)}`);
-      if (depositsCents) lines.push(`- Deposits: ${centsToUsd(depositsCents, currencyCode)}`);
+      if (buildOutCents) lines.push(`- Build-out: ${centsToCurrency(buildOutCents, currencyCode)}`);
+      if (licensesCents) lines.push(`- Licenses & permits: ${centsToCurrency(licensesCents, currencyCode)}`);
+      if (depositsCents) lines.push(`- Deposits: ${centsToCurrency(depositsCents, currencyCode)}`);
     }
   }
 
@@ -368,7 +380,7 @@ export function assembleMenuPricing(menuItems: BpMenuItem[], currencyCode = "USD
   for (const [cat, items] of Object.entries(byCategory)) {
     lines.push(`\n${cat}`);
     for (const item of items.slice(0, 12)) {
-      const price = item.price_cents ? centsToUsd(item.price_cents, currencyCode) : "";
+      const price = item.price_cents ? centsToCurrency(item.price_cents, currencyCode) : "";
       lines.push(`- ${item.name}${price ? `  ${price}` : ""}`);
     }
     if (items.length > 12) lines.push(`  … and ${items.length - 12} more`);
@@ -443,11 +455,11 @@ export function assembleTeamHiring(roles: BpHiringRole[], currencyCode = "USD"):
   const totalMonthlyCost = roles.reduce((sum, r) => sum + (r.monthly_cost_cents ?? 0), 0);
 
   const lines: string[] = [
-    `Team (${totalHeadcount} headcount${totalMonthlyCost ? `, ${centsToUsd(totalMonthlyCost, currencyCode)}/month est.` : ""})`,
+    `Team (${totalHeadcount} headcount${totalMonthlyCost ? `, ${centsToCurrency(totalMonthlyCost, currencyCode)}/month est.` : ""})`,
   ];
 
   for (const role of roles) {
-    const cost = role.monthly_cost_cents ? ` — ${centsToUsd(role.monthly_cost_cents, currencyCode)}/mo` : "";
+    const cost = role.monthly_cost_cents ? ` — ${centsToCurrency(role.monthly_cost_cents, currencyCode)}/mo` : "";
     const date = role.start_date ? ` (start ${new Date(role.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })})` : "";
     lines.push(`- ${role.role_title} ×${role.headcount}${cost}${date} [${role.status}]`);
   }
@@ -475,12 +487,15 @@ export function assembleFinancialPlan(
     financialModel.forecast_inputs ?? financialModel.monthly_projections
   );
 
-  const totalEquipCostUsd = (buildoutItems ?? []).reduce(
-    (sum: number, e: { cost_usd?: number }) => sum + (e.cost_usd ?? 0), 0
+  // TIM-2488: was `totalEquipCostUsd` reading `e.cost_usd`. The column is now
+  // `cost_local`; the local-currency total is unchanged (still equipment
+  // unit_cost_cents × quantity converted to whole units).
+  const totalEquipCostLocal = (buildoutItems ?? []).reduce(
+    (sum: number, e: { cost_local?: number }) => sum + (e.cost_local ?? 0), 0
   );
   const equipSummary: EquipmentSummary = {
-    total_cost_cents: Math.round(totalEquipCostUsd * 100),
-    financed_cost_cents: Math.round(totalEquipCostUsd * 100),
+    total_cost_cents: Math.round(totalEquipCostLocal * 100),
+    financed_cost_cents: Math.round(totalEquipCostLocal * 100),
   };
 
   const slices = computeMonthlySlices(projections, equipSummary, {}, {
@@ -509,7 +524,7 @@ export function assembleFinancialPlan(
   const grossMarginPct = totalRevCents > 0 ? Math.round((grossProfitCents / totalRevCents) * 100) : 0;
   const ebitdaMarginPct = totalRevCents > 0 ? Math.round((ebitdaCents / totalRevCents) * 100) : 0;
 
-  const cu = (c: number) => centsToUsd(c, currencyCode);
+  const cu = (c: number) => centsToCurrency(c, currencyCode);
   lines.push("Year 1 Income Statement");
   lines.push(`Revenue:           ${cu(totalRevCents)}`);
   lines.push(`COGS:              ${cu(totalCogsCents)} (${totalRevCents > 0 ? Math.round((totalCogsCents / totalRevCents) * 100) : 0}%)`);
@@ -556,7 +571,7 @@ export function assembleFinancialPlan(
       (l) => l.category === "capex" && l.mode === "flat" && l.value > 0
     );
     for (const l of capexLines) {
-      lines.push(`- ${l.label}: ${centsToUsd(l.value)} (${l.useful_life_years ?? 7}yr life)`);
+      lines.push(`- ${l.label}: ${centsToCurrency(l.value, currencyCode)} (${l.useful_life_years ?? 7}yr life)`);
     }
   }
 
@@ -571,20 +586,24 @@ export function assembleFinancialPlan(
 
 // TIM-1498: Execution > Operations merges Location & Real Estate + Equipment &
 // Supplies, with each previous section preserved under a heading separator.
+// TIM-2488: thread currencyCode through to the nested assemblers — they default
+// to USD if unset, so a non-USD plan would otherwise render the suite blocks in
+// dollars while the lender-ready sections render in CAD/AUD/GBP.
 export function assembleExecutionOperations(
   candidates: BpLocationCandidate[],
   equipment: BpEquipmentItem[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   financialModel: any,
+  currencyCode = "USD",
 ): string {
   const blocks: string[] = [];
 
-  const locationBlock = assembleLocationSection(candidates);
+  const locationBlock = assembleLocationSection(candidates, currencyCode);
   if (locationBlock && !locationBlock.startsWith("Add location candidates")) {
     blocks.push(`## Location & Real Estate\n${locationBlock}`);
   }
 
-  const equipmentBlock = assembleBuildoutEquipment(equipment, financialModel);
+  const equipmentBlock = assembleBuildoutEquipment(equipment, financialModel, currencyCode);
   if (equipmentBlock && !equipmentBlock.startsWith("Add equipment in the")) {
     blocks.push(`## Equipment & Supplies\n${equipmentBlock}`);
   }
@@ -596,13 +615,15 @@ export function assembleExecutionOperations(
 }
 
 // TIM-1498: Execution > Marketing & Sales merges Menu & Pricing + Marketing.
+// TIM-2488: thread currencyCode through to the nested menu assembler.
 export function assembleExecutionMarketingSales(
   menuItems: BpMenuItem[],
   planning: BpMarketingPlanning | null,
+  currencyCode = "USD",
 ): string {
   const blocks: string[] = [];
 
-  const menuBlock = assembleMenuPricing(menuItems);
+  const menuBlock = assembleMenuPricing(menuItems, currencyCode);
   if (menuBlock && !menuBlock.startsWith("Add menu items")) {
     blocks.push(`## Menu & Pricing\n${menuBlock}`);
   }

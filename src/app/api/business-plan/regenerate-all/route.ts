@@ -182,7 +182,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   ] = await Promise.all([
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
     supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
-    supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
+    supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
     supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
     supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents, status").eq("plan_id", planId).order("created_at"),
@@ -238,17 +238,19 @@ export async function POST(request: NextRequest): Promise<Response> {
       "execution-marketing-sales": assembleExecutionMarketingSales(
         (menuRows ?? []) as BpMenuItem[],
         toBpMarketingPlanning(marketingDoc?.content),
+        currencyCode,
       ),
       "execution-operations": assembleExecutionOperations(
         (locationRows ?? []) as BpLocationCandidate[],
         (equipmentRows ?? []) as BpEquipmentItem[],
         financialModel,
+        currencyCode,
       ),
       "execution-milestones-metrics": assembleOperationsLaunch(
         (launchRows ?? []) as BpLaunchItem[],
       ),
       "company-overview": assembleCompanyConcept(conceptDoc?.content),
-      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
+      "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], currencyCode),
       "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
       "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetrics, currencyCode),
       "financial-plan-break-even": assembleBreakEvenSection(lenderMetrics, currencyCode),

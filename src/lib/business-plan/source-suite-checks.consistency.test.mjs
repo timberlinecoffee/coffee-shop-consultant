@@ -65,7 +65,7 @@ function buildState({ menuBlendedCogsPct = 30, headcount = 4 } = {}) {
     shopName: "Test Coffee",
     financialModel: { forecast_inputs: mp },
     locationCandidates: [{ id: "L1", name: "Test", address: "123 St", neighborhood: null, sq_ft: 1200, asking_rent_cents: 600_000, status: "chosen", notes: null }],
-    equipment: [{ id: "e1", name: "Espresso", cost_usd: 25000, category: "espresso", notes: null }],
+    equipment: [{ id: "e1", name: "Espresso", cost_local: 25000, category: "espresso", notes: null }],
     hiringRoles: [{ id: "h1", role_title: "Barista", headcount, start_date: "2026-01-01", monthly_cost_cents: null, status: "active" }],
     menuBlendedCogsPct,
   });
@@ -75,7 +75,7 @@ function defaultInputs(planState) {
   return {
     planState,
     hiring: [{ id: "h1", role_title: "Barista", headcount: 4, start_date: "2026-01-01" }],
-    equipment: [{ id: "e1", name: "Espresso", cost_usd: 25000 }],
+    equipment: [{ id: "e1", name: "Espresso", cost_local: 25000 }],
     menu: [
       { id: "m1", name: "Latte", price_cents: 550, expected_mix_pct: 50, expected_popularity: "high" },
       { id: "m2", name: "Drip", price_cents: 350, expected_mix_pct: 50, expected_popularity: "medium" },

@@ -46,9 +46,9 @@ const REGISTRY_FIXTURE = {
       neighborhood: "Tenderloin", sq_ft: 1200, asking_rent_cents: 488000, status: "chosen", notes: null },
   ],
   equipment: [
-    { id: "E1", name: "La Marzocco GB5",  cost_usd: 18500, category: "major", notes: null },
-    { id: "E2", name: "Mahlkönig EK43",   cost_usd: 4200,  category: "major", notes: null },
-    { id: "E3", name: "Bunn Brewer",      cost_usd: 1500,  category: "major", notes: null },
+    { id: "E1", name: "La Marzocco GB5",  cost_local: 18500, category: "major", notes: null },
+    { id: "E2", name: "Mahlkönig EK43",   cost_local: 4200,  category: "major", notes: null },
+    { id: "E3", name: "Bunn Brewer",      cost_local: 1500,  category: "major", notes: null },
   ],
   hiringRoles: [
     { id: "R1", role_title: "Opening-Key Barista", headcount: 1, start_date: null, monthly_cost_cents: 600000, status: "open" },
@@ -99,7 +99,7 @@ test("buildPlanStateEntities — dedupes same canonical across sources", () => {
     shopName: "Test",
     locationCandidates: [],
     equipment: [
-      { id: "E1", name: "La Marzocco", cost_usd: 18500, category: null, notes: null },
+      { id: "E1", name: "La Marzocco", cost_local: 18500, category: null, notes: null },
     ],
     hiringRoles: [],
     fundingSources: [],

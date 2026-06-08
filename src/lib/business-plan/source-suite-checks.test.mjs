@@ -61,7 +61,7 @@ function basePlanState({ totalEquipUsd = 25000, headcount = 4, addRent = true, s
     shopName: "Test Coffee",
     financialModel: { forecast_inputs: mp },
     locationCandidates: [{ id: "L1", name: "Test", address: "123 St", neighborhood: null, sq_ft: sqFt, asking_rent_cents: 600_000, status: "chosen", notes: null }],
-    equipment: [{ id: "e1", name: "Espresso", cost_usd: totalEquipUsd, category: "espresso", notes: null }],
+    equipment: [{ id: "e1", name: "Espresso", cost_local: totalEquipUsd, category: "espresso", notes: null }],
     hiringRoles: [{ id: "h1", role_title: "Barista", headcount, start_date: "2026-01-01", monthly_cost_cents: null, status: "active" }],
     menuBlendedCogsPct: 30,
   });
@@ -75,7 +75,7 @@ function baseSourceInputs(overrides = {}) {
       { id: "h1", role_title: "Barista", headcount: 4, start_date: "2026-01-01" },
     ],
     equipment: overrides.equipment ?? [
-      { id: "e1", name: "Espresso", cost_usd: 25000 },
+      { id: "e1", name: "Espresso", cost_local: 25000 },
     ],
     menu: overrides.menu ?? [
       { id: "m1", name: "Latte", price_cents: 600, expected_popularity: "high", archived: false },
@@ -116,7 +116,7 @@ test("equipment cost mismatch — sum vs capex line > 1% diff fires critical", (
   const ps = basePlanState({ totalEquipUsd: 25000 });
   const inp = baseSourceInputs({
     planState: ps,
-    equipment: [{ id: "e1", name: "Espresso", cost_usd: 30000 }],
+    equipment: [{ id: "e1", name: "Espresso", cost_local: 30000 }],
   });
   const out = runCrossSuiteChecks(inp);
   const f = out.find((x) => x.id === "src:capex_equipment_mismatch");
@@ -128,7 +128,7 @@ test("equipment cost mismatch — sum vs capex line > 1% diff fires critical", (
 test("equipment within 1% tolerance — no finding", () => {
   // $25,050 vs $25,000 capex = $50 diff = 0.2% — well under tolerance.
   const inp = baseSourceInputs({
-    equipment: [{ id: "e1", name: "Espresso", cost_usd: 25050 }],
+    equipment: [{ id: "e1", name: "Espresso", cost_local: 25050 }],
   });
   const out = runCrossSuiteChecks(inp);
   assert.equal(out.find((x) => x.id === "src:capex_equipment_mismatch"), undefined);

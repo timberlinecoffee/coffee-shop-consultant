@@ -161,7 +161,7 @@ async function runBusinessPlanExportGate(supabase: any, planId: string, shopName
     { data: savedSections },
   ] = await Promise.all([
     supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-    supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
+    supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents, status").eq("plan_id", planId).order("created_at"),
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
@@ -193,20 +193,22 @@ async function runBusinessPlanExportGate(supabase: any, planId: string, shopName
     "execution-marketing-sales": assembleExecutionMarketingSales(
       (menuRows ?? []) as BpMenuItem[],
       toBpMarketingPlanning(marketingDoc?.content),
+      planState.meta.currency_code,
     ),
     "execution-operations": assembleExecutionOperations(
       (locationRows ?? []) as BpLocationCandidate[],
       (equipmentRows ?? []) as BpEquipmentItem[],
       financialModel,
+      planState.meta.currency_code,
     ),
     "execution-milestones-metrics": assembleOperationsLaunch(
       (launchRows ?? []) as BpLaunchItem[],
     ),
     "company-overview": assembleCompanyConcept(conceptDoc?.content),
-    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
+    "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], planState.meta.currency_code),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, planState.meta.currency_code),
     "financial-plan-financing": "",
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct),
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, planState.meta.currency_code),
     "appendix-monthly-statements": "",
   }
 
