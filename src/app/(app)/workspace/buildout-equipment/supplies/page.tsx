@@ -10,7 +10,13 @@ import { SuppliesWorkspace } from "./supplies-workspace";
 
 export const dynamic = "force-dynamic";
 
-export default async function SuppliesPage() {
+export default async function SuppliesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const params = await searchParams;
+  const showInventoryToast = params.from === "inventory";
   const supabase = await createClient();
   const {
     data: { user },
@@ -73,6 +79,7 @@ export default async function SuppliesPage() {
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCurrencyCode={initialCurrencyCode}
+      showInventoryToast={showInventoryToast}
     />
   );
 }
