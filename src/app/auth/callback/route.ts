@@ -7,7 +7,7 @@ import { resolveNext } from "./safe-next";
 // signInWithOAuth. Lets us strip query params off `redirectTo` so it matches
 // Supabase's Additional Redirect URLs allowlist exactly (bare `/auth/callback`),
 // avoiding the Site URL fallback that drops users on apex coming-soon.
-const HANDOFF_COOKIES = ["gw_oauth_signup_source", "gw_oauth_next"] as const;
+const HANDOFF_COOKIES = ["gw_oauth_signup_source", "gw_oauth_next", "gw_oauth_verifier_pre_nav"] as const;
 
 function clearHandoffCookies(res: NextResponse) {
   for (const name of HANDOFF_COOKIES) {
@@ -57,6 +57,12 @@ export async function GET(request: Request) {
   const sbNames = allCookies.filter(c => c.name.startsWith("sb-")).map(c => c.name).join(",");
   const handoffPresent = allCookies.filter(c => HANDOFF_COOKIES.includes(c.name as typeof HANDOFF_COOKIES[number])).length;
   const rememberMeRaw = cookieStore.get("gw_remember_me")?.value;
+  // TIM-2327 (2026-06-08): sentinel from login-form recording whether the
+  // verifier cookie was present in document.cookie at the moment of OAuth
+  // navigation. "1" = setItem wrote it (so loss is mid-flight in the redirect
+  // chain). "0" = setItem failed to write at all. "absent" = sentinel never
+  // set (user on an old deploy, or some upstream error).
+  const verifierPreNav = cookieStore.get("gw_oauth_verifier_pre_nav")?.value;
   const userAgent = request.headers.get("user-agent") ?? "";
   const browserHint = /Firefox\//.test(userAgent)
     ? "firefox"
@@ -114,6 +120,7 @@ export async function GET(request: Request) {
       err_name: (error as { name?: string }).name,
       verifier_cookies: verifierCookies.length,
       verifier_chunks: verifierChunked.length,
+      verifier_pre_nav: verifierPreNav ?? "absent",
       auth_token_cookies: authTokenCookies.length,
       handoff_cookies: handoffPresent,
       remember_me: rememberMeRaw ?? "absent",
@@ -131,6 +138,7 @@ export async function GET(request: Request) {
     err_desc: searchParams.get("error_description") ?? undefined,
     verifier_cookies: verifierCookies.length,
     verifier_chunks: verifierChunked.length,
+    verifier_pre_nav: verifierPreNav ?? "absent",
     auth_token_cookies: authTokenCookies.length,
     handoff_cookies: handoffPresent,
     remember_me: rememberMeRaw ?? "absent",

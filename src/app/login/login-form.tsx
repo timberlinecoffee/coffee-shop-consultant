@@ -111,6 +111,35 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
   }
 
+  // TIM-2327 (2026-06-08): re-write the PKCE verifier cookie @supabase/ssr
+  // just set, with the same explicit attribute set our handoff cookies use
+  // (Path=/; Max-Age=600; SameSite=Lax; Secure on https). Returns true if a
+  // verifier cookie was present at the time of the rewrite, false otherwise.
+  // The boolean tells us whether @supabase/ssr's setItem actually wrote to
+  // document.cookie at all — feeds back into the /auth/callback diagnostic.
+  function rewriteVerifierWithHandoffAttrs(): boolean {
+    if (typeof document === "undefined") return false;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    let found = false;
+    for (const raw of document.cookie.split(";")) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) continue;
+      const name = trimmed.substring(0, eq);
+      if (!name.startsWith("sb-")) continue;
+      // Match both the canonical name and any chunked variants.
+      if (
+        !name.endsWith("-auth-token-code-verifier") &&
+        !/-auth-token-code-verifier\.\d+$/.test(name)
+      ) continue;
+      found = true;
+      const value = trimmed.substring(eq + 1);
+      document.cookie = `${name}=${value}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
+    }
+    return found;
+  }
+
   async function handleGoogleSignIn() {
     if (mode === "signup" && !consent) {
       setError("Please agree to the Terms of Service and Privacy Policy to continue.");
@@ -125,16 +154,38 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     // TIM-2430: write preference before redirecting to Google; it survives the
     // OAuth round-trip and the proxy+server reads it on /auth/callback.
     writeRememberPreference(rememberMe);
-    const { error } = await supabase.auth.signInWithOAuth({
+    // TIM-2327 (2026-06-08): Trent's Chrome diag showed verifier_cookies=0 at
+    // /auth/callback even after we shipped `cookieOptions: { secure: true }`.
+    // The PKCE verifier cookie that @supabase/ssr writes via document.cookie
+    // simply does not survive the OAuth round-trip on his browser, while our
+    // own gw_oauth_* handoff cookies (set the same way) do. Use
+    // skipBrowserRedirect to inspect document.cookie after the @supabase/ssr
+    // write and re-write the verifier with the same explicit attribute set
+    // our handoff cookies use. We also stash a sentinel handoff cookie
+    // (`gw_oauth_verifier_pre_nav`) recording whether the verifier was even
+    // present at navigation time, so the next diag tells us setItem-failed vs
+    // browser-stripped-mid-flight.
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true,
         // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
         // OAuth honors the project-level CAPTCHA setting on the initiate call.
         ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
       },
     });
-    if (error) setError(error.message);
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+    const verifierAtNav = rewriteVerifierWithHandoffAttrs();
+    setHandoffCookie("gw_oauth_verifier_pre_nav", verifierAtNav ? "1" : "0");
+    if (data?.url) {
+      window.location.assign(data.url);
+      return;
+    }
     setLoading(false);
   }
 
