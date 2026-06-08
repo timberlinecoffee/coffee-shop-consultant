@@ -809,7 +809,10 @@ export function formatPlanStateForPrompt(state: PlanState): string {
   // surfacing the registry into the prompt itself nudges the model away
   // from inventing variants in the first place.
   if (state.entities && state.entities.length > 0) {
-    const block = formatEntitiesForPrompt(state.entities);
+    // TIM-2486: pass the plan's currency code so equipment cost lines render
+    // as e.g. "CAD 6,800" instead of "$6,800" — eliminates a USD inference
+    // path for the LLM on international plans.
+    const block = formatEntitiesForPrompt(state.entities, state.meta.currency_code);
     if (block) {
       lines.push("");
       lines.push(block);

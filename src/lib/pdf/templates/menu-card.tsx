@@ -12,6 +12,7 @@ import { PdfFooter } from "../components/PdfFooter"
 import { PdfSection } from "../components/PdfSection"
 import { PdfTable, type ColumnDef, type Row } from "../components/PdfTable"
 import type { PdfTemplate } from "../registry"
+import { formatMinorUnits, formatCurrencyAmount, currencySymbol } from "@/lib/currency"
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -44,26 +45,18 @@ const UNCATEGORIZED_LABEL = "Other"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function fmtPrice(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(cents / 100)
+// TIM-2486: route money formatting through the central currency utility so
+// non-USD plans render with the correct symbol/locale on the printed menu.
+function fmtPrice(cents: number, currencyCode: string): string {
+  return formatMinorUnits(cents, currencyCode)
 }
 
 function fmtPct(val: number): string {
   return `${val.toFixed(1)}%`
 }
 
-function fmtDollar(val: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(val)
+function fmtDollar(val: number, currencyCode: string): string {
+  return formatCurrencyAmount(val, currencyCode, { compact: false })
 }
 
 function fmtDateLong(d: Date): string {
@@ -242,11 +235,13 @@ function PublicMenuPage({
   shopName,
   generatedDate,
   brand,
+  currencyCode,
 }: {
   items: MenuItemRow[]
   shopName: string | null
   generatedDate: string
   brand: BrandTokens
+  currencyCode: string
 }) {
   const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived && i.price_cents > 0)
@@ -272,7 +267,7 @@ function PublicMenuPage({
                 {catItems.map((item) => (
                   <View key={item.id} style={styles.publicRow}>
                     <Text style={styles.publicName}>{item.name}</Text>
-                    <Text style={styles.publicPrice}>{fmtPrice(item.price_cents)}</Text>
+                    <Text style={styles.publicPrice}>{fmtPrice(item.price_cents, currencyCode)}</Text>
                   </View>
                 ))}
               </View>
@@ -296,17 +291,22 @@ function OperatorPage({
   shopName,
   generatedDate,
   brand,
+  currencyCode,
 }: {
   items: MenuItemRow[]
   shopName: string | null
   generatedDate: string
   brand: BrandTokens
+  currencyCode: string
 }) {
   const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived)
   const footer = computeFooter(items)
   const totalMix = footer?.totalMix ?? 0
 
+  // TIM-2486: label the contribution column with the active currency symbol so
+  // e.g. a CAD plan reads "CA$/100 covers" instead of "$/100 covers".
+  const sym = currencySymbol(currencyCode)
   const columns: ColumnDef[] = [
     { key: "category", label: "Category", width: 65 },
     { key: "name", label: "Item" },
@@ -314,7 +314,7 @@ function OperatorPage({
     { key: "cogs", label: "COGS", currency: true, width: 55 },
     { key: "margin_pct", label: "Margin%", width: 55 },
     { key: "mix_pct", label: "Mix%", width: 40 },
-    { key: "contrib", label: "$/100 covers", width: 70 },
+    { key: "contrib", label: `${sym}/100 covers`, width: 70 },
   ]
 
   const rows: Row[] = active.map((item) => {
@@ -327,7 +327,7 @@ function OperatorPage({
       cogs: item.cogs_cents,
       margin_pct: margin !== null ? `${margin.toFixed(1)}%` : "—",
       mix_pct: `${item.expected_mix_pct.toFixed(1)}%`,
-      contrib: contrib !== null ? fmtDollar(contrib) : "—",
+      contrib: contrib !== null ? fmtDollar(contrib, currencyCode) : "—",
     }
   })
 
@@ -348,7 +348,7 @@ function OperatorPage({
           : "—",
       contrib:
         footer.marginPer100 !== null
-          ? fmtDollar(footer.marginPer100)
+          ? fmtDollar(footer.marginPer100, currencyCode)
           : "—",
     }
   }
@@ -368,7 +368,7 @@ function OperatorPage({
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Margin / 100 covers</Text>
             <Text style={styles.summaryValue}>
-              {footer.marginPer100 !== null ? fmtDollar(footer.marginPer100) : "—"}
+              {footer.marginPer100 !== null ? fmtDollar(footer.marginPer100, currencyCode) : "—"}
             </Text>
           </View>
           <View style={styles.summaryCard}>
@@ -386,9 +386,9 @@ function OperatorPage({
         </PdfSection>
       ) : (
         <PdfSection title="Item-level cost &amp; margin" brand={brand}>
-          <PdfTable columns={columns} rows={rows} totalsRow={totalsRow} />
+          <PdfTable columns={columns} rows={rows} totalsRow={totalsRow} currencyCode={currencyCode} />
           <Text style={styles.footerNote}>
-            $/100 covers = margin dollars generated per 100 customers at the given mix.{"\n"}
+            {sym}/100 covers = margin generated per 100 customers at the given mix.{"\n"}
             Weighted margin = mix-weighted average margin across all priced items.
           </Text>
         </PdfSection>
@@ -406,17 +406,19 @@ function MenuCardPdf({
   shopName,
   generatedDate,
   brand,
+  currencyCode,
 }: {
   content: MenuCardContent
   shopName: string | null
   generatedDate: string
   brand: BrandTokens
+  currencyCode: string
 }) {
   const { items } = content
   return (
     <PdfDocument shopName={shopName}>
-      <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} />
-      <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} />
+      <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} currencyCode={currencyCode} />
+      <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} currencyCode={currencyCode} />
     </PdfDocument>
   )
 }
@@ -448,6 +450,7 @@ export const menuCardTemplate: PdfTemplate<MenuCardContent> = {
         shopName={ctx.plan.shop_name}
         generatedDate={generatedDate}
         brand={ctx.brand}
+        currencyCode={ctx.currencyCode}
       />
     )
   },

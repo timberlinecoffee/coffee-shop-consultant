@@ -28,6 +28,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { useCurrency } from "@/components/CurrencyProvider";
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
@@ -91,7 +92,10 @@ type SupplierColId =
 const SUPPLIER_COLS: SupplierColDef[] = [
   { id: "name",           label: "Name",            placeholder: "Vendor name",            defaultWidth: 200, minWidth: 140, resizable: true,  reorderable: false },
   { id: "contact",        label: "Contact",         placeholder: "Email, phone, or site",  defaultWidth: 180, minWidth: 120, resizable: true,  reorderable: true  },
-  { id: "price_per_unit", label: "Price / Unit",    placeholder: "$18 / lb",               defaultWidth: 130, minWidth: 100, resizable: true,  reorderable: true  },
+  // TIM-2486: rendered placeholder is overridden per-row using the active
+  // currency symbol from useCurrency(). Keep a unit-only default here as the
+  // fallback for any non-row use site.
+  { id: "price_per_unit", label: "Price / Unit",    placeholder: "Price per unit",         defaultWidth: 130, minWidth: 100, resizable: true,  reorderable: true  },
   { id: "minimum_order",  label: "Minimum Order",   placeholder: "5 lb",                   defaultWidth: 130, minWidth: 100, resizable: true,  reorderable: true  },
   { id: "lead_time",      label: "Lead Time",       placeholder: "3-5 days",               defaultWidth: 130, minWidth: 100, resizable: true,  reorderable: true  },
   { id: "notes",          label: "Notes",           placeholder: "Notes",                  defaultWidth: 220, minWidth: 140, resizable: true,  reorderable: true  },
@@ -916,6 +920,8 @@ function CandidateRow({
   onDelete: (id: string) => void;
 }) {
   const v = row.updated_at;
+  const { symbol } = useCurrency();
+  const pricePlaceholder = `${symbol}18 / lb`;
   function cellFor(col: SupplierColDef): ReactNode {
     switch (col.id) {
       case "name":
@@ -923,7 +929,10 @@ function CandidateRow({
       case "contact":
         return <Input key={`contact:${v}`} value={row.contact ?? ""} placeholder={col.placeholder} disabled={!canEdit} onChange={(val) => onField(row.id, "contact", val)} />;
       case "price_per_unit":
-        return <Input key={`price:${v}`} value={row.price_per_unit ?? ""} placeholder={col.placeholder} disabled={!canEdit} onChange={(val) => onField(row.id, "price_per_unit", val)} />;
+        // TIM-2486: swap the hardcoded "$18 / lb" placeholder for one prefixed
+        // with the active currency symbol so an EUR/CAD/GBP plan doesn't see
+        // a USD hint.
+        return <Input key={`price:${v}`} value={row.price_per_unit ?? ""} placeholder={pricePlaceholder} disabled={!canEdit} onChange={(val) => onField(row.id, "price_per_unit", val)} />;
       case "minimum_order":
         return <Input key={`min:${v}`} value={row.minimum_order ?? ""} placeholder={col.placeholder} disabled={!canEdit} onChange={(val) => onField(row.id, "minimum_order", val)} />;
       case "lead_time":

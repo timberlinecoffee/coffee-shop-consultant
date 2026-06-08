@@ -11,6 +11,7 @@ import { PdfFooter } from "../components/PdfFooter"
 import { PdfSection } from "../components/PdfSection"
 import { PdfTable, type ColumnDef, type Row } from "../components/PdfTable"
 import type { PdfTemplate } from "../registry"
+import { formatMinorUnits } from "@/lib/currency"
 
 // ── Data types (mirror the row shapes from the DB tables) ────────────────────
 
@@ -117,13 +118,10 @@ const WORKSPACE_LABELS: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtUsd(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
+// TIM-2486: route money formatting through the central currency utility so
+// non-USD plans print "CA$" / "€" / "£" instead of "$".
+function fmtMoney(cents: number, currencyCode: string): string {
+  return formatMinorUnits(cents, currencyCode)
 }
 
 function fmtDateLong(d: Date): string {
@@ -652,7 +650,7 @@ function MarketingSection({ content, brand }: { content: LaunchPlanContent; bran
   )
 }
 
-function HiringPlanSection({ content, brand }: { content: LaunchPlanContent; brand: BrandTokens }) {
+function HiringPlanSection({ content, brand, currencyCode }: { content: LaunchPlanContent; brand: BrandTokens; currencyCode: string }) {
   const styles = makeStyles(brand)
   if (content.hiring.length === 0) {
     return (
@@ -688,13 +686,13 @@ function HiringPlanSection({ content, brand }: { content: LaunchPlanContent; bra
 
   return (
     <PdfSection title="Hiring Plan" brand={brand}>
-      <PdfTable columns={columns} rows={rows} />
+      <PdfTable columns={columns} rows={rows} currencyCode={currencyCode} />
       <View style={styles.payrollFooter}>
         <Text style={styles.payrollFooterLabel}>
           Total headcount: {totalHeadcount}
         </Text>
         <Text style={styles.payrollFooterValue}>
-          Monthly payroll: {totalPayrollCents > 0 ? fmtUsd(totalPayrollCents) : "-"}
+          Monthly payroll: {totalPayrollCents > 0 ? fmtMoney(totalPayrollCents, currencyCode) : "-"}
         </Text>
       </View>
     </PdfSection>
@@ -780,7 +778,7 @@ function ReadinessSection({ content, brand }: { content: LaunchPlanContent; bran
 
 // ── Top-level document ────────────────────────────────────────────────────────
 
-function LaunchPlanPdf({ content, generatedDate, brand }: { content: LaunchPlanContent; generatedDate: string; brand: BrandTokens }) {
+function LaunchPlanPdf({ content, generatedDate, brand, currencyCode }: { content: LaunchPlanContent; generatedDate: string; brand: BrandTokens; currencyCode: string }) {
   const styles = makeStyles(brand)
   const shopName = content.shopName ?? content.planName
   return (
@@ -806,7 +804,7 @@ function LaunchPlanPdf({ content, generatedDate, brand }: { content: LaunchPlanC
       {/* Page 4: Hiring Plan + AI Readiness */}
       <Page size={brand.page.size} style={styles.page}>
         <PdfHeader shopName={shopName} workspaceName="Launch plan" brand={brand} />
-        <HiringPlanSection content={content} brand={brand} />
+        <HiringPlanSection content={content} brand={brand} currencyCode={currencyCode} />
         <ReadinessSection content={content} brand={brand} />
         <PdfFooter generatedDate={generatedDate} brand={brand} />
       </Page>
@@ -884,6 +882,7 @@ export const launchPlanTemplate: PdfTemplate<LaunchPlanContent> = {
         content={ctx.content}
         generatedDate={fmtDateLong(new Date())}
         brand={ctx.brand}
+        currencyCode={ctx.currencyCode}
       />
     )
   },

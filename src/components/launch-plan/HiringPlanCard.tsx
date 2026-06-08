@@ -43,7 +43,9 @@ function parseDollarsToCents(input: string): number | null {
 }
 
 export function HiringPlanCard() {
-  const { formatMinor } = useCurrency();
+  // TIM-2486: surface the active currency code in the per-row "Monthly cost"
+  // label so international plans don't show "(USD)" on a CAD/EUR/AUD plan.
+  const { formatMinor, currencyCode } = useCurrency();
   const { loading, items, error, paywall, addItem, updateItem, removeItem } =
     useLaunchPlanRows<HiringRole>("/api/opening-month-plan/hiring-plan");
 
@@ -132,7 +134,7 @@ export function HiringPlanCard() {
                 />
               </label>
               <label className="text-xs text-[var(--muted-foreground)] md:col-span-2">
-                <span className="block mb-1">Monthly cost (USD)</span>
+                <span className="block mb-1">Monthly cost ({currencyCode})</span>
                 <input
                   type="text"
                   inputMode="decimal"

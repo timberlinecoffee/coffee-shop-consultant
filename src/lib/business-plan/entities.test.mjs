@@ -237,10 +237,19 @@ test("formatEntitiesForPrompt — surfaces canonical forms with directive header
   assert.match(block, /La Marzocco GB5/);
   assert.match(block, /Opening-Key Barista/);
   assert.match(block, /SBA 7\(a\) Loan/);
-  // Cost surfaces alongside equipment.
-  assert.match(block, /\$18,500/);
+  // TIM-2486: cost surfaces with the ISO currency code so a non-USD plan does
+  // not see "$" and infer USD. Default currencyCode = "USD".
+  assert.match(block, /USD 18,500/);
   // Aliases are NOT in the prompt (canonicalizer handles them after generation).
   assert.doesNotMatch(block, /La Marzocko/);
+});
+
+test("formatEntitiesForPrompt — surfaces non-USD currency code on international plans", () => {
+  const ents = buildPlanStateEntities(REGISTRY_FIXTURE);
+  const block = formatEntitiesForPrompt(ents, "CAD");
+  assert.match(block, /CAD 18,500/);
+  // Bare-symbol "$18,500" must not surface on a CAD plan.
+  assert.doesNotMatch(block, /\$18,500/);
 });
 
 // ── Real-world false-positive defenses (pinned from prod verify TIM-2337) ──

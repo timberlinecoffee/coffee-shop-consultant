@@ -261,7 +261,7 @@ export function extractFundingSourcesForEntities(
 
 // ── Prompt block: surfaces the registry into the BP system prompt ────────────
 
-export function formatEntitiesForPrompt(entities: PlanStateEntity[]): string {
+export function formatEntitiesForPrompt(entities: PlanStateEntity[], currencyCode: string = "USD"): string {
   if (entities.length === 0) return "";
   const byType = new Map<PlanStateEntityType, PlanStateEntity[]>();
   for (const e of entities) {
@@ -302,7 +302,7 @@ export function formatEntitiesForPrompt(entities: PlanStateEntity[]): string {
       // rewrites aliases AFTER generation, so the prompt only needs to know
       // the canonical form.
       const valueBits = e.value_cents != null
-        ? ` (cost ${formatUsdShort(e.value_cents)})`
+        ? ` (cost ${formatMoneyShort(e.value_cents, currencyCode)})`
         : "";
       lines.push(`- ${e.canonical}${valueBits}`);
     }
@@ -320,9 +320,13 @@ export function formatEntitiesForPrompt(entities: PlanStateEntity[]): string {
   return lines.join("\n").trim();
 }
 
-function formatUsdShort(cents: number): string {
-  const dollars = cents / 100;
-  return `$${Math.round(dollars).toLocaleString("en-US")}`;
+// TIM-2486: surface the active currency code in the prompt entity-registry so
+// the LLM doesn't infer "$" means USD on a CAD/EUR/AUD/GBP plan. The ISO code
+// is used instead of a symbol so the model has no ambiguity to "resolve".
+function formatMoneyShort(cents: number, currencyCode: string): string {
+  const whole = cents / 100;
+  const formatted = Math.round(whole).toLocaleString("en-US");
+  return `${currencyCode} ${formatted}`;
 }
 
 // ── Canonicalizer ────────────────────────────────────────────────────────────
