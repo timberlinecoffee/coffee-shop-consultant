@@ -13,7 +13,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { ChartConfiguration } from "chart.js";
-import { BRAND, registerFonts, pdfDocMeta } from "@/lib/pdf/brand";
+import { BRAND, registerFonts, pdfDocMeta, type BrandTokens } from "@/lib/pdf/brand";
 import { chartToPng } from "@/lib/pdf/chart-to-png";
 import {
   type MonthlyProjections,
@@ -28,272 +28,274 @@ registerFonts();
 
 // ── styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  pagePortrait: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: 36,
-    paddingBottom: 52,
-    paddingLeft: 36,
-    paddingRight: 36,
-  },
-  pageLandscape: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: 28,
-    paddingBottom: 44,
-    paddingLeft: 28,
-    paddingRight: 28,
-  },
-  coverPage: {
-    fontFamily: BRAND.fonts.sans,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    padding: 60,
-    flexDirection: "column",
-    justifyContent: "center",
-  },
-  coverEyebrow: {
-    fontSize: 11,
-    color: BRAND.colors.primary,
-    fontWeight: 700,
-    letterSpacing: 2,
-    marginBottom: 16,
-  },
-  coverRule: {
-    height: 2,
-    backgroundColor: BRAND.colors.primary,
-    width: 64,
-    marginBottom: 24,
-  },
-  coverTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 36,
-    fontWeight: 600,
-    lineHeight: 1.15,
-    color: BRAND.colors.ink,
-    marginBottom: 12,
-  },
-  coverShop: {
-    fontSize: 18,
-    color: BRAND.colors.ink,
-    marginBottom: 32,
-  },
-  coverMetaLabel: {
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  coverMetaValue: {
-    fontSize: 11,
-    color: BRAND.colors.ink,
-    marginBottom: 14,
-  },
-  coverFootnote: {
-    position: "absolute",
-    bottom: 40,
-    left: 60,
-    right: 60,
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-    paddingTop: 8,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-    marginBottom: 12,
-  },
-  brandLine: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 12,
-    color: BRAND.colors.primary,
-  },
-  headerMeta: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    textAlign: "right",
-  },
-  footer: {
-    position: "absolute",
-    bottom: 18,
-    left: 28,
-    right: 28,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-    paddingTop: 6,
-  },
-  footerText: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-  },
-  sectionHeadingBar: {
-    backgroundColor: BRAND.colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginBottom: 8,
-  },
-  sectionHeading: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 11,
-    color: BRAND.colors.paper,
-  },
-  sectionWrap: {
-    marginBottom: 14,
-  },
-  paragraph: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    marginBottom: 6,
-    lineHeight: 1.5,
-  },
-  small: {
-    fontSize: 9,
-    color: BRAND.colors.muted,
-    marginBottom: 4,
-  },
-  metricRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 8,
-    gap: 8,
-  },
-  metric: {
-    flexGrow: 1,
-    flexBasis: "30%",
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    padding: 8,
-    borderRadius: 4,
-  },
-  metricLabel: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  metricValue: {
-    fontSize: 14,
-    color: BRAND.colors.ink,
-    fontWeight: 700,
-  },
-  metricValuePos: { color: BRAND.colors.primary },
-  metricValueNeg: { color: "var(--rust)" },
-  monthTable: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    marginBottom: 10,
-  },
-  monthHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: "var(--surface-sage-light)",
-  },
-  monthRow: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-  },
-  monthRowAlt: {
-    backgroundColor: "var(--neutral-near-white)",
-  },
-  monthRowBold: {
-    backgroundColor: "var(--surface-sage-50)",
-  },
-  monthLabelCell: {
-    padding: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    width: 140,
-  },
-  monthLabelCellBold: {
-    fontWeight: 700,
-  },
-  monthValueCell: {
-    padding: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    flex: 1,
-    textAlign: "right",
-  },
-  monthValueCellNeg: {
-    color: "var(--rust)",
-  },
-  totalsCell: {
-    fontWeight: 700,
-    backgroundColor: "var(--surface-sage-light)",
-  },
-  chartsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
-  chartHalf: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    padding: 6,
-    borderRadius: 4,
-  },
-  chartFull: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    padding: 6,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  chartTitle: {
-    fontSize: 9,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-    marginBottom: 4,
-  },
-  chartImage: {
-    width: "100%",
-    height: 140,
-    objectFit: "contain",
-  },
-  chartImageFull: {
-    width: "100%",
-    height: 220,
-    objectFit: "contain",
-  },
-  assumptionRow: {
-    flexDirection: "row",
-    paddingVertical: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  assumptionLabel: {
-    flex: 2,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-  },
-  assumptionValue: {
-    flex: 1,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    textAlign: "right",
-  },
-});
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    pagePortrait: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: 36,
+      paddingBottom: 52,
+      paddingLeft: 36,
+      paddingRight: 36,
+    },
+    pageLandscape: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: 28,
+      paddingBottom: 44,
+      paddingLeft: 28,
+      paddingRight: 28,
+    },
+    coverPage: {
+      fontFamily: brand.fonts.sans,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      padding: 60,
+      flexDirection: "column",
+      justifyContent: "center",
+    },
+    coverEyebrow: {
+      fontSize: 11,
+      color: brand.colors.primary,
+      fontWeight: 700,
+      letterSpacing: 2,
+      marginBottom: 16,
+    },
+    coverRule: {
+      height: 2,
+      backgroundColor: brand.colors.primary,
+      width: 64,
+      marginBottom: 24,
+    },
+    coverTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 36,
+      fontWeight: 600,
+      lineHeight: 1.15,
+      color: brand.colors.ink,
+      marginBottom: 12,
+    },
+    coverShop: {
+      fontSize: 18,
+      color: brand.colors.ink,
+      marginBottom: 32,
+    },
+    coverMetaLabel: {
+      fontSize: 9,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 2,
+    },
+    coverMetaValue: {
+      fontSize: 11,
+      color: brand.colors.ink,
+      marginBottom: 14,
+    },
+    coverFootnote: {
+      position: "absolute",
+      bottom: 40,
+      left: 60,
+      right: 60,
+      fontSize: 9,
+      color: brand.colors.muted,
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+      paddingTop: 8,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+      marginBottom: 12,
+    },
+    brandLine: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 12,
+      color: brand.colors.primary,
+    },
+    headerMeta: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+      textAlign: "right",
+    },
+    footer: {
+      position: "absolute",
+      bottom: 18,
+      left: 28,
+      right: 28,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+      paddingTop: 6,
+    },
+    footerText: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+    },
+    sectionHeadingBar: {
+      backgroundColor: brand.colors.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginBottom: 8,
+    },
+    sectionHeading: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 11,
+      color: brand.colors.paper,
+    },
+    sectionWrap: {
+      marginBottom: 14,
+    },
+    paragraph: {
+      fontSize: 10,
+      color: brand.colors.ink,
+      marginBottom: 6,
+      lineHeight: 1.5,
+    },
+    small: {
+      fontSize: 9,
+      color: brand.colors.muted,
+      marginBottom: 4,
+    },
+    metricRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginBottom: 8,
+      gap: 8,
+    },
+    metric: {
+      flexGrow: 1,
+      flexBasis: "30%",
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      padding: 8,
+      borderRadius: 4,
+    },
+    metricLabel: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    metricValue: {
+      fontSize: 14,
+      color: brand.colors.ink,
+      fontWeight: 700,
+    },
+    metricValuePos: { color: brand.colors.primary },
+    metricValueNeg: { color: "var(--rust)" },
+    monthTable: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      marginBottom: 10,
+    },
+    monthHeaderRow: {
+      flexDirection: "row",
+      backgroundColor: "var(--surface-sage-light)",
+    },
+    monthRow: {
+      flexDirection: "row",
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+    },
+    monthRowAlt: {
+      backgroundColor: "var(--neutral-near-white)",
+    },
+    monthRowBold: {
+      backgroundColor: "var(--surface-sage-50)",
+    },
+    monthLabelCell: {
+      padding: 4,
+      fontSize: 8,
+      color: brand.colors.ink,
+      width: 140,
+    },
+    monthLabelCellBold: {
+      fontWeight: 700,
+    },
+    monthValueCell: {
+      padding: 4,
+      fontSize: 8,
+      color: brand.colors.ink,
+      flex: 1,
+      textAlign: "right",
+    },
+    monthValueCellNeg: {
+      color: "var(--rust)",
+    },
+    totalsCell: {
+      fontWeight: 700,
+      backgroundColor: "var(--surface-sage-light)",
+    },
+    chartsRow: {
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 12,
+    },
+    chartHalf: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      padding: 6,
+      borderRadius: 4,
+    },
+    chartFull: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      padding: 6,
+      borderRadius: 4,
+      marginBottom: 12,
+    },
+    chartTitle: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: brand.colors.ink,
+      marginBottom: 4,
+    },
+    chartImage: {
+      width: "100%",
+      height: 140,
+      objectFit: "contain",
+    },
+    chartImageFull: {
+      width: "100%",
+      height: 220,
+      objectFit: "contain",
+    },
+    assumptionRow: {
+      flexDirection: "row",
+      paddingVertical: 3,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    assumptionLabel: {
+      flex: 2,
+      fontSize: 9,
+      color: brand.colors.ink,
+    },
+    assumptionValue: {
+      flex: 1,
+      fontSize: 9,
+      color: brand.colors.ink,
+      textAlign: "right",
+    },
+  });
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -342,13 +344,16 @@ function MonthTable({
   showTotal = true,
   totalLabel = "Year",
   code,
+  brand,
 }: {
   headers: string[];
   rows: Row[];
   showTotal?: boolean;
   totalLabel?: string;
   code: string;
+  brand: BrandTokens;
 }) {
+  const styles = makeStyles(brand);
   return (
     <View style={styles.monthTable}>
       <View style={styles.monthHeaderRow}>
@@ -413,7 +418,8 @@ function MonthTable({
   );
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function SectionHeading({ children, brand }: { children: React.ReactNode; brand: BrandTokens }) {
+  const styles = makeStyles(brand);
   return (
     <View style={styles.sectionHeadingBar}>
       <Text style={styles.sectionHeading}>{children}</Text>
@@ -421,7 +427,8 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Header({ shopName, sub }: { shopName: string | null; sub: string }) {
+function Header({ shopName, sub, brand }: { shopName: string | null; sub: string; brand: BrandTokens }) {
+  const styles = makeStyles(brand);
   return (
     <View style={styles.header} fixed>
       <Text style={styles.brandLine}>{(shopName ?? "Your Coffee Shop")}: Financials Report</Text>
@@ -432,7 +439,8 @@ function Header({ shopName, sub }: { shopName: string | null; sub: string }) {
   );
 }
 
-function Footer({ generatedDate }: { generatedDate: string }) {
+function Footer({ generatedDate, brand }: { generatedDate: string; brand: BrandTokens }) {
+  const styles = makeStyles(brand);
   return (
     <View style={styles.footer} fixed>
       <Text style={styles.footerText}>Generated {generatedDate}</Text>
@@ -466,7 +474,8 @@ function revenueChartConfig(
   monthSlices: MonthlySlice[],
   months: string[],
   code: string,
-  fiscalStart: number
+  fiscalStart: number,
+  brand: BrandTokens
 ): ChartConfiguration {
   const orderedSlices = fiscalReorder(monthSlices, fiscalStart);
   const meta = getCurrencyMeta(code);
@@ -494,24 +503,24 @@ function revenueChartConfig(
         {
           label: `Revenue (${meta.code})`,
           data: revenue,
-          borderColor: BRAND.colors.primary,
-          backgroundColor: BRAND.colors.primary,
+          borderColor: brand.colors.primary,
+          backgroundColor: brand.colors.primary,
           tension: 0.2,
           pointRadius: 2,
         },
         {
           label: `COGS (${meta.code})`,
           data: cogs,
-          borderColor: BRAND.colors.accent,
-          backgroundColor: BRAND.colors.accent,
+          borderColor: brand.colors.accent,
+          backgroundColor: brand.colors.accent,
           tension: 0.2,
           pointRadius: 2,
         },
         {
           label: `Operating expenses (${meta.code})`,
           data: opex,
-          borderColor: BRAND.colors.muted,
-          backgroundColor: BRAND.colors.muted,
+          borderColor: brand.colors.muted,
+          backgroundColor: brand.colors.muted,
           tension: 0.2,
           pointRadius: 2,
         },
@@ -536,7 +545,8 @@ function revenueChartConfig(
 
 function expenseBreakdownConfig(
   monthSlices: MonthlySlice[],
-  code: string
+  code: string,
+  brand: BrandTokens
 ): ChartConfiguration {
   const meta = getCurrencyMeta(code);
   const divisor = Math.pow(10, meta.fractionDigits);
@@ -572,12 +582,12 @@ function expenseBreakdownConfig(
             totals.other / divisor,
           ],
           backgroundColor: [
-            BRAND.colors.accent,
-            BRAND.colors.primary,
+            brand.colors.accent,
+            brand.colors.primary,
             "var(--sage-light)",
             "var(--amber-gold)",
             "var(--sage-pale)",
-            BRAND.colors.muted,
+            brand.colors.muted,
           ],
         },
       ],
@@ -596,7 +606,8 @@ function cashFlowChartConfig(
   monthSlices: MonthlySlice[],
   months: string[],
   code: string,
-  fiscalStart: number
+  fiscalStart: number,
+  brand: BrandTokens
 ): ChartConfiguration {
   const orderedSlices = fiscalReorder(monthSlices, fiscalStart);
   const meta = getCurrencyMeta(code);
@@ -612,8 +623,8 @@ function cashFlowChartConfig(
           type: "line" as const,
           label: `Ending cash (${meta.code})`,
           data: cash,
-          borderColor: BRAND.colors.primary,
-          backgroundColor: BRAND.colors.primary,
+          borderColor: brand.colors.primary,
+          backgroundColor: brand.colors.primary,
           tension: 0.2,
           pointRadius: 2,
           yAxisID: "y",
@@ -622,7 +633,7 @@ function cashFlowChartConfig(
           type: "bar" as const,
           label: `Net cash / month (${meta.code})`,
           data: netCash,
-          backgroundColor: BRAND.colors.accent,
+          backgroundColor: brand.colors.accent,
           yAxisID: "y",
         },
       ],
@@ -646,7 +657,8 @@ function cashFlowChartConfig(
 
 function breakEvenChartConfig(
   y1Annual: { revenue: number; cogs: number; fixed: number },
-  code: string
+  code: string,
+  brand: BrandTokens
 ): ChartConfiguration {
   const meta = getCurrencyMeta(code);
   const divisor = Math.pow(10, meta.fractionDigits);
@@ -680,16 +692,16 @@ function breakEvenChartConfig(
         {
           label: "Total costs",
           data: totalCosts,
-          borderColor: BRAND.colors.muted,
-          backgroundColor: BRAND.colors.muted,
+          borderColor: brand.colors.muted,
+          backgroundColor: brand.colors.muted,
           tension: 0,
           pointRadius: 0,
         },
         {
           label: "Revenue",
           data: revenue,
-          borderColor: BRAND.colors.primary,
-          backgroundColor: BRAND.colors.primary,
+          borderColor: brand.colors.primary,
+          backgroundColor: brand.colors.primary,
           tension: 0,
           pointRadius: 0,
         },
@@ -890,10 +902,12 @@ export interface FinancialPlannerPdfProps {
     cashFlowPng: Buffer | null;
     breakEvenPng: Buffer | null;
   };
+  brand?: BrandTokens;
 }
 
 export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
-  const { mp, equipment, shopName, generatedDate, charts } = props;
+  const { mp, equipment, shopName, generatedDate, charts, brand = BRAND } = props;
+  const styles = makeStyles(brand);
   const code = mp.currency_code ?? "USD";
   const meta = getCurrencyMeta(code);
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
@@ -971,8 +985,8 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
       {/* Annual summary (portrait) */}
       <Page size="A4" style={styles.pagePortrait}>
-        <Header shopName={shopName} sub="Annual summary" />
-        <SectionHeading>Executive summary</SectionHeading>
+        <Header shopName={shopName} sub="Annual summary" brand={brand} />
+        <SectionHeading brand={brand}>Executive summary</SectionHeading>
         <View style={styles.metricRow}>
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Year 1 revenue</Text>
@@ -1022,60 +1036,64 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
           </View>
         </View>
 
-        <SectionHeading>5-year summary</SectionHeading>
+        <SectionHeading brand={brand}>5-year summary</SectionHeading>
         <MonthTable
           headers={yearHeaders}
           rows={annualRows}
           showTotal={false}
           code={code}
+          brand={brand}
         />
 
-        <Footer generatedDate={generatedDate} />
+        <Footer generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Monthly P&L (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1: Monthly P&L" />
-        <SectionHeading>Year 1: monthly profit & loss</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: Monthly P&L" brand={brand} />
+        <SectionHeading brand={brand}>Year 1: monthly profit & loss</SectionHeading>
         <MonthTable
           headers={months}
           rows={plRows}
           totalLabel="Year 1"
           code={code}
+          brand={brand}
         />
-        <Footer generatedDate={generatedDate} />
+        <Footer generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Monthly Cash Flow (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1: Monthly cash flow" />
-        <SectionHeading>Year 1: monthly cash flow</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: Monthly cash flow" brand={brand} />
+        <SectionHeading brand={brand}>Year 1: monthly cash flow</SectionHeading>
         <MonthTable
           headers={months}
           rows={cfRows}
           totalLabel="Year 1"
           code={code}
+          brand={brand}
         />
-        <Footer generatedDate={generatedDate} />
+        <Footer generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Monthly Balance Sheet (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1: Monthly balance sheet" />
-        <SectionHeading>Year 1: monthly balance sheet (end of month)</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: Monthly balance sheet" brand={brand} />
+        <SectionHeading brand={brand}>Year 1: monthly balance sheet (end of month)</SectionHeading>
         <MonthTable
           headers={months}
           rows={bsRows}
           showTotal={false}
           code={code}
+          brand={brand}
         />
-        <Footer generatedDate={generatedDate} />
+        <Footer generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Charts (landscape) */}
       <Page size="A4" orientation="landscape" style={styles.pageLandscape}>
-        <Header shopName={shopName} sub="Year 1: charts" />
-        <SectionHeading>Year 1: visualizations</SectionHeading>
+        <Header shopName={shopName} sub="Year 1: charts" brand={brand} />
+        <SectionHeading brand={brand}>Year 1: visualizations</SectionHeading>
         {charts.revenuePng && (
           <View style={styles.chartFull}>
             <Text style={styles.chartTitle}>Revenue vs. costs</Text>
@@ -1114,13 +1132,13 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
             />
           </View>
         )}
-        <Footer generatedDate={generatedDate} />
+        <Footer generatedDate={generatedDate} brand={brand} />
       </Page>
 
       {/* Assumptions (portrait) */}
       <Page size="A4" style={styles.pagePortrait}>
-        <Header shopName={shopName} sub="Assumptions" />
-        <SectionHeading>Assumptions</SectionHeading>
+        <Header shopName={shopName} sub="Assumptions" brand={brand} />
+        <SectionHeading brand={brand}>Assumptions</SectionHeading>
         <View style={styles.assumptionRow}>
           <Text style={styles.assumptionLabel}>Currency</Text>
           <Text style={styles.assumptionValue}>
@@ -1163,7 +1181,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
         </View>
 
         <View style={{ height: 8 }} />
-        <SectionHeading>Weekly schedule & traffic</SectionHeading>
+        <SectionHeading brand={brand}>Weekly schedule & traffic</SectionHeading>
         {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((d) => {
           const sched = mp.weekly_schedule[d];
           const flow = mp.daily_flow[d] ?? 0;
@@ -1180,7 +1198,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
         })}
 
         <View style={{ height: 8 }} />
-        <SectionHeading>Forecast lines</SectionHeading>
+        <SectionHeading brand={brand}>Forecast lines</SectionHeading>
         {mp.forecast_lines.length === 0 && (
           <Text style={styles.paragraph}>No custom forecast lines configured.</Text>
         )}
@@ -1217,7 +1235,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
         {mp.forecast_lines.some((l) => l.category === "capex") && (
           <>
             <View style={{ height: 8 }} />
-            <SectionHeading>Capital Assets and Depreciation</SectionHeading>
+            <SectionHeading brand={brand}>Capital Assets and Depreciation</SectionHeading>
             {mp.forecast_lines
               .filter((l) => l.category === "capex" && l.mode === "flat" && l.value > 0)
               .map((l) => {
@@ -1236,7 +1254,7 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
           </>
         )}
 
-        <Footer generatedDate={generatedDate} />
+        <Footer generatedDate={generatedDate} brand={brand} />
       </Page>
     </Document>
   );
@@ -1246,7 +1264,8 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 
 export async function renderPlannerCharts(
   mp: MonthlyProjections,
-  equipment: EquipmentSummary
+  equipment: EquipmentSummary,
+  brand: BrandTokens = BRAND
 ): Promise<FinancialPlannerPdfProps["charts"]> {
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
@@ -1282,10 +1301,10 @@ export async function renderPlannerCharts(
   }
 
   const [revenuePng, expensePng, cashFlowPng, breakEvenPng] = await Promise.all([
-    safe(revenueChartConfig(year1, months, code, fiscalStart), 1100, 440),
-    safe(expenseBreakdownConfig(year1, code), 700, 440),
-    safe(cashFlowChartConfig(year1, months, code, fiscalStart), 700, 440),
-    safe(breakEvenChartConfig(annualY1, code), 1100, 440),
+    safe(revenueChartConfig(year1, months, code, fiscalStart, brand), 1100, 440),
+    safe(expenseBreakdownConfig(year1, code, brand), 700, 440),
+    safe(cashFlowChartConfig(year1, months, code, fiscalStart, brand), 700, 440),
+    safe(breakEvenChartConfig(annualY1, code, brand), 1100, 440),
   ]);
 
   return { revenuePng, expensePng, cashFlowPng, breakEvenPng };

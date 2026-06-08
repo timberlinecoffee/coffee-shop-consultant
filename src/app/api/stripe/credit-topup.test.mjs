@@ -33,8 +33,19 @@ describe("TIM-1687: credit pack catalog", () => {
   });
 
   test("formatPackPrice renders whole dollars without cents", () => {
-    assert.equal(formatPackPrice(1200), "$12");
+    assert.equal(formatPackPrice(1900), "$19");
     assert.equal(formatPackPrice(3999), "$39.99");
+  });
+
+  // TIM-2309: launch SKU sanity — credits and prices match the board-approved
+  // ladder (100/$19, 500/$79, 1500/$199).
+  test("TIM-2309 launch packs match the approved ladder", () => {
+    assert.equal(CREDIT_PACKS_BY_KEY.small.credits, 100);
+    assert.equal(CREDIT_PACKS_BY_KEY.small.amountCents, 1900);
+    assert.equal(CREDIT_PACKS_BY_KEY.medium.credits, 500);
+    assert.equal(CREDIT_PACKS_BY_KEY.medium.amountCents, 7900);
+    assert.equal(CREDIT_PACKS_BY_KEY.large.credits, 1500);
+    assert.equal(CREDIT_PACKS_BY_KEY.large.amountCents, 19900);
   });
 });
 
@@ -117,13 +128,13 @@ describe("TIM-1687: webhook credit grant", () => {
     const session = {
       mode: "payment",
       payment_status: "paid",
-      metadata: { kind: "credit_pack", userId: "user_1", packKey: "medium", credits: "100" },
+      metadata: { kind: "credit_pack", userId: "user_1", packKey: "medium", credits: "500" },
     };
     await handleCreditTopup(session, makeSupabase());
 
-    assert.equal(usersRow.ai_credits_remaining, 100, "balance should reflect the grant");
+    assert.equal(usersRow.ai_credits_remaining, 500, "balance should reflect the grant");
     assert.equal(ledger.length, 1, "one ledger row");
-    assert.equal(ledger[0].amount, 100);
+    assert.equal(ledger[0].amount, 500);
     assert.equal(ledger[0].type, "purchase");
     assert.equal(ledger[0].user_id, "user_1");
   });
@@ -133,10 +144,10 @@ describe("TIM-1687: webhook credit grant", () => {
     const session = {
       mode: "payment",
       payment_status: "paid",
-      metadata: { kind: "credit_pack", userId: "user_1", packKey: "small", credits: "25" },
+      metadata: { kind: "credit_pack", userId: "user_1", packKey: "small", credits: "100" },
     };
     await handleCreditTopup(session, makeSupabase());
-    assert.equal(usersRow.ai_credits_remaining, 32);
+    assert.equal(usersRow.ai_credits_remaining, 107);
   });
 
   test("unpaid session grants nothing", async () => {

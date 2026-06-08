@@ -4,6 +4,11 @@ import Link from "next/link";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 import { getAccountSettings } from "@/lib/account-settings";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
+import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
+import { AccountDataControls } from "@/components/account/AccountDataControls";
+import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
+import { effectivePlanForGating } from "@/lib/access";
+import { SettingsShell } from "@/components/account/settings/SettingsShell";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,9 +22,20 @@ export default async function AccountPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, email, subscription_tier, subscription_status, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
+    .select("full_name, email, subscription_tier, subscription_status, trial_ends_at, ai_credits_remaining, copilot_trial_messages_used, readiness_score")
     .eq("id", user.id)
     .single();
+
+  // TIM-1956: surface Pro-feature entry points (Office Hours, multi-project)
+  // for Starter users with locked-state CTAs that open the upgrade prompt.
+  // Trialists and Pro see them as included.
+  const isPro = profile
+    ? effectivePlanForGating({
+        subscription_status: profile.subscription_status,
+        subscription_tier: profile.subscription_tier,
+        trial_ends_at: profile.trial_ends_at,
+      }) === "pro"
+    : false;
 
   const accountSettings = await getAccountSettings(supabase, user.id);
 
@@ -27,6 +43,22 @@ export default async function AccountPage() {
   const FREE_TRIAL_COPILOT_LIMIT = 5;
   const isTrial = profile?.subscription_status === "free_trial";
   const trialRemaining = FREE_TRIAL_COPILOT_LIMIT - (profile?.copilot_trial_messages_used ?? 0);
+
+  // TIM-1911: tabbed shell behind feature flag; default off until prod verify (TIM-1910c).
+  if (process.env.NEXT_PUBLIC_BILLING_TAB === "1") {
+    return (
+      <SettingsShell
+        profile={profile}
+        userEmail={user.email ?? null}
+        accountSettings={accountSettings}
+        tierDisplayName={tierDisplayName}
+        isTrial={isTrial}
+        trialRemaining={trialRemaining}
+      />
+    );
+  }
+
+  const userEmail = user.email ?? "";
 
   return (
     <div className="bg-[var(--background)]">
@@ -73,15 +105,29 @@ export default async function AccountPage() {
           </Link>
         </div>
 
+        <ProFeatureEntries isPro={isPro} />
+
+        {/* TIM-2434: Imported Documents entry. Persistent access to
+            re-import, re-run extraction, or remove past imports. */}
         <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
-          <h2 className="font-semibold text-[var(--foreground)] mb-4">Delete Account</h2>
+          <h2 className="font-semibold text-[var(--foreground)] mb-2">
+            Imported Documents
+          </h2>
           <p className="text-sm text-[var(--dark-grey)] mb-4">
-            Permanently delete your account and all plan data. This cannot be undone.
+            Upload existing business plans, financials, or branding files.
+            We&apos;ll map them into your planning suites.
           </p>
-          <button className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
-            Delete My Account
-          </button>
+          <Link
+            href="/account/documents"
+            className="inline-block text-sm text-[var(--teal)] font-medium hover:underline"
+          >
+            Manage imports →
+          </Link>
         </div>
+
+        <GuidedNoticesCard variant="stacked-card" />
+
+        <AccountDataControls userEmail={userEmail} variant="stacked-card" />
 
         <form action="/auth/signout" method="POST">
           <button

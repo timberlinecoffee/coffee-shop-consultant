@@ -4,7 +4,7 @@
 
 import React from "react";
 import { Page, View, Text, StyleSheet, Svg, Rect } from "@react-pdf/renderer";
-import { BRAND } from "../brand";
+import { BRAND, type BrandTokens } from "../brand";
 import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
 import { formatMinorUnits } from "@/lib/currency";
@@ -14,219 +14,221 @@ import type { FinancialDocumentVisibility } from "@/lib/business-plan-financials
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
-const SP = StyleSheet.create({
-  pagePortrait: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: 28,
-    paddingBottom: 44,
-    paddingLeft: 36,
-    paddingRight: 36,
-  },
-  pageLandscape: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: 28,
-    paddingBottom: 44,
-    paddingLeft: 28,
-    paddingRight: 28,
-  },
-  headingBar: {
-    backgroundColor: BRAND.colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    marginBottom: 10,
-  },
-  heading: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 11,
-    color: BRAND.colors.paper,
-  },
-  subHeading: {
-    fontFamily: BRAND.fonts.sans,
-    fontWeight: 700,
-    fontSize: 9,
-    color: BRAND.colors.primary,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  body: {
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    lineHeight: 1.5,
-    marginBottom: 4,
-  },
-  bullet: {
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    lineHeight: 1.4,
-    marginBottom: 2,
-    paddingLeft: 8,
-  },
-  // 3-column annual statement table
-  annualTable: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    marginBottom: 12,
-  },
-  annualHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: BRAND.colors.primary,
-  },
-  annualRow: {
-    flexDirection: "row",
-    borderTopWidth: 0.5,
-    borderTopColor: BRAND.colors.rule,
-  },
-  annualRowAlt: {
-    backgroundColor: "#F8F9F8",
-  },
-  annualRowBold: {
-    backgroundColor: "#EEF3EE",
-  },
-  annualRowSubhead: {
-    backgroundColor: "#F0F4F0",
-  },
-  annualLabelCell: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    width: 160,
-  },
-  annualLabelCellIndent: {
-    paddingLeft: 16,
-  },
-  annualLabelBold: {
-    fontWeight: 700,
-  },
-  annualLabelMuted: {
-    color: BRAND.colors.muted,
-    fontSize: 7,
-  },
-  annualValueCell: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    flex: 1,
-    textAlign: "right",
-  },
-  annualValueBold: {
-    fontWeight: 700,
-  },
-  annualValueNeg: {
-    color: "#B04040",
-  },
-  annualHeaderText: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    fontSize: 8,
-    fontWeight: 700,
-    color: BRAND.colors.paper,
-    flex: 1,
-    textAlign: "right",
-  },
-  annualHeaderLabel: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    fontSize: 8,
-    fontWeight: 700,
-    color: BRAND.colors.paper,
-    width: 160,
-  },
-  // Funding table
-  fundTable: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    marginBottom: 12,
-  },
-  fundHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: BRAND.colors.rule,
-  },
-  fundRow: {
-    flexDirection: "row",
-    borderTopWidth: 0.5,
-    borderTopColor: BRAND.colors.rule,
-  },
-  fundRowAlt: {
-    backgroundColor: "#F8F9F8",
-  },
-  fundRowTotal: {
-    backgroundColor: "#EEF3EE",
-  },
-  fundLabelCell: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    flex: 2,
-  },
-  fundValueCell: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    flex: 1,
-    textAlign: "right",
-  },
-  fundValueBold: {
-    fontWeight: 700,
-  },
-  // Monthly table (reuse from parent)
-  table: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    marginBottom: 10,
-  },
-  tableHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: BRAND.colors.rule,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-  },
-  tableRowAlt: {
-    backgroundColor: "#F8F9F8",
-  },
-  tableRowBold: {
-    backgroundColor: "#EEF3EE",
-  },
-  labelCell: {
-    padding: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    width: 140,
-  },
-  labelCellBold: {
-    fontWeight: 700,
-  },
-  valueCell: {
-    padding: 4,
-    fontSize: 8,
-    color: BRAND.colors.ink,
-    flex: 1,
-    textAlign: "right",
-  },
-  valueCellBold: {
-    fontWeight: 700,
-  },
-  valueCellNeg: {
-    color: "#B04040",
-  },
-  totalCell: {
-    fontWeight: 700,
-    backgroundColor: "#DDE8DD",
-  },
-});
+function makeSharedStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    pagePortrait: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: 28,
+      paddingBottom: 44,
+      paddingLeft: 36,
+      paddingRight: 36,
+    },
+    pageLandscape: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: 28,
+      paddingBottom: 44,
+      paddingLeft: 28,
+      paddingRight: 28,
+    },
+    headingBar: {
+      backgroundColor: brand.colors.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      marginBottom: 10,
+    },
+    heading: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 11,
+      color: brand.colors.paper,
+    },
+    subHeading: {
+      fontFamily: brand.fonts.sans,
+      fontWeight: 700,
+      fontSize: 9,
+      color: brand.colors.primary,
+      marginTop: 10,
+      marginBottom: 4,
+    },
+    body: {
+      fontSize: 9,
+      color: brand.colors.ink,
+      lineHeight: 1.5,
+      marginBottom: 4,
+    },
+    bullet: {
+      fontSize: 9,
+      color: brand.colors.ink,
+      lineHeight: 1.4,
+      marginBottom: 2,
+      paddingLeft: 8,
+    },
+    // 3-column annual statement table
+    annualTable: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      marginBottom: 12,
+    },
+    annualHeaderRow: {
+      flexDirection: "row",
+      backgroundColor: brand.colors.primary,
+    },
+    annualRow: {
+      flexDirection: "row",
+      borderTopWidth: 0.5,
+      borderTopColor: brand.colors.rule,
+    },
+    annualRowAlt: {
+      backgroundColor: "#F8F9F8",
+    },
+    annualRowBold: {
+      backgroundColor: "#EEF3EE",
+    },
+    annualRowSubhead: {
+      backgroundColor: "#F0F4F0",
+    },
+    annualLabelCell: {
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      fontSize: 8,
+      color: brand.colors.ink,
+      width: 160,
+    },
+    annualLabelCellIndent: {
+      paddingLeft: 16,
+    },
+    annualLabelBold: {
+      fontWeight: 700,
+    },
+    annualLabelMuted: {
+      color: brand.colors.muted,
+      fontSize: 7,
+    },
+    annualValueCell: {
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      fontSize: 8,
+      color: brand.colors.ink,
+      flex: 1,
+      textAlign: "right",
+    },
+    annualValueBold: {
+      fontWeight: 700,
+    },
+    annualValueNeg: {
+      color: "#B04040",
+    },
+    annualHeaderText: {
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      fontSize: 8,
+      fontWeight: 700,
+      color: brand.colors.paper,
+      flex: 1,
+      textAlign: "right",
+    },
+    annualHeaderLabel: {
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      fontSize: 8,
+      fontWeight: 700,
+      color: brand.colors.paper,
+      width: 160,
+    },
+    // Funding table
+    fundTable: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      marginBottom: 12,
+    },
+    fundHeaderRow: {
+      flexDirection: "row",
+      backgroundColor: brand.colors.rule,
+    },
+    fundRow: {
+      flexDirection: "row",
+      borderTopWidth: 0.5,
+      borderTopColor: brand.colors.rule,
+    },
+    fundRowAlt: {
+      backgroundColor: "#F8F9F8",
+    },
+    fundRowTotal: {
+      backgroundColor: "#EEF3EE",
+    },
+    fundLabelCell: {
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      fontSize: 8,
+      color: brand.colors.ink,
+      flex: 2,
+    },
+    fundValueCell: {
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      fontSize: 8,
+      color: brand.colors.ink,
+      flex: 1,
+      textAlign: "right",
+    },
+    fundValueBold: {
+      fontWeight: 700,
+    },
+    // Monthly table (reuse from parent)
+    table: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      marginBottom: 10,
+    },
+    tableHeaderRow: {
+      flexDirection: "row",
+      backgroundColor: brand.colors.rule,
+    },
+    tableRow: {
+      flexDirection: "row",
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+    },
+    tableRowAlt: {
+      backgroundColor: "#F8F9F8",
+    },
+    tableRowBold: {
+      backgroundColor: "#EEF3EE",
+    },
+    labelCell: {
+      padding: 4,
+      fontSize: 8,
+      color: brand.colors.ink,
+      width: 140,
+    },
+    labelCellBold: {
+      fontWeight: 700,
+    },
+    valueCell: {
+      padding: 4,
+      fontSize: 8,
+      color: brand.colors.ink,
+      flex: 1,
+      textAlign: "right",
+    },
+    valueCellBold: {
+      fontWeight: 700,
+    },
+    valueCellNeg: {
+      color: "#B04040",
+    },
+    totalCell: {
+      fontWeight: 700,
+      backgroundColor: "#DDE8DD",
+    },
+  });
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -263,12 +265,14 @@ function BarChart({
   height,
   barColor,
   negativeColor,
+  brand,
 }: {
   values: number[];
   width: number;
   height: number;
   barColor: string;
   negativeColor: string;
+  brand: BrandTokens;
 }) {
   const max = Math.max(...values.map(Math.abs), 1);
   const n = values.length;
@@ -279,7 +283,7 @@ function BarChart({
   return (
     <Svg width={width} height={height}>
       {/* Zero axis */}
-      <Rect x={0} y={zeroY} width={width} height={0.5} fill={BRAND.colors.rule} />
+      <Rect x={0} y={zeroY} width={width} height={0.5} fill={brand.colors.rule} />
       {values.map((v, i) => {
         const barH = Math.max(1, (Math.abs(v) / max) * (height / 2 - 2));
         const x = i * (barW + gap) + gap / 2;
@@ -295,10 +299,12 @@ function RevenueBarChart({
   values,
   width,
   height,
+  brand,
 }: {
   values: number[];
   width: number;
   height: number;
+  brand: BrandTokens;
 }) {
   const max = Math.max(...values, 1);
   const n = values.length;
@@ -311,7 +317,7 @@ function RevenueBarChart({
         const barH = Math.max(1, (v / max) * (height - 4));
         const x = i * (barW + gap) + gap / 2;
         const y = height - barH;
-        return <Rect key={i} x={x} y={y} width={barW} height={barH} fill={BRAND.colors.primary} />;
+        return <Rect key={i} x={x} y={y} width={barW} height={barH} fill={brand.colors.primary} />;
       })}
     </Svg>
   );
@@ -323,12 +329,14 @@ function YearBarChart({
   width,
   height,
   code,
+  brand,
 }: {
   values: number[];
   labels: string[];
   width: number;
   height: number;
   code: string;
+  brand: BrandTokens;
 }) {
   const max = Math.max(...values.map(Math.abs), 1);
   const n = values.length;
@@ -340,11 +348,11 @@ function YearBarChart({
     <View>
       <Svg width={width} height={height}>
         {/* Zero line */}
-        <Rect x={0} y={chartH / 2} width={width} height={0.5} fill={BRAND.colors.rule} />
+        <Rect x={0} y={chartH / 2} width={width} height={0.5} fill={brand.colors.rule} />
         {values.map((v, i) => {
           const barH = Math.max(1, (Math.abs(v) / max) * (chartH / 2 - 4));
           const x = i * (barW + gap) + gap / 2;
-          const fill = v >= 0 ? BRAND.colors.primary : "#B04040";
+          const fill = v >= 0 ? brand.colors.primary : "#B04040";
           const y = v >= 0 ? chartH / 2 - barH : chartH / 2;
           return <Rect key={i} x={x} y={y} width={barW} height={barH} fill={fill} />;
         })}
@@ -353,8 +361,8 @@ function YearBarChart({
       <View style={{ flexDirection: "row" }}>
         {labels.map((label, i) => (
           <View key={i} style={{ flex: 1, alignItems: "center" }}>
-            <Text style={{ fontSize: 7, color: BRAND.colors.muted }}>{label}</Text>
-            <Text style={{ fontSize: 7, color: BRAND.colors.ink, fontWeight: 700 }}>
+            <Text style={{ fontSize: 7, color: brand.colors.muted }}>{label}</Text>
+            <Text style={{ fontSize: 7, color: brand.colors.ink, fontWeight: 700 }}>
               {fmt(values[i], code)}
             </Text>
           </View>
@@ -382,12 +390,15 @@ function AnnualTable({
   colHeaders,
   rows,
   code,
+  brand,
 }: {
   title: string;
   colHeaders: [string, string, string];
   rows: AnnualRow[];
   code: string;
+  brand: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   return (
     <View>
       <View style={SP.headingBar}>
@@ -471,11 +482,14 @@ export function KeyAssumptionsPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const openDays = Object.entries(mp.weekly_schedule).filter(([, d]) => d.open);
   const daysPerWeek = openDays.length;
   const avgTicket = mp.avg_ticket_cents;
@@ -531,8 +545,8 @@ export function KeyAssumptionsPage({
   ];
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <View style={SP.headingBar}>
         <Text style={SP.heading}>Key Assumptions</Text>
       </View>
@@ -548,7 +562,7 @@ export function KeyAssumptionsPage({
           {"•"} {a}
         </Text>
       ))}
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -560,12 +574,15 @@ export function RevenueByMonthPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   slices: MonthlySlice[];
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
@@ -575,21 +592,21 @@ export function RevenueByMonthPage({
 
   return (
     <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <View style={SP.headingBar}>
         <Text style={SP.heading}>Revenue by Month (Year 1)</Text>
       </View>
 
       {/* Bar chart */}
       <View style={{ marginBottom: 10 }}>
-        <RevenueBarChart values={values} width={790} height={80} />
+        <RevenueBarChart values={values} width={790} height={80} brand={brand} />
       </View>
 
       {/* Month labels under chart */}
       <View style={{ flexDirection: "row", marginBottom: 8 }}>
         {months.map((m, i) => (
           <View key={i} style={{ flex: 1, alignItems: "center" }}>
-            <Text style={{ fontSize: 6, color: BRAND.colors.muted }}>{m}</Text>
+            <Text style={{ fontSize: 6, color: brand.colors.muted }}>{m}</Text>
           </View>
         ))}
       </View>
@@ -628,7 +645,7 @@ export function RevenueByMonthPage({
         })}
       </View>
 
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -640,12 +657,15 @@ export function ExpensesByMonthPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   slices: MonthlySlice[];
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
@@ -655,21 +675,21 @@ export function ExpensesByMonthPage({
 
   return (
     <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <View style={SP.headingBar}>
         <Text style={SP.heading}>Expenses by Month (Year 1)</Text>
       </View>
 
       {/* Bar chart */}
       <View style={{ marginBottom: 10 }}>
-        <RevenueBarChart values={expenseValues} width={790} height={80} />
+        <RevenueBarChart values={expenseValues} width={790} height={80} brand={brand} />
       </View>
 
       {/* Month labels */}
       <View style={{ flexDirection: "row", marginBottom: 8 }}>
         {months.map((m, i) => (
           <View key={i} style={{ flex: 1, alignItems: "center" }}>
-            <Text style={{ fontSize: 6, color: BRAND.colors.muted }}>{m}</Text>
+            <Text style={{ fontSize: 6, color: brand.colors.muted }}>{m}</Text>
           </View>
         ))}
       </View>
@@ -714,7 +734,7 @@ export function ExpensesByMonthPage({
         })}
       </View>
 
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -726,12 +746,15 @@ export function NetProfitByYearPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   slices: MonthlySlice[];
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const years = [1, 2, 3, 4, 5];
   const revenues = years.map((y) => sumYear(slices, y, "net_revenue_cents"));
@@ -739,15 +762,15 @@ export function NetProfitByYearPage({
   const labels = years.map((y) => `Year ${y}`);
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <View style={SP.headingBar}>
         <Text style={SP.heading}>Net Profit by Year (5-Year Outlook)</Text>
       </View>
 
       {/* Bar chart */}
       <View style={{ marginBottom: 8 }}>
-        <YearBarChart values={netProfits} labels={labels} width={480} height={120} code={code} />
+        <YearBarChart values={netProfits} labels={labels} width={480} height={120} code={code} brand={brand} />
       </View>
 
       {/* Summary table */}
@@ -791,7 +814,7 @@ export function NetProfitByYearPage({
         ))}
       </View>
 
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -802,11 +825,14 @@ export function UseOfFundsPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const sc = mp.startup_costs;
 
@@ -836,8 +862,8 @@ export function UseOfFundsPage({
   const total = rows.reduce((s, r) => s + r.cents, 0);
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <View style={SP.headingBar}>
         <Text style={SP.heading}>Use of Funds</Text>
       </View>
@@ -847,7 +873,7 @@ export function UseOfFundsPage({
       </Text>
 
       {rows.length === 0 ? (
-        <Text style={[SP.body, { fontStyle: "italic", color: BRAND.colors.muted }]}>
+        <Text style={[SP.body, { fontStyle: "italic", color: brand.colors.muted }]}>
           Complete the Startup Costs section in the Financials workspace to populate this table.
         </Text>
       ) : (
@@ -869,7 +895,7 @@ export function UseOfFundsPage({
         </View>
       )}
 
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -887,18 +913,21 @@ export function SourcesOfFundsPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const sources: FundingSourceLine[] = mp.funding_sources ?? [];
   const total = sources.reduce((s, f) => s + f.amount_cents, 0);
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <View style={SP.headingBar}>
         <Text style={SP.heading}>Sources of Funds</Text>
       </View>
@@ -908,7 +937,7 @@ export function SourcesOfFundsPage({
       </Text>
 
       {sources.length === 0 ? (
-        <Text style={[SP.body, { fontStyle: "italic", color: BRAND.colors.muted }]}>
+        <Text style={[SP.body, { fontStyle: "italic", color: brand.colors.muted }]}>
           Complete the Funding section in the Financials workspace to populate this table.
         </Text>
       ) : (
@@ -932,7 +961,7 @@ export function SourcesOfFundsPage({
         </View>
       )}
 
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -944,12 +973,15 @@ export function ProjectedPLPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   slices: MonthlySlice[];
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
 
   const rev = [1, 2, 3].map((y) => sumYear(slices, y, "net_revenue_cents")) as [number, number, number];
@@ -1001,15 +1033,16 @@ export function ProjectedPLPage({
   ];
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <AnnualTable
         title="Projected Profit & Loss"
         colHeaders={["Year 1", "Year 2", "Year 3"]}
         rows={rows}
         code={code}
+        brand={brand}
       />
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -1021,12 +1054,15 @@ export function ProjectedBalanceSheetPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   slices: MonthlySlice[];
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
 
   // End-of-year balance sheet snapshots
@@ -1070,15 +1106,16 @@ export function ProjectedBalanceSheetPage({
   ];
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <AnnualTable
         title="Projected Balance Sheet (End of Year)"
         colHeaders={["Year 1", "Year 2", "Year 3"]}
         rows={rows}
         code={code}
+        brand={brand}
       />
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -1090,12 +1127,15 @@ export function ProjectedCashFlowPage({
   mp,
   shopName,
   date,
+  brand = BRAND,
 }: {
   slices: MonthlySlice[];
   mp: MonthlyProjections;
   shopName: string;
   date: string;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
 
   function yr(y: number, f: keyof MonthlySlice) {
@@ -1147,15 +1187,16 @@ export function ProjectedCashFlowPage({
   ];
 
   return (
-    <Page size={BRAND.page.size} style={SP.pagePortrait}>
-      <PdfHeader shopName={shopName} workspaceName="Financial Plan" />
+    <Page size={brand.page.size} style={SP.pagePortrait}>
+      <PdfHeader shopName={shopName} workspaceName="Financial Plan" brand={brand} />
       <AnnualTable
         title="Projected Cash Flow"
         colHeaders={["Year 1", "Year 2", "Year 3"]}
         rows={rows}
         code={code}
+        brand={brand}
       />
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -1175,13 +1216,16 @@ function MonthlyApxTable({
   showTotal,
   totalLabel,
   code,
+  brand,
 }: {
   headers: string[];
   rows: ApxRow[];
   showTotal: boolean;
   totalLabel: string;
   code: string;
+  brand: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   return (
     <View style={SP.table}>
       <View style={SP.tableHeaderRow}>
@@ -1241,13 +1285,16 @@ export function FinancialPlanPages({
   shopName,
   date,
   visibility,
+  brand = BRAND,
 }: {
   mp: MonthlyProjections;
   equipment: EquipmentSummary;
   shopName: string;
   date: string;
   visibility: FinancialDocumentVisibility;
+  brand?: BrandTokens;
 }) {
+  const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
@@ -1311,41 +1358,41 @@ export function FinancialPlanPages({
     <>
       {/* Forecast */}
       {visibility.key_assumptions !== false && (
-        <KeyAssumptionsPage mp={mp} shopName={shopName} date={date} />
+        <KeyAssumptionsPage mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
       {visibility.revenue_by_month !== false && (
-        <RevenueByMonthPage slices={slices} mp={mp} shopName={shopName} date={date} />
+        <RevenueByMonthPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
       {visibility.expenses_by_month !== false && (
-        <ExpensesByMonthPage slices={slices} mp={mp} shopName={shopName} date={date} />
+        <ExpensesByMonthPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
       {visibility.net_profit_by_year !== false && (
-        <NetProfitByYearPage slices={slices} mp={mp} shopName={shopName} date={date} />
+        <NetProfitByYearPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
 
       {/* Financing */}
       {visibility.use_of_funds !== false && (
-        <UseOfFundsPage mp={mp} shopName={shopName} date={date} />
+        <UseOfFundsPage mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
       {visibility.sources_of_funds !== false && (
-        <SourcesOfFundsPage mp={mp} shopName={shopName} date={date} />
+        <SourcesOfFundsPage mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
 
       {/* Statements */}
       {visibility.projected_pl !== false && (
-        <ProjectedPLPage slices={slices} mp={mp} shopName={shopName} date={date} />
+        <ProjectedPLPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
       {visibility.projected_balance_sheet !== false && (
-        <ProjectedBalanceSheetPage slices={slices} mp={mp} shopName={shopName} date={date} />
+        <ProjectedBalanceSheetPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
       {visibility.projected_cash_flow !== false && (
-        <ProjectedCashFlowPage slices={slices} mp={mp} shopName={shopName} date={date} />
+        <ProjectedCashFlowPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
       )}
 
       {/* Appendix — Monthly detail */}
       {visibility.monthly_pl !== false && (
         <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Appendix" />
+          <PdfHeader shopName={shopName} workspaceName="Appendix" brand={brand} />
           <View style={SP.headingBar}>
             <Text style={SP.heading}>Monthly Profit & Loss (Year 1)</Text>
           </View>
@@ -1355,14 +1402,15 @@ export function FinancialPlanPages({
             showTotal={true}
             totalLabel="Year 1"
             code={code}
+            brand={brand}
           />
-          <PdfFooter generatedDate={date} />
+          <PdfFooter generatedDate={date} brand={brand} />
         </Page>
       )}
 
       {visibility.monthly_balance_sheet !== false && (
         <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Appendix" />
+          <PdfHeader shopName={shopName} workspaceName="Appendix" brand={brand} />
           <View style={SP.headingBar}>
             <Text style={SP.heading}>Monthly Balance Sheet (End of Month, Year 1)</Text>
           </View>
@@ -1372,14 +1420,15 @@ export function FinancialPlanPages({
             showTotal={false}
             totalLabel=""
             code={code}
+            brand={brand}
           />
-          <PdfFooter generatedDate={date} />
+          <PdfFooter generatedDate={date} brand={brand} />
         </Page>
       )}
 
       {visibility.monthly_cash_flow !== false && (
         <Page size="A4" orientation="landscape" style={SP.pageLandscape}>
-          <PdfHeader shopName={shopName} workspaceName="Appendix" />
+          <PdfHeader shopName={shopName} workspaceName="Appendix" brand={brand} />
           <View style={SP.headingBar}>
             <Text style={SP.heading}>Monthly Cash Flow (Year 1)</Text>
           </View>
@@ -1389,8 +1438,9 @@ export function FinancialPlanPages({
             showTotal={true}
             totalLabel="Year 1"
             code={code}
+            brand={brand}
           />
-          <PdfFooter generatedDate={date} />
+          <PdfFooter generatedDate={date} brand={brand} />
         </Page>
       )}
     </>

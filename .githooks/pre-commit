@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Pre-commit: scan staged files for secrets with gitleaks.
+# Install: git config core.hooksPath .githooks
+# Requires gitleaks >= 8.x on PATH. Install: https://github.com/gitleaks/gitleaks#installing
+
+set -euo pipefail
+
+if ! command -v gitleaks &>/dev/null; then
+  echo "pre-commit: gitleaks not found — skipping secret scan (install from https://github.com/gitleaks/gitleaks#installing)"
+  exit 0
+fi
+
+gitleaks protect --staged --config .gitleaks.toml --verbose

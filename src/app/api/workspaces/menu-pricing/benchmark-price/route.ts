@@ -9,13 +9,21 @@
 // TIM-1698: Checks curated public industry dataset first; falls back to AI only
 // when no industry record exists for the item. Returns source:"industry_benchmark"
 // for items covered by the dataset, "ai_estimated" otherwise.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+// TIM-2361: route flipped from PLATFORM_AI_MODEL (Haiku) to RESEARCH_AI_MODEL
+// (Sonnet 4.6). This is the Coffee Shop World pricing benchmark — multi-source
+// synthesis of (concept context + location + item) into a defensible local
+// range; Haiku tended to drift to national averages. Credit charge scales 2x
+// per output token via modelTier: "complex" in computeCreditCost.
+import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { lookupIndustryBenchmark } from "@/lib/menu-pricing/industry-benchmarks"
+
+const ROUTE_PATH = "/api/workspaces/menu-pricing/benchmark-price"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -89,7 +97,12 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    // TIM-1955: paused_from_tier intentionally omitted — column lands with
+    // the TIM-1923 migration backlog; effectiveTierForRead treats it as
+    // optional (paused users fall back to subscription_tier).
+    .select(
+      "subscription_status, subscription_tier, trial_ends_at, beta_waiver_until",
+    )
     .eq("id", user.id)
     .single()
 
@@ -99,6 +112,20 @@ export async function POST(request: Request) {
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
+  }
+
+  // TIM-1955: Coffee Shop World (cross-shop benchmarking) is a Pro feature.
+  // Trialists are Pro per effectivePlanForGating (TIM-1902). Beta-waived
+  // accounts bypass like every other gate. Starter clients render an upgrade
+  // prompt against this 402 (TIM-1956).
+  if (
+    !isBetaWaived(profile.beta_waiver_until) &&
+    effectivePlanForGating(profile) !== "pro"
+  ) {
+    return Response.json(
+      { error: "Pro plan required", code: "pro_required" },
+      { status: 402 },
+    )
   }
 
   const planId = await getPlanId(supabase, user.id)
@@ -230,10 +257,32 @@ Return ONLY the JSON object.`
 
   try {
     const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
+      model: RESEARCH_AI_MODEL,
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     })
+
+    // TIM-2361: record the turn to ai_turn_metrics. Awaited (not fire-and-forget)
+    // because Vercel serverless freezes pending work the moment the response is
+    // sent — a `void` here loses the row. The helper swallows insert errors
+    // internally so a logging failure still cannot tank the user response.
+    const telemetryClient = createServiceClient()
+    await recordTurnMetric(
+      {
+        async insert(row) {
+          return telemetryClient.from("ai_turn_metrics").insert(row)
+        },
+      },
+      {
+        route: ROUTE_PATH,
+        model: RESEARCH_AI_MODEL,
+        usage: message.usage,
+        webSearchRequests: 0,
+        toolCalls: 0,
+        userId: user.id,
+        planTier: resolvePlanTier(profile),
+      },
+    )
 
     const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)

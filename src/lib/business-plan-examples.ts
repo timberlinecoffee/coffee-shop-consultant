@@ -33,6 +33,35 @@ Daypart traffic skews toward the morning rush between 7:00 and 9:30 a.m. as the 
 
 Dana has spoken with six NAU faculty members and four local business owners as informal customer discovery. The consistent feedback: people drive to Tempe or Sedona when they want a serious coffee shop. That trip is the market Summit Street is replacing.`,
 
+  // TIM-2341: dedicated Risks section example (replaces the inline risk
+  // paragraph previously buried in Statements). Four categorized groupings.
+  "opportunity-risks": `Summit Street carries a six-month operating reserve, $1.5M in general-liability coverage through Hiscox, an equipment service contract with quarterly preventive maintenance, and a lease that includes a personal-guarantee carve-out at year three. Risks named below are addressed by these standing coverages or by named contingencies.
+
+**Operational risks**
+
+- Espresso equipment failure in the first 90 days: covered by the La Marzocca quarterly preventive maintenance contract with Espresso Exchange in Phoenix, plus a $4,800 manual lever backup kept in the back office.
+- Opening-Key Barista departure during the opening quarter: Dana retains direct bar coverage four to five days per week through month six, eliminating the single-point-of-failure exposure.
+- Long-lead-time equipment slippage: La Marzocca and Mazzer orders placed concurrent with permit application; ten-week lead-time risk is sequenced ahead of the construction critical path.
+
+**Market risks**
+
+- Ramp slower than projection through month six: $90,000 reserve (three times month-one cash burn) absorbs a 30% miss without a second capital event.
+- New entrant with similar positioning: the West Summit Avenue site is the only catchment property with the right size, lease terms, and walk-in traffic; Dana's eight-year operating record raises the displacement bar.
+- Seasonal traffic dip in summer (NAU break): mitigated by tourist traffic from the Grand Canyon corridor and the local remote-work segment that does not vary with academic calendar.
+
+**Financial risks**
+
+- Cost inflation outpacing the 3% lease escalator: Prism Coffee Works (Tucson) contract caps green-coffee price pass-through at 2% per year through 2028; labor inflation is the unhedged exposure and is sized into the year-three pro-forma.
+- DSCR squeeze if SBA principal payments begin before month four revenue arrives: loan structure includes interest-only months 1–3 so DSCR is computed against month-four revenue, not opening revenue.
+- Working-capital squeeze on supplier reorders: $18,000 initial inventory + 30-day vendor terms with Prism produces a 60-day cash float before second reorder.
+
+**Regulatory risks**
+
+- Health-code certificate delays: Dana holds an active Maricopa County food manager certificate, accelerating Coconino County reciprocity.
+- Liquor licensing not applicable (Summit Street is beer- and wine-free at opening).
+- Lease assignment clause: contains a one-time owner-substitution right in years three through five that limits enterprise-sale flexibility but preserves operating continuity.
+- Employment-law: payroll is run through Gusto with Arizona-specific compliance built in.`,
+
   "opportunity-competition": `The direct competition within a half-mile radius of West Summit Avenue is thin. Starbucks on Milton Road serves approximately 400 transactions per day based on Dana's observation count across four weekday visits, but the volume is concentrated in drive-through and mobile order; the cafe seating rarely exceeds half capacity. The drive-through espresso chain on Route 66 has no seating at all and competes purely on speed. Campus Coffee on Knoles Drive, the only independent shop near campus, opened in 2019 and built its business around iced drinks and sandwich wraps; it does not do pour-overs, does not rotate its bean program, and has not changed its menu since 2021. None of them serve the customer who wants a single-origin pour-over and a quiet table for two hours.
 
 The adjacent competition absorbs the same intent without being a coffee shop. Macy's European Coffee House serves filter coffee in a 1980s cafe layout that draws an older regulars crowd. Bookmans Entertainment Exchange has a counter cafe and free wifi that captures the cheapest-table-in-town segment. The downtown public library hosts the work-from-home crowd that does not want to pay for coffee at all. Each of these captures some share of the demand Summit Street targets, but none of them deliver on the specialty product Dana intends to serve.
@@ -102,6 +131,41 @@ The organizational structure at opening will be flat:
 - **Weekend Floater (to be hired, Q1 2027):** added after the first four weeks once weekend rush volume is understood
 
 There are no plans to hire above the Opening-Key Barista in year one. Dana's goal is to build operational knowledge in herself before she delegates it.`,
+
+  // TIM-2341: lender-ready financial-plan section examples. Auto-content is
+  // rendered by the assemblers from plan_state; these strings are reference
+  // narrative the workspace UI shows alongside the editor.
+  "financial-plan-unit-economics": `Summit Street's unit economics are simple to verify against this plan. The opening average ticket is $10.50 and rises to $11.00 by month twelve. Steady-state customer volume after the ramp lands at 200 transactions per day across seven open days, producing $2,200 of daily revenue and roughly $66,000 per month at an open-day count of seven and the 4.33 weeks-per-month convention.
+
+The daypart concentration drives the staffing posture rather than the headline revenue. The morning rush from 7:00 to 9:30 a.m. delivers 55 percent of daily revenue at three baristas on the bar; the midday wave from 11:00 to 2:00 delivers 30 percent at two baristas; the afternoon return from 3:00 forward delivers the remaining 15 percent at two baristas during the school year and one barista during summer break.
+
+The product mix is espresso-heavy (60 percent of revenue) with food at 30 percent and retail beans at 10 percent. The blended COGS rate produced by that mix sits at 30 percent for year one, which the projected P&L confirms line-for-line.`,
+
+  "financial-plan-break-even": `Summit Street reaches steady-state break-even at approximately $42,000 in monthly revenue, or roughly 130 transactions per day at the $10.50 average ticket. The projection lands above that line by month seven at 160 transactions per day, and crosses the cash-flow break-even mark in month eight on the slower-ramp scenario the SBA underwriter prefers.
+
+The two operational levers most likely to close the gap if the ramp slips are average-ticket lift through menu engineering (a $0.40 ticket lift moves break-even by roughly 15 customers per day) and a daypart staffing trim during the afternoon shoulder. Both are reversible decisions, made monthly against the prior month's tracked metrics.`,
+
+  "financial-plan-sensitivity": `Baseline year-one net income is modeled at break-even within plus or minus 5 percent. The lender stress test surfaces two scenarios that swing the headline meaningfully.
+
+A 20 percent relative increase in COGS (30 percent baseline rising to 36 percent) drops year-one net income by roughly $35,000. That is the scenario the supplier contract with Prism Coffee Works at a 2 percent annual cap explicitly hedges against, and the eighteen-month reserve through the six-month operating buffer absorbs the remainder. A three-month slip on the ramp drops year-one net income by approximately $48,000; the six-month operating reserve is sized at three times projected month-one cash burn precisely for this scenario, and Dana's own salary deferral through month three is the second contingency.
+
+The shop survives every other scenario in the table without a second capital event. A 10 percent ticket lift produces approximately $25,000 of net income improvement; a 20 percent COGS reduction produces a similar lift but is harder to underwrite to.`,
+
+  "financial-plan-dscr": `The SBA 7(a) loan from Pinnacle Bank carries a 10-year amortization at the prevailing SBA rate. Year-one DSCR lands at 1.45×, comfortably above the 1.20× commercial / SBA threshold, and rises to 1.95× by year three as the revenue ramp completes and the lease escalator stays inside the 3 percent annual cap.
+
+The interest-only structure for the first three months of debt service is the single lender-side concession that holds year-one DSCR above the threshold during the ramp; without it, year-one DSCR would compress to approximately 1.12×. Dana's personal guarantee covers the full SBA principal balance; the family debt at 5 percent is subordinated to the SBA position and is unsecured.`,
+
+  "financial-plan-capex-schedule": `The capital expenditure budget totals approximately $157,000 across nine line items. The four largest are the La Marzocca Linea PB at $18,500, the two Mazzer Major grinders at $5,800 combined, the production kitchen equipment package (commercial oven, proofer, stand mixer, stainless prep table) at $32,400, and the build-out beyond the landlord's $30,000 allowance at $62,000. Smaller line items cover the brew bar (four Kalita Wave stations at $480 total), the 10-gallon Toddy cold-brew system at $1,200, the point-of-sale and back-office technology stack at $8,600, and reach-in refrigeration at $11,500.
+
+CapEx is funded primarily by the $180,000 SBA loan with the equipment portion drawn at closing; the build-out spend is sequenced against the construction draw schedule. Dana's $60,000 founder equity is committed against the working-capital reserve and the pre-opening marketing line rather than the depreciable asset base.`,
+
+  "financial-plan-depreciation": `Annual depreciation expense is approximately $18,400 for year one, computed straight-line across the CapEx schedule. The two major buckets are equipment at seven-year useful life (espresso program, grinders, kitchen production equipment, refrigeration) and the build-out at fifteen-year useful life. The technology stack at three-year life adds a small annual line.
+
+Depreciation is a non-cash expense and is added back to EBITDA on the cash flow statement. It reduces taxable income but has no effect on the DSCR computation against EBITDA shown elsewhere in this plan.`,
+
+  "financial-plan-working-capital": `Summit Street operates with food-service-standard working-capital posture. Inventory days on hand sit at ten (small dairy and pastry batches, ten-day raw-bean cycles), days payable at thirty (Prism, dairy, and produce vendor terms), and days receivable at one (counter service, no wholesale accounts at opening).
+
+Against year-one daily COGS of approximately $720 and daily revenue of approximately $2,200, that produces an inventory carry of roughly $7,200, vendor payables of roughly $21,600, and accounts receivable near zero. Net working capital tied up in operations at year-one steady state is therefore negative — meaning vendor terms fund the inventory drop and a small portion of working capital. The $90,000 operating reserve in the uses-of-funds line covers month-one cash burn before the second supplier cycle catches up, and is explicitly NOT the working-capital line.`,
 
   "financial-plan-forecast": `Summit Street's financial forecast is built on five operating assumptions: an opening average ticket of $10.50 rising to $11.00 by month twelve, 80 transactions per day at opening growing to 200 by month twelve, opening hours of 6:30 a.m. to 6:00 p.m. seven days a week, three FTE on the floor during peak shifts and two on shoulder shifts, and a six-month ramp curve modeled on three comparable independent shops Dana contacted directly.
 

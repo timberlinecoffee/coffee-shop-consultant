@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { Logo } from "../_components/Logo";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +13,27 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; next?: string; error?: string; diag?: string }>;
 }) {
-  const { mode } = await searchParams;
+  const { mode, next, error, diag } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
+
+  // TIM-2352: if the visitor is already authenticated, bounce them straight to
+  // their next destination so revisiting /login does not look like a re-login
+  // prompt. Skip the bounce when ?error= is present — they came here because
+  // an auth flow failed and the error message belongs in front of them.
+  if (!error) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const safeNext =
+        typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : "/dashboard";
+      redirect(safeNext);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center px-4 py-12">
@@ -30,6 +48,17 @@ export default async function LoginPage({
         <p className="text-[var(--dark-grey)] text-sm text-center mb-8">
           {isSignup ? "Start your coffee shop journey for free" : "Sign in to your coffee shop plan"}
         </p>
+        {error === "auth_failed" && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <p className="font-medium mb-1">Sign-in didn&apos;t complete. Please try again.</p>
+            {typeof diag === "string" && diag.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-red-600 font-medium select-none">Diagnostic detail (TIM-2327)</summary>
+                <code className="block mt-1 text-[10px] break-all text-red-800 font-mono">{diag}</code>
+              </details>
+            )}
+          </div>
+        )}
         <LoginForm initialMode={initialMode} />
         <p className="text-center text-sm text-[var(--dark-grey)] mt-6">
           {isSignup ? (

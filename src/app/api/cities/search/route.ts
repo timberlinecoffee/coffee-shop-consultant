@@ -2,6 +2,7 @@
 // Caches responses for 5 min to stay well under the 1 req/s rate limit.
 
 import type { NextRequest } from "next/server";
+import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
 
 interface NominatimAddress {
   city?: string;
@@ -22,6 +23,16 @@ interface NominatimResult {
 }
 
 export async function GET(request: NextRequest) {
+  // TIM-2246: 30 city-autocomplete queries per IP per minute keeps us well
+  // under Nominatim's 1 req/s policy even under an abuse burst.
+  const rl = await enforceRateLimit({
+    bucket: "cities:search",
+    id: clientIp(request.headers),
+    limit: 30,
+    windowSec: 60,
+  });
+  if (rl) return rl;
+
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return Response.json({ results: [] });
 

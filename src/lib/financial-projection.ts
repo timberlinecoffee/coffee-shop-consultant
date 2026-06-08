@@ -166,8 +166,13 @@ export interface PersonnelLine {
   cost_category: PersonnelCostCategory;
   // Phased hiring reuses the TIM-1102 ramp model: start_month is the hire month;
   // ramp_months / start_pct phase headcount in (e.g. start at 50%, reach full
-  // staffing over 3 months). No per-line growth — pay changes are explicit edits.
+  // staffing over 3 months).
   ramp?: LineRamp;
+  // TIM-2338: per-line wage growth — compounds monthly after the ramp completes,
+  // identical mechanics to ForecastLine.growth. Used by the coffee-shop vertical
+  // model to apply industry-standard 3%/yr wage inflation, which the engine
+  // otherwise ignores. Backward compatible — absent ⇒ flat pay.
+  growth?: LineGrowth;
   end_month?: number;            // optional 1..60 — last month the role is paid (one-time temp end)
   seasonal?: PersonnelSeasonal;  // TIM-1260: recurring yearly active-month pattern
   // TIM-1259: durable link to a Hiring & Onboarding org-structure role
@@ -364,6 +369,16 @@ export interface MonthlyProjections {
   // TIM-1243: per-cell manual overrides and per-line manual-entry mode.
   manual_overrides?: ManualOverride[];
   manual_lines?: string[];
+
+  // TIM-2338: opt-in coffee-shop vertical config — product mix, daypart, lease
+  // object, cost inflation, capex schedule, working-capital cycle. The engine
+  // does not interpret this directly; the business-plan layer
+  // (src/lib/business-plan/coffee-shop-model.ts) reads it, applies it to this
+  // MonthlyProjections (rent escalator, blended COGS, per-personnel wage growth,
+  // capex lines), and surfaces derived metrics into plan_state for narrative
+  // ground-truth. Stored as an opaque object so the engine has no dependency
+  // on the vertical model.
+  coffee_shop_vertical_config?: unknown;
 
   // ── Legacy fields kept on the type for migration / backward-compat reads ────
   // These are normalized INTO `forecast_lines` by normalizeMonthlyProjections.
@@ -890,6 +905,9 @@ function normalizePersonnelLine(raw: unknown, fallbackId: string): PersonnelLine
   }
   const ramp = normalizeRamp(r.ramp);
   if (ramp) line.ramp = ramp;
+  // TIM-2338: persist per-line wage growth when present.
+  const growth = normalizeGrowth(r.growth);
+  if (growth) line.growth = growth;
   if (typeof r.end_month === "number" && r.end_month >= 1 && r.end_month <= 60) {
     line.end_month = Math.round(r.end_month);
   }
@@ -1162,6 +1180,9 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
       typeof r.loyalty_discount_pct === "number" ? r.loyalty_discount_pct : 1,
     manual_overrides,
     manual_lines,
+    // TIM-2338: passthrough — the vertical model owns interpretation.
+    coffee_shop_vertical_config:
+      r.coffee_shop_vertical_config !== undefined ? r.coffee_shop_vertical_config : undefined,
   };
 }
 
@@ -1510,7 +1531,12 @@ function personnelMonthlyLoadedCents(
     const calendarMonth = ((fyStart - 1 + (monthIndex - 1)) % 12) + 1;
     if (!s.active_months.includes(calendarMonth)) return 0;
   }
-  const factor = lineMonthFactor(monthIndex, line.ramp, undefined);
+  // TIM-2338: pass line.growth so per-personnel wage inflation compounds. Engine
+  // formerly ignored personnel growth (always undefined) which produced the
+  // investor-flagged "flat $127K labor across 5 years against tripling revenue"
+  // failure mode. When growth is absent the factor reduces to the prior ramp-only
+  // behavior.
+  const factor = lineMonthFactor(monthIndex, line.ramp, line.growth);
   if (factor === 0) return 0;
   const heads = Math.max(0, Math.floor(line.headcount || 0));
   const base = personnelMonthlyBaseCents(line);
@@ -2065,35 +2091,35 @@ export function computeProjections(
 // TIM-1117: compute the blended menu COGS percent from menu items.
 // Each item contributes (cogs × mix) to total cost and (price × mix) to total
 // revenue; the ratio × 100 is the blended COGS %. Returns null when the menu
-// has no valid items (no positive priced item with a non-zero mix), so the
-// caller can render "Menu not available" rather than apply a zero rate.
+// has no valid items (no positive priced item), so the caller can render
+// "Menu not available" rather than apply a zero rate.
 export interface MenuItemForCogs {
   name?: string | null;
   price_cents: number;
   computed_cogs_cents?: number | null;
   cogs_cents?: number | null;
-  expected_mix_pct?: number | null;
-  // TIM-1322: the menu UI captures popularity (low/medium/high), not a numeric
-  // sales-mix percent — so expected_mix_pct is left at its 0 default for nearly
-  // every real or demo menu. See menuItemMixWeight for how this feeds the blend.
+  // TIM-1322 / TIM-2491: the menu UI captures popularity (low/medium/high), not
+  // a numeric sales-mix percent. The legacy `expected_mix_pct` column was the
+  // dual-path partner of this field; every row in prod sits at the 0 default
+  // and the menu UI has no input that ever sets it non-zero. The COGS blend
+  // now reads popularity ONLY — `expected_mix_pct` is deprecated and no longer
+  // selected on this interface.
   expected_popularity?: ExpectedPopularity | null;
   archived?: boolean | null;
 }
 
-// TIM-1799: relative sales-mix weight for a menu item in the Financials COGS
-// blend. The menu builder no longer collects a numeric mix percent (TIM-1322
-// replaced it with low/medium/high popularity), so keying the blend off
-// expected_mix_pct alone silently dropped EVERY item — the menu had beverages
-// but Financials saw none. Fall back: explicit mix → popularity score →
-// equal weight. A priced item is never silently dropped.
+// TIM-1799 / TIM-2491: relative sales-mix weight for a menu item in the
+// Financials COGS blend. Popularity-only after TIM-2491 — the legacy
+// `expected_mix_pct > 0` branch is removed (dead in prod and inconsistent with
+// new items that only ever carry popularity, so a mixed corpus would have
+// weighted old items 10–70× as heavily as new ones). low=1 / medium=2 /
+// high=3; default 1 so a priced item with no popularity set is never silently
+// dropped.
 export function menuItemMixWeight(item: MenuItemForCogs): number {
-  if (typeof item.expected_mix_pct === "number" && item.expected_mix_pct > 0) {
-    return item.expected_mix_pct;
-  }
   if (item.expected_popularity === "high") return 3;
   if (item.expected_popularity === "medium") return 2;
   if (item.expected_popularity === "low") return 1;
-  return 1; // equal weight — a populated menu always reaches Financials
+  return 1;
 }
 
 function effectiveMenuCogsCents(item: MenuItemForCogs): number {

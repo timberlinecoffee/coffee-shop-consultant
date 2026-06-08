@@ -1,8 +1,13 @@
-import { stripe, tierFromPriceId, MONTHLY_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
-import { creditsForPackKey } from "@/lib/credits/packs";
+import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
+import { creditsForPackKey, isCreditPackKey, CREDIT_PACKS_BY_KEY } from "@/lib/credits/packs";
+import { sendCreditPackReceiptEmail } from "@/lib/email/send-account-email";
 import { createServiceClient } from "@/lib/supabase/service";
+import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
+import { computeTax, taxAmountCents, taxLabel } from "@/lib/billing/tax";
+import { renderInvoicePdf } from "@/lib/pdf/templates/invoice";
+import type { InvoiceBillingAddress, InvoiceLineItem } from "@/lib/pdf/templates/invoice";
 
 export const runtime = "nodejs";
 
@@ -69,6 +74,27 @@ export async function POST(request: NextRequest) {
           type: "purchase",
           description: `Credit top-up: ${packKey} pack (+${credits})`,
         });
+
+        // Send purchase receipt email. Failure is logged but must not block the
+        // webhook response — the balance and ledger are already committed.
+        const emailTo =
+          (session.customer_details as { email?: string } | null)?.email ??
+          session.customer_email ??
+          null;
+        const pack = isCreditPackKey(packKey) ? CREDIT_PACKS_BY_KEY[packKey] : null;
+        if (emailTo && pack) {
+          const emailResult = await sendCreditPackReceiptEmail({
+            to: emailTo,
+            packName: pack.name,
+            creditsAdded: credits,
+            amountCents: session.amount_total ?? pack.amountCents,
+            currency: session.currency ?? "cad",
+            newBalance: current + credits,
+          });
+          if (!emailResult.ok && !emailResult.skipped) {
+            console.error("[credit_pack] receipt email failed:", emailResult.error);
+          }
+        }
         break;
       }
 
@@ -90,29 +116,75 @@ export async function POST(request: NextRequest) {
       const periodStart = item?.current_period_start ?? sub.current_period_start;
       const periodEnd = item?.current_period_end ?? sub.current_period_end;
 
+      // TIM-1902: a freshly-created subscription with trial_period_days starts
+      // in 'trialing' state. Detect that and seed trial state instead of
+      // granting a monthly allocation. The trial-to-active transition is
+      // handled in customer.subscription.updated below.
+      const isTrialing = sub.status === "trialing";
+      const trialEnd = typeof sub.trial_end === "number" ? sub.trial_end : null;
+      const trialEndIso = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
+
       await supabase.from("subscriptions").upsert({
         user_id: userId,
         stripe_customer_id: customerId,
         stripe_subscription_id: subscriptionId,
         tier,
-        status: "active",
+        status: isTrialing ? "trialing" : "active",
         current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       }, { onConflict: "user_id" });
 
-      await supabase.from("users").update({
-        subscription_status: "active",
-        subscription_tier: tier,
-        ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
-      }).eq("id", userId);
+      if (isTrialing) {
+        // Trial: one-time 75-credit grant; subscription_tier records the plan
+        // the user chose to convert to (Starter or Pro). Pro-feature unlock for
+        // the trial window is handled in src/lib/access.ts (effectiveTierForRead
+        // returns 'pro' while free_trial + trial_ends_at is future).
+        assertUserSubscriptionStatus("free_trial", {
+          caller: "stripe.webhook.checkout.session.completed:trialing",
+          userId,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscriptionId,
+        });
+        await supabase.from("users").update({
+          subscription_status: "free_trial",
+          subscription_tier: tier,
+          ai_credits_remaining: TRIAL_CREDITS,
+          trial_ends_at: trialEndIso,
+          trial_credits_granted: true,
+        }).eq("id", userId);
 
-      if (tier !== "free") {
         await supabase.from("credit_transactions").insert({
           user_id: userId,
-          amount: MONTHLY_CREDITS[tier] ?? 0,
+          amount: TRIAL_CREDITS,
           type: "monthly_allocation",
-          description: `${tier} plan: initial allocation`,
+          description: `${tier} 7-day trial: initial allocation`,
         });
+      } else {
+        // Non-trial path (e.g. resubscribe after a previous cancel): grant the
+        // chosen plan's monthly allotment immediately.
+        assertUserSubscriptionStatus("active", {
+          caller: "stripe.webhook.checkout.session.completed:non_trial",
+          userId,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscriptionId,
+        });
+        await supabase.from("users").update({
+          subscription_status: "active",
+          subscription_tier: tier,
+          ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
+          trial_ends_at: null,
+        }).eq("id", userId);
+
+        if (tier !== "free") {
+          await supabase.from("credit_transactions").insert({
+            user_id: userId,
+            amount: MONTHLY_CREDITS[tier] ?? 0,
+            type: "monthly_allocation",
+            description: `${tier} plan: initial allocation`,
+          });
+        }
       }
       break;
     }
@@ -146,9 +218,18 @@ export async function POST(request: NextRequest) {
           // tier is intentionally NOT updated
         }).eq("stripe_subscription_id", subscription.id);
 
+        assertUserSubscriptionStatus("paused", {
+          caller: "stripe.webhook.customer.subscription.updated:pause",
+          userId: sub.user_id,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscription.id,
+        });
         await supabase.from("users").update({
           subscription_status: "paused",
           // subscription_tier intentionally NOT changed — access.ts reads paused_from_tier
+          paused_from_tier: sub.tier,
+          paused_at: new Date().toISOString(),
         }).eq("id", sub.user_id);
         break;
       }
@@ -164,20 +245,34 @@ export async function POST(request: NextRequest) {
           current_period_end: newPeriodEnd,
         }).eq("stripe_subscription_id", subscription.id);
 
+        assertUserSubscriptionStatus("active", {
+          caller: "stripe.webhook.customer.subscription.updated:resume",
+          userId: sub.user_id,
+          stripeEventId: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscription.id,
+        });
         await supabase.from("users").update({
           subscription_status: "active",
           subscription_tier: tier,
+          paused_from_tier: null,
+          paused_at: null,
         }).eq("id", sub.user_id);
         break;
       }
 
-      // --- Default: plan change, renewal, status sync ---
+      // --- Default: plan change, renewal, status sync, trial conversion ---
       const status = subscription.status === "active" ? "active"
         : subscription.status === "canceled" ? "cancelled"
         : subscription.status === "past_due" ? "past_due"
         : subscription.status === "trialing" ? "trialing"
         : "cancelled";
       const isRenewal = newPeriodEnd !== sub.current_period_end;
+      // TIM-1902: trialing → active means Stripe just successfully auto-charged
+      // the card on day 7. Replace the 75 trial credits with the chosen plan's
+      // monthly allotment, clear trial_ends_at, and stamp subscription_status
+      // active. invoice.payment_failed on this same charge is handled below.
+      const trialConverted = sub.status === "trialing" && status === "active";
 
       await supabase.from("subscriptions").update({
         tier,
@@ -186,22 +281,55 @@ export async function POST(request: NextRequest) {
         current_period_end: newPeriodEnd,
       }).eq("stripe_subscription_id", subscription.id);
 
-      const updates: Record<string, unknown> = {
-        subscription_status: status,
-        subscription_tier: status === "active" ? tier : "free",
+      const userStatus = status === "trialing" ? "free_trial" : status;
+      // TIM-2287: the only dynamic users.subscription_status write in this file.
+      // Guard catches the case where a future change to the status-mapping
+      // ternary leaks a Stripe-native value ("trialing", "incomplete", etc.)
+      // into the column, surfacing the offender before the CHECK constraint
+      // fires.
+      assertUserSubscriptionStatus(userStatus, {
+        caller: "stripe.webhook.customer.subscription.updated:default",
+        userId: sub.user_id,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        stripeSubscriptionId: subscription.id,
+      });
+      const usersUpdate: Record<string, unknown> = {
+        subscription_status: userStatus,
+        subscription_tier: status === "active" || status === "trialing" ? tier : "free",
       };
 
-      if (isRenewal && status === "active" && tier !== "free") {
-        updates.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+      // Trial conversion: replace trial credits with the monthly grant.
+      if (trialConverted && tier !== "free") {
+        usersUpdate.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+        usersUpdate.trial_ends_at = null;
+        usersUpdate.past_due_since = null;
+        // TIM-1903: stamp the converted-to plan so /dashboard can show a
+        // one-time "Welcome to {plan}" toast on the next load. The dashboard
+        // toast clears the column via POST /api/account/dismiss-welcome-toast.
+        usersUpdate.trial_just_converted_to = tier;
+        await supabase.from("credit_transactions").insert({
+          user_id: sub.user_id,
+          amount: MONTHLY_CREDITS[tier] ?? 0,
+          type: "monthly_allocation",
+          description: `${tier} plan: trial converted — initial allocation`,
+        });
+      } else if (isRenewal && status === "active" && tier !== "free" && !trialConverted) {
+        // Standard monthly renewal — refresh the credit balance.
+        usersUpdate.ai_credits_remaining = MONTHLY_CREDITS[tier] ?? 0;
+        usersUpdate.past_due_since = null;
         await supabase.from("credit_transactions").insert({
           user_id: sub.user_id,
           amount: MONTHLY_CREDITS[tier] ?? 0,
           type: "monthly_allocation",
           description: `${tier} plan: monthly renewal`,
         });
+      } else if (status === "active") {
+        // Recovered from past_due via successful retry — clear the dunning stamp.
+        usersUpdate.past_due_since = null;
       }
 
-      await supabase.from("users").update(updates).eq("id", sub.user_id);
+      await supabase.from("users").update(usersUpdate).eq("id", sub.user_id);
       break;
     }
 
@@ -224,10 +352,21 @@ export async function POST(request: NextRequest) {
         paused_at: null,
       }).eq("stripe_subscription_id", subscription.id);
 
-      // Downgrade immediately on hard cancellation
+      // Downgrade immediately on hard cancellation; clear trial + dunning state.
+      assertUserSubscriptionStatus("cancelled", {
+        caller: "stripe.webhook.customer.subscription.deleted",
+        userId: sub.user_id,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        stripeSubscriptionId: subscription.id,
+      });
       await supabase.from("users").update({
         subscription_status: "cancelled",
         subscription_tier: "free",
+        trial_ends_at: null,
+        past_due_since: null,
+        paused_from_tier: null,
+        paused_at: null,
       }).eq("id", sub.user_id);
       break;
     }
@@ -250,17 +389,301 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
-      // Mark past_due — Stripe will retry; paywall enforced on next write (TIM-643)
+      // Mark past_due — Stripe will retry; paywall enforced on next write (TIM-643).
       await supabase.from("subscriptions").update({
         status: "past_due",
       }).eq("stripe_subscription_id", stripeSubscriptionId);
 
-      await supabase.from("users").update({
-        subscription_status: "past_due",
-      }).eq("id", sub.user_id);
+      // TIM-1902: stamp past_due_since on first failure only. The billing UI
+      // uses this to render the update-payment banner and to drive the 3-day
+      // grace before write access is fully revoked. invoice.payment_failed
+      // fires for each Stripe retry, but we keep the original timestamp so the
+      // grace clock starts from the FIRST failure, not the most recent.
+      const { data: existing } = await supabase
+        .from("users")
+        .select("past_due_since")
+        .eq("id", sub.user_id)
+        .single();
+
+      assertUserSubscriptionStatus("past_due", {
+        caller: "stripe.webhook.invoice.payment_failed",
+        userId: sub.user_id,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        stripeSubscriptionId: stripeSubscriptionId,
+      });
+      const usersUpdate: Record<string, unknown> = { subscription_status: "past_due" };
+      if (!existing?.past_due_since) {
+        usersUpdate.past_due_since = new Date().toISOString();
+      }
+      await supabase.from("users").update(usersUpdate).eq("id", sub.user_id);
 
       // After Stripe exhausts retries it fires customer.subscription.deleted;
       // that handler downgrades to free. No grace-period timer needed here.
+      break;
+    }
+
+    // TIM-1912: Invoice PDF generation on successful payment.
+    case "invoice.payment_succeeded": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const inv = event.data.object as unknown as any;
+
+      const stripeInvoiceId: string = inv.id ?? "";
+      const stripeSubscriptionId: string =
+        inv.subscription ??
+        inv.parent?.subscription_details?.subscription ??
+        "";
+      if (!stripeInvoiceId || !stripeSubscriptionId) break;
+
+      // Resolve user_id from the subscriptions row.
+      const { data: subRow } = await supabase
+        .from("subscriptions")
+        .select("user_id")
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .single();
+      if (!subRow) {
+        console.warn(`[invoice.payment_succeeded] No subscription row for ${stripeSubscriptionId}`);
+        break;
+      }
+      const userId: string = subRow.user_id;
+
+      // Read platform settings (gst_registered, business name/address, gst_number).
+      const { data: platformSettings } = await supabase
+        .from("platform_settings")
+        .select("gst_registered, gst_number, business_name, business_address")
+        .eq("id", 1)
+        .single();
+
+      const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
+      const gstNumber: string | null = platformSettings?.gst_number ?? null;
+      const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+      const businessAddressObj = platformSettings?.business_address ?? null;
+      const businessAddressStr: string = businessAddressObj
+        ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")
+        : "Calgary, AB, Canada";
+
+      // Extract billing address from Stripe customer address.
+      const custAddr = inv.customer_address ?? {};
+      const billingAddr: InvoiceBillingAddress = {
+        name: inv.customer_name ?? null,
+        line1: custAddr.line1 ?? null,
+        line2: custAddr.line2 ?? null,
+        city: custAddr.city ?? null,
+        state: custAddr.state ?? null,
+        postalCode: custAddr.postal_code ?? null,
+        country: custAddr.country ?? null,
+      };
+
+      const province: string | null = custAddr.state ?? null;
+      const country: string | null = custAddr.country ?? null;
+
+      // Amounts (Stripe uses smallest currency unit = cents).
+      const subtotalCents: number = inv.subtotal ?? 0;
+      const currency: string = (inv.currency ?? "cad").toLowerCase();
+
+      const taxResult = computeTax({ province, country, gstRegistered, subtotalCents });
+      const computedTaxCents = taxResult.taxLineSuppressed ? 0 : taxAmountCents(subtotalCents, taxResult.rateBps);
+      // Prefer Stripe's own tax figure if present; fall back to computed.
+      const taxCents: number = inv.tax ?? computedTaxCents;
+      const totalCents: number = inv.total ?? subtotalCents + taxCents;
+
+      const invoiceNumber: string = inv.number ?? stripeInvoiceId;
+      const stripeChargeId: string | null = typeof inv.charge === "string" ? inv.charge : (inv.charge?.id ?? null);
+
+      // Build line items from Stripe invoice lines.
+      const lineItems: InvoiceLineItem[] = (inv.lines?.data ?? []).map((line: any) => ({
+        description: line.description ?? "Subscription",
+        quantity: line.quantity ?? 1,
+        unitAmountCents: line.unit_amount_excluding_tax ?? line.amount ?? 0,
+        totalCents: line.amount ?? 0,
+      }));
+
+      if (lineItems.length === 0) {
+        lineItems.push({
+          description: inv.description ?? "Pro plan subscription",
+          quantity: 1,
+          unitAmountCents: subtotalCents,
+          totalCents: subtotalCents,
+        });
+      }
+
+      // Build description from period (mirrors plan §2 example).
+      const periodStart: string | null = inv.period_start
+        ? new Date(inv.period_start * 1000).toISOString()
+        : null;
+      const periodEnd: string | null = inv.period_end
+        ? new Date(inv.period_end * 1000).toISOString()
+        : null;
+      const description: string = inv.description ?? "Subscription";
+
+      // Insert invoice row (status=paid).
+      const { data: invoiceRow, error: insertInvErr } = await supabase
+        .from("invoices")
+        .insert({
+          user_id: userId,
+          stripe_invoice_id: stripeInvoiceId,
+          stripe_charge_id: stripeChargeId,
+          invoice_number: invoiceNumber,
+          status: "paid",
+          amount_subtotal_cents: subtotalCents,
+          amount_tax_cents: taxCents,
+          amount_total_cents: totalCents,
+          currency,
+          tax_jurisdiction: taxResult.jurisdiction,
+          tax_rate_bps: taxResult.rateBps,
+          period_start: periodStart,
+          period_end: periodEnd,
+          description,
+          billing_address: billingAddr,
+          invoice_date: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (insertInvErr) {
+        console.error("[invoice.payment_succeeded] Failed to insert invoice row:", insertInvErr);
+        break;
+      }
+
+      // Render PDF and upload — failure must NOT roll back the invoice row.
+      try {
+        const pdfContent = {
+          businessName,
+          businessAddress: businessAddressStr,
+          gstRegistered,
+          gstNumber,
+          invoiceNumber,
+          invoiceDate: new Date().toISOString(),
+          supplyDateStart: periodStart,
+          supplyDateEnd: periodEnd,
+          status: "paid" as const,
+          customerName: inv.customer_name ?? null,
+          billingAddress: billingAddr,
+          lineItems,
+          subtotalCents,
+          taxCents,
+          totalCents,
+          currency,
+          jurisdiction: taxResult.jurisdiction,
+          taxRateBps: taxResult.rateBps,
+          taxLabel: taxLabel(taxResult.jurisdiction, taxResult.rateBps),
+          taxLineSuppressed: taxResult.taxLineSuppressed,
+        };
+
+        const pdfBuffer = await renderInvoicePdf(pdfContent);
+        const pdfPath = `${userId}/${invoiceNumber}.pdf`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from("invoices")
+          .upload(pdfPath, pdfBuffer, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+
+        if (uploadErr) {
+          console.error("[invoice.payment_succeeded] PDF upload failed:", uploadErr);
+        } else {
+          await supabase
+            .from("invoices")
+            .update({ pdf_storage_path: pdfPath, pdf_generated_at: new Date().toISOString() })
+            .eq("id", invoiceRow.id);
+        }
+      } catch (pdfErr) {
+        console.error("[invoice.payment_succeeded] PDF render failed:", pdfErr);
+        // Invoice row remains intact; pdf_storage_path stays null → UI shows "Generating…"
+      }
+
+      break;
+    }
+
+    // TIM-1912: Mark invoice refunded and re-render PDF with REFUNDED stamp.
+    case "charge.refunded": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const charge = event.data.object as unknown as any;
+      const chargeId: string = charge.id ?? "";
+      if (!chargeId) break;
+
+      const { data: invRow } = await supabase
+        .from("invoices")
+        .select("id, user_id, invoice_number, pdf_storage_path, amount_subtotal_cents, amount_tax_cents, amount_total_cents, currency, tax_jurisdiction, tax_rate_bps, tax_line_suppressed, period_start, period_end, description, billing_address, invoice_date")
+        .eq("stripe_charge_id", chargeId)
+        .single();
+
+      if (!invRow) {
+        console.warn(`[charge.refunded] No invoice row for charge ${chargeId}`);
+        break;
+      }
+
+      await supabase
+        .from("invoices")
+        .update({ status: "refunded" })
+        .eq("id", invRow.id);
+
+      // Re-render PDF with REFUNDED stamp.
+      try {
+        const { data: platformSettings } = await supabase
+          .from("platform_settings")
+          .select("gst_registered, gst_number, business_name, business_address")
+          .eq("id", 1)
+          .single();
+
+        const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
+        const gstNumber: string | null = platformSettings?.gst_number ?? null;
+        const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+        const businessAddressObj = platformSettings?.business_address ?? null;
+        const businessAddressStr: string = businessAddressObj
+          ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")
+          : "Calgary, AB, Canada";
+
+        const billingAddr: InvoiceBillingAddress = (invRow.billing_address as InvoiceBillingAddress) ?? {
+          name: null, line1: null, line2: null, city: null, state: null, postalCode: null, country: null,
+        };
+
+        const pdfContent = {
+          businessName,
+          businessAddress: businessAddressStr,
+          gstRegistered,
+          gstNumber,
+          invoiceNumber: invRow.invoice_number,
+          invoiceDate: invRow.invoice_date,
+          supplyDateStart: invRow.period_start ?? null,
+          supplyDateEnd: invRow.period_end ?? null,
+          status: "refunded" as const,
+          customerName: billingAddr.name,
+          billingAddress: billingAddr,
+          lineItems: [
+            {
+              description: invRow.description,
+              quantity: 1,
+              unitAmountCents: invRow.amount_subtotal_cents,
+              totalCents: invRow.amount_subtotal_cents,
+            },
+          ],
+          subtotalCents: invRow.amount_subtotal_cents,
+          taxCents: invRow.amount_tax_cents,
+          totalCents: invRow.amount_total_cents,
+          currency: invRow.currency,
+          jurisdiction: invRow.tax_jurisdiction ?? null,
+          taxRateBps: invRow.tax_rate_bps ?? 0,
+          taxLabel: taxLabel(invRow.tax_jurisdiction ?? null, invRow.tax_rate_bps ?? 0),
+          taxLineSuppressed: !gstRegistered,
+        };
+
+        const pdfBuffer = await renderInvoicePdf(pdfContent);
+        const pdfPath = `${invRow.user_id}/${invRow.invoice_number}.pdf`;
+
+        await supabase.storage
+          .from("invoices")
+          .upload(pdfPath, pdfBuffer, { contentType: "application/pdf", upsert: true });
+
+        await supabase
+          .from("invoices")
+          .update({ pdf_storage_path: pdfPath, pdf_generated_at: new Date().toISOString() })
+          .eq("id", invRow.id);
+      } catch (pdfErr) {
+        console.error("[charge.refunded] PDF re-render failed:", pdfErr);
+      }
+
       break;
     }
   }

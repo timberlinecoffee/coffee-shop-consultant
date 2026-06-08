@@ -225,10 +225,27 @@ export interface ConceptComponentV2 {
   included: boolean;
 }
 
+// TIM-2340: user-entered competitor. Narrative is allowed to name only these
+// businesses. Empty list + no_direct_competitors_identified=false means the
+// LLM must discuss competition qualitatively without naming specific shops.
+export interface ConceptCompetitor {
+  id: string;
+  name: string;
+  address?: string;
+  what_they_do_well?: string;
+  gaps?: string;
+}
+
 export interface ConceptDocumentV2 {
   version: 2;
   components: Record<ConceptComponentId, ConceptComponentV2>;
   personas?: CustomerPersona[];
+  // TIM-2340: user-entered competitor list (optional — UI ships separately).
+  competitors?: ConceptCompetitor[];
+  // TIM-2340: explicit toggle for "no direct competitors". Distinguishes
+  // "user said none" from "user hasn't filled this in yet" so the narrative
+  // can state it plainly when true.
+  no_direct_competitors_identified?: boolean;
 }
 
 export const EMPTY_CONCEPT_V2: ConceptDocumentV2 = {
@@ -369,7 +386,34 @@ export function normalizeConceptV2(input: unknown): ConceptDocumentV2 {
       }];
     }
 
-    return { version: 2, components, personas };
+    // TIM-2340: read competitors[] + no_direct_competitors_identified.
+    // Defensive — array entries that don't carry a name are dropped silently
+    // so a half-saved row never crashes the prompt builder.
+    let competitors: ConceptCompetitor[] | undefined;
+    if (Array.isArray(obj.competitors)) {
+      const valid = (obj.competitors as unknown[])
+        .map((c) => (c && typeof c === "object" ? c as Record<string, unknown> : null))
+        .filter((c): c is Record<string, unknown> => c !== null && typeof c.name === "string" && c.name.trim().length > 0)
+        .map<ConceptCompetitor>((c, idx) => ({
+          id: typeof c.id === "string" && c.id.trim().length > 0 ? c.id : `competitor-${idx}`,
+          name: String(c.name).trim(),
+          address: typeof c.address === "string" ? c.address : undefined,
+          what_they_do_well: typeof c.what_they_do_well === "string" ? c.what_they_do_well : undefined,
+          gaps: typeof c.gaps === "string" ? c.gaps : undefined,
+        }));
+      if (valid.length > 0) competitors = valid;
+    }
+    const noDirect = typeof obj.no_direct_competitors_identified === "boolean"
+      ? obj.no_direct_competitors_identified
+      : undefined;
+
+    return {
+      version: 2,
+      components,
+      personas,
+      ...(competitors ? { competitors } : {}),
+      ...(noDirect !== undefined ? { no_direct_competitors_identified: noDirect } : {}),
+    };
   }
 
   // V1 migration

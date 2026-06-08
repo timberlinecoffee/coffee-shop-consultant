@@ -127,6 +127,7 @@ export function AIAssistCallout({
       const decoder = new TextDecoder();
       let sseBuffer = "";
       let accumulated = "";
+      let doneText: string | null = null;
       let finalError: string | null = null;
       let quotaState: { reason?: string } | null = null;
 
@@ -146,6 +147,13 @@ export function AIAssistCallout({
                   accumulated += parsed.delta;
                   setPhase({ kind: "streaming", buffer: accumulated });
                 }
+              } catch {
+                /* ignore malformed frame */
+              }
+            } else if (evt.event === "done") {
+              try {
+                const parsed = JSON.parse(evt.data) as { text?: string };
+                if (parsed.text) doneText = parsed.text;
               } catch {
                 /* ignore malformed frame */
               }
@@ -185,7 +193,8 @@ export function AIAssistCallout({
       }
 
       // TIM-1561: route through unified review modal instead of inline compare.
-      const suggested = accumulated;
+      // TIM-1382: prefer server-normalized done.text over locally-accumulated deltas.
+      const suggested = doneText ?? accumulated;
       openAIReviewModal({
         suggestions: [
           {

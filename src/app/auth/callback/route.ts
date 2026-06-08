@@ -1,23 +1,59 @@
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { resolveNext } from "./safe-next";
 
-const SAFE_NEXT_PREFIXES = ["/dashboard", "/onboarding", "/plan", "/account", "/reset-password"];
+// TIM-2327: short-lived first-party handoff cookies set by /login before
+// signInWithOAuth. Lets us strip query params off `redirectTo` so it matches
+// Supabase's Additional Redirect URLs allowlist exactly (bare `/auth/callback`),
+// avoiding the Site URL fallback that drops users on apex coming-soon.
+const HANDOFF_COOKIES = ["gw_oauth_signup_source", "gw_oauth_next"] as const;
 
-function resolveNext(rawNext: string | null): string | null {
-  if (!rawNext) return null;
-  if (!rawNext.startsWith("/")) return null;
-  if (rawNext.startsWith("//")) return null;
-  return SAFE_NEXT_PREFIXES.some(
-    prefix => rawNext === prefix || rawNext.startsWith(`${prefix}/`) || rawNext.startsWith(`${prefix}?`)
-  )
-    ? rawNext
-    : null;
+function clearHandoffCookies(res: NextResponse) {
+  for (const name of HANDOFF_COOKIES) {
+    res.cookies.set(name, "", { path: "/", maxAge: 0 });
+  }
+  return res;
+}
+
+// TIM-2327 (2026-06-07): emit a structured diagnostic on the /login?error= URL
+// so we can capture the exact failure mode from a single user retry. Without
+// Vercel runtime log access and with no Sentry DSN provisioned (TIM-2301), the
+// redirect query string IS the diagnostic channel. /login/page.tsx renders
+// `?diag=` verbatim so the user can copy-paste or screenshot. Strip after
+// debugging.
+function buildDiag(parts: Record<string, string | number | boolean | null | undefined>): string {
+  const segments: string[] = [];
+  for (const [k, v] of Object.entries(parts)) {
+    if (v === undefined || v === null) continue;
+    segments.push(`${k}=${String(v).replace(/[\s&=]/g, "_").slice(0, 80)}`);
+  }
+  return segments.join("|");
 }
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = resolveNext(searchParams.get("next"));
+  const errorParam = searchParams.get("error");
+  const cookieStore = await cookies();
+
+  // Probe the verifier cookie presence (NOT its value — that's secret). The
+  // verifier name pattern is `sb-<ref>-auth-token-code-verifier`.
+  const allCookies = cookieStore.getAll();
+  const verifierCookies = allCookies.filter(c =>
+    c.name.startsWith("sb-") && c.name.endsWith("-auth-token-code-verifier")
+  );
+  const authTokenCookies = allCookies.filter(c =>
+    c.name.startsWith("sb-") && c.name.includes("-auth-token") && !c.name.endsWith("-code-verifier")
+  );
+  const handoffPresent = allCookies.filter(c => HANDOFF_COOKIES.includes(c.name as typeof HANDOFF_COOKIES[number])).length;
+  const rememberMeRaw = cookieStore.get("gw_remember_me")?.value;
+
+  // Prefer the cookie handoff (OAuth path); fall back to query param for the
+  // email-link confirmation flow which still uses `?next=` on emailRedirectTo.
+  const next = resolveNext(
+    cookieStore.get("gw_oauth_next")?.value ?? searchParams.get("next")
+  );
 
   if (code) {
     const supabase = await createClient();
@@ -26,7 +62,7 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (next) {
-        return NextResponse.redirect(`${origin}${next}`);
+        return clearHandoffCookies(NextResponse.redirect(`${origin}${next}`));
       }
 
       if (user) {
@@ -38,17 +74,46 @@ export async function GET(request: Request) {
 
         // Capture signup_source for OAuth users (trigger fires before we have UTM data)
         if (profile && !profile.signup_source) {
-          const signupSource = searchParams.get("signup_source") || "direct";
+          const signupSource =
+            cookieStore.get("gw_oauth_signup_source")?.value ||
+            searchParams.get("signup_source") ||
+            "direct";
           await supabase.from("users").update({ signup_source: signupSource }).eq("id", user.id);
         }
 
         if (!profile?.onboarding_completed) {
-          return NextResponse.redirect(`${origin}/onboarding`);
+          return clearHandoffCookies(NextResponse.redirect(`${origin}/onboarding`));
         }
       }
-      return NextResponse.redirect(`${origin}/dashboard`);
+      return clearHandoffCookies(NextResponse.redirect(`${origin}/dashboard`));
     }
+
+    const diag = buildDiag({
+      stage: "exchange_failed",
+      err: error.message,
+      err_status: (error as { status?: number }).status,
+      err_name: (error as { name?: string }).name,
+      verifier_cookies: verifierCookies.length,
+      auth_token_cookies: authTokenCookies.length,
+      handoff_cookies: handoffPresent,
+      remember_me: rememberMeRaw ?? "absent",
+    });
+    return clearHandoffCookies(
+      NextResponse.redirect(`${origin}/login?error=auth_failed&diag=${encodeURIComponent(diag)}`)
+    );
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  const diag = buildDiag({
+    stage: errorParam ? "supabase_error_param" : "no_code",
+    err: errorParam ?? undefined,
+    err_desc: searchParams.get("error_description") ?? undefined,
+    verifier_cookies: verifierCookies.length,
+    auth_token_cookies: authTokenCookies.length,
+    handoff_cookies: handoffPresent,
+    remember_me: rememberMeRaw ?? "absent",
+    search_keys: [...searchParams.keys()].join(","),
+  });
+  return clearHandoffCookies(
+    NextResponse.redirect(`${origin}/login?error=auth_failed&diag=${encodeURIComponent(diag)}`)
+  );
 }

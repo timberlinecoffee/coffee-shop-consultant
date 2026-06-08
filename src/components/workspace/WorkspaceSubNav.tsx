@@ -23,6 +23,8 @@ export type WorkspaceSubNavTab<K extends string = string> = {
   href?: string;
   /** Optional leading icon (lucide). */
   Icon?: LucideIcon;
+  /** Yellow badge count (e.g. flagged benchmark chips). Hidden when 0. */
+  badge?: number;
 };
 
 type WorkspaceSubNavProps<K extends string> = {
@@ -62,6 +64,17 @@ export function WorkspaceSubNav<K extends string>({
           <>
             {Icon ? <Icon size={13} aria-hidden="true" /> : null}
             {t.label}
+            {t.badge != null && t.badge > 0 ? (
+              <span
+                className={`ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full ${
+                  isActive
+                    ? "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
+                    : "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
+                }`}
+              >
+                {t.badge}
+              </span>
+            ) : null}
           </>
         );
 

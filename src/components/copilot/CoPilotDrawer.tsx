@@ -11,7 +11,7 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Maximize2, Menu, Minimize2, Sparkles, X } from "lucide-react";
+import { Clock, Maximize2, Minimize2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -23,12 +23,11 @@ import {
   COPILOT_SUBTITLE,
 } from "@/lib/copilot/branding";
 import {
-  GENERAL_CONVERSATION_LABEL,
-  ThreadBrowser,
   WORKSPACE_LABELS,
   type ConversationScope,
   type ThreadBrowserItem,
 } from "./ThreadBrowser";
+import { PastChatsDrawer } from "./PastChatsDrawer";
 import { MarkdownMessage } from "./MarkdownMessage";
 import type {
   CopilotErrorState,
@@ -39,6 +38,17 @@ import { useCopilotStream } from "./useCopilotStream";
 import { useAIReviewModal, type ApprovedChange, type SuggestionPayload } from "@/hooks/useAIReviewModal";
 import { parseEquipmentCostFieldId } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
+import {
+  BenchmarkPanel,
+  CheckPanel,
+  ModeStrip,
+  type CompanionMode,
+} from "./CompanionPanels";
+import { ImportPanel } from "./ImportPanel";
+import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
+import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCrossSuiteConflictResolver";
+import { crossSuiteConflictIdForAuditFinding } from "@/lib/cross-suite/audit-mapping";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
@@ -183,7 +193,6 @@ const PANEL_MAX_WIDTH = 1100;
 const PANEL_DEFAULT_WIDTH = 448;
 const PANEL_WIDTH_STORAGE_KEY = "copilot_panel_width_v1";
 const PANEL_EXPANDED_STORAGE_KEY = "copilot_panel_expanded_v1";
-const CONVERSATIONS_RAIL_STORAGE_KEY = "brew-conversations-open";
 
 function readNumber(key: string): number | null {
   if (typeof window === "undefined") return null;
@@ -212,6 +221,13 @@ export interface CoPilotDrawerProps {
   showDesktopLauncher?: boolean;
   // TIM-1637: workspace-specific callback invoked when the user accepts AI suggestions.
   onApplySuggestions?: (accepted: ApprovedChange[]) => Promise<void>;
+  // TIM-2416 — AI Companion v3. Per UX spec §5: Dashboard + Business Plan
+  // entries default to Check mode; source-workspace entries default to Coach.
+  // When omitted, the drawer defaults to Coach.
+  defaultMode?: CompanionMode;
+  // TIM-2416 — initial scope override. Dashboard + Business Plan pass null
+  // (whole plan); source workspaces inherit `workspaceKey` from the prop.
+  defaultScopeOverride?: ConversationScope;
 }
 
 function newThreadId(): string {
@@ -232,7 +248,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
   switch (err.code) {
     case "trial_exhausted":
       return {
-        title: `You've used your 5 trial messages — upgrade to keep planning with ${COPILOT_NAME}.`,
+        title: `You've used all 5 trial messages. Upgrade to keep planning with ${COPILOT_NAME}.`,
         cta: "See plans",
         href: UPGRADE_PATH,
       };
@@ -258,7 +274,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
       };
     case "upstream_error":
       return {
-        title: "AI service hiccup — your message wasn't sent.",
+        title: "AI service hiccup. Your message wasn't sent.",
         cta: "Retry",
         href: null,
       };
@@ -277,7 +293,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "paywall":
       if (err.paywallReason === "paused" || err.paywallReason === "expired") {
         return {
-          title: `Your plan is paused — reactivate to keep using ${COPILOT_NAME}.`,
+          title: `Your plan is paused. Reactivate to keep using ${COPILOT_NAME}.`,
           cta: "Reactivate",
           href: "/account/billing",
         };
@@ -299,20 +315,44 @@ export function CoPilotDrawer({
   initialTrialMessagesUsed = 0,
   showDesktopLauncher = false,
   onApplySuggestions,
+  defaultMode = "coach",
+  defaultScopeOverride,
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
+  // TIM-2416 — companion mode state. Coach mode keeps the existing chat UX;
+  // Check + Benchmark render finding-card panels.
+  const [activeMode, setActiveMode] = useState<CompanionMode>(defaultMode);
+  const [checkReport, setCheckReport] = useState<AuditReport | null>(null);
+  const [checkScanning, setCheckScanning] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [benchmarkReport, setBenchmarkReport] = useState<AuditReport | null>(null);
+  const [benchmarkScanning, setBenchmarkScanning] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
+  // TIM-2311: success-return toast after Stripe credit-pack checkout.
+  // Stripe redirects back to {returnPath}?credits_added=1; this surfaces a
+  // confirmation + refetches the meter so the user sees the new balance without
+  // a manual reload. Lazy initializer reads the URL on the first client render so
+  // we don't have to call setState synchronously inside an effect.
+  const [creditsAddedToast, setCreditsAddedToast] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("credits_added") === "1";
+  });
   // Track the prop separately so a parent-driven workspace switch resets the active
   // workspace without us calling setState inside an effect body.
   const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
     key: workspaceKey,
   }));
-  const [activeScope, setActiveScope] = useState<ConversationScope>(workspaceKey);
+  // TIM-2416 — Dashboard + Business Plan callers pass defaultScopeOverride=null
+  // (whole plan); source workspaces use the inherited workspaceKey.
+  const initialScope: ConversationScope =
+    defaultScopeOverride !== undefined ? defaultScopeOverride : workspaceKey;
+  const [activeScope, setActiveScope] = useState<ConversationScope>(initialScope);
   if (workspaceKeyVersion.key !== workspaceKey) {
     setWorkspaceKeyVersion({ key: workspaceKey });
-    setActiveScope(workspaceKey);
+    setActiveScope(initialScope);
   }
   const [activeThreadId, setActiveThreadId] = useState<string>(() => {
     if (typeof window === "undefined") return newThreadId();
@@ -325,8 +365,9 @@ export function CoPilotDrawer({
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
   const [isDragging, setIsDragging] = useState(false);
-  const [railOpen, setRailOpen] = useState<boolean>(false);
-  const [isConversationsSheetOpen, setIsConversationsSheetOpen] = useState<boolean>(false);
+  // TIM-2436 — Past chats moves out of the chat panel into a separate
+  // left-anchored drawer. Closed by default on page load (no persistence).
+  const [pastChatsOpen, setPastChatsOpen] = useState<boolean>(false);
   const [activeThreadTitle, setActiveThreadTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -336,10 +377,7 @@ export function CoPilotDrawer({
   const [credits, setCredits] = useState<CreditsState>(null);
   // TIM-1728: cross-workspace consistency conflicts surfaced through AIReviewModal.
   const [consistencyConflicts, setConsistencyConflicts] = useState<SuggestionPayload[] | null>(null);
-  const [consistencyChecking, setConsistencyChecking] = useState(false);
-  // TIM-1801: result feedback so the button never silently no-ops — a clean
-  // "no issues" state and a surfaced error replace the prior silent returns.
-  const [consistencyResult, setConsistencyResult] = useState<"idle" | "clean" | "error">("idle");
+  const [, setConsistencyChecking] = useState(false);
   const titleRequestedRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hydratedRef = useRef(false);
@@ -363,6 +401,39 @@ export function CoPilotDrawer({
 
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
+  // TIM-2453 — Check-mode cross-suite conflict resolver. The hook fetches the
+  // resolver's GET response once and exposes openResolverById; Check-mode
+  // cards that map to a known conflict id dispatch through this hook so the
+  // modal opens on the same conflict the Hiring/Financials badges point at.
+  // We render the resolver's own AIReviewModalNode (separate hook instance
+  // from the chat's; mounting both is safe — only one is ever open at a time).
+  const {
+    conflicts: crossSuiteConflicts,
+    openResolverById: openCrossSuiteResolverById,
+    ResolverNode: CrossSuiteResolverNode,
+    AIReviewModalNode: CrossSuiteAIReviewModalNode,
+  } = useCrossSuiteConflictResolver();
+
+  // Resolve an audit finding to a cross-suite conflict id ONLY when the
+  // resolver actually surfaced that conflict in today's response. Otherwise
+  // return null — the card keeps its standard Apply/Go-to-source behavior and
+  // never falls back to "open conflict 0". See audit-mapping.test.mjs.
+  const resolverConflictIdFor = useCallback(
+    (finding: AuditFinding): string | null => {
+      const id = crossSuiteConflictIdForAuditFinding(finding);
+      if (!id) return null;
+      return crossSuiteConflicts.some((c) => c.id === id) ? id : null;
+    },
+    [crossSuiteConflicts],
+  );
+
+  const handleOpenCrossSuiteResolver = useCallback(
+    (conflictId: string) => {
+      openCrossSuiteResolverById(conflictId);
+    },
+    [openCrossSuiteResolverById],
+  );
+
   // Keep local trial count in sync with the server after each message.
   useEffect(() => {
     if (trialRemaining === null) return;
@@ -372,6 +443,29 @@ export function CoPilotDrawer({
       return { ...prev, trialUsed: used, trialRemaining };
     });
   }, [trialRemaining]);
+
+  // TIM-2311: paired with the lazy initializer above — when the URL flag is
+  // present on mount, refetch the meter, strip the param, and auto-dismiss the
+  // toast. setState calls here are either async (inside .then) or scheduled
+  // (setTimeout), so the effect never sets state synchronously in its body.
+  useEffect(() => {
+    if (!creditsAddedToast) return;
+    void fetch("/api/credits", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as CreditsState & Record<string, unknown>;
+        setCredits(data as CreditsState);
+      })
+      .catch(() => {});
+    const params = new URLSearchParams(window.location.search);
+    params.delete("credits_added");
+    const search = params.toString();
+    const next =
+      window.location.pathname + (search ? `?${search}` : "") + window.location.hash;
+    window.history.replaceState(null, "", next);
+    const t = setTimeout(() => setCreditsAddedToast(false), 6000);
+    return () => clearTimeout(t);
+  }, [creditsAddedToast]);
 
   const openDrawer = useCallback(() => {
     setOpen(true);
@@ -390,7 +484,6 @@ export function CoPilotDrawer({
   const closeDrawer = useCallback(() => {
     abort();
     setOpen(false);
-    setIsConversationsSheetOpen(false);
   }, [abort]);
 
   const handleNewThread = useCallback(
@@ -427,33 +520,10 @@ export function CoPilotDrawer({
     [activeThreadId, handleNewThread],
   );
 
-  // TIM-1728: fetch consistency conflicts and surface via AIReviewModal.
-  const handleConsistencyCheck = useCallback(async () => {
-    if (consistencyChecking) return;
-    setConsistencyChecking(true);
-    setConsistencyResult("idle");
-    try {
-      const res = await fetch("/api/copilot/consistency", { credentials: "same-origin" });
-      if (!res.ok) {
-        setConsistencyConflicts(null);
-        setConsistencyResult("error");
-        return;
-      }
-      const data = (await res.json()) as { suggestions: SuggestionPayload[] };
-      if (data.suggestions.length > 0) {
-        setConsistencyConflicts(data.suggestions);
-        setConsistencyResult("idle");
-      } else {
-        setConsistencyConflicts(null);
-        setConsistencyResult("clean");
-      }
-    } catch {
-      setConsistencyConflicts(null);
-      setConsistencyResult("error");
-    } finally {
-      setConsistencyChecking(false);
-    }
-  }, [consistencyChecking]);
+  // TIM-2416 — the manual "Check plan consistency" handler was retired with
+  // the inline Coach trigger (UX spec §3a). Run the consistency check via the
+  // companion Check mode; the auto on-open conflict fetch below still feeds
+  // the "Review N plan conflicts" CTA when conflicts already exist.
 
   // TIM-1728: apply a consistency resolution — POST the canonical value for each accepted conflict.
   // TIM-1731: per-call error handling. A failed write must NOT clear the conflict list; throwing
@@ -483,6 +553,137 @@ export function CoPilotDrawer({
     }
     setConsistencyConflicts(null);
   }, []);
+
+  // ── TIM-2416: Check + Benchmark scan handlers. ─────────────────────────────
+
+  const runCheckScan = useCallback(async () => {
+    setCheckError(null);
+    setCheckScanning(true);
+    try {
+      const res = await fetch("/api/business-plan/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Check failed (${res.status})`);
+      }
+      const data = (await res.json()) as { report: AuditReport | null };
+      setCheckReport(data.report);
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : "Check failed");
+    } finally {
+      setCheckScanning(false);
+    }
+  }, []);
+
+  const runBenchmarkScan = useCallback(async (scope: ConversationScope) => {
+    setBenchmarkError(null);
+    setBenchmarkScanning(true);
+    try {
+      const res = await fetch("/api/companion/benchmark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ scope }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Benchmark failed (${res.status})`);
+      }
+      const data = (await res.json()) as { report: AuditReport | null };
+      setBenchmarkReport(data.report);
+    } catch (err) {
+      setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed");
+    } finally {
+      setBenchmarkScanning(false);
+    }
+  }, []);
+
+  // TIM-2416 — Apply suggestion for a finding (Check or Benchmark). Routes
+  // through the unified AI review modal; never auto-applies (platform rule).
+  const handleApplyFinding = useCallback(
+    (finding: AuditFinding) => {
+      if (!finding.suggested_replacement) return;
+      const fieldId = finding.target.field ?? finding.source.field ?? finding.id;
+      const fieldLabel =
+        finding.target.field_label ?? finding.source.field_label ?? "Source value";
+      const replacement = stripFindingTags(finding.suggested_replacement);
+      const original = stripFindingTags(finding.quoted_text ?? "");
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `companion-${finding.id}`,
+            fieldId,
+            fieldLabel,
+            originalValue: original,
+            proposedValue: replacement,
+            isStructured: false,
+          },
+        ],
+        context: {
+          workspace: finding.target.workspace ?? "plan",
+          section: finding.target.field_label ?? undefined,
+        },
+        onApply: async () => {
+          // For companion findings the reviewed value is committed by the
+          // owning workspace; the modal still surfaces the reviewed change so
+          // the user can copy it into the source. No direct PATCH from here.
+        },
+      });
+    },
+    [openAIReviewModal],
+  );
+
+  // TIM-2416 — Go to source. Mirrors the BP workspace handleGoToAuditSource
+  // navigation map. Closes the drawer first so the destination workspace
+  // doesn't render behind a backdrop.
+  const handleGoToFindingSource = useCallback((finding: AuditFinding) => {
+    const target = finding.target.workspace;
+    const workspaceHref: Record<string, string> = {
+      financials: "/workspace/financials",
+      labor: "/workspace/hiring",
+      hiring: "/workspace/hiring",
+      "buildout-equipment": "/workspace/buildout-equipment",
+      buildout_equipment: "/workspace/buildout-equipment",
+      "menu-pricing": "/workspace/menu-pricing",
+      menu_pricing: "/workspace/menu-pricing",
+      "launch-plan": "/workspace/launch-plan",
+      opening_month_plan: "/workspace/opening-month-plan",
+      "location-lease": "/workspace/location-lease",
+      location_lease: "/workspace/location-lease",
+      lease: "/workspace/location-lease",
+      "real-estate": "/workspace/location-lease",
+      "business-plan": "/workspace/business-plan",
+      business_plan: "/workspace/business-plan",
+    };
+    const href = workspaceHref[target];
+    if (href) {
+      setOpen(false);
+      window.location.href = href;
+    }
+  }, []);
+
+  // TIM-2416 — open-in-mode external trigger. Inline benchmark deltas and the
+  // BP regen pre-flight "Fix first" branch dispatch this event so opening the
+  // companion in a specific mode + scope is a one-call path.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        mode?: CompanionMode;
+        scope?: ConversationScope;
+      }>).detail;
+      if (!detail) return;
+      openDrawer();
+      if (detail.mode) setActiveMode(detail.mode);
+      if (detail.scope !== undefined) setActiveScope(detail.scope);
+    };
+    window.addEventListener("copilot:open-in-mode", handler);
+    return () => window.removeEventListener("copilot:open-in-mode", handler);
+  }, [openDrawer]);
 
   const handleSelectThread = useCallback(
     async (item: ThreadBrowserItem) => {
@@ -723,8 +924,6 @@ export function CoPilotDrawer({
     }
     const storedExpanded = window.localStorage.getItem(PANEL_EXPANDED_STORAGE_KEY);
     if (storedExpanded === "1") setIsExpanded(true);
-    const storedRail = window.localStorage.getItem(CONVERSATIONS_RAIL_STORAGE_KEY);
-    if (storedRail === "1") setRailOpen(true);
   }, []);
 
   // TIM-1149: persist panel width and expanded state.
@@ -736,10 +935,6 @@ export function CoPilotDrawer({
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PANEL_EXPANDED_STORAGE_KEY, isExpanded ? "1" : "0");
   }, [isExpanded]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(CONVERSATIONS_RAIL_STORAGE_KEY, railOpen ? "1" : "0");
-  }, [railOpen]);
 
   // TIM-1149: track viewport width so we can clamp the panel responsively.
   useEffect(() => {
@@ -857,15 +1052,27 @@ export function CoPilotDrawer({
     );
   }, [isExpanded, panelWidth, viewportWidth]);
 
-  const scopeHeaderLabel =
+  // TIM-2416 — per UX spec §5, scope header wording is mode-aware. Coach uses
+  // "Asking about", Check uses "Checking", Benchmark uses "Comparing".
+  const scopeNoun =
     activeScope === null
-      ? GENERAL_CONVERSATION_LABEL
-      : WORKSPACE_LABELS[activeScope];
+      ? "your whole plan"
+      : `your ${WORKSPACE_LABELS[activeScope]}`;
+  const scopeHeaderLabel = (() => {
+    if (activeMode === "check") return `Checking ${scopeNoun}`;
+    if (activeMode === "benchmark") return `Comparing ${scopeNoun} to industry averages`;
+    return `Asking about ${scopeNoun}`;
+  })();
 
   return (
     <>
       {/* TIM-1561: AI review modal for suggestions from chat. */}
       {AIReviewModalNode}
+      {/* TIM-2453: cross-suite resolver modal (+ its own AIReviewModal for
+          path-accept Apply round-trip). Mounted unconditionally so the modal
+          can open from any Check-mode card click without waiting on hydration. */}
+      {CrossSuiteResolverNode}
+      {CrossSuiteAIReviewModalNode}
       <PaywallModal
         open={trialModalOpen}
         onClose={() => setTrialModalOpen(false)}
@@ -873,6 +1080,52 @@ export function CoPilotDrawer({
       />
       {/* TIM-1687: one-off credit top-up. */}
       <CreditPacksModal open={buyCreditsOpen} onClose={() => setBuyCreditsOpen(false)} />
+      {/* TIM-2311: success toast after returning from Stripe credit-pack checkout. */}
+      {creditsAddedToast && (
+        <div
+          role="status"
+          data-testid="credits-added-toast"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[var(--teal)] text-white px-4 py-3 rounded-xl shadow-lg max-w-sm"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <p className="text-sm font-medium flex-1">
+            Credits added. Your balance is up to date.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCreditsAddedToast(false)}
+            className="text-white/80 hover:text-white"
+            aria-label="Dismiss"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      )}
       {!open && (
         <button
           type="button"
@@ -938,64 +1191,18 @@ export function CoPilotDrawer({
               </div>
             )}
 
+            {/* TIM-2436 — simplified header (UX spec §3a). Brand left
+                (Sparkles + Scout name), context line below. Right cluster
+                holds Past chats / Expand / Close, capped at 4 interactive
+                elements. Credits + upgrade nudges moved to the input row. */}
             <header className="px-4 pt-4 pb-3 border-b border-[var(--border)] flex items-start gap-2">
-              <button
-                type="button"
-                aria-label="Conversations"
-                onClick={() => isMobile ? setIsConversationsSheetOpen(true) : setRailOpen((v) => !v)}
-                title="Conversations"
-                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
-              >
-                <Menu aria-hidden className="w-4 h-4" />
-              </button>
               <div className={cn("shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5", isStreaming ? "ai-streaming-avatar" : "bg-[var(--teal)]/10 text-[var(--teal)]")}>
                 <Sparkles aria-hidden className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-semibold text-[var(--foreground)] truncate">
-                    {COPILOT_NAME}
-                  </h2>
-                  <span className="text-[11px] uppercase tracking-wide text-[var(--neutral-cool-600)] font-medium">
-                    {COPILOT_SUBTITLE}
-                  </span>
-                  {credits?.mode === "trial" && (
-                    <span
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        credits.trialRemaining <= 1
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-[var(--teal)]/10 text-[var(--teal)]"
-                      }`}
-                    >
-                      {credits.trialRemaining} of {credits.trialLimit} trial messages left
-                    </span>
-                  )}
-                  {/* TIM-1671: live credit meter — balance updates after each turn. */}
-                  {credits?.mode === "credits" && (
-                    <span
-                      title="Credits are used based on how much work Scout does on each answer."
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        credits.remaining <= 5
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-[var(--teal)]/10 text-[var(--teal)]"
-                      }`}
-                    >
-                      {credits.monthlyGrant
-                        ? `${credits.remaining} of ${credits.monthlyGrant} credits`
-                        : `${credits.remaining} credits left`}
-                    </span>
-                  )}
-                  {/* TIM-1687: low/out of credits — offer a top-up next to the meter. */}
-                  {credits?.mode === "credits" && credits.remaining <= 5 && (
-                    <button
-                      type="button"
-                      onClick={() => setBuyCreditsOpen(true)}
-                      className="text-[10px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
-                    >
-                      Top up
-                    </button>
-                  )}
-                </div>
+                <h2 className="text-base font-semibold text-[var(--foreground)] truncate">
+                  {COPILOT_NAME}
+                </h2>
                 <p className="text-[11px] text-[var(--neutral-cool-600)] truncate">
                   {scopeHeaderLabel}
                   {externalFocusLabel && activeScope === workspaceKey
@@ -1006,26 +1213,27 @@ export function CoPilotDrawer({
                   {` · ${activeThreadLabel}`}
                 </p>
               </div>
-              {credits?.mode === "trial" && trialMessagesUsed < COPILOT_FREE_TRIAL_LIMIT && initialTrialMessagesUsed !== undefined && (
-                <span
-                  className={`text-[11px] font-medium whitespace-nowrap mt-1 ${
-                    COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed <= 2
-                      ? "text-amber-600"
-                      : "text-[var(--neutral-cool-600)]"
-                  }`}
-                >
-                  {trialMessagesUsed === 0
-                    ? `${COPILOT_FREE_TRIAL_LIMIT} free`
-                    : `${COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed} free left`}
+              <button
+                type="button"
+                aria-label="Past chats"
+                aria-pressed={pastChatsOpen}
+                title="Past chats"
+                data-testid="past-chats-trigger"
+                onClick={() => setPastChatsOpen((v) => !v)}
+                className="mt-0.5 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center gap-1.5 text-[var(--neutral-cool-600)] shrink-0 px-2"
+              >
+                <Clock aria-hidden className="w-4 h-4" />
+                <span className="hidden md:inline text-xs font-medium">
+                  Past chats
                 </span>
-              )}
+              </button>
               {!isMobile && (
                 <button
                   type="button"
                   aria-label={isExpanded ? "Restore panel size" : "Expand panel"}
                   aria-pressed={isExpanded}
                   onClick={() => setIsExpanded((v) => !v)}
-                  className="ml-1 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)]"
+                  className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
                   title={isExpanded ? "Restore" : "Expand"}
                 >
                   {isExpanded ? (
@@ -1039,81 +1247,98 @@ export function CoPilotDrawer({
                 type="button"
                 aria-label="Close"
                 onClick={closeDrawer}
-                className="w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)]"
+                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </header>
 
+            {/* TIM-2416 — mode strip (UX spec §2). Sits below the header,
+                above the scroll/input column. Always visible, even mid-scan. */}
+            <ModeStrip activeMode={activeMode} onSelect={setActiveMode} />
+
+            {/* TIM-2436 — the inline conversations rail was retired. Past
+                chats now live in the separate left-anchored drawer (see
+                PastChatsDrawer rendered at the root of this component). */}
             <div className="flex flex-1 overflow-hidden min-h-0">
-              <AnimatePresence initial={false}>
-                {!isMobile && railOpen && (
-                  <motion.div
-                    key="conversation-rail"
-                    initial={{ width: 0 }}
-                    animate={{ width: 240 }}
-                    exit={{ width: 0 }}
-                    transition={{ duration: 0.1, ease: "easeOut" }}
-                    className="shrink-0 border-r border-[var(--border)] overflow-hidden"
-                  >
-                    <div className="w-[240px] h-full flex flex-col bg-[var(--surface-warm-50)]">
-                      <ThreadBrowser
-                        variant="fill"
-                        planId={planId}
-                        activeScope={activeScope}
-                        activeThreadId={activeThreadId}
-                        currentWorkspaceKey={workspaceKey}
-                        onSelectThread={(item) => void handleSelectThread(item)}
-                        onNewThread={handleNewThread}
-                        onRenameThread={handleRenameThread}
-                        onDeleteThread={handleDeleteThread}
-                        refreshKey={browserRefreshKey}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
               <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-              {loadingThread && (
+              {/* TIM-2416 — Check mode panel. Scoped per UX spec §3b. */}
+              {activeMode === "check" && (
+                <CheckPanel
+                  report={checkReport}
+                  isScanning={checkScanning}
+                  error={checkError}
+                  onRun={() => void runCheckScan()}
+                  onApply={handleApplyFinding}
+                  onGoToSource={handleGoToFindingSource}
+                  resolverConflictIdFor={resolverConflictIdFor}
+                  onOpenCrossSuite={handleOpenCrossSuiteResolver}
+                />
+              )}
+              {/* TIM-2416 — Benchmark mode panel. Scope label is the same
+                  wording used in the header so the user sees one consistent
+                  scope line on the empty/zero states. */}
+              {activeMode === "benchmark" && (
+                <BenchmarkPanel
+                  scopeLabel={scopeHeaderLabel}
+                  report={benchmarkReport}
+                  isScanning={benchmarkScanning}
+                  error={benchmarkError}
+                  onRun={() => void runBenchmarkScan(activeScope)}
+                  onApply={handleApplyFinding}
+                  onGoToSource={handleGoToFindingSource}
+                  resolverConflictIdFor={resolverConflictIdFor}
+                  onOpenCrossSuite={handleOpenCrossSuiteResolver}
+                />
+              )}
+              {/* TIM-2434: Document Import mode. Reuses the unified
+                  AIReviewModal so accepted changes flow through the same
+                  review surface as every other AI proposal. */}
+              {activeMode === "import" && (
+                <ImportPanel
+                  planId={planId}
+                  source="companion"
+                  creditBalance={
+                    credits?.mode === "credits" ? credits.remaining : null
+                  }
+                  openReview={({ suggestions, onApply }) =>
+                    openAIReviewModal({
+                      suggestions: suggestions as SuggestionPayload[],
+                      context: { workspace: "document_import" },
+                      onApply,
+                    })
+                  }
+                />
+              )}
+              {/* Coach mode keeps every prior surface: empty state, history,
+                  streaming buffer, review/conflict CTAs, error banner. */}
+              {activeMode === "coach" && loadingThread && (
                 <p className="text-xs text-[var(--neutral-cool-600)]">Loading conversation…</p>
               )}
 
-              {showEmpty && (
+              {activeMode === "coach" && showEmpty && (
                 <div className="text-sm text-[var(--gray-1100)] bg-[var(--background)] border border-[var(--border)] rounded-xl p-4">
+                  {/* TIM-2416 — Coach scope eyebrow (UX spec §3a). */}
+                  <p className="text-xs font-semibold text-[var(--teal)] mb-2 uppercase tracking-wide">
+                    {activeScope === null
+                      ? "Asking about your whole plan"
+                      : `Asking about your ${WORKSPACE_LABELS[activeScope]}`}
+                  </p>
                   {activeScope === null
-                    ? `Ask ${COPILOT_NAME} anything about your plan. This conversation isn't tied to a specific workspace — useful for cross-cutting questions like cash flow, opening sequencing, or "is this realistic?"`
-                    : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()} plan. ${COPILOT_NAME} can see your plan snapshot across every workspace.`}
-                  {/* TIM-1728: manual consistency trigger in empty state. */}
-                  {!consistencyConflicts && !consistencyChecking && (
-                    <button
-                      type="button"
-                      onClick={() => void handleConsistencyCheck()}
-                      className="mt-3 flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
-                    >
-                      <Sparkles size={12} aria-hidden />
-                      Check plan consistency
-                    </button>
-                  )}
-                  {consistencyChecking && (
-                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">Checking plan consistency…</p>
-                  )}
-                  {/* TIM-1801: clean state so a no-conflict run is never silent. */}
-                  {!consistencyChecking && !consistencyConflicts && consistencyResult === "clean" && (
-                    <p className="mt-3 text-xs text-[var(--neutral-cool-600)]">No plan inconsistencies found. Everything lines up across your workspaces.</p>
-                  )}
-                  {/* TIM-1801: surface failures instead of swallowing them. */}
-                  {!consistencyChecking && consistencyResult === "error" && (
-                    <p className="mt-3 text-xs text-red-700">Couldn&apos;t check plan consistency. Please try again.</p>
-                  )}
+                    ? `Ask anything. ${COPILOT_NAME} can see all your workspaces.`
+                    : `Ask anything about your ${WORKSPACE_LABELS[activeScope].toLowerCase()}. ${COPILOT_NAME} can see your numbers across every workspace.`}
+                  {/* TIM-2416 — the standalone "Check plan consistency" trigger
+                      was removed from the Coach empty state (UX spec §3a). That
+                      function now lives in Check mode. */}
                 </div>
               )}
 
-              {messages.map((msg, idx) => (
+              {activeMode === "coach" && messages.map((msg, idx) => (
                 <MessageBubble key={idx} role={msg.role} content={msg.content} />
               ))}
 
-              {(assistantBuffer || isThinking) && (
+              {activeMode === "coach" && (assistantBuffer || isThinking) && (
                 <div className="space-y-2">
                   {isThinking && (
                     <div
@@ -1131,76 +1356,11 @@ export function CoPilotDrawer({
                 </div>
               )}
 
-              {/* TIM-1561: "Review N suggestions" CTA when Scout emits a suggestions event. */}
-              {pendingSuggestions && !isStreaming && (
-                <div className="flex">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!pendingSuggestions) return;
-                      const { suggestions, context } = pendingSuggestions;
-                      openAIReviewModal({
-                        suggestions,
-                        context,
-                        onApply: async (accepted: ApprovedChange[]) => {
-                          // timeline_mismatch / derived are informational — the
-                          // authoritative value already lives in (or derives from)
-                          // the plan, so no field write on accept.
-                          const actionable = accepted.filter(
-                            (c) => c.fieldId !== "timeline_mismatch" && c.fieldId !== "derived"
-                          );
-                          // TIM-1798: cross-workspace equipment-cost changes write the
-                          // equipment item (single source of truth); Financials derives.
-                          const equipmentCost = actionable.filter((c) =>
-                            parseEquipmentCostFieldId(c.fieldId)
-                          );
-                          const rest = actionable.filter(
-                            (c) => !parseEquipmentCostFieldId(c.fieldId)
-                          );
-                          if (equipmentCost.length > 0) {
-                            await applyEquipmentCostChanges(equipmentCost);
-                          }
-                          // TIM-1648: route menu_pricing proposals to the write API;
-                          // all other suggestions go through the workspace-level callback.
-                          if (context.workspace === "menu_pricing") {
-                            await applyMenuPricingProposal(rest);
-                          } else if (onApplySuggestions && rest.length > 0) {
-                            await onApplySuggestions(rest);
-                          }
-                          clearSuggestions();
-                        },
-                      });
-                    }}
-                    className="flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
-                  >
-                    <Sparkles size={14} aria-hidden />
-                    {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
-                  </button>
-                </div>
-              )}
+              {/* TIM-2436 — Review N suggestions / conflicts CTAs moved out
+                  of the message scroll into the pinned action row directly
+                  above the textarea (UX spec §3e). See further down. */}
 
-              {/* TIM-1728: "Review N conflicts" CTA when cross-workspace consistency check finds disagreements. */}
-              {consistencyConflicts && !isStreaming && (
-                <div className="flex">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!consistencyConflicts) return;
-                      openAIReviewModal({
-                        suggestions: consistencyConflicts,
-                        context: { workspace: "consistency", section: "Plan consistency" },
-                        onApply: handleConsistencyApply,
-                      });
-                    }}
-                    className="flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
-                  >
-                    <Sparkles size={14} aria-hidden />
-                    {`Review ${consistencyConflicts.length} plan ${consistencyConflicts.length === 1 ? "conflict" : "conflicts"}`}
-                  </button>
-                </div>
-              )}
-
-              {errorBanner && (
+              {activeMode === "coach" && errorBanner && (
                 <div className="border border-red-200 bg-red-50 text-red-700 rounded-xl p-3 text-sm flex items-start gap-3">
                   <span aria-hidden>!</span>
                   <div className="flex-1">
@@ -1246,12 +1406,79 @@ export function CoPilotDrawer({
               )}
             </div>
 
+            {/* TIM-2416 — the chat input is Coach-only. Check + Benchmark
+                modes are driven by their own buttons, not a text prompt. */}
+            {activeMode === "coach" && (
             <motion.div
               className="border-t border-[var(--border)] safe-area-pb"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15, delay: 0.1 }}
             >
+              {/* TIM-2436 — pinned action row above the textarea (UX spec
+                  §3e). Shows the suggestion / conflict review pills only
+                  when there is something to review, and they no longer
+                  steal vertical space inside the message scroll. */}
+              {(pendingSuggestions || consistencyConflicts) && !isStreaming && (
+                <div className="px-3 pt-3 pb-1 flex flex-wrap gap-2">
+                  {pendingSuggestions && (
+                    <button
+                      type="button"
+                      data-testid="copilot-review-suggestions"
+                      onClick={() => {
+                        if (!pendingSuggestions) return;
+                        const { suggestions, context } = pendingSuggestions;
+                        openAIReviewModal({
+                          suggestions,
+                          context,
+                          onApply: async (accepted: ApprovedChange[]) => {
+                            const actionable = accepted.filter(
+                              (c) => c.fieldId !== "timeline_mismatch" && c.fieldId !== "derived"
+                            );
+                            const equipmentCost = actionable.filter((c) =>
+                              parseEquipmentCostFieldId(c.fieldId)
+                            );
+                            const rest = actionable.filter(
+                              (c) => !parseEquipmentCostFieldId(c.fieldId)
+                            );
+                            if (equipmentCost.length > 0) {
+                              await applyEquipmentCostChanges(equipmentCost);
+                            }
+                            if (context.workspace === "menu_pricing") {
+                              await applyMenuPricingProposal(rest);
+                            } else if (onApplySuggestions && rest.length > 0) {
+                              await onApplySuggestions(rest);
+                            }
+                            clearSuggestions();
+                          },
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
+                    >
+                      <Sparkles size={14} aria-hidden />
+                      {`Review ${pendingSuggestions.suggestions.length} suggestion${pendingSuggestions.suggestions.length === 1 ? "" : "s"}`}
+                    </button>
+                  )}
+                  {consistencyConflicts && (
+                    <button
+                      type="button"
+                      data-testid="copilot-review-conflicts"
+                      onClick={() => {
+                        if (!consistencyConflicts) return;
+                        openAIReviewModal({
+                          suggestions: consistencyConflicts,
+                          context: { workspace: "consistency", section: "Plan consistency" },
+                          onApply: handleConsistencyApply,
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 bg-[var(--teal)] text-white rounded-full px-4 py-2 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
+                    >
+                      <Sparkles size={14} aria-hidden />
+                      {`Review ${consistencyConflicts.length} plan ${consistencyConflicts.length === 1 ? "conflict" : "conflicts"}`}
+                    </button>
+                  )}
+                </div>
+              )}
               <form
                 onSubmit={handleSubmit}
                 className="px-3 pt-3 pb-1 flex items-end gap-2"
@@ -1288,6 +1515,57 @@ export function CoPilotDrawer({
                   </button>
                 )}
               </form>
+              {/* TIM-2436 — low-water credits / trial indicator (UX spec
+                  §3c). Visible only when the user is near their cap so the
+                  header stays clean; pairs the count with upgrade nudges
+                  exactly where the user is about to send a message. */}
+              {credits?.mode === "trial" && credits.trialRemaining <= 2 && (
+                <div
+                  data-testid="copilot-credits-row"
+                  className="px-3 pt-1 pb-0.5 text-[11px] leading-tight text-center text-amber-700 flex items-center justify-center gap-2 flex-wrap"
+                >
+                  <span>
+                    {credits.trialRemaining} of {credits.trialLimit} free messages left
+                  </span>
+                  <span aria-hidden className="text-[var(--neutral-cool-400)]">·</span>
+                  <Link
+                    href={UPGRADE_PATH}
+                    className="font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                  >
+                    Upgrade
+                  </Link>
+                </div>
+              )}
+              {credits?.mode === "credits" &&
+                (credits.monthlyGrant
+                  ? credits.remaining <= Math.max(1, Math.floor(credits.monthlyGrant * 0.2))
+                  : credits.remaining <= 5) && (
+                  <div
+                    data-testid="copilot-credits-row"
+                    className="px-3 pt-1 pb-0.5 text-[11px] leading-tight text-center text-amber-700 flex items-center justify-center gap-2 flex-wrap"
+                  >
+                    <span>
+                      {credits.monthlyGrant
+                        ? `${credits.remaining} of ${credits.monthlyGrant} credits left`
+                        : `${credits.remaining} credits left`}
+                    </span>
+                    <span aria-hidden className="text-[var(--neutral-cool-400)]">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setBuyCreditsOpen(true)}
+                      className="font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                    >
+                      Buy more credits
+                    </button>
+                    <span aria-hidden className="text-[var(--neutral-cool-400)]">·</span>
+                    <Link
+                      href={UPGRADE_PATH}
+                      className="font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] underline"
+                    >
+                      Upgrade plan
+                    </Link>
+                  </div>
+                )}
               {/* TIM-1149: persistent AI-mistake disclaimer. Low-emphasis, doesn't
                   steal chat space. Visible on every conversation view. */}
               <p
@@ -1297,58 +1575,42 @@ export function CoPilotDrawer({
                 {COPILOT_AI_DISCLAIMER}
               </p>
             </motion.div>
+            )}
             </div>
             </div>
-            <AnimatePresence>
-              {isMobile && isConversationsSheetOpen && (
-                <>
-                  <motion.div
-                    className="absolute inset-0 z-10 bg-black/40"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setIsConversationsSheetOpen(false)}
-                  />
-                  <motion.div
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Conversations"
-                    className="absolute bottom-0 inset-x-0 z-20 flex flex-col bg-[var(--background)] rounded-t-2xl border-t border-[var(--border)]"
-                    style={{ height: "60vh" }}
-                    initial={{ y: "100%" }}
-                    animate={{ y: 0 }}
-                    exit={{ y: "100%" }}
-                    transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  >
-                    <div className="flex justify-center pt-2 pb-1 shrink-0" aria-hidden>
-                      <div className="w-10 h-1 rounded-full bg-[var(--neutral-cool-300)]" />
-                    </div>
-                    <ThreadBrowser
-                      variant="fill"
-                      planId={planId}
-                      activeScope={activeScope}
-                      activeThreadId={activeThreadId}
-                      currentWorkspaceKey={workspaceKey}
-                      onSelectThread={(item) => {
-                        setIsConversationsSheetOpen(false);
-                        void handleSelectThread(item);
-                      }}
-                      onNewThread={(scope) => {
-                        setIsConversationsSheetOpen(false);
-                        handleNewThread(scope);
-                      }}
-                      onRenameThread={handleRenameThread}
-                      onDeleteThread={handleDeleteThread}
-                      refreshKey={browserRefreshKey}
-                    />
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
           </motion.aside>
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* TIM-2436 — Past Chats Drawer. Independent, left-anchored, closed
+          by default. Reuses the existing ThreadBrowser in `variant="fill"`
+          so search/filter/grouping/rename/delete continue to work. Selecting
+          a thread auto-opens the chat panel if it isn't already open. */}
+      <PastChatsDrawer
+        open={pastChatsOpen}
+        onClose={() => setPastChatsOpen(false)}
+        viewportWidth={viewportWidth}
+        chatPanelOpen={open}
+        chatPanelWidth={computedPanelWidth}
+        planId={planId}
+        activeScope={activeScope}
+        activeThreadId={activeThreadId}
+        currentWorkspaceKey={workspaceKey}
+        onSelectThread={(item) => {
+          setPastChatsOpen(false);
+          if (!open) openDrawer();
+          void handleSelectThread(item);
+        }}
+        onNewThread={(scope) => {
+          setPastChatsOpen(false);
+          if (!open) openDrawer();
+          handleNewThread(scope);
+        }}
+        onRenameThread={handleRenameThread}
+        onDeleteThread={handleDeleteThread}
+        refreshKey={browserRefreshKey}
+      />
     </>
   );
 }

@@ -5,13 +5,14 @@
 
 import React from "react"
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { BRAND } from "../brand"
+import { BRAND, type BrandTokens } from "../brand"
 import { PdfDocument } from "../components/PdfDocument"
 import { PdfHeader } from "../components/PdfHeader"
 import { PdfFooter } from "../components/PdfFooter"
 import { PdfSection } from "../components/PdfSection"
 import { PdfTable, type ColumnDef, type Row } from "../components/PdfTable"
 import type { PdfTemplate } from "../registry"
+import { formatMinorUnits, formatCurrencyAmount, currencySymbol } from "@/lib/currency"
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -44,26 +45,18 @@ const UNCATEGORIZED_LABEL = "Other"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function fmtPrice(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(cents / 100)
+// TIM-2486: route money formatting through the central currency utility so
+// non-USD plans render with the correct symbol/locale on the printed menu.
+function fmtPrice(cents: number, currencyCode: string): string {
+  return formatMinorUnits(cents, currencyCode)
 }
 
 function fmtPct(val: number): string {
   return `${val.toFixed(1)}%`
 }
 
-function fmtDollar(val: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(val)
+function fmtDollar(val: number, currencyCode: string): string {
+  return formatCurrencyAmount(val, currencyCode, { compact: false })
 }
 
 function fmtDateLong(d: Date): string {
@@ -148,90 +141,92 @@ function groupByCategory(items: MenuItemRow[]): Map<string, MenuItemRow[]> {
 
 // ── styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: BRAND.page.margin,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin,
-    paddingRight: BRAND.page.margin,
-  },
-  emptyNote: {
-    fontSize: 10,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    padding: 8,
-    backgroundColor: "var(--neutral-cool-f5)",
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  categoryLabel: {
-    fontSize: 9,
-    fontWeight: 700,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingBottom: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  publicRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  publicName: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    flex: 1,
-  },
-  publicPrice: {
-    fontSize: 10,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-    textAlign: "right",
-    width: 60,
-  },
-  footerNote: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginTop: 12,
-    fontStyle: "italic",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 10,
-  },
-  summaryCard: {
-    flex: 1,
-    minWidth: 120,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    padding: 8,
-    borderRadius: 4,
-  },
-  summaryLabel: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  summaryValue: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-  },
-})
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: brand.page.margin,
+      paddingBottom: brand.page.margin + 20,
+      paddingLeft: brand.page.margin,
+      paddingRight: brand.page.margin,
+    },
+    emptyNote: {
+      fontSize: 10,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      padding: 8,
+      backgroundColor: "var(--neutral-cool-f5)",
+      borderRadius: 4,
+      marginBottom: 8,
+    },
+    categoryLabel: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginTop: 8,
+      marginBottom: 4,
+      paddingBottom: 3,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    publicRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: 5,
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    publicName: {
+      fontSize: 10,
+      color: brand.colors.ink,
+      flex: 1,
+    },
+    publicPrice: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: brand.colors.ink,
+      textAlign: "right",
+      width: 60,
+    },
+    footerNote: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginTop: 12,
+      fontStyle: "italic",
+    },
+    summaryRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 10,
+    },
+    summaryCard: {
+      flex: 1,
+      minWidth: 120,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      padding: 8,
+      borderRadius: 4,
+    },
+    summaryLabel: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    summaryValue: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: brand.colors.ink,
+    },
+  })
+}
 
 // ── Page 1: public menu ──────────────────────────────────────────────────────
 
@@ -239,20 +234,25 @@ function PublicMenuPage({
   items,
   shopName,
   generatedDate,
+  brand,
+  currencyCode,
 }: {
   items: MenuItemRow[]
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
+  currencyCode: string
 }) {
+  const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived && i.price_cents > 0)
   const grouped = groupByCategory(active)
 
   return (
-    <Page size={BRAND.page.size} style={styles.page}>
-      <PdfHeader shopName={shopName} workspaceName="Menu" />
+    <Page size={brand.page.size} style={styles.page}>
+      <PdfHeader shopName={shopName} workspaceName="Menu" brand={brand} />
 
       {active.length === 0 ? (
-        <PdfSection title="Menu">
+        <PdfSection title="Menu" brand={brand}>
           <Text style={styles.emptyNote}>
             No priced menu items found. Add items in the Menu &amp; Pricing workspace.
           </Text>
@@ -267,7 +267,7 @@ function PublicMenuPage({
                 {catItems.map((item) => (
                   <View key={item.id} style={styles.publicRow}>
                     <Text style={styles.publicName}>{item.name}</Text>
-                    <Text style={styles.publicPrice}>{fmtPrice(item.price_cents)}</Text>
+                    <Text style={styles.publicPrice}>{fmtPrice(item.price_cents, currencyCode)}</Text>
                   </View>
                 ))}
               </View>
@@ -279,7 +279,7 @@ function PublicMenuPage({
         </>
       )}
 
-      <PdfFooter generatedDate={generatedDate} />
+      <PdfFooter generatedDate={generatedDate} brand={brand} />
     </Page>
   )
 }
@@ -290,15 +290,23 @@ function OperatorPage({
   items,
   shopName,
   generatedDate,
+  brand,
+  currencyCode,
 }: {
   items: MenuItemRow[]
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
+  currencyCode: string
 }) {
+  const styles = makeStyles(brand)
   const active = items.filter((i) => !i.archived)
   const footer = computeFooter(items)
   const totalMix = footer?.totalMix ?? 0
 
+  // TIM-2486: label the contribution column with the active currency symbol so
+  // e.g. a CAD plan reads "CA$/100 covers" instead of "$/100 covers".
+  const sym = currencySymbol(currencyCode)
   const columns: ColumnDef[] = [
     { key: "category", label: "Category", width: 65 },
     { key: "name", label: "Item" },
@@ -306,7 +314,7 @@ function OperatorPage({
     { key: "cogs", label: "COGS", currency: true, width: 55 },
     { key: "margin_pct", label: "Margin%", width: 55 },
     { key: "mix_pct", label: "Mix%", width: 40 },
-    { key: "contrib", label: "$/100 covers", width: 70 },
+    { key: "contrib", label: `${sym}/100 covers`, width: 70 },
   ]
 
   const rows: Row[] = active.map((item) => {
@@ -319,7 +327,7 @@ function OperatorPage({
       cogs: item.cogs_cents,
       margin_pct: margin !== null ? `${margin.toFixed(1)}%` : "—",
       mix_pct: `${item.expected_mix_pct.toFixed(1)}%`,
-      contrib: contrib !== null ? fmtDollar(contrib) : "—",
+      contrib: contrib !== null ? fmtDollar(contrib, currencyCode) : "—",
     }
   })
 
@@ -340,14 +348,14 @@ function OperatorPage({
           : "—",
       contrib:
         footer.marginPer100 !== null
-          ? fmtDollar(footer.marginPer100)
+          ? fmtDollar(footer.marginPer100, currencyCode)
           : "—",
     }
   }
 
   return (
-    <Page size={BRAND.page.size} style={styles.page}>
-      <PdfHeader shopName={shopName} workspaceName="Menu — Cost analysis" />
+    <Page size={brand.page.size} style={styles.page}>
+      <PdfHeader shopName={shopName} workspaceName="Menu — Cost analysis" brand={brand} />
 
       {footer && (
         <View style={styles.summaryRow}>
@@ -360,7 +368,7 @@ function OperatorPage({
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Margin / 100 covers</Text>
             <Text style={styles.summaryValue}>
-              {footer.marginPer100 !== null ? fmtDollar(footer.marginPer100) : "—"}
+              {footer.marginPer100 !== null ? fmtDollar(footer.marginPer100, currencyCode) : "—"}
             </Text>
           </View>
           <View style={styles.summaryCard}>
@@ -371,22 +379,22 @@ function OperatorPage({
       )}
 
       {active.length === 0 ? (
-        <PdfSection title="Cost analysis">
+        <PdfSection title="Cost analysis" brand={brand}>
           <Text style={styles.emptyNote}>
             No menu items found. Add items in the Menu &amp; Pricing workspace.
           </Text>
         </PdfSection>
       ) : (
-        <PdfSection title="Item-level cost &amp; margin">
-          <PdfTable columns={columns} rows={rows} totalsRow={totalsRow} />
+        <PdfSection title="Item-level cost &amp; margin" brand={brand}>
+          <PdfTable columns={columns} rows={rows} totalsRow={totalsRow} currencyCode={currencyCode} />
           <Text style={styles.footerNote}>
-            $/100 covers = margin dollars generated per 100 customers at the given mix.{"\n"}
+            {sym}/100 covers = margin generated per 100 customers at the given mix.{"\n"}
             Weighted margin = mix-weighted average margin across all priced items.
           </Text>
         </PdfSection>
       )}
 
-      <PdfFooter generatedDate={generatedDate} />
+      <PdfFooter generatedDate={generatedDate} brand={brand} />
     </Page>
   )
 }
@@ -397,16 +405,20 @@ function MenuCardPdf({
   content,
   shopName,
   generatedDate,
+  brand,
+  currencyCode,
 }: {
   content: MenuCardContent
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
+  currencyCode: string
 }) {
   const { items } = content
   return (
     <PdfDocument shopName={shopName}>
-      <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} />
-      <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} />
+      <PublicMenuPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} currencyCode={currencyCode} />
+      <OperatorPage items={items} shopName={shopName} generatedDate={generatedDate} brand={brand} currencyCode={currencyCode} />
     </PdfDocument>
   )
 }
@@ -437,6 +449,8 @@ export const menuCardTemplate: PdfTemplate<MenuCardContent> = {
         content={ctx.content}
         shopName={ctx.plan.shop_name}
         generatedDate={generatedDate}
+        brand={ctx.brand}
+        currencyCode={ctx.currencyCode}
       />
     )
   },

@@ -1,9 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
+import {
+  REMEMBER_ME_COOKIE,
+  REMEMBER_ME_MAX_AGE_SECONDS,
+  isSupabaseAuthCookie,
+} from "@/lib/auth/remember-me";
+
+const RESEND_COOLDOWN_SECONDS = 60;
+
+// TIM-2430: read the user's last "Keep me signed in" choice so the checkbox
+// reflects whatever they picked last sign-in. Absent cookie = default true,
+// which matches the pre-TIM-2430 status quo (Supabase SSR persists for 400d).
+function readInitialRememberPreference(): boolean {
+  if (typeof document === "undefined") return true;
+  const match = document.cookie.split(";").find(c => c.trim().startsWith(`${REMEMBER_ME_COOKIE}=`));
+  if (!match) return true;
+  const value = decodeURIComponent(match.trim().substring(REMEMBER_ME_COOKIE.length + 1));
+  return value !== "0";
+}
+
+// TIM-2430: write the preference itself with a long Max-Age so it survives the
+// current browser session and pre-fills the checkbox next time the user lands
+// on /login (even after they opted out and the auth cookies got cleared).
+function writeRememberPreference(remember: boolean) {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${REMEMBER_ME_COOKIE}=${remember ? "1" : "0"}; Path=/; Max-Age=${REMEMBER_ME_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+}
+
+// TIM-2430: @supabase/ssr's browser-side `setItem` hard-codes maxAge to its
+// 400-day default and ignores any cookieOptions override (see
+// node_modules/@supabase/ssr/dist/main/cookies.js — `setCookieOptions.maxAge`
+// is forcibly reset). So when the user unchecks "Keep me signed in", we
+// rewrite the freshly-set chunked auth cookies in place WITHOUT Max-Age/
+// Expires, turning them into session cookies that clear on browser close.
+// Server-side refreshes are kept session-scoped by the proxy + server.ts
+// `setAll` adapters reading the same gw_remember_me cookie.
+function downgradeAuthCookiesToSessionScope() {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  for (const raw of document.cookie.split(";")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const name = trimmed.substring(0, eq);
+    if (!isSupabaseAuthCookie(name)) continue;
+    const value = trimmed.substring(eq + 1);
+    // Re-set with the same value but no Max-Age / Expires attribute.
+    document.cookie = `${name}=${value}; Path=/; SameSite=Lax${secure}`;
+  }
+}
 
 export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
   const [email, setEmail] = useState("");
@@ -12,11 +63,52 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [consent, setConsent] = useState(false);
+  // TIM-2430: client-side state defaults to true on the server render so the
+  // checkbox SSR pre-fill never flickers off; useEffect below syncs it to the
+  // actual stored preference once the component mounts.
+  const [rememberMe, setRememberMe] = useState(true);
+  // TIM-2246: Turnstile attestation token, passed to Supabase Auth via
+  // options.captchaToken. Supabase verifies it against the project-level
+  // CAPTCHA secret (Turnstile, configured in the Supabase dashboard).
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const onTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
+  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    setRememberMe(readInitialRememberPreference());
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
 
   function getSignupSource(): string {
     const params = new URLSearchParams(window.location.search);
     return params.get("utm_source") || params.get("ref") || "direct";
+  }
+
+  function getNextParam(): string | null {
+    const raw = new URLSearchParams(window.location.search).get("next");
+    if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
+    return raw;
+  }
+
+  // TIM-2327: hand off signup_source + next via short-lived first-party cookies
+  // instead of as query params on `redirectTo`. Supabase Auth's Additional
+  // Redirect URLs allowlist is exact-match (wildcards on query strings aren't
+  // reliable across regions/versions); with query params the redirect can fail
+  // allowlist matching and silently fall back to Site URL, dropping the user
+  // on apex (= coming-soon post TIM-2288) with no session. Bare `/auth/callback`
+  // is the minimal allowlist surface. Cookies survive the OAuth round-trip
+  // because /auth/callback is same-origin with /login.
+  function setHandoffCookie(name: string, value: string) {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
   }
 
   async function handleGoogleSignIn() {
@@ -27,11 +119,19 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const signupSource = getSignupSource();
+    setHandoffCookie("gw_oauth_signup_source", getSignupSource());
+    const next = getNextParam();
+    if (next) setHandoffCookie("gw_oauth_next", next);
+    // TIM-2430: write preference before redirecting to Google; it survives the
+    // OAuth round-trip and the proxy+server reads it on /auth/callback.
+    writeRememberPreference(rememberMe);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?signup_source=${encodeURIComponent(signupSource)}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
+        // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
+        // OAuth honors the project-level CAPTCHA setting on the initiate call.
+        ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
       },
     });
     if (error) setError(error.message);
@@ -47,28 +147,50 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    // TIM-2430: record the preference up front so server-side cookie writes
+    // during this same response (proxy / route handler) read the right value.
+    writeRememberPreference(rememberMe);
 
     if (mode === "signup") {
       const signupSource = getSignupSource();
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: { signup_source: signupSource },
+          // TIM-2246: Turnstile token forwarded to Supabase Auth when present.
+          // Supabase's project-level CAPTCHA setting handles enforcement;
+          // pre-provision (token=null) Supabase ignores the field.
+          ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
         },
       });
       if (error) {
         setError(error.message);
+      } else if (data.session === null) {
+        // Email confirmation is required — no session until the user clicks the link
+        setEmailConfirmationSent(true);
+        setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
+        // TIM-2430: Supabase SSR hard-codes 400d maxAge on the freshly-set
+        // auth cookies; downgrade them to session-scope if user opted out.
+        if (!rememberMe) downgradeAuthCookiesToSessionScope();
         router.push("/onboarding");
         router.refresh();
       }
     } else {
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        // TIM-2246: also pass CAPTCHA on sign-in to throttle credential-stuffing
+        // attempts. Supabase Auth verifies when project-level CAPTCHA is on.
+        ...(turnstileToken ? { options: { captchaToken: turnstileToken } } : {}),
+      });
       if (error) {
         setError(error.message);
       } else {
+        // TIM-2430: same downgrade hook as the signup path above.
+        if (!rememberMe) downgradeAuthCookiesToSessionScope();
         // Check onboarding status before redirecting
         if (data.user) {
           const { data: profile } = await supabase
@@ -88,6 +210,41 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       }
     }
     setLoading(false);
+  }
+
+  async function handleResendConfirmation() {
+    if (resendLoading || cooldown > 0) return;
+    setResendLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setResendLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    }
+  }
+
+  if (emailConfirmationSent) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-[var(--teal-bg-pale)] border border-[var(--teal-bg-900)] rounded-xl px-4 py-4 text-sm text-[var(--teal)]">
+          We sent a confirmation link to <span className="font-medium">{email}</span>. Open the email and click the link to activate your account.
+        </div>
+        {error && (
+          <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+        )}
+        <button
+          type="button"
+          onClick={handleResendConfirmation}
+          disabled={resendLoading || cooldown > 0}
+          className="w-full text-center text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50"
+        >
+          {resendLoading ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend confirmation email"}
+        </button>
+      </div>
+    );
   }
 
   const signupBlocked = mode === "signup" && !consent;
@@ -151,6 +308,18 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
           />
         </div>
 
+        {/* TIM-2430: matches the consent-checkbox pattern in this same form
+            (token-only classes). Sentence-case copy per TIM-1537 Voice rules. */}
+        <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed pt-1">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={e => setRememberMe(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-[var(--dark-grey)] text-[var(--teal)] focus:ring-[var(--teal)]"
+          />
+          <span>Keep me signed in on this device</span>
+        </label>
+
         {mode === "signup" && (
           <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed pt-1">
             <input
@@ -178,6 +347,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         {error && (
           <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
         )}
+
+        <TurnstileWidget onVerify={onTurnstile} />
 
         <button
           type="submit"

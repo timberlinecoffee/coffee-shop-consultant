@@ -4,7 +4,7 @@
 
 import React from "react";
 import { Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
-import { BRAND } from "../brand";
+import { BRAND, type BrandTokens } from "../brand";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,7 @@ export interface CoverProps {
   date: string;
   accentColor?: string;
   logo?: { data: Buffer; format: "png" | "jpg" };
+  brand?: BrandTokens;
 }
 
 export interface CoverTemplate {
@@ -44,102 +45,113 @@ export const COVER_TEMPLATES: CoverTemplate[] = [
   },
 ];
 
-export function renderCover(templateId: string, props: CoverProps): React.ReactElement {
+export function renderCover(templateId: string, props: CoverProps, brand: BrandTokens = BRAND): React.ReactElement {
   const id = (templateId as CoverTemplateId) ?? "classic";
+  // brand arg takes precedence over any brand embedded in props
+  const propsWithBrand: CoverProps = { ...props, brand };
   switch (id) {
     case "modern":
-      return <ModernCover {...props} />;
+      return <ModernCover {...propsWithBrand} />;
     case "editorial":
-      return <EditorialCover {...props} />;
+      return <EditorialCover {...propsWithBrand} />;
     default:
-      return <ClassicCover {...props} />;
+      return <ClassicCover {...propsWithBrand} />;
   }
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function accent(props: CoverProps): string {
-  return props.accentColor ?? BRAND.colors.accent;
+  return props.accentColor ?? (props.brand ?? BRAND).colors.accent;
 }
 
 // ── Template 1: Classic ───────────────────────────────────────────────────────
 
-const classicS = StyleSheet.create({
-  page: {
-    backgroundColor: BRAND.colors.paper,
-    paddingHorizontal: 56,
-    paddingTop: 0,
-    paddingBottom: 0,
-    flexDirection: "column",
-  },
-  logoZone: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logo: {
-    maxHeight: 72,
-    objectFit: "contain",
-  },
-  shopName: {
-    fontFamily: "Source Serif Pro",
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "#155E63",
-    textAlign: "center",
-  },
-  subtitle: {
-    fontFamily: "Source Serif Pro",
-    fontSize: 22,
-    color: BRAND.colors.ink,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  nameGap: { marginBottom: 12 },
-  tagline: {
-    fontFamily: "Inter",
-    fontSize: 13,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    textAlign: "center",
-  },
-  metaZone: {
-    marginTop: "auto",
-  },
-  metaRow: {
-    flexDirection: "row",
-    marginBottom: 6,
-  },
-  metaLabel: {
-    fontFamily: "Inter",
-    fontSize: 11,
-    color: BRAND.colors.muted,
-    marginRight: 4,
-  },
-  metaValue: {
-    fontFamily: "Inter",
-    fontSize: 11,
-    fontWeight: "600",
-    color: BRAND.colors.ink,
-  },
-  date: {
-    fontFamily: "Inter",
-    fontSize: 11,
-    color: BRAND.colors.muted,
-    marginBottom: 0,
-  },
-  bottomBar: {
-    width: "100%",
-    height: 4,
-  },
-});
+function makeClassicStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      backgroundColor: brand.colors.paper,
+      // TIM-2315: 96/56pt page-safe margins (~33mm top, ~20mm sides). The cover
+      // previously had paddingTop/paddingBottom: 0 which let the title/accent
+      // bar bleed to the page edge.
+      paddingHorizontal: 56,
+      paddingTop: 96,
+      paddingBottom: 56,
+      flexDirection: "column",
+    },
+    logoZone: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    logo: {
+      maxHeight: 72,
+      objectFit: "contain",
+    },
+    shopName: {
+      // TIM-2333: no hardcoded platform teal default. The accent prop is
+      // always applied inline below; the StyleSheet baseline falls back to
+      // neutral ink so platform colors can never bleed through.
+      fontFamily: "Source Serif Pro",
+      fontSize: 36,
+      fontWeight: "bold",
+      color: brand.colors.ink,
+      textAlign: "center",
+    },
+    subtitle: {
+      fontFamily: "Source Serif Pro",
+      fontSize: 22,
+      color: brand.colors.ink,
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    nameGap: { marginBottom: 12 },
+    tagline: {
+      fontFamily: "Inter",
+      fontSize: 13,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      textAlign: "center",
+    },
+    metaZone: {
+      marginTop: "auto",
+    },
+    metaRow: {
+      flexDirection: "row",
+      marginBottom: 6,
+    },
+    metaLabel: {
+      fontFamily: "Inter",
+      fontSize: 11,
+      color: brand.colors.muted,
+      marginRight: 4,
+    },
+    metaValue: {
+      fontFamily: "Inter",
+      fontSize: 11,
+      fontWeight: "600",
+      color: brand.colors.ink,
+    },
+    date: {
+      fontFamily: "Inter",
+      fontSize: 11,
+      color: brand.colors.muted,
+      marginBottom: 0,
+    },
+    bottomBar: {
+      width: "100%",
+      height: 4,
+    },
+  });
+}
 
 function ClassicCover(props: CoverProps) {
-  const { shopName, tagline, preparedFor, authorName, date, logo } = props;
+  const { shopName, tagline, preparedFor, authorName, date, logo, brand = BRAND } = props;
+  const classicS = makeClassicStyles(brand);
   const ac = accent(props);
   const logoZoneHeight = logo ? 120 : 40;
 
   return (
-    <Page size="LETTER" style={classicS.page}>
+    <Page size={brand.page.size} style={classicS.page}>
       {/* Zone A: logo */}
       <View style={[classicS.logoZone, { height: logoZoneHeight }]}>
         {logo && (
@@ -186,94 +198,100 @@ function ClassicCover(props: CoverProps) {
 
 // ── Template 2: Modern ────────────────────────────────────────────────────────
 
-const modernS = StyleSheet.create({
-  page: {
-    backgroundColor: BRAND.colors.paper,
-    flexDirection: "row",
-  },
-  stripe: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 6,
-    backgroundColor: "#155E63",
-  },
-  content: {
-    flex: 1,
-    paddingLeft: 64,
-    paddingRight: 56,
-    paddingTop: 80,
-    paddingBottom: 48,
-    flexDirection: "column",
-  },
-  shopName: {
-    fontFamily: "Source Serif Pro",
-    fontSize: 44,
-    fontWeight: "bold",
-    color: "#155E63",
-    lineHeight: 1.1,
-    marginBottom: 14,
-  },
-  subtitle: {
-    fontFamily: "Inter",
-    fontSize: 18,
-    color: BRAND.colors.ink,
-    marginBottom: 10,
-  },
-  tagline: {
-    fontFamily: "Inter",
-    fontSize: 13,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    marginBottom: 14,
-  },
-  spacer: {
-    flex: 1,
-  },
-  metaLabel: {
-    fontFamily: "Inter",
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    marginBottom: 2,
-  },
-  metaValue: {
-    fontFamily: "Inter",
-    fontSize: 12,
-    fontWeight: "600",
-    color: BRAND.colors.ink,
-    marginBottom: 12,
-  },
-  date: {
-    fontFamily: "Inter",
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    marginTop: 8,
-  },
-  logo: {
-    position: "absolute",
-    bottom: 48,
-    left: 64,
-    maxWidth: 120,
-    maxHeight: 64,
-    objectFit: "contain",
-  },
-  confidential: {
-    position: "absolute",
-    bottom: 24,
-    right: 56,
-    fontFamily: "Inter",
-    fontSize: 8,
-    color: BRAND.colors.muted,
-  },
-});
+function makeModernStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      backgroundColor: brand.colors.paper,
+      flexDirection: "row",
+    },
+    stripe: {
+      // TIM-2333: accent overrides this inline; neutral rule color baseline
+      // ensures no platform teal leak.
+      position: "absolute",
+      top: 0,
+      left: 0,
+      bottom: 0,
+      width: 6,
+      backgroundColor: brand.colors.rule,
+    },
+    content: {
+      flex: 1,
+      paddingLeft: 64,
+      paddingRight: 56,
+      paddingTop: 80,
+      paddingBottom: 48,
+      flexDirection: "column",
+    },
+    shopName: {
+      // TIM-2333: accent overrides inline; neutral ink baseline.
+      fontFamily: "Source Serif Pro",
+      fontSize: 44,
+      fontWeight: "bold",
+      color: brand.colors.ink,
+      lineHeight: 1.1,
+      marginBottom: 14,
+    },
+    subtitle: {
+      fontFamily: "Inter",
+      fontSize: 18,
+      color: brand.colors.ink,
+      marginBottom: 10,
+    },
+    tagline: {
+      fontFamily: "Inter",
+      fontSize: 13,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      marginBottom: 14,
+    },
+    spacer: {
+      flex: 1,
+    },
+    metaLabel: {
+      fontFamily: "Inter",
+      fontSize: 10,
+      color: brand.colors.muted,
+      marginBottom: 2,
+    },
+    metaValue: {
+      fontFamily: "Inter",
+      fontSize: 12,
+      fontWeight: "600",
+      color: brand.colors.ink,
+      marginBottom: 12,
+    },
+    date: {
+      fontFamily: "Inter",
+      fontSize: 10,
+      color: brand.colors.muted,
+      marginTop: 8,
+    },
+    logo: {
+      position: "absolute",
+      bottom: 48,
+      left: 64,
+      maxWidth: 120,
+      maxHeight: 64,
+      objectFit: "contain",
+    },
+    confidential: {
+      position: "absolute",
+      bottom: 24,
+      right: 56,
+      fontFamily: "Inter",
+      fontSize: 8,
+      color: brand.colors.muted,
+    },
+  });
+}
 
 function ModernCover(props: CoverProps) {
-  const { shopName, tagline, preparedFor, authorName, date, logo } = props;
+  const { shopName, tagline, preparedFor, authorName, date, logo, brand = BRAND } = props;
+  const modernS = makeModernStyles(brand);
   const ac = accent(props);
 
   return (
-    <Page size="LETTER" style={modernS.page}>
+    <Page size={brand.page.size} style={modernS.page}>
       {/* Left vertical stripe */}
       <View style={[modernS.stripe, { backgroundColor: ac }]} />
 
@@ -321,88 +339,97 @@ function ModernCover(props: CoverProps) {
 
 // ── Template 3: Editorial ─────────────────────────────────────────────────────
 
-const editS = StyleSheet.create({
-  page: {
-    backgroundColor: BRAND.colors.paper,
-    flexDirection: "column",
-  },
-  greenBlock: {
-    width: "100%",
-    height: 356,
-    backgroundColor: "#155E63",
-    padding: 40,
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logo: {
-    maxHeight: 96,
-    maxWidth: 200,
-    objectFit: "contain",
-    marginBottom: 20,
-  },
-  shopName: {
-    fontFamily: "Source Serif Pro",
-    fontSize: 38,
-    fontWeight: "bold",
-    color: BRAND.colors.paper,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontFamily: "Source Serif Pro",
-    fontSize: 20,
-    color: BRAND.colors.paper,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  tagline: {
-    fontFamily: "Inter",
-    fontSize: 13,
-    color: "#D4ECD7",
-    textAlign: "center",
-  },
-  whiteBlock: {
-    flex: 1,
-    backgroundColor: BRAND.colors.paper,
-    paddingHorizontal: 56,
-    paddingTop: 40,
-    paddingBottom: 48,
-  },
-  metaLabel: {
-    fontFamily: "Inter",
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    marginBottom: 3,
-  },
-  metaValue: {
-    fontFamily: "Inter",
-    fontSize: 13,
-    fontWeight: "600",
-    color: BRAND.colors.ink,
-    marginBottom: 16,
-  },
-  date: {
-    fontFamily: "Inter",
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    marginTop: 8,
-  },
-  accentSquare: {
-    position: "absolute",
-    bottom: 40,
-    right: 48,
-    width: 48,
-    height: 8,
-  },
-});
+function makeEditorialStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      backgroundColor: brand.colors.paper,
+      flexDirection: "column",
+    },
+    greenBlock: {
+      // TIM-2333: accent overrides this inline; neutral ink fallback ensures
+      // the platform teal never leaks if a future override is removed.
+      width: "100%",
+      height: 356,
+      backgroundColor: brand.colors.ink,
+      padding: 40,
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    logo: {
+      maxHeight: 96,
+      maxWidth: 200,
+      objectFit: "contain",
+      marginBottom: 20,
+    },
+    shopName: {
+      fontFamily: "Source Serif Pro",
+      fontSize: 38,
+      fontWeight: "bold",
+      color: brand.colors.paper,
+      textAlign: "center",
+      marginBottom: 16,
+    },
+    subtitle: {
+      fontFamily: "Source Serif Pro",
+      fontSize: 20,
+      color: brand.colors.paper,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    tagline: {
+      // TIM-2333: was hardcoded platform mint (#D4ECD7) which leaked even when
+      // the user picked a non-teal accent. Sits on the accent block, so a
+      // softened paper-on-accent tint works for any accent the user picks.
+      fontFamily: "Inter",
+      fontSize: 13,
+      color: brand.colors.paper,
+      opacity: 0.85,
+      textAlign: "center",
+    },
+    whiteBlock: {
+      flex: 1,
+      backgroundColor: brand.colors.paper,
+      paddingHorizontal: 56,
+      paddingTop: 40,
+      paddingBottom: 48,
+    },
+    metaLabel: {
+      fontFamily: "Inter",
+      fontSize: 10,
+      color: brand.colors.muted,
+      marginBottom: 3,
+    },
+    metaValue: {
+      fontFamily: "Inter",
+      fontSize: 13,
+      fontWeight: "600",
+      color: brand.colors.ink,
+      marginBottom: 16,
+    },
+    date: {
+      fontFamily: "Inter",
+      fontSize: 10,
+      color: brand.colors.muted,
+      marginTop: 8,
+    },
+    accentSquare: {
+      position: "absolute",
+      bottom: 40,
+      right: 48,
+      width: 48,
+      height: 8,
+    },
+  });
+}
 
 function EditorialCover(props: CoverProps) {
-  const { shopName, tagline, preparedFor, authorName, date, logo } = props;
+  const { shopName, tagline, preparedFor, authorName, date, logo, brand = BRAND } = props;
+  const editS = makeEditorialStyles(brand);
   const ac = accent(props);
 
   return (
-    <Page size="LETTER" style={editS.page}>
+    <Page size={brand.page.size} style={editS.page}>
       {/* Full-bleed header block */}
       <View style={[editS.greenBlock, { backgroundColor: ac }]}>
         {logo ? (

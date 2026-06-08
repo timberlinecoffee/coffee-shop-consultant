@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeConceptV2 } from "./concept.ts";
+import type { PlanStateCompetitor } from "./business-plan/local-claims.ts";
 
 export interface PlanContext {
   shop_name: string;
@@ -15,6 +16,16 @@ export interface PlanContext {
   differentiation: string;
   brand_pillars: string[];
   location_country: string | null;
+  // TIM-2340: user-entered competitors + explicit "no competitors" toggle
+  // from the concept workspace. Surfaced into plan_state.local_claims so the
+  // narrative prompt names only real businesses. Normalized to the plan-state
+  // shape here (address: string | null) so route call sites can pass through
+  // without a per-route conversion.
+  competitors: PlanStateCompetitor[];
+  no_direct_competitors_identified: boolean;
+  // TIM-2340: resolved city label ("Calgary", "Seattle") for the geography
+  // validator. Built from the chosen location_candidate when present.
+  city_label: string | null;
 }
 
 export const EMPTY_PLAN_CONTEXT: PlanContext = {
@@ -24,6 +35,9 @@ export const EMPTY_PLAN_CONTEXT: PlanContext = {
   differentiation: "",
   brand_pillars: [],
   location_country: null,
+  competitors: [],
+  no_direct_competitors_identified: false,
+  city_label: null,
 };
 
 function parsePillars(differentiator: unknown): string[] {
@@ -78,6 +92,31 @@ function locationCountryFromCandidates(
   return firstLive?.country?.trim() ?? null;
 }
 
+// TIM-2340: resolve a human-readable city label from the chosen (or first
+// non-archived) location candidate. Prefer city column; fall back to a best-
+// effort parse of the address string when city is missing. Returns null when
+// nothing usable is present.
+function cityLabelFromCandidates(
+  candidates: Array<{ city?: string | null; address?: string | null; status?: string | null; archived?: boolean | null }> | null | undefined,
+): string | null {
+  if (!candidates || candidates.length === 0) return null;
+  const ordered = [
+    ...candidates.filter((c) => c.status === "signed"),
+    ...candidates.filter((c) => c.status !== "signed" && !c.archived),
+  ];
+  for (const c of ordered) {
+    if (typeof c.city === "string" && c.city.trim().length > 0) return c.city.trim();
+    // Fallback: pull the second-to-last comma-separated token from the address
+    // ("123 Main St, Inglewood, Calgary, AB" → "Calgary"). Only used when the
+    // city column is empty (older rows from before TIM-1145).
+    if (typeof c.address === "string") {
+      const parts = c.address.split(",").map((s) => s.trim()).filter(Boolean);
+      if (parts.length >= 3) return parts[parts.length - 2];
+    }
+  }
+  return null;
+}
+
 export async function loadPlanContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
@@ -114,7 +153,7 @@ export async function loadPlanContext(
       .maybeSingle(),
     supabase
       .from("location_candidates")
-      .select("country, status, archived, position")
+      .select("country, city, address, status, archived, position")
       .eq("plan_id", plan.id)
       .order("position", { ascending: true }),
     supabase
@@ -154,5 +193,14 @@ export async function loadPlanContext(
     differentiation: concept.components.differentiation.content,
     brand_pillars,
     location_country,
+    competitors: (concept.competitors ?? []).map<PlanStateCompetitor>((c) => ({
+      id: c.id,
+      name: c.name,
+      address: c.address ?? null,
+      what_they_do_well: c.what_they_do_well ?? null,
+      gaps: c.gaps ?? null,
+    })),
+    no_direct_competitors_identified: concept.no_direct_competitors_identified ?? false,
+    city_label: cityLabelFromCandidates(locationsRes.data),
   };
 }

@@ -44,6 +44,15 @@ export function useAIReviewModal() {
     setState({ ...opts, isOpen: true });
   }, []);
 
+  // TIM-2331: streaming callers (Regenerate all) append sections to an already-
+  // open modal. Patch updates only the named fields and keeps the modal open.
+  const updateAIReviewModal = useCallback(
+    (patch: Partial<OpenAIReviewModalOptions>) => {
+      setState((prev) => (prev ? { ...prev, ...patch } : prev));
+    },
+    [],
+  );
+
   const close = useCallback(() => {
     setState(null);
   }, []);
@@ -63,5 +72,5 @@ export function useAIReviewModal() {
       })
     : null;
 
-  return { openAIReviewModal, AIReviewModalNode };
+  return { openAIReviewModal, updateAIReviewModal, AIReviewModalNode };
 }

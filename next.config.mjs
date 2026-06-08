@@ -2,6 +2,17 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      { source: '/links', destination: '/l', permanent: true },
+      // TIM-2307: link-in-bio destination shims. Stopgap until dedicated /trial
+      // and /features pages exist; /affiliates lands on the live apply form
+      // since the public affiliate landing is gated on TIM-1604.
+      { source: '/trial', destination: '/signup?ref=trial', permanent: false },
+      { source: '/affiliates', destination: '/affiliates/apply', permanent: false },
+      { source: '/features', destination: '/landing#how-it-works', permanent: false },
+    ];
+  },
   outputFileTracingIncludes: {
     '/api/**': ['./public/fonts/**/*'],
   },
@@ -29,4 +40,5 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: true,
   disableLogger: true,
   automaticVercelMonitors: true,
+  tunnelRoute: "/monitoring",
 })

@@ -1,0 +1,15 @@
+# gitleaks config — see https://github.com/gitleaks/gitleaks
+# Uses the built-in ruleset (no [[rules]] block needed; gitleaks applies its
+# default rules when this file has none). The allowlist below covers
+# obviously-fake test fixtures only.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake/test JWTs minted with ref=test-ref (not a real Supabase project)"
+regexes = [
+  # Any HS256 JWT whose base64-decoded payload contains ref":"test-ref
+  # This covers tokens minted by mintTestJwt() in src/lib/mint-test-jwt.mjs
+  'eyJ[A-Za-z0-9+/=]+\.eyJ[A-Za-z0-9+/=]*dGVzdC1yZWY[A-Za-z0-9+/=]*\.[A-Za-z0-9+/=_-]+'
+]

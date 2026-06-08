@@ -1,21 +1,26 @@
 import React from "react"
 import { Document, StyleSheet } from "@react-pdf/renderer"
-import { registerFonts, BRAND, pdfDocMeta } from "../brand"
+import { registerFonts, BRAND, pdfDocMeta, type BrandTokens } from "../brand"
 
 registerFonts()
 
-export const baseStyles = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: BRAND.page.margin,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin,
-    paddingRight: BRAND.page.margin,
-  },
-})
+export function makeBasePageStyle(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: brand.page.margin,
+      paddingBottom: brand.page.margin + 20,
+      paddingLeft: brand.page.margin,
+      paddingRight: brand.page.margin,
+    },
+  })
+}
+
+// Kept for backward compatibility with existing callers.
+export const baseStyles = makeBasePageStyle(BRAND)
 
 type Props = {
   children: React.ReactNode

@@ -1,5 +1,8 @@
 // Streaming co-pilot route (SSE).
-// TIM-866: unified usage messaging — free_trial gets 5 trial messages; paid gates on ai_credits_remaining.
+// TIM-866: unified usage messaging — paid gates on ai_credits_remaining.
+// TIM-1902: free_trial users are now card-on-file trialists (7-day Stripe trial) granted
+// 75 credits up front and metered on the same ai_credits_remaining balance as paid users.
+// The legacy 5-message free-trial counter (COPILOT_FREE_TRIAL_LIMIT) has been retired.
 // SSE event names: text | thinking | suggestions | status | error | done
 // TIM-1670: web_search server tool wired in so competitor/local-market queries do genuine
 // multi-source research (enumerate→verify→cite) instead of answering from priors; location
@@ -20,19 +23,23 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive, isBetaWaived, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access"
+import {
+  isSubscriptionActive,
+  isBetaWaived,
+  isTrialActive,
+  effectivePlanForGating,
+} from "@/lib/access"
 import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { loadPlanContext } from "@/lib/plan-context"
 import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
+import { rateLimit } from "@/lib/rate-limit"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const FREE_TRIAL_COPILOT_LIMIT = 5
 
 const TTFT_MS = 8_000
 const GAP_MS = 20_000
@@ -516,6 +523,24 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // TIM-2246: per-user cap on AI streaming requests. 30/min + 200/hour is more
+  // generous than any human interaction pattern and tight enough to stop a
+  // runaway client loop from burning paid credits.
+  const minRl = await rateLimit({ bucket: "copilot:stream:1m", id: user.id, limit: 30, windowSec: 60 })
+  if (!minRl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: minRl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(minRl.retryAfterSec) } },
+    )
+  }
+  const hourRl = await rateLimit({ bucket: "copilot:stream:1h", id: user.id, limit: 200, windowSec: 3600 })
+  if (!hourRl.ok) {
+    return new Response(
+      sse("error", { code: "rate_limited", retryAfterSec: hourRl.retryAfterSec }),
+      { status: 429, headers: { "Content-Type": "text/event-stream", "Retry-After": String(hourRl.retryAfterSec) } },
+    )
+  }
+
   // ── Parse body ──────────────────────────────────────────────────────────────
   let planId: string
   // TIM-1149: workspaceKey may be null for general (workspace-less) conversations.
@@ -546,7 +571,9 @@ export async function POST(request: NextRequest) {
   // ── Credit/billing gate ──────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, copilot_trial_messages_used, subscription_tier, subscription_status, onboarding_data, beta_waiver_until")
+    // TIM-1955: paused_from_tier omitted (TIM-1923 backlog) — effectiveTierForRead
+    // treats it as optional.
+    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, beta_waiver_until, trial_ends_at")
     .eq("id", user.id)
     .single()
 
@@ -567,37 +594,32 @@ export async function POST(request: NextRequest) {
   // TIM-925: Beta waiver — bypass all paywall/credit gates for the beta window.
   const isWaived = isBetaWaived(profile.beta_waiver_until)
 
+  // TIM-1902: free_trial is now a card-on-file 7-day Stripe trial. Trialists
+  // are gated on ai_credits_remaining just like paid users (75-credit grant
+  // up front). If the trial window has expired but Stripe hasn't yet auto-
+  // charged (subscription.updated still pending), block with the expired
+  // paywall message so the user is funneled into the billing portal.
   const isTrial = profile.subscription_status === "free_trial"
   const isActive = isSubscriptionActive(profile.subscription_status)
+  const trialWindowOpen = isTrial && isTrialActive(profile.trial_ends_at)
 
-  // Free trial: allow up to FREE_TRIAL_COPILOT_LIMIT messages before showing paywall.
-  // Beta-waived accounts skip the trial gate.
-  if (!isWaived && isTrial) {
-    const used = profile.copilot_trial_messages_used ?? 0
-    const remaining = FREE_TRIAL_COPILOT_LIMIT - used
-    if (remaining <= 0) {
-      return new Response(
-        sse("error", {
-          code: "trial_exhausted",
-          message: "You've used your 5 trial messages — upgrade to keep planning with Copilot.",
-          trialUsed: used,
-          trialLimit: FREE_TRIAL_COPILOT_LIMIT,
-        }),
-        { status: 402, headers: { "Content-Type": "text/event-stream" } },
-      )
-    }
-  } else if (!isWaived && !isActive) {
+  if (!isWaived && isTrial && !trialWindowOpen) {
+    return new Response(
+      sse("error", { code: "paywall", reason: "expired", tier_required: "starter" }),
+      { status: 402, headers: { "Content-Type": "text/event-stream" } },
+    )
+  } else if (!isWaived && !isActive && !isTrial) {
     // Cancelled or expired subscriptions: paywall without trial messaging.
     return new Response(
       sse("error", { code: "paywall", reason: paywallReason(profile.subscription_status), tier_required: "starter" }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
     )
-  } else if (!isWaived && profile.subscription_tier === "free") {
+  } else if (!isWaived && !isTrial && profile.subscription_tier === "free") {
     // Active status but free tier — shouldn't normally occur; gate for safety.
     return new Response(
       sse("error", {
         code: "quota",
-        message: `${COPILOT_NAME} requires a Starter, Growth, or Pro plan. Upgrade to start coaching.`,
+        message: `${COPILOT_NAME} requires a Starter or Pro plan. Upgrade to start coaching.`,
       }),
       { status: 403, headers: { "Content-Type": "text/event-stream" } },
     )
@@ -606,14 +628,15 @@ export async function POST(request: NextRequest) {
   // Beta-waived accounts skip credit deduction. All paid tiers have a defined monthly cap.
   const isUnlimited = isWaived
 
-  if (!isTrial && !isUnlimited && profile.subscription_tier !== "free" && profile.ai_credits_remaining < 1) {
+  if (!isUnlimited && (isTrial || profile.subscription_tier !== "free") && profile.ai_credits_remaining < 1) {
+    // TIM-1902: trialists who burn their 75 credits hit out_of_credits the
+    // same way Starter / Pro users do — Buy-more-credits is the escape valve.
     const tier = profile.subscription_tier as string
-    const upgradeHint =
-      tier === "starter"
-        ? "Upgrade to Growth for more monthly credits, or your credits reset next month."
-        : tier === "growth"
-          ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
-          : "Your credits reset at the start of next month."
+    const upgradeHint = isTrial
+      ? "Top up credits or upgrade to keep planning during your trial."
+      : tier === "starter"
+        ? "Upgrade to Pro for more monthly credits, or your credits reset next month."
+        : "Your credits reset at the start of next month."
     return new Response(
       // TIM-1687: distinct code so the client can offer Buy-more-credits alongside Upgrade.
       sse("error", {
@@ -715,6 +738,16 @@ export async function POST(request: NextRequest) {
   // original reasons for Sonnet; both are flagged to Trent on TIM-1897 as a quality
   // re-check, but the directive is Haiku-everywhere.
   const isResearch = isResearchQuestion(messages)
+  // TIM-1955: "Deeper insights" (web-search-backed research) is a Pro feature.
+  // Trialists are Pro per effectivePlanForGating (TIM-1902); beta-waived
+  // accounts bypass the gate to keep internal testing seamless. When intent
+  // is research but the gate fails, we strip the tool + directive and emit a
+  // single in-stream notice — chat keeps working, just without live web
+  // research. No 402.
+  const tier = effectivePlanForGating(profile)
+  const researchGateBypass = isBetaWaived(profile.beta_waiver_until)
+  const isResearchAllowed = isResearch && (tier === "pro" || researchGateBypass)
+  const researchBlocked = isResearch && !isResearchAllowed
   const offerProposeItemTool = shouldOfferProposeTool(messages)
   // TIM-1798: cross-workspace cost-change tool — only in the equipment workspace
   // with items present (it references items by their I# index) and on cost-change
@@ -801,6 +834,22 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS)
 
       try {
+        // TIM-1955: research-intent turn from a Starter — emit a one-line
+        // in-stream notice before any model output so the user sees the gate
+        // immediately. The web_search tool and research directive are already
+        // stripped above, so the model answers from priors. Counts as the
+        // first token so the TTFT watchdog (8s) does not race a slow Haiku
+        // cold-start that follows.
+        if (researchBlocked) {
+          const notice =
+            "Deeper market research with live web sources is a Pro feature — [Upgrade](/pricing?ref=scout-research). For now I'm answering from what I already know.\n\n"
+          fullText += notice
+          send(sse("text", { delta: notice }))
+          firstToken = true
+          if (ttftTimer) clearTimeout(ttftTimer)
+          resetGapTimer()
+        }
+
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
         // System prompt cached as a single prefix. The cache breakpoint must sit on the
@@ -819,7 +868,7 @@ export async function POST(request: NextRequest) {
             text: [
               STABLE_IDENTITY,
               STABLE_COACHING_STYLE,
-              isResearch ? RESEARCH_DIRECTIVE : null,
+              isResearchAllowed ? RESEARCH_DIRECTIVE : null,
               offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
               offerEquipmentChangeTool ? EQUIPMENT_CHANGE_DIRECTIVE : null,
             ].filter(Boolean).join("\n\n"),
@@ -890,7 +939,7 @@ export async function POST(request: NextRequest) {
         }
 
         const tools: Anthropic.ToolUnion[] = [
-          ...(isResearch ? [webSearchTool] : []),
+          ...(isResearchAllowed ? [webSearchTool] : []),
           ...(equipmentTool ? [equipmentTool] : []),
           // TIM-1648: propose_item — offered on creation-intent messages. (TIM-1897: runs
           // on Haiku like everything else; tool-use reliability flagged to Trent.)
@@ -1205,15 +1254,12 @@ export async function POST(request: NextRequest) {
 
           // TIM-1671: track post-turn credit balance so the chat meter can update
           // live from the `done` event. null when the account is not on the credit
-          // model (trial / beta-waived / unlimited).
+          // model (beta-waived / unlimited).
+          // TIM-1902: trialists are now on the credit model too — debited from
+          // their 75-credit grant exactly like paid users.
           let creditsRemaining: number | null = null
 
-          if (isTrial && !isWaived) {
-            await supabase
-              .from("users")
-              .update({ copilot_trial_messages_used: (profile.copilot_trial_messages_used ?? 0) + 1 })
-              .eq("id", user.id)
-          } else if (!isUnlimited) {
+          if (!isUnlimited) {
             // Floor at 0 — a single heavy turn can cost more than the remaining
             // balance; we let it finish (already streamed) but never go negative.
             creditsRemaining = Math.max(0, profile.ai_credits_remaining - creditCost)
@@ -1257,14 +1303,14 @@ export async function POST(request: NextRequest) {
             }))
           }
 
-          const trialRemaining = (isTrial && !isWaived)
-            ? FREE_TRIAL_COPILOT_LIMIT - ((profile.copilot_trial_messages_used ?? 0) + 1)
-            : null
-
+          // TIM-1902: trialRemaining is no longer a message-count — it is now
+          // the ai_credits_remaining balance for trialists, which the live
+          // creditsRemaining field below already carries. Kept null on the
+          // done event for clients that still read it, until they migrate.
           send(sse("done", {
             threadId: effectiveThreadId,
             modelUsed: modelId,
-            trialRemaining,
+            trialRemaining: null,
             // TIM-1671: live credit meter — what this turn cost and what's left.
             creditsSpent: creditsRemaining === null ? null : creditCost,
             creditsRemaining,

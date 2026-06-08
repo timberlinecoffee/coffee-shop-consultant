@@ -5,7 +5,7 @@
 
 import React from "react"
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer"
-import { registerFonts, BRAND, pdfDocMeta, brandFilePrefix } from "../brand"
+import { registerFonts, BRAND, pdfDocMeta, brandFilePrefix, type BrandTokens } from "../brand"
 import { PdfHeader } from "../components/PdfHeader"
 import { PdfFooter } from "../components/PdfFooter"
 import type { PdfTemplate } from "../registry"
@@ -64,189 +64,192 @@ const HEADER_FOOTER_ALLOWANCE = 40 // rough pts for PdfHeader + PdfFooter
 const LEFT_COL = 200
 // Candidate column width computed at render time from CONTENT_WIDTH - LEFT_COL
 
-// ── styles ────────────────────────────────────────────────────────────────────
+// ── styles factory ────────────────────────────────────────────────────────────
 
-const S = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: MARGIN,
-    paddingBottom: MARGIN + 20, // extra for footer
-    paddingLeft: MARGIN,
-    paddingRight: MARGIN,
-  },
-  // Title block
-  title: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 14,
-    fontWeight: 600,
-    color: BRAND.colors.ink,
-    marginBottom: 2,
-  },
-  meta: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginBottom: 10,
-  },
-  rule: {
-    height: 1,
-    backgroundColor: BRAND.colors.rule,
-    marginBottom: 10,
-  },
-  // Table
-  table: {
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    borderRadius: 3,
-  },
-  headerRow: {
-    flexDirection: "row",
-    backgroundColor: "#E8F0EA",
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  dataRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  lastDataRow: {
-    flexDirection: "row",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    backgroundColor: "#F4F7F4",
-    borderTopWidth: 1,
-    borderTopColor: BRAND.colors.rule,
-  },
-  // Cells
-  leftCell: {
-    width: LEFT_COL,
-    padding: 7,
-    borderRightWidth: 1,
-    borderRightColor: BRAND.colors.rule,
-  },
-  candidateCell: {
-    flex: 1,
-    padding: 7,
-  },
-  candidateCellBorder: {
-    flex: 1,
-    padding: 7,
-    borderRightWidth: 1,
-    borderRightColor: BRAND.colors.rule,
-  },
-  // Header cell text
-  headerLeftLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 7,
-    fontWeight: 700,
-    color: BRAND.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  headerCandidateName: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    fontWeight: 700,
-    color: BRAND.colors.primary,
-    textAlign: "center",
-  },
-  // Question cell content
-  questionPrompt: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8.5,
-    color: BRAND.colors.ink,
-    lineHeight: 1.35,
-    marginBottom: 4,
-  },
-  weightBadge: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 7,
-    color: BRAND.colors.muted,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 2,
-    alignSelf: "flex-start",
-  },
-  // Rating
-  circleRow: {
-    flexDirection: "row",
-    gap: 4,
-    alignItems: "center",
-    marginBottom: 5,
-    justifyContent: "center",
-  },
-  circle: {
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: BRAND.colors.rule,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  circleNum: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 6.5,
-    color: BRAND.colors.muted,
-    textAlign: "center",
-    lineHeight: 1,
-  },
-  // Notes
-  notesLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 7,
-    color: BRAND.colors.muted,
-    marginBottom: 2,
-  },
-  noteLine: {
-    height: 1,
-    backgroundColor: BRAND.colors.rule,
-    marginBottom: 6,
-  },
-  // Summary
-  summaryLeftLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 8,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-    marginBottom: 4,
-  },
-  summaryTotalLine: {
-    height: 1,
-    backgroundColor: BRAND.colors.ink,
-    marginBottom: 8,
-  },
-  summaryRecommendLabel: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 7,
-    color: BRAND.colors.muted,
-    marginBottom: 2,
-  },
-  emptyNote: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 9,
-    fontStyle: "italic",
-    color: BRAND.colors.muted,
-    padding: 10,
-  },
-  scaleNote: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 7,
-    color: BRAND.colors.muted,
-    marginTop: 6,
-  },
-})
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: MARGIN,
+      paddingBottom: MARGIN + 20, // extra for footer
+      paddingLeft: MARGIN,
+      paddingRight: MARGIN,
+    },
+    // Title block
+    title: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 14,
+      fontWeight: 600,
+      color: brand.colors.ink,
+      marginBottom: 2,
+    },
+    meta: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginBottom: 10,
+    },
+    rule: {
+      height: 1,
+      backgroundColor: brand.colors.rule,
+      marginBottom: 10,
+    },
+    // Table
+    table: {
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      borderRadius: 3,
+    },
+    headerRow: {
+      flexDirection: "row",
+      backgroundColor: "#E8F0EA",
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    dataRow: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+    },
+    lastDataRow: {
+      flexDirection: "row",
+    },
+    summaryRow: {
+      flexDirection: "row",
+      backgroundColor: "#F4F7F4",
+      borderTopWidth: 1,
+      borderTopColor: brand.colors.rule,
+    },
+    // Cells
+    leftCell: {
+      width: LEFT_COL,
+      padding: 7,
+      borderRightWidth: 1,
+      borderRightColor: brand.colors.rule,
+    },
+    candidateCell: {
+      flex: 1,
+      padding: 7,
+    },
+    candidateCellBorder: {
+      flex: 1,
+      padding: 7,
+      borderRightWidth: 1,
+      borderRightColor: brand.colors.rule,
+    },
+    // Header cell text
+    headerLeftLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 7,
+      fontWeight: 700,
+      color: brand.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    headerCandidateName: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      fontWeight: 700,
+      color: brand.colors.primary,
+      textAlign: "center",
+    },
+    // Question cell content
+    questionPrompt: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8.5,
+      color: brand.colors.ink,
+      lineHeight: 1.35,
+      marginBottom: 4,
+    },
+    weightBadge: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 7,
+      color: brand.colors.muted,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 2,
+      alignSelf: "flex-start",
+    },
+    // Rating
+    circleRow: {
+      flexDirection: "row",
+      gap: 4,
+      alignItems: "center",
+      marginBottom: 5,
+      justifyContent: "center",
+    },
+    circle: {
+      width: 13,
+      height: 13,
+      borderRadius: 7,
+      borderWidth: 1,
+      borderColor: brand.colors.rule,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    circleNum: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 6.5,
+      color: brand.colors.muted,
+      textAlign: "center",
+      lineHeight: 1,
+    },
+    // Notes
+    notesLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 7,
+      color: brand.colors.muted,
+      marginBottom: 2,
+    },
+    noteLine: {
+      height: 1,
+      backgroundColor: brand.colors.rule,
+      marginBottom: 6,
+    },
+    // Summary
+    summaryLeftLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 8,
+      fontWeight: 700,
+      color: brand.colors.ink,
+      marginBottom: 4,
+    },
+    summaryTotalLine: {
+      height: 1,
+      backgroundColor: brand.colors.ink,
+      marginBottom: 8,
+    },
+    summaryRecommendLabel: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 7,
+      color: brand.colors.muted,
+      marginBottom: 2,
+    },
+    emptyNote: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      fontStyle: "italic",
+      color: brand.colors.muted,
+      padding: 10,
+    },
+    scaleNote: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 7,
+      color: brand.colors.muted,
+      marginTop: 6,
+    },
+  })
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function RatingDots() {
+function RatingDots({ brand }: { brand: BrandTokens }) {
+  const S = makeStyles(brand)
   return (
     <View style={S.circleRow}>
       {[1, 2, 3, 4, 5].map((n) => (
@@ -258,10 +261,11 @@ function RatingDots() {
   )
 }
 
-function CandidateScoreCell({ isLast }: { isLast: boolean }) {
+function CandidateScoreCell({ isLast, brand }: { isLast: boolean; brand: BrandTokens }) {
+  const S = makeStyles(brand)
   return (
     <View style={isLast ? S.candidateCell : S.candidateCellBorder}>
-      <RatingDots />
+      <RatingDots brand={brand} />
       <Text style={S.notesLabel}>Notes:</Text>
       <View style={S.noteLine} />
       <View style={S.noteLine} />
@@ -282,17 +286,20 @@ function ScorecardWorksheetPdf({
   content,
   shopName,
   generatedDate,
+  brand,
 }: {
   content: WorksheetContent
   shopName: string | null
   generatedDate: string
+  brand: BrandTokens
 }) {
+  const S = makeStyles(brand)
   const { scorecard, questions, role, candidates } = content
 
   return (
     <Document {...pdfDocMeta(shopName)}>
       <Page size="LETTER" orientation="landscape" style={S.page}>
-        <PdfHeader shopName={shopName} workspaceName="Interview Worksheet" />
+        <PdfHeader shopName={shopName} workspaceName="Interview Worksheet" brand={brand} />
 
         <Text style={S.title}>{scorecard.name}</Text>
         <Text style={S.meta}>
@@ -337,7 +344,7 @@ function ScorecardWorksheetPdf({
                     <Text style={S.weightBadge}>Weight {q.weight}/5</Text>
                   </View>
                   {candidates.map((_, i) => (
-                    <CandidateScoreCell key={i} isLast={i === candidates.length - 1} />
+                    <CandidateScoreCell key={i} isLast={i === candidates.length - 1} brand={brand} />
                   ))}
                 </View>
               )
@@ -365,7 +372,7 @@ function ScorecardWorksheetPdf({
 
         <Text style={S.scaleNote}>Rating scale: 1 = Does not meet expectations · 3 = Meets expectations · 5 = Exceeds expectations</Text>
 
-        <PdfFooter generatedDate={generatedDate} />
+        <PdfFooter generatedDate={generatedDate} brand={brand} />
       </Page>
     </Document>
   )
@@ -441,12 +448,14 @@ export const scorecardWorksheetTemplate: PdfTemplate<WorksheetContent> = {
   },
 
   render: (ctx) => {
+    const { brand } = ctx
     const generatedDate = fmtDateLong(new Date())
     return (
       <ScorecardWorksheetPdf
         content={ctx.content}
         shopName={ctx.plan.shop_name}
         generatedDate={generatedDate}
+        brand={brand}
       />
     )
   },

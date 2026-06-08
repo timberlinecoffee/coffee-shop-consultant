@@ -5,7 +5,7 @@
 
 import React from "react";
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import { BRAND, registerFonts } from "../brand";
+import { BRAND, registerFonts, type BrandTokens } from "../brand";
 import { PdfDocument } from "../components/PdfDocument";
 import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
@@ -13,6 +13,7 @@ import type { PdfTemplate } from "../registry";
 import type { BusinessPlanSectionData } from "@/lib/business-plan";
 import { buildFinancialDocVisibility, type FinancialDocumentVisibility } from "@/lib/business-plan-financials";
 import { renderCover } from "@/lib/pdf/business-plan/covers";
+import { MarkdownBlocks } from "@/lib/pdf/business-plan/markdown-blocks";
 import { FinancialPlanPages } from "@/lib/pdf/business-plan/financial-plan-pages";
 import {
   assembleCompanyConcept,
@@ -22,6 +23,15 @@ import {
   assembleOperationsLaunch,
   assembleTeamHiring,
   assembleFinancialPlan,
+  // TIM-2341: lender-ready section assemblers.
+  assembleUnitEconomicsSection,
+  assembleBreakEvenSection,
+  assembleSensitivitySection,
+  assembleDscrSection,
+  assembleCapexScheduleSection,
+  assembleDepreciationScheduleSection,
+  assembleWorkingCapitalSection,
+  assembleRisksPlaceholderSection,
   BUSINESS_PLAN_SECTIONS,
   BUSINESS_PLAN_GROUPS,
   type BpLocationCandidate,
@@ -33,9 +43,13 @@ import {
 } from "@/lib/business-plan";
 import {
   normalizeMonthlyProjections,
+  computeMenuBlendedCogsPct,
   type MonthlyProjections,
   type EquipmentSummary,
 } from "@/lib/financial-projection";
+// TIM-2341: PDF dataLoader builds plan_state so the lender-ready sections
+// in the exported PDF read the same numbers the workspace UI shows.
+import { buildPlanState } from "@/lib/business-plan/plan-state";
 
 registerFonts();
 
@@ -60,94 +74,99 @@ export interface BusinessPlanPdfContent {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const S = StyleSheet.create({
-  page: {
-    fontFamily: BRAND.fonts.sans,
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    backgroundColor: BRAND.colors.paper,
-    paddingTop: BRAND.page.margin,
-    paddingBottom: BRAND.page.margin + 20,
-    paddingLeft: BRAND.page.margin,
-    paddingRight: BRAND.page.margin,
-  },
-  tocTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 16,
-    fontWeight: 600,
-    color: BRAND.colors.ink,
-    marginBottom: 16,
-  },
-  tocRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  tocLabel: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-  },
-  tocGroupRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  tocGroupLabel: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 11,
-    fontWeight: 700,
-    color: BRAND.colors.ink,
-  },
-  tocSubRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
-    paddingLeft: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: BRAND.colors.rule,
-  },
-  tocNumber: {
-    fontSize: 10,
-    color: BRAND.colors.muted,
-  },
-  sectionTitle: {
-    fontFamily: BRAND.fonts.serif,
-    fontSize: 18,
-    fontWeight: 600,
-    color: BRAND.colors.primary,
-    marginBottom: 6,
-  },
-  sourceLabel: {
-    fontSize: 8,
-    color: BRAND.colors.muted,
-    marginBottom: 14,
-    fontStyle: "italic",
-  },
-  rule: {
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.rule,
-    marginBottom: 16,
-  },
-  body: {
-    fontSize: 10,
-    color: BRAND.colors.ink,
-    lineHeight: 1.55,
-    whiteSpace: "pre-wrap",
-  },
-  noContent: {
-    fontSize: 10,
-    color: BRAND.colors.muted,
-    fontStyle: "italic",
-  },
-});
+function makeStyles(brand: BrandTokens) {
+  return StyleSheet.create({
+    page: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 10,
+      color: brand.colors.ink,
+      backgroundColor: brand.colors.paper,
+      paddingTop: brand.page.margin,
+      paddingBottom: brand.page.margin + 20,
+      paddingLeft: brand.page.margin,
+      paddingRight: brand.page.margin,
+    },
+    tocTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 16,
+      fontWeight: 600,
+      color: brand.colors.ink,
+      marginBottom: 16,
+    },
+    tocRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 4,
+      borderBottomWidth: 0.5,
+      borderBottomColor: brand.colors.rule,
+    },
+    tocLabel: {
+      fontSize: 10,
+      color: brand.colors.ink,
+    },
+    tocGroupRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 10,
+      paddingBottom: 4,
+      borderBottomWidth: 0.5,
+      borderBottomColor: brand.colors.rule,
+    },
+    tocGroupLabel: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 11,
+      fontWeight: 700,
+      color: brand.colors.ink,
+    },
+    tocSubRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 4,
+      paddingLeft: 16,
+      borderBottomWidth: 0.5,
+      borderBottomColor: brand.colors.rule,
+    },
+    tocNumber: {
+      fontSize: 10,
+      color: brand.colors.muted,
+    },
+    sectionEyebrow: {
+      fontFamily: brand.fonts.sans,
+      fontSize: 9,
+      fontWeight: 600,
+      letterSpacing: 1.6,
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    sectionTitle: {
+      fontFamily: brand.fonts.serif,
+      fontSize: 22,
+      fontWeight: 600,
+      color: brand.colors.primary,
+      marginBottom: 6,
+      lineHeight: 1.15,
+    },
+    sourceLabel: {
+      fontSize: 8,
+      color: brand.colors.muted,
+      marginBottom: 14,
+      fontStyle: "italic",
+    },
+    rule: {
+      borderBottomWidth: 1,
+      borderBottomColor: brand.colors.rule,
+      marginBottom: 16,
+    },
+    noContent: {
+      fontSize: 10,
+      color: brand.colors.muted,
+      fontStyle: "italic",
+    },
+  });
+}
 
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -155,7 +174,9 @@ const S = StyleSheet.create({
 // TIM-1498: two-level TOC. Top-level sections (Executive Summary) appear in
 // their own row. Grouped subsections appear under a bold group header with
 // indented child rows. Page numbers are per subsection.
-function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionData[]; shopName: string; date: string }) {
+function TocPage({ sections, shopName, date, brand, accentColor }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; brand: BrandTokens; accentColor?: string | null }) {
+  const S = makeStyles(brand);
+  const tocColor = accentColor || brand.colors.primary;
   const visible = sections.filter((s) => s.isVisible);
   const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
 
@@ -192,9 +213,9 @@ function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionDa
   }
 
   return (
-    <Page size={BRAND.page.size} style={S.page}>
-      <PdfHeader shopName={shopName} workspaceName="Business Plan" />
-      <Text style={S.tocTitle}>Table of Contents</Text>
+    <Page size={brand.page.size} style={S.page}>
+      <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
+      <Text style={[S.tocTitle, { color: tocColor }]}>Table of Contents</Text>
       {rows.map((row, i) => {
         if (row.kind === "group") {
           return (
@@ -219,7 +240,7 @@ function TocPage({ sections, shopName, date }: { sections: BusinessPlanSectionDa
           </View>
         );
       })}
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -228,28 +249,40 @@ function SectionPage({
   section,
   shopName,
   date,
+  brand,
+  accentColor,
+  groupTitle,
 }: {
   section: BusinessPlanSectionData;
   shopName: string;
   date: string;
+  brand: BrandTokens;
+  accentColor?: string | null;
+  groupTitle?: string;
 }) {
+  const S = makeStyles(brand);
   const content = section.userContent ?? section.autoContent;
   const isEmpty = !content || content.includes("workspace to populate");
-
+  const titleColor = accentColor || brand.colors.primary;
+  // TIM-2315: render "Business Plan" in the running header (not the section
+  // title) so the body title isn't duplicated on every page.
   return (
-    <Page size={BRAND.page.size} style={S.page}>
-      <PdfHeader shopName={shopName} workspaceName={section.title} />
+    <Page size={brand.page.size} style={S.page}>
+      <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
       <View style={{ marginBottom: 8 }}>
-        <Text style={S.sectionTitle}>{section.title}</Text>
+        {groupTitle ? (
+          <Text style={[S.sectionEyebrow, { color: brand.colors.muted }]}>{groupTitle}</Text>
+        ) : null}
+        <Text style={[S.sectionTitle, { color: titleColor }]}>{section.title}</Text>
         <Text style={S.sourceLabel}>{section.sourceLabel}</Text>
-        <View style={S.rule} />
+        <View style={[S.rule, { borderBottomColor: titleColor }]} />
         {isEmpty ? (
           <Text style={S.noContent}>{content}</Text>
         ) : (
-          <Text style={S.body}>{content}</Text>
+          <MarkdownBlocks content={content} brand={brand} accentColor={accentColor ?? null} />
         )}
       </View>
-      <PdfFooter generatedDate={date} />
+      <PdfFooter generatedDate={date} brand={brand} />
     </Page>
   );
 }
@@ -258,11 +291,16 @@ function SectionPage({
 
 export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
   workspace_key: "concept", // fallback; dataLoader is used
-  render({ content }) {
+  render(ctx) {
+    const { content } = ctx;
+    const brand = ctx.brand;
     const { shopName, sections, cover, financialData, financialDocVisibility } = content;
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
+
+    const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
+    const groupTitleByKey = new Map(BUSINESS_PLAN_GROUPS.map((g) => [g.key, g.title]));
 
     return (
       <PdfDocument shopName={shopName}>
@@ -274,17 +312,30 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           date,
           accentColor: cover.accent_color ?? undefined,
           logo: cover.logo,
+        }, brand)}
+        <TocPage sections={sections} shopName={displayName} date={date} brand={brand} accentColor={cover.accent_color} />
+        {visible.map((section) => {
+          const meta = sectionMetaByKey.get(section.key as never);
+          const groupTitle = meta?.groupKey ? groupTitleByKey.get(meta.groupKey) : undefined;
+          return (
+            <SectionPage
+              key={section.key}
+              section={section}
+              shopName={displayName}
+              date={date}
+              brand={brand}
+              accentColor={cover.accent_color}
+              groupTitle={groupTitle}
+            />
+          );
         })}
-        <TocPage sections={sections} shopName={displayName} date={date} />
-        {visible.map((section) => (
-          <SectionPage key={section.key} section={section} shopName={displayName} date={date} />
-        ))}
         {financialData && (
           <FinancialPlanPages
             mp={financialData.mp}
             equipment={financialData.equipment}
             shopName={displayName}
             date={date}
+            brand={brand}
             visibility={financialDocVisibility ?? {
               key_assumptions: true, revenue_by_month: true, expenses_by_month: true, net_profit_by_year: true,
               use_of_funds: true, sources_of_funds: true,
@@ -317,9 +368,13 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     ] = await Promise.all([
       supabase.from("coffee_shop_plans").select("id, plan_name").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
-      supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes").eq("plan_id", planId).eq("archived", false).order("position"),
+      // TIM-2341: include city + country so plan_state.lender_metrics inherits
+      // the region-aware tax + lender posture in the exported PDF.
+      supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
       supabase.from("buildout_equipment_items").select("id, name, cost_usd, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-      supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents").eq("plan_id", planId).order("position"),
+      // TIM-2341: include cogs columns so menuBlendedCogsPct is computed for
+      // the lender-metrics block (mirrors the regenerate-all path).
+      supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
       supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
       supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents, status").eq("plan_id", planId).order("created_at"),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
@@ -333,7 +388,26 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       (savedSections ?? []).map((s: { section_key: string; user_content: string | null; is_visible: boolean }) => [s.section_key, s])
     );
 
+    // TIM-2341: build plan_state ONCE so the lender-ready section auto-content
+    // in the PDF reads the same engine slices as the workspace UI + the AI
+    // regenerate-all path. Country is read off the chosen location candidate
+    // (plan_state's own resolveRegion handles the absent-country case).
+    const menuBlendedCogsPctPdf = computeMenuBlendedCogsPct((menuRows ?? []) as { name?: string; price_cents: number; cogs_cents?: number | null; computed_cogs_cents?: number | null; expected_mix_pct?: number | null; expected_popularity?: "low" | "medium" | "high" | null; archived?: boolean | null }[]);
+    const chosenLoc = (locationRows ?? []).find((c: { status?: string }) => c.status === "chosen") ?? (locationRows ?? [])[0];
+    const planState = buildPlanState({
+      shopName: plan?.plan_name ?? "this coffee shop",
+      financialModel,
+      locationCandidates: (locationRows ?? []) as BpLocationCandidate[],
+      equipment: (equipmentRows ?? []) as BpEquipmentItem[],
+      hiringRoles: (hiringRows ?? []) as BpHiringRole[],
+      menuBlendedCogsPct: menuBlendedCogsPctPdf,
+      locationCountry: (chosenLoc as { country?: string | null })?.country ?? null,
+    });
+    const currencyCodePdf = planState.meta.currency_code;
+    const lenderMetricsPdf = financialModel ? planState.lender_metrics : null;
+
     // TIM-1498: two-level taxonomy autoContent map.
+    // TIM-2341: lender-ready sections plug straight into plan_state.
     const autoContent: Record<string, string> = {
       "executive-summary":
         (savedMap.get("executive-summary") as { user_content: string | null } | undefined)?.user_content
@@ -341,6 +415,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       "opportunity-problem-solution": "",
       "opportunity-target-market": assembleTargetMarket(conceptDoc?.content),
       "opportunity-competition": "",
+      "opportunity-risks": assembleRisksPlaceholderSection(),
       "execution-marketing-sales": assembleExecutionMarketingSales(
         (menuRows ?? []) as BpMenuItem[],
         toBpMarketingPlanning(marketingDoc?.content),
@@ -355,9 +430,16 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       ),
       "company-overview": assembleCompanyConcept(conceptDoc?.content),
       "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[]),
-      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
+      "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-break-even": assembleBreakEvenSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-sensitivity": assembleSensitivitySection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-financing": "",
-      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? []),
+      "financial-plan-dscr": assembleDscrSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetricsPdf, currencyCodePdf),
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
       "appendix-monthly-statements": "Monthly P&L, cash flow, and balance sheet statements appear in the Financial Appendix pages that follow.",
     };
 

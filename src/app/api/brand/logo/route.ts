@@ -1,0 +1,136 @@
+// TIM-1700: Per-plan brand logo upload (POST multipart) and remove (DELETE).
+// Mirrors the business-plan cover logo route (TIM-1225) but uses the
+// brand_config table and shop-brand-logos storage bucket.
+
+export const dynamic = "force-dynamic"
+
+import { createClient } from "@/lib/supabase/server"
+import type { NextRequest } from "next/server"
+import sharp from "sharp"
+
+const ACCEPTED_MIME = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"])
+const MAX_BYTES = 2 * 1024 * 1024 // 2 MB
+
+async function getAuthedPlan(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { user: null, plan: null }
+
+  const { data: plan } = await supabase
+    .from("coffee_shop_plans")
+    .select("id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return { user, plan }
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+  const { user, plan } = await getAuthedPlan(supabase)
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  if (!plan) return Response.json({ error: "No plan" }, { status: 404 })
+
+  let formData: FormData
+  try {
+    formData = await request.formData()
+  } catch {
+    return Response.json({ error: "Invalid multipart form" }, { status: 400 })
+  }
+
+  const file = formData.get("file")
+  if (!file || !(file instanceof Blob)) {
+    return Response.json({ error: "No file provided" }, { status: 400 })
+  }
+
+  if (!ACCEPTED_MIME.has(file.type)) {
+    return Response.json({ error: "Unsupported format — use PNG, JPEG, or SVG" }, { status: 422 })
+  }
+
+  if (file.size > MAX_BYTES) {
+    return Response.json({ error: "File too large — max 2 MB" }, { status: 422 })
+  }
+
+  const rawBuffer = Buffer.from(await file.arrayBuffer())
+
+  let finalBuffer: Buffer
+  let finalMime = "image/png"
+  let ext = "png"
+
+  try {
+    if (file.type === "image/svg+xml" || file.type === "image/webp") {
+      finalBuffer = await sharp(rawBuffer)
+        .resize({ width: 400, height: 192, fit: "inside", withoutEnlargement: false })
+        .png({ compressionLevel: 9 })
+        .toBuffer()
+    } else if (file.type === "image/jpeg" || file.type === "image/jpg") {
+      finalBuffer = rawBuffer
+      finalMime = "image/jpeg"
+      ext = "jpg"
+    } else {
+      finalBuffer = rawBuffer
+    }
+  } catch {
+    return Response.json({ error: "Upload failed. Try again." }, { status: 500 })
+  }
+
+  // Remove existing logo first (best-effort).
+  const { data: existingConfig } = await supabase
+    .from("brand_config")
+    .select("logo_path")
+    .eq("plan_id", plan.id)
+    .maybeSingle()
+
+  if (existingConfig?.logo_path) {
+    await supabase.storage.from("shop-brand-logos").remove([existingConfig.logo_path])
+  }
+
+  const storagePath = `${plan.id}/logo.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from("shop-brand-logos")
+    .upload(storagePath, finalBuffer, {
+      contentType: finalMime,
+      upsert: true,
+    })
+
+  if (uploadError) {
+    return Response.json({ error: "Upload failed. Try again." }, { status: 500 })
+  }
+
+  const { error: dbError } = await supabase
+    .from("brand_config")
+    .upsert({ plan_id: plan.id, logo_path: storagePath, updated_at: new Date().toISOString() }, { onConflict: "plan_id" })
+
+  if (dbError) {
+    return Response.json({ error: dbError.message }, { status: 500 })
+  }
+
+  return Response.json({ logo_path: storagePath })
+}
+
+export async function DELETE() {
+  const supabase = await createClient()
+  const { user, plan } = await getAuthedPlan(supabase)
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  if (!plan) return Response.json({ error: "No plan" }, { status: 404 })
+
+  const { data: config } = await supabase
+    .from("brand_config")
+    .select("logo_path")
+    .eq("plan_id", plan.id)
+    .maybeSingle()
+
+  if (config?.logo_path) {
+    await supabase.storage.from("shop-brand-logos").remove([config.logo_path])
+  }
+
+  const { error } = await supabase
+    .from("brand_config")
+    .upsert({ plan_id: plan.id, logo_path: null, updated_at: new Date().toISOString() }, { onConflict: "plan_id" })
+
+  if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  return Response.json({ ok: true })
+}

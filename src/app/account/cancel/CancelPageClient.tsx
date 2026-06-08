@@ -15,6 +15,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
   const router = useRouter();
   const [state, setState] = useState<"idle" | "pausing" | "cancelling" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   const periodEndFormatted = periodEnd
     ? new Date(periodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
@@ -27,6 +28,7 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setErrorMsg(data.error ?? "Something went wrong. Please try again.");
+        setErrorCode(data.code ?? null);
         setState("error");
         return;
       }
@@ -120,9 +122,21 @@ export function CancelPageClient({ tier, tierDisplayName, currentRate, periodEnd
         </div>
 
         {state === "error" && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            {errorMsg}
-          </p>
+          errorCode === "past_due" ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-4 space-y-3">
+              <p className="text-sm text-red-700">{errorMsg}</p>
+              <Link
+                href="/account/billing"
+                className="inline-block text-sm bg-[var(--teal)] text-white px-4 py-2 rounded-lg font-medium hover:bg-[var(--teal-dark)] transition-colors"
+              >
+                Update Payment Method
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              {errorMsg}
+            </p>
+          )
         )}
 
         {/* Divider */}

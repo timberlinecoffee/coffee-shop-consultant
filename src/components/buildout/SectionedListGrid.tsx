@@ -61,7 +61,7 @@ import {
   ChevronUp,
   X,
 } from "lucide-react";
-import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/workspace/financials/financials-workspace";
+import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
 import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
@@ -82,12 +82,15 @@ type ColDef = {
 
 // TIM-1215: default order puts Cost right after Name/Model so name→attrs→price reads naturally.
 // TIM-1327: useful_life_years column added — editable per item, shows inline annual depreciation.
+// TIM-1838: unit_cost_cents renamed "Unit Cost"; quantity (editable) and total_cost (derived) added.
 const EQUIPMENT_COLS: ColDef[] = [
   { id: "drag",               label: "",            defaultWidth: 28,  resizable: false, toggleable: false },
   { id: "name",               label: "Name",        defaultWidth: 200, resizable: true,  toggleable: false },
   { id: "vendor",             label: "Brand",       defaultWidth: 130, resizable: true,  toggleable: true  },
   { id: "model",              label: "Model",       defaultWidth: 130, resizable: true,  toggleable: true  },
-  { id: "unit_cost_cents",    label: "Cost",        defaultWidth: 110, resizable: true,  toggleable: true,  costClass: true },
+  { id: "unit_cost_cents",    label: "Unit Cost",   defaultWidth: 110, resizable: true,  toggleable: true  },
+  { id: "quantity",           label: "Qty",         defaultWidth: 70,  resizable: true,  toggleable: true  },
+  { id: "total_cost",         label: "Total Cost",  defaultWidth: 110, resizable: true,  toggleable: true,  costClass: true },
   { id: "useful_life_years",  label: "Life (yr)",   defaultWidth: 110, resizable: true,  toggleable: true  },
   { id: "financing_method",   label: "Financing",   defaultWidth: 130, resizable: true,  toggleable: true  },
   { id: "category",           label: "Category",    defaultWidth: 160, resizable: true,  toggleable: true  },
@@ -336,6 +339,34 @@ function UsefulLifeInput({
         </span>
       )}
     </div>
+  );
+}
+
+// TIM-1838: integer quantity cell for equipment rows.
+function QuantityInput({
+  value, disabled, onCommit,
+}: { value: number; disabled: boolean; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => { setDraft(String(value)); }, [value]);
+  function commit() {
+    const parsed = parseInt(draft, 10);
+    const clamped = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    setDraft(String(clamped));
+    onCommit(clamped);
+  }
+  return (
+    <input
+      type="number"
+      min={1}
+      step={1}
+      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
+      value={draft}
+      placeholder="1"
+      disabled={disabled}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
+    />
   );
 }
 
@@ -1064,6 +1095,28 @@ function SortableRow({
           </td>
         );
 
+      case "quantity":
+        return listType === "equipment" ? (
+          <td key="quantity" className={cellCls} style={{ width: colWidths.get("quantity") }}>
+            <QuantityInput
+              value={item.quantity}
+              disabled={!canEdit}
+              onCommit={(v) => onUpdate(item.id, { quantity: v } as Partial<AnyItem>)}
+            />
+          </td>
+        ) : null;
+
+      case "total_cost": {
+        const totalCents = item.unit_cost_cents * item.quantity;
+        return listType === "equipment" ? (
+          <td key="total_cost" className={`${cellCls} font-medium`} style={{ width: colWidths.get("total_cost") }}>
+            <span className="text-xs text-[var(--foreground)]">
+              {totalCents > 0 ? formatCurrencyAmount(totalCents / 100, currencyCode) : ""}
+            </span>
+          </td>
+        ) : null;
+      }
+
       case "useful_life_years":
         return eq ? (
           <td key="useful_life_years" className={cellCls} style={{ width: colWidths.get("useful_life_years") }}>
@@ -1265,12 +1318,12 @@ function SectionHeader({
           );
         }
 
-        if (col.id === "unit_cost_cents" && costVisible && sectionTotal > 0) {
+        if (col.id === "total_cost" && costVisible && sectionTotal > 0) {
           return (
             <td
-              key="unit_cost_cents"
+              key="total_cost"
               className={`px-2 py-1.5 text-right ${bgCls}`}
-              style={{ width: colWidths.get("unit_cost_cents") }}
+              style={{ width: colWidths.get("total_cost") }}
             >
               <span className="text-xs font-semibold text-[var(--teal)]">
                 {formatCurrencyAmount(sectionTotal / 100, currencyCode)}
@@ -2358,7 +2411,7 @@ export function SectionedListGrid({
                             />
                           ))}
                           {costVisible && sectionItems.length > 0 && (() => {
-                            const costIdx = visibleCols.findIndex((c) => c.id === "unit_cost_cents");
+                            const costIdx = visibleCols.findIndex((c) => c.id === "total_cost");
                             if (costIdx < 0) return null;
                             const afterSpan = visibleCols.length - costIdx - 1;
                             return (
@@ -2441,7 +2494,7 @@ export function SectionedListGrid({
 
                 {/* Grand total */}
                 {costVisible && grandTotal > 0 && (() => {
-                  const costIdx = visibleCols.findIndex((c) => c.id === "unit_cost_cents");
+                  const costIdx = visibleCols.findIndex((c) => c.id === "total_cost");
                   if (costIdx < 0) return null;
                   const afterSpan = visibleCols.length - costIdx - 1;
                   return (
@@ -2451,7 +2504,8 @@ export function SectionedListGrid({
                           Grand total
                         </td>
                       )}
-                      <td className="px-2 py-2.5 text-sm font-bold text-[var(--teal)] text-right">
+                      {/* TIM-1894: grand-total cell matches Equipment-table reference (text-xs, was text-sm). */}
+                      <td className="px-2 py-2.5 text-xs font-bold text-[var(--teal)] text-right">
                         {formatCurrencyAmount(grandTotal / 100, currencyCode)}
                       </td>
                       {afterSpan > 0 && <td colSpan={afterSpan} className="bg-[var(--teal-tint-500)]" />}

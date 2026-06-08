@@ -9,7 +9,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service"
 import { createClient } from "@/lib/supabase/server"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 
 export const runtime = "nodejs"
 export const maxDuration = 10
@@ -28,7 +28,10 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    // TIM-1955: paused_from_tier omitted (TIM-1923 migration backlog).
+    .select(
+      "subscription_status, subscription_tier, trial_ends_at, beta_waiver_until",
+    )
     .eq("id", user.id)
     .single()
 
@@ -38,6 +41,17 @@ export async function GET(request: Request) {
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
+  }
+
+  // TIM-1955: real-cohort percentile is the Pro Coffee Shop World data path.
+  if (
+    !isBetaWaived(profile.beta_waiver_until) &&
+    effectivePlanForGating(profile) !== "pro"
+  ) {
+    return Response.json(
+      { error: "Pro plan required", code: "pro_required" },
+      { status: 402 },
+    )
   }
 
   const url = new URL(request.url)
