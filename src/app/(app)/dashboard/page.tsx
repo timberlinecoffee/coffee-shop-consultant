@@ -11,7 +11,6 @@ import { createClient } from "@/lib/supabase/server";
 import { capitalizeFirst } from "@/lib/format";
 import { isTrialActive } from "@/lib/access";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
-import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   loadPlanOverview,
   type ActivityItem,
@@ -48,7 +47,18 @@ export default async function DashboardPage() {
   const rawName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0];
   const firstName = rawName ? capitalizeFirst(rawName) : "there";
 
-  const overview = await loadPlanOverview(supabase, user.id);
+  // TIM-2470: defense in depth. The dashboard is the existing-user root, so a
+  // single bad row in workspace_status / plan_quality_audit_cache must never
+  // tip the whole route into the dashboard error boundary. If overview load
+  // throws (RLS row drift, schema mismatch, transient supabase 5xx), render
+  // the same zero-state the "no plan yet" branch shows.
+  let overview: PlanOverview;
+  try {
+    overview = await loadPlanOverview(supabase, user.id);
+  } catch (err) {
+    console.error("[dashboard] loadPlanOverview failed", err);
+    overview = emptyOverview();
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -78,12 +88,32 @@ export default async function DashboardPage() {
           />
         )}
 
-        <WorkspaceHeader
-          Icon={ClipboardList}
-          title="Plan Overview"
-          description={`Welcome back, ${firstName}. See where your plan stands.`}
-          actions={<RefreshConflictsButton />}
-        />
+        {/* TIM-2470 / TIM-1894 / TIM-1937: canonical WorkspaceHeader chrome
+            (icon + h1 + description, action cluster right-aligned with
+            min-[1200px] nowrap), hand-rolled here because this is a Server
+            Component and the shared WorkspaceHeader is a "use client"
+            component — passing a lucide forwardRef as the `Icon` prop fails
+            RSC serialization and crashes the route (the bug TIM-2470 fixes).
+            Same pattern as workspace/location-lease/page.tsx. */}
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-4 min-[1200px]:flex-nowrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <ClipboardList
+                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
+                aria-hidden="true"
+              />
+              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight whitespace-nowrap">
+                Plan Overview
+              </h1>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              Welcome back, {firstName}. See where your plan stands.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0 ml-auto flex-wrap min-[1200px]:flex-nowrap">
+            <RefreshConflictsButton />
+          </div>
+        </header>
 
         <div className="space-y-4">
           <PlanStatusCard overview={overview} />
@@ -97,6 +127,38 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
+}
+
+// TIM-2470: zero-state fallback used by the try/catch around loadPlanOverview
+// in DashboardPage. Same shape the "no plan yet" branch already renders for —
+// PlanStatusCard short-circuits on planStarted=false, the stat cards show
+// dashes, Last 7 Days renders the empty-state copy, and PlanConflictsCard
+// renders the "Run a conflict check" branch. Pre-TIM-2470 a thrown
+// loadPlanOverview would have crashed the whole dashboard.
+function emptyOverview(): PlanOverview {
+  return {
+    planId: null,
+    status: {
+      stageName: "Not Started",
+      healthState: "needs_attention",
+      healthLabel: "Needs Attention",
+      lastUpdatedAt: null,
+      startedAt: null,
+      planStarted: false,
+    },
+    counts: {
+      total: 0,
+      completed: 0,
+      inProgress: 0,
+      notStarted: 0,
+      completedPct: 0,
+      inProgressPct: 0,
+      notStartedPct: 0,
+    },
+    activity: [],
+    conflicts: [],
+    lastConflictCheckAt: null,
+  };
 }
 
 // ── Section 1 — Plan Status ─────────────────────────────────────────────────
