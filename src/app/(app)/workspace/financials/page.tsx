@@ -48,12 +48,12 @@ export default async function FinancialsWorkspacePage() {
       .maybeSingle(),
     // TIM-1117: pull menu items so COGS lines can link to menu costing.
     // TIM-1168: also select name for the "How is this calculated?" reveal.
-    // TIM-1799: select expected_popularity too — it (not the legacy numeric
-    // expected_mix_pct, which the menu UI no longer sets) is what weights the
-    // blend, so Beverages and every other priced category reach Financials.
+    // TIM-2491: popularity is the sole weight signal — the legacy numeric
+    // `expected_mix_pct` is deprecated and no longer selected here. See
+    // menuItemMixWeight() in financial-projection.ts for the canon.
     supabase
       .from("menu_items_with_cogs")
-      .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
+      .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_popularity, archived")
       .eq("plan_id", plan.id)
       .eq("archived", false),
     // TIM-1253: fetch equipment items for shared-read capex sync — each item

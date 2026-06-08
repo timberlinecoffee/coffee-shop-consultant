@@ -2091,35 +2091,35 @@ export function computeProjections(
 // TIM-1117: compute the blended menu COGS percent from menu items.
 // Each item contributes (cogs × mix) to total cost and (price × mix) to total
 // revenue; the ratio × 100 is the blended COGS %. Returns null when the menu
-// has no valid items (no positive priced item with a non-zero mix), so the
-// caller can render "Menu not available" rather than apply a zero rate.
+// has no valid items (no positive priced item), so the caller can render
+// "Menu not available" rather than apply a zero rate.
 export interface MenuItemForCogs {
   name?: string | null;
   price_cents: number;
   computed_cogs_cents?: number | null;
   cogs_cents?: number | null;
-  expected_mix_pct?: number | null;
-  // TIM-1322: the menu UI captures popularity (low/medium/high), not a numeric
-  // sales-mix percent — so expected_mix_pct is left at its 0 default for nearly
-  // every real or demo menu. See menuItemMixWeight for how this feeds the blend.
+  // TIM-1322 / TIM-2491: the menu UI captures popularity (low/medium/high), not
+  // a numeric sales-mix percent. The legacy `expected_mix_pct` column was the
+  // dual-path partner of this field; every row in prod sits at the 0 default
+  // and the menu UI has no input that ever sets it non-zero. The COGS blend
+  // now reads popularity ONLY — `expected_mix_pct` is deprecated and no longer
+  // selected on this interface.
   expected_popularity?: ExpectedPopularity | null;
   archived?: boolean | null;
 }
 
-// TIM-1799: relative sales-mix weight for a menu item in the Financials COGS
-// blend. The menu builder no longer collects a numeric mix percent (TIM-1322
-// replaced it with low/medium/high popularity), so keying the blend off
-// expected_mix_pct alone silently dropped EVERY item — the menu had beverages
-// but Financials saw none. Fall back: explicit mix → popularity score →
-// equal weight. A priced item is never silently dropped.
+// TIM-1799 / TIM-2491: relative sales-mix weight for a menu item in the
+// Financials COGS blend. Popularity-only after TIM-2491 — the legacy
+// `expected_mix_pct > 0` branch is removed (dead in prod and inconsistent with
+// new items that only ever carry popularity, so a mixed corpus would have
+// weighted old items 10–70× as heavily as new ones). low=1 / medium=2 /
+// high=3; default 1 so a priced item with no popularity set is never silently
+// dropped.
 export function menuItemMixWeight(item: MenuItemForCogs): number {
-  if (typeof item.expected_mix_pct === "number" && item.expected_mix_pct > 0) {
-    return item.expected_mix_pct;
-  }
   if (item.expected_popularity === "high") return 3;
   if (item.expected_popularity === "medium") return 2;
   if (item.expected_popularity === "low") return 1;
-  return 1; // equal weight — a populated menu always reaches Financials
+  return 1;
 }
 
 function effectiveMenuCogsCents(item: MenuItemForCogs): number {

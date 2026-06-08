@@ -469,17 +469,18 @@ test("COGS menu_linked falls back to value when menu pct is null", () => {
   assert.equal(rows[0].cogs_cents, 350000);
 });
 
-test("computeMenuBlendedCogsPct: weighted by mix, prefers computed_cogs_cents", () => {
-  // Two items:
-  //   Latte:  price $5.00, cogs $1.00, mix 70 → cost weight 70, price weight 350
-  //   Bagel:  price $3.00, cogs $1.20, mix 30 → cost weight 36, price weight 90
-  // Blended = (70+36) / (350+90) × 100 = 106 / 440 × 100 ≈ 24.0909%
+test("computeMenuBlendedCogsPct: TIM-2491 — weighted by popularity, prefers computed_cogs_cents", () => {
+  // TIM-2491 drops the legacy expected_mix_pct branch — popularity is the sole
+  // weight signal. Two items:
+  //   Latte:  price $5.00, cogs $1.00, high → w3 → cost 3, price 15
+  //   Bagel:  price $3.00, cogs $1.20, low  → w1 → cost 1.2, price 3
+  // Blended = (3 + 1.2) / (15 + 3) × 100 = 4.2/18 × 100 ≈ 23.333%
   const pct = computeMenuBlendedCogsPct([
-    { price_cents: 500, computed_cogs_cents: 100, expected_mix_pct: 70 },
-    { price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 30 },
+    { price_cents: 500, computed_cogs_cents: 100, expected_popularity: "high" },
+    { price_cents: 300, computed_cogs_cents: 120, expected_popularity: "low" },
   ]);
   assert.ok(pct !== null);
-  assert.ok(Math.abs(pct - (106 / 440) * 100) < 1e-9);
+  assert.ok(Math.abs(pct - (4.2 / 18) * 100) < 1e-9);
 });
 
 test("computeMenuBlendedCogsPct: returns null when nothing is priced", () => {
@@ -488,25 +489,25 @@ test("computeMenuBlendedCogsPct: returns null when nothing is priced", () => {
   // Only the unpriced item is dropped; nothing priced remains → null.
   assert.equal(
     computeMenuBlendedCogsPct([
-      { price_cents: 0, computed_cogs_cents: 100, expected_mix_pct: 50 },
+      { price_cents: 0, computed_cogs_cents: 100, expected_popularity: "high" },
     ]),
     null
   );
 });
 
-test("computeMenuBlendedCogsPct: TIM-1799 — priced item with no mix still counts (equal weight)", () => {
+test("computeMenuBlendedCogsPct: TIM-1799 — priced item with no popularity still counts (equal weight)", () => {
   // The menu UI no longer sets expected_mix_pct (it captures popularity), so a
-  // real/demo menu item has mix 0. It must NOT be dropped: a populated menu has
+  // priced item with no popularity must NOT be dropped: a populated menu has
   // to reach Financials. Single item → blend = its own COGS % (120/300 = 40%).
   const pct = computeMenuBlendedCogsPct([
-    { price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 0 },
+    { price_cents: 300, computed_cogs_cents: 120 },
   ]);
   assert.ok(pct !== null);
   assert.ok(Math.abs(pct - 40) < 1e-9);
 });
 
 test("computeMenuBlendedCogsPct: TIM-1799 — weights by popularity when mix is unset", () => {
-  // No numeric mix anywhere; popularity high=3 / low=1 supplies the weights.
+  // popularity high=3 / low=1 supplies the weights.
   //   Latte: price $5, cogs $1, high → w3 → cost 3, price 15
   //   Drip:  price $3, cogs $1.20, low → w1 → cost 1.2, price 3
   // Blended = (3 + 1.2) / (15 + 3) × 100 = 4.2/18 × 100 ≈ 23.333%
@@ -518,11 +519,26 @@ test("computeMenuBlendedCogsPct: TIM-1799 — weights by popularity when mix is 
   assert.ok(Math.abs(pct - (4.2 / 18) * 100) < 1e-9);
 });
 
+test("computeMenuBlendedCogsPct: TIM-2491 — legacy expected_mix_pct is ignored", () => {
+  // A mixed-corpus regression: one item carries the legacy numeric mix (70%),
+  // the other carries the current popularity signal (low). Pre-TIM-2491 the
+  // legacy item would have weighed 70× as much as the new item; post-TIM-2491
+  // the mix_pct field is ignored on the input interface and both items default
+  // to weight 1 (no popularity on item 1, low=1 on item 2).
+  // Blended = (100×1 + 120×1) / (500×1 + 300×1) × 100 = 220/800 × 100 = 27.5%
+  const pct = computeMenuBlendedCogsPct([
+    { price_cents: 500, computed_cogs_cents: 100, expected_mix_pct: 70 },
+    { price_cents: 300, computed_cogs_cents: 120, expected_popularity: "low" },
+  ]);
+  assert.ok(pct !== null);
+  assert.ok(Math.abs(pct - 27.5) < 1e-9);
+});
+
 test("buildMenuCogsBreakdown: TIM-1799 — includes all priced items, normalizes mix to ~100%", () => {
   const rows = buildMenuCogsBreakdown([
     { name: "Latte", price_cents: 500, computed_cogs_cents: 100, expected_popularity: "high" },
     { name: "Cold Brew", price_cents: 450, computed_cogs_cents: 90, expected_popularity: "medium" },
-    { name: "Drip", price_cents: 300, computed_cogs_cents: 120, expected_mix_pct: 0 },
+    { name: "Drip", price_cents: 300, computed_cogs_cents: 120 },
     { name: "Archived", price_cents: 400, computed_cogs_cents: 80, archived: true },
     { name: "Unpriced", price_cents: 0, computed_cogs_cents: 80 },
   ]);
