@@ -8,5 +8,7 @@ export default function InventoryRedirect() {
   // permanentRedirect emits a 308 so browsers update bookmarks; the redirect
   // import is kept available for any caller that prefers the soft variant.
   void redirect;
-  permanentRedirect("/workspace/buildout-equipment/supplies");
+  // TIM-2499: append ?from=inventory so the redirect target can show a
+  // one-time informational toast explaining where inventory went.
+  permanentRedirect("/workspace/buildout-equipment/supplies?from=inventory");
 }
