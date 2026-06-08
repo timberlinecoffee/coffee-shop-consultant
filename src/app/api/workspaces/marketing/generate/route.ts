@@ -90,7 +90,8 @@ const SECTION_PROMPTS: Record<MarketingSectionKey, string> = {
 Rules:
 - 3-6 channels max. Pick what an owner can realistically maintain.
 - Use channel names from this preset list when applicable: ${MARKETING_CHANNEL_OPTIONS.join(", ")}. Add a custom name only when the preset list does not cover the channel.
-- Notes are why-and-what, not a posting plan or cadence.`,
+- Notes are why-and-what, not a posting plan or cadence.
+- Shop-type fit: Instagram, TikTok, Community Events suit full café, espresso bar, and third-wave concepts. LinkedIn suits co-working café and B2B account-driven concepts — include it when the shop serves remote workers or sells to business accounts. Wholesale Outreach suits roaster+retail and roaster concepts — include it when the shop roasts or sells beans wholesale. Skip LinkedIn and Wholesale Outreach for mobile cart and drive-thru unless catering is in scope.`,
   story: `Generate the STORY AND BRAND section. Return JSON:
 {
   "founder_story": string (sentence case, 3-5 sentences — how the owner got here, what a customer reading the bio should feel like they know),

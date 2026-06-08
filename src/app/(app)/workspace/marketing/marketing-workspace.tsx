@@ -37,6 +37,7 @@ import {
   MARKETING_SECTION_LABELS,
   MARKETING_SECTION_TAGLINES,
   MARKETING_CHANNEL_OPTIONS,
+  MARKETING_CHANNEL_FIT,
   defaultPreLaunchMilestones,
 } from "@/lib/marketing";
 
@@ -424,16 +425,20 @@ function ChannelsEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
         <label className={labelCls}>Add a channel</label>
         <div className="flex flex-wrap gap-1.5">
           {availablePresets.map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => addChannel(name)}
-              disabled={!canEdit}
-              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border-medium)] text-[var(--muted-foreground)] hover:border-[var(--teal)] hover:text-[var(--teal)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <Plus className="w-3 h-3 inline mr-1" />
-              {name}
-            </button>
+            <span key={name} className="inline-flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => addChannel(name)}
+                disabled={!canEdit}
+                className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border-medium)] text-[var(--muted-foreground)] hover:border-[var(--teal)] hover:text-[var(--teal)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Plus className="w-3 h-3 inline mr-1" />
+                {name}
+              </button>
+              {MARKETING_CHANNEL_FIT[name] && (
+                <InfoTip label={name}>{MARKETING_CHANNEL_FIT[name]}</InfoTip>
+              )}
+            </span>
           ))}
         </div>
         <CustomChannelInput onAdd={addChannel} canEdit={canEdit} />

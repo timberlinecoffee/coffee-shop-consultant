@@ -20,9 +20,28 @@ export const MARKETING_CHANNEL_OPTIONS = [
   "Word Of Mouth",
   "Local Partnerships",
   "Owned Website",
+  "LinkedIn",
+  "Wholesale Outreach",
 ] as const;
 
 export type MarketingChannelOption = (typeof MARKETING_CHANNEL_OPTIONS)[number];
+
+// Per-channel fit guidance shown in the channel picklist.
+// One or two plain sentences: which shop types it suits, and where to skip it.
+export const MARKETING_CHANNEL_FIT: Record<string, string> = {
+  "Instagram": "Strong for visual in-store experiences — full café, espresso bar, third-wave. Less effective for B2B co-working or wholesale.",
+  "TikTok": "High reach for personality-driven concepts and younger audiences. Best for shops with a clear visual or story angle.",
+  "Facebook": "Good for neighborhood regulars, community events, and local groups. Less critical if your audience skews younger.",
+  "Email Newsletter": "Best when you have an existing audience or loyalty program. Builds a direct line with regulars over time.",
+  "Local Press": "Useful for opening coverage and neighborhood legitimacy. Hard to sustain as a channel — treat it as a launch tool.",
+  "Community Events": "Strongest for shops that want to anchor a neighborhood. Works at any scale — popup, storefront, or cart.",
+  "Google Business Profile": "Essential for any shop with a physical location. Drives foot traffic through local search and Maps.",
+  "Word Of Mouth": "The default channel for every shop. Accelerated by a consistent product and a reason to tell someone.",
+  "Local Partnerships": "Effective for cross-promotion with nearby businesses — florists, bookstores, gyms. Works well for drive-thru and neighborhood cafés.",
+  "Owned Website": "More important for wholesale, catering, and B2B accounts than for walk-in retail. Good home base for press links.",
+  "LinkedIn": "Best for co-working café and B2B accounts. Skip for mobile cart and drive-thru.",
+  "Wholesale Outreach": "Required for roaster+retail and roasters. Not relevant for mobile cart unless you are adding catering.",
+};
 
 // ── Sections ────────────────────────────────────────────────────────────────
 
