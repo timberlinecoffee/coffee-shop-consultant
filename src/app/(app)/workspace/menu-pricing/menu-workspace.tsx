@@ -762,14 +762,11 @@ function IngredientsTab({
                 <div className="px-5 py-6 text-center text-sm text-[var(--dark-grey)]">
                   {ingredients.length === 0 ? (
                     <div>
-                      <div className="relative w-full rounded-lg overflow-hidden mb-3" style={{ height: "100px" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src="https://images.pexels.com/photos/4349948/pexels-photo-4349948.jpeg?auto=compress&cs=tinysrgb&w=800&h=200&dpr=1"
-                          alt="Coffee ingredients and supplies on a counter"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                      <Illustration
+                        recipeId="empty-state-ingredients"
+                        className="w-20 h-20 mx-auto mb-3"
+                        fallback={<Package size={28} className="text-[var(--neutral-cool-350)] mx-auto mb-2" />}
+                      />
                       No ingredients yet. Add your first below.
                     </div>
                   ) : (
