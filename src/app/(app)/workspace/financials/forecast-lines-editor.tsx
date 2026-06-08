@@ -19,6 +19,7 @@ import type {
   LineGrowth,
 } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+import { fmtPct, fmtIntegerPct } from "@/lib/formatters";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -275,6 +276,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               <input
                 className={`${inputCls} w-full pr-6 bg-[var(--teal-bg-muted)] text-[var(--teal)] font-medium`}
                 type="text"
+                // eslint-disable-next-line no-restricted-syntax -- controlled input value (no `%` suffix); the % is rendered separately as a span
                 value={displayPct !== null ? displayPct.toFixed(1) : "n/a"}
                 readOnly
                 disabled
@@ -386,8 +388,8 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               {menuCogsItems.map((it, i) => (
                 <tr key={i}>
                   <td className="py-1 pr-2 text-[var(--foreground)]">{it.name}</td>
-                  <td className="py-1 text-right text-[var(--muted-foreground)]">{it.expected_mix_pct.toFixed(0)}%</td>
-                  <td className="py-1 text-right font-medium text-[var(--teal)]">{it.cogs_pct.toFixed(1)}%</td>
+                  <td className="py-1 text-right text-[var(--muted-foreground)]">{fmtIntegerPct(it.expected_mix_pct / 100)}</td>
+                  <td className="py-1 text-right font-medium text-[var(--teal)]">{fmtPct(it.cogs_pct / 100)}</td>
                 </tr>
               ))}
             </tbody>
@@ -395,7 +397,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               <tr className="border-t border-[var(--teal-bg-lighter)]">
                 <td className="pt-1.5 font-semibold text-[var(--foreground)]">Blended</td>
                 <td />
-                <td className="pt-1.5 text-right font-bold text-[var(--teal)]">{(menuBlendedCogsPct as number).toFixed(1)}%</td>
+                <td className="pt-1.5 text-right font-bold text-[var(--teal)]">{fmtPct((menuBlendedCogsPct as number) / 100)}</td>
               </tr>
             </tfoot>
           </table>
@@ -514,7 +516,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                 </label>
                 <InfoTip label="Link to menu">
                   {hasMenuData
-                    ? `Blended menu COGS: ${(menuBlendedCogsPct as number).toFixed(1)}% of priced items.`
+                    ? `Blended menu COGS: ${fmtPct((menuBlendedCogsPct as number) / 100)} of priced items.`
                     : "Add menu items with prices and expected mix to enable this."}
                 </InfoTip>
               </div>
@@ -549,8 +551,8 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                               <td className="py-1 pr-2 text-[var(--foreground)]" style={{ maxWidth: 120 }}>
                                 <TruncatedText text={it.name} />
                               </td>
-                              <td className="py-1 text-right text-[var(--muted-foreground)]">{it.expected_mix_pct.toFixed(0)}%</td>
-                              <td className="py-1 text-right font-medium text-[var(--teal)]">{it.cogs_pct.toFixed(1)}%</td>
+                              <td className="py-1 text-right text-[var(--muted-foreground)]">{fmtIntegerPct(it.expected_mix_pct / 100)}</td>
+                              <td className="py-1 text-right font-medium text-[var(--teal)]">{fmtPct(it.cogs_pct / 100)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -559,7 +561,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
                             <td className="pt-1.5 font-semibold text-[var(--foreground)]">Blended</td>
                             <td />
                             <td className="pt-1.5 text-right font-bold text-[var(--teal)]">
-                              {(menuBlendedCogsPct as number).toFixed(1)}%
+                              {fmtPct((menuBlendedCogsPct as number) / 100)}
                             </td>
                           </tr>
                         </tfoot>

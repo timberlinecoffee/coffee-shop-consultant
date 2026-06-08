@@ -18,11 +18,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = await readFile(path.join(__dirname, "menu-workspace.tsx"), "utf8");
 
-test("menu-workspace imports the shared fmtPct from @/lib/format", () => {
+test("menu-workspace imports the shared fmtPct from @/lib/formatters", () => {
+  // TIM-2478: fmtPct is re-exported through src/lib/formatters.ts as the
+  // central entry point alongside fmtIntegerPct / formatMinor / formatMinorExact.
+  // Same identity (`./format`'s fmtPct), single import site for the workspace.
   assert.match(
     SRC,
-    /import\s*\{\s*fmtPct\s*\}\s*from\s*"@\/lib\/format"/,
-    "fmtPct must be imported from @/lib/format",
+    /import\s*\{[^}]*\bfmtPct\b[^}]*\}\s*from\s*"@\/lib\/formatters"/,
+    "fmtPct must be imported from @/lib/formatters",
   );
 });
 

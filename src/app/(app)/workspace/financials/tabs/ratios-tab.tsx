@@ -12,6 +12,7 @@ import { type MonthlySlice, sumSlices } from "@/lib/financial-projection";
 // to every consumer in lockstep — no more drift between the Ratios card and
 // the cross-suite resolver.
 import { getFinancialBenchmarkBands } from "@/lib/business-plan/benchmark-bands";
+import { fmtPct } from "@/lib/formatters";
 
 interface Props {
   slices: MonthlySlice[];
@@ -319,7 +320,7 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
             Your value
           </p>
           <p className="text-2xl font-bold text-[var(--foreground)] mt-0.5">
-            {v.toFixed(1)}%
+            {fmtPct(v / 100)}
           </p>
         </div>
         <div>

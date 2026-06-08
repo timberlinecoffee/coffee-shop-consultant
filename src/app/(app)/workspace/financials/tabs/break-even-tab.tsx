@@ -7,7 +7,7 @@ import {
   computeBreakEvenModel,
   fmt,
 } from "@/lib/financial-projection";
-import { currencySymbol } from "@/lib/currency";
+import { fmtPct, formatMinor } from "@/lib/formatters";
 
 interface Props {
   slices: MonthlySlice[];
@@ -23,6 +23,7 @@ function computeBreakEven(inputs: FinancialInputs, slices: MonthlySlice[], forec
   if (!model) return null;
 
   const avgTicket = model.avgTicketCents / 100;
+  const avgTicketCents = model.avgTicketCents;
   const breakEvenRevenue = model.breakEvenRevenueCents; // cents; fmt() divides by 100
   const breakEvenTransactions = model.breakEvenTransactions;
   const contributionMarginPct = model.contributionMarginPct;
@@ -46,6 +47,7 @@ function computeBreakEven(inputs: FinancialInputs, slices: MonthlySlice[], forec
     daysToBreakEven,
     fixedCosts,
     avgTicket,
+    avgTicketCents,
   };
 }
 
@@ -88,6 +90,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
   const {
     breakEvenTransactions, breakEvenRevenue, projectedTransactions,
     transactionSurplus, contributionMarginPct, daysToBreakEven, fixedCosts, avgTicket,
+    avgTicketCents,
   } = result;
 
   const surplusPct = projectedTransactions > 0
@@ -119,13 +122,14 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
           <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Break-Even Transactions / Month</p>
           <p className="text-3xl font-bold text-[var(--foreground)]">{isFinite(breakEvenTransactions) ? breakEvenTransactions.toLocaleString() : "N/A"}</p>
           <p className="text-xs text-[var(--dark-grey)] mt-1">
+            {/* eslint-disable-next-line no-restricted-syntax -- days-of-traffic readout (1dp); not a currency/percent/ratio */}
             {isFinite(daysToBreakEven) ? `${daysToBreakEven.toFixed(1)} days of foot traffic` : ""}
           </p>
         </div>
         <div className="rounded-xl border border-[var(--border)] bg-white px-5 py-4">
           <p className="text-xs text-[var(--muted-foreground)] uppercase tracking-wide mb-1">Break-Even Revenue / Month</p>
           <p className="text-3xl font-bold text-[var(--foreground)]">{isFinite(breakEvenRevenue) ? fmt(breakEvenRevenue, currencyCode) : "N/A"}</p>
-          <p className="text-xs text-[var(--dark-grey)] mt-1">Contribution margin {(contributionMarginPct * 100).toFixed(1)}%</p>
+          <p className="text-xs text-[var(--dark-grey)] mt-1">Contribution margin {fmtPct(contributionMarginPct)}</p>
         </div>
         <div className={`rounded-xl border px-5 py-4 col-span-2 sm:col-span-1 ${transactionSurplus >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
           <p className={`text-xs uppercase tracking-wide mb-1 ${transactionSurplus >= 0 ? "text-green-700" : "text-red-700"}`}>
@@ -170,7 +174,7 @@ export function BreakEvenTab({ slices, inputs, forecastLines, currencyCode = "US
           </div>
         </div>
         <p className="text-xs text-[var(--dark-grey)] mt-3">
-          Based on {inputs.customers_per_day} customers/day, {inputs.days_per_week} days/week, {currencySymbol(currencyCode)}{avgTicket.toFixed(2)} avg ticket.
+          Based on {inputs.customers_per_day} customers/day, {inputs.days_per_week} days/week, {formatMinor(avgTicketCents, currencyCode)} avg ticket.
         </p>
       </div>
 

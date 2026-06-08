@@ -81,7 +81,7 @@ import {
   classifyMenu,
   marginRanking,
 } from "@/lib/menu-engineering";
-import { fmtPct } from "@/lib/format";
+import { fmtPct, fmtIntegerPct, formatMinor, formatMinorExact } from "@/lib/formatters";
 
 interface ConceptContext {
   shop_identity?: string;
@@ -868,7 +868,7 @@ function ItemEditorPanel({
     item.price_cents > 0 ? (item.price_cents / 100).toFixed(2) : ""
   );
 
-  const { symbol } = useCurrency();
+  const { currencyCode } = useCurrency();
   const recipeLines = itemIngredients.filter(
     (ii) => ii.menu_item_id === item.id
   );
@@ -884,18 +884,16 @@ function ItemEditorPanel({
 
   const cogsDisplay =
     recipeLines.length > 0
-      ? `${symbol}${computedCogs.toFixed(2)}`
+      ? formatMinorExact(Math.round(computedCogs * 100), currencyCode)
       : item.cogs_cents && item.cogs_cents > 0
       ? formatCents(item.cogs_cents)
       : "—";
 
   const effectiveCogs =
     recipeLines.length > 0 ? computedCogs * 100 : (item.cogs_cents ?? 0);
-  const marginPct =
+  const marginDisplay =
     item.price_cents > 0 && effectiveCogs > 0
-      ? (((item.price_cents - effectiveCogs) / item.price_cents) * 100).toFixed(
-          1
-        )
+      ? fmtPct((item.price_cents - effectiveCogs) / item.price_cents)
       : null;
 
   function handleNameBlur() {
@@ -1040,7 +1038,7 @@ function ItemEditorPanel({
             onPriceBlur={handlePriceBlur}
             cogsDisplay={cogsDisplay}
             effectiveCogs={effectiveCogs}
-            marginPct={marginPct}
+            marginDisplay={marginDisplay}
             msrpCents={msrpCents}
             targetGrossMargin={targetGrossMargin}
             onUpdateItem={onUpdateItem}
@@ -1322,7 +1320,7 @@ function CostOfGoodsTabContent({
   onPriceBlur,
   cogsDisplay,
   effectiveCogs,
-  marginPct,
+  marginDisplay,
   msrpCents,
   targetGrossMargin,
   onUpdateItem,
@@ -1340,7 +1338,7 @@ function CostOfGoodsTabContent({
   onPriceBlur: () => void;
   cogsDisplay: string;
   effectiveCogs: number;
-  marginPct: string | null;
+  marginDisplay: string | null;
   msrpCents: number | null;
   targetGrossMargin: number;
   onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
@@ -1351,7 +1349,7 @@ function CostOfGoodsTabContent({
   benchmarkResult: BenchmarkResult | null;
   benchmarkError: string | null;
 }) {
-  const { symbol } = useCurrency();
+  const { currencyCode } = useCurrency();
   const targetPct = (targetGrossMargin * 100).toFixed(0);
   const noPriceYet = item.price_cents === 0;
 
@@ -1395,7 +1393,7 @@ function CostOfGoodsTabContent({
           <div>
             <label className={labelCls}>Profit Margin</label>
             <p className="text-sm font-semibold text-[var(--teal)] py-2">
-              {marginPct !== null ? `${marginPct}%` : "—"}
+              {marginDisplay ?? "—"}
             </p>
             {msrpCents !== null && item.price_cents > 0 && item.price_cents < msrpCents && (
               <p className="text-[11px] text-[var(--warning-text)]">
@@ -1465,7 +1463,7 @@ function CostOfGoodsTabContent({
                   Local range for{" "}
                   <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
                   <span className="font-semibold text-[var(--foreground)]">
-                    {symbol}{(benchmarkResult.low_cents / 100).toFixed(2)} to {symbol}{(benchmarkResult.high_cents / 100).toFixed(2)}
+                    {formatMinorExact(benchmarkResult.low_cents, currencyCode)} to {formatMinorExact(benchmarkResult.high_cents, currencyCode)}
                   </span>
                 </p>
                 {benchmarkResult.source === "industry_benchmark" && (
@@ -1485,7 +1483,7 @@ function CostOfGoodsTabContent({
               <p className="text-xs">
                 Your price{" "}
                 <span className="font-semibold text-[var(--foreground)]">
-                  {symbol}{(benchmarkResult.current_price_cents / 100).toFixed(2)}
+                  {formatMinorExact(benchmarkResult.current_price_cents, currencyCode)}
                 </span>{" "}
                 reads as{" "}
                 <span
@@ -1571,6 +1569,7 @@ function RecipeLineRow({
         ) : (
           lineCost !== null && (
             <span className="text-xs text-[var(--muted-foreground)] shrink-0 tabular-nums">
+              {/* eslint-disable-next-line no-restricted-syntax -- per-recipe-line ingredient cost: sub-cent (4dp) precision is intentional (TIM-1409); formatMinorExact would round to 2dp and hide differences */}
               {symbol}{lineCost.toFixed(4)}
             </span>
           )
@@ -1612,6 +1611,7 @@ function RecipeLineRow({
       ) : (
         lineCost !== null && (
           <span className="text-xs text-[var(--muted-foreground)] shrink-0 min-w-[3rem] text-right">
+            {/* eslint-disable-next-line no-restricted-syntax -- per-recipe-line ingredient cost: sub-cent (4dp) precision is intentional (TIM-1409); formatMinorExact would round to 2dp */}
             {symbol}{lineCost.toFixed(4)}
           </span>
         )
@@ -2047,6 +2047,7 @@ function TargetMarginControl({
       {editing ? (
         <TargetMarginInput
           key={editingKey}
+          // eslint-disable-next-line no-restricted-syntax -- controlled input initial value (no `%` suffix); fmtIntegerPct adds the % which would land in the input
           initialPct={(value * 100).toFixed(0)}
           currentValue={value}
           onCommit={(next) => {
@@ -2062,7 +2063,7 @@ function TargetMarginControl({
           className="text-base font-bold text-[var(--foreground)] ml-1 hover:underline decoration-dotted disabled:cursor-default disabled:no-underline"
           title={canEdit ? "Click to edit target gross margin" : "Target gross margin"}
         >
-          {(value * 100).toFixed(0)}%
+          {fmtIntegerPct(value)}
         </button>
       )}
     </div>
@@ -2728,7 +2729,7 @@ function InsightsTab({
 
           {thresholds && (
             <p className="text-[11px] text-[var(--neutral-cool-650)] mt-3 leading-relaxed">
-              Split points: items above {thresholds.avgMarginPct.toFixed(0)}% gross
+              Split points: items above {fmtIntegerPct(thresholds.avgMarginPct / 100)} gross
               margin count as higher margin, and items you rated at or above your
               average popularity count as more popular.
             </p>
@@ -2791,7 +2792,7 @@ function InsightsTab({
                               />
                             </div>
                             <span className="tabular-nums text-[var(--foreground)] font-semibold w-10 text-right">
-                              {r.marginPct.toFixed(0)}%
+                              {fmtIntegerPct(r.marginPct / 100)}
                             </span>
                           </div>
                         </td>
@@ -2817,7 +2818,7 @@ function InsightsTab({
                             <div className="flex items-center gap-1.5">
                               <BenchmarkChip
                                 metric="Gross margin"
-                                value={`${r.marginPct.toFixed(0)}%`}
+                                value={fmtIntegerPct(r.marginPct / 100)}
                                 status={bmStatus}
                                 sourceType={bmSourceType}
                                 variant="inline"

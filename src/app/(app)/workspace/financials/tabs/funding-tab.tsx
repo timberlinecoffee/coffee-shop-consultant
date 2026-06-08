@@ -13,6 +13,7 @@ import type {
 } from "@/lib/financial-projection";
 import { fmt, loanMonthlyPaymentCents } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+import { fmtPct } from "@/lib/formatters";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 
@@ -430,7 +431,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
           )}
           {investorOwnership > 0 && (
             <p>
-              You have given up <strong>{investorOwnership.toFixed(1)}%</strong> of the company across all investor
+              You have given up <strong>{fmtPct(investorOwnership / 100)}</strong> of the company across all investor
               lines. Common rounds keep dilution under 25% combined; check the cap table before signing anything.
             </p>
           )}

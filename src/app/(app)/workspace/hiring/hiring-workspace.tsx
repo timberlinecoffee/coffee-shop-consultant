@@ -41,6 +41,7 @@ import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
+import { progressPct } from "@/lib/formatters";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -2003,7 +2004,7 @@ function OnboardingTab({
               const instTasks = tasks.filter((t) => t.instance_id === inst.id);
               const completed = instTasks.filter((t) => t.completed_at).length;
               const total = instTasks.length;
-              const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+              const pct = progressPct(completed, total);
 
               return (
                 <button

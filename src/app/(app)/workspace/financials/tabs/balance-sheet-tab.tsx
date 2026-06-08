@@ -20,6 +20,7 @@ import {
   type ViewMode,
 } from "./financial-charts";
 import { diagnoseBalanceSheet } from "@/lib/balance-diagnostic";
+import { formatRatioToOne } from "@/lib/formatters";
 
 type Period = "monthly" | "annual";
 
@@ -449,7 +450,7 @@ function BalanceSheetCritique({ slices, year }: { slices: MonthlySlice[]; year: 
     : 999;
 
   if (debtToEquity > 2) {
-    lines.push(`Debt-to-equity ratio is ${debtToEquity.toFixed(1)}:1. That is high. If you need to borrow more or bring in a partner, lenders will notice this.`);
+    lines.push(`Debt-to-equity ratio is ${formatRatioToOne(debtToEquity)}. That is high. If you need to borrow more or bring in a partner, lenders will notice this.`);
   }
 
   if (lines.length === 0) {

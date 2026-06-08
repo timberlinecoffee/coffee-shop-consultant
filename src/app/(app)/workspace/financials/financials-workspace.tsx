@@ -55,6 +55,7 @@ import {
 } from "@/lib/financial-projection";
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
+import { fmtIntegerPct } from "@/lib/formatters";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
 import { PLTab } from "./tabs/pl-tab";
@@ -782,6 +783,7 @@ function ForecastTab({
                         )}
                       </td>
                       <td className="py-2.5 pl-2 pr-4 text-right text-xs text-[var(--muted-foreground)]">
+                        {/* eslint-disable-next-line no-restricted-syntax -- hours-of-operation display: integer if whole, else 1dp; not a currency/percent/ratio */}
                         {sched.open ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h` : ""}
                       </td>
                     </tr>
@@ -794,6 +796,7 @@ function ForecastTab({
                     Weekly total
                   </td>
                   <td className="py-2.5 pl-2 pr-4 text-right text-xs font-semibold text-[var(--foreground)]">
+                    {/* eslint-disable-next-line no-restricted-syntax -- hours-of-operation total: integer if whole, else 1dp; not a currency/percent/ratio */}
                     {weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h
                   </td>
                 </tr>
@@ -1703,14 +1706,14 @@ function ProjectionsTab({
         {[
           {
             label: "Year 1 GM",
-            value: `${y1.gross_margin_pct.toFixed(0)}%`,
+            value: fmtIntegerPct(y1.gross_margin_pct / 100),
             sub: "Gross margin",
             ok: y1.gross_margin_pct >= 60,
           },
           {
             label: "Year 1 Op. Income",
             value: formatCurrency(y1.operating_income, currencyCode),
-            sub: y1.revenue > 0 ? `${((y1.operating_income / y1.revenue) * 100).toFixed(0)}% margin` : "n/a",
+            sub: y1.revenue > 0 ? `${fmtIntegerPct(y1.operating_income / y1.revenue)} margin` : "n/a",
             ok: y1.operating_income >= 0,
           },
           {

@@ -43,6 +43,7 @@ import {
   type Milestone, type LaunchPlanConfig, type TrackKey, type MilestoneStatus,
 } from "@/lib/launch-plan";
 import type { LaunchItemStatus } from "@/types/supabase";
+import { progressPct } from "@/lib/formatters";
 
 export type WorkspaceSection = "milestones" | "playbook" | "all";
 
@@ -361,7 +362,7 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
           <div className="h-2 bg-[var(--neutral-cool-100)] rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500 rounded-full transition-all"
-              style={{ width: `${milestones.length ? (doneCount / milestones.length) * 100 : 0}%` }}
+              style={{ width: `${progressPct(doneCount, milestones.length)}%` }}
             />
           </div>
         </div>
