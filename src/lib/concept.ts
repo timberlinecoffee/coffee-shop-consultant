@@ -338,6 +338,174 @@ export const CONCEPT_COMPONENTS_V2: ReadonlyArray<{
   },
 ];
 
+// TIM-2505: shop-type-aware overrides for hint and emptyPrompt.
+// Keyed by onboarding display strings. "Full cafe with food" falls back to defaults.
+// Both "Mobile cart or kiosk" and "Mobile cart or pop-up" map to mobile variants.
+type ConceptVariant = { hint?: string; emptyPrompt?: string };
+type ConceptVariantMap = Partial<Record<ConceptComponentId, ConceptVariant>>;
+
+const MOBILE_CART_VARIANTS: ConceptVariantMap = {
+  shop_identity: {
+    hint: "Working name for the cart or pop-up. It needs to fit on a sandwich board, a vinyl wrap, and a social handle at the same time. Short and easy to say out loud is more useful than clever.",
+    emptyPrompt: "What are you calling it? Something easy to say at a market and easy to find on Instagram is a good target.",
+  },
+  vision: {
+    hint: "What does this cart exist to do? Where you set up, how long you operate there, and why someone comes out of their way to find you are all part of the answer.",
+    emptyPrompt: "What does the cart exist to do? Where will you operate, and what does a perfect transaction look like for you and the customer?",
+  },
+  target_customer: {
+    hint: "Who is lining up at your pitch spot? Farmers market regulars, office workers near your daily stop, walkers passing through? Describe the person who shows up consistently and tells their friends, not every possible customer.",
+    emptyPrompt: "Who is your customer? Not everyone at the market. The specific person who comes back every week and brings someone new.",
+  },
+  differentiation: {
+    hint: "What makes someone seek you out instead of walking past? On wheels, you cannot rely on location alone. Sourcing, the interaction, a signature drink, or a quality level no one nearby matches can all be the answer.",
+    emptyPrompt: "What do you do that the other cart or the nearest chain does not? What makes someone decide to find you at a different market when you rotate?",
+  },
+  brand_voice: {
+    hint: "How should the cart sound on Instagram, on the sandwich board, and in the first 30 seconds with a new customer? Mobile operators are often the brand in a way a fixed location is not.",
+    emptyPrompt: "A few words that should always come through: on social, on signage, and in the way you talk to someone buying coffee for the first time.",
+  },
+  location: {
+    hint: "List your pitch spots: daily corner, weekly market, event rotation. Include your setup (trailer, pushcart, converted van) and permit status if known. Even rough details now make operations and financial planning sharper later.",
+    emptyPrompt: "Where do you operate? List your primary pitch or rotation schedule. Include your setup type and permit status, even if it is still in progress.",
+  },
+  offering: {
+    hint: "Cart menus are tight by necessity. How many drinks, at most? Any grab-and-go food or coffee only? A tight menu is faster and more consistent. One signature item drives repeat customers.",
+    emptyPrompt: "What do you serve? Espresso drinks, drip, cold brew, pastries? Think about what you can execute through a window or at a table setup with your current equipment.",
+  },
+};
+
+export const SHOP_TYPE_CONCEPT_VARIANTS: Record<string, ConceptVariantMap> = {
+  "Mobile cart or pop-up": MOBILE_CART_VARIANTS,
+  "Mobile cart or kiosk": MOBILE_CART_VARIANTS,
+  "Drive-through": {
+    shop_identity: {
+      hint: "Short and legible from a moving car. It also needs to work on a menu board and as verbal shorthand. If someone can say it in two seconds, you are in good shape.",
+      emptyPrompt: "What is the name? Short enough to read from a car and easy enough that someone can recommend it without spelling it out.",
+    },
+    vision: {
+      hint: "What does this drive-through exist to do? Speed and quality are not at odds, but your vision should say which one you lead with and what that means for how you run the place.",
+      emptyPrompt: "What does this drive-through exist to do? What does a perfect transaction look like for the customer and for you?",
+    },
+    target_customer: {
+      hint: "Who is in your queue? Morning commuters, school drop-off parents, construction crews? Drive-throughs serve a very specific rhythm of day. Describe the person who comes through at 7am five days a week.",
+      emptyPrompt: "Who is your customer? The person who comes through on a schedule, not the occasional visitor. What is their morning like before they reach your window?",
+    },
+    differentiation: {
+      hint: "Speed and consistency are expected at a drive-through. What do you offer that the chain two blocks away does not? Quality, local sourcing, a real interaction, or a price point that makes daily visits make sense are all worth naming.",
+      emptyPrompt: "What makes customers come here instead of the chain? Speed is table stakes. What is the thing that makes them prefer you once they have tried both?",
+    },
+    brand_voice: {
+      hint: "You have a window and maybe 45 seconds. What should that feel like? Warm, efficient, personal? Think about the regulars who come through five days a week and what they should feel every time.",
+      emptyPrompt: "How should the interaction feel? The menu board, the intercom, the window handoff. What comes through consistently across all of it?",
+    },
+    location: {
+      hint: "Describe the site: traffic volume, street visibility, queuing lane length, how cars enter and exit. What drew you to this spot? Specific details now make the operations and buildout planning sharper later.",
+      emptyPrompt: "Describe the site. Traffic flow, how many cars can queue, visibility from the road, and what is nearby. Early detail is better than none.",
+    },
+    offering: {
+      hint: "Shorter menus are faster windows. What are the five drinks you will always carry, and is there a seasonal item? Think through whether food is worth the added complexity for your throughput goals.",
+      emptyPrompt: "What do you serve? A drive-through menu that is too long slows the queue. What are the core drinks, and is there grab-and-go food?",
+    },
+  },
+  "Roastery cafe": {
+    shop_identity: {
+      hint: "Does the name lead with the roasting, the cafe, or both? Names that signal craft and origin tend to attract the accounts and customers who will pay for quality. Working title is fine as long as it points at something real.",
+      emptyPrompt: "What are you calling it? Does the name signal the roasting side, the cafe side, or both? A working title that points somewhere specific is enough.",
+    },
+    vision: {
+      hint: "What does the roastery and cafe combination exist to do? Is the cafe a showcase for the roasting, or is the roastery the badge of quality behind the cafe? Being clear about which one leads shapes every decision from layout to pricing to sales channels.",
+      emptyPrompt: "What does this place exist to do? Is the cafe the main event with roasting as the differentiator, or is production the engine and the cafe the front window?",
+    },
+    target_customer: {
+      hint: "Are you selling to walk-in cafe customers, wholesale accounts (restaurants, offices), or both? Each group wants something different. Coffee people who want to taste the sourcing, buyers who need reliability at volume, and locals who just want a good morning cup are three different customers.",
+      emptyPrompt: "Who are your customers? Wholesale buyers, specialty coffee people, or the neighborhood? Be specific about which one you are building the experience for first.",
+    },
+    differentiation: {
+      hint: "What makes your roastery distinct from others who also claim craft and transparency? Direct-trade sourcing, micro-lot experiments, a specific origin focus, a visible production process? Watching a roast happen has a pull that packaging alone cannot replicate.",
+      emptyPrompt: "What makes your roasting distinct? The sourcing, a process, an origin focus? And what do walk-in customers experience here that they would not get from just buying a bag online?",
+    },
+    brand_voice: {
+      hint: "Does the roastery voice sound like craft production, education, or community? The tone that works for a wholesale pitch sheet is different from the one that works on a cafe menu board. Where do they overlap?",
+      emptyPrompt: "How should the brand sound? On the bag, in the cafe, and in a pitch to a restaurant buyer. What comes through consistently across all three?",
+    },
+    location: {
+      hint: "Is the roasting floor customer-facing? Watching the roast is a draw, but production airflow and noise have spatial requirements. Describe the split between production and customer-facing space, even roughly.",
+      emptyPrompt: "Where does the roasting happen relative to the cafe? Is the floor visible from the bar? Is there a cupping room? A rough layout in words is useful here.",
+    },
+    offering: {
+      hint: "Three potential revenue streams: retail bags, wholesale accounts, cafe by the cup. Which one is the primary business and which ones support it? Pricing should match the tier you are targeting for each channel.",
+      emptyPrompt: "What do you sell and to whom? Retail bags, wholesale accounts, cafe drinks, or all three? Which one is the engine the others depend on?",
+    },
+  },
+  "Espresso bar (drinks only)": {
+    shop_identity: {
+      hint: "Something that works on a single-panel sign and fits a tight footprint. If someone can describe it to a friend in five words, you are in good shape.",
+      emptyPrompt: "What is the name? Think about how it reads on a sign above the bar and how it shows up in a Google Maps pin.",
+    },
+    vision: {
+      hint: "No food is a choice, not a limitation. What does this bar exist to do with a drinks-only focus? Craft at speed, a specific extraction program, a community built around the bar itself?",
+      emptyPrompt: "What does this bar exist to do? No food means something specific. What does the drinks-only focus unlock for you?",
+    },
+    target_customer: {
+      hint: "Who is standing at the bar or lined up at the window? Coffee people who want to talk about the origin, morning commuters who need the best latte on their block, or both? The drinks-only constraint makes your customer's reason for being here sharper.",
+      emptyPrompt: "Who is your customer? The regular who comes every morning and the curious first-timer who saw you on Instagram. Describe both.",
+    },
+    differentiation: {
+      hint: "With no food, the coffee has to fully earn the visit. What about your extraction method, sourcing, staff knowledge, or bar experience makes that true?",
+      emptyPrompt: "What makes someone come here instead of a place with both coffee and food? The drinks have to completely justify the stop.",
+    },
+    brand_voice: {
+      hint: "Drinks-only often signals craft seriousness. How do you carry that without making a casual customer feel like they need to study before ordering? Knowledgeable but not cold is a hard voice to hold. Describe what it sounds like for your bar.",
+      emptyPrompt: "How does the bar sound? On the board, in the way your staff talks about what they are pouring, in the way you greet someone who has never been before.",
+    },
+    location: {
+      hint: "Espresso bars often run under 500 sq ft. Describe the footprint, the foot traffic pattern, and whether you are standing-only, a few stools, or a walk-up window. Even rough detail now makes later planning sharper.",
+      emptyPrompt: "Where is this and what does the footprint look like? Walk-up window, standing bar, or a few seats? Describe the physical situation, even if it is early.",
+    },
+    offering: {
+      hint: "Espresso, drip, cold brew with a tight menu and high quality on each item. Is there a specialty extraction method (slow bar, siphon) or a rotating single-origin program? The offering section should show the quality bar, not just the item list.",
+      emptyPrompt: "What do you serve? List the drink types and any specialty extraction. No food means the drinks program is the whole story.",
+    },
+  },
+};
+
+// Resolve the effective component metadata based on the owner's shop type(s).
+// Multi-select: if only one type is selected, use its variants. If more than one
+// are selected, use the first non-"Full cafe with food" type that has a variant;
+// fall back to defaults if no clear winner. Co-working / Hybrid space content
+// is ready but not yet wired (type not in onboarding — see TIM-2505 task 5).
+export function resolveConceptComponents(
+  shopType: string | string[] | null | undefined,
+): ReadonlyArray<(typeof CONCEPT_COMPONENTS_V2)[number]> {
+  let effectiveType: string | null = null;
+
+  if (Array.isArray(shopType)) {
+    if (shopType.length === 1) {
+      effectiveType = shopType[0];
+    } else if (shopType.length > 1) {
+      // Pick the first non-default type that has a known variant.
+      effectiveType =
+        shopType.find(
+          (t) => t !== "Full cafe with food" && SHOP_TYPE_CONCEPT_VARIANTS[t],
+        ) ?? null;
+    }
+  } else if (typeof shopType === "string") {
+    effectiveType = shopType;
+  }
+
+  if (!effectiveType || !SHOP_TYPE_CONCEPT_VARIANTS[effectiveType]) {
+    return CONCEPT_COMPONENTS_V2;
+  }
+
+  const variantMap = SHOP_TYPE_CONCEPT_VARIANTS[effectiveType];
+  return CONCEPT_COMPONENTS_V2.map((meta) => {
+    const override = variantMap[meta.id];
+    if (!override) return meta;
+    return { ...meta, ...override };
+  });
+}
+
 export function normalizeConceptV2(input: unknown): ConceptDocumentV2 {
   if (!input || typeof input !== "object") {
     return { ...EMPTY_CONCEPT_V2, components: { ...EMPTY_CONCEPT_V2.components } };
