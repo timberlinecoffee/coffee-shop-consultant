@@ -29,9 +29,19 @@ test("menu blend mismatch maps to menu_ticket_mismatch", () => {
   assert.equal(id, "menu_ticket_mismatch");
 });
 
+// TIM-2481 (F12): the buildout grid ↔ Financials equipment line mismatch
+// maps to the resolver. The audit finding emitted by source-suite-checks.ts
+// Check 2 routes through this map to open the equipment_mismatch modal.
+test("capex equipment mismatch maps to equipment_mismatch", () => {
+  const id = crossSuiteConflictIdForAuditFinding({
+    id: "src:capex_equipment_mismatch",
+    rule_id: "cross_suite_mismatch",
+  });
+  assert.equal(id, "equipment_mismatch");
+});
+
 test("other cross_suite_mismatch findings return null — no default fallback", () => {
   for (const auditId of [
-    "src:capex_equipment_mismatch",
     "src:menu_ticket_below_min",
     "src:menu_ticket_above_basket",
     "src:hiring_after_opening",

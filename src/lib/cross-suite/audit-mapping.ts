@@ -16,6 +16,7 @@
 // Resolver registry today: src/app/api/copilot/cross-suite-resolver/route.ts
 //   - hiring_financials_headcount  ← detectHiringFinancialsConflict()
 //   - menu_ticket_mismatch         ← detectMenuTicketMismatch() (TIM-2482)
+//   - equipment_mismatch           ← detectEquipmentMismatch()  (TIM-2481)
 
 import type { AuditFinding } from "../business-plan/audit.ts";
 
@@ -28,6 +29,12 @@ const AUDIT_FINDING_TO_CONFLICT_ID: Readonly<Record<string, string>> = {
   // structural range checks src:menu_ticket_below_min / above_basket — those
   // remain Apply / Go-to-source only (no resolver, no entry here).
   "src:menu_ticket_blend_mismatch": "menu_ticket_mismatch",
+  // TIM-2481 (F12): buildout grid total vs Financials startup_costs.equipment.
+  // The audit emits src:capex_equipment_mismatch (source-suite-checks Check 2)
+  // when the per-item equipment list and the lump-sum capex line disagree by
+  // more than max($100, 1% of capex). The resolver shows side-by-side totals
+  // and offers a sync path.
+  "src:capex_equipment_mismatch": "equipment_mismatch",
 };
 
 export function crossSuiteConflictIdForAuditFinding(

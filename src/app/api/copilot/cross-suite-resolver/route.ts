@@ -30,6 +30,8 @@ import { detectHiringFinancialsConflict } from "@/lib/cross-suite/hiring-financi
 // TIM-2482 (F13): menu↔ticket reconciliation detector.
 import { detectMenuTicketMismatch } from "@/lib/cross-suite/menu-ticket";
 import { blendedTicketCentsFromMenu } from "@/lib/menu";
+// TIM-2481 (F12): buildout grid ↔ Financials equipment line reconciliation.
+import { detectEquipmentMismatch } from "@/lib/cross-suite/equipment-financials";
 import type { CrossSuiteConflict } from "@/lib/cross-suite/types";
 import type {
   BpLocationCandidate,
@@ -158,6 +160,29 @@ async function readAll(
     ),
   );
 
+  // TIM-2481 (F12): buildout grid total + financials startup_costs.equipment.
+  // cost_local is a NUMERIC generated column = unit_cost_cents * quantity / 100
+  // (dollars). Multiply by 100 + round to recover cents.
+  const equipmentRowsTyped = (equipmentRows ?? []) as Array<{
+    id: string;
+    name: string | null;
+    cost_local: number | string | null;
+  }>;
+  const buildoutGridTotalCents = equipmentRowsTyped.reduce(
+    (acc, e) => acc + Math.round(Number(e.cost_local ?? 0) * 100),
+    0,
+  );
+  const buildoutItemCount = equipmentRowsTyped.filter(
+    (e) => Number(e.cost_local ?? 0) > 0,
+  ).length;
+  const financialsEquipmentCents = Math.max(
+    0,
+    Math.round(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Number((financialModel?.startup_costs as any)?.equipment_cents ?? 0),
+    ),
+  );
+
   return {
     planState,
     hiringRows: (hiringRows ?? []) as Array<{
@@ -169,6 +194,9 @@ async function readAll(
     }>,
     menuRows: menuRowsTyped,
     forecastAvgTicketCents,
+    buildoutGridTotalCents,
+    buildoutItemCount,
+    financialsEquipmentCents,
   };
 }
 
@@ -244,6 +272,18 @@ function runResolvers(
     currencyCode: args.planState.meta.currency_code || "USD",
   });
   if (mt) out.push(mt);
+
+  // TIM-2481 (F12): Buildout grid total ↔ Financials startup_costs.equipment.
+  // Tolerance constants live in equipment-financials.ts; the detector returns
+  // null when the grid is empty, the financials line is 0, or the drift is
+  // under tolerance.
+  const eq = detectEquipmentMismatch({
+    buildoutGridTotalCents: args.buildoutGridTotalCents,
+    financialsEquipmentCents: args.financialsEquipmentCents,
+    activeBuildoutItemCount: args.buildoutItemCount,
+    currencyCode: args.planState.meta.currency_code || "USD",
+  });
+  if (eq) out.push(eq);
 
   return out;
 }
@@ -462,6 +502,40 @@ async function applyFinancialsHeadcountChange(
   return !error;
 }
 
+// TIM-2481 (F12) — sync the financials equipment lump sum to the buildout
+// grid total. finalValue arrives as a formatted currency string (e.g.
+// "$45,000.00", "CAD 45,000.00") because the AIReviewModal renders it that
+// way; strip non-digits/decimal and convert to cents.
+async function applyFinancialsEquipmentChange(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string,
+  finalValue: string,
+): Promise<boolean> {
+  const cleaned = finalValue.replace(/[^\d.-]/g, "");
+  const dollars = Number(cleaned);
+  if (!Number.isFinite(dollars) || dollars < 0) return false;
+  // Cap at $10M equipment — defensive against pasted junk that would wipe out
+  // a plan's capex assumptions.
+  if (dollars > 10_000_000) return false;
+  const targetCents = Math.round(dollars * 100);
+
+  const { data: fm } = await supabase
+    .from("financial_models")
+    .select("startup_costs")
+    .eq("plan_id", planId)
+    .maybeSingle();
+  if (!fm?.startup_costs) return false;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sc = fm.startup_costs as any;
+  sc.equipment_cents = targetCents;
+
+  const { error } = await supabase
+    .from("financial_models")
+    .upsert({ plan_id: planId, startup_costs: sc }, { onConflict: "plan_id" });
+  return !error;
+}
+
 // TIM-2482 (F13) — sync the forecast avg ticket to the menu-blended value.
 // finalValue arrives as a formatted currency string (e.g. "$8.20", "CAD 8.20")
 // because the AIReviewModal renders it that way; strip non-digits/decimal and
@@ -548,6 +622,17 @@ export async function POST(request: NextRequest) {
       ) {
         // TIM-2482 (F13): sync Forecast Inputs avg ticket to the menu blend.
         ok = await applyFinancialsAvgTicketChange(
+          resolved.supabase,
+          resolved.ctx.planId,
+          change.finalValue,
+        );
+      } else if (
+        field.suiteKey === "financials" &&
+        field.recordId === "startup" &&
+        field.column === "equipment_cents"
+      ) {
+        // TIM-2481 (F12): sync startup_costs.equipment_cents to grid total.
+        ok = await applyFinancialsEquipmentChange(
           resolved.supabase,
           resolved.ctx.planId,
           change.finalValue,

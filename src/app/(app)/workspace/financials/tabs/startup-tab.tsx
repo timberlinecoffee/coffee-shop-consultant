@@ -6,6 +6,8 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
+// TIM-2481 (F12): buildout grid vs Financials equipment line reconciliation pill.
+import { EquipmentReconciliationBanner } from "@/components/cross-suite/EquipmentReconciliationBanner";
 
 interface Props {
   startupCosts: StartupCosts;
@@ -260,6 +262,14 @@ export function StartupTab({
           formatCurrency={f}
         />
       )}
+
+      {/* TIM-2481 (F12): cross-suite resolver pill — surfaces when the
+          buildout grid total drifts meaningfully (max($100, 1% of capex))
+          from Financials startup_costs.equipment_cents. Tighter than the
+          TIM-2524 legacy 10% warning below, and opens the structured
+          resolver modal (side-by-side comparison, sync path through the
+          AIReviewModal). */}
+      <EquipmentReconciliationBanner origin="financials" />
 
       {/* TIM-2524: equipment mismatch warning — shown when startup_costs.equipment_cents
           and the buildout workspace total disagree by more than 10%. */}

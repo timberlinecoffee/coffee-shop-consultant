@@ -16,6 +16,8 @@ import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPan
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
 import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
+// TIM-2481 (F12): buildout grid vs Financials equipment line reconciliation pill.
+import { EquipmentReconciliationBanner } from "@/components/cross-suite/EquipmentReconciliationBanner";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -462,6 +464,11 @@ export function BuildoutEquipmentWorkspace({
           hasAiItems={hasAiEquipment}
           onSeed={seedEquipment}
         />
+        {/* TIM-2481 (F12): inline reconciliation banner — surfaces only when
+            the buildout grid total drifts meaningfully from Financials
+            startup_costs.equipment. Sync button opens the cross-suite
+            resolver on equipment_mismatch. */}
+        <EquipmentReconciliationBanner origin="buildout" className="mb-3" />
         <SectionedListGrid
           listType="equipment"
           planId={planId}
