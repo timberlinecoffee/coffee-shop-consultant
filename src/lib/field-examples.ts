@@ -47,6 +47,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "The Commons. We wanted people to feel like this place belonged to the neighborhood, not to us. The name needed to say that.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "Copper and Wheel. The copper came from the color of the first espresso machine I saved up for. The wheel is literal. We go where the people are. It needed to be easy to say when someone is describing us to a friend.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "Lowland Roasters. The name comes from the geography of Middle Tennessee. We wanted something that sounded like it had been there a while and pointed somewhere specific rather than describing what we do.",
+    },
   ],
 
   vision: [
@@ -67,6 +79,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe, Hamtramck MI",
       answer:
         "A place for the neighborhood to land. No wifi, no rush. You can come in for a quick drip or sit for two hours and no one bothers you. We serve the people who've been on this block for 40 years alongside the people who just moved in.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "A cart at three weekly markets and a daily office stop in RiNo. We make one style of coffee well: pulled tight, served fast, nothing over 12 ounces. If someone comes back to the market specifically to find us, that is the job done.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "A production roastery first. The cafe is the front window to what we make. Walk-in customers can watch a roast from their bar stool. The coffee we serve by the cup is the same coffee we sell wholesale to fifteen restaurant accounts in Nashville. If a guest asks where to get our coffee after they leave, we want two answers: our bags, and one of the restaurants we supply.",
     },
   ],
 
@@ -89,6 +113,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "The whole block. Long-time Hamtramck residents, the families who moved in over the past decade, retirees who drink drip and younger folks who want a real espresso. We're not trying to pick one group.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "Farmers market regulars who already care about where their food comes from. The kind of person who stops at the vegetable stand and asks about the farm. When they ask us about the origin, we have an answer. The other group is office workers at the daily stop. They want something genuinely good in under three minutes and they have stopped going to the chain across the street.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "Two groups. First are specialty coffee people who have heard about us through the restaurant accounts and want to taste the sourcing directly. Second are regular neighborhood walk-ins who do not care about the roastery. They just want a good cup in a calm room. We need both to cover the rent on a production facility with a cafe attached.",
+    },
   ],
 
   differentiation: [
@@ -109,6 +145,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe, Hamtramck MI",
       answer:
         "We don't have wifi. That's not an oversight. It's a decision. People come here because they want to be around other people. The regulars bring their neighbors. We've never run an ad and we've been full on weekday mornings since month four.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "We are the only cart in the Denver market circuit running a real single-origin program. The farmers market crowd is already buying direct-trade food. We fit that ethos in the cup. No syrups, no blended drinks. The quality line is what gets people to find us at a different market when we rotate.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "We roast in front of the customer. Most wholesale roasters keep production off the floor. We put the Probat where the guest can see it. That is not theater. The roast schedule runs whether anyone is watching. It just happens to be visible. Our wholesale pitch is the same: come see what you are buying.",
     },
   ],
 
@@ -131,6 +179,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "Unhurried and real. We don't use words like artisanal or curated. If something is good, we say it's good. The voice is your neighbor who also happens to make excellent coffee.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "Direct and curious. We do not explain ourselves on the menu board. If someone asks, we talk. If they do not ask, we make it fast and good and let them go. The feeling is: we know what we are doing and we are not going to make a whole thing of it.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "Production-minded but not cold. We are making something and you can watch us make it. The voice on the bag and on the bar board is the same: specific, honest, no performance. We use origin and process names on the menu board but we do not lecture. If you ask, we will talk for twenty minutes.",
+    },
   ],
 
   location: [
@@ -152,6 +212,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "Jos Campau corridor in Hamtramck. Old commercial strip, half occupied. We picked this spot because the community already gathered here for the Polish and Bangladeshi restaurants on either side. We added a cafe into an ecosystem that already existed.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "RiNo office park on weekday mornings, Boulder farmers market on Saturday, Denver Central Market on Sunday. Custom 8-foot trailer with a La Marzocca GS3. City of Denver mobile vendor permit. The trailer parks off-site and we tow to each spot.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "Wedgewood-Houston neighborhood, Nashville. 2,400 sq ft: roasting floor in the rear, 18-seat bar along the wall, roasting visible from every bar stool. Loading dock on the side street for green coffee delivery. Three blocks from Nations neighborhood foot traffic.",
+    },
   ],
 
   offering: [
@@ -172,6 +244,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe, Hamtramck MI",
       answer:
         "Drip, a simple espresso bar, and a full breakfast menu until noon. Pierogies and eggs after that. We serve what the neighborhood wants at prices the neighborhood can afford. Average ticket is around nine dollars.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart, Denver CO",
+      answer:
+        "Six drinks: espresso, cortado, flat white, oat milk latte, drip from the same origin, and a rotating cold brew. No food. We sell retail bags on weekends. Average ticket is seven dollars.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe, Nashville TN",
+      answer:
+        "Cafe: espresso program and pour-over only, no blended drinks, no food. Retail: 250g and 500g bags of current offerings, typically three origins. Wholesale: 12kg to 25kg orders for restaurant accounts on a two-week cadence. Average cafe ticket is nine dollars. Wholesale accounts average 18kg per month.",
     },
   ],
 
@@ -196,6 +280,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "They ran into a neighbor they hadn't seen in months. The coffee was good. They sat longer than they planned and didn't feel bad about it.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "They ordered a cortado, asked where the coffee was from, and we had a real answer. They paid and kept walking. On their way out of the market they stopped to tell someone else about us. That is the whole thing.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "They came in for a pour-over, watched a roast start while they waited, and asked if they could buy a bag of what was just roasted. We said yes. They asked where else they could get it. We named two restaurants. They went to one the next week.",
+    },
   ],
 
   vision_synthesized: [
@@ -216,6 +312,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe",
       answer:
         "A neighborhood gathering spot where the coffee is good and no one rushes you. No wifi, no agenda. The whole block is welcome here.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "A mobile cart at Denver markets and a daily RiNo stop. Single-origin espresso, nothing over 12 ounces, served fast. We want to be the coffee people seek out, not just the coffee that is nearby.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "A production roastery where the public can watch the work. The cafe is the front of the same operation that supplies fifteen Nashville restaurants. Walk in for a coffee. Leave knowing where it came from and where else you can get it.",
     },
   ],
 
@@ -238,6 +346,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "Hamtramck, Michigan. Working families, long-time Polish-American residents, Bangladeshi and Yemeni immigrant families who arrived over the past 20 years, younger renters who moved here because Detroit proper was too expensive.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "Three spots: a Saturday farmers market in Boulder, a Sunday market in Denver, and a weekday stop at an office park in RiNo. Each crowd is slightly different but they all already care about the provenance of what they buy.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "Wedgewood-Houston, Nashville. Former industrial neighborhood with a mix of production spaces, galleries, and restaurants. The foot traffic is not high but the people who come tend to be intentional. Our wholesale accounts started with the restaurants on the same block.",
+    },
   ],
 
   ideal_customer: [
@@ -258,6 +378,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe",
       answer:
         "A 70-year-old who has lived on this block for 40 years. Drinks drip, reads the paper, talks to anyone who comes in. He's the first one to tell a new customer what to order.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "A freelance designer who hits the Sunday market every week, knows our rotation, and asks when we are getting more of the Kenyan. She bought a bag last month and brought her husband the week after. Those two now show up every Sunday.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "A restaurant buyer who drove forty minutes to taste through the current offerings before placing their next order. She sits at the bar, asks to compare two origins side by side, and ends up buying 20kg on the spot. That visit is worth more than a week of walk-in retail.",
     },
   ],
 
@@ -280,6 +412,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "Some are heading to church, some to the grocery store. Others just woke up and aren't in a hurry. A lot of our regulars sit for an hour.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "At the market, they are shopping. The coffee is part of the ritual of walking the stalls. At the office stop, they are heading into a workday and the coffee is the transition. In both cases, they are moving and we work within that.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "Walk-in retail customers tend to be out exploring the neighborhood or stopping on a commute through Wedgewood. Wholesale buyers come with a purpose. The two groups do not overlap much but they share the same space and neither seems to mind.",
+    },
   ],
 
   target_synthesized: [
@@ -300,6 +444,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe",
       answer:
         "The whole neighborhood. Long-time residents and new arrivals, every generation, every shift. We're not trying to pick one person. We're trying to serve the block.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "People who already buy with intention and appreciate when what they drink has a story behind it. They are not looking for the fastest option. They are looking for the best option that fits into the time they have.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "Coffee professionals and specialty buyers who want to taste the sourcing at the source, and neighborhood walk-ins who just want a good cup in a place that takes the coffee seriously. The roastery makes both groups feel like they came to the right place.",
     },
   ],
 
@@ -322,6 +478,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "This corner had nothing that served everybody. The newer places coming in were aimed at one crowd. The long-time spots were closing. There was a gap for somewhere that made everyone on the block feel welcome.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "Every other cart at the markets was running commercial beans and flavored syrups. The farmers market crowd was spending twelve dollars on a jar of honey and asking about the beekeeper. Nobody was offering them that kind of story in the coffee.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "I spent eight years selling other roasters' coffee to Nashville restaurants. Every buyer I called had the same question: can I come see where this is made? Nobody local could say yes. We are the answer to that question.",
+    },
   ],
 
   closest_competitor: [
@@ -342,6 +510,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe",
       answer:
         "The breakfast spots on Jos Campau. They have the food, we have the coffee. Some people go to both. We don't think of them as the competition.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "There is one other cart at the Saturday market. Friendly people, syrup-heavy menu, quick service. We do not compete on speed and we do not compete on sweetness. We compete on the quality of the shot and the story behind it.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "Two Nashville roasters supply some of the same restaurant accounts. Both are good. Neither has a customer-facing production floor. If a buyer wants to see the roast before they commit to a contract, we are the only option.",
     },
   ],
 
@@ -364,6 +544,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       answer:
         "No wifi. People come here because they want to actually be somewhere. That's rare. It also means our regulars come back because they like being around other people, not just because we're convenient.",
     },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "The only single-origin espresso cart at any of the three markets we work. Rotating origins, retail bags on weekends, no syrups. If you want a vanilla latte, we are not your stop. If you want to taste the actual coffee, we are.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "The only Nashville roastery where wholesale buyers, retail customers, and walk-in cafe guests all share the same room and watch the same roast. The production floor is not a back-of-house operation. It is the whole point.",
+    },
   ],
 
   diff_synthesized: [
@@ -384,6 +576,18 @@ export const FIELD_EXAMPLES: Record<FieldExampleKey, FieldExample[]> = {
       shopType: "community cafe",
       answer:
         "No wifi, real food, and a room where people actually talk to each other. We don't run ads. Our regulars send us their neighbors. That kind of loyalty takes consistency over years, not a marketing budget.",
+    },
+    {
+      shopName: "Copper & Wheel",
+      shopType: "mobile espresso cart",
+      answer:
+        "Single-origin program on wheels. The markets we work already have customers who buy based on provenance. We give them that in the cup. No syrups, no blended drinks, no compromise on the shot quality just because we are operating from a trailer.",
+    },
+    {
+      shopName: "Lowland Roasters",
+      shopType: "production roastery with cafe",
+      answer:
+        "A production roastery that put the Probat on the cafe floor. Our wholesale pitch is the same as our cafe experience: come see what you are buying. That kind of transparency is not common and it is not easy to copy.",
     },
   ],
 };

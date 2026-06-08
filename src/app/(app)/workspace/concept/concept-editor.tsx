@@ -25,6 +25,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import {
   CONCEPT_COMPONENTS_V2,
+  resolveConceptComponents,
   getConceptV2Progress,
   isConceptV2Complete,
   type ConceptComponentId,
@@ -55,6 +56,7 @@ interface ConceptWorkspaceProps {
   initialUpdatedAt: string | null;
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
+  shopType?: string | string[] | null;
 }
 
 export function ConceptWorkspace({
@@ -63,6 +65,7 @@ export function ConceptWorkspace({
   initialUpdatedAt,
   canEdit,
   initialTrialMessagesUsed,
+  shopType,
 }: ConceptWorkspaceProps) {
   const [doc, setDoc] = useState<ConceptDocumentV2>(initialDoc);
   const [saveState, setSaveState] = useState<SaveState>({
@@ -101,6 +104,12 @@ export function ConceptWorkspace({
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
+  // TIM-2505: shop-type-aware hints/emptyPrompts. shopType is stable (set at
+  // page load from onboarding data), so this memo never re-runs during a session.
+  const resolvedComponents = useMemo(
+    () => resolveConceptComponents(shopType),
+    [shopType],
+  );
 
   // TIM-1147: auto-promote workspace status to In Progress on first edit.
   useEffect(() => {
@@ -464,7 +473,7 @@ export function ConceptWorkspace({
 
         {/* Component cards */}
         <div className="space-y-4">
-          {CONCEPT_COMPONENTS_V2.map((meta) => {
+          {resolvedComponents.map((meta) => {
             const comp = doc.components[meta.id];
             const isEmpty = !comp.content.trim();
             const isActivated = activatedCards.has(meta.id);
