@@ -20,8 +20,8 @@ import {
   type PlanOverview,
   type FinancialHealthSummary,
   type HealthMetric,
-  type HealthTier,
 } from "@/lib/dashboard/plan-overview";
+import { TIER_STYLES } from "@/lib/financials/health-metrics";
 import { TrialBanner } from "./_components/trial-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
@@ -301,32 +301,8 @@ function StatCard({
 
 // ── Section 3 — Financial Health (TIM-2525) ───────────────────────────────
 
-const TIER_STYLES_DASH: Record<
-  HealthTier,
-  { wrap: string; dot: string; chip: string; chipLabel: string }
-> = {
-  green: {
-    wrap: "border-green-200 bg-green-50",
-    dot: "bg-green-500",
-    chip: "bg-green-100 text-green-800",
-    chipLabel: "On track",
-  },
-  yellow: {
-    wrap: "border-amber-200 bg-amber-50",
-    dot: "bg-amber-500",
-    chip: "bg-amber-100 text-amber-900",
-    chipLabel: "Watch",
-  },
-  red: {
-    wrap: "border-red-200 bg-red-50",
-    dot: "bg-red-500",
-    chip: "bg-red-100 text-red-800",
-    chipLabel: "Needs attention",
-  },
-};
-
 function FinancialHealthCard({ health }: { health: FinancialHealthSummary }) {
-  const s = TIER_STYLES_DASH[health.worst];
+  const s = TIER_STYLES[health.worst];
   const redCount = health.metrics.filter((m: HealthMetric) => m.tier === "red").length;
   const yellowCount = health.metrics.filter(
     (m: HealthMetric) => m.tier === "yellow"
@@ -364,7 +340,7 @@ function FinancialHealthCard({ health }: { health: FinancialHealthSummary }) {
       </div>
       <div className="divide-y divide-current/10">
         {health.metrics.map((m: HealthMetric) => {
-          const ms = TIER_STYLES_DASH[m.tier];
+          const ms = TIER_STYLES[m.tier];
           return (
             <div key={m.key} className="px-5 py-3 flex items-center justify-between gap-3">
               <p className="text-xs text-[var(--foreground)] font-medium">{m.label}</p>

@@ -50,27 +50,27 @@ function laborCopy(pct: number, tier: HealthTier): string {
   if (tier === "green")
     return `Labor at ${f}% is within the healthy range. You have room before it becomes a squeeze.`;
   if (tier === "yellow")
-    return `Labor at ${f}% is approaching the caution zone. Opening months often run a little high — plan to get below 30% once you reach full volume.`;
+    return `Labor at ${f}% is approaching the caution zone. Opening months often run a little high. Plan to get below 30% once you reach full volume.`;
   return `Labor at ${f}% is above the 35% red line for coffee shops. Review your staffing schedule or raise average ticket to bring this down.`;
 }
 
 function cogsCopy(pct: number, tier: HealthTier): string {
   const f = pct.toFixed(1);
   if (tier === "green")
-    return `COGS at ${f}% — good. You're keeping ingredient and supply costs low relative to revenue.`;
+    return `COGS at ${f}% is in good shape. You're keeping ingredient and supply costs low relative to revenue.`;
   if (tier === "yellow")
     return `COGS at ${f}% is in the caution range. Double-check your pour sizes, supplier costs, and pricing to make sure margins hold.`;
-  return `COGS at ${f}% is above the 38% threshold. Ingredient and supply costs are eating too much of each sale — revisit your COGS percentage or prices.`;
+  return `COGS at ${f}% is above the 38% threshold. Ingredient and supply costs are eating too much of each sale. Revisit your COGS percentage or prices.`;
 }
 
 function breakEvenCopy(month: number | null, tier: HealthTier): string {
   if (month === null)
     return "Your projections don't show a profitable month in the 5-year window. Check your costs and revenue assumptions.";
   if (tier === "green")
-    return `Profitability projected by Month ${month} — strong. Getting profitable this quickly gives you a real cash cushion early on.`;
+    return `Profitability projected by Month ${month} is strong. Getting profitable this quickly gives you a real cash cushion early on.`;
   if (tier === "yellow")
     return `Month ${month} is your first projected profit. That's within a reasonable range, but watch cash flow carefully through the ramp.`;
-  return `Your first profitable month doesn't arrive until Month ${month}. That's a long runway — make sure your funding covers the losses until then.`;
+  return `Your first profitable month doesn't arrive until Month ${month}. That's a long runway. Make sure your funding covers the losses until then.`;
 }
 
 function workingCapitalCopy(ratio: number, tier: HealthTier): string {
@@ -78,7 +78,7 @@ function workingCapitalCopy(ratio: number, tier: HealthTier): string {
   if (tier === "green")
     return `Your funding is ${f}× your opening costs. You have a real cushion for unexpected expenses and slow early months.`;
   if (tier === "yellow")
-    return `Your funding is ${f}× your opening costs — tight but workable. Any overrun in startup costs or slow early months will strain cash. Consider keeping a reserve.`;
+    return `Your funding is ${f}× your opening costs. Tight but workable. Any overrun in startup costs or slow early months will strain cash. Consider keeping a reserve.`;
   return `Your funding (${f}×) is below your opening costs. You may run short before you open or in the first months. Revisit your funding plan.`;
 }
 
@@ -163,6 +163,32 @@ export function computeFinancialHealthMetrics(
 
   return metrics;
 }
+
+// ── Tier styles (shared by panel + dashboard card) ────────────────────────────
+
+export const TIER_STYLES: Record<
+  HealthTier,
+  { wrap: string; dot: string; chip: string; chipLabel: string }
+> = {
+  green: {
+    wrap: "border-green-200 bg-green-50",
+    dot: "bg-green-500",
+    chip: "bg-green-100 text-green-800",
+    chipLabel: "On track",
+  },
+  yellow: {
+    wrap: "border-amber-200 bg-amber-50",
+    dot: "bg-amber-500",
+    chip: "bg-amber-100 text-amber-900",
+    chipLabel: "Watch",
+  },
+  red: {
+    wrap: "border-red-200 bg-red-50",
+    dot: "bg-red-500",
+    chip: "bg-red-100 text-red-800",
+    chipLabel: "Needs attention",
+  },
+};
 
 // ── Summary helper ─────────────────────────────────────────────────────────────
 

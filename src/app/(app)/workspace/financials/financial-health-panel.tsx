@@ -9,35 +9,9 @@ import { type MonthlySlice, type FinancialInputs } from "@/lib/financial-project
 import {
   computeFinancialHealthMetrics,
   worstTier,
+  TIER_STYLES,
   type HealthMetric,
-  type HealthTier,
 } from "@/lib/financials/health-metrics";
-
-// ── Design tokens for each tier ───────────────────────────────────────────────
-
-const TIER_STYLES: Record<
-  HealthTier,
-  { wrap: string; dot: string; chip: string; chipLabel: string }
-> = {
-  green: {
-    wrap: "border-green-200 bg-green-50",
-    dot: "bg-green-500",
-    chip: "bg-green-100 text-green-800",
-    chipLabel: "On track",
-  },
-  yellow: {
-    wrap: "border-amber-200 bg-amber-50",
-    dot: "bg-amber-500",
-    chip: "bg-amber-100 text-amber-900",
-    chipLabel: "Watch",
-  },
-  red: {
-    wrap: "border-red-200 bg-red-50",
-    dot: "bg-red-500",
-    chip: "bg-red-100 text-red-800",
-    chipLabel: "Needs attention",
-  },
-};
 
 // ── MetricRow ─────────────────────────────────────────────────────────────────
 
@@ -105,7 +79,7 @@ export function FinancialHealthPanel({ slices, financialInputs }: Props) {
     worst === "green"
       ? "Your plan is within healthy benchmarks for a coffee shop."
       : worst === "yellow"
-      ? "These numbers are close to the edge — worth reviewing before you open."
+      ? "These numbers are close to the edge. Worth reviewing before you open."
       : "These are outside healthy benchmarks for a coffee shop. Address them now.";
 
   return (
@@ -115,7 +89,7 @@ export function FinancialHealthPanel({ slices, financialInputs }: Props) {
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${s.dot}`} />
           <p className="text-sm font-bold text-[var(--foreground)] leading-tight">
-            Financial Health — {summaryTitle}
+            Financial Health: {summaryTitle}
           </p>
         </div>
         <p className="text-xs text-[var(--gray-1300)] mt-1 leading-relaxed">
