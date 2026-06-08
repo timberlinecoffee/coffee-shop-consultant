@@ -13,7 +13,8 @@ import {
 import type { CritiqueResult } from "@/lib/financials";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
-import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
+import { calibrateStartupCosts } from "@/lib/financials/startup-cost-calibration";
+import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
 
@@ -92,6 +93,18 @@ export default async function FinancialsWorkspacePage() {
     forecastInputs.currency_code = accountSettings.currencyCode;
     forecastInputs.fiscal_year_start_month =
       accountSettings.localization.fiscalYearStartMonth;
+    // TIM-2519 (CQ-03): swap the legacy $244k template for shop-type ×
+    // city-tier calibration. Falls back to onboarding_data.location when no
+    // signed location_candidate exists yet.
+    const planGeo = await resolvePlanGeo(supabase, plan.id);
+    const onboardingLocation = (profileData?.onboarding_data?.location ?? null) as
+      | { city?: string | null; countryCode?: string | null }
+      | null;
+    forecastInputs.startup_costs = calibrateStartupCosts({
+      shopTypes,
+      city: planGeo.city ?? onboardingLocation?.city ?? null,
+      countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
+    });
     const { data: created } = await supabase
       .from("financial_models")
       .insert({

@@ -8,7 +8,8 @@ import type { NextRequest } from "next/server";
 import { defaultMonthlyProjections } from "@/lib/financial-projection";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
-import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
+import { calibrateStartupCosts } from "@/lib/financials/startup-cost-calibration";
+import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 
 export async function GET() {
   const supabase = await createClient();
@@ -40,11 +41,13 @@ export async function GET() {
   // new model was hard-coded to USD regardless of the user's selected currency,
   // so the Financials currency dropdown (and every downstream surface that
   // reads forecast_inputs.currency_code) showed "$" for non-USD accounts.
-  const [accountSettings, profileResult, planMinimumWage] = await Promise.all([
+  const [accountSettings, profileResult, planMinimumWage, planGeo] = await Promise.all([
     getAccountSettings(supabase, user.id),
     supabase.from("users").select("onboarding_data").eq("id", user.id).maybeSingle(),
     // TIM-2518: seed barista wage at-or-above the resolved local minimum.
     resolvePlanMinimumWage(supabase, plan.id),
+    // TIM-2519: same (city, country) signal drives the startup-cost calibrator.
+    resolvePlanGeo(supabase, plan.id),
   ]);
   const forecastInputs = defaultMonthlyProjections(planMinimumWage);
   forecastInputs.currency_code = accountSettings.currencyCode;
@@ -53,6 +56,17 @@ export async function GET() {
   const shopTypes = Array.isArray(profileResult.data?.onboarding_data?.shop_type)
     ? (profileResult.data.onboarding_data.shop_type as string[])
     : [];
+  // TIM-2519 (CQ-03): replace the single $244k template with a shop-type ×
+  // city-tier calibration. Falls back to onboarding_data.location when the
+  // plan has no signed location_candidate yet (resolvePlanGeo returns null).
+  const onboardingLocation = (profileResult.data?.onboarding_data?.location ?? null) as
+    | { city?: string | null; countryCode?: string | null }
+    | null;
+  forecastInputs.startup_costs = calibrateStartupCosts({
+    shopTypes,
+    city: planGeo.city ?? onboardingLocation?.city ?? null,
+    countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
+  });
 
   const { data: created, error } = await supabase
     .from("financial_models")
