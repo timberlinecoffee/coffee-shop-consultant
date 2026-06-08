@@ -107,6 +107,19 @@ function summarizeMenu(items: MenuItemRow[] | null): string {
   return lines.length > 0 ? lines.join("\n") : "No menu items yet.";
 }
 
+// ── Shared voice rules (TIM-2528) ────────────────────────────────────────────
+// Appended to every builder's prompt so AI-generated SOP / role / vendor /
+// training copy stays in Groundwork voice instead of corporate policy-manual
+// register.
+
+const VOICE_RULES = `Voice rules:
+- Write like the owner's most experienced friend, not a corporate policy writer.
+- Plain English. Short sentences. Specific steps a barista can follow on day one.
+- NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, seamlessly, robust, holistic, comprehensive, innovative, passionate about, actually, genuinely, honestly.
+- NEVER use em dashes (—). Use ( -- ) if you need a break.
+- No passive voice in instructions. "Pull the shot at 9 bars" not "Shot pressure should be maintained at 9 bars."
+- Specific beats vague: "wipe steam wand after every shot" beats "maintain equipment cleanliness."`;
+
 // ── SOP prompt ──────────────────────────────────────────────────────────────
 
 function buildSopPrompt(
@@ -142,7 +155,7 @@ function buildSopPrompt(
   const conceptBlock =
     conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
 
-  return `You are a senior coffee shop operations consultant. The owner is preparing the "${categoryLabel}" Standard Operating Procedure for their shop. This is a planning binder for opening day — policies and templates, not a daily-execution log. Improve the current SOP using their concept and menu context.
+  return `You are a knowledgeable friend who has run coffee shops and is helping this owner build their opening playbook. The owner is preparing the "${categoryLabel}" Standard Operating Procedure for their shop. This is a planning binder for opening day — policies and templates, not a daily-execution log. Improve the current SOP using their concept and menu context.
 
 Shop context:
 ${conceptBlock}
@@ -179,7 +192,9 @@ ${durationGuidance}
 - Steps describe the policy or template, not a daily log entry. Do not include language like "record on the log" or "enter today's count".
 - "text" is full sentence-form copy. Do NOT title-case.
 - "station" values MUST be one of "Bar", "Retail Floor", "Restroom", "Walk-In", "Dish" (already Title Case).
-- Reference the shop's specific concept and menu when it makes the step better; do not invent equipment the owner didn't mention.`;
+- Reference the shop's specific concept and menu when it makes the step better; do not invent equipment the owner didn't mention.
+
+${VOICE_RULES}`;
 }
 
 function parseAiCategory(raw: string): SopCategory | null {
@@ -239,7 +254,7 @@ function buildRolesPrompt(
   const conceptBlock =
     conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
 
-  return `You are a senior coffee shop operations consultant. The owner is defining the roles and shift responsibilities for their shop. This is a planning binder — who-does-what on every shift, not a per-shift assignment log.
+  return `You are a knowledgeable friend who has run coffee shops and is helping this owner build their opening playbook. The owner is defining the roles and shift responsibilities for their shop. This is a planning binder — who-does-what on every shift, not a per-shift assignment log.
 
 Shop context:
 ${conceptBlock}
@@ -265,7 +280,9 @@ Rules:
 - 4-7 roles. Cover bar, register/front of house, food/pastry, floor, manager on duty at minimum.
 - No emojis.
 - "role" is a Title Case label.
-- "responsibilities" is sentence-form prose, two or three sentences max.`;
+- "responsibilities" is sentence-form prose, two or three sentences max.
+
+${VOICE_RULES}`;
 }
 
 function parseAiRoles(raw: string): RolesSection | null {
@@ -311,7 +328,7 @@ function buildVendorContactsPrompt(
   const conceptBlock =
     conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
 
-  return `You are a senior coffee shop operations consultant. The owner is preparing the vendor and emergency contacts quick-reference card for their shop. The owner will fill in names and numbers; you supply the rows and the helpful notes.
+  return `You are a knowledgeable friend who has run coffee shops and is helping this owner build their opening playbook. The owner is preparing the vendor and emergency contacts quick-reference card for their shop. The owner will fill in names and numbers; you supply the rows and the helpful notes.
 
 Shop context:
 ${conceptBlock}
@@ -338,7 +355,9 @@ Rules:
 - "contact_name", "phone", "email" should be empty strings — the owner fills these in.
 - "notes" is a short helpful hint, one sentence.
 - No emojis.
-- "label" is Title Case.`;
+- "label" is Title Case.
+
+${VOICE_RULES}`;
 }
 
 function parseAiVendorContacts(raw: string): VendorContactsSection | null {
@@ -387,7 +406,7 @@ function buildTrainingPrompt(
   const conceptBlock =
     conceptLines.length > 0 ? conceptLines.join("\n") : "- (concept not yet filled in)";
 
-  return `You are a senior coffee shop operations consultant. The owner is preparing the new-hire training checklist for their shop, broken into Day 1, Week 1, and Month 1 milestones.
+  return `You are a knowledgeable friend who has run coffee shops and is helping this owner build their opening playbook. The owner is preparing the new-hire training checklist for their shop, broken into Day 1, Week 1, and Month 1 milestones.
 
 Shop context:
 ${conceptBlock}
@@ -413,7 +432,9 @@ Rules:
 - Month 1 covers solo bar, cross-training, 30-day check-in.
 - "phase" must be exactly "day_1", "week_1", or "month_1".
 - "text" is sentence-form, concrete enough that the trainer can verify it.
-- No emojis.`;
+- No emojis.
+
+${VOICE_RULES}`;
 }
 
 function parseAiTraining(raw: string): TrainingSection | null {

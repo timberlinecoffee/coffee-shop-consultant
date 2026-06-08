@@ -282,7 +282,7 @@ export function detectHiringFinancialsConflict(
       ? trimCandidates.map((r) => ({
           id: suggestionId(["hiring_financials_headcount", "trim_hiring", "hiring", r.id, "headcount"]),
           fieldId: `cross_suite:hiring_financials_headcount:trim_hiring:hiring:${r.id}:headcount`,
-          fieldLabel: `Hiring — ${r.role_title || "Untitled role"} headcount`,
+          fieldLabel: `Hiring -- ${r.role_title || "Untitled role"} headcount`,
           originalValue: String(r.headcount),
           proposedValue: "0",
           isStructured: true,
@@ -370,15 +370,15 @@ export function detectHiringFinancialsConflict(
       .map((r) => ({
         id: suggestionId(["hiring_financials_headcount", "phased_hires", "hiring", r.id, "start_date"]),
         fieldId: `cross_suite:hiring_financials_headcount:phased_hires:hiring:${r.id}:start_date`,
-        fieldLabel: `Hiring — ${r.role_title || "Untitled role"} start date`,
-        originalValue: r.start_date ?? "—",
+        fieldLabel: `Hiring -- ${r.role_title || "Untitled role"} start date`,
+        originalValue: r.start_date ?? "(empty)",
         proposedValue: shiftMonths(r.start_date, phaseMonths) ?? "(shift +3 months)",
         isStructured: true,
         workspaceLabel: "Hiring & Onboarding",
       }));
     pathCPhase = {
       id: "phased_hires",
-      label: "Stage the hires — open with fewer, scale up once revenue confirms",
+      label: "Stage the hires -- open with fewer, scale up once revenue confirms",
       summary: `Open day one with ${finHeadcount} people, then push the last ${headcountDelta} start date${headcountDelta === 1 ? "" : "s"} out to month ${phaseMonths + 1}. No budget change; the gap closes by delaying spend until revenue trajectory is proven.`,
       downstreamEffects: buildPhaseEffects(
         trimCandidates,
@@ -436,7 +436,7 @@ function buildSyncSuggestions(
     {
       id: suggestionId(["hiring_financials_headcount", "raise_budget", "financials", "payroll", "monthly_cents"]),
       fieldId: "cross_suite:hiring_financials_headcount:raise_budget:financials:payroll:monthly_cents",
-      fieldLabel: "Financials — Monthly payroll budget",
+      fieldLabel: "Financials -- Monthly payroll budget",
       originalValue: "(current)",
       proposedValue: fmtUsdCents(hiringMonthlyCents, cc),
       isStructured: true,
@@ -445,7 +445,7 @@ function buildSyncSuggestions(
     {
       id: suggestionId(["hiring_financials_headcount", "raise_budget", "financials", "personnel", "headcount"]),
       fieldId: "cross_suite:hiring_financials_headcount:raise_budget:financials:personnel:headcount",
-      fieldLabel: "Financials — Total budgeted headcount",
+      fieldLabel: "Financials -- Total budgeted headcount",
       originalValue: "(current)",
       proposedValue: String(hiringHeadcount),
       isStructured: true,
@@ -484,7 +484,7 @@ function buildSyncEffects(args: {
     out.push({
       suite: "Financials",
       field: "Monthly net change",
-      from: "—",
+      from: "(empty)",
       to: delta > 0
         ? `Payroll increases by ${fmtUsdCents(delta, cc)}/month`
         : `Payroll decreases by ${fmtUsdCents(-delta, cc)}/month`,
@@ -557,7 +557,7 @@ function buildTrimEffects(
   out.push({
     suite: "Operations",
     field: "Coverage risk",
-    from: "—",
+    from: "(empty)",
     to: "Morning rush may need schedule tightening with fewer hands",
     risk: "warn",
   });
@@ -589,11 +589,11 @@ function buildPhaseEffects(
   out.push({
     suite: "Financials",
     field: `Month ${phaseMonths + 1}+ payroll`,
-    from: "—",
+    from: "(empty)",
     to: `${fmtUsdCents(hiringMonthlyCents, cc)}/month once deferred roles start`,
     risk: classifyAgainstBand(fullPct, band) === "above" ? "warn" : "info",
     note: band && monthlyRevenue > 0
-      ? `${fmtPct(fullPct)} of revenue, ${describeBandPosition(fullPct, band)} — assumes revenue trajectory confirmed`
+      ? `${fmtPct(fullPct)} of revenue, ${describeBandPosition(fullPct, band)} -- assumes revenue trajectory confirmed`
       : undefined,
   });
   for (const role of toDefer) {
@@ -608,7 +608,7 @@ function buildPhaseEffects(
   out.push({
     suite: "Operations",
     field: "Coverage trigger",
-    from: "—",
+    from: "(empty)",
     to: `Add the remaining hires when month-${phaseMonths} revenue confirms the forecast`,
     risk: "info",
   });

@@ -142,7 +142,7 @@ export function detectEquipmentMismatch(
         ]),
         fieldId:
           "cross_suite:equipment_mismatch:sync_financials_to_buildout:financials:startup:equipment_cents",
-        fieldLabel: "Financials — Equipment line (startup_costs)",
+        fieldLabel: "Financials -- Equipment line (startup_costs)",
         originalValue: fmtCents(finCents, cc),
         proposedValue: fmtCents(gridCents, cc),
         isStructured: true,
@@ -210,7 +210,7 @@ function buildSyncFinancialsEffects(
     {
       suite: "Financials",
       field: "Opening startup total",
-      from: "—",
+      from: "(empty)",
       to: delta > 0
         ? `Total opening cost rises by ${fmtCents(Math.abs(delta), cc)}`
         : `Total opening cost drops by ${fmtCents(Math.abs(delta), cc)}`,
@@ -219,7 +219,7 @@ function buildSyncFinancialsEffects(
     {
       suite: "Plan",
       field: "Depreciation schedule",
-      from: "—",
+      from: "(empty)",
       to: delta > 0
         ? "Annual equipment depreciation rises proportionally with the higher capex base"
         : "Annual equipment depreciation drops proportionally with the lower capex base",

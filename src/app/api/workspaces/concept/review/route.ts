@@ -157,8 +157,9 @@ Rules for every rewrite:
 - Make it concrete and specific to THIS shop. Cut filler and generic marketing language.
 - Match the existing voice: warm, operational, grounded in real coffee-shop experience.
 - Keep roughly the same length unless the original is padded.
-- NEVER use: actually, genuinely, honestly, unlock, elevate, leverage, embark, delve, curated, synergy, journey.
-- No em dashes. No emojis. No section headings inside the text — return plain prose.
+- NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, journey, seamlessly, robust, holistic, comprehensive, innovative, passionate about, actually, genuinely, honestly.
+- NEVER use em dashes (—). Use a regular dash with spaces ( -- ) if you need a pause.
+- No emojis. No section headings inside the text -- return plain prose.
 
 ## Output format
 Return ONLY a JSON object of this exact shape, no other text:

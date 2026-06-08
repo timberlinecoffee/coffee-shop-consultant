@@ -59,7 +59,7 @@ const SYNTHESIS_INSTRUCTIONS = `
 
 You will receive a structured validator finding as JSON. Rewrite it as three short fields a coffee-shop owner can read alone without an advisor.
 
-Output a single JSON object — no prose before or after — of the shape:
+Output a single JSON object -- no prose before or after -- of the shape:
 
 {
   "issue": "<one sentence, plain English, what is wrong>",
@@ -72,8 +72,9 @@ Rules:
 - Each field is one sentence.
 - Names a concrete workspace ("Open the Labor workspace", "Open the Financials workspace") when the fix lives elsewhere.
 - Do not use the forbidden word list in the voice guide.
-- Do not use em dashes.
-- Match the worked-example tone — never write a financial-statement footnote.`;
+- Do not use em dashes (—). Use a regular dash with spaces ( -- ) if you need a pause.
+- Match the worked-example tone -- never write a financial-statement footnote.
+- Persona: knowledgeable friend who has helped open coffee shops, not a senior consultant.`;
 
 // Build the user message — a JSON envelope describing one finding. Keep this
 // compact so Haiku's input cost stays low.
