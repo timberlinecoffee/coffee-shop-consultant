@@ -9,6 +9,7 @@ import { defaultMonthlyProjections } from "@/lib/financial-projection";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
 import { calibrateStartupCosts } from "@/lib/financials/startup-cost-calibration";
+import { calibrateRevenue } from "@/lib/financials/revenue-calibration";
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 
 export async function GET() {
@@ -67,6 +68,16 @@ export async function GET() {
     city: planGeo.city ?? onboardingLocation?.city ?? null,
     countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
   });
+  // TIM-2521 (CQ-07): seed daily_flow + avg_ticket_cents from a shop-type
+  // baseline (mid of CQ-07 spec range) and FX-convert the USD ticket into
+  // the plan's currency. Default values seeded a single mid-size template
+  // that projected 40-55% of realistic revenue for a large café.
+  const calibratedRevenue = calibrateRevenue({
+    shopTypes,
+    currencyCode: forecastInputs.currency_code,
+  });
+  forecastInputs.daily_flow = calibratedRevenue.daily_flow;
+  forecastInputs.avg_ticket_cents = calibratedRevenue.avg_ticket_cents;
 
   const { data: created, error } = await supabase
     .from("financial_models")

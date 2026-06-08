@@ -14,6 +14,7 @@ import type { CritiqueResult } from "@/lib/financials";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
 import { calibrateStartupCosts } from "@/lib/financials/startup-cost-calibration";
+import { calibrateRevenue } from "@/lib/financials/revenue-calibration";
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
@@ -105,6 +106,15 @@ export default async function FinancialsWorkspacePage() {
       city: planGeo.city ?? onboardingLocation?.city ?? null,
       countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
     });
+    // TIM-2521 (CQ-07): replace the single 107-cust/day × $7.50 template
+    // with a shop-type baseline (mid of CQ-07 spec range), FX-converting
+    // the USD ticket into the plan's currency.
+    const calibratedRevenue = calibrateRevenue({
+      shopTypes,
+      currencyCode: forecastInputs.currency_code,
+    });
+    forecastInputs.daily_flow = calibratedRevenue.daily_flow;
+    forecastInputs.avg_ticket_cents = calibratedRevenue.avg_ticket_cents;
     const { data: created } = await supabase
       .from("financial_models")
       .insert({
