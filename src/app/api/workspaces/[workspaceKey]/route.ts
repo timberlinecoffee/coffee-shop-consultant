@@ -9,8 +9,10 @@ import type { NextRequest } from "next/server"
 
 type RouteContext = { params: Promise<{ workspaceKey: string }> }
 
-function isValidWorkspaceKey(key: string): key is WorkspaceKey {
-  return MUTABLE_WORKSPACE_KEYS.has(key as WorkspaceKey)
+type MutableWorkspaceKey = typeof MUTABLE_WORKSPACE_KEYS extends ReadonlySet<infer T> ? T : never
+
+function isValidWorkspaceKey(key: string): key is MutableWorkspaceKey {
+  return MUTABLE_WORKSPACE_KEYS.has(key as MutableWorkspaceKey)
 }
 
 function paywallReason(status: string): "no_subscription" | "paused" | "expired" {

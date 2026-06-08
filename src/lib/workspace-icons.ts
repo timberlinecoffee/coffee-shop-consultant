@@ -11,6 +11,7 @@ import {
   Megaphone,
   Package,
   Rocket,
+  TrendingUp,
   Truck,
   Users,
   Utensils,
@@ -32,4 +33,5 @@ export const WORKSPACE_ICONS: Record<NavIcon, LucideIcon> = {
   "truck": Truck,
   "clipboard-list": ClipboardList,
   "package": Package,
+  "trending-up": TrendingUp,
 };
