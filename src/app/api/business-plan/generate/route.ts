@@ -254,6 +254,13 @@ export async function POST(request: NextRequest) {
     founderBudget: String(onboarding?.budget ?? "not specified"),
     founderLocation: planContext.location_country ?? "not specified",
     founderStage: String(onboarding?.stage ?? "not specified"),
+    // TIM-2466: shop_type — strongest persona signal when workspace modules
+    // are empty. Without it the prompt collapsed to a generic café and every
+    // persona rendered byte-identical content (CQ-06). Same array-or-string
+    // normalization the concept/review and copilot routes already use.
+    founderShopType: Array.isArray(onboarding?.shop_type)
+      ? (onboarding.shop_type as string[]).join(", ")
+      : String(onboarding?.shop_type ?? "café"),
     planStateGroundTruth,
     // TIM-2342: tell the LLM to source-tag every numeric claim, and surface
     // the section-relevant subset of the curated industry benchmark dataset.

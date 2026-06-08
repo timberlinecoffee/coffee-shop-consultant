@@ -199,6 +199,13 @@ export async function POST(request: NextRequest): Promise<Response> {
   const founderBudget = String(onboarding?.budget ?? "not specified");
   const founderLocation = planContext.location_country ?? "not specified";
   const founderStage = String(onboarding?.stage ?? "not specified");
+  // TIM-2466: shop_type — strongest persona signal when workspace modules
+  // are empty. Without it /generate and /regenerate-all both collapsed to
+  // a generic café (CQ-06 byte-identical content). Same array-or-string
+  // normalization concept/review and copilot already use.
+  const founderShopType = Array.isArray(onboarding?.shop_type)
+    ? (onboarding.shop_type as string[]).join(", ")
+    : String(onboarding?.shop_type ?? "café");
 
   // TIM-2334 + TIM-2341: compute plan_state ONCE up-front so it can seed both
   // the lender-ready autoContent assemblers below AND the ground-truth prompt
@@ -362,6 +369,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           founderBudget,
           founderLocation,
           founderStage,
+          founderShopType,
           planStateGroundTruth,
           // TIM-2342: source-marker rule + section-relevant industry benchmarks.
           sourceMarkerDirective: SOURCE_MARKER_DIRECTIVE,
