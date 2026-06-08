@@ -111,8 +111,11 @@ function suggestionId(parts: string[]): string {
 }
 
 // Classify a labor % against the benchmark band. Numerical, never visual.
-type BandClassification = "below" | "within" | "above";
-function classifyAgainstBand(
+// Exported (TIM-2474) so the P&L + Ratios tabs can phrase band-position
+// language in lockstep with the hiring resolver. `pct` is a ratio (0-1), not
+// a percent — keep callers consistent.
+export type BandClassification = "below" | "within" | "above";
+export function classifyAgainstBand(
   pct: number,
   band: { min: number; max: number } | null,
 ): BandClassification | null {
@@ -122,7 +125,7 @@ function classifyAgainstBand(
   return "within";
 }
 
-function describeBandPosition(
+export function describeBandPosition(
   pct: number,
   band: { min: number; max: number } | null,
 ): string {

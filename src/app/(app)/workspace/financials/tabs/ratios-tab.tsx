@@ -7,6 +7,11 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { type MonthlySlice, sumSlices } from "@/lib/financial-projection";
+// TIM-2474: labor / gross-margin / occupancy thresholds come from
+// `benchmarks.json` via the canonical band loader. Editing the JSON ripples
+// to every consumer in lockstep — no more drift between the Ratios card and
+// the cross-suite resolver.
+import { getFinancialBenchmarkBands } from "@/lib/business-plan/benchmark-bands";
 
 interface Props {
   slices: MonthlySlice[];
@@ -70,6 +75,22 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
 
   if (nr <= 0) return [];
 
+  // Canonical bands. Ratio form (0-1) at rest; multiply at the comparison
+  // edge because the ratio values below are in percent. Fallbacks mirror the
+  // pre-2474 literals so a missing benchmark never breaks the page.
+  const bands = getFinancialBenchmarkBands();
+  const laborBand = bands.labor;
+  const gmBand = bands.grossMargin;
+  const rentBand = bands.rent;
+  const laborMinPct = laborBand ? laborBand.min * 100 : 28;
+  const laborMaxPct = laborBand ? laborBand.max * 100 : 35;
+  const laborLabel = laborBand?.label ?? "28% to 35%";
+  const gmMinPct = gmBand ? gmBand.min * 100 : 60;
+  const gmMaxPct = gmBand ? gmBand.max * 100 : 70;
+  const gmLabel = gmBand?.label ?? "60% to 70%";
+  const rentMaxPct = rentBand ? rentBand.max * 100 : 10;
+  const rentLabel = rentBand?.label ?? "6% to 10%";
+
   const grossMargin = (gp / nr) * 100;
   const opMargin = (oi / nr) * 100;
   const laborPct = (totalLabor / nr) * 100;
@@ -106,16 +127,17 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
         "Of every dollar you take in, how much is left after paying for ingredients.",
       value: grossMargin,
       unit: "pct",
-      benchmarkLabel: "60–70%",
-      benchmarkSource: "Specialty Coffee Association industry surveys",
+      benchmarkLabel: gmLabel,
+      benchmarkSource:
+        gmBand?.source ?? "Specialty Coffee Association industry surveys",
       tier: "core",
-      status: statusForRange(grossMargin, [60, 70], 5, "higherIsBetter"),
+      status: statusForRange(grossMargin, [gmMinPct, gmMaxPct], 5, "higherIsBetter"),
       takeaway:
-        grossMargin >= 60 && grossMargin <= 70
+        grossMargin >= gmMinPct && grossMargin <= gmMaxPct
           ? "In the healthy zone for a coffee shop."
-          : grossMargin < 60
-            ? "Below the 60–70% target. Check your COGS percentages — pour sizes, drink prices, or supplier costs may be off."
-            : "Above 70% is unusually strong. Double-check your COGS inputs are realistic.",
+          : grossMargin < gmMinPct
+            ? `Below the ${gmLabel} target. Check your COGS percentages — pour sizes, drink prices, or supplier costs may be off.`
+            : `Above ${gmMaxPct.toFixed(0)}% is unusually strong. Double-check your COGS inputs are realistic.`,
     },
     {
       key: "labor_pct",
@@ -124,16 +146,17 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
         "Wages, payroll taxes, and benefits as a share of every dollar earned.",
       value: laborPct,
       unit: "pct",
-      benchmarkLabel: "28–35%",
-      benchmarkSource: "Specialty Coffee Association benchmarks",
+      benchmarkLabel: laborLabel,
+      benchmarkSource:
+        laborBand?.source ?? "Specialty Coffee Association benchmarks",
       tier: "core",
-      status: statusForRange(laborPct, [28, 35], 5, "lowerIsBetter"),
+      status: statusForRange(laborPct, [laborMinPct, laborMaxPct], 5, "lowerIsBetter"),
       takeaway:
-        laborPct >= 28 && laborPct <= 35
+        laborPct >= laborMinPct && laborPct <= laborMaxPct
           ? "In the normal range. Most shops land here."
-          : laborPct > 35
-            ? "Above 35%. Either you are over-staffed or under-priced. Both are worth looking at."
-            : "Under 28%. Possible if you're running lean or owner-operated. Make sure the schedule is sustainable long-term.",
+          : laborPct > laborMaxPct
+            ? `Above ${laborMaxPct.toFixed(0)}%. Either you are over-staffed or under-priced. Both are worth looking at.`
+            : `Under ${laborMinPct.toFixed(0)}%. Possible if you're running lean or owner-operated. Make sure the schedule is sustainable long-term.`,
     },
     {
       key: "occupancy",
@@ -142,16 +165,17 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
         "Rent plus other occupancy costs as a share of every dollar earned.",
       value: occupancy,
       unit: "pct",
-      benchmarkLabel: "≤10% ideal, 10–15% acceptable",
-      benchmarkSource: "Specialty Coffee Association industry data",
+      benchmarkLabel: rentLabel,
+      benchmarkSource:
+        rentBand?.source ?? "Specialty Coffee Association industry data",
       tier: "core",
-      status: statusForRange(occupancy, [0, 10], 5, "lowerIsBetter"),
+      status: statusForRange(occupancy, [0, rentMaxPct], 5, "lowerIsBetter"),
       takeaway:
-        occupancy <= 10
-          ? "Under 10%. You have real cushion here."
-          : occupancy <= 15
+        occupancy <= rentMaxPct
+          ? `Under ${rentMaxPct.toFixed(0)}%. You have real cushion here.`
+          : occupancy <= rentMaxPct + 5
             ? "In range, but pushing the high end. Worth renegotiating when your lease comes up."
-            : "Above 15%. Your rent is eating too much of your revenue (\"the rent trap\"). Renegotiate or, longer-term, relocate.",
+            : `Above ${(rentMaxPct + 5).toFixed(0)}%. Your rent is eating too much of your revenue (\"the rent trap\"). Renegotiate or, longer-term, relocate.`,
     },
     {
       key: "net_margin",

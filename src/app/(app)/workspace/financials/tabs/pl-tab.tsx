@@ -3,6 +3,11 @@
 import { useRef, useState } from "react";
 import { Pencil, RotateCcw, ChevronsRight } from "lucide-react";
 import { NumericInput } from "@/components/ui/numeric-input";
+// TIM-2474: bind gross-margin + occupancy thresholds to the canonical
+// `benchmarks.json` band loader. Same voice (`describeBandPosition`) the
+// cross-suite hiring resolver uses.
+import { getFinancialBenchmarkBands } from "@/lib/business-plan/benchmark-bands";
+import { describeBandPosition, classifyAgainstBand } from "@/lib/cross-suite/hiring-financials";
 import {
   type MonthlySlice,
   type LineMonthlyAmount,
@@ -785,24 +790,42 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
 
   const lines: string[] = [];
 
-  if (grossMargin < 55) {
-    lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — that is below the 60–70% range most healthy shops run. Check your COGS percentages and your menu mix.`);
-  } else if (grossMargin >= 60 && grossMargin <= 70) {
-    lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — right in the healthy zone. Coffee shops that stay in this range have room to survive slow months.`);
-  } else {
-    lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — strong. Make sure your COGS inputs reflect real supplier pricing.`);
+  // TIM-2474 — labor/cogs/rent/gross bands come from benchmarks.json via the
+  // canonical loader; copy uses `describeBandPosition` for one consistent
+  // voice across the P&L, Ratios, and the cross-suite hiring resolver.
+  const bands = getFinancialBenchmarkBands();
+  const gmBand = bands.grossMargin;
+  const rentBand = bands.rent;
+
+  if (gmBand) {
+    const ratio = grossMargin / 100;
+    const cls = classifyAgainstBand(ratio, gmBand);
+    const position = describeBandPosition(ratio, gmBand);
+    if (cls === "below") {
+      lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — ${position}. Check your COGS percentages and your menu mix.`);
+    } else if (cls === "within") {
+      lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — ${position}. Shops that stay in this range have room to survive slow months.`);
+    } else {
+      lines.push(`Gross margin is ${grossMargin.toFixed(1)}% — ${position}. Make sure your COGS inputs reflect real supplier pricing.`);
+    }
   }
 
   if (primeCost > 65) {
     lines.push(`Prime cost (COGS + labor) is ${primeCost.toFixed(1)}% of revenue — above 65%. This is the number that kills most shops. Something needs to move: raise prices, tighten scheduling, or push higher-margin items.`);
   } else {
-    lines.push(`Prime cost is ${primeCost.toFixed(1)}% — within the 55–65% benchmark. That is the most important number to keep an eye on.`);
+    lines.push(`Prime cost is ${primeCost.toFixed(1)}% — within the 55-65% benchmark. That is the most important number to keep an eye on.`);
   }
 
-  if (occupancy > 15) {
-    lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue — above 15%. Aim for under 10% if you can. Worth revisiting either your lease terms or your traffic model.`);
-  } else if (occupancy <= 10) {
-    lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue — healthy. Under 10% gives you real cushion.`);
+  if (rentBand) {
+    const ratio = occupancy / 100;
+    const cls = classifyAgainstBand(ratio, rentBand);
+    const position = describeBandPosition(ratio, rentBand);
+    const maxPct = rentBand.max * 100;
+    if (cls === "above") {
+      lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue — ${position}. Aim for under ${maxPct.toFixed(0)}% if you can. Worth revisiting either your lease terms or your traffic model.`);
+    } else if (cls === "within" || cls === "below") {
+      lines.push(`Rent is ${occupancy.toFixed(1)}% of revenue — ${position}. That gives you real cushion.`);
+    }
   }
 
   if (ni < 0) {
