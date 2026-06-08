@@ -662,7 +662,7 @@ export function LaunchTimelineCard({
           <div>
             <h2 className="font-semibold text-lg text-[var(--foreground)]">Launch Timeline</h2>
             <p className="text-xs text-[var(--muted-foreground)]">
-              Milestone sequence from T-90 through Day+30 opening.
+              Track your launch milestones on the timeline below.
             </p>
           </div>
           <button
