@@ -15,6 +15,7 @@
 //
 // Resolver registry today: src/app/api/copilot/cross-suite-resolver/route.ts
 //   - hiring_financials_headcount  ← detectHiringFinancialsConflict()
+//   - menu_ticket_mismatch         ← detectMenuTicketMismatch() (TIM-2482)
 
 import type { AuditFinding } from "../business-plan/audit.ts";
 
@@ -22,6 +23,11 @@ import type { AuditFinding } from "../business-plan/audit.ts";
 // match is byte-stable across runs and survives wording edits to messages.
 const AUDIT_FINDING_TO_CONFLICT_ID: Readonly<Record<string, string>> = {
   "src:headcount_mismatch": "hiring_financials_headcount",
+  // TIM-2482 (F13): menu blended ticket drifts from Forecast Inputs avg ticket.
+  // This is the BLEND mismatch (popularity-weighted vs forecast), not the
+  // structural range checks src:menu_ticket_below_min / above_basket — those
+  // remain Apply / Go-to-source only (no resolver, no entry here).
+  "src:menu_ticket_blend_mismatch": "menu_ticket_mismatch",
 };
 
 export function crossSuiteConflictIdForAuditFinding(

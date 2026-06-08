@@ -28,6 +28,11 @@
 import type { PlanState } from "./plan-state.ts";
 import type { AuditFinding, AuditSeverity, AuditSourceRef, AuditRuleId } from "./audit.ts";
 import { loadBenchmarks, type IndustryBenchmark } from "./benchmarks.ts";
+import { blendedTicketCentsFromMenu } from "../menu.ts";
+import {
+  MENU_TICKET_ABS_TOLERANCE_CENTS,
+  MENU_TICKET_REL_TOLERANCE,
+} from "../cross-suite/menu-ticket.ts";
 
 // ── Source workspace refs ────────────────────────────────────────────────────
 
@@ -449,6 +454,51 @@ export function runCrossSuiteChecks(input: SourceSuiteCheckInputs): AuditFinding
           target: refWithField(REF_MENU, "prices", "Menu prices"),
         }),
       );
+    }
+  }
+
+  // Check 3b (TIM-2482 / F13) — Menu blended ticket vs Forecast Inputs avg
+  // ticket. Distinct from Check 3 (which only flags structural errors where
+  // avg ticket is outside the menu's price range). This catches the common
+  // silent-drift case: owner builds an $8.20-blended menu but never opens
+  // Forecast Inputs, so the $7.50 default keeps driving every projection.
+  // Tolerance is exported from menu-ticket.ts so the workspace banner, the
+  // detector, and this check all agree on what counts as drift.
+  if (ticket > 0 && input.menu.length > 0) {
+    // The menu rows here type as SourceSuiteMenuRow — fields match what
+    // blendedTicketCentsFromMenu() needs (id, price_cents, expected_popularity,
+    // archived). Pass directly.
+    const menuBlend = blendedTicketCentsFromMenu(
+      input.menu.map((m) => ({
+        id: m.id,
+        price_cents: m.price_cents ?? 0,
+        expected_popularity: m.expected_popularity ?? null,
+        archived: m.archived ?? false,
+      })),
+    );
+    if (menuBlend !== null && menuBlend > 0) {
+      const delta = Math.abs(menuBlend - ticket);
+      const rel = delta / Math.max(ticket, 1);
+      const meaningful =
+        delta >= MENU_TICKET_ABS_TOLERANCE_CENTS && rel >= MENU_TICKET_REL_TOLERANCE;
+      if (meaningful) {
+        const menuHigher = menuBlend > ticket;
+        out.push(
+          emit({
+            id: "src:menu_ticket_blend_mismatch",
+            rule_id: "cross_suite_mismatch",
+            severity: "warning",
+            raw_message: menuHigher
+              ? `Menu prices blend to ${fmtCents(menuBlend, cc)} (popularity-weighted), but Forecast Inputs is running on ${fmtCents(ticket, cc)} per ticket. Every revenue projection is using the lower number until the two agree.`
+              : `Forecast Inputs is running on ${fmtCents(ticket, cc)} per ticket, but the menu only blends to ${fmtCents(menuBlend, cc)} (popularity-weighted). The revenue forecast overshoots what the menu can support.`,
+            quoted_text: `Menu blend ${fmtCents(menuBlend, cc)} vs Forecast ${fmtCents(ticket, cc)}`,
+            units: "currency",
+            expected_text: fmtCents(menuBlend, cc),
+            source: refWithField(REF_MENU, "prices", "Menu blended ticket"),
+            target: refWithField(REF_FINANCIALS, "avg_ticket", "Financials: average ticket"),
+          }),
+        );
+      }
     }
   }
 

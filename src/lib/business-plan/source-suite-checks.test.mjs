@@ -89,8 +89,55 @@ function baseSourceInputs(overrides = {}) {
 }
 
 test("clean state — no cross-suite findings, all benchmarks pass", () => {
-  const out = runCrossSuiteChecks(baseSourceInputs());
+  // TIM-2482: keep the menu's popularity-weighted blend within tolerance of
+  // the $8.00 avg ticket so the new src:menu_ticket_blend_mismatch check does
+  // not fire on the otherwise-clean fixture. The default fixture (600/550/400)
+  // blends to $5.50 — a real, intentional drift kept only for the other menu
+  // tests downstream. Override here aligns blend ≈ $8.33 (4.1% rel, under the
+  // 5% gate).
+  const out = runCrossSuiteChecks(
+    baseSourceInputs({
+      menu: [
+        { id: "m1", name: "Latte", price_cents: 900, expected_popularity: "high", archived: false },
+        { id: "m2", name: "Cappuccino", price_cents: 800, expected_popularity: "medium", archived: false },
+        { id: "m3", name: "Pastry", price_cents: 700, expected_popularity: "low", archived: false },
+      ],
+    }),
+  );
   assert.deepStrictEqual(out, []);
+});
+
+// TIM-2482 (F13): pin the new menu↔ticket blend mismatch check on the very
+// fixture that motivated the audit — owner builds an $8.20-blended menu but
+// the Forecast Inputs default $7.50 keeps driving revenue projections.
+test("menu blend $5.50 vs forecast $8.00 — src:menu_ticket_blend_mismatch fires", () => {
+  // Default fixture menu blends to (600×3 + 550×2 + 400×1) / 6 = 550¢
+  // Forecast avg ticket = 800¢. Drift = 250¢ (31.3% rel) — both gates clear.
+  const out = runCrossSuiteChecks(baseSourceInputs());
+  const f = out.find((x) => x.id === "src:menu_ticket_blend_mismatch");
+  assert.ok(f, "blend mismatch should fire");
+  assert.equal(f.rule_id, "cross_suite_mismatch");
+  assert.equal(f.severity, "warning");
+  assert.equal(f.units, "currency");
+  // Statement leads with the forecast-overshoots framing (forecast > menu blend).
+  assert.match(f.raw_message, /running on USD 8(\.00)? per ticket/);
+  assert.match(f.raw_message, /menu only blends to USD 5\.50/);
+  assert.equal(f.source.workspace, "menu-pricing");
+  assert.equal(f.target.workspace, "financials");
+});
+
+test("menu blend within tolerance of forecast ticket — no blend-mismatch finding", () => {
+  // Tighten the menu to ~800¢ blend (matches avg_ticket=800¢).
+  const out = runCrossSuiteChecks(
+    baseSourceInputs({
+      menu: [
+        { id: "m1", price_cents: 850, expected_popularity: "high", archived: false },
+        { id: "m2", price_cents: 800, expected_popularity: "medium", archived: false },
+        { id: "m3", price_cents: 750, expected_popularity: "low", archived: false },
+      ],
+    }),
+  );
+  assert.equal(out.find((x) => x.id === "src:menu_ticket_blend_mismatch"), undefined);
 });
 
 test("headcount mismatch — Hiring 6 vs Financials 4 fires critical", () => {

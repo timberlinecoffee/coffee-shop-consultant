@@ -18,6 +18,17 @@ test("headcount mismatch maps to hiring_financials_headcount", () => {
   assert.equal(id, "hiring_financials_headcount");
 });
 
+// TIM-2482 (F13): the menu↔ticket BLEND mismatch maps to the resolver. The
+// structural below_min / above_basket checks intentionally remain unmapped
+// (no detector path — they're true Apply / Go-to-source).
+test("menu blend mismatch maps to menu_ticket_mismatch", () => {
+  const id = crossSuiteConflictIdForAuditFinding({
+    id: "src:menu_ticket_blend_mismatch",
+    rule_id: "cross_suite_mismatch",
+  });
+  assert.equal(id, "menu_ticket_mismatch");
+});
+
 test("other cross_suite_mismatch findings return null — no default fallback", () => {
   for (const auditId of [
     "src:capex_equipment_mismatch",

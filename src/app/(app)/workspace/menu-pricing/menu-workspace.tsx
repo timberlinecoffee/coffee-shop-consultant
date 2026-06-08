@@ -56,6 +56,10 @@ import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { BenchmarkChip } from "@/components/benchmark/BenchmarkChip";
 import { SectionHelp } from "@/components/ui/section-help";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
+// TIM-2482 (F13): menu-side reconciliation banner — shows menu blend vs
+// Forecast Inputs avg ticket and offers a Sync action that opens the
+// cross-suite resolver.
+import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
 import {
   type MenuItemWithCogs,
   type MenuIngredient,
@@ -2273,6 +2277,11 @@ function MenuTab(props: MenuTabProps) {
         canEdit={canEdit}
         onUpdateTargetGrossMargin={onUpdateTargetGrossMargin}
       />
+
+      {/* TIM-2482 (F13): menu↔ticket reconciliation. Renders only when the
+          menu blend drifts meaningfully from Forecast Inputs avg ticket; sync
+          button opens the cross-suite resolver. */}
+      <MenuTicketReconciliationBanner origin="menu" />
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         {categories.map((cat) => {

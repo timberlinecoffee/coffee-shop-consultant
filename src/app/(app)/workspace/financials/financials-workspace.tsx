@@ -16,6 +16,7 @@ import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
+import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import {
   WorkspaceActionButton,
@@ -930,6 +931,12 @@ function ForecastTab({
               />
             </div>
           </div>
+
+          {/* TIM-2482 (F13): inline reconciliation banner — surfaces only
+              when the menu's popularity-weighted blended ticket drifts
+              meaningfully from this Forecast Inputs avg ticket. Sync button
+              opens the cross-suite resolver on menu_ticket_mismatch. */}
+          <MenuTicketReconciliationBanner origin="financials" className="mt-3" />
 
           {/* Progressive disclosure: optional beverage/food split */}
           <label className="flex items-center gap-2 cursor-pointer mt-4">

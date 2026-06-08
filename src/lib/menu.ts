@@ -142,3 +142,63 @@ export function computeMsrpCents(
   const m = Math.min(Math.max(targetGrossMargin, 0.001), 0.999)
   return Math.round(cogsCents / (1 - m))
 }
+
+// TIM-2482 (F13): blended menu ticket in cents, popularity-weighted by default
+// so it matches the canonical COGS blend in financial-projection.ts
+// (menuItemMixWeight: low=1 / medium=2 / high=3, default 1). Archived items
+// and items without a positive price are excluded. Returns null when the menu
+// has no priced items, so the caller can keep the user's Forecast Inputs value
+// instead of overwriting with a meaningless 0.
+//
+// Optional `mix` arg lets a caller pass an item-id → weight map (e.g. POS
+// pulls, owner-tuned slider) that overrides the popularity default. Unknown
+// ids fall back to popularity. Empty / all-zero mix falls back too.
+//
+// Lives in menu.ts (not cross-suite/) because this is a menu-domain selector
+// the Menu workspace itself consumes — the cross-suite detector just imports
+// it. Pattern mirrors computeMenuBlendedCogsPct() so a single audit can pin
+// price and COGS to the same blend.
+export interface BlendedTicketItem {
+  id?: string | null
+  price_cents: number
+  expected_popularity?: ExpectedPopularity | null
+  archived?: boolean | null
+}
+
+function popularityWeight(p: ExpectedPopularity | null | undefined): number {
+  if (p === "high") return 3
+  if (p === "medium") return 2
+  if (p === "low") return 1
+  return 1
+}
+
+export function blendedTicketCentsFromMenu(
+  items: ReadonlyArray<BlendedTicketItem> | null | undefined,
+  mix?: ReadonlyMap<string, number> | Record<string, number> | null,
+): number | null {
+  if (!items || items.length === 0) return null
+  const lookup = (id: string | null | undefined): number | null => {
+    if (!id || !mix) return null
+    const m = mix as Record<string, number> | ReadonlyMap<string, number>
+    if (m instanceof Map) {
+      const v = m.get(id)
+      return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null
+    }
+    const v = (m as Record<string, number>)[id]
+    return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null
+  }
+  let totalPriceWeighted = 0
+  let totalWeight = 0
+  for (const it of items) {
+    if (it.archived) continue
+    const price = Number(it.price_cents ?? 0)
+    if (!Number.isFinite(price) || price <= 0) continue
+    const override = lookup(it.id ?? null)
+    const weight = override ?? popularityWeight(it.expected_popularity)
+    if (weight <= 0) continue
+    totalPriceWeighted += price * weight
+    totalWeight += weight
+  }
+  if (totalWeight <= 0) return null
+  return Math.round(totalPriceWeighted / totalWeight)
+}

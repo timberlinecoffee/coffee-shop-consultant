@@ -27,6 +27,9 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import { buildPlanState } from "@/lib/business-plan/plan-state";
 import { loadBenchmarks } from "@/lib/business-plan/benchmarks";
 import { detectHiringFinancialsConflict } from "@/lib/cross-suite/hiring-financials";
+// TIM-2482 (F13): menu↔ticket reconciliation detector.
+import { detectMenuTicketMismatch } from "@/lib/cross-suite/menu-ticket";
+import { blendedTicketCentsFromMenu } from "@/lib/menu";
 import type { CrossSuiteConflict } from "@/lib/cross-suite/types";
 import type {
   BpLocationCandidate,
@@ -137,6 +140,24 @@ async function readAll(
     cityLabel,
   });
 
+  // TIM-2482 (F13): expose menu rows + forecast_inputs.avg_ticket_cents so the
+  // menu↔ticket detector can compute the blend and compare to the live
+  // forecast value (the value driving every revenue projection downstream).
+  const menuRowsTyped = (menuRows ?? []) as Array<{
+    id: string;
+    name: string | null;
+    price_cents: number | null;
+    expected_popularity: "low" | "medium" | "high" | null;
+    archived: boolean | null;
+  }>;
+  const forecastAvgTicketCents = Math.max(
+    0,
+    Math.round(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Number((financialModel?.forecast_inputs as any)?.avg_ticket_cents ?? 0),
+    ),
+  );
+
   return {
     planState,
     hiringRows: (hiringRows ?? []) as Array<{
@@ -146,6 +167,8 @@ async function readAll(
       start_date: string | null;
       monthly_cost_cents: number | null;
     }>,
+    menuRows: menuRowsTyped,
+    forecastAvgTicketCents,
   };
 }
 
@@ -199,6 +222,28 @@ function runResolvers(
     currencyCode: args.planState.meta.currency_code || "USD",
   });
   if (hf) out.push(hf);
+
+  // TIM-2482 (F13): Menu blended ticket ↔ Forecast Inputs avg ticket.
+  // Popularity-weighted blend lives in menu.ts; detector decides whether the
+  // drift is meaningful (5% rel AND 25¢ abs) and returns null when not.
+  const activeMenu = args.menuRows.filter(
+    (r) => !r.archived && (r.price_cents ?? 0) > 0,
+  );
+  const menuBlendedTicketCents = blendedTicketCentsFromMenu(
+    activeMenu.map((r) => ({
+      id: r.id,
+      price_cents: r.price_cents ?? 0,
+      expected_popularity: r.expected_popularity,
+      archived: r.archived ?? false,
+    })),
+  );
+  const mt = detectMenuTicketMismatch({
+    menuBlendedTicketCents,
+    forecastAvgTicketCents: args.forecastAvgTicketCents,
+    activeMenuItemCount: activeMenu.length,
+    currencyCode: args.planState.meta.currency_code || "USD",
+  });
+  if (mt) out.push(mt);
 
   return out;
 }
@@ -417,6 +462,48 @@ async function applyFinancialsHeadcountChange(
   return !error;
 }
 
+// TIM-2482 (F13) — sync the forecast avg ticket to the menu-blended value.
+// finalValue arrives as a formatted currency string (e.g. "$8.20", "CAD 8.20")
+// because the AIReviewModal renders it that way; strip non-digits/decimal and
+// convert to cents.
+async function applyFinancialsAvgTicketChange(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string,
+  finalValue: string,
+): Promise<boolean> {
+  const cleaned = finalValue.replace(/[^\d.-]/g, "");
+  const dollars = Number(cleaned);
+  if (!Number.isFinite(dollars) || dollars <= 0) return false;
+  // Cap at $1,000/ticket — defensive against pasted junk that would otherwise
+  // wipe out a plan's revenue assumptions.
+  if (dollars > 1000) return false;
+  const targetCents = Math.round(dollars * 100);
+
+  const { data: fm } = await supabase
+    .from("financial_models")
+    .select("forecast_inputs")
+    .eq("plan_id", planId)
+    .maybeSingle();
+  if (!fm?.forecast_inputs) return false;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fi = fm.forecast_inputs as any;
+  fi.avg_ticket_cents = targetCents;
+  // Keep beverage/food split coherent if the owner has it on — scale the
+  // beverage line to absorb the delta (food usually pegs to a real item
+  // count). If only beverage is set, write the new total there; if both are
+  // set, scale beverage so beverage+food = new total.
+  if (typeof fi.beverage_ticket_cents === "number" || typeof fi.food_ticket_cents === "number") {
+    const food = Math.max(0, Number(fi.food_ticket_cents ?? 0));
+    fi.beverage_ticket_cents = Math.max(0, targetCents - food);
+  }
+
+  const { error } = await supabase
+    .from("financial_models")
+    .upsert({ plan_id: planId, forecast_inputs: fi }, { onConflict: "plan_id" });
+  return !error;
+}
+
 export async function POST(request: NextRequest) {
   const resolved = await resolvePlan();
   if (!resolved.ok) {
@@ -454,6 +541,17 @@ export async function POST(request: NextRequest) {
         ok = await applyFinancialsPayrollChange(resolved.supabase, resolved.ctx.planId, change.finalValue);
       } else if (field.suiteKey === "financials" && field.recordId === "personnel" && field.column === "headcount") {
         ok = await applyFinancialsHeadcountChange(resolved.supabase, resolved.ctx.planId, change.finalValue);
+      } else if (
+        field.suiteKey === "financials" &&
+        field.recordId === "forecast" &&
+        field.column === "avg_ticket_cents"
+      ) {
+        // TIM-2482 (F13): sync Forecast Inputs avg ticket to the menu blend.
+        ok = await applyFinancialsAvgTicketChange(
+          resolved.supabase,
+          resolved.ctx.planId,
+          change.finalValue,
+        );
       }
       (ok ? applied : failed).push(change.fieldId);
     }
