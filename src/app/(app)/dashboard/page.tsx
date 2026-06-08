@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Play,
   ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { capitalizeFirst } from "@/lib/format";
@@ -17,6 +18,9 @@ import {
   type ConflictItem,
   type HealthState,
   type PlanOverview,
+  type FinancialHealthSummary,
+  type HealthMetric,
+  type HealthTier,
 } from "@/lib/dashboard/plan-overview";
 import { TrialBanner } from "./_components/trial-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
@@ -118,6 +122,9 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           <PlanStatusCard overview={overview} />
           <StatsRow overview={overview} />
+          {overview.financialHealth && (
+            <FinancialHealthCard health={overview.financialHealth} />
+          )}
           <LastSevenDaysCard activity={overview.activity} />
           <PlanConflictsCard
             conflicts={overview.conflicts}
@@ -158,6 +165,7 @@ function emptyOverview(): PlanOverview {
     activity: [],
     conflicts: [],
     lastConflictCheckAt: null,
+    financialHealth: null,
   };
 }
 
@@ -291,7 +299,95 @@ function StatCard({
   );
 }
 
-// ── Section 3 — Last 7 Days ────────────────────────────────────────────────
+// ── Section 3 — Financial Health (TIM-2525) ───────────────────────────────
+
+const TIER_STYLES_DASH: Record<
+  HealthTier,
+  { wrap: string; dot: string; chip: string; chipLabel: string }
+> = {
+  green: {
+    wrap: "border-green-200 bg-green-50",
+    dot: "bg-green-500",
+    chip: "bg-green-100 text-green-800",
+    chipLabel: "On track",
+  },
+  yellow: {
+    wrap: "border-amber-200 bg-amber-50",
+    dot: "bg-amber-500",
+    chip: "bg-amber-100 text-amber-900",
+    chipLabel: "Watch",
+  },
+  red: {
+    wrap: "border-red-200 bg-red-50",
+    dot: "bg-red-500",
+    chip: "bg-red-100 text-red-800",
+    chipLabel: "Needs attention",
+  },
+};
+
+function FinancialHealthCard({ health }: { health: FinancialHealthSummary }) {
+  const s = TIER_STYLES_DASH[health.worst];
+  const redCount = health.metrics.filter((m: HealthMetric) => m.tier === "red").length;
+  const yellowCount = health.metrics.filter(
+    (m: HealthMetric) => m.tier === "yellow"
+  ).length;
+  const summaryTitle =
+    health.worst === "green"
+      ? "Financial health looks good"
+      : health.worst === "yellow"
+      ? `${yellowCount} indicator${yellowCount > 1 ? "s" : ""} to watch`
+      : `${redCount} indicator${redCount > 1 ? "s" : ""} need${redCount > 1 ? "" : "s"} attention`;
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${s.wrap}`}>
+      <div className="px-5 py-4 border-b border-current/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={15} className="text-current opacity-60" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">
+            Financial Health
+          </h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${s.chip}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+            {summaryTitle}
+          </span>
+          <Link
+            href="/workspace/financials"
+            className="text-xs font-semibold text-[var(--teal)] hover:underline"
+          >
+            View in Financials →
+          </Link>
+        </div>
+      </div>
+      <div className="divide-y divide-current/10">
+        {health.metrics.map((m: HealthMetric) => {
+          const ms = TIER_STYLES_DASH[m.tier];
+          return (
+            <div key={m.key} className="px-5 py-3 flex items-center justify-between gap-3">
+              <p className="text-xs text-[var(--foreground)] font-medium">{m.label}</p>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-bold text-[var(--foreground)] tabular-nums">
+                  {m.formattedValue}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${ms.chip}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${ms.dot}`} />
+                  {ms.chipLabel}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Section 4 — Last 7 Days ────────────────────────────────────────────────
 
 function LastSevenDaysCard({ activity }: { activity: ActivityItem[] }) {
   return (
@@ -372,7 +468,7 @@ function activityIconColor(kind: ActivityItem["kind"]): string {
   }
 }
 
-// ── Section 4 — Plan Conflicts ─────────────────────────────────────────────
+// ── Section 5 — Plan Conflicts ─────────────────────────────────────────────
 
 function PlanConflictsCard({
   conflicts,

@@ -2,9 +2,22 @@
 // Pure server-side helper — composes plan status, component counts, recent
 // activity, and cached conflicts into the four section payloads consumed by
 // /dashboard.
+// TIM-2525: Also loads financial health metrics (free, non-Copilot) so the
+// dashboard card surfaces Labor %, COGS %, break-even and working capital.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVAILABLE_MODULES } from "@/lib/modules";
+import {
+  normalizeMonthlyProjections,
+  deriveFinancialInputs,
+  computeMonthlySlices,
+} from "@/lib/financial-projection";
+import {
+  computeFinancialHealthMetrics,
+  worstTier,
+  type HealthMetric,
+  type HealthTier,
+} from "@/lib/financials/health-metrics";
 import {
   WORKSPACE_MANIFEST,
   WORKSPACE_CATEGORY_LABEL,
@@ -65,6 +78,11 @@ export interface ConflictItem {
   href: string | null;
 }
 
+export interface FinancialHealthSummary {
+  metrics: HealthMetric[];
+  worst: HealthTier;
+}
+
 export interface PlanOverview {
   planId: string | null;
   status: PlanStatus;
@@ -72,7 +90,12 @@ export interface PlanOverview {
   activity: ActivityItem[];
   conflicts: ConflictItem[];
   lastConflictCheckAt: string | null;
+  // TIM-2525: financial health metrics (free, not Copilot-gated).
+  financialHealth: FinancialHealthSummary | null;
 }
+
+// Re-export so the dashboard page doesn't need a direct lib import.
+export type { HealthMetric, HealthTier };
 
 interface CountedStatusRow {
   component_key: string;
@@ -258,8 +281,10 @@ export async function loadPlanOverview(
   let cachedReport: AuditReport | null = null;
   let lastConflictCheckAt: string | null = null;
 
+  let financialHealth: FinancialHealthSummary | null = null;
+
   if (planId) {
-    const [{ data: rows }, { data: cacheRow }] = await Promise.all([
+    const [{ data: rows }, { data: cacheRow }, { data: modelRow }] = await Promise.all([
       supabase
         .from("workspace_status")
         .select("component_key, status, updated_at")
@@ -271,6 +296,12 @@ export async function loadPlanOverview(
         .eq("plan_id", planId)
         .order("created_at", { ascending: false })
         .limit(1)
+        .maybeSingle(),
+      // TIM-2525: load financial model for health panel (select only what we need).
+      supabase
+        .from("financial_models")
+        .select("forecast_inputs, monthly_projections")
+        .eq("plan_id", planId)
         .maybeSingle(),
     ]);
 
@@ -285,6 +316,32 @@ export async function loadPlanOverview(
       cachedReport = (cacheRow as { report_json: AuditReport }).report_json;
       lastConflictCheckAt =
         (cacheRow as { created_at: string }).created_at ?? null;
+    }
+
+    // TIM-2525: compute financial health metrics from the stored model.
+    if (modelRow) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = (modelRow as any).forecast_inputs ?? (modelRow as any).monthly_projections;
+        const mp = normalizeMonthlyProjections(raw);
+        const fi = deriveFinancialInputs(mp);
+        const slices = computeMonthlySlices(mp, { total_cost_cents: 0, financed_cost_cents: 0 }, {
+          equipment_cost_cents: fi.equipment_cost_cents,
+          buildout_cost_cents: fi.buildout_cost_cents,
+          rent_deposits_cents: fi.rent_deposits_cents,
+          license_permits_cents: fi.license_permits_cents,
+          pre_opening_marketing_cents: fi.pre_opening_marketing_cents,
+          initial_inventory_cents: fi.initial_inventory_cents,
+          startup_supplies_cents: fi.startup_supplies_cents,
+          professional_fees_cents: fi.professional_fees_cents,
+        });
+        const metrics = computeFinancialHealthMetrics(slices, fi);
+        if (metrics.length > 0) {
+          financialHealth = { metrics, worst: worstTier(metrics) };
+        }
+      } catch {
+        // Non-blocking: a corrupt model should not break the dashboard.
+      }
     }
   }
 
@@ -345,5 +402,6 @@ export async function loadPlanOverview(
     activity,
     conflicts,
     lastConflictCheckAt,
+    financialHealth,
   };
 }

@@ -71,6 +71,7 @@ import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
 import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { FinancialHealthPanel } from "./financial-health-panel";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -2381,6 +2382,10 @@ export function FinancialsWorkspace({
             </button>
           </div>
         )}
+
+        {/* TIM-2525: Persistent Financial Health panel — visible on every tab,
+            not Copilot-gated. Renders once we have Year 1 slice data. */}
+        <FinancialHealthPanel slices={slices} financialInputs={financialInputs} />
 
         {/* TIM-1745: tabs sit flush above the content; the action toolbar that
             used to share this row now lives in the page header (top-right). */}
