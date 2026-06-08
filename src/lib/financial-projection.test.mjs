@@ -27,6 +27,17 @@ test("TIM-1244: default model includes startup_costs matching defaultStartupCost
   assert.deepEqual(mp.startup_costs, defaultStartupCosts());
 });
 
+test("TIM-2517: opening cash defaults keep a factory plan solvent through ramp", () => {
+  const sc = defaultStartupCosts();
+  // Working capital reserve raised from $15k → $45k (SBA/SCORE mid-band).
+  assert.equal(sc.working_capital_reserve_cents, 4_500_000);
+  // Opening cash buffer raised from $10k → $20k.
+  assert.equal(sc.opening_cash_buffer_cents, 2_000_000);
+  // Combined opening cash ≥ $65k — enough to absorb the projected ramp losses
+  // at the factory 30/55/80% ramp.
+  assert.ok(sc.working_capital_reserve_cents + sc.opening_cash_buffer_cents >= 6_500_000);
+});
+
 test("TIM-1244: normalize fills startup_costs with defaults when absent", () => {
   const mp = normalizeMonthlyProjections({ avg_ticket_cents: 800 });
   assert.deepEqual(mp.startup_costs, defaultStartupCosts());

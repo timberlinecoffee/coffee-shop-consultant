@@ -4,6 +4,7 @@ import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt } fro
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
+import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
 
 interface Props {
   startupCosts: StartupCosts;
@@ -17,6 +18,8 @@ interface Props {
   currencyCode?: string;
   canEdit: boolean;
   onUpdateField: (key: keyof StartupCosts, cents: number) => void;
+  // TIM-2517: opening-cash runway during ramp; drives the warning callout.
+  openingRunway?: OpeningRunwayResult;
 }
 
 // One-time costs the owner enters directly. Build-Out & Capital Assets are
@@ -70,6 +73,7 @@ export function StartupTab({
   currencyCode = "USD",
   canEdit,
   onUpdateField,
+  openingRunway,
 }: Props) {
   const f = (v: number) => fmt(v, currencyCode);
 
@@ -232,6 +236,17 @@ export function StartupTab({
             and each asset will appear here with its own depreciation schedule.
           </p>
         </div>
+      )}
+
+      {/* TIM-2517: opening-cash runway during ramp. Renders only when the
+          projection produces loss months — otherwise the plan is already
+          solvent through ramp and the callout has nothing to say. */}
+      {openingRunway && openingRunway.band !== "none" && (
+        <OpeningRunwayCallout
+          runway={openingRunway}
+          currencyCode={currencyCode}
+          formatCurrency={f}
+        />
       )}
 
       {/* Startup cost table */}
@@ -484,6 +499,71 @@ export function StartupTab({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+interface OpeningRunwayCalloutProps {
+  runway: OpeningRunwayResult;
+  currencyCode: string;
+  formatCurrency: (cents: number) => string;
+}
+
+function OpeningRunwayCallout({ runway, currencyCode, formatCurrency }: OpeningRunwayCalloutProps) {
+  // Token palette matches the existing funding-gap callout in this file:
+  // red-200/red-50/red-800/red-700 for risk, amber for warning, green for ok.
+  const tone =
+    runway.band === "red"
+      ? {
+          border: "border-red-200",
+          bg: "bg-red-50",
+          heading: "text-red-800",
+          body: "text-red-700",
+          label: "Opening Cash Risk",
+        }
+      : runway.band === "yellow"
+      ? {
+          border: "border-amber-300",
+          bg: "bg-amber-50",
+          heading: "text-amber-800",
+          body: "text-amber-700",
+          label: "Opening Cash Tight",
+        }
+      : {
+          border: "border-green-200",
+          bg: "bg-green-50",
+          heading: "text-green-800",
+          body: "text-green-700",
+          label: "Opening Cash Sufficient",
+        };
+
+  const months = runway.runwayMonths;
+  const monthsDisplay =
+    months === null
+      ? null
+      : months >= 10
+      ? `${Math.round(months)}`
+      : months >= 1
+      ? months.toFixed(1)
+      : "less than 1";
+
+  const avgLossDisplay = formatCurrency(Math.round(runway.avgMonthlyLossCents));
+
+  return (
+    <div className={`rounded-xl border px-5 py-4 ${tone.border} ${tone.bg}`}>
+      <p className={`text-sm font-semibold ${tone.heading}`}>{tone.label}</p>
+      <p className={`text-xs mt-1 leading-relaxed ${tone.body}`}>
+        At current ramp assumptions, your opening cash covers approximately{" "}
+        <span className="font-semibold">{monthsDisplay}</span>{" "}
+        {monthsDisplay === "1.0" || monthsDisplay === "less than 1" ? "month" : "months"} of losses
+        before break-even (average ramp-month loss {avgLossDisplay} {currencyCode}).
+        {runway.band === "red" &&
+          " Raise your working capital reserve or opening cash buffer, slow your ramp, or add more funding before opening."}
+        {runway.band === "yellow" &&
+          " You have a thin cushion. Consider raising your working capital reserve or opening cash buffer so you can absorb a slow start."}
+        {runway.band === "green" &&
+          " You can absorb the projected ramp-month losses without running out of cash."}
+      </p>
     </div>
   );
 }
