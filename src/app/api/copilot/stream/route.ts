@@ -33,6 +33,7 @@ import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { loadPlanContext } from "@/lib/plan-context"
 import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
 import { rateLimit } from "@/lib/rate-limit"
@@ -1212,6 +1213,30 @@ export async function POST(request: NextRequest) {
             toolCalls: toolCallCount,
           })
           const creditCost = creditBreakdown.credits
+
+          // TIM-2509: per-turn telemetry into ai_turn_metrics. Awaited before
+          // controller close so the Vercel runtime doesn't freeze the insert.
+          await recordTurnMetric(
+            {
+              async insert(row) {
+                return svcClient.from("ai_turn_metrics").insert(row)
+              },
+            },
+            {
+              route: "/api/copilot/stream",
+              model: modelId,
+              usage: {
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                cache_read_input_tokens: cacheReadTokens,
+                cache_creation_input_tokens: cacheCreateTokens,
+              },
+              webSearchRequests,
+              toolCalls: toolCallCount,
+              userId: user.id,
+              planTier: resolvePlanTier(profile),
+            },
+          )
 
           const effectiveThreadId = threadId ?? crypto.randomUUID()
 

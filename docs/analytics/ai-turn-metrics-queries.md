@@ -6,6 +6,23 @@ area-analysis, and any future deep-research entry points). Use these queries to
 validate the ~$5–7/mo Pro COGS estimate at launch and to tune routing thresholds
 with real data.
 
+**TIM-2509 — coverage expanded.** The table now also receives rows from the
+high-traffic credit-burn paths: `/api/copilot/stream` (Scout chat),
+`/api/copilot/improve`, `/api/copilot/launch-readiness`,
+`/api/business-plan/{generate,regenerate-all,improve}`,
+`/api/workspaces/concept/review`, and
+`/api/workspaces/location-lease/tradeoff`. The per-turn percentile queries
+below answer trial-credit-burn audits directly without needing the
+`ai_conversations` proxy.
+
+**Backfill rows.** A one-shot historical backfill (per TIM-2509) writes rows
+with `route LIKE 'backfill:ai_conversations:%'`. Those rows aggregate per
+thread, not per turn, with `input_tokens_uncached=0` and
+`output_tokens=0` (those columns are not present on `ai_conversations`).
+Filter them out of per-turn analyses with
+`WHERE route NOT LIKE 'backfill:%'`. Include them for cumulative cost/credit
+roll-ups.
+
 Run from Supabase SQL editor as the service role (RLS denies authenticated reads).
 
 ## 1. Cost-per-plan-tier weekly roll-up

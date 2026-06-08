@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, trial_ends_at",
+      "ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, trial_ends_at, beta_waiver_until",
     )
     .eq("id", user.id)
     .single();
@@ -331,6 +332,24 @@ export async function POST(request: NextRequest) {
             upstream_status: 200,
             details: { fieldKey, planId, costUsd, inputTokens, outputTokens, chars: fullText.length },
           }).then(() => {});
+
+          // TIM-2509: per-turn telemetry into ai_turn_metrics (awaited before
+          // controller close so Vercel doesn't freeze the insert).
+          await recordTurnMetric(
+            {
+              async insert(row) {
+                return svcClient.from("ai_turn_metrics").insert(row);
+              },
+            },
+            {
+              route: "/api/copilot/improve",
+              model: PLATFORM_AI_MODEL,
+              usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+              userId: user.id,
+              planTier: resolvePlanTier(profile),
+            },
+          );
+
           send(sse("done", { text: normalizeAIOutput(fullText), modelUsed: PLATFORM_AI_MODEL }));
           controller.close();
         }

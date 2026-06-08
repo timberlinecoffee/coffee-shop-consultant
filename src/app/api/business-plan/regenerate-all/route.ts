@@ -15,6 +15,7 @@ export const maxDuration = 300;
 
 import pLimit from "p-limit";
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -374,6 +375,12 @@ export async function POST(request: NextRequest): Promise<Response> {
           sectionAbort.abort();
         }, PER_SECTION_TIMEOUT_MS);
 
+        // TIM-2509: per-section usage capture for ai_turn_metrics.
+        let sectionInputTokens = 0;
+        let sectionOutputTokens = 0;
+        let sectionCacheReadTokens = 0;
+        let sectionCacheCreateTokens = 0;
+
         try {
           const response = await client.messages.stream(
             {
@@ -389,6 +396,12 @@ export async function POST(request: NextRequest): Promise<Response> {
             if (closed) break;
             if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
               fullText += event.delta.text;
+            } else if (event.type === "message_start" && event.message?.usage) {
+              sectionInputTokens = event.message.usage.input_tokens ?? 0;
+              sectionCacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
+              sectionCacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0;
+            } else if (event.type === "message_delta" && event.usage) {
+              sectionOutputTokens = event.usage.output_tokens ?? 0;
             }
           }
         } catch (err) {
@@ -411,6 +424,31 @@ export async function POST(request: NextRequest): Promise<Response> {
           failed.push({ key: sectionKey, message: sectionError ?? "empty_response" });
           return;
         }
+
+        // TIM-2509: emit one ai_turn_metrics row per successful section turn.
+        // Awaited (Vercel freezes pending work post-response). Self-consistency
+        // + regen calls below are not yet instrumented; the primary section
+        // stream is the dominant token-cost driver.
+        const telemetrySvc = createServiceClient();
+        await recordTurnMetric(
+          {
+            async insert(row) {
+              return telemetrySvc.from("ai_turn_metrics").insert(row);
+            },
+          },
+          {
+            route: "/api/business-plan/regenerate-all",
+            model: PLATFORM_AI_MODEL,
+            usage: {
+              input_tokens: sectionInputTokens,
+              output_tokens: sectionOutputTokens,
+              cache_read_input_tokens: sectionCacheReadTokens,
+              cache_creation_input_tokens: sectionCacheCreateTokens,
+            },
+            userId: user.id,
+            planTier: resolvePlanTier(profile),
+          },
+        );
 
         // Debit credits NOW (only on successful completion). Serialize with
         // a simple reservation pattern to avoid races across parallel sections.

@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -125,6 +126,11 @@ ${currentContent}`;
         if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null; }
 
         let fullText = "";
+        // TIM-2509: capture per-turn usage for ai_turn_metrics.
+        let inputTokens = 0;
+        let outputTokens = 0;
+        let cacheReadTokens = 0;
+        let cacheCreateTokens = 0;
 
         for await (const event of response) {
           if (done) break;
@@ -135,6 +141,12 @@ ${currentContent}`;
             const chunk = event.delta.text;
             fullText += chunk;
             controller.enqueue(enc.encode(sse("text", { text: chunk })));
+          } else if (event.type === "message_start" && event.message?.usage) {
+            inputTokens = event.message.usage.input_tokens ?? 0;
+            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
+            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0;
+          } else if (event.type === "message_delta" && event.usage) {
+            outputTokens = event.usage.output_tokens ?? 0;
           }
 
           gapTimer = setTimeout(() => {
@@ -150,13 +162,33 @@ ${currentContent}`;
 
         // TIM-1902: debit one credit on every AI run for any access-holding
         // account (active or card-on-file trialist). Beta-waived skips billing.
+        // TIM-2509: also record per-turn telemetry to ai_turn_metrics.
+        const svcForTelemetry = createServiceClient();
         if (hasAccess && !isBetaWaived) {
-          const svc = createServiceClient();
-          await svc
+          await svcForTelemetry
             .from("users")
             .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
             .eq("id", user.id);
         }
+        await recordTurnMetric(
+          {
+            async insert(row) {
+              return svcForTelemetry.from("ai_turn_metrics").insert(row);
+            },
+          },
+          {
+            route: "/api/business-plan/improve",
+            model: PLATFORM_AI_MODEL,
+            usage: {
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              cache_read_input_tokens: cacheReadTokens,
+              cache_creation_input_tokens: cacheCreateTokens,
+            },
+            userId: user.id,
+            planTier: resolvePlanTier(profile),
+          },
+        );
         void isActive; // referenced for future per-status billing; keeps lint happy.
 
         controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText) })));

@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -298,6 +299,11 @@ export async function POST(request: NextRequest) {
         if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null; }
 
         let fullText = "";
+        // TIM-2509: capture per-turn usage for ai_turn_metrics.
+        let inputTokens = 0;
+        let outputTokens = 0;
+        let cacheReadTokens = 0;
+        let cacheCreateTokens = 0;
 
         for await (const event of response) {
           if (done) break;
@@ -308,6 +314,12 @@ export async function POST(request: NextRequest) {
             const chunk = event.delta.text;
             fullText += chunk;
             controller.enqueue(enc.encode(sse("text", { text: chunk })));
+          } else if (event.type === "message_start" && event.message?.usage) {
+            inputTokens = event.message.usage.input_tokens ?? 0;
+            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
+            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0;
+          } else if (event.type === "message_delta" && event.usage) {
+            outputTokens = event.usage.output_tokens ?? 0;
           }
 
           gapTimer = setTimeout(() => {
@@ -323,13 +335,36 @@ export async function POST(request: NextRequest) {
 
         // TIM-1902: debit one credit on any access-holding account (active or
         // card-on-file trialist). Beta-waived skips billing.
+        // TIM-2509: also record per-turn telemetry to ai_turn_metrics on every
+        // section turn (regardless of beta-waive — analytics include free runs).
+        // Self-consistency check + regen calls in this route are not yet
+        // instrumented; primary section stream is the dominant cost driver.
+        const svcForTelemetry = createServiceClient();
         if (hasAccess && !isBetaWaived) {
-          const svc = createServiceClient();
-          await svc
+          await svcForTelemetry
             .from("users")
             .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
             .eq("id", user.id);
         }
+        await recordTurnMetric(
+          {
+            async insert(row) {
+              return svcForTelemetry.from("ai_turn_metrics").insert(row);
+            },
+          },
+          {
+            route: "/api/business-plan/generate",
+            model: PLATFORM_AI_MODEL,
+            usage: {
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              cache_read_input_tokens: cacheReadTokens,
+              cache_creation_input_tokens: cacheCreateTokens,
+            },
+            userId: user.id,
+            planTier: resolvePlanTier(profile),
+          },
+        );
 
         // TIM-2337: post-generation canonicalization pass — rewrite known
         // aliases ("La Marzocko" → "La Marzocco") and Levenshtein ≤ 2

@@ -6,8 +6,10 @@ export const runtime = "nodejs"
 export const maxDuration = 60
 
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
 import type { NextRequest } from "next/server"
 import { toTitleCase } from "@/lib/text"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, beta_waiver_until")
     .eq("id", user.id)
     .maybeSingle()
 
@@ -251,6 +253,26 @@ export async function POST(request: NextRequest) {
       system:
         "You are a knowledgeable coffee shop site-selection advisor. Reply ONLY with the JSON object the user asks for. No prose outside the JSON. Use plain English in the reasoning fields — direct, opinionated, no filler.",
     })
+
+    // TIM-2509: record per-turn telemetry into ai_turn_metrics on every
+    // successful Anthropic call. resolvePlanTier handles a partially-populated
+    // profile gracefully (no beta_waiver_until → not beta_waived).
+    const telemetrySvc = createServiceClient()
+    await recordTurnMetric(
+      {
+        async insert(row) {
+          return telemetrySvc.from("ai_turn_metrics").insert(row)
+        },
+      },
+      {
+        route: "/api/workspaces/location-lease/tradeoff",
+        model: PLATFORM_AI_MODEL,
+        usage: message.usage,
+        userId: user.id,
+        planTier: resolvePlanTier(profile ?? {}),
+      },
+    )
+
     const firstBlock = message.content[0]
     if (!firstBlock || firstBlock.type !== "text") {
       return Response.json({ error: "AI returned no text." }, { status: 502 })

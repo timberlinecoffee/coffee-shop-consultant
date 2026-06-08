@@ -18,6 +18,7 @@ import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { rateLimit } from "@/lib/rate-limit"
 import type { NextRequest } from "next/server"
 
@@ -172,7 +173,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
@@ -284,6 +285,12 @@ export async function POST(request: NextRequest) {
           messages: [{ role: "user", content: userMessage }],
         })
 
+        // TIM-2509: capture per-turn usage for ai_turn_metrics.
+        let inputTokens = 0
+        let outputTokens = 0
+        let cacheReadTokens = 0
+        let cacheCreateTokens = 0
+
         for await (const event of stream) {
           if (closed) break
 
@@ -303,6 +310,12 @@ export async function POST(request: NextRequest) {
               resetGapTimer()
               fullText += event.delta.text
             }
+          } else if (event.type === "message_start" && event.message?.usage) {
+            inputTokens = event.message.usage.input_tokens ?? 0
+            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0
+            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0
+          } else if (event.type === "message_delta" && event.usage) {
+            outputTokens = event.usage.output_tokens ?? 0
           }
         }
 
@@ -360,6 +373,28 @@ export async function POST(request: NextRequest) {
               description: "Launch readiness check",
             })
           }
+
+          // TIM-2509: per-turn telemetry into ai_turn_metrics (awaited before
+          // controller close so Vercel doesn't freeze the insert).
+          await recordTurnMetric(
+            {
+              async insert(row) {
+                return svcClient.from("ai_turn_metrics").insert(row)
+              },
+            },
+            {
+              route: "/api/copilot/launch-readiness",
+              model: modelId,
+              usage: {
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                cache_read_input_tokens: cacheReadTokens,
+                cache_creation_input_tokens: cacheCreateTokens,
+              },
+              userId: user.id,
+              planTier: resolvePlanTier(profile),
+            },
+          )
 
           send(sse("result", normalizedParsed))
           send(sse("done", { modelUsed: modelId }))

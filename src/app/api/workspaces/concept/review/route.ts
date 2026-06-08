@@ -13,6 +13,7 @@ export const runtime = "nodejs";
 export const maxDuration = 45;
 
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, trial_ends_at",
+      "ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, trial_ends_at, beta_waiver_until",
     )
     .eq("id", user.id)
     .single();
@@ -154,6 +155,25 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
       max_tokens: 2_000,
       messages: [{ role: "user", content: prompt }],
     });
+
+    // TIM-2509: record per-turn telemetry into ai_turn_metrics on every
+    // successful Anthropic call (whether or not parse succeeds below).
+    const telemetrySvc = createServiceClient();
+    await recordTurnMetric(
+      {
+        async insert(row) {
+          return telemetrySvc.from("ai_turn_metrics").insert(row);
+        },
+      },
+      {
+        route: "/api/workspaces/concept/review",
+        model: PLATFORM_AI_MODEL,
+        usage: message.usage,
+        userId: user.id,
+        planTier: resolvePlanTier(profile),
+      },
+    );
+
     const rawText =
       message.content[0]?.type === "text" ? message.content[0].text : "";
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
