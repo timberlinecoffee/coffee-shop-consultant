@@ -14,7 +14,11 @@ import type { BenchmarkPageData, CohortAxes, DrilldownData } from "./types";
 interface BenchmarkDashboardProps {
   workspaceSlug: string;
   onAskBenchmark: (metricId: string, metricLabel: string) => void;
-  onApplySuggestion: (metricId: string) => void;
+  onApplySuggestion: (drilldown: DrilldownData) => void;
+  /** Surfaced for the sub-nav badge (count of yellow chips). */
+  onYellowCountChange?: (count: number) => void;
+  /** Caller-supplied drilldown opener — used by inline chips' "see why". */
+  openMetricId?: string | null;
 }
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
@@ -83,7 +87,13 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export function BenchmarkDashboard({ workspaceSlug, onAskBenchmark, onApplySuggestion }: BenchmarkDashboardProps) {
+export function BenchmarkDashboard({
+  workspaceSlug,
+  onAskBenchmark,
+  onApplySuggestion,
+  onYellowCountChange,
+  openMetricId,
+}: BenchmarkDashboardProps) {
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [data, setData] = useState<BenchmarkPageData | null>(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
@@ -140,6 +150,20 @@ export function BenchmarkDashboard({ workspaceSlug, onAskBenchmark, onApplySugge
     data.cohort.sampleSize < 10;
   const yellowCount = data?.pillars.flatMap((p) => p.metrics).filter((m) => m.status === "yellow").length ?? 0;
 
+  // TIM-2450: surface yellow chip count to the parent workspace so its sub-nav
+  // badge ([How You Compare 3 flagged]) reflects the live engine output. Only
+  // re-fires when the number actually changes.
+  useEffect(() => {
+    onYellowCountChange?.(yellowCount);
+  }, [yellowCount, onYellowCountChange]);
+
+  const handleApply = useCallback(
+    (drilldown: DrilldownData) => {
+      onApplySuggestion(drilldown);
+    },
+    [onApplySuggestion]
+  );
+
   return (
     <div className="space-y-4">
       {/* Cohort fallback banner — never silent substitution */}
@@ -175,8 +199,12 @@ export function BenchmarkDashboard({ workspaceSlug, onAskBenchmark, onApplySugge
           pillars={data?.pillars ?? []}
           getDrilldown={getDrilldown}
           onAskBenchmark={onAskBenchmark}
-          onApplySuggestion={onApplySuggestion}
+          onApplySuggestion={(metricId) => {
+            const dd = getDrilldown(metricId);
+            if (dd) handleApply(dd);
+          }}
           loading={isLoading}
+          openMetricId={openMetricId ?? null}
         />
       )}
 

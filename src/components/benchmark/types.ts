@@ -58,6 +58,14 @@ export interface DrilldownData {
   citationUrl?: string;
   citationConfidence?: "high" | "medium" | "low";
   trendData?: PercentilePoint[];
+  // TIM-2450: Phase 3 review-modal payload. proposedNumeric is the engine's
+  // suggested value (best-practice midpoint or cohort median); proposedFormatted
+  // is the human-readable form for the modal "Proposed" column. actionDescription
+  // is the rationale string the engine's applicableActions emit.
+  proposedNumeric?: number;
+  proposedFormatted?: string;
+  actionLabel?: string;
+  actionDescription?: string;
 }
 
 export interface BenchmarkPageData {

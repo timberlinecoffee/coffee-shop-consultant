@@ -2494,15 +2494,43 @@ export function FinancialsWorkspace({
         {activeTab === "how-you-compare" && (
           <BenchmarkDashboard
             workspaceSlug="financials"
-            onAskBenchmark={(_metricId, _metricLabel) => {
-              // TIM-2416: open Scout drawer in Benchmark mode with metric pre-loaded.
-              // Wire up when TIM-2416 ships the benchmark focus API.
+            onYellowCountChange={setBenchmarkYellowCount}
+            onAskBenchmark={(metricId, metricLabel) => {
+              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
+              // the metric the founder clicked from already in scope.
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("copilot:open-in-mode", {
+                    detail: {
+                      mode: "benchmark",
+                      scope: "financials",
+                      focus: { metricId, metricLabel },
+                    },
+                  }),
+                );
+              }
             }}
-            onApplySuggestion={(_metricId) => {
+            onApplySuggestion={(drilldown) => {
+              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
+              const original = drilldown.userValue;
               openAIReviewModal({
-                suggestions: [],
-                context: { workspace: "financials" },
-                onApply: async () => {},
+                suggestions: [
+                  {
+                    id: `bench:${drilldown.metricId}`,
+                    fieldId: drilldown.metricId,
+                    fieldLabel: drilldown.metricLabel,
+                    originalValue: original,
+                    proposedValue: proposed,
+                  },
+                ],
+                context: { workspace: "financials", section: "How You Compare" },
+                onApply: async () => {
+                  // Phase 3: review-modal-only path. Per-metric write paths land
+                  // in a follow-up child (TIM-2450b) — Apply here closes the
+                  // modal without mutating plan fields. The review gate is
+                  // honored; per [[feedback_ai_never_auto_apply]] this is the
+                  // safest interim state.
+                },
               });
             }}
           />

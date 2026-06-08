@@ -342,14 +342,39 @@ export function OperationsPlaybookWorkspace({
         {activeView === "how-you-compare" && (
           <BenchmarkDashboard
             workspaceSlug="operations-playbook"
-            onAskBenchmark={(_metricId, _metricLabel) => {
-              // TIM-2416: open Scout drawer in Benchmark mode with metric pre-loaded.
+            onYellowCountChange={setBenchmarkYellowCount}
+            onAskBenchmark={(metricId, metricLabel) => {
+              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
+              // the metric in scope.
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("copilot:open-in-mode", {
+                    detail: {
+                      mode: "benchmark",
+                      scope: "operations_playbook",
+                      focus: { metricId, metricLabel },
+                    },
+                  }),
+                );
+              }
             }}
-            onApplySuggestion={(_metricId) => {
+            onApplySuggestion={(drilldown) => {
+              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
               openBenchmarkAIReviewModal({
-                suggestions: [],
-                context: { workspace: "operations_playbook" },
-                onApply: async () => {},
+                suggestions: [
+                  {
+                    id: `bench:${drilldown.metricId}`,
+                    fieldId: drilldown.metricId,
+                    fieldLabel: drilldown.metricLabel,
+                    originalValue: drilldown.userValue,
+                    proposedValue: proposed,
+                  },
+                ],
+                context: { workspace: "operations_playbook", section: "How You Compare" },
+                onApply: async () => {
+                  // Phase 3: review-modal-only path; per-metric write paths
+                  // follow in a child issue.
+                },
               });
             }}
           />

@@ -3,7 +3,7 @@
 // TIM-2472: Pillar rows + chip grid + single-open inline drill-down.
 // State: one drill-down open at a time, tracked by {pillarId, metricId}.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BenchmarkChip } from "./BenchmarkChip";
 import { BenchmarkDrilldown } from "./BenchmarkDrilldown";
 import type { BenchmarkPillar, DrilldownData } from "./types";
@@ -19,6 +19,8 @@ interface HealthGridProps {
   onAskBenchmark: (metricId: string, metricLabel: string) => void;
   onApplySuggestion: (metricId: string) => void;
   loading?: boolean;
+  /** Caller-supplied metric id — when set, opens that metric's drill-down. */
+  openMetricId?: string | null;
 }
 
 function PillarSkeleton() {
@@ -38,8 +40,17 @@ function PillarSkeleton() {
   );
 }
 
-export function HealthGrid({ pillars, getDrilldown, onAskBenchmark, onApplySuggestion, loading }: HealthGridProps) {
+export function HealthGrid({ pillars, getDrilldown, onAskBenchmark, onApplySuggestion, loading, openMetricId }: HealthGridProps) {
   const [open, setOpen] = useState<OpenState | null>(null);
+
+  // TIM-2450: external openers (inline chip "see why" link) can request a
+  // specific metric is drilled into on mount/change.
+  useEffect(() => {
+    if (!openMetricId) return;
+    const pillar = pillars.find((p) => p.metrics.some((m) => m.id === openMetricId));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prop is the canonical opener; sync internal click state.
+    if (pillar) setOpen({ pillarId: pillar.id, metricId: openMetricId });
+  }, [openMetricId, pillars]);
 
   if (loading) return <PillarSkeleton />;
 
