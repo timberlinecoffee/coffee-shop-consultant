@@ -591,12 +591,14 @@ export async function POST(request: NextRequest) {
   });
   if (rl) return rl;
 
-  let body: z.infer<typeof ApplyBodySchema>;
-  try {
-    body = ApplyBodySchema.parse(await request.json());
-  } catch {
-    return Response.json({ error: "Invalid request body" }, { status: 400 });
+  const parseResult = ApplyBodySchema.safeParse(await request.json());
+  if (!parseResult.success) {
+    return Response.json(
+      { error: "Invalid request body", fields: parseResult.error.flatten().fieldErrors },
+      { status: 400 },
+    );
   }
+  const body = parseResult.data;
 
   const applied: string[] = [];
   const failed: string[] = [];
