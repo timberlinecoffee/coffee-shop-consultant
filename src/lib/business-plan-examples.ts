@@ -195,5 +195,5 @@ The cash-flow breakeven point is projected at month eight. This assumes the reve
 
 The owner acknowledges the principal risks: a slower-than-expected ramp through month six, an espresso equipment failure in the first 90 days, or a key staffing departure during the opening quarter. The operating reserve and the service contracts on major equipment are sized to absorb any one of these without a second capital event.`,
 
-  "appendix-monthly-statements": `Monthly profit and loss, cash flow, and balance sheet statements for year one appear on the following pages. Five-year annual summary precedes the month-by-month tables. All figures are in USD and reflect the assumptions in the Financial Plan section.`,
+  "appendix-monthly-statements": `Monthly profit and loss, cash flow, and balance sheet statements for year one appear on the following pages. Five-year annual summary precedes the month-by-month tables. All figures are in the plan's reporting currency and reflect the assumptions in the Financial Plan section.`,
 };
