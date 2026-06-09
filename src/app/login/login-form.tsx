@@ -10,6 +10,7 @@ import {
   REMEMBER_ME_MAX_AGE_SECONDS,
   isSupabaseAuthCookie,
 } from "@/lib/auth/remember-me";
+import { deleteAllVerifierVariants } from "./clear-stale-verifier";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -111,34 +112,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
   }
 
-  // TIM-2327 (2026-06-08): re-write the PKCE verifier cookie @supabase/ssr
-  // just set, with the same explicit attribute set our handoff cookies use
-  // (Path=/; Max-Age=600; SameSite=Lax; Secure on https). Returns true if a
-  // verifier cookie was present at the time of the rewrite, false otherwise.
-  // The boolean tells us whether @supabase/ssr's setItem actually wrote to
-  // document.cookie at all — feeds back into the /auth/callback diagnostic.
-  function rewriteVerifierWithHandoffAttrs(): boolean {
-    if (typeof document === "undefined") return false;
-    const secure = window.location.protocol === "https:" ? "; Secure" : "";
-    let found = false;
-    for (const raw of document.cookie.split(";")) {
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq === -1) continue;
-      const name = trimmed.substring(0, eq);
-      if (!name.startsWith("sb-")) continue;
-      // Match both the canonical name and any chunked variants.
-      if (
-        !name.endsWith("-auth-token-code-verifier") &&
-        !/-auth-token-code-verifier\.\d+$/.test(name)
-      ) continue;
-      found = true;
-      const value = trimmed.substring(eq + 1);
-      document.cookie = `${name}=${value}; Path=/; Max-Age=600; SameSite=Lax${secure}`;
-    }
-    return found;
-  }
+  // TIM-2327: stale-verifier pre-deletion lives in ./clear-stale-verifier so
+  // its cookie-name regex and Path/Domain variant list are unit-tested
+  // independently of the React component. Full incident context in that file.
 
   async function handleGoogleSignIn() {
     if (mode === "signup" && !consent) {
@@ -154,38 +130,34 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     // TIM-2430: write preference before redirecting to Google; it survives the
     // OAuth round-trip and the proxy+server reads it on /auth/callback.
     writeRememberPreference(rememberMe);
-    // TIM-2327 (2026-06-08): Trent's Chrome diag showed verifier_cookies=0 at
-    // /auth/callback even after we shipped `cookieOptions: { secure: true }`.
-    // The PKCE verifier cookie that @supabase/ssr writes via document.cookie
-    // simply does not survive the OAuth round-trip on his browser, while our
-    // own gw_oauth_* handoff cookies (set the same way) do. Use
-    // skipBrowserRedirect to inspect document.cookie after the @supabase/ssr
-    // write and re-write the verifier with the same explicit attribute set
-    // our handoff cookies use. We also stash a sentinel handoff cookie
-    // (`gw_oauth_verifier_pre_nav`) recording whether the verifier was even
-    // present at navigation time, so the next diag tells us setItem-failed vs
-    // browser-stripped-mid-flight.
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    // TIM-2327: blast every Path/Domain variant of the verifier cookie before
+    // signInWithOAuth so supabase-js's new write isn't shadowed by a stale
+    // sibling at a different Domain attr. See clear-stale-verifier.ts for the
+    // full incident context (board-reported double-login symptom).
+    const staleVerifierCount =
+      typeof document !== "undefined"
+        ? deleteAllVerifierVariants({
+            getDocumentCookie: () => document.cookie,
+            setDocumentCookie: (line) => {
+              document.cookie = line;
+            },
+            hostname: window.location.hostname,
+          })
+        : 0;
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        skipBrowserRedirect: true,
         // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
         // OAuth honors the project-level CAPTCHA setting on the initiate call.
         ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
       },
     });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-    const verifierAtNav = rewriteVerifierWithHandoffAttrs();
-    setHandoffCookie("gw_oauth_verifier_pre_nav", verifierAtNav ? "1" : "0");
-    if (data?.url) {
-      window.location.assign(data.url);
-      return;
-    }
+    // Stash a sentinel that the /auth/callback diag can surface, telling us
+    // how many stale verifier variants were present on this attempt. > 0 on a
+    // first-attempt success confirms this fix was load-bearing for the user.
+    setHandoffCookie("gw_oauth_stale_verifiers", String(staleVerifierCount));
+    if (error) setError(error.message);
     setLoading(false);
   }
 

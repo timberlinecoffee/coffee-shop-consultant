@@ -7,7 +7,7 @@ import { resolveNext } from "./safe-next";
 // signInWithOAuth. Lets us strip query params off `redirectTo` so it matches
 // Supabase's Additional Redirect URLs allowlist exactly (bare `/auth/callback`),
 // avoiding the Site URL fallback that drops users on apex coming-soon.
-const HANDOFF_COOKIES = ["gw_oauth_signup_source", "gw_oauth_next", "gw_oauth_verifier_pre_nav"] as const;
+const HANDOFF_COOKIES = ["gw_oauth_signup_source", "gw_oauth_next", "gw_oauth_verifier_pre_nav", "gw_oauth_stale_verifiers"] as const;
 
 function clearHandoffCookies(res: NextResponse) {
   for (const name of HANDOFF_COOKIES) {
@@ -63,6 +63,12 @@ export async function GET(request: Request) {
   // chain). "0" = setItem failed to write at all. "absent" = sentinel never
   // set (user on an old deploy, or some upstream error).
   const verifierPreNav = cookieStore.get("gw_oauth_verifier_pre_nav")?.value;
+  // TIM-2327 (2026-06-09): count of stale verifier-name cookies that
+  // login-form's deleteAllVerifierVariants() found and deleted before calling
+  // signInWithOAuth. Non-zero on a successful exchange means the pre-delete
+  // was load-bearing for the user (a stale sibling at a different Path/Domain
+  // would have shadowed the fresh write and broken the round-trip).
+  const staleVerifiers = cookieStore.get("gw_oauth_stale_verifiers")?.value;
   const userAgent = request.headers.get("user-agent") ?? "";
   const browserHint = /Firefox\//.test(userAgent)
     ? "firefox"
@@ -121,6 +127,7 @@ export async function GET(request: Request) {
       verifier_cookies: verifierCookies.length,
       verifier_chunks: verifierChunked.length,
       verifier_pre_nav: verifierPreNav ?? "absent",
+      stale_verifiers: staleVerifiers ?? "absent",
       auth_token_cookies: authTokenCookies.length,
       handoff_cookies: handoffPresent,
       remember_me: rememberMeRaw ?? "absent",
