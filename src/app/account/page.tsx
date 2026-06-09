@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -7,8 +8,15 @@ import { LocalizationSettingsCard } from "@/components/account/LocalizationSetti
 import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
+import { RevertToggle } from "@/components/account/RevertToggle";
 import { effectivePlanForGating } from "@/lib/access";
 import { SettingsShell } from "@/components/account/settings/SettingsShell";
+import {
+  UI_REVAMP_COOKIE,
+  UI_REVAMP_OVERRIDE_COOKIE,
+  getUiRevampSetting,
+  resolveUiRevamp,
+} from "@/lib/ui-revamp";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +45,17 @@ export default async function AccountPage() {
       }) === "pro"
     : false;
 
-  const accountSettings = await getAccountSettings(supabase, user.id);
+  const [accountSettings, dbUiRevamp] = await Promise.all([
+    getAccountSettings(supabase, user.id),
+    getUiRevampSetting(supabase, user.id),
+  ]);
+
+  const cookieStore = await cookies();
+  const uiRevampEnabled = resolveUiRevamp({
+    dbValue: dbUiRevamp,
+    overrideCookie: cookieStore.get(UI_REVAMP_OVERRIDE_COOKIE)?.value,
+    mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
+  });
 
   const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
   const FREE_TRIAL_COPILOT_LIMIT = 5;
@@ -126,6 +144,17 @@ export default async function AccountPage() {
         </div>
 
         <GuidedNoticesCard variant="stacked-card" />
+
+        {/* TIM-2589: Preferences — feature-flag toggles. RevertToggle will
+            also appear in the Phase 5.2 profile popover; this card keeps it
+            accessible from Account Settings in the interim. */}
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
+          <h2 className="font-semibold text-[var(--foreground)] mb-1">Preferences</h2>
+          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+            Appearance and experience options for your account.
+          </p>
+          <RevertToggle initialEnabled={uiRevampEnabled} />
+        </div>
 
         <AccountDataControls userEmail={userEmail} variant="stacked-card" />
 

@@ -6,6 +6,7 @@ import {
   adjustOptionsForRemember,
   parseRememberPreference,
 } from './lib/auth/remember-me'
+import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
 
 // TIM-2352: paths where running supabase.auth.getUser() in middleware breaks the
 // in-flight OAuth handshake. If a user has a stale refresh token, getUser() →
@@ -54,6 +55,21 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+
+  // TIM-2589: ?ui=v1 or ?ui=v2 sets a session-level override cookie so SSR
+  // branches correctly on the first paint without a DB write. The cookie
+  // clears when the browser closes (no maxAge). Ignored on auth flow paths
+  // (already returned above).
+  const uiParam = searchParams.get('ui')
+  if (uiParam === 'v1' || uiParam === 'v2') {
+    supabaseResponse.cookies.set(UI_REVAMP_OVERRIDE_COOKIE, uiParam, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      // No maxAge = session cookie; cleared on browser close.
+    })
+  }
 
   // TIM-2580: /plan/1 is the public free-preview module. The page handler
   // renders an empty-state ModuleClient for unauthenticated visitors; allow
