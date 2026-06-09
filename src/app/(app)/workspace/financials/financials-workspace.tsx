@@ -2309,9 +2309,12 @@ export function FinancialsWorkspace({
 
   // TIM-2569: progressive tab disclosure — primary tabs visible to all; reports
   // tabs hidden behind a "Reports ▾" dropdown until the guided tour is done.
+  // Order is spec-driven (forecast → startup → personnel), not source-array order.
   const PRIMARY_TAB_IDS = new Set<Tab>(["forecast", "startup", "personnel"]);
-  const primaryNavTabs = tabs
-    .filter((t) => PRIMARY_TAB_IDS.has(t.id))
+  const PRIMARY_TABS_ORDER = ["forecast", "startup", "personnel"] as const;
+  const primaryNavTabs = PRIMARY_TABS_ORDER
+    .map((id) => tabs.find((t) => t.id === id))
+    .filter((t): t is (typeof tabs)[number] => Boolean(t))
     .map((t) => ({ key: t.id, label: t.label, badge: t.badge }));
   const reportsNavTabs = tabs
     .filter((t) => !PRIMARY_TAB_IDS.has(t.id))
