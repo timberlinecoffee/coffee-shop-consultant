@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
 import { getAccountSettings } from "@/lib/account-settings";
@@ -7,6 +6,8 @@ export const dynamic = "force-dynamic";
 
 // TIM-1748: CurrencyProvider hydrated server-side so all plan module money
 // display uses the account's selected currency instead of a hardcoded "$".
+// TIM-2580: Auth gate moved to the page level so unauthenticated visitors can
+// reach /plan/1 as a free preview without being dead-ended here.
 export default async function PlanLayout({
   children,
 }: {
@@ -17,12 +18,12 @@ export default async function PlanLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
-
-  const settings = await getAccountSettings(supabase, user.id);
+  const currencyCode = user
+    ? (await getAccountSettings(supabase, user.id)).currencyCode
+    : "USD";
 
   return (
-    <CurrencyProvider currencyCode={settings.currencyCode}>
+    <CurrencyProvider currencyCode={currencyCode}>
       {children}
     </CurrencyProvider>
   );
