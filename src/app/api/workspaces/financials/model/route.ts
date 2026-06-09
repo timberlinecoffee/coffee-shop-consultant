@@ -14,6 +14,7 @@ import {
   calibrateRent,
   applyCalibratedRentToForecastLines,
 } from "@/lib/financials/rent-calibration";
+import { calibrateFundingSources } from "@/lib/financials/funding-source-calibration";
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 
 export async function GET() {
@@ -92,6 +93,16 @@ export async function GET() {
     currencyCode: forecastInputs.currency_code,
   });
   applyCalibratedRentToForecastLines(forecastInputs.forecast_lines, calibratedRentCents);
+  // TIM-2557: seed Funding Sources from the same shop-type × city-tier
+  // signal as startup costs, FX-converted to plan currency. Replaces the
+  // flat $10M loan + $15M founder default that produced byte-identical
+  // Year-1 Interest ($598,491) across every persona in BP review.
+  forecastInputs.funding_sources = calibrateFundingSources({
+    shopTypes,
+    city: planGeo.city ?? onboardingLocation?.city ?? null,
+    countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
+    currencyCode: forecastInputs.currency_code,
+  });
 
   const { data: created, error } = await supabase
     .from("financial_models")
