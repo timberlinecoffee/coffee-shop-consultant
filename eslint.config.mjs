@@ -37,6 +37,75 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // TIM-2573 (parent TIM-2555): client-reachable trees cannot import Node
+  // built-ins. Turbopack refuses `node:*` in client chunks — broke prod under
+  // TIM-2474 → benchmarks.ts → node:module → TIM-2546 (6h prod outage). Gate
+  // both the `node:*` URL form and bare-name builtins (`fs`, `path`, `module`,
+  // `crypto`, `os`, `stream`, `child_process`, etc.) because Turbopack treats
+  // them the same way. Scope intentionally narrow: the two trees that ship to
+  // the browser bundle directly. Lib modules that are imported INTO these
+  // trees (e.g. business-plan/benchmarks.ts) are guarded by the
+  // `no-node-imports-client.test.mjs` pin test — the ESLint rule cannot
+  // statically detect transitive reach without a custom plugin (deferred).
+  {
+    files: [
+      "src/app/(app)/workspace/**/*.{ts,tsx}",
+      "src/components/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["node:*"],
+              message:
+                "Client-reachable code cannot import Node built-ins (broke prod via TIM-2474 → benchmarks.ts → node:module → TIM-2546).",
+            },
+          ],
+          paths: [
+            // Bare-name Node built-ins. Turbopack refuses these in client
+            // chunks the same way it refuses the `node:` URL form.
+            "assert",
+            "buffer",
+            "child_process",
+            "cluster",
+            "crypto",
+            "dgram",
+            "dns",
+            "events",
+            "fs",
+            "fs/promises",
+            "http",
+            "http2",
+            "https",
+            "module",
+            "net",
+            "os",
+            "path",
+            "perf_hooks",
+            "process",
+            "querystring",
+            "readline",
+            "stream",
+            "string_decoder",
+            "tls",
+            "tty",
+            "url",
+            "util",
+            "v8",
+            "vm",
+            "worker_threads",
+            "zlib",
+          ].map((name) => ({
+            name,
+            message:
+              "Client-reachable code cannot import Node built-ins (broke prod via TIM-2474 → benchmarks.ts → node:module → TIM-2546). Use the `node:` URL form only in server-only modules.",
+          })),
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
