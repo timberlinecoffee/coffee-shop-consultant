@@ -106,6 +106,8 @@ function useAutoSave(planId: string, moduleNumber: number, sectionKey: string) {
 
   const save = useCallback(
     (data: Record<string, unknown>, status: string) => {
+      // No-op for guest preview sessions (TIM-2580).
+      if (!planId) return;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(async () => {
         await supabase.from("module_responses").upsert(
