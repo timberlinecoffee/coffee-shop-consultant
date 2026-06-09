@@ -1,7 +1,10 @@
 // TIM-1748: Server page for the /plan/[moduleNumber] route. Fetches plan,
 // user profile, section responses, and conversations, then renders ModuleClient.
 // CurrencyProvider is wired in the parent plan/layout.tsx.
+// TIM-2580: /plan/1 is open to unauthenticated visitors as a free preview.
+// All other modules still require login.
 import { redirect, notFound } from "next/navigation";
+import { FREE_PREVIEW_MODULE } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive } from "@/lib/access";
 import { ModuleClient } from "./module-client";
@@ -22,7 +25,27 @@ export default async function PlanModulePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) {
+    // Modules 2+ require an account. Module 1 is a public free preview.
+    if (moduleNumber !== FREE_PREVIEW_MODULE) redirect("/login");
+
+    return (
+      <ModuleClient
+        moduleNumber={FREE_PREVIEW_MODULE}
+        planId=""
+        planName="Your Coffee Shop Plan"
+        userProfile={{
+          full_name: null,
+          onboarding_data: {},
+          ai_credits_remaining: 0,
+          subscription_tier: "free",
+        }}
+        initialResponses={{}}
+        initialConversations={{}}
+        freePreview={true}
+      />
+    );
+  }
 
   const [planResult, profileResult] = await Promise.all([
     supabase

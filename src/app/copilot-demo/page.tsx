@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { WorkspaceKey } from "@/types/supabase";
@@ -26,8 +26,10 @@ export default async function CopilotDemoPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Internal dev testing page (TIM-633). Surface a 404 to unauthenticated
+  // visitors instead of a silent login redirect (TIM-2580).
   if (!user) {
-    redirect("/login");
+    notFound();
   }
 
   const { data: plan } = await supabase
