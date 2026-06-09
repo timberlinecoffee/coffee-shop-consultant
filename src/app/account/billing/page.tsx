@@ -52,6 +52,11 @@ function readCancelledParam(): boolean {
   return new URLSearchParams(window.location.search).has("cancelled");
 }
 
+function readNothingToCancelParam(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("nothing_to_cancel");
+}
+
 function capitalize(s: string | null | undefined): string {
   if (!s) return "";
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -65,6 +70,7 @@ export default function BillingPage() {
   const [successParam] = useState<boolean>(readSuccessParam);
   const [pausedParam] = useState<boolean>(readPausedParam);
   const [cancelledParam] = useState<boolean>(readCancelledParam);
+  const [nothingToCancelParam] = useState<boolean>(readNothingToCancelParam);
   const [sync, setSync] = useState<SyncState>(successParam ? { phase: "syncing" } : { phase: "idle" });
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
   const syncStartedRef = useRef(false);
@@ -300,6 +306,17 @@ export default function BillingPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm text-amber-800 font-medium">
               Cancellation confirmed. Your access continues until the end of your current billing period.
+            </p>
+          </div>
+        )}
+
+        {nothingToCancelParam && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-sm text-amber-800 font-medium">
+              You don&apos;t have an active subscription to cancel.
+            </p>
+            <p className="mt-1 text-xs text-amber-700">
+              If you believe this is wrong, contact support and we&apos;ll sort it out.
             </p>
           </div>
         )}
