@@ -59,8 +59,8 @@ export async function proxy(request: NextRequest) {
   // renders an empty-state ModuleClient for unauthenticated visitors; allow
   // it through the proxy so it isn't redirected to /login before the page
   // ever runs. Keep this in sync with FREE_PREVIEW_MODULE in src/lib/access.ts.
+  // `pathname` is already destructured from request.nextUrl at the top of this function.
   const PLAN_FREE_PREVIEW = /^\/plan\/1(?:\/|$)/
-  const pathname = request.nextUrl.pathname
   const protectedPaths = ['/dashboard', '/plan', '/account']
   const isProtected =
     protectedPaths.some(p => pathname.startsWith(p)) && !PLAN_FREE_PREVIEW.test(pathname)
