@@ -55,8 +55,15 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // TIM-2580: /plan/1 is the public free-preview module. The page handler
+  // renders an empty-state ModuleClient for unauthenticated visitors; allow
+  // it through the proxy so it isn't redirected to /login before the page
+  // ever runs. Keep this in sync with FREE_PREVIEW_MODULE in src/lib/access.ts.
+  const PLAN_FREE_PREVIEW = /^\/plan\/1(?:\/|$)/
+  const pathname = request.nextUrl.pathname
   const protectedPaths = ['/dashboard', '/plan', '/account']
-  const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
+  const isProtected =
+    protectedPaths.some(p => pathname.startsWith(p)) && !PLAN_FREE_PREVIEW.test(pathname)
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
