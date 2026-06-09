@@ -1,0 +1,383 @@
+{
+  "base": "https://groundwork.cafe",
+  "paths": [
+    {
+      "name": "copilot-demo",
+      "target": "https://groundwork.cafe/copilot-demo",
+      "finalUrl": "https://groundwork.cafe/copilot-demo",
+      "finalStatus": 404,
+      "trail": [
+        {
+          "status": 404,
+          "pathname": "/copilot-demo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/11sa8d7-9i-x5.css?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-08o~4~mcy4kxm.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/09g8qi3s.a1_n.css?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0vd334jpqj36m.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        }
+      ],
+      "expect": {
+        "status": 404
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2580-out/copilot-demo.png"
+    },
+    {
+      "name": "plan-1",
+      "target": "https://groundwork.cafe/plan/1",
+      "finalUrl": "https://groundwork.cafe/plan/1",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 200,
+          "pathname": "/plan/1"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/11sa8d7-9i-x5.css?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/09g8qi3s.a1_n.css?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-08o~4~mcy4kxm.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0vd334jpqj36m.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/05lte6py4w93x.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0e8atavi1xwjs.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0-1kyxyxkx_cp.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-mark-color.png&w=32&q=75&dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=wryls"
+        },
+        {
+          "status": 307,
+          "pathname": "/dashboard?_rsc=wryls"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=q47uu"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=3kvun"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=bg15i"
+        },
+        {
+          "status": 200,
+          "pathname": "/login"
+        }
+      ],
+      "expect": {
+        "status": 200,
+        "contains": [
+          "Concept",
+          "Shop Model"
+        ]
+      },
+      "ok": true,
+      "containsResult": [
+        {
+          "s": "Concept",
+          "present": true
+        },
+        {
+          "s": "Shop Model",
+          "present": true
+        }
+      ],
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2580-out/plan-1.png"
+    },
+    {
+      "name": "plan-2",
+      "target": "https://groundwork.cafe/plan/2",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 307,
+          "pathname": "/plan/2"
+        },
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/11sa8d7-9i-x5.css?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/09g8qi3s.a1_n.css?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-08o~4~mcy4kxm.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0vd334jpqj36m.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_FvmrmNbU6YucvUHQDDcUnEA5Whsw"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=ffo9i"
+        }
+      ],
+      "expect": {
+        "redirectsTo": "/login"
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2580-out/plan-2.png"
+    }
+  ],
+  "allOk": true
+}
