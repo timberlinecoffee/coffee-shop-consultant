@@ -1,5 +1,7 @@
 // TIM-1544: Pause subscription — switch to $2.99/mo pause price.
 // Webhook (TIM-1535-E) handles DB sync; this endpoint only kicks Stripe.
+// TIM-2578: wrap every Stripe call so a stale/deleted subscription id (or
+// transient network error) returns a sanitized JSON error instead of raw 500.
 
 import { createClient } from "@/lib/supabase/server";
 import { stripe, PAUSE_PRICE_ID } from "@/lib/stripe";
@@ -39,7 +41,24 @@ export async function POST() {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id) as unknown as any;
+  let stripeSub: any;
+  try {
+    stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[/api/billing/pause] stripe.subscriptions.retrieve failed", {
+      userId: user.id,
+      stripeSubscriptionId: sub.stripe_subscription_id,
+      message: msg,
+    });
+    if (/No such subscription/i.test(msg)) {
+      return Response.json({ error: "No active subscription found." }, { status: 404 });
+    }
+    return Response.json(
+      { error: "We couldn't reach Stripe. Please try again in a moment." },
+      { status: 502 },
+    );
+  }
 
   if (stripeSub.items?.data?.[0]?.price?.recurring?.interval === "year") {
     return Response.json(
@@ -70,7 +89,20 @@ export async function POST() {
     updateParams.cancel_at_period_end = false;
   }
 
-  await stripe.subscriptions.update(sub.stripe_subscription_id, updateParams);
+  try {
+    await stripe.subscriptions.update(sub.stripe_subscription_id, updateParams);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[/api/billing/pause] stripe.subscriptions.update failed", {
+      userId: user.id,
+      stripeSubscriptionId: sub.stripe_subscription_id,
+      message: msg,
+    });
+    return Response.json(
+      { error: "We couldn't reach Stripe. Please try again in a moment." },
+      { status: 502 },
+    );
+  }
 
   return Response.json({ ok: true });
 }
