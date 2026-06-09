@@ -1908,6 +1908,8 @@ export function FinancialsWorkspace({
   // the on-page "Guided setup" button. Each invocation runs a single tour.
   const [tourOpen, setTourOpen] = useState(false);
   const [tourSeq, setTourSeq] = useState(0); // restart the tour from step 1 on each open
+  // TIM-2569: track wizard pref in state so the nav can flatten after completion.
+  const [wizardPref, setWizardPref] = useState<WizardPref | null>(null);
 
   const saveWizardPref = useCallback((pref: WizardPref) => {
     void fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`, {
@@ -1924,6 +1926,7 @@ export function FinancialsWorkspace({
         const res = await fetch(`/api/ui-prefs/${WIZARD_PREF_KEY}`);
         if (!res.ok) return;
         const { data } = (await res.json()) as { data: WizardPref | null };
+        if (!cancelled) setWizardPref(data); // TIM-2569: track for nav gating
         if (cancelled || data) return; // only the very first visit auto-opens
         // Mark it seen immediately so a reload never re-triggers the auto-open,
         // even if they close it without finishing.
@@ -2271,11 +2274,15 @@ export function FinancialsWorkspace({
   // TIM-1244 (v2): guided-tour outcomes. The owner fills the real fields as they
   // go, so there's nothing to map back — per-field autosave already persisted it.
   function handleTourFinish() {
-    saveWizardPref({ status: "completed" });
+    const pref: WizardPref = { status: "completed" };
+    saveWizardPref(pref);
+    setWizardPref(pref); // TIM-2569: flatten nav immediately after completion
     setTourOpen(false);
   }
   function handleTourSkip() {
-    saveWizardPref({ status: "skipped" });
+    const pref: WizardPref = { status: "skipped" };
+    saveWizardPref(pref);
+    setWizardPref(pref); // TIM-2569: flatten nav immediately after skip
     setTourOpen(false);
   }
   function handleTourClose() {
@@ -2299,6 +2306,24 @@ export function FinancialsWorkspace({
     { id: "depreciation", label: "Asset & Depreciation" },
     { id: "how-you-compare", label: "How You Compare", badge: benchmarkYellowCount || undefined },
   ];
+
+  // TIM-2569: progressive tab disclosure — primary tabs visible to all; reports
+  // tabs hidden behind a "Reports ▾" dropdown until the guided tour is done.
+  const PRIMARY_TAB_IDS = new Set<Tab>(["forecast", "startup", "personnel"]);
+  const primaryNavTabs = tabs
+    .filter((t) => PRIMARY_TAB_IDS.has(t.id))
+    .map((t) => ({ key: t.id, label: t.label, badge: t.badge }));
+  const reportsNavTabs = tabs
+    .filter((t) => !PRIMARY_TAB_IDS.has(t.id))
+    .map((t) => ({ key: t.id, label: t.label, badge: t.badge }));
+
+  // Flatten to all tabs once the guided tour is completed or skipped.
+  const wizardDone =
+    wizardPref?.status === "completed" || wizardPref?.status === "skipped";
+  const navTabs = wizardDone
+    ? tabs.map((t) => ({ key: t.id, label: t.label, badge: t.badge }))
+    : primaryNavTabs;
+  const navOverflowTabs = wizardDone ? undefined : reportsNavTabs;
 
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
@@ -2401,7 +2426,9 @@ export function FinancialsWorkspace({
             used to share this row now lives in the page header (top-right). */}
         <div className="mb-5">
           <WorkspaceSubNav
-            tabs={tabs.map((t) => ({ key: t.id, label: t.label, badge: t.badge }))}
+            tabs={navTabs}
+            overflowTabs={navOverflowTabs}
+            overflowLabel="Reports"
             active={activeTab}
             onSelect={setActiveTab}
             ariaLabel="Financials sections"
