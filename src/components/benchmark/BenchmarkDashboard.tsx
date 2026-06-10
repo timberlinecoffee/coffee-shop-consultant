@@ -9,6 +9,8 @@ import { CohortSummaryCard } from "./CohortSummaryCard";
 import { HealthGrid } from "./HealthGrid";
 import { AdjustCohortModal } from "./AdjustCohortModal";
 import { BenchmarkTrendChart } from "./BenchmarkTrendChart";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import type { BenchmarkPageData, CohortAxes, DrilldownData } from "./types";
 
 interface BenchmarkDashboardProps {
@@ -58,7 +60,7 @@ function CohortFalloutCallout({ sampleSize, onDismiss }: { sampleSize: number; o
   );
 }
 
-function EmptyState() {
+function BenchmarkEmptyStateV1() {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-white p-8 text-center space-y-2">
       <p className="text-sm font-semibold text-[var(--foreground)]">No benchmark data yet</p>
@@ -94,6 +96,7 @@ export function BenchmarkDashboard({
   onYellowCountChange,
   openMetricId,
 }: BenchmarkDashboardProps) {
+  const uiRevampV2 = useUiRevamp();
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [data, setData] = useState<BenchmarkPageData | null>(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
@@ -193,7 +196,15 @@ export function BenchmarkDashboard({
       {loadState === "error" ? (
         <ErrorState onRetry={() => load()} />
       ) : loadState === "loaded" && (!data || data.pillars.length === 0) ? (
-        <EmptyState />
+        uiRevampV2 ? (
+          <EmptyState
+            headline="Add your numbers to see how you compare"
+            body="Enter your financial projections in Financials and we'll show you how your plan stacks up against real independent coffee shops."
+            cta={{ label: "Go to Financials", href: "/workspace/financials" }}
+          />
+        ) : (
+          <BenchmarkEmptyStateV1 />
+        )
       ) : (
         <HealthGrid
           pillars={data?.pillars ?? []}

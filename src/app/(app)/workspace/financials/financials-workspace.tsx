@@ -16,7 +16,9 @@ import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
+import { ConflictCard } from "@/components/cross-suite/ConflictCard";
 import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import {
   WorkspaceActionButton,
@@ -1838,6 +1840,7 @@ export function FinancialsWorkspace({
   menuCogsItems = [],
   minimumWage = null,
 }: Props) {
+  const uiRevampV2 = useUiRevamp();
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
   // TIM-1257: financialInputs is the SINGLE derived view of `mp` consumed by the
@@ -2368,11 +2371,10 @@ export function FinancialsWorkspace({
           }
         />
 
-        {/* TIM-2426: Cross-Suite Conflict Resolver entry point. Renders nothing
-            when there's no conflict; renders an amber pill + opens the resolver
-            modal when the consistency engine flags Hiring ↔ Financials drift. */}
+        {/* TIM-2426: Cross-Suite Conflict Resolver entry point. v2: inline
+            ConflictCard (no amber); v1: amber pill ConflictNoticeBadge. */}
         <div className="mb-4">
-          <ConflictNoticeBadge />
+          {uiRevampV2 ? <ConflictCard /> : <ConflictNoticeBadge />}
         </div>
 
         {showReviewBanner && (

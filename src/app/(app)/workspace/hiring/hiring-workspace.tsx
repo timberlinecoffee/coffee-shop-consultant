@@ -34,6 +34,8 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
+import { ConflictCard } from "@/components/cross-suite/ConflictCard";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
@@ -2750,6 +2752,7 @@ export function HiringWorkspace({
   const [staffFiles, setStaffFiles] = useState<StaffFile[]>(initialStaffFiles);
   const [evaluations, setEvaluations] = useState<CompetencyEvaluation[]>(initialCompetencyEvals);
 
+  const uiRevampV2 = useUiRevamp();
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress once any hiring data exists.
   const hasContent = roles.length > 0 || candidates.length > 0 || competencies.length > 0 || tasks.length > 0;
@@ -2788,9 +2791,10 @@ export function HiringWorkspace({
           description="Figure out who you need on the team and what it'll cost to pay them."
         />
 
-        {/* TIM-2426: Cross-Suite Conflict Resolver entry point. */}
+        {/* TIM-2426: Cross-Suite Conflict Resolver entry point. v2: inline
+            ConflictCard (no amber); v1: amber pill ConflictNoticeBadge. */}
         <div className="mb-4">
-          <ConflictNoticeBadge />
+          {uiRevampV2 ? <ConflictCard /> : <ConflictNoticeBadge />}
         </div>
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
