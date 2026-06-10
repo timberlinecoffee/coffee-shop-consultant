@@ -123,7 +123,11 @@ export async function proxy(request: NextRequest) {
         : override === 'v1' ? false
         : mirror === '1' ? true
         : mirror === '0' ? false
-        : true // DB default is v2=true
+        // No override and no mirror cookie = fresh session. Default to v2=true,
+        // matching getUserUiRevampFlag() in src/lib/ui-revamp.ts (line 51),
+        // which also returns true when the DB row is absent. This is the
+        // intentional v2-forward rollout posture set in TIM-2589.
+        : true
 
       if (isV2) {
         const url = request.nextUrl.clone()
