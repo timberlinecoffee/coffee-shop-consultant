@@ -415,6 +415,11 @@ body {
   }
 }
 
+/* TIM-2591: iOS notch safe-area bottom padding — used by BottomTabBar + drawers */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* AI gradient animation (TIM-1563 / TIM-1557 brand spec §3) */
 @keyframes ai-gradient-shift {
   0%   { background-position: 0% 50%; }
