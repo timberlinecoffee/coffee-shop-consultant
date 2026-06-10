@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarV2, type SidebarV2UserInfo } from "@/components/SidebarV2";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
 import { CoPilotBeacon } from "@/components/workspace/CoPilotBeacon";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/lib/workspace-status";
 import type { WorkspaceManifestItem, WorkspaceNavItem } from "@/lib/workspace-manifest";
 import { AVAILABLE_MODULES } from "@/lib/modules";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 
 const SIDEBAR_COLLAPSED_KEY = "tcs-sidebar-collapsed";
 
@@ -47,12 +49,15 @@ export function useWorkspaceStatus(): WorkspaceStatusContextValue {
 export function WorkspaceProgressProvider({
   manifest,
   initialStatuses,
+  userInfo,
   children,
 }: {
   manifest: ReadonlyArray<WorkspaceManifestItem>;
   initialStatuses: Record<string, WorkspaceStatus>;
+  userInfo?: SidebarV2UserInfo;
   children: React.ReactNode;
 }) {
+  const uiRevamp = useUiRevamp();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [statusByKey, setStatusByKey] = useState<Map<string, WorkspaceStatus>>(
     () => new Map(Object.entries(initialStatuses).filter(([, v]) => isWorkspaceStatus(v)))
@@ -164,7 +169,13 @@ export function WorkspaceProgressProvider({
     [manifest, statusByKey]
   );
 
-  const contentPadding = sidebarCollapsed ? "lg:pl-[64px]" : "lg:pl-[224px]";
+  // TIM-2590: v2 sidebar is always 224px (no collapse). v1 respects the
+  // collapsed state as before.
+  const contentPadding = uiRevamp
+    ? "lg:pl-[224px]"
+    : sidebarCollapsed
+    ? "lg:pl-[64px]"
+    : "lg:pl-[224px]";
 
   const contextValue = useMemo<WorkspaceStatusContextValue>(
     () => ({ statusByKey, setStatus, promoteOnEdit, hydrateStatuses }),
@@ -174,11 +185,16 @@ export function WorkspaceProgressProvider({
   return (
     <WorkspaceStatusContext.Provider value={contextValue}>
       <div className="flex min-h-screen bg-[var(--background)]">
-        <AppSidebar
-          items={navItems}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={handleToggleCollapse}
-        />
+        {/* TIM-2590: branch sidebar on ui_revamp_v2 flag */}
+        {uiRevamp && userInfo ? (
+          <SidebarV2 userInfo={userInfo} />
+        ) : (
+          <AppSidebar
+            items={navItems}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={handleToggleCollapse}
+          />
+        )}
         <div
           className={`flex-1 min-w-0 ${contentPadding} flex flex-col transition-all duration-200`}
         >

@@ -14,6 +14,7 @@ import {
   getUiRevampSetting,
   resolveUiRevamp,
 } from "@/lib/ui-revamp";
+import { effectivePlanForGating } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,15 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
-  const [settings, dbUiRevamp] = await Promise.all([
+  const [settings, dbUiRevamp, profileRow] = await Promise.all([
     getAccountSettings(supabase, user.id),
     getUiRevampSetting(supabase, user.id),
+    supabase
+      .from("users")
+      .select("full_name, subscription_tier, subscription_status, trial_ends_at, paused_from_tier")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then((r) => r.data),
   ]);
 
   // TIM-2589: resolve the effective flag for this request. proxy.ts has
@@ -47,12 +54,30 @@ export default async function AppLayout({
     mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
   });
 
+  // TIM-2590: derive user info for SidebarV2 ProfileMenu.
+  const planTier = profileRow
+    ? effectivePlanForGating(profileRow as {
+        subscription_status: string | null;
+        subscription_tier: string | null;
+        paused_from_tier?: string | null;
+        trial_ends_at?: string | null;
+      })
+    : "starter";
+  const planLabel = planTier === "pro" ? "Pro" : "Starter";
+  const userInfo = {
+    email: user.email ?? "",
+    displayName: (profileRow as { full_name?: string | null } | null)?.full_name ?? null,
+    planLabel,
+    uiRevampEnabled: uiRevamp,
+  };
+
   return (
     <CurrencyProvider currencyCode={settings.currencyCode}>
       <UiRevampProvider value={uiRevamp}>
         <WorkspaceProgressProvider
           manifest={WORKSPACE_MANIFEST}
           initialStatuses={{}}
+          userInfo={userInfo}
         >
           <Suspense fallback={null}>
             <WorkspaceStatusBootstrap userId={user.id} />
