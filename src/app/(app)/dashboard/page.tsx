@@ -8,6 +8,7 @@ import {
   Play,
   ShieldCheck,
 } from "lucide-react";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { capitalizeFirst } from "@/lib/format";
 import { isTrialActive } from "@/lib/access";
@@ -20,6 +21,14 @@ import {
   type PlanOverview,
   type NextWorkspace,
 } from "@/lib/dashboard/plan-overview";
+import {
+  UI_REVAMP_COOKIE,
+  UI_REVAMP_OVERRIDE_COOKIE,
+  getUiRevampSetting,
+  resolveUiRevamp,
+} from "@/lib/ui-revamp";
+import { loadFinancialSnapshot } from "@/lib/dashboard/financial-snapshot";
+import { HomeV2 } from "./_components/HomeV2";
 import { TrialBanner } from "./_components/trial-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
@@ -36,18 +45,31 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select(
-      "full_name, onboarding_completed, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to"
-    )
-    .eq("id", user.id)
-    .single();
+  // TIM-2593: resolve ui_revamp_v2 flag — same logic as app layout so the
+  // dashboard can branch server-side without a client-side hook.
+  const [profile, dbUiRevamp] = await Promise.all([
+    supabase
+      .from("users")
+      .select(
+        "full_name, onboarding_completed, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to"
+      )
+      .eq("id", user.id)
+      .single()
+      .then((r) => r.data),
+    getUiRevampSetting(supabase, user.id),
+  ]);
 
   if (profile && !profile.onboarding_completed) redirect("/onboarding");
 
   const rawName = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0];
   const firstName = rawName ? capitalizeFirst(rawName) : "there";
+
+  const cookieStore = await cookies();
+  const uiRevamp = resolveUiRevamp({
+    dbValue: dbUiRevamp,
+    overrideCookie: cookieStore.get(UI_REVAMP_OVERRIDE_COOKIE)?.value,
+    mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
+  });
 
   // TIM-2470: defense in depth. The dashboard is the existing-user root, so a
   // single bad row in workspace_status / plan_quality_audit_cache must never
@@ -60,6 +82,38 @@ export default async function DashboardPage() {
   } catch (err) {
     console.error("[dashboard] loadPlanOverview failed", err);
     overview = emptyOverview();
+  }
+
+  // TIM-2593: v2 path — render HomeV2 with financial snapshot.
+  if (uiRevamp) {
+    const snapshot = overview.planId
+      ? await loadFinancialSnapshot(supabase, overview.planId).catch(() => null)
+      : null;
+    return (
+      <>
+        <Suspense fallback={null}>
+          <OpenImportFromQuery />
+        </Suspense>
+        {profile?.subscription_status === "free_trial" &&
+          isTrialActive(profile.trial_ends_at) && (
+            <TrialBanner
+              trialEndsAt={profile.trial_ends_at as string}
+              chosenTier={
+                profile.subscription_tier === "pro" ? "pro" : "starter"
+              }
+            />
+          )}
+        {profile?.trial_just_converted_to && (
+          <WelcomeToast
+            planName={
+              PLAN_DISPLAY_NAMES[profile.trial_just_converted_to as string] ??
+              "Pro"
+            }
+          />
+        )}
+        <HomeV2 firstName={firstName} overview={overview} snapshot={snapshot} />
+      </>
+    );
   }
 
   return (
@@ -171,6 +225,11 @@ function emptyOverview(): PlanOverview {
     conflicts: [],
     lastConflictCheckAt: null,
     nextWorkspace: { href: "/workspace/concept", label: "Concept", blurb: "Shape your shop's identity, story, and what sets it apart." },
+    nudges: [
+      { href: "/workspace/concept",    label: "Concept",    copy: "Define your shop concept",   workspaceKey: "concept"    },
+      { href: "/workspace/financials", label: "Financials", copy: "Start your financial model",  workspaceKey: "financials" },
+      { href: "/workspace/location-lease", label: "Location", copy: "Add your first location option", workspaceKey: "location_lease" },
+    ],
   };
 }
 

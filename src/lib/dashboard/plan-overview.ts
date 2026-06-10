@@ -71,6 +71,14 @@ export interface NextWorkspace {
   blurb: string;
 }
 
+// TIM-2593: context-aware action nudge for the Home v2 PlanNudge cards.
+export interface NudgeItem {
+  href: string;
+  label: string;
+  copy: string;
+  workspaceKey: string;
+}
+
 export interface PlanOverview {
   planId: string | null;
   status: PlanStatus;
@@ -79,6 +87,8 @@ export interface PlanOverview {
   conflicts: ConflictItem[];
   lastConflictCheckAt: string | null;
   nextWorkspace: NextWorkspace | null;
+  // TIM-2593: top 3 context-aware nudges for Home v2.
+  nudges: NudgeItem[];
 }
 
 interface CountedStatusRow {
@@ -233,6 +243,41 @@ function hrefForAuditWorkspace(workspace: string): string | null {
   return AUDIT_WORKSPACE_HREF[workspace] ?? null;
 }
 
+// TIM-2593: ranked nudge specs — first 3 whose workspace is not complete.
+const NUDGE_SPECS: Array<{
+  workspaceKey: string;
+  href: string;
+  label: string;
+  notStarted: string;
+  inProgress: string;
+}> = [
+  { workspaceKey: "financials",          href: "/workspace/financials",          label: "Financials",      notStarted: "Start your financial model",       inProgress: "Finish your startup budget"        },
+  { workspaceKey: "concept",             href: "/workspace/concept",             label: "Concept",         notStarted: "Define your shop concept",         inProgress: "Complete your concept"              },
+  { workspaceKey: "location_lease",      href: "/workspace/location-lease",      label: "Location",        notStarted: "Add your first location option",   inProgress: "Compare your location options"      },
+  { workspaceKey: "buildout_equipment",  href: "/workspace/buildout-equipment",  label: "Equipment",       notStarted: "Plan your equipment list",         inProgress: "Review your equipment list"         },
+  { workspaceKey: "menu_pricing",        href: "/workspace/menu-pricing",        label: "Menu & Pricing",  notStarted: "Build your menu",                  inProgress: "Finalize your menu and pricing"     },
+  { workspaceKey: "hiring",              href: "/workspace/hiring",              label: "Hiring",          notStarted: "Plan your team",                   inProgress: "Complete your hiring plan"          },
+  { workspaceKey: "marketing",           href: "/workspace/marketing",           label: "Marketing",       notStarted: "Plan your marketing",              inProgress: "Finish your marketing plan"         },
+  { workspaceKey: "opening_month_plan",  href: "/workspace/launch-plan",         label: "Launch Plan",     notStarted: "Map your path to opening",         inProgress: "Complete your launch plan"          },
+  { workspaceKey: "business_plan",       href: "/workspace/business-plan",       label: "Business Plan",   notStarted: "Generate your business plan",      inProgress: "Review your business plan"          },
+];
+
+function buildNudges(statusByKey: ReadonlyMap<string, WorkspaceStatus>): NudgeItem[] {
+  const nudges: NudgeItem[] = [];
+  for (const spec of NUDGE_SPECS) {
+    const s = statusByKey.get(spec.workspaceKey) ?? "not_started";
+    if (s === "complete") continue;
+    nudges.push({
+      href: spec.href,
+      label: spec.label,
+      copy: s === "in_progress" ? spec.inProgress : spec.notStarted,
+      workspaceKey: spec.workspaceKey,
+    });
+    if (nudges.length >= 3) break;
+  }
+  return nudges;
+}
+
 function buildConflicts(report: AuditReport | null): ConflictItem[] {
   if (!report) return [];
   return report.findings
@@ -356,6 +401,8 @@ export async function loadPlanOverview(
     return null;
   })();
 
+  const nudges = buildNudges(statusByKey);
+
   return {
     planId,
     status,
@@ -364,5 +411,6 @@ export async function loadPlanOverview(
     conflicts,
     lastConflictCheckAt,
     nextWorkspace,
+    nudges,
   };
 }
