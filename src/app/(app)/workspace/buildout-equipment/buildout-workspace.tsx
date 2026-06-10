@@ -12,6 +12,10 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
+// TIM-2598 (Phase 5.0): mobile card-per-item Equipment surface, gated by
+// ui_revamp_v2. Renders below md; v1 SectionedListGrid keeps rendering at md+.
+import { EquipmentMobileV2 } from "@/components/equipment/EquipmentMobileV2";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
 import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
@@ -359,6 +363,11 @@ export function BuildoutEquipmentWorkspace({
 
   const activeEquipment = equipment.filter((i) => !i.archived);
 
+  // TIM-2598 (Phase 5.0): when ui_revamp_v2 is on, render the v2 card-per-item
+  // surface below md and keep the v1 grid at md+. When off, v1 renders at all
+  // sizes (unchanged behavior).
+  const uiRevampV2 = useUiRevamp();
+
   return (
     <div className="bg-[var(--background)] min-h-screen">
       <div className="px-6 pt-8 pb-16">
@@ -469,19 +478,30 @@ export function BuildoutEquipmentWorkspace({
             startup_costs.equipment. Sync button opens the cross-suite
             resolver on equipment_mismatch. */}
         <EquipmentReconciliationBanner origin="buildout" className="mb-3" />
-        <SectionedListGrid
-          listType="equipment"
-          planId={planId}
-          canEdit={canEdit}
-          sections={equipmentSections}
-          items={equipment as AnyItem[]}
-          onItemsChange={handleEquipmentChange}
-          onSectionsChange={handleSectionsChange}
-          recommendations={recommendations}
-          showRecommendations={showRecommendations}
-          showAiMarkings={showAiMarkings}
-          currencyCode={initialCurrencyCode}
-        />
+        {uiRevampV2 && (
+          <div className="md:hidden">
+            <EquipmentMobileV2
+              items={equipment}
+              sections={equipmentSections}
+              currencyCode={initialCurrencyCode}
+            />
+          </div>
+        )}
+        <div className={uiRevampV2 ? "hidden md:block" : undefined}>
+          <SectionedListGrid
+            listType="equipment"
+            planId={planId}
+            canEdit={canEdit}
+            sections={equipmentSections}
+            items={equipment as AnyItem[]}
+            onItemsChange={handleEquipmentChange}
+            onSectionsChange={handleSectionsChange}
+            recommendations={recommendations}
+            showRecommendations={showRecommendations}
+            showAiMarkings={showAiMarkings}
+            currencyCode={initialCurrencyCode}
+          />
+        </div>
       </div>
 
       {settingsOpen && (

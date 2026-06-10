@@ -56,10 +56,11 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // TIM-2589: ?ui=v1 or ?ui=v2 sets a session-level override cookie so SSR
-  // branches correctly on the first paint without a DB write. The cookie
-  // clears when the browser closes (no maxAge). Ignored on auth flow paths
-  // (already returned above).
+  // TIM-2589 / TIM-2598: ?ui=v1 or ?ui=v2 sets a persistent override cookie so
+  // SSR branches correctly on first paint without a DB write. Phase 5.0 ships
+  // to prod with the flag default false; the board flips themselves into v2 by
+  // visiting any app URL with ?ui=v2 once — the cookie then sticks across
+  // sessions for 365 days. Ignored on auth flow paths (returned above).
   const uiParam = searchParams.get('ui')
   if (uiParam === 'v1' || uiParam === 'v2') {
     supabaseResponse.cookies.set(UI_REVAMP_OVERRIDE_COOKIE, uiParam, {
@@ -67,7 +68,7 @@ export async function proxy(request: NextRequest) {
       sameSite: 'lax',
       path: '/',
       secure: process.env.NODE_ENV === 'production',
-      // No maxAge = session cookie; cleared on browser close.
+      maxAge: 60 * 60 * 24 * 365,
     })
   }
 
