@@ -26,6 +26,7 @@ import {
 import type { WorkspaceManifestItem, WorkspaceNavItem } from "@/lib/workspace-manifest";
 import { AVAILABLE_MODULES } from "@/lib/modules";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { ScoutRailContext } from "@/lib/scout-rail-context";
 
 const SIDEBAR_COLLAPSED_KEY = "tcs-sidebar-collapsed";
 
@@ -59,6 +60,8 @@ export function WorkspaceProgressProvider({
 }) {
   const uiRevamp = useUiRevamp();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // TIM-2592: track Scout rail expansion so content right-padding stays clear.
+  const [railExpanded, setRailExpanded] = useState(true);
   const [statusByKey, setStatusByKey] = useState<Map<string, WorkspaceStatus>>(
     () => new Map(Object.entries(initialStatuses).filter(([, v]) => isWorkspaceStatus(v)))
   );
@@ -177,6 +180,14 @@ export function WorkspaceProgressProvider({
     ? "lg:pl-[64px]"
     : "lg:pl-[224px]";
 
+  // TIM-2592: shrink content away from the persistent Scout rail (expanded=300px,
+  // collapsed=48px) so Financials tabs are never obscured.
+  const railPadding = uiRevamp
+    ? railExpanded
+      ? "lg:pr-[308px]"
+      : "lg:pr-[56px]"
+    : "";
+
   const contextValue = useMemo<WorkspaceStatusContextValue>(
     () => ({ statusByKey, setStatus, promoteOnEdit, hydrateStatuses }),
     [statusByKey, setStatus, promoteOnEdit, hydrateStatuses]
@@ -184,26 +195,29 @@ export function WorkspaceProgressProvider({
 
   return (
     <WorkspaceStatusContext.Provider value={contextValue}>
-      <div className="flex min-h-screen bg-[var(--background)]">
-        {/* TIM-2590: branch sidebar on ui_revamp_v2 flag */}
-        {uiRevamp && userInfo ? (
-          <SidebarV2 userInfo={userInfo} />
-        ) : (
-          <AppSidebar
-            items={navItems}
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={handleToggleCollapse}
-          />
-        )}
-        <div
-          className={`flex-1 min-w-0 ${contentPadding} flex flex-col transition-all duration-200`}
-        >
-          <WorkspaceTopBar items={navItems} />
-          <main className="flex-1">{children}</main>
+      {/* TIM-2592: ScoutRailContext lets ScoutRail update content padding */}
+      <ScoutRailContext.Provider value={{ expanded: railExpanded, setExpanded: setRailExpanded }}>
+        <div className="flex min-h-screen bg-[var(--background)]">
+          {/* TIM-2590: branch sidebar on ui_revamp_v2 flag */}
+          {uiRevamp && userInfo ? (
+            <SidebarV2 userInfo={userInfo} />
+          ) : (
+            <AppSidebar
+              items={navItems}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={handleToggleCollapse}
+            />
+          )}
+          <div
+            className={`flex-1 min-w-0 ${contentPadding} ${railPadding} flex flex-col transition-all duration-200`}
+          >
+            <WorkspaceTopBar items={navItems} />
+            <main className="flex-1">{children}</main>
+          </div>
+          {/* TIM-1408: single global Co-pilot entry point (hidden in v2 — ScoutRail takes over) */}
+          <CoPilotBeacon />
         </div>
-        {/* TIM-1408: single global Co-pilot entry point */}
-        <CoPilotBeacon />
-      </div>
+      </ScoutRailContext.Provider>
     </WorkspaceStatusContext.Provider>
   );
 }

@@ -182,8 +182,8 @@ interface ModeStripProps {
 const MODE_LABEL: Record<CompanionMode, string> = {
   coach: "Coach",
   check: "Check",
-  benchmark: "Benchmark",
-  import: "Import",
+  benchmark: "Compare",
+  import: "Load Data",
 };
 
 export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {

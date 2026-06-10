@@ -49,6 +49,8 @@ import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
 import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCrossSuiteConflictResolver";
 import { crossSuiteConflictIdForAuditFinding } from "@/lib/cross-suite/audit-mapping";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { ScoutRail } from "@/components/copilot/ScoutRail";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
@@ -308,7 +310,9 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
   }
 }
 
-export function CoPilotDrawer({
+// TIM-2592: v1 overlay — only rendered when ui_revamp_v2 is off. The public
+// export CoPilotDrawer below branches on the flag.
+function CoPilotDrawerV1({
   workspaceKey,
   planId,
   currentFocus,
@@ -1642,6 +1646,14 @@ function MessageBubble({
       )}
     </div>
   );
+}
+
+// TIM-2592: Public export — branches on ui_revamp_v2 flag.
+// Calling hooks before the branch satisfies React rules of hooks.
+export function CoPilotDrawer(props: CoPilotDrawerProps) {
+  const uiRevamp = useUiRevamp();
+  if (uiRevamp) return <ScoutRail {...props} />;
+  return <CoPilotDrawerV1 {...props} />;
 }
 
 export default CoPilotDrawer;

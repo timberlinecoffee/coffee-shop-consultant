@@ -3,12 +3,18 @@
 // TIM-1408: Single global Co-pilot entry point. Replaces the WorkspaceTopBar
 // "Co-pilot" button and the per-card "Ask Co-pilot" controls. Fields that need
 // a seeded prompt can still dispatch `copilot:open-with-prompt` directly.
+// TIM-2592: Hidden in ui_revamp_v2 — ScoutRail is always visible.
 
 import { usePathname } from "next/navigation";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 
 export function CoPilotBeacon() {
+  const uiRevamp = useUiRevamp();
   const pathname = usePathname();
+
+  // v2: ScoutRail is persistent — no floating launcher needed.
+  if (uiRevamp) return null;
   // TIM-1788: also surface the single desktop entry point on the post-login
   // dashboard (no suite open), the first screen users land on. The dashboard
   // mounts its own CoPilotDrawer (with showDesktopLauncher=false) so this
