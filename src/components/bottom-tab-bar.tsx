@@ -1,81 +1,108 @@
 "use client";
 
+// TIM-2591: BottomTabBar v2 — replaces hamburger on mobile when ui_revamp_v2 is on.
+// Only renders on viewports < lg (768px) when flag is true.
+// Groundwork UI Consistency Protocol (TIM-1536/TIM-1538):
+//   Style-guide section: Nav components, Design Tokens
+//   Reference: src/components/SidebarV2.tsx — active-state pattern + NAV_ITEMS
+//   Tokens: --teal, --background, --border, --muted-foreground, --foreground
+//   No new colors, no hardcoded hex/px spacing values invented here.
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  FileText,
+  Layers,
+  BarChart2,
+  ClipboardList,
+} from "lucide-react";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 
-const TABS = [
+interface TabItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>;
+  matchPrefixes: string[];
+}
+
+// Mirrors SidebarV2.tsx NAV_ITEMS — keep in sync.
+const TABS: TabItem[] = [
   {
-    label: "Dashboard",
+    label: "Home",
     href: "/dashboard",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1"/>
-        <rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <rect x="14" y="14" width="7" height="7" rx="1"/>
-      </svg>
-    ),
+    icon: LayoutDashboard,
+    matchPrefixes: ["/dashboard"],
   },
   {
-    label: "Workspace",
+    label: "Plan",
     href: "/workspace/concept",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-      </svg>
-    ),
+    icon: FileText,
+    matchPrefixes: ["/workspace/concept", "/workspace/business-plan"],
   },
   {
-    label: "Brief",
-    href: "/workspace/concept/print",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-    ),
+    label: "Build",
+    href: "/workspace/build",
+    icon: Layers,
+    matchPrefixes: [
+      "/workspace/build",
+      "/workspace/buildout-equipment",
+      "/workspace/location-lease",
+      "/workspace/menu-pricing",
+      "/workspace/suppliers",
+      "/workspace/hiring",
+      "/workspace/launch-plan",
+    ],
   },
   {
-    label: "Account",
-    href: "/account",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-    ),
+    label: "Financials",
+    href: "/workspace/financials",
+    icon: BarChart2,
+    matchPrefixes: ["/workspace/financials", "/workspace/benchmarks"],
+  },
+  {
+    label: "Run",
+    href: "/workspace/operations-playbook",
+    icon: ClipboardList,
+    matchPrefixes: ["/workspace/operations-playbook", "/workspace/marketing"],
   },
 ];
 
 export function BottomTabBar() {
+  const uiRevamp = useUiRevamp();
   const pathname = usePathname();
 
-  function isActive(href: string) {
-    if (href === "/dashboard") return pathname === "/dashboard";
-    if (href === "/workspace/concept") return pathname === "/workspace/concept";
-    return pathname.startsWith(href);
+  if (!uiRevamp) return null;
+
+  function isActive(tab: TabItem): boolean {
+    return tab.matchPrefixes.some((prefix) => pathname.startsWith(prefix));
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[var(--border)] lg:hidden safe-area-pb">
+    <nav
+      aria-label="Main navigation"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)] border-t border-[var(--border)] lg:hidden safe-area-pb"
+    >
       <div className="flex">
-        {TABS.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] transition-colors ${
-              isActive(tab.href)
-                ? "text-[var(--teal)]"
-                : "text-[var(--dark-grey)] hover:text-[var(--foreground)]"
-            }`}
-          >
-            <span className="mb-1">{tab.icon}</span>
-            <span className="text-xs font-medium">{tab.label}</span>
-          </Link>
-        ))}
+        {TABS.map((tab) => {
+          const active = isActive(tab);
+          const Icon = tab.icon;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              aria-current={active ? "page" : undefined}
+              className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] gap-1 transition-colors ${
+                active
+                  ? "text-[var(--teal)]"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Icon size={20} strokeWidth={1.75} aria-hidden />
+              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
