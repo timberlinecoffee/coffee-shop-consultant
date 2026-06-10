@@ -226,7 +226,12 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
         />
         <SnapshotMetric
           label="Break-Even"
-          value={fmt(snapshot.breakEvenRevenueCents)}
+          value={
+            snapshot.breakEvenRevenueCents > 0 &&
+            isFinite(snapshot.breakEvenRevenueCents)
+              ? fmt(snapshot.breakEvenRevenueCents)
+              : "—"
+          }
           sub="revenue to cover costs"
         />
         <SnapshotMetric
