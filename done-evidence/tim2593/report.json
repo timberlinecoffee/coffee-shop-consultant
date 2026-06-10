@@ -1,0 +1,81 @@
+{
+  "base": "https://groundwork.cafe",
+  "ranAt": "2026-06-10T07:21:36.227Z",
+  "paths": [
+    {
+      "viewport": "desktop",
+      "path": "/",
+      "url": "https://groundwork.cafe/",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/desktop-root.png"
+    },
+    {
+      "viewport": "desktop",
+      "path": "/login",
+      "url": "https://groundwork.cafe/login",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/login",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/desktop-login.png"
+    },
+    {
+      "viewport": "desktop",
+      "path": "/workspace/financials",
+      "url": "https://groundwork.cafe/workspace/financials",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/login",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/desktop-workspace-financials.png"
+    },
+    {
+      "viewport": "desktop",
+      "path": "/dashboard",
+      "url": "https://groundwork.cafe/dashboard",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/login",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/desktop-dashboard.png"
+    },
+    {
+      "viewport": "mobile",
+      "path": "/",
+      "url": "https://groundwork.cafe/",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/mobile-root.png"
+    },
+    {
+      "viewport": "mobile",
+      "path": "/login",
+      "url": "https://groundwork.cafe/login",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/login",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/mobile-login.png"
+    },
+    {
+      "viewport": "mobile",
+      "path": "/workspace/financials",
+      "url": "https://groundwork.cafe/workspace/financials",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/login",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/mobile-workspace-financials.png"
+    },
+    {
+      "viewport": "mobile",
+      "path": "/dashboard",
+      "url": "https://groundwork.cafe/dashboard",
+      "status": 200,
+      "finalUrl": "https://groundwork.cafe/login",
+      "ok": true,
+      "screenshot": "done-evidence/tim2593/mobile-dashboard.png"
+    }
+  ],
+  "allOk": true,
+  "passedCount": 8,
+  "totalCount": 8
+}
