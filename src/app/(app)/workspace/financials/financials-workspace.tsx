@@ -3,8 +3,11 @@
 // TIM-972: Financial Suite — DB-backed architecture.
 // TIM-1004: Per-day schedule + itemized operating expenses.
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
+// TIM-2594: FinancialsV2 — 3-tab layout behind ui_revamp_v2 flag.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { FinancialsV2 } from "./financials-v2";
 import { BarChart2, X, AlertTriangle, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -2285,6 +2288,53 @@ export function FinancialsWorkspace({
 
   const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
   const { openAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
+
+  // TIM-2594: branch to v2 layout when ui_revamp_v2 flag is on.
+  const uiRevampV2 = useUiRevamp();
+
+  if (uiRevampV2) {
+    return (
+      <FinancialsV2
+        planId={planId}
+        mp={mp}
+        onMpUpdate={handleMpUpdate}
+        financialInputs={financialInputs}
+        projections={projections}
+        slices={slices}
+        canEdit={canEdit}
+        saveState={saveState}
+        onManualSave={handleManualSave}
+        onFundingUpdate={handleFundingUpdate}
+        onStartupCostUpdate={handleStartupCostUpdate}
+        onPersonnelUpdate={handlePersonnelUpdate}
+        onSetOverride={handleSetOverride}
+        onClearOverride={handleClearOverride}
+        onToggleManual={handleToggleManual}
+        onApplyForward={handleApplyForward}
+        onClearLineOverrides={handleClearLineOverrides}
+        onCritiqueUpdate={handleCritiqueUpdate}
+        menuBlendedCogsPct={liveMenuBlendedCogsPct}
+        menuCogsItems={liveMenuCogsItems}
+        isRefreshingMenu={isRefreshingMenu}
+        onRefreshMenu={handleRefreshMenu}
+        isRefreshingEquipment={isRefreshingEquipment}
+        onRefreshEquipment={handleRefreshEquipment}
+        liveEquipmentItems={liveEquipmentItems}
+        equipment={equipment}
+        hasEquipmentItems={hasEquipmentItems}
+        startupCapexLines={startupCapexLines}
+        startupEquipmentItemLines={startupEquipmentItemLines}
+        openingRunway={openingRunway}
+        minimumWage={minimumWage}
+        paywallOpen={paywallOpen}
+        onPaywallClose={() => setPaywallOpen(false)}
+        benchmarkYellowCount={benchmarkYellowCount}
+        onBenchmarkYellowCountChange={setBenchmarkYellowCount}
+        onOpenWizard={openWizard}
+        initialTrialMessagesUsed={initialTrialMessagesUsed}
+      />
+    );
+  }
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: "forecast", label: "Forecast Inputs" },
