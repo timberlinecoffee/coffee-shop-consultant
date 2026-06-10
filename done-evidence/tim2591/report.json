@@ -1,0 +1,1216 @@
+{
+  "base": "https://groundwork.cafe",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "name": "root",
+      "target": "https://groundwork.cafe/",
+      "finalUrl": "https://groundwork.cafe/",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 200,
+          "pathname": "/"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/139p-.95hmakv.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/100n6tqycr4vh.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-white.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F4350048%2Fpexels-photo-4350048.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D600%26h%3D280%26dpr%3D1&w=640&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F4350093%2Fpexels-photo-4350093.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D600%26h%3D280%26dpr%3D1&w=640&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F4350061%2Fpexels-photo-4350061.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D900%26h%3D700%26dpr%3D1&w=640&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F302899%2Fpexels-photo-302899.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D600%26h%3D280%26dpr%3D1&w=640&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1r34m"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=p37cr"
+        }
+      ],
+      "expect": {
+        "status": 200
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/desktop-root.png"
+    },
+    {
+      "viewport": "desktop",
+      "name": "login",
+      "target": "https://groundwork.cafe/login",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        }
+      ],
+      "expect": {
+        "status": 200
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/desktop-login.png"
+    },
+    {
+      "viewport": "desktop",
+      "name": "workspace-financials",
+      "target": "https://groundwork.cafe/workspace/financials",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 307,
+          "pathname": "/workspace/financials"
+        },
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=to9i9"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=ffo9i"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=m8m8p"
+        }
+      ],
+      "expect": {
+        "redirectsTo": "/login"
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/desktop-workspace-financials.png"
+    },
+    {
+      "viewport": "desktop",
+      "name": "dashboard",
+      "target": "https://groundwork.cafe/dashboard",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 307,
+          "pathname": "/dashboard"
+        },
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=ffo9i"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=o11fy"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=to9i9"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pm_c4788w_yz.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=to9i9"
+        }
+      ],
+      "expect": {
+        "redirectsTo": "/login"
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/desktop-dashboard.png"
+    },
+    {
+      "viewport": "mobile",
+      "name": "root",
+      "target": "https://groundwork.cafe/",
+      "finalUrl": "https://groundwork.cafe/",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 200,
+          "pathname": "/"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-white.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/139p-.95hmakv.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/100n6tqycr4vh.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F302899%2Fpexels-photo-302899.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D600%26h%3D280%26dpr%3D1&w=384&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1r34m"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F4350093%2Fpexels-photo-4350093.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D600%26h%3D280%26dpr%3D1&w=384&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1v2tv"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1pn8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=https%3A%2F%2Fimages.pexels.com%2Fphotos%2F4350048%2Fpexels-photo-4350048.jpeg%3Fauto%3Dcompress%26cs%3Dtinysrgb%26w%3D600%26h%3D280%26dpr%3D1&w=384&q=75"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=nn07o"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1148h"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=p37cr"
+        }
+      ],
+      "expect": {
+        "status": 200
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/mobile-root.png"
+    },
+    {
+      "viewport": "mobile",
+      "name": "login",
+      "target": "https://groundwork.cafe/login",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=ffo9i"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=o11fy"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pm_c4788w_yz.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=to9i9"
+        }
+      ],
+      "expect": {
+        "status": 200
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/mobile-login.png"
+    },
+    {
+      "viewport": "mobile",
+      "name": "workspace-financials",
+      "target": "https://groundwork.cafe/workspace/financials",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 307,
+          "pathname": "/workspace/financials"
+        },
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=ffo9i"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=o11fy"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pm_c4788w_yz.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=to9i9"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=to9i9"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=to9i9"
+        }
+      ],
+      "expect": {
+        "redirectsTo": "/login"
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/mobile-workspace-financials.png"
+    },
+    {
+      "viewport": "mobile",
+      "name": "dashboard",
+      "target": "https://groundwork.cafe/dashboard",
+      "finalUrl": "https://groundwork.cafe/login",
+      "finalStatus": 200,
+      "trail": [
+        {
+          "status": 307,
+          "pathname": "/dashboard"
+        },
+        {
+          "status": 200,
+          "pathname": "/login"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/47fe1b7cd6e6ed85-s.p.0~mcdl10zdfb3.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0fxazpgkle_5..css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/8e6fa89aa22d24ec-s.p.0uvzar8hswo3p.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_nnjqyeyfhep.css?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/a218039a3287bcfd-s.p.17-1enzs_j91b.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/c875c6f5d3e977ac-s.p.0g_ng0t~d_b9n.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/media/e2334d715941921e-s.p.12skym0rqknxy.woff2?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0r3kjpi87ireo.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pscck3-_.5u8.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0qfl6-ggrzusc.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/03b~~bb3s9x-c.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0.j4bjfn985__.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/04gqki4k-.2k..js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/08--cd7770vn0.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/turbopack-0v0ls_em._90u.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0d_w3w.d2-ruw.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/image?url=%2Fbrand%2Fgroundwork-logo-color.png&w=256&q=75&dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0t4rwjrbnvfy_.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0_o39-~pxfah5.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/ff2c72a2fcbe59a2/script.js"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=4c4j4"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=1sudl"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/privacy?_rsc=9zsm8"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0nowm0x5sdrxe.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=17yrj"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=m8m8p"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=o11fy"
+        },
+        {
+          "status": 200,
+          "pathname": "/_next/static/chunks/0pm_c4788w_yz.js?dpl=dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+        },
+        {
+          "status": 200,
+          "pathname": "/terms?_rsc=ffo9i"
+        },
+        {
+          "status": 200,
+          "pathname": "/login?mode=signup&_rsc=to9i9"
+        },
+        {
+          "status": 200,
+          "pathname": "/forgot-password?_rsc=to9i9"
+        },
+        {
+          "status": 200,
+          "pathname": "/?_rsc=to9i9"
+        }
+      ],
+      "expect": {
+        "redirectsTo": "/login"
+      },
+      "ok": true,
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/_verify-tim2591-out/mobile-dashboard.png"
+    }
+  ],
+  "allOk": true,
+  "commit": "7c3569b",
+  "deploymentId": "dpl_zip9D4tQCXsb9oiGnXwiSGJGU7Wo"
+}
