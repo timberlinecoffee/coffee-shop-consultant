@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import type { WorkspaceNavItem } from "@/lib/workspace-manifest";
 import { WorkspaceStatusControl } from "@/components/workspace/WorkspaceStatusControl";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 
 export interface WorkspaceTopBarProps {
   items: WorkspaceNavItem[];
@@ -30,6 +31,7 @@ function HamburgerIcon() {
 
 export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
   const pathname = usePathname();
+  const uiRevamp = useUiRevamp();
 
   const activeItem = items.find((item) => pathname.startsWith(item.href));
   const isAccount = pathname.startsWith("/account");
@@ -44,13 +46,16 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
 
   return (
     <div className="sticky top-0 z-20 h-12 bg-white border-b border-[var(--border)] flex items-center px-4 gap-3">
-      <button
-        onClick={openSidebar}
-        className="lg:hidden text-[var(--foreground)] hover:text-[var(--teal)] transition-colors flex-shrink-0"
-        aria-label="Open navigation"
-      >
-        <HamburgerIcon />
-      </button>
+      {/* TIM-2591: hamburger hidden on mobile when tab bar is active */}
+      {!uiRevamp && (
+        <button
+          onClick={openSidebar}
+          className="lg:hidden text-[var(--foreground)] hover:text-[var(--teal)] transition-colors flex-shrink-0"
+          aria-label="Open navigation"
+        >
+          <HamburgerIcon />
+        </button>
+      )}
       <span className="text-sm font-medium text-[var(--foreground)] flex-1 truncate">
         {currentName}
       </span>
