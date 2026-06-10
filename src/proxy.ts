@@ -6,7 +6,7 @@ import {
   adjustOptionsForRemember,
   parseRememberPreference,
 } from './lib/auth/remember-me'
-import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
+import { UI_REVAMP_OVERRIDE_COOKIE, UI_REVAMP_COOKIE } from './lib/ui-revamp'
 
 // TIM-2352: paths where running supabase.auth.getUser() in middleware breaks the
 // in-flight OAuth handshake. If a user has a stale refresh token, getUser() →
@@ -85,6 +85,54 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
+  }
+
+  // TIM-2595: Deep-link redirects for the 6 standalone workspace routes
+  // that are consolidated into the Build workspace in ui_revamp_v2.
+  // Only redirects for authenticated users when v2 mode is active.
+  // The ?ui= param was already processed into a cookie above, so read
+  // both the incoming cookies and the freshly-set override to resolve
+  // the effective flag without a DB round-trip.
+  if (user) {
+    const BUILD_ROUTES: Record<string, string> = {
+      '/workspace/location-lease': 'location',
+      '/workspace/buildout-equipment': 'equipment',
+      '/workspace/suppliers': 'suppliers',
+      '/workspace/menu-pricing': 'menu',
+      '/workspace/hiring': 'hiring',
+      '/workspace/launch-plan': 'launch-plan',
+    }
+
+    let buildTab: string | null = null
+    for (const [prefix, tab] of Object.entries(BUILD_ROUTES)) {
+      if (pathname === prefix || pathname.startsWith(prefix + '/')) {
+        buildTab = tab
+        break
+      }
+    }
+
+    if (buildTab !== null) {
+      // Resolve v2 flag: newly-set override cookie wins, then request cookie.
+      const overrideNew = supabaseResponse.cookies.get(UI_REVAMP_OVERRIDE_COOKIE)?.value
+      const overrideOld = request.cookies.get(UI_REVAMP_OVERRIDE_COOKIE)?.value
+      const override = overrideNew ?? overrideOld
+      const mirror = request.cookies.get(UI_REVAMP_COOKIE)?.value
+
+      const isV2 =
+        override === 'v2' ? true
+        : override === 'v1' ? false
+        : mirror === '1' ? true
+        : mirror === '0' ? false
+        : true // DB default is v2=true
+
+      if (isV2) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/workspace/build'
+        url.search = ''
+        url.searchParams.set('tab', buildTab)
+        return NextResponse.redirect(url)
+      }
+    }
   }
 
   return supabaseResponse

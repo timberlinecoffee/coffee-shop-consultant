@@ -77,8 +77,9 @@ export function readinessCopy(pct: number): { headline: string; subline: string 
 export function buildLaunchReadiness(
   statusByKey: ReadonlyMap<string, WorkspaceStatus>
 ): LaunchReadiness {
+  // TIM-2595: exclude module 99 (Build workspace container) from readiness.
   const unlocked = WORKSPACE_MANIFEST.filter((item) =>
-    AVAILABLE_MODULES.has(item.moduleNumber)
+    AVAILABLE_MODULES.has(item.moduleNumber) && item.moduleNumber !== 99
   );
 
   const workspaces: ReadinessWorkspace[] = unlocked.map((item) => {

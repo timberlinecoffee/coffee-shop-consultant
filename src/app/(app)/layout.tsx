@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { WORKSPACE_MANIFEST } from "@/lib/workspace-manifest";
+import { buildManifestForRevamp } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceStatusBootstrap } from "@/components/workspace/WorkspaceStatusBootstrap";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
@@ -51,7 +51,7 @@ export default async function AppLayout({
     <CurrencyProvider currencyCode={settings.currencyCode}>
       <UiRevampProvider value={uiRevamp}>
         <WorkspaceProgressProvider
-          manifest={WORKSPACE_MANIFEST}
+          manifest={buildManifestForRevamp(uiRevamp)}
           initialStatuses={{}}
         >
           <Suspense fallback={null}>

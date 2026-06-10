@@ -87,8 +87,10 @@ interface CountedStatusRow {
   updated_at: string;
 }
 
+// TIM-2595: exclude module 99 (Build workspace container) — it has no
+// workspace_status rows and should not appear in dashboard readiness tracking.
 const UNLOCKED_MANIFEST = WORKSPACE_MANIFEST.filter((item) =>
-  AVAILABLE_MODULES.has(item.moduleNumber)
+  AVAILABLE_MODULES.has(item.moduleNumber) && item.moduleNumber !== 99
 );
 
 const LABEL_BY_KEY = new Map(

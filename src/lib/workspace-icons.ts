@@ -6,6 +6,7 @@ import {
   BarChart2,
   ClipboardList,
   FileText,
+  Layers,
   Lightbulb,
   MapPin,
   Megaphone,
@@ -34,4 +35,5 @@ export const WORKSPACE_ICONS: Record<NavIcon, LucideIcon> = {
   "clipboard-list": ClipboardList,
   "package": Package,
   "trending-up": TrendingUp,
+  "layers": Layers,
 };

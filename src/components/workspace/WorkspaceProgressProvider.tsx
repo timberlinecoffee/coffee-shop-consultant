@@ -200,6 +200,7 @@ export function WorkspaceProgressProvider({
 
 // TIM-1458: module-13 "inventory" mapping removed — Supplies is now a page
 // inside the Equipment & Supplies suite under module 5 (buildout_equipment).
+// TIM-2595: module 99 is the v2 Build workspace container.
 const MODULE_TO_KEY: Record<number, string> = {
   1: "concept",
   2: "financials",
@@ -212,6 +213,7 @@ const MODULE_TO_KEY: Record<number, string> = {
   9: "marketing",
   10: "suppliers",
   11: "operations_playbook",
+  99: "build",
 };
 
 export function workspaceKeyForModule(moduleNumber: number): string {
