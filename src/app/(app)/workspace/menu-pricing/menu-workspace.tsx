@@ -60,6 +60,9 @@ import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProv
 // Forecast Inputs avg ticket and offers a Sync action that opens the
 // cross-suite resolver.
 import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
+// TIM-2596 (Phase 5.8): mobile card-per-item surface, gated by ui_revamp_v2.
+import { MenuItemsMobileV2 } from "@/components/menu-pricing/MenuItemsMobileV2";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import {
   type MenuItemWithCogs,
   type MenuIngredient,
@@ -2193,6 +2196,11 @@ function MenuTab(props: MenuTabProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  // TIM-2596 (Phase 5.8): when ui_revamp_v2 is on, render v2 card-per-item
+  // below md and keep v1 accordion at md+.
+  const uiRevampV2 = useUiRevamp();
+  const { currencyCode: menuCurrencyCode } = useCurrency();
+
   // Map item id → its category id (live, so cross-section moves resolve fast).
   const itemToCategory = useMemo(() => {
     const m = new Map<string, string>();
@@ -2281,6 +2289,16 @@ function MenuTab(props: MenuTabProps) {
           button opens the cross-suite resolver. */}
       <MenuTicketReconciliationBanner origin="menu" />
 
+      {uiRevampV2 && (
+        <div className="md:hidden">
+          <MenuItemsMobileV2
+            items={items}
+            categories={categories}
+            currencyCode={menuCurrencyCode}
+          />
+        </div>
+      )}
+      <div className={uiRevampV2 ? "hidden md:block" : undefined}>
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         {categories.map((cat) => {
           const catItems = items
@@ -2403,6 +2421,7 @@ function MenuTab(props: MenuTabProps) {
           Add category
         </button>
       )}
+      </div>{/* end hidden md:block wrapper */}
     </div>
   );
 }

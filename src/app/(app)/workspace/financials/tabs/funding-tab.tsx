@@ -16,6 +16,8 @@ import { currencySymbol } from "@/lib/currency";
 import { fmtPct } from "@/lib/formatters";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { FundingMobileV2 } from "@/components/financials/FundingMobileV2";
 
 const KIND_META: Record<FundingKind, { label: string; hint: string }> = {
   founder_equity: {
@@ -291,6 +293,7 @@ interface Props {
 }
 
 export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onChange }: Props) {
+  const uiRevampV2 = useUiRevamp();
   const byKind: Record<FundingKind, FundingSourceLine[]> = {
     founder_equity: [],
     loan: [],
@@ -336,6 +339,12 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
         </p>
       </div>
 
+      {uiRevampV2 && (
+        <div className="md:hidden">
+          <FundingMobileV2 sources={sources} currencyCode={currencyCode} />
+        </div>
+      )}
+      <div className={uiRevampV2 ? "hidden md:block space-y-4" : undefined}>
       <CategorySection
         kind="founder_equity"
         lines={byKind.founder_equity}
@@ -364,6 +373,7 @@ export function FundingTab({ sources, inputs, canEdit, currencyCode = "USD", onC
         currencyCode={currencyCode}
         onChange={(next) => setKindLines("grant", next)}
       />
+      </div>{/* end hidden md:block wrapper */}
 
       {/* Reconciliation: Sources vs. Uses */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">

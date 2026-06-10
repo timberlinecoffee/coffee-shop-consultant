@@ -34,6 +34,9 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+// TIM-2596 (Phase 5.8): mobile card-per-role surface for Org tab.
+import { PersonnelMobileV2 } from "@/components/hiring/PersonnelMobileV2";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
@@ -479,6 +482,8 @@ function OrgTab({
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [highlightedRoleId, setHighlightedRoleId] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const uiRevampV2 = useUiRevamp();
+  const { currencyCode } = useCurrency();
 
   async function addRole() {
     const optimistic: OrgRole = {
@@ -585,7 +590,19 @@ function OrgTab({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {uiRevampV2 && (
+        <div className="md:hidden">
+          <PersonnelMobileV2
+            roles={orderedRoles}
+            canEdit={canEdit}
+            currencyCode={currencyCode}
+            onUpdate={updateRole}
+          />
+        </div>
+      )}
+      <div className={uiRevampV2 ? "hidden md:block" : undefined}>
+      <div className="space-y-6">
       {/* Org chart (top) */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
@@ -663,6 +680,8 @@ function OrgTab({
         )}
       </div>
     </div>
+    </div>{/* end hidden md:block wrapper */}
+    </>
   );
 }
 

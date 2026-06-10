@@ -23,6 +23,9 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { TABLE_CELL_TEXT, TABLE_HEADER_TEXT, TABLE_ACTION_ICON_SIZE } from "@/lib/workspace-table";
+// TIM-2596 (Phase 5.8): mobile card-per-vendor surface, gated by ui_revamp_v2.
+import { SuppliersMobileV2 } from "@/components/suppliers/SuppliersMobileV2";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -574,6 +577,10 @@ export function SuppliersWorkspace({
   const activeRows = candidatesByCategory.get(activeCategory) ?? [];
   const activeDecision = decisionsByCategory.get(activeCategory) ?? null;
 
+  // TIM-2596 (Phase 5.8): when ui_revamp_v2 is on, render the v2 card-per-vendor
+  // surface below md and keep the v1 grid at md+.
+  const uiRevampV2 = useUiRevamp();
+
   return (
     <>
     {AIReviewModalNode}
@@ -597,6 +604,19 @@ export function SuppliersWorkspace({
           }
         />
 
+        {uiRevampV2 && (
+          <div className="md:hidden">
+            <SuppliersMobileV2
+              candidates={candidates}
+              allCategoryIds={allCategoryIds}
+              labelFor={labelFor}
+              canEdit={canEdit}
+              onFieldChange={handleFieldChange}
+              onStatusChange={handleStatusChange}
+            />
+          </div>
+        )}
+        <div className={uiRevampV2 ? "hidden md:block" : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
           {/* Category nav */}
           <nav className="rounded-xl border border-[var(--border)] bg-white overflow-hidden self-start">
@@ -870,6 +890,7 @@ export function SuppliersWorkspace({
             </div>
           </section>
         </div>
+        </div>{/* end hidden md:block wrapper */}
       </div>
 
       {reasonModal && (

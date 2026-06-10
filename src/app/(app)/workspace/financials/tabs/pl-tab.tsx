@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { Pencil, RotateCcw, ChevronsRight } from "lucide-react";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { PnlMobileV2 } from "@/components/financials/PnlMobileV2";
 // TIM-2474: bind gross-margin + occupancy thresholds to the canonical
 // `benchmarks.json` band loader. Same voice (`describeBandPosition`) the
 // cross-suite hiring resolver uses.
@@ -360,6 +362,7 @@ export function PLTab({
   onToggleManual,
   onApplyForward,
 }: Props) {
+  const uiRevampV2 = useUiRevamp();
   const [period, setPeriod] = useState<Period>("monthly");
   const [year, setYear] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [view, setView] = useState<ViewMode>("table");
@@ -526,6 +529,12 @@ export function PLTab({
 
   return (
     <div>
+      {uiRevampV2 && (
+        <div className="md:hidden mb-4">
+          <PnlMobileV2 slices={slices} currencyCode={currencyCode} />
+        </div>
+      )}
+      <div className={uiRevampV2 ? "hidden md:block" : undefined}>
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <ViewModeToggle mode={view} onChange={setView} />
         <div className="flex rounded-lg border border-[var(--border-medium)] overflow-hidden text-sm">
@@ -757,6 +766,7 @@ export function PLTab({
         </p>
       )}
 
+      </div>{/* end hidden md:block wrapper */}
       <div className="mt-4 rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <PLCritique slices={slices} year={year} />
