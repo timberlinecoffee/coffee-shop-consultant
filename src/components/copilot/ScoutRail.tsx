@@ -61,6 +61,7 @@ import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCross
 import { crossSuiteConflictIdForAuditFinding } from "@/lib/cross-suite/audit-mapping";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useScoutRailContext } from "@/lib/scout-rail-context";
+import { MessageBubble } from "./CoPilotDrawer";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -815,7 +816,7 @@ function ScoutPanel({
         )}
       </div>
 
-      {/* Past chats drawer */}
+      {/* Past chats drawer — slides out to the LEFT of the Scout rail (v2) */}
       <PastChatsDrawer
         open={pastChatsOpen}
         onClose={() => setPastChatsOpen(false)}
@@ -828,6 +829,7 @@ function ScoutPanel({
         onRenameThread={handleRenameThread}
         onDeleteThread={handleDeleteThread}
         refreshKey={browserRefreshKey}
+        railWidth={300}
       />
     </>
   );

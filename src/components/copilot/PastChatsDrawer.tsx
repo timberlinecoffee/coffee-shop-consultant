@@ -39,17 +39,21 @@ export interface PastChatsDrawerProps {
   refreshKey?: number;
   // Drives mobile bottom-sheet behavior and the desktop backdrop's right offset
   // when the chat panel is also open (we do not occlude the chat panel).
-  viewportWidth: number;
-  chatPanelOpen: boolean;
-  chatPanelWidth: number;
+  viewportWidth?: number;
+  chatPanelOpen?: boolean;
+  chatPanelWidth?: number;
+  // v2 Scout rail: width of the right rail in pixels. When > 0, the drawer
+  // slides in from the left edge of the rail instead of the viewport left.
+  railWidth?: number;
 }
 
 export function PastChatsDrawer({
   open,
   onClose,
-  viewportWidth,
-  chatPanelOpen,
-  chatPanelWidth,
+  viewportWidth = 1280,
+  chatPanelOpen = false,
+  chatPanelWidth = 0,
+  railWidth = 0,
   ...threadProps
 }: PastChatsDrawerProps) {
   const isMobile = viewportWidth < 640;
@@ -104,34 +108,64 @@ export function PastChatsDrawer({
               </motion.div>
             </>
           ) : (
-            <>
-              <motion.aside
-                role="dialog"
-                aria-modal="false"
-                aria-label="Past chats"
-                className="absolute top-0 left-0 h-full bg-[var(--background)] border-r border-[var(--border)] flex flex-col shadow-xl pointer-events-auto"
-                style={{ width: PAST_CHATS_DRAWER_WIDTH }}
-                initial={{ x: -PAST_CHATS_DRAWER_WIDTH }}
-                animate={{ x: 0 }}
-                exit={{ x: -PAST_CHATS_DRAWER_WIDTH }}
-                transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                <DrawerHeader onClose={onClose} />
-                <div className="flex-1 overflow-hidden">
-                  <ThreadBrowser variant="fill" {...threadProps} />
-                </div>
-              </motion.aside>
-              <button
-                type="button"
-                aria-label="Close past chats"
-                onClick={onClose}
-                className="absolute top-0 bottom-0 bg-black/30 pointer-events-auto"
-                style={{
-                  left: PAST_CHATS_DRAWER_WIDTH,
-                  right: chatPanelOpen ? chatPanelWidth : 0,
-                }}
-              />
-            </>
+            railWidth > 0 ? (
+              /* v2: drawer slides out to the LEFT of the Scout rail */
+              <>
+                <motion.aside
+                  role="dialog"
+                  aria-modal="false"
+                  aria-label="Past chats"
+                  className="absolute top-0 h-full bg-[var(--background)] border-l border-[var(--border)] flex flex-col shadow-[-4px_0_12px_rgba(0,0,0,0.08)] pointer-events-auto"
+                  style={{ width: PAST_CHATS_DRAWER_WIDTH, right: railWidth }}
+                  initial={{ x: PAST_CHATS_DRAWER_WIDTH }}
+                  animate={{ x: 0 }}
+                  exit={{ x: PAST_CHATS_DRAWER_WIDTH }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                  <DrawerHeader onClose={onClose} />
+                  <div className="flex-1 overflow-hidden">
+                    <ThreadBrowser variant="fill" {...threadProps} />
+                  </div>
+                </motion.aside>
+                <button
+                  type="button"
+                  aria-label="Close past chats"
+                  onClick={onClose}
+                  className="absolute top-0 bottom-0 bg-black/30 pointer-events-auto"
+                  style={{ left: 0, right: PAST_CHATS_DRAWER_WIDTH + railWidth }}
+                />
+              </>
+            ) : (
+              /* v1: drawer slides in from the left edge of the viewport */
+              <>
+                <motion.aside
+                  role="dialog"
+                  aria-modal="false"
+                  aria-label="Past chats"
+                  className="absolute top-0 left-0 h-full bg-[var(--background)] border-r border-[var(--border)] flex flex-col shadow-xl pointer-events-auto"
+                  style={{ width: PAST_CHATS_DRAWER_WIDTH }}
+                  initial={{ x: -PAST_CHATS_DRAWER_WIDTH }}
+                  animate={{ x: 0 }}
+                  exit={{ x: -PAST_CHATS_DRAWER_WIDTH }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                  <DrawerHeader onClose={onClose} />
+                  <div className="flex-1 overflow-hidden">
+                    <ThreadBrowser variant="fill" {...threadProps} />
+                  </div>
+                </motion.aside>
+                <button
+                  type="button"
+                  aria-label="Close past chats"
+                  onClick={onClose}
+                  className="absolute top-0 bottom-0 bg-black/30 pointer-events-auto"
+                  style={{
+                    left: PAST_CHATS_DRAWER_WIDTH,
+                    right: chatPanelOpen ? chatPanelWidth : 0,
+                  }}
+                />
+              </>
+            )
           )}
         </motion.div>
       )}

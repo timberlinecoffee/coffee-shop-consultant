@@ -1619,7 +1619,7 @@ function CoPilotDrawerV1({
   );
 }
 
-function MessageBubble({
+export function MessageBubble({
   role,
   content,
   streaming,
