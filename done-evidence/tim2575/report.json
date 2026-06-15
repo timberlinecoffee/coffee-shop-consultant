@@ -1,0 +1,126 @@
+{
+  "issue": "TIM-2686",
+  "parentIssue": "TIM-2575",
+  "fixtureEmail": "trent@simpler.coffee",
+  "base": "https://groundwork.cafe",
+  "capturedAt": "2026-06-15T20:20:41.719Z",
+  "surfaces": 8,
+  "lanes": [
+    "v1",
+    "v2"
+  ],
+  "captured": [
+    {
+      "filename": "home-desktop-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/home-desktop-v1.png",
+      "surface": "home",
+      "viewport": "desktop",
+      "lane": "v1"
+    },
+    {
+      "filename": "equipment-desktop-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/equipment-desktop-v1.png",
+      "surface": "equipment",
+      "viewport": "desktop",
+      "lane": "v1"
+    },
+    {
+      "filename": "financials-desktop-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/financials-desktop-v1.png",
+      "surface": "financials",
+      "viewport": "desktop",
+      "lane": "v1"
+    },
+    {
+      "filename": "launch-plan-desktop-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/launch-plan-desktop-v1.png",
+      "surface": "launch-plan",
+      "viewport": "desktop",
+      "lane": "v1"
+    },
+    {
+      "filename": "home-mobile-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/home-mobile-v1.png",
+      "surface": "home",
+      "viewport": "mobile",
+      "lane": "v1"
+    },
+    {
+      "filename": "nav-mobile-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/nav-mobile-v1.png",
+      "surface": "nav",
+      "viewport": "mobile",
+      "lane": "v1"
+    },
+    {
+      "filename": "equipment-mobile-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/equipment-mobile-v1.png",
+      "surface": "equipment",
+      "viewport": "mobile",
+      "lane": "v1"
+    },
+    {
+      "filename": "scout-mobile-v1.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/scout-mobile-v1.png",
+      "surface": "scout",
+      "viewport": "mobile",
+      "lane": "v1"
+    },
+    {
+      "filename": "home-desktop-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/home-desktop-v2.png",
+      "surface": "home",
+      "viewport": "desktop",
+      "lane": "v2"
+    },
+    {
+      "filename": "equipment-desktop-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/equipment-desktop-v2.png",
+      "surface": "equipment",
+      "viewport": "desktop",
+      "lane": "v2"
+    },
+    {
+      "filename": "financials-desktop-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/financials-desktop-v2.png",
+      "surface": "financials",
+      "viewport": "desktop",
+      "lane": "v2"
+    },
+    {
+      "filename": "launch-plan-desktop-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/launch-plan-desktop-v2.png",
+      "surface": "launch-plan",
+      "viewport": "desktop",
+      "lane": "v2"
+    },
+    {
+      "filename": "home-mobile-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/home-mobile-v2.png",
+      "surface": "home",
+      "viewport": "mobile",
+      "lane": "v2"
+    },
+    {
+      "filename": "nav-mobile-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/nav-mobile-v2.png",
+      "surface": "nav",
+      "viewport": "mobile",
+      "lane": "v2"
+    },
+    {
+      "filename": "equipment-mobile-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/equipment-mobile-v2.png",
+      "surface": "equipment",
+      "viewport": "mobile",
+      "lane": "v2"
+    },
+    {
+      "filename": "scout-mobile-v2.png",
+      "path": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2575/scout-mobile-v2.png",
+      "surface": "scout",
+      "viewport": "mobile",
+      "lane": "v2"
+    }
+  ]
+}

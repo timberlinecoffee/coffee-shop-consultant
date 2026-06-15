@@ -1,0 +1,25 @@
+{
+  "issue": "TIM-2686",
+  "parentIssue": "TIM-2575",
+  "uploadedAt": "2026-06-15T20:30:00Z",
+  "fixtureEmail": "trent@simpler.coffee",
+  "base": "https://groundwork.cafe",
+  "attachments": {
+    "home-desktop-v1.png":       "7cbee31c-208a-4a2d-8857-0b9737a0090d",
+    "home-desktop-v2.png":       "9452ccbf-b27a-414a-a1ca-35964d9693ec",
+    "equipment-desktop-v1.png":  "3dd6899e-f8d3-4bb0-824d-8e011eca99f7",
+    "equipment-desktop-v2.png":  "0adfd93a-bedc-4bf6-a96b-e30322bf4565",
+    "financials-desktop-v1.png": "c83df126-3998-41bf-83ec-d80074b6df68",
+    "financials-desktop-v2.png": "f149d4b5-da7a-417f-8a5b-4b0941e25c2d",
+    "launch-plan-desktop-v1.png":"ceb3ae6b-df44-4f38-802d-32d7d2ba429d",
+    "launch-plan-desktop-v2.png":"99e81aa3-8861-4a64-ad2f-251a1e951276",
+    "home-mobile-v1.png":        "0a6cc900-8f3e-4ad1-9083-e404621f23ca",
+    "home-mobile-v2.png":        "9d536c2a-0506-444b-b87e-358242e9fd93",
+    "nav-mobile-v1.png":         "628b7c94-e241-4eb8-a5fa-49943d7ae35a",
+    "nav-mobile-v2.png":         "f849abf4-59c6-4f68-b2fd-919276750d87",
+    "equipment-mobile-v1.png":   "976137a4-43f5-4391-a44b-d321c9310b65",
+    "equipment-mobile-v2.png":   "fc8b9402-ebdc-492e-ab2e-aa46e42543d5",
+    "scout-mobile-v1.png":       "b5de39e1-0526-4acd-8556-bfd7cdecd7b4",
+    "scout-mobile-v2.png":       "a9a05d84-57ae-41da-ac68-08032c777f4c"
+  }
+}
