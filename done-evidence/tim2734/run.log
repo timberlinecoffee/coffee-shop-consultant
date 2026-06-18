@@ -1,0 +1,36 @@
+[2026-06-18T13:53:08.013Z] PRE-FLIGHT
+[2026-06-18T13:53:08.469Z] cron response: 200 {"scanned":3,"due":0,"sent":0,"results":[]}
+[2026-06-18T13:53:08.470Z] SCENARIO 8 — No Growth UI on prod
+[2026-06-18T13:53:11.791Z] shot: scripts/shots/tim2734/s8-pricing-page.png
+[2026-06-18T13:53:12.256Z] SCENARIO 1+2+3+5 — shared starter trial customer
+[2026-06-18T13:53:13.698Z] provisioned user s1s5: c23a8a81-0e73-4810-9344-87cdc552789b <qa-tim2734-1781790788013-s1s5@example.com>
+[2026-06-18T13:53:14.133Z] test clock tim2734-s1s5: clock_1TjgNZCzwciIL0hnbZmzdXNb frozen=2026-06-18T13:53:13.000Z
+[2026-06-18T13:53:15.710Z] customer cus_Uj8eKoAglI1ve5 (user c23a8a81-0e73-4810-9344-87cdc552789b) on clock clock_1TjgNZCzwciIL0hnbZmzdXNb pm=pm_1TjgNaCzwciIL0hnU3Buo97X
+[2026-06-18T13:53:17.503Z] sub sub_1TjgNbCzwciIL0hnbuqCY9ma status=trialing trial_end=2026-06-25T13:53:13.000Z
+[2026-06-18T13:53:17.503Z] S1 — wait for webhook to land subscription row
+[2026-06-18T13:54:49.979Z] S1-5 ERROR: [wait] trialing + free_trial: timed out after 90000ms. user={"id":"c23a8a81-0e73-4810-9344-87cdc552789b","email":"qa-tim2734-1781790788013-s1s5@example.com","full_name":"TIM-2734 QA s1s5","avatar_url":null,"subscription_status":"free_trial","subscription_tier":"free","ai_credits_remaining":0,"target_opening_date":null,"readiness_score":0,"onboarding_completed":true,"onboarding_data":null,"created_at":"2026-06-18T13:53:12.620685+00:00","updated_at":"2026-06 sub=null
+[2026-06-18T13:54:49.980Z] SCENARIO 4 — cron trigger evidence (BLOCKED on Resend for delivery)
+[2026-06-18T13:54:50.428Z] cron response: 200 {"scanned":3,"due":0,"sent":0,"results":[]}
+[2026-06-18T13:54:50.428Z] SCENARIO 6 — cancel during trial, no charge at Day 7
+[2026-06-18T13:54:51.281Z] provisioned user s6: d5b80246-e600-4452-8c98-35a9c88a5756 <qa-tim2734-1781790788013-s6@example.com>
+[2026-06-18T13:54:51.692Z] test clock tim2734-s6: clock_1TjgP9CzwciIL0hnMrfV13jn frozen=2026-06-18T13:54:51.000Z
+[2026-06-18T13:54:53.227Z] customer cus_Uj8gsLjLjjRNKp (user d5b80246-e600-4452-8c98-35a9c88a5756) on clock clock_1TjgP9CzwciIL0hnMrfV13jn pm=pm_1TjgPACzwciIL0hnCqVIZXac
+[2026-06-18T13:54:55.875Z] sub sub_1TjgPBCzwciIL0hnSfdc5Wws status=trialing trial_end=2026-06-25T13:54:51.000Z
+[2026-06-18T13:56:26.718Z] S6 ERROR: [wait] trialing: timed out after 90000ms. user={"id":"d5b80246-e600-4452-8c98-35a9c88a5756","email":"qa-tim2734-1781790788013-s6@example.com","full_name":"TIM-2734 QA s6","avatar_url":null,"subscription_status":"free_trial","subscription_tier":"free","ai_credits_remaining":0,"target_opening_date":null,"readiness_score":0,"onboarding_completed":true,"onboarding_data":null,"created_at":"2026-06-18T13:54:50.782872+00:00","updated_at":"2026-06-18T sub=null
+[2026-06-18T13:56:26.718Z] SCENARIO 7 — failing card on Day-7 conversion (dunning)
+[2026-06-18T13:56:27.459Z] provisioned user s7: 84c25ee4-38f6-4d22-af80-c2ae2cafe56e <qa-tim2734-1781790788013-s7@example.com>
+[2026-06-18T13:56:27.872Z] test clock tim2734-s7: clock_1TjgQhCzwciIL0hndped6H1q frozen=2026-06-18T13:56:27.000Z
+[2026-06-18T13:56:29.610Z] customer cus_Uj8iZERa15aAth (user 84c25ee4-38f6-4d22-af80-c2ae2cafe56e) on clock clock_1TjgQhCzwciIL0hndped6H1q pm=pm_1TjgQiCzwciIL0hnjd6U6lgg
+[2026-06-18T13:56:31.521Z] sub sub_1TjgQjCzwciIL0hnwBkVbR5H status=trialing trial_end=2026-06-25T13:56:27.000Z
+[2026-06-18T13:58:03.206Z] S7 ERROR: [wait] trialing: timed out after 90000ms. user={"id":"84c25ee4-38f6-4d22-af80-c2ae2cafe56e","email":"qa-tim2734-1781790788013-s7@example.com","full_name":"TIM-2734 QA s7","avatar_url":null,"subscription_status":"free_trial","subscription_tier":"free","ai_credits_remaining":0,"target_opening_date":null,"readiness_score":0,"onboarding_completed":true,"onboarding_data":null,"created_at":"2026-06-18T13:56:27.009246+00:00","updated_at":"2026-06-18T sub=null
+[2026-06-18T13:58:03.207Z] WROTE done-evidence/tim2734/report.json
+
+========== SUMMARY ==========
+preflight: PASS
+S8: PASS (No Growth references on rendered /pricing)
+S1-5: ERROR ([wait] trialing + free_trial: timed out after 90000ms. user={"id":"c23a8a81-0e73-4810-9344-87cdc552789b","email":"qa-tim)
+S4: BLOCKED (Cron endpoint reachable + selector logic intact. End-to-end email delivery verification BLOCKED on TIM-2366 (RESEND_API_)
+S6: ERROR ([wait] trialing: timed out after 90000ms. user={"id":"d5b80246-e600-4452-8c98-35a9c88a5756","email":"qa-tim2734-17817907)
+S7: ERROR ([wait] trialing: timed out after 90000ms. user={"id":"84c25ee4-38f6-4d22-af80-c2ae2cafe56e","email":"qa-tim2734-17817907)
+=============================
+
