@@ -1,0 +1,66 @@
+[
+  {
+    "case": "login-with-expired",
+    "viewport": "desktop",
+    "url": "https://groundwork.cafe/login?expired=1",
+    "status": 200,
+    "bannerVisible": true,
+    "screenshot": "done-evidence/tim2732/login-with-expired-desktop.png"
+  },
+  {
+    "case": "login-no-expired",
+    "viewport": "desktop",
+    "url": "https://groundwork.cafe/login",
+    "status": 200,
+    "bannerVisible": false,
+    "screenshot": "done-evidence/tim2732/login-no-expired-desktop.png"
+  },
+  {
+    "case": "landing-with-expired",
+    "viewport": "desktop",
+    "url": "https://groundwork.cafe/landing?expired=1",
+    "status": 200,
+    "bannerVisible": true,
+    "screenshot": "done-evidence/tim2732/landing-with-expired-desktop.png"
+  },
+  {
+    "case": "landing-no-expired",
+    "viewport": "desktop",
+    "url": "https://groundwork.cafe/landing",
+    "status": 200,
+    "bannerVisible": false,
+    "screenshot": "done-evidence/tim2732/landing-no-expired-desktop.png"
+  },
+  {
+    "case": "login-with-expired",
+    "viewport": "mobile",
+    "url": "https://groundwork.cafe/login?expired=1",
+    "status": 200,
+    "bannerVisible": true,
+    "screenshot": "done-evidence/tim2732/login-with-expired-mobile.png"
+  },
+  {
+    "case": "login-no-expired",
+    "viewport": "mobile",
+    "url": "https://groundwork.cafe/login",
+    "status": 200,
+    "bannerVisible": false,
+    "screenshot": "done-evidence/tim2732/login-no-expired-mobile.png"
+  },
+  {
+    "case": "landing-with-expired",
+    "viewport": "mobile",
+    "url": "https://groundwork.cafe/landing?expired=1",
+    "status": 200,
+    "bannerVisible": true,
+    "screenshot": "done-evidence/tim2732/landing-with-expired-mobile.png"
+  },
+  {
+    "case": "landing-no-expired",
+    "viewport": "mobile",
+    "url": "https://groundwork.cafe/landing",
+    "status": 200,
+    "bannerVisible": false,
+    "screenshot": "done-evidence/tim2732/landing-no-expired-mobile.png"
+  }
+]
