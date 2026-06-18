@@ -7,6 +7,15 @@ import {
   parseRememberPreference,
 } from './lib/auth/remember-me'
 import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
+import { resolveNext } from './lib/safe-next'
+
+// TIM-2730: header names the proxy injects on every passed-through request so
+// Server Components (specifically src/app/(app)/layout.tsx) can recover the
+// original pathname + query string and preserve them through a session-expiry
+// `redirect("/login?next=...")`. Next.js Server Components have no built-in
+// access to the request URL, so the proxy hands it across via headers.
+const GW_PATHNAME_HEADER = 'x-gw-pathname'
+const GW_SEARCH_HEADER = 'x-gw-search'
 
 // TIM-2352: paths where running supabase.auth.getUser() in middleware breaks the
 // in-flight OAuth handshake. If a user has a stale refresh token, getUser() →
@@ -27,7 +36,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  // TIM-2730: hand the original URL down to Server Components via request
+  // headers so (app)/layout.tsx can build `?next=` on a session-expiry bounce.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(GW_PATHNAME_HEADER, pathname)
+  requestHeaders.set(GW_SEARCH_HEADER, request.nextUrl.search)
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
   // TIM-2430: honor the "Keep me signed in on this device" preference. When
   // the user opts out (gw_remember_me=0), strip maxAge/expires from Supabase
@@ -45,7 +60,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, adjustOptionsForRemember(name, options, remember))
           )
@@ -83,8 +98,17 @@ export async function proxy(request: NextRequest) {
     protectedPaths.some(p => pathname.startsWith(p)) && !PLAN_FREE_PREVIEW.test(pathname)
 
   if (isProtected && !user) {
+    // TIM-2730: preserve the original pathname + query as ?next= so post-login
+    // returns the visitor to where they were headed (e.g. `/account?ui=v2`
+    // bouncing through /login lands back on /account with the v2 lane intact).
+    // resolveNext is the same path-only allowlist used by /auth/callback and
+    // /login — it rejects absolute URLs and protocol-relative `//evil.tld`.
+    const original = `${pathname}${request.nextUrl.search}`
+    const safe = resolveNext(original)
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.search = ''
+    if (safe) url.searchParams.set('next', safe)
     return NextResponse.redirect(url)
   }
 

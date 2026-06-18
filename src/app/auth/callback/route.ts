@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { resolveNext } from "./safe-next";
+import { resolveNext } from "@/lib/safe-next";
 
 // TIM-2327: short-lived first-party handoff cookies set by /login before
 // signInWithOAuth. Lets us strip query params off `redirectTo` so it matches

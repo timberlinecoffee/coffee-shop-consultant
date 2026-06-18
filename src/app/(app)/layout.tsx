@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { resolveNext } from "@/lib/safe-next";
 import { WORKSPACE_MANIFEST } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceStatusBootstrap } from "@/components/workspace/WorkspaceStatusBootstrap";
@@ -31,7 +32,20 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) {
+    // TIM-2730: a stale-refresh-token wipe (see TIM-2352) bounces an in-flight
+    // workspace visit through this layout. Preserve the original pathname +
+    // query as ?next= so the visitor lands back where they were headed after
+    // re-login (e.g. `/workspace/financials?ui=v2`), not on /dashboard. The
+    // proxy injects x-gw-pathname/x-gw-search on every passed-through request;
+    // resolveNext applies the same path-only allowlist used by /auth/callback
+    // and rejects absolute / protocol-relative URLs (open-redirect guard).
+    const h = await headers();
+    const pathname = h.get("x-gw-pathname") ?? "";
+    const search = h.get("x-gw-search") ?? "";
+    const safeNext = resolveNext(`${pathname}${search}`);
+    redirect(safeNext ? `/login?next=${encodeURIComponent(safeNext)}` : "/login");
+  }
 
   const [settings, dbUiRevamp, profileRow] = await Promise.all([
     getAccountSettings(supabase, user.id),

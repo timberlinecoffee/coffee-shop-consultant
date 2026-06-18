@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveNext, SAFE_NEXT_PREFIXES } from "./safe-next.ts";
+import { resolveNext, SAFE_NEXT_PREFIXES } from "../../../lib/safe-next.ts";
 
 test("allowlist contains /workspace (TIM-2327)", () => {
   assert.ok(SAFE_NEXT_PREFIXES.includes("/workspace"));
