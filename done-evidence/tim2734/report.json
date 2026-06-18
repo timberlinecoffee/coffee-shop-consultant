@@ -1,0 +1,163 @@
+{
+  "runId": "tim2734-1781790788013",
+  "startedAt": "2026-06-18T13:53:08.013Z",
+  "completedAt": "2026-06-18T14:05:00Z",
+  "target": "https://groundwork.cafe (alias: coffee-shop-consultant.vercel.app)",
+  "deployId": "dpl_AWJcJavxyAEnyMb6mCqERNSx6ti5",
+  "headSha": "1c37ec64e0ab9e1cd08ed7ce6264c7e2a415de8e",
+  "ancestorOf_TIM-1903_SHA_d8e7008": true,
+  "ancestorOf_TIM-1947_merge": true,
+  "stripeMode": "test (sk_test_*)",
+  "scenarios": {
+    "preflight": {
+      "verdict": "PASS",
+      "checks": {
+        "prodSha_d8e7008_in_HEAD_history": true,
+        "stripe_test_mode": true,
+        "stripe_starter_monthly_price_id": "price_1TXjPOCzwciIL0hnrbBf1pXl",
+        "stripe_starter_monthly_amount_cents": 3900,
+        "supabase_admin_reachable": true,
+        "supabase_users_count_before_qa": 46,
+        "cron_secret_available": true,
+        "cron_endpoint_status": 200,
+        "cron_initial_scan": {"scanned": 3, "due": 0, "sent": 0, "results": []}
+      }
+    },
+    "S1": {
+      "verdict": "BLOCKED",
+      "blockedBy": "platform_webhook_regression_TIM-2735",
+      "stripeSide": "PASS",
+      "checks": {
+        "stripe_subscription_created": "sub_1TjgNbCzwciIL0hnbuqCY9ma",
+        "stripe_subscription_status": "trialing",
+        "stripe_trial_end_iso": "2026-06-25T13:53:13Z",
+        "stripe_trial_end_window_6.5_to_7.5d": true,
+        "stripe_price_id": "price_1TXjPOCzwciIL0hnrbBf1pXl",
+        "stripe_price_amount_cents": 3900,
+        "stripe_metadata_userId_present": true,
+        "supabase_subscriptions_row_after_90s": "MISSING — webhook never landed",
+        "supabase_users_subscription_status": "free_trial (default — not from webhook)",
+        "supabase_users_ai_credits_remaining": 0,
+        "supabase_users_subscription_tier": "free (default)",
+        "supabase_users_trial_credits_granted": false
+      },
+      "note": "Stripe created sub correctly with 7-day trial; metadata.userId set. App-side webhook never received the customer.subscription.created event (root cause: TIM-2735 — see blockers). Supabase users + subscriptions tables therefore not updated. DB checks all fail solely because of the webhook regression, not because of any app-layer trial logic."
+    },
+    "S2": {
+      "verdict": "BLOCKED",
+      "blockedBy": "platform_webhook_regression_TIM-2735",
+      "checks": {
+        "clock_advance_to_day5": "ok",
+        "clock_advance_to_day6": "ok",
+        "dashboard_screenshots_captured": ["scripts/shots/tim2734/s2-day5-2days-left.png", "scripts/shots/tim2734/s2-day6-1day-left.png"]
+      },
+      "note": "Test clocks advanced cleanly Stripe-side. Dashboard banner copy depends on users.trial_ends_at, which the webhook never wrote — so the banner cannot be validated end-to-end. TrialBanner UI logic itself was verified previously via direct DB-seed (scripts/tim1903-prod-verify.mjs) and remains correct."
+    },
+    "S3": {
+      "verdict": "BLOCKED",
+      "blockedBy": "platform_webhook_regression_TIM-2735",
+      "note": "Post-conversion Pro-lock check depends on S5 successful conversion (users.subscription_tier=starter, subscription_status=active). Webhook regression means tier stays 'free' (default), so the lock screen test is not a fair test of the lock logic."
+    },
+    "S4": {
+      "verdict": "BLOCKED",
+      "blockedBy": "TIM-2366 (Resend prod provisioning)",
+      "checks": {
+        "cron_endpoint_reachable": true,
+        "cron_response_at_day5_clock": {"scanned": 3, "due": 0, "sent": 0, "results": []},
+        "selector_logic_verified": "yes (src/lib/trial-reminders.ts day5/day7/day8 windows)",
+        "email_delivery_blocked_by": "RESEND_API_KEY missing in prod Vercel env"
+      },
+      "note": "Cron endpoint accepts CRON_SECRET and runs the selector. Selector did not find candidates because the QA users' trial_ends_at was never written (S1 webhook regression chain). Even if candidates were found, sendTrialReminderEmail returns {ok:false,skipped:true,reason:'no_api_key'} — verified in src/lib/email/trial-reminders.ts:271. Two upstreams must land before this is testable: TIM-2735 (webhook restore) AND TIM-2366 (Resend)."
+    },
+    "S5": {
+      "verdict": "BLOCKED",
+      "blockedBy": "platform_webhook_regression_TIM-2735",
+      "stripeSide": "PASS",
+      "checks": {
+        "clock_advanced_to_day7_plus_1h": true,
+        "stripe_subscription_status_after_advance": "active",
+        "stripe_paid_invoices_count": 2,
+        "stripe_trial_zero_invoice": "in_1TjgNbCzwciIL0hnLYHh2Tbq (amount_paid=0)",
+        "stripe_conversion_invoice": "in_1TjgWSCzwciIL0hnwCvkcqAH (amount_paid=3900)",
+        "supabase_users_ai_credits_after_conversion": 0,
+        "supabase_users_subscription_tier_after_conversion": "free",
+        "supabase_users_subscription_status_after_conversion": "free_trial"
+      },
+      "note": "Stripe-side conversion 100% correct: $39 charged, sub becomes active. App-side: webhook for invoice.paid / customer.subscription.updated never landed, so users.ai_credits_remaining stayed 0 and tier stayed 'free' — no monthly grant, no Welcome toast trigger, no banner change."
+    },
+    "S6": {
+      "verdict": "BLOCKED",
+      "blockedBy": "platform_webhook_regression_TIM-2735",
+      "stripeSide": "PASS",
+      "checks": {
+        "stripe_subscription_id": "sub_1TjgPBCzwciIL0hnSfdc5Wws",
+        "cancel_at_period_end_set": true,
+        "stripe_status_after_trial_end": "canceled",
+        "stripe_canceled_at_unix": 1781790891,
+        "stripe_ended_at_unix": 1782395691,
+        "stripe_paid_invoices_with_nonzero_amount": 0,
+        "stripe_no_charge_at_trial_end": true
+      },
+      "note": "Stripe-side cancel-during-trial: PERFECT. cancel_at_period_end=true → sub auto-cancels at trial_end with ZERO charges. App-side access revocation (which keys off webhook-driven users.subscription_status=canceled) cannot be verified because customer.subscription.deleted webhook never landed."
+    },
+    "S7": {
+      "verdict": "BLOCKED",
+      "blockedBy": "platform_webhook_regression_TIM-2735",
+      "stripeSide": "PASS",
+      "checks": {
+        "stripe_subscription_id": "sub_1TjgQjCzwciIL0hnwBkVbR5H",
+        "stripe_payment_method": "tok_chargeCustomerFail (4000 0000 0000 0341 family)",
+        "stripe_status_after_failed_charge": "past_due",
+        "stripe_failed_charge_id": "ch_3TjgXXCzwciIL0hn0rIZuo9G",
+        "stripe_failure_code": "card_declined",
+        "stripe_failure_message": "Your card was declined."
+      },
+      "note": "Stripe-side dunning: confirmed Day-7 charge attempt failed (card_declined), sub went past_due. App-side dunning banner (\"Update your payment method\") + 3-day grace + Day-10 read-only logic cannot be tested because invoice.payment_failed / customer.subscription.updated webhooks never landed."
+    },
+    "S8": {
+      "verdict": "PASS",
+      "checks": {
+        "visible_text_has_growth": false,
+        "html_has_growth_plan_marker": false,
+        "checkout_endpoint_rejects_growth_410": "verified via code review (src/app/api/stripe/create-checkout-session/route.ts:23-28 returns 410 with 'The Growth plan was retired — choose Starter or Pro.')",
+        "screenshot": "scripts/shots/tim2734/s8-pricing-page.png"
+      },
+      "note": "Rendered /pricing on prod has zero 'Growth' references. Checkout endpoint hard-rejects growth_* planKeys with 410. PASS. Note: Stripe test catalog still has Groundwork Growth products (prod_UWmzUP2zI62p0S, prod_UWmskWFzRgdD5V) — orphan products not surfaced in UI, harmless. Worth a follow-up Stripe-catalog cleanup but not a S8 fail."
+    }
+  },
+  "blockers": [
+    {
+      "id": "TIM-2735 (to file)",
+      "summary": "Stripe test-mode webhook endpoint not configured → ALL Stripe events drop on the floor",
+      "rootCause": "Stripe Dashboard test-mode webhook endpoint list is EMPTY (GET /v1/webhook_endpoints returns data:[]). Last processed Stripe event in stripe_processed_events table is dated 2026-06-03; nothing since. Prod env STRIPE_WEBHOOK_SECRET (ends ...0d4dfa104bd) is orphaned — points to an endpoint that was deleted or never re-created after a Stripe Dashboard config change.",
+      "scope": "Affects every Stripe → app webhook handler path: customer.subscription.created/updated/deleted, invoice.paid/payment_failed, checkout.session.completed. Test-mode signups via /pricing → Stripe Checkout → return to app would land the user on /account/billing?success=1 with NO subscriptions row written.",
+      "userImpact": "ZERO real users affected since 2026-06-03 (no non-QA user signups in that window — verified). But ANY new signup attempt right now silently breaks: Stripe customer created, no app-side state written.",
+      "fix": "Board (or whoever owns Stripe Dashboard) needs to: (1) Re-create test-mode webhook endpoint pointing to https://groundwork.cafe/api/stripe/webhook with the events used by src/app/api/stripe/webhook/route.ts; (2) Update prod Vercel env STRIPE_WEBHOOK_SECRET to the new endpoint's whsec_*. As CTO I have stripe API write access (can create endpoints) but cannot update Vercel env vars (board-only)."
+    },
+    {
+      "id": "TIM-2366",
+      "summary": "Resend prod provisioning + 11 transactional templates — currently in_review (PR #152)",
+      "impact": "S4 trial-end emails (Day 5 / 7 / 8) cannot deliver. App-side cron + selector + render are all correct (verified via code review); sendTrialReminderEmail short-circuits with no_api_key.",
+      "fix": "Land PR #152 + set RESEND_API_KEY in prod Vercel env."
+    }
+  ],
+  "cleanup": {
+    "supabase_users_deleted": [
+      "c23a8a81-0e73-4810-9344-87cdc552789b",
+      "d5b80246-e600-4452-8c98-35a9c88a5756",
+      "84c25ee4-38f6-4d22-af80-c2ae2cafe56e"
+    ],
+    "stripe_test_clocks_deleted": [
+      "clock_1TjgNZCzwciIL0hnbZmzdXNb",
+      "clock_1TjgP9CzwciIL0hnMrfV13jn",
+      "clock_1TjgQhCzwciIL0hndped6H1q"
+    ],
+    "stripe_temporary_webhook_endpoint_deleted": "we_1TjgUTCzwciIL0hnInCJvNhj (created during diagnosis, deleted to keep state clean)"
+  },
+  "summary": {
+    "PASS": ["preflight", "S8"],
+    "STRIPE_PASS_DB_BLOCKED": ["S1", "S5", "S6", "S7"],
+    "DOUBLE_BLOCKED": ["S2", "S3", "S4"],
+    "verdict": "INCOMPLETE — Stripe billing logic + UI surfaces (S8) confirmed correct. End-to-end DB / dashboard / email verification blocked on two platform regressions: (1) test-mode webhook endpoint not configured [TIM-2735 to file], (2) Resend prod env [TIM-2366 in_review]. Once both land, all 7 scenarios re-runnable in ~15 min via scripts/tim2734-qa-harness.mjs."
+  }
+}
