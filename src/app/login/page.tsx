@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { Logo } from "../_components/Logo";
 import { createClient } from "@/lib/supabase/server";
+import { resolveNext } from "@/lib/safe-next";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,11 +28,11 @@ export default async function LoginPage({
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const safeNext =
-        typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-          ? next
-          : "/dashboard";
-      redirect(safeNext);
+      // TIM-2730: use the shared allowlist (resolveNext) — same path-only +
+      // prefix-allowlist guard used by /auth/callback and (app)/layout.tsx so
+      // the open-redirect check is identical across every honor-?next= site.
+      const safeNext = resolveNext(typeof next === "string" ? next : null);
+      redirect(safeNext ?? "/dashboard");
     }
   }
 

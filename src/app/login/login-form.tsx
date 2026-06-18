@@ -10,6 +10,7 @@ import {
   REMEMBER_ME_MAX_AGE_SECONDS,
   isSupabaseAuthCookie,
 } from "@/lib/auth/remember-me";
+import { resolveNext } from "@/lib/safe-next";
 import { deleteAllVerifierVariants } from "./clear-stale-verifier";
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -93,10 +94,13 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     return params.get("utm_source") || params.get("ref") || "direct";
   }
 
+  // TIM-2730: use the shared allowlist (resolveNext) — same path-only +
+  // prefix-allowlist guard used by /auth/callback, src/proxy.ts, and
+  // (app)/layout.tsx so every honor-?next= site applies the same open-redirect
+  // guard. resolveNext returns null for absolute/protocol-relative URLs or
+  // paths outside SAFE_NEXT_PREFIXES.
   function getNextParam(): string | null {
-    const raw = new URLSearchParams(window.location.search).get("next");
-    if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
-    return raw;
+    return resolveNext(new URLSearchParams(window.location.search).get("next"));
   }
 
   // TIM-2327: hand off signup_source + next via short-lived first-party cookies
@@ -214,7 +218,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       } else {
         // TIM-2430: same downgrade hook as the signup path above.
         if (!rememberMe) downgradeAuthCookiesToSessionScope();
-        // Check onboarding status before redirecting
+        // TIM-2730: honor ?next= when the visitor was bounced here mid-flight
+        // by an expired session (see (app)/layout.tsx). Onboarding still wins
+        // if the account isn't onboarded — sending an un-onboarded user into a
+        // deep workspace path would render an empty shell. Otherwise the
+        // allowlisted next path takes precedence over /dashboard.
+        const nextPath = getNextParam();
         if (data.user) {
           const { data: profile } = await supabase
             .from("users")
@@ -224,10 +233,10 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
           if (!profile?.onboarding_completed) {
             router.push("/onboarding");
           } else {
-            router.push("/dashboard");
+            router.push(nextPath ?? "/dashboard");
           }
         } else {
-          router.push("/dashboard");
+          router.push(nextPath ?? "/dashboard");
         }
         router.refresh();
       }
