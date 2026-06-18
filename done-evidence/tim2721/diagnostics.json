@@ -1,0 +1,643 @@
+{
+  "issue": "TIM-2721",
+  "fixtureEmail": "trent@simpler.coffee",
+  "base": "https://groundwork.cafe",
+  "capturedAt": "2026-06-18T03:06:50.896Z",
+  "sessionExpiresAt": "2026-06-18T04:06:14.000Z",
+  "results": [
+    {
+      "spec": {
+        "name": "financials-v2",
+        "path": "/workspace/financials",
+        "ui": "v2"
+      },
+      "target": "https://groundwork.cafe/workspace/financials?ui=v2",
+      "finalUrl": "https://groundwork.cafe/workspace/financials?ui=v2",
+      "landedOnLogin": false,
+      "navError": null,
+      "cookiesBefore": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": []
+      },
+      "cookiesAfter": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287976.833865
+          }
+        ]
+      },
+      "sbCookieDelta": 0,
+      "responseChain": [
+        {
+          "url": "https://groundwork.cafe/workspace/financials?ui=v2",
+          "status": 200,
+          "location": null,
+          "xMatched": "/workspace/financials",
+          "vercelId": "arn1::iad1::7th5q-1781751974411-ce4c414dfda2"
+        }
+      ],
+      "setCookieHeaders": [
+        {
+          "from": "https://groundwork.cafe/workspace/financials?ui=v2",
+          "setCookie": "gw_ui_revamp_override=v2; Path=/; Expires=Fri, 18 Jun 2027 03:06:14 GMT; Max-Age=31536000; Secure; HttpOnly; SameSite=lax"
+        }
+      ],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "pageErrors": [],
+      "renderedV2": {
+        "hasBottomTabBar": false,
+        "hasReadinessRing": false,
+        "hasSidebarV2": false,
+        "title": "My Coffee Shop Consultant: Timberline Coffee School",
+        "bodyLen": 1133,
+        "firstHeading": "Financials"
+      },
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2721/financials-v2.png"
+    },
+    {
+      "spec": {
+        "name": "equipment-v2",
+        "path": "/workspace/buildout-equipment",
+        "ui": "v2"
+      },
+      "target": "https://groundwork.cafe/workspace/buildout-equipment?ui=v2",
+      "finalUrl": "https://groundwork.cafe/workspace/buildout-equipment?ui=v2",
+      "landedOnLogin": false,
+      "navError": null,
+      "cookiesBefore": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287976.833865
+          }
+        ]
+      },
+      "cookiesAfter": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287983.069493
+          }
+        ]
+      },
+      "sbCookieDelta": 0,
+      "responseChain": [
+        {
+          "url": "https://groundwork.cafe/workspace/buildout-equipment?ui=v2",
+          "status": 200,
+          "location": null,
+          "xMatched": "/workspace/buildout-equipment",
+          "vercelId": "arn1::iad1::4hkd7-1781751981713-2a5656b68417"
+        }
+      ],
+      "setCookieHeaders": [
+        {
+          "from": "https://groundwork.cafe/workspace/buildout-equipment?ui=v2",
+          "setCookie": "gw_ui_revamp_override=v2; Path=/; Expires=Fri, 18 Jun 2027 03:06:21 GMT; Max-Age=31536000; Secure; HttpOnly; SameSite=lax"
+        }
+      ],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "pageErrors": [],
+      "renderedV2": {
+        "hasBottomTabBar": false,
+        "hasReadinessRing": false,
+        "hasSidebarV2": false,
+        "title": "My Coffee Shop Consultant: Timberline Coffee School",
+        "bodyLen": 35624,
+        "firstHeading": "Equipment & Supplies"
+      },
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2721/equipment-v2.png"
+    },
+    {
+      "spec": {
+        "name": "launchplan-v2",
+        "path": "/workspace/launch-plan",
+        "ui": "v2"
+      },
+      "target": "https://groundwork.cafe/workspace/launch-plan?ui=v2",
+      "finalUrl": "https://groundwork.cafe/workspace/launch-plan/milestones",
+      "landedOnLogin": false,
+      "navError": null,
+      "cookiesBefore": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287983.069493
+          }
+        ]
+      },
+      "cookiesAfter": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287988.960197
+          }
+        ]
+      },
+      "sbCookieDelta": 0,
+      "responseChain": [
+        {
+          "url": "https://groundwork.cafe/workspace/launch-plan?ui=v2",
+          "status": 307,
+          "location": "/workspace/launch-plan/milestones",
+          "xMatched": "/workspace/launch-plan",
+          "vercelId": "arn1::iad1::r4vrq-1781751988320-a5b989e5edc7"
+        },
+        {
+          "url": "https://groundwork.cafe/workspace/launch-plan/milestones",
+          "status": 200,
+          "location": null,
+          "xMatched": "/workspace/launch-plan/milestones",
+          "vercelId": "arn1::iad1::pdvhv-1781751988968-21dc9e8352fc"
+        }
+      ],
+      "setCookieHeaders": [
+        {
+          "from": "https://groundwork.cafe/workspace/launch-plan?ui=v2",
+          "setCookie": "gw_ui_revamp_override=v2; Path=/; Expires=Fri, 18 Jun 2027 03:06:28 GMT; Max-Age=31536000; Secure; HttpOnly; SameSite=lax\ngw_ui_revamp_override=v2; Path=/; Expires=Fri, 18 Jun 2027 03:06:28 GMT; Max-Age=31536000; Secure; HttpOnly; SameSite=lax"
+        }
+      ],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "pageErrors": [],
+      "renderedV2": {
+        "hasBottomTabBar": false,
+        "hasReadinessRing": false,
+        "hasSidebarV2": false,
+        "title": "My Coffee Shop Consultant: Timberline Coffee School",
+        "bodyLen": 2256,
+        "firstHeading": "Launch Milestones"
+      },
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2721/launchplan-v2.png"
+    },
+    {
+      "spec": {
+        "name": "home-v2",
+        "path": "/dashboard",
+        "ui": "v2"
+      },
+      "target": "https://groundwork.cafe/dashboard?ui=v2",
+      "finalUrl": "https://groundwork.cafe/dashboard?ui=v2",
+      "landedOnLogin": false,
+      "navError": null,
+      "cookiesBefore": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287988.960197
+          }
+        ]
+      },
+      "cookiesAfter": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287995.371222
+          }
+        ]
+      },
+      "sbCookieDelta": 0,
+      "responseChain": [
+        {
+          "url": "https://groundwork.cafe/dashboard?ui=v2",
+          "status": 200,
+          "location": null,
+          "xMatched": "/dashboard",
+          "vercelId": "arn1::iad1::x9cf6-1781751994537-30347e90baa1"
+        }
+      ],
+      "setCookieHeaders": [
+        {
+          "from": "https://groundwork.cafe/dashboard?ui=v2",
+          "setCookie": "gw_ui_revamp_override=v2; Path=/; Expires=Fri, 18 Jun 2027 03:06:34 GMT; Max-Age=31536000; Secure; HttpOnly; SameSite=lax"
+        }
+      ],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "pageErrors": [],
+      "renderedV2": {
+        "hasBottomTabBar": false,
+        "hasReadinessRing": false,
+        "hasSidebarV2": false,
+        "title": "My Coffee Shop Consultant: Timberline Coffee School",
+        "bodyLen": 799,
+        "firstHeading": "Welcome back, Jordan."
+      },
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2721/home-v2.png"
+    },
+    {
+      "spec": {
+        "name": "financials-noparam",
+        "path": "/workspace/financials",
+        "ui": null
+      },
+      "target": "https://groundwork.cafe/workspace/financials",
+      "finalUrl": "https://groundwork.cafe/workspace/financials",
+      "landedOnLogin": false,
+      "navError": null,
+      "cookiesBefore": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287995.371222
+          }
+        ]
+      },
+      "cookiesAfter": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287995.371222
+          }
+        ]
+      },
+      "sbCookieDelta": 0,
+      "responseChain": [
+        {
+          "url": "https://groundwork.cafe/workspace/financials",
+          "status": 200,
+          "location": null,
+          "xMatched": "/workspace/financials",
+          "vercelId": "arn1::iad1::hwmdl-1781752000102-c174ac50984a"
+        }
+      ],
+      "setCookieHeaders": [],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "pageErrors": [],
+      "renderedV2": {
+        "hasBottomTabBar": false,
+        "hasReadinessRing": false,
+        "hasSidebarV2": false,
+        "title": "My Coffee Shop Consultant: Timberline Coffee School",
+        "bodyLen": 1133,
+        "firstHeading": "Financials"
+      },
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2721/financials-noparam.png"
+    },
+    {
+      "spec": {
+        "name": "home-noparam",
+        "path": "/dashboard",
+        "ui": null
+      },
+      "target": "https://groundwork.cafe/dashboard",
+      "finalUrl": "https://groundwork.cafe/dashboard",
+      "landedOnLogin": false,
+      "navError": null,
+      "cookiesBefore": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287995.371222
+          }
+        ]
+      },
+      "cookiesAfter": {
+        "sbCount": 2,
+        "sbCookies": [
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.0",
+            "len": 3180,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          },
+          {
+            "name": "sb-ltmcttjftxzpgynhnrpg-auth-token.1",
+            "len": 1133,
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": false,
+            "expires": -1
+          }
+        ],
+        "uiCookies": [
+          {
+            "name": "gw_ui_revamp_override",
+            "value": "v2",
+            "sameSite": "Lax",
+            "secure": true,
+            "httpOnly": true,
+            "expires": 1813287995.371222
+          }
+        ]
+      },
+      "sbCookieDelta": 0,
+      "responseChain": [
+        {
+          "url": "https://groundwork.cafe/dashboard",
+          "status": 200,
+          "location": null,
+          "xMatched": "/dashboard",
+          "vercelId": "arn1::iad1::6pwck-1781752005823-a9b8eb8f6da0"
+        }
+      ],
+      "setCookieHeaders": [],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "pageErrors": [],
+      "renderedV2": {
+        "hasBottomTabBar": false,
+        "hasReadinessRing": false,
+        "hasSidebarV2": false,
+        "title": "My Coffee Shop Consultant: Timberline Coffee School",
+        "bodyLen": 799,
+        "firstHeading": "Welcome back, Jordan."
+      },
+      "screenshot": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/done-evidence/tim2721/home-noparam.png"
+    }
+  ]
+}
