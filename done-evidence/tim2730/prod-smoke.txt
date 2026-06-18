@@ -1,0 +1,36 @@
+TIM-2730 prod smoke — fix/tim-2730-preserve-next merged as 11a4e8b
+Vercel deployment: dpl_FP6Ub3uHYs1ADpTdffNXHSunhMcm
+Date: 2026-06-18
+
+AC1 (layout.tsx preserves ?next=) — repro the exact board flow:
+$ curl -sI "https://groundwork.cafe/workspace/financials?ui=v2"
+HTTP/2 307
+location: /login?next=%2Fworkspace%2Ffinancials%3Fui%3Dv2
+✓ Pathname + query preserved through (app)/layout.tsx redirect.
+
+AC1 also at proxy layer for /dashboard, /account, /plan (consistency with layout):
+$ curl -sI "https://groundwork.cafe/dashboard?foo=bar"
+HTTP/2 307
+location: /login?next=%2Fdashboard%3Ffoo%3Dbar
+$ curl -sI "https://groundwork.cafe/account?ui=v2"
+HTTP/2 307
+location: /login?next=%2Faccount%3Fui%3Dv2
+✓ Proxy-level unauth redirect now also preserves the path via the same allowlist.
+
+AC2 (/login post-success reads ?next=):
+- Server-side (already-authed bounce, /login page.tsx): now uses shared resolveNext.
+- Client-side (email signin success, login-form.tsx): getNextParam() now routes
+  to ?next= when onboarding is complete; falls back to /dashboard otherwise.
+
+AC3 (open-redirect guard — path-only, rejects absolute / protocol-relative):
+- Same resolveNext used by /auth/callback (TIM-2327, 6 existing pin tests),
+  proxy.ts (new), (app)/layout.tsx (new), and /login/login-form.tsx (new).
+- 6 new pin tests in src/lib/safe-next.test.mjs cover:
+  * preserves /workspace deep link with query
+  * rejects https://evil.tld/x and http://evil.tld/workspace
+  * rejects //evil.tld/workspace
+  * rejects paths outside SAFE_NEXT_PREFIXES (/admin/secret, /api/dump)
+  * rejects null / empty / non-string-rooted input
+  * SAFE_NEXT_PREFIXES still covers every required post-login destination
+
+AC4 (full repro): see AC1 above — board's exact case verified live on prod.
