@@ -1,0 +1,174 @@
+[
+  {
+    "name": "financials-v2-desktop",
+    "target": "https://groundwork.cafe/workspace/financials?ui=v2",
+    "finalUrl": "https://groundwork.cafe/workspace/financials?ui=v2",
+    "navError": null,
+    "meta": {
+      "title": "My Coffee Shop Consultant: Timberline Coffee School",
+      "h1": "Financials",
+      "sidebarV2": false,
+      "homev2Ring": false,
+      "bottomTabBar": false,
+      "allNavLabels": [
+        "Main navigation",
+        "Main navigation",
+        "Financials v2 sections",
+        "Main navigation"
+      ],
+      "bodyLen": 1094,
+      "hasFinancialSnapshot": false
+    },
+    "failedReqs": [
+      {
+        "url": "https://groundwork.cafe/workspace/build?_rsc=ajehd",
+        "status": 404,
+        "type": "fetch"
+      },
+      {
+        "url": "https://groundwork.cafe/api/copilot/threads/17483cde-2a37-43eb-adba-4482a298dcd0?planId=79db2d55-ddb7-4291-999e-ea437faa0942",
+        "status": 404,
+        "type": "fetch"
+      },
+      {
+        "url": "https://groundwork.cafe/dashboard?_rsc=17eoj",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "totalReqs": 55
+  },
+  {
+    "name": "home-v2-desktop",
+    "target": "https://groundwork.cafe/dashboard?ui=v2",
+    "finalUrl": "https://groundwork.cafe/dashboard?ui=v2",
+    "navError": null,
+    "meta": {
+      "title": "My Coffee Shop Consultant: Timberline Coffee School",
+      "h1": "Welcome back, Trentrollings.",
+      "sidebarV2": false,
+      "homev2Ring": true,
+      "bottomTabBar": false,
+      "allNavLabels": [
+        "Main navigation",
+        "Main navigation",
+        "Main navigation"
+      ],
+      "bodyLen": 831,
+      "hasFinancialSnapshot": true
+    },
+    "failedReqs": [
+      {
+        "url": "https://groundwork.cafe/workspace/build?_rsc=18t7j",
+        "status": 404,
+        "type": "fetch"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/operations-playbook?_rsc=15moa",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "totalReqs": 43
+  },
+  {
+    "name": "financials-v1-desktop",
+    "target": "https://groundwork.cafe/workspace/financials?ui=v1",
+    "finalUrl": "https://groundwork.cafe/workspace/financials?ui=v1",
+    "navError": null,
+    "meta": {
+      "title": "My Coffee Shop Consultant: Timberline Coffee School",
+      "h1": "Financials",
+      "sidebarV2": false,
+      "homev2Ring": false,
+      "bottomTabBar": false,
+      "allNavLabels": [
+        "Workspace navigation",
+        "Workspace navigation",
+        "Financials sections"
+      ],
+      "bodyLen": 6459,
+      "hasFinancialSnapshot": true
+    },
+    "failedReqs": [
+      {
+        "url": "https://groundwork.cafe/api/copilot/threads/17483cde-2a37-43eb-adba-4482a298dcd0?planId=79db2d55-ddb7-4291-999e-ea437faa0942",
+        "status": 404,
+        "type": "fetch"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/launch-plan?_rsc=157dl",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/hiring?_rsc=157dl",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/buildout-equipment?_rsc=157dl",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/location-lease?_rsc=157dl",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://groundwork.cafe/dashboard?_rsc=17eoj",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "totalReqs": 75
+  },
+  {
+    "name": "home-v1-desktop",
+    "target": "https://groundwork.cafe/dashboard?ui=v1",
+    "finalUrl": "https://groundwork.cafe/dashboard?ui=v1",
+    "navError": null,
+    "meta": {
+      "title": "My Coffee Shop Consultant: Timberline Coffee School",
+      "h1": "Plan Overview",
+      "sidebarV2": false,
+      "homev2Ring": false,
+      "bottomTabBar": false,
+      "allNavLabels": [
+        "Workspace navigation",
+        "Workspace navigation"
+      ],
+      "bodyLen": 848,
+      "hasFinancialSnapshot": false
+    },
+    "failedReqs": [
+      {
+        "url": "https://groundwork.cafe/workspace/benchmarks?_rsc=15moa",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/operations-playbook?_rsc=15moa",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://groundwork.cafe/workspace/buildout-equipment?_rsc=15moa",
+        "status": "FAILED",
+        "type": "fetch",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "totalReqs": 60
+  }
+]
