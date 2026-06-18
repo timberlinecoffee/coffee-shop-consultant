@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { resolveNext } from "@/lib/safe-next";
+import { buildSessionExpiredLoginUrl } from "@/lib/session-expired";
 import { WORKSPACE_MANIFEST } from "@/lib/workspace-manifest";
 import { WorkspaceProgressProvider } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceStatusBootstrap } from "@/components/workspace/WorkspaceStatusBootstrap";
@@ -40,11 +41,14 @@ export default async function AppLayout({
     // proxy injects x-gw-pathname/x-gw-search on every passed-through request;
     // resolveNext applies the same path-only allowlist used by /auth/callback
     // and rejects absolute / protocol-relative URLs (open-redirect guard).
+    // TIM-2732: also append `expired=1` so /login can surface a
+    // session-expiry banner — without this signal the visitor reads the bounce
+    // as "the page never loaded" (the symptom that prompted TIM-2721).
     const h = await headers();
     const pathname = h.get("x-gw-pathname") ?? "";
     const search = h.get("x-gw-search") ?? "";
     const safeNext = resolveNext(`${pathname}${search}`);
-    redirect(safeNext ? `/login?next=${encodeURIComponent(safeNext)}` : "/login");
+    redirect(buildSessionExpiredLoginUrl(safeNext));
   }
 
   const [settings, dbUiRevamp, profileRow] = await Promise.all([

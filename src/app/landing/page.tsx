@@ -5,6 +5,10 @@ import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLin
 import HomeNav from "../_components/HomeNav";
 import { Logo } from "../_components/Logo";
 import HomepageHero from "../_components/HomepageHero";
+import {
+  SessionExpiredBanner,
+  isSessionExpiredFlag,
+} from "../_components/SessionExpiredBanner";
 import FeatureAccordion, { type AccordionItem } from "../_components/FeatureAccordion";
 import BenefitSections from "../_components/BenefitSections";
 import {
@@ -222,9 +226,27 @@ const FOOTER_COLS = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ expired?: string }>;
+}) {
+  // TIM-2732: render the shared session-expiry banner above the nav when the
+  // visitor was bounced here with `?expired=1`. Today (app)/layout.tsx and
+  // src/proxy.ts redirect to /login; this keeps the banner symmetric on
+  // /landing so any future entry path (or a hand-shared deep link) reads the
+  // same way visually.
+  const { expired } = (await searchParams) ?? {};
+  const sessionExpired = isSessionExpiredFlag(expired);
   return (
     <main className="flex flex-col">
+      {sessionExpired && (
+        <div className="bg-white border-b border-neutral-200 px-4 py-3">
+          <div className="max-w-5xl mx-auto">
+            <SessionExpiredBanner />
+          </div>
+        </div>
+      )}
       <HomeNav />
       <HomepageHero />
 

@@ -2,6 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { Logo } from "../_components/Logo";
+import {
+  SessionExpiredBanner,
+  isSessionExpiredFlag,
+} from "../_components/SessionExpiredBanner";
 import { createClient } from "@/lib/supabase/server";
 import { resolveNext } from "@/lib/safe-next";
 
@@ -14,11 +18,16 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; next?: string; error?: string; diag?: string }>;
+  searchParams: Promise<{ mode?: string; next?: string; error?: string; diag?: string; expired?: string }>;
 }) {
-  const { mode, next, error, diag } = await searchParams;
+  const { mode, next, error, diag, expired } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
+  // TIM-2732: surface a session-expiry banner when the (app) layout or proxy
+  // bounced the visitor here with `?expired=1`. Signed-in users redirect away
+  // before reaching the render path so the banner only appears for the actual
+  // post-bounce frame.
+  const sessionExpired = isSessionExpiredFlag(expired) && !isSignup;
 
   // TIM-2352: if the visitor is already authenticated, bounce them straight to
   // their next destination so revisiting /login does not look like a re-login
@@ -49,6 +58,7 @@ export default async function LoginPage({
         <p className="text-[var(--dark-grey)] text-sm text-center mb-8">
           {isSignup ? "Start your coffee shop journey for free" : "Sign in to your coffee shop plan"}
         </p>
+        {sessionExpired && <SessionExpiredBanner className="mb-4" />}
         {error === "auth_failed" && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             <p className="font-medium mb-1">Sign-in didn&apos;t complete. Please try again.</p>
