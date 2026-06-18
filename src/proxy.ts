@@ -8,6 +8,7 @@ import {
 } from './lib/auth/remember-me'
 import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
 import { resolveNext } from './lib/safe-next'
+import { buildSessionExpiredLoginUrl } from './lib/session-expired'
 
 // TIM-2730: header names the proxy injects on every passed-through request so
 // Server Components (specifically src/app/(app)/layout.tsx) can recover the
@@ -103,13 +104,11 @@ export async function proxy(request: NextRequest) {
     // bouncing through /login lands back on /account with the v2 lane intact).
     // resolveNext is the same path-only allowlist used by /auth/callback and
     // /login — it rejects absolute URLs and protocol-relative `//evil.tld`.
+    // TIM-2732: also append `expired=1` so /login shows a session-expiry
+    // banner instead of silently rendering the sign-in form (TIM-2721 symptom).
     const original = `${pathname}${request.nextUrl.search}`
     const safe = resolveNext(original)
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.search = ''
-    if (safe) url.searchParams.set('next', safe)
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(new URL(buildSessionExpiredLoginUrl(safe), request.url))
   }
 
   return supabaseResponse
