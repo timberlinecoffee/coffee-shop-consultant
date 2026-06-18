@@ -42,7 +42,7 @@ const TABS: TabItem[] = [
   },
   {
     label: "Build",
-    href: "/workspace/build",
+    href: "/workspace/launch-plan",
     icon: Layers,
     matchPrefixes: [
       "/workspace/build",
