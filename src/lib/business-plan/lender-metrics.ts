@@ -122,6 +122,10 @@ export interface CapexScheduleRow {
   useful_life_years: number;
   purchase_month_index: number;
   asset_category: string;              // "equipment" | "build_out" | "pos_tech" | …
+  // TIM-2757: fine-grained E&S taxonomy category, when the row came from a
+  // buildout_equipment_item (e.g. "espresso_station", "refrigeration").
+  // Undefined for rows sourced from manual forecast_lines or vertical config.
+  equipment_category?: string;
 }
 
 export interface CapexScheduleReport {
@@ -449,6 +453,7 @@ export function computeCapexSchedule(mp: MonthlyProjections): CapexScheduleRepor
     useful_life_years: l.useful_life_years ?? 7,
     purchase_month_index: l.ramp?.enabled ? l.ramp.start_month : 1,
     asset_category: l.asset_category ?? "equipment",
+    equipment_category: l.linked_equipment_category,
   }));
   // Plus the startup_costs.buildout_cents bucket, which seeds gross fixed
   // assets but isn't a capex forecast_line.

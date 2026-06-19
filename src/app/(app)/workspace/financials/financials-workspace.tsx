@@ -250,6 +250,7 @@ export function equipmentItemsToCapexLines(items: EquipmentItem[]): ForecastLine
       useful_life_years: i.useful_life_years ?? 7,
       asset_category: equipmentCategoryToAsset(i.category),
       linked_equipment_item_id: i.id,
+      linked_equipment_category: i.category || undefined,
       ramp: {
         enabled: true,
         start_month: i.purchase_month ?? 1,

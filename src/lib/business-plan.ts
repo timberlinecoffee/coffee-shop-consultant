@@ -789,6 +789,42 @@ export function assembleDscrSection(
   return lines.join("\n");
 }
 
+// TIM-2757: E&S category display labels — mirrors CATEGORY_LABELS in SectionedListGrid.tsx.
+const CAPEX_CATEGORY_LABELS: Record<string, string> = {
+  espresso_station: "Espresso Station",
+  espresso_platform: "Espresso Station",
+  brew_platform: "Brew Platform",
+  milk_beverage_prep: "Milk & Beverage Prep",
+  refrigeration: "Refrigeration",
+  plumbing_water: "Plumbing & Water",
+  electrical: "Electrical",
+  pos_tech: "POS & Technology",
+  furniture_fixtures: "Furniture & Fixtures",
+  signage_decor: "Signage & Decor",
+  smallwares: "Smallwares",
+  ceramics: "Ceramics",
+  glassware: "Glassware",
+  to_go_ware: "To-Go Ware",
+  miscellaneous: "Miscellaneous",
+  // legacy values
+  espresso: "Espresso Station",
+  grinder: "Espresso Station",
+  plumbing: "Plumbing & Water",
+  furniture: "Furniture & Fixtures",
+  pos: "POS & Technology",
+  signage: "Signage & Decor",
+  other: "Miscellaneous",
+  // coarse asset_category fallbacks
+  equipment: "Equipment",
+  build_out: "Leasehold Improvements",
+  vehicle: "Vehicles",
+};
+
+function capexCategoryLabel(row: { equipment_category?: string; asset_category: string }): string {
+  const key = row.equipment_category ?? row.asset_category;
+  return CAPEX_CATEGORY_LABELS[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function assembleCapexScheduleSection(
   metrics: LenderMetricsBundle | null,
   currencyCode = "USD",
@@ -802,11 +838,40 @@ export function assembleCapexScheduleSection(
     lines.push("No capital expenditures are budgeted in the current financial model. Add equipment in the Equipment & Supplies workspace, or capex lines in the Financials workspace, to populate this schedule.");
     return lines.join("\n");
   }
+
   lines.push(`## CapEx Schedule — total ${c(cx.total_cents)}`);
   lines.push("");
+
+  // Group rows by category. Preserve insertion order of first-seen categories.
+  const categoryOrder: string[] = [];
+  const byCategory = new Map<string, typeof cx.rows>();
   for (const r of cx.rows) {
-    lines.push(`- **${r.label}**: ${c(r.cost_cents)} · ${r.useful_life_years}-year useful life · placed in service month ${r.purchase_month_index} · ${r.asset_category.replace(/_/g, " ")}`);
+    const label = capexCategoryLabel(r);
+    if (!byCategory.has(label)) {
+      categoryOrder.push(label);
+      byCategory.set(label, []);
+    }
+    byCategory.get(label)!.push(r);
   }
+
+  for (const catLabel of categoryOrder) {
+    const rows = byCategory.get(catLabel)!;
+    const subtotal = rows.reduce((sum, r) => sum + r.cost_cents, 0);
+    lines.push(`### ${catLabel}`);
+    lines.push("");
+    lines.push("| Item | Cost | Useful Life | Month |");
+    lines.push("|------|-----:|:-----------:|:-----:|");
+    for (const r of rows) {
+      lines.push(`| ${r.label} | ${c(r.cost_cents)} | ${r.useful_life_years} yr | ${r.purchase_month_index} |`);
+    }
+    lines.push("");
+    lines.push(`**Subtotal: ${c(subtotal)}**`);
+    lines.push("");
+  }
+
+  lines.push("---");
+  lines.push(`**Grand Total: ${c(cx.total_cents)}**`);
+
   return lines.join("\n");
 }
 
