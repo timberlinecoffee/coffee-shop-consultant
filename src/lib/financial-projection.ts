@@ -96,6 +96,10 @@ export interface ForecastLine {
   // TIM-1253: ID of the buildout_equipment_items row this line mirrors.
   // Present only on synthetic lines injected at runtime — never persisted.
   linked_equipment_item_id?: string;
+  // TIM-2757: fine-grained E&S category (e.g. "espresso_station", "refrigeration").
+  // Carried from buildout_equipment_items.category so the BP CapEx schedule can
+  // group rows by the same taxonomy the Equipment & Supplies suite uses.
+  linked_equipment_category?: string;
 }
 
 // TIM-1122: Funding Sources. Multiple line items per category; each kind has
@@ -2875,6 +2879,7 @@ export function buildEquipmentCapexLines(items: EquipmentItemCapexInput[]): Fore
       useful_life_years: i.useful_life_years ?? 7,
       asset_category: _equipmentCategoryToAsset(i.category),
       linked_equipment_item_id: i.id,
+      linked_equipment_category: i.category || undefined,
       ramp: {
         enabled: true,
         start_month: i.purchase_month ?? 1,
