@@ -1,0 +1,21 @@
+{
+  "label": "A-vanilla-singleclick",
+  "doubleClick": false,
+  "authorize_calls": 1,
+  "challenges": [
+    "-npF8INgrD2BrKSGoGYoBdfBCu43yB5inxTCXRc7WRY"
+  ],
+  "verifier_cookies": 1,
+  "verifier_cookie_paths": [
+    "/"
+  ],
+  "gw_oauth_verifier_pre_nav": "1",
+  "gw_oauth_stale_verifiers": "0",
+  "hash_matches": [
+    {
+      "path": "/",
+      "hash_matches_first_challenge": true,
+      "hash_matches_last_challenge": null
+    }
+  ]
+}
