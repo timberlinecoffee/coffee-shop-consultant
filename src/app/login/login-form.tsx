@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
@@ -11,7 +11,7 @@ import {
   isSupabaseAuthCookie,
 } from "@/lib/auth/remember-me";
 import { resolveNext } from "@/lib/safe-next";
-import { deleteAllVerifierVariants } from "./clear-stale-verifier";
+import { deleteAllVerifierVariants, verifierPresentInDocumentCookie } from "./clear-stale-verifier";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -78,6 +78,19 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [resendLoading, setResendLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const router = useRouter();
+  // TIM-2750: synchronous re-entry guard for the Google OAuth click handler.
+  // `loading` (React state) does NOT disable the button before the next click
+  // event drains from the event queue — React batches state updates and the
+  // re-render happens after the current macrotask. A rapid double-click fires
+  // signInWithOAuth twice; each call generates its own PKCE verifier and its
+  // own /authorize challenge. The Supabase /authorize record and the verifier
+  // cookie can end up belonging to DIFFERENT round-trips, so exchange fails
+  // with `code_challenge_does_not_match_previously_saved_code_verifier` — the
+  // exact symptom on TIM-2572/TIM-2750. A ref flag is set synchronously inside
+  // the click handler before the first await, so the second click sees it set
+  // and returns early. Reproduced via scripts/tim2750-doubleclick.mjs (2
+  // /authorize calls with different challenges from one rapid click sequence).
+  const googleInFlightRef = useRef(false);
 
   useEffect(() => {
     setRememberMe(readInitialRememberPreference());
@@ -121,10 +134,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   // independently of the React component. Full incident context in that file.
 
   async function handleGoogleSignIn() {
+    // TIM-2750: re-entry guard FIRST, before any await. See ref declaration
+    // for full context. Without this, React's setLoading(true) does not
+    // disable the button before the next click event drains, and rapid
+    // double-clicks fire two concurrent OAuth handshakes that race.
+    if (googleInFlightRef.current) return;
     if (mode === "signup" && !consent) {
       setError("Please agree to the Terms of Service and Privacy Policy to continue.");
       return;
     }
+    googleInFlightRef.current = true;
     setLoading(true);
     setError(null);
     const supabase = createClient();
@@ -148,21 +167,44 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
             hostname: window.location.hostname,
           })
         : 0;
-    const { error } = await supabase.auth.signInWithOAuth({
+    // TIM-2750: skipBrowserRedirect lets us inspect document.cookie AFTER
+    // @supabase/ssr's setItem has written the verifier and BEFORE we navigate
+    // to Supabase /authorize. The sentinel cookie below captures that state,
+    // which the /auth/callback route surfaces in the diag string on failure.
+    // (auth/callback/route.ts:65 already READS gw_oauth_verifier_pre_nav; we
+    // were never writing it. That's why the board's recent diagnostic showed
+    // `verifier_pre_nav=` empty.) We then navigate manually via
+    // window.location.assign(data.url) — same call supabase-js makes when
+    // skipBrowserRedirect is false, just executed by our handler so it can be
+    // gated on the in-flight ref above.
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true,
         // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
         // OAuth honors the project-level CAPTCHA setting on the initiate call.
         ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
       },
     });
-    // Stash a sentinel that the /auth/callback diag can surface, telling us
-    // how many stale verifier variants were present on this attempt. > 0 on a
-    // first-attempt success confirms this fix was load-bearing for the user.
+    // Sentinel handoffs are written AFTER signInWithOAuth has resolved (so the
+    // verifier write has landed in document.cookie) but BEFORE the manual nav,
+    // so they're in the jar when /auth/callback runs on the round-trip back.
     setHandoffCookie("gw_oauth_stale_verifiers", String(staleVerifierCount));
-    if (error) setError(error.message);
-    setLoading(false);
+    setHandoffCookie(
+      "gw_oauth_verifier_pre_nav",
+      typeof document !== "undefined" && verifierPresentInDocumentCookie(document.cookie) ? "1" : "0"
+    );
+    if (error || !data?.url) {
+      // Surface the error and release the in-flight guard so the user can
+      // retry. On the happy path the navigation that follows tears down this
+      // page, so resetting the guard is unnecessary.
+      setError(error?.message ?? "Sign-in failed. Please try again.");
+      setLoading(false);
+      googleInFlightRef.current = false;
+      return;
+    }
+    window.location.assign(data.url);
   }
 
   async function handleEmailAuth(e: React.FormEvent) {

@@ -75,3 +75,26 @@ export function deleteAllVerifierVariants(env: CookieEnv): number {
   }
   return names.length;
 }
+
+/**
+ * TIM-2750: returns true if document.cookie contains at least one
+ * verifier-named cookie with a non-empty value. The /auth/callback diag
+ * surfaces this as the `verifier_pre_nav` field so a failed exchange can
+ * distinguish "@supabase/ssr setItem never wrote" from "browser stripped
+ * mid-flight in the OAuth redirect chain". The CALLER is responsible for
+ * writing the boolean result to the gw_oauth_verifier_pre_nav handoff cookie
+ * — keeping the document.cookie inspection here makes it unit-testable.
+ */
+export function verifierPresentInDocumentCookie(documentCookie: string): boolean {
+  for (const raw of documentCookie.split(";")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const name = trimmed.substring(0, eq);
+    if (!VERIFIER_NAME_RE.test(name)) continue;
+    const value = trimmed.substring(eq + 1);
+    if (value.length > 0) return true;
+  }
+  return false;
+}

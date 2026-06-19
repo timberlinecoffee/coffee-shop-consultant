@@ -10,6 +10,7 @@ import {
   findStaleVerifierNames,
   pathDomainVariantsForDeletion,
   deleteAllVerifierVariants,
+  verifierPresentInDocumentCookie,
 } from "./clear-stale-verifier.ts";
 
 test("findStaleVerifierNames picks up the canonical verifier", () => {
@@ -111,4 +112,37 @@ test("deleteAllVerifierVariants no-ops on empty cookie string", () => {
   });
   assert.equal(count, 0);
   assert.equal(writes.length, 0);
+});
+
+// TIM-2750
+test("verifierPresentInDocumentCookie true when canonical verifier has a value", () => {
+  assert.equal(
+    verifierPresentInDocumentCookie("sb-abc-auth-token-code-verifier=base64-xyz; other=1"),
+    true,
+  );
+});
+
+test("verifierPresentInDocumentCookie true when a chunked variant has a value", () => {
+  assert.equal(
+    verifierPresentInDocumentCookie("sb-abc-auth-token-code-verifier.0=base64-aaa"),
+    true,
+  );
+});
+
+test("verifierPresentInDocumentCookie false when verifier value is empty", () => {
+  // An empty value can appear when a prior clearHandoffCookies / setItem
+  // delete left the row in the jar before the browser garbage-collected it.
+  // We must report "0" (no verifier) in that case, not "1".
+  assert.equal(verifierPresentInDocumentCookie("sb-abc-auth-token-code-verifier="), false);
+});
+
+test("verifierPresentInDocumentCookie false when verifier cookie is absent", () => {
+  assert.equal(
+    verifierPresentInDocumentCookie("sb-abc-auth-token.0=foo; gw_remember_me=1"),
+    false,
+  );
+});
+
+test("verifierPresentInDocumentCookie false on empty string", () => {
+  assert.equal(verifierPresentInDocumentCookie(""), false);
 });
