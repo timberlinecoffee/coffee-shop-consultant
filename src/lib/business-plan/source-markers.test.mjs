@@ -246,3 +246,44 @@ test("acceptance #4: Beaver-and-Beef investor-flagged numbers now carry source",
   const claims = extractEstimatedClaims("financial-plan-statements", flagged);
   assert.equal(claims.length, 3);
 });
+
+// TIM-2753: currency/word concatenation after marker stripping.
+// The LLM sometimes emits "$250,000</num>to" with no space before the following
+// word. All three strippers must insert the missing space.
+
+test("TIM-2753 parseSourceMarkers: inserts space when number tag is followed immediately by a word", () => {
+  const cases = [
+    ['We need <num src="user_provided">$250,000</num>to open.', "We need $250,000 to open."],
+    ['<num src="computed">$250,000</num>is committed.', "$250,000 is committed."],
+    ['secured a <num src="user_provided">$100,000</num>term loan', "secured a $100,000 term loan"],
+  ];
+  for (const [input, expected] of cases) {
+    assert.equal(renderForExport(input), expected, `failed for: ${input}`);
+  }
+});
+
+test("TIM-2753 parseSourceMarkers: does NOT insert space when tag already followed by space or punctuation", () => {
+  const spaceFollows = 'We need <num src="user_provided">$250,000</num> to open.';
+  assert.equal(renderForExport(spaceFollows), "We need $250,000 to open.");
+
+  const punctFollows = 'We need <num src="user_provided">$250,000</num>.';
+  assert.equal(renderForExport(punctFollows), "We need $250,000.");
+});
+
+test("TIM-2753 stripSourceMarkers: inserts space when number tag is followed immediately by a word", () => {
+  assert.equal(
+    stripSourceMarkers('total of <num src="user_provided">$250,000</num>to cover'),
+    "total of $250,000 to cover",
+  );
+  assert.equal(
+    stripSourceMarkers('a <num src="user_provided">$100,000</num>term loan'),
+    "a $100,000 term loan",
+  );
+});
+
+test("TIM-2753 stripMarkersRaw: inserts space when number tag is followed immediately by a word", () => {
+  assert.equal(
+    stripMarkersRaw('total of <num src="user_provided">$250,000</num>to cover'),
+    "total of $250,000 to cover",
+  );
+});
