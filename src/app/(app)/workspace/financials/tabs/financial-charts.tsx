@@ -22,13 +22,14 @@ import {
 import { fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
 
-// Groundwork palette (taken from existing UI: deep teal primary, red for negatives,
-// muted greys for grid + axes). Categorical accents pulled from the same family
-// so multiple series read as one chart.
+// TIM-2755: primary/positive/highlight fall back to the global teal tokens when
+// no BP brand color is set. The workspace injects --bp-brand, --bp-brand-soft,
+// and --bp-brand-highlight on its root div via brandCssVars() so these cascade
+// automatically without prop drilling into every chart component.
 export const CHART_COLORS = {
-  primary: "var(--teal)",
-  primarySoft: "var(--teal-medium)",
-  positive: "var(--teal)",
+  primary: "var(--bp-brand, var(--teal))",
+  primarySoft: "var(--bp-brand-soft, var(--teal-medium))",
+  positive: "var(--bp-brand, var(--teal))",
   negative: "var(--error)",
   warning: "var(--coffee-brown-1)",
   accent: "var(--sage-medium)",
@@ -36,7 +37,7 @@ export const CHART_COLORS = {
   muted: "var(--muted-foreground)",
   grid: "var(--border)",
   axis: "var(--dark-grey)",
-  highlight: "var(--teal-tint-100)",
+  highlight: "var(--bp-brand-highlight, var(--teal-tint-100))",
 } as const;
 
 const AXIS_STYLE = { fill: CHART_COLORS.muted, fontSize: 11 } as const;
@@ -373,9 +374,10 @@ export function ViewModeToggle({
           onClick={() => onChange(m)}
           className={`px-3 py-1.5 capitalize ${
             mode === m
-              ? "bg-[var(--teal)] text-white"
+              ? "text-white"
               : "bg-white text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)]"
           }`}
+          style={mode === m ? { background: "var(--bp-brand, var(--teal))" } : undefined}
           aria-pressed={mode === m}
         >
           {m}
@@ -397,7 +399,7 @@ export function ChartCard({
   return (
     <div className="rounded-xl border border-[var(--border)] bg-white p-5">
       <div className="mb-3">
-        <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide">{title}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--bp-brand, var(--teal))" }}>{title}</p>
         {description && <p className="text-xs text-[var(--muted-foreground)] mt-1">{description}</p>}
       </div>
       {children}

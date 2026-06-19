@@ -5,7 +5,7 @@
 // TIM-1029: Equipment tab removed; now lives in Build Out & Equipment workspace.
 // TIM-2594: FinancialsV2 — 3-tab layout behind ui_revamp_v2 flag.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { FinancialsV2 } from "./financials-v2";
 import { BarChart2, X, AlertTriangle, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
@@ -61,6 +61,7 @@ import { CURRENCIES } from "@/lib/currency";
 import { fmtIntegerPct } from "@/lib/formatters";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
+import { brandCssVars, BP_BRAND_CHANNEL_NAME } from "@/lib/bp-brand-channel";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
 import { CashFlowTab } from "./tabs/cash-flow-tab";
@@ -279,6 +280,9 @@ interface Props {
   // TIM-2518: resolved local minimum wage. Threaded to PersonnelEditor so the
   // hourly wage input warns when the entered rate is below the legal floor.
   minimumWage?: MinWageInfo | null;
+  // TIM-2755: BP branding accent color. When set, chart fills/lines and labels
+  // use this color instead of the global --teal token.
+  initialAccentColor?: string | null;
 }
 
 
@@ -1840,7 +1844,32 @@ export function FinancialsWorkspace({
   menuBlendedCogsPct = null,
   menuCogsItems = [],
   minimumWage = null,
+  initialAccentColor = null,
 }: Props) {
+  // TIM-2755: track the BP brand accent color so CSS vars stay live when the
+  // user changes the color in the BP panel (via BroadcastChannel) or on page load.
+  const [accentColor, setAccentColor] = useState<string | null>(initialAccentColor);
+
+  useEffect(() => {
+    let ch: BroadcastChannel | null = null;
+    try {
+      ch = new BroadcastChannel(BP_BRAND_CHANNEL_NAME);
+      ch.onmessage = (e: MessageEvent<{ accentColor?: string }>) => {
+        if (typeof e.data?.accentColor === "string") {
+          setAccentColor(e.data.accentColor);
+        }
+      };
+    } catch {
+      // BroadcastChannel not available (SSR guard — shouldn't happen in client component).
+    }
+    return () => { try { ch?.close(); } catch { /* noop */ } };
+  }, []);
+
+  const brandStyle = useMemo(
+    () => (accentColor ? (brandCssVars(accentColor) as CSSProperties) : {}),
+    [accentColor]
+  );
+
   const [mp, setMp] = useState<MonthlyProjections>(initialProjections);
   const [critique, setCritique] = useState<CritiqueResult | null>(initialCritique);
   // TIM-1257: financialInputs is the SINGLE derived view of `mp` consumed by the
@@ -2294,6 +2323,7 @@ export function FinancialsWorkspace({
 
   if (uiRevampV2) {
     return (
+      <div style={brandStyle}>
       <FinancialsV2
         planId={planId}
         mp={mp}
@@ -2333,6 +2363,7 @@ export function FinancialsWorkspace({
         onOpenWizard={openWizard}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
+      </div>
     );
   }
 
@@ -2354,7 +2385,7 @@ export function FinancialsWorkspace({
   const currencyCode = mp.currency_code ?? "USD";
 
   return (
-    <div className="bg-[var(--background)] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen" style={brandStyle}>
       <div className="w-full px-6 pt-8 pb-16">
         {/* TIM-1745 / TIM-1894 / TIM-1937: action toolbar (Guided setup /
             Export PDF / Export Excel / SaveStatusAndButton) lives top-right on

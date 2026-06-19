@@ -6,6 +6,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { COVER_TEMPLATES, type CoverTemplateId } from "@/lib/pdf/business-plan/covers";
+import { broadcastBpBrandColor } from "@/lib/bp-brand-channel";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -212,6 +213,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
     setAccentColor(hex);
     setColorPackId(null);
     syncDerivedInputs(hex);
+    broadcastBpBrandColor(hex);
     await save({ accent_color: hex, color_pack_id: null });
   }, [save, syncDerivedInputs]);
 
@@ -221,6 +223,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
     setColorPackId(pack.id as ColorPackId);
     syncDerivedInputs(primary);
     setHexError(false);
+    broadcastBpBrandColor(primary);
     await save({ accent_color: primary, color_pack_id: pack.id });
   }, [save, syncDerivedInputs]);
 

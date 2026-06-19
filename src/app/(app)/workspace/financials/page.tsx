@@ -44,7 +44,7 @@ export default async function FinancialsWorkspacePage() {
 
   if (!plan) redirect("/onboarding");
 
-  const [modelResult, profileResult, menuItemsResult, equipmentResult] = await Promise.all([
+  const [modelResult, profileResult, menuItemsResult, equipmentResult, coverResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("*")
@@ -73,6 +73,12 @@ export default async function FinancialsWorkspacePage() {
       .eq("plan_id", plan.id)
       .eq("archived", false)
       .order("position"),
+    // TIM-2755: load BP accent color so financial charts render in brand palette.
+    supabase
+      .from("business_plan_cover")
+      .select("accent_color")
+      .eq("plan_id", plan.id)
+      .maybeSingle(),
   ]);
 
   let modelRow = modelResult.data;
@@ -170,6 +176,7 @@ export default async function FinancialsWorkspacePage() {
   const initialEquipmentItems = (equipmentResult.data ?? []) as EquipmentItem[];
   const rawMenuItems = menuItemsResult.data ?? [];
   const menuBlendedCogsPct = computeMenuBlendedCogsPct(rawMenuItems);
+  const initialAccentColor = coverResult.data?.accent_color ?? null;
 
   // TIM-1168: per-item breakdown for "How is this calculated?" reveal.
   // TIM-1799: built via the shared recompute so it reflects ALL priced items
@@ -190,6 +197,7 @@ export default async function FinancialsWorkspacePage() {
       menuBlendedCogsPct={menuBlendedCogsPct}
       menuCogsItems={menuCogsItems}
       minimumWage={planMinimumWage}
+      initialAccentColor={initialAccentColor}
     />
   );
 }
