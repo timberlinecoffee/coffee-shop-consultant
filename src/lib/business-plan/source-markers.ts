@@ -190,6 +190,20 @@ export function parseSourceMarkers(text: string): ParseResult {
     }
     out.push(renderedContent);
 
+    // TIM-2753: If the LLM omitted a space between </num> and the following
+    // word (e.g. "$250,000to open"), insert one now. We check the source text
+    // at the character immediately after the closing tag — if it's a letter
+    // and the rendered content doesn't already end with a space, add one.
+    const nextCharIdx = m.index + m[0].length;
+    if (
+      nextCharIdx < text.length &&
+      /[a-zA-Z]/.test(text[nextCharIdx]) &&
+      renderedContent.length > 0 &&
+      renderedContent[renderedContent.length - 1] !== " "
+    ) {
+      out.push(" ");
+    }
+
     markers.push({
       id: "",
       source,
@@ -293,7 +307,18 @@ export function extractEstimatedClaims(
 
 export function stripMarkersRaw(text: string): string {
   if (!text || typeof text !== "string") return text ?? "";
-  return text.replace(MARKER_RE, (_full, _q1, _q2, _h1, _h2, content) => content as string);
+  // TIM-2753: same space-guard as parseSourceMarkers — insert a space when the
+  // LLM omitted one between </num> and the following word.
+  return text.replace(
+    MARKER_RE,
+    (_full: string, _q1: string, _q2: string, _h1: string, _h2: string, content: string, offset: number, originalString: string) => {
+      const nextChar = originalString[offset + _full.length];
+      if (nextChar && /[a-zA-Z]/.test(nextChar) && content.length > 0 && content[content.length - 1] !== " ") {
+        return content + " ";
+      }
+      return content;
+    }
+  );
 }
 
 // TIM-2358: canonical lightweight stripper for any UI render boundary.
@@ -323,7 +348,19 @@ export function stripSourceMarkers(text: string | null | undefined): string {
   // pathological input can't hang the render. Real content tops out at 1 pass.
   let prev = text;
   for (let i = 0; i < 8; i++) {
-    const next = prev.replace(STRIP_SOURCE_MARKERS_RE, "$1");
+    // TIM-2753: use a replacer function so we can insert a space when the LLM
+    // omitted one between </num> and the following word (same guard as
+    // parseSourceMarkers — prevents "$250,000to open" after tag stripping).
+    const next = prev.replace(
+      STRIP_SOURCE_MARKERS_RE,
+      (match: string, content: string, offset: number, originalString: string) => {
+        const nextChar = originalString[offset + match.length];
+        if (nextChar && /[a-zA-Z]/.test(nextChar) && content.length > 0 && content[content.length - 1] !== " ") {
+          return content + " ";
+        }
+        return content;
+      }
+    );
     if (next === prev) return next;
     prev = next;
   }
