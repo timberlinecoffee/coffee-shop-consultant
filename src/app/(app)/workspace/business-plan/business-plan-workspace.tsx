@@ -30,8 +30,18 @@ import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { PreGenerateChecklist, type PreGenerateChecklistItem } from "./pre-generate-checklist";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
+
+const AUTOSAVE_DEBOUNCE_MS = 800;
+
+type SaveState =
+  | { kind: "idle"; lastSavedAt: string | null }
+  | { kind: "dirty" }
+  | { kind: "saving" }
+  | { kind: "saved"; at: string }
+  | { kind: "error"; message: string };
 
 interface Props {
   planId: string;
@@ -199,6 +209,16 @@ export function BusinessPlanWorkspace({
 
   const abortRef = useRef<AbortController | null>(null);
 
+  // ── Autosave state ─────────────────────────────────────────────────────────
+
+  const [saveState, setSaveState] = useState<SaveState>({ kind: "idle", lastSavedAt: null });
+  const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Accumulates edits waiting to be persisted; keyed by section key.
+  const dirtyBuffersRef = useRef<Map<BusinessPlanSectionKey, string | null>>(new Map());
+  // Mirror of sections used inside async callbacks without stale-closure risk.
+  const sectionsRef = useRef(sections);
+  useEffect(() => { sectionsRef.current = sections; }, [sections]);
+
   // ── Section helpers ────────────────────────────────────────────────────────
 
   const updateSection = useCallback((key: BusinessPlanSectionKey, patch: Partial<SectionState>) => {
@@ -206,7 +226,10 @@ export function BusinessPlanWorkspace({
   }, []);
 
   const saveSection = useCallback(async (key: BusinessPlanSectionKey, userContent: string | null) => {
+    // Remove this section from the pending autosave queue; manual save takes over.
+    dirtyBuffersRef.current.delete(key);
     updateSection(key, { isSaving: true });
+    setSaveState({ kind: "saving" });
     try {
       await fetch(`/api/business-plan/sections/${key}`, {
         method: "PATCH",
@@ -225,8 +248,10 @@ export function BusinessPlanWorkspace({
           };
         })
       );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
     } catch {
       updateSection(key, { isSaving: false });
+      setSaveState({ kind: "error", message: "Could not save. Try again." });
     }
   }, [updateSection]);
 
@@ -239,6 +264,54 @@ export function BusinessPlanWorkspace({
       body: JSON.stringify({ is_visible: next }),
     });
   }, [updateSection]);
+
+  // ── Autosave helpers ───────────────────────────────────────────────────────
+
+  const persistDirty = useCallback(async () => {
+    if (!canEdit) return;
+    const snapshot = new Map(dirtyBuffersRef.current);
+    dirtyBuffersRef.current.clear();
+    if (snapshot.size === 0) return;
+    // Skip sections currently being regenerated to avoid clobbering AI content.
+    const currentSections = sectionsRef.current;
+    const entries = Array.from(snapshot.entries()).filter(([key]) => {
+      const sec = currentSections.find((s) => s.key === key);
+      return !sec?.isGenerating;
+    });
+    if (entries.length === 0) return;
+    setSaveState({ kind: "saving" });
+    try {
+      await Promise.all(
+        entries.map(async ([key, userContent]) => {
+          const res = await fetch(`/api/business-plan/sections/${key}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_content: userContent }),
+          });
+          if (!res.ok) throw new Error(`save failed (${res.status})`);
+          setSections((prev) =>
+            prev.map((s) => (s.key !== key ? s : { ...s, userContent, isSaving: false }))
+          );
+        })
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch {
+      setSaveState({ kind: "error", message: "Could not save. Try again." });
+    }
+  }, [canEdit]);
+
+  const scheduleSave = useCallback(
+    (key: BusinessPlanSectionKey, val: string | null) => {
+      dirtyBuffersRef.current.set(key, val);
+      setSaveState({ kind: "dirty" });
+      if (pendingSaveTimer.current) clearTimeout(pendingSaveTimer.current);
+      pendingSaveTimer.current = setTimeout(() => {
+        pendingSaveTimer.current = null;
+        void persistDirty();
+      }, AUTOSAVE_DEBOUNCE_MS);
+    },
+    [persistDirty]
+  );
 
   // ── AI streaming ───────────────────────────────────────────────────────────
 
@@ -386,17 +459,23 @@ export function BusinessPlanWorkspace({
 
   // After AI finishes editing, auto-save the result
   const handleSaveAfterImprove = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
-    await fetch(`/api/business-plan/sections/${key}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_content: content }),
-    });
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.key !== key) return s;
-        return { ...s, userContent: content };
-      })
-    );
+    setSaveState({ kind: "saving" });
+    try {
+      await fetch(`/api/business-plan/sections/${key}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_content: content }),
+      });
+      setSections((prev) =>
+        prev.map((s) => {
+          if (s.key !== key) return s;
+          return { ...s, userContent: content };
+        })
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch {
+      setSaveState({ kind: "error", message: "Could not save. Try again." });
+    }
   }, []);
 
   // ── PDF export / print ──────────────────────────────────────────────────────
@@ -515,6 +594,21 @@ export function BusinessPlanWorkspace({
     setPendingExportAction(null);
   }, []);
 
+  function handleManualSave() {
+    if (!canEdit) return;
+    if (pendingSaveTimer.current) {
+      clearTimeout(pendingSaveTimer.current);
+      pendingSaveTimer.current = null;
+    }
+    // Include any section currently open in edit mode.
+    sectionsRef.current.forEach((s) => {
+      if (s.isEditing && !dirtyBuffersRef.current.has(s.key)) {
+        dirtyBuffersRef.current.set(s.key, s.editBuffer || null);
+      }
+    });
+    void persistDirty();
+  }
+
   const handleSectionPatchedFromGate = useCallback((sectionKey: string, newContent: string) => {
     setSections((prev) =>
       prev.map((s) => (s.key === sectionKey ? { ...s, userContent: newContent, editBuffer: newContent } : s)),
@@ -596,6 +690,14 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
+              <SaveStatusAndButton
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
+                unsaved={saveState.kind === "dirty"}
+                error={saveState.kind === "error" ? saveState.message : null}
+                canEdit={canEdit}
+                onSave={handleManualSave}
+              />
               {/* TIM-2416: the standalone "Check Plan" header CTA was removed.
                   Plan Quality Check now lives in the AI companion (Check mode)
                   reachable from every workspace via the floating affordance.
@@ -708,7 +810,10 @@ export function BusinessPlanWorkspace({
           onEditStart={(key, content) =>
             updateSection(key, { isEditing: true, editBuffer: content })
           }
-          onEditChange={(key, val) => updateSection(key, { editBuffer: val })}
+          onEditChange={(key, val) => {
+            updateSection(key, { editBuffer: val });
+            scheduleSave(key, val || null);
+          }}
           onEditSave={(key, buf, isGenerating) => {
             if (isGenerating) {
               handleSaveAfterImprove(key, buf);
