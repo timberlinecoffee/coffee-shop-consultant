@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
+import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X, Circle, CheckCircle, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -151,6 +151,20 @@ async function fetchSse(
   }
 }
 
+// ── Progressive disclosure helpers ───────────────────────────────────────────
+
+function determineInitialExpanded(
+  section: BusinessPlanSectionData,
+  allSections: BusinessPlanSectionData[]
+): boolean {
+  if (section.userContent && section.userContent !== section.autoContent) return false;
+  const firstUnreviewed = allSections.find(
+    (s) => s.autoContent && (!s.userContent || s.userContent === s.autoContent)
+  );
+  if (firstUnreviewed) return section.key === firstUnreviewed.key;
+  return section.key === "executive-summary";
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BusinessPlanWorkspace({
@@ -166,7 +180,7 @@ export function BusinessPlanWorkspace({
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
       ...s,
-      isExpanded: true,
+      isExpanded: determineInitialExpanded(s, initialSections),
       isEditing: false,
       editBuffer: s.userContent ?? s.autoContent,
       isGenerating: false,
@@ -659,6 +673,7 @@ export function BusinessPlanWorkspace({
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
+  const allExpanded = sections.every((s) => s.isExpanded);
 
   return (
     <>
@@ -690,6 +705,12 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
+              <button
+                onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
+                className="text-sm text-[var(--muted-foreground)] hover:text-foreground underline underline-offset-2 cursor-pointer"
+              >
+                {allExpanded ? "Collapse all" : "Expand all"}
+              </button>
               <SaveStatusAndButton
                 saving={saveState.kind === "saving"}
                 savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
@@ -880,6 +901,7 @@ function SectionTree(props: SectionTreeProps) {
   );
 
   function renderCard(section: SectionState) {
+    const blurb = sectionMetaByKey.get(section.key)?.blurb ?? "";
     return (
       <SectionCard
         key={section.key}
@@ -887,6 +909,7 @@ function SectionTree(props: SectionTreeProps) {
         canEdit={props.canEdit}
         exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
         isStreaming={props.streamingKey === section.key}
+        blurb={blurb}
         onToggleVisible={() => props.onToggleVisibility(section.key, section.isVisible)}
         onToggleExpand={() => props.onToggleExpand(section.key, section.isExpanded)}
         onEditStart={() => props.onEditStart(section.key, section.userContent ?? section.autoContent)}
@@ -972,6 +995,7 @@ interface SectionCardProps {
   canEdit: boolean;
   exampleContent: string | null;
   isStreaming: boolean;
+  blurb: string;
   onToggleVisible: () => void;
   onToggleExpand: () => void;
   onEditStart: () => void;
@@ -1012,11 +1036,36 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
+function StatusChip({ section }: { section: SectionState }) {
+  const isDone = Boolean(section.userContent && section.userContent.trim().length > 0);
+  const isGenerating = section.isGenerating;
+  if (isGenerating) {
+    return (
+      <span className="flex items-center gap-1 text-[var(--teal)] shrink-0">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      </span>
+    );
+  }
+  if (isDone) {
+    return (
+      <span className="flex items-center gap-1 text-[var(--sage)] shrink-0">
+        <CheckCircle className="w-3.5 h-3.5" />
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[var(--neutral-cool-500)] shrink-0">
+      <Circle className="w-3.5 h-3.5" />
+    </span>
+  );
+}
+
 function SectionCard({
   section,
   canEdit,
   exampleContent,
   isStreaming,
+  blurb,
   onToggleVisible,
   onToggleExpand,
   onEditStart,
@@ -1060,11 +1109,18 @@ function SectionCard({
             ) : (
               <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
             )}
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
-              <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
+                {!section.isExpanded && <StatusChip section={section} />}
+              </div>
+              {section.isExpanded ? (
+                <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{blurb}</p>
+              )}
             </div>
-            {hasUserOverride && (
+            {hasUserOverride && section.isExpanded && (
               <span className="ml-2 flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
                 Edited
               </span>
