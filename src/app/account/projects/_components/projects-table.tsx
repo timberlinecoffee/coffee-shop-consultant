@@ -104,16 +104,12 @@ function DeleteConfirmModal({
           <span className="font-semibold text-[var(--foreground)]">
             {project.name}
           </span>
-          {dependentRowCount !== 0 && (
-            <>
-              {" "}
-              {dependentRowCount === null
-                ? "and all of its data"
-                : `and its ${dependentRowCount} saved ${
-                    dependentRowCount === 1 ? "record" : "records"
-                  }`}
-            </>
-          )}
+          {" "}
+          {!dependentRowCount
+            ? "and all of its data"
+            : `and its ${dependentRowCount} saved ${
+                dependentRowCount === 1 ? "record" : "records"
+              }`}
           . This cannot be undone.
         </p>
         <div className="mb-4">
