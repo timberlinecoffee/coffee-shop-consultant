@@ -15,11 +15,13 @@ import {
   WORKSPACE_STATUS_LABEL,
   type WorkspaceStatus,
 } from "@/lib/workspace-status";
+import { ProjectSwitcher } from "@/components/project-switcher";
 
 export interface AppSidebarProps {
   items: WorkspaceNavItem[];
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  isPro?: boolean;
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -461,12 +463,14 @@ function SidebarContent({
   onToggleCollapse,
   onClose,
   firstLinkRef,
+  isPro,
 }: {
   items: WorkspaceNavItem[];
   collapsed: boolean;
   onToggleCollapse?: () => void;
   onClose?: () => void;
   firstLinkRef?: React.RefObject<HTMLAnchorElement | null>;
+  isPro?: boolean;
 }) {
   const pathname = usePathname();
   const { isCollapsed: isCategoryCollapsed, toggle: toggleCategory } =
@@ -526,6 +530,8 @@ function SidebarContent({
         aria-label="Workspace navigation"
         className={`flex-1 overflow-y-auto py-4 ${collapsed ? "px-1" : "px-2"}`}
       >
+        {/* TIM-2378: project switcher — hidden in collapsed icon-only mode */}
+        {!collapsed && <ProjectSwitcher isPro={isPro ?? false} />}
         {/* TIM-2461: Dashboard pin — always above category groups, active when
             no workspace is selected. */}
         <DashboardNavItem
@@ -703,7 +709,7 @@ function SidebarContent({
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function AppSidebar({ items, collapsed = false, onToggleCollapse }: AppSidebarProps) {
+export function AppSidebar({ items, collapsed = false, onToggleCollapse, isPro }: AppSidebarProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -776,6 +782,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse }: AppSi
           items={items}
           collapsed={collapsed}
           onToggleCollapse={onToggleCollapse}
+          isPro={isPro}
         />
       </aside>
 
@@ -803,6 +810,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse }: AppSi
           collapsed={false}
           onClose={closeDrawer}
           firstLinkRef={firstLinkRef}
+          isPro={isPro}
         />
       </div>
     </>

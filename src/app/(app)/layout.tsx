@@ -87,6 +87,7 @@ export default async function AppLayout({
     displayName: (profileRow as { full_name?: string | null } | null)?.full_name ?? null,
     planLabel,
     uiRevampEnabled: uiRevamp,
+    isPro: planTier === "pro",
   };
 
   return (

@@ -193,6 +193,7 @@ export function WorkspaceProgressProvider({
             items={navItems}
             collapsed={sidebarCollapsed}
             onToggleCollapse={handleToggleCollapse}
+            isPro={userInfo?.isPro}
           />
         )}
         <div
