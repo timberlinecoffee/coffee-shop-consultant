@@ -464,8 +464,9 @@ export function ConceptWorkspace({
                       </button>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise */}
-                      {meta.multiline && (
+                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise.
+                          TIM-2839: hidden when ui-revamp is on — feedback consolidates in Scout Feedback tab. */}
+                      {meta.multiline && !uiRevamp && (
                         <button
                           type="button"
                           onClick={() =>
@@ -651,21 +652,24 @@ export function ConceptWorkspace({
         variant="copilot_trial"
       />
 
-      {/* TIM-881: AIAssistCallout — per-field improvement modal */}
-      <AIAssistCallout
-        open={aiAssistField !== null}
-        onClose={() => setAiAssistField(null)}
-        fieldLabel={aiAssistField?.label ?? ""}
-        moduleLabel="Concept"
-        fieldKey={aiAssistField?.id ?? ""}
-        workspaceKey="concept"
-        planId={planId}
-        currentValue={aiAssistField?.currentValue ?? ""}
-        onApply={(newValue) => {
-          if (aiAssistField) updateContent(aiAssistField.id, newValue);
-          setAiAssistField(null);
-        }}
-      />
+      {/* TIM-881: AIAssistCallout — per-field improvement modal.
+          TIM-2839: suppressed when ui-revamp is on (feedback moves to Scout Feedback tab). */}
+      {!uiRevamp && (
+        <AIAssistCallout
+          open={aiAssistField !== null}
+          onClose={() => setAiAssistField(null)}
+          fieldLabel={aiAssistField?.label ?? ""}
+          moduleLabel="Concept"
+          fieldKey={aiAssistField?.id ?? ""}
+          workspaceKey="concept"
+          planId={planId}
+          currentValue={aiAssistField?.currentValue ?? ""}
+          onApply={(newValue) => {
+            if (aiAssistField) updateContent(aiAssistField.id, newValue);
+            setAiAssistField(null);
+          }}
+        />
+      )}
 
       {/* TIM-880 / TIM-893: CoPilotDrawer handles both the WorkspaceTopBar button
           and per-field "Ask Co-pilot" dispatch (copilot:open-with-prompt). */}

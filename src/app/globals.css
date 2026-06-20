@@ -212,6 +212,15 @@
   --bench-yellow-bg: #fffbeb; --bench-yellow-border: #fcd34d; --bench-yellow-text: #92400e;
   --bench-grey-bg: #f4f3f1;   --bench-grey-border: #d1d1cc;   --bench-grey-text: #6b6b6b;
 
+  /* TIM-2839: Feedback panel tokens */
+  --espresso: #2c1a10;
+  --copper: #b07b3a;
+  --warm-grey-100: #f5f4f0;
+  --warm-grey-200: #eae8e4;
+  --warm-grey-300: #d4d0c8;
+  --warm-grey-400: #a09890;
+  --warm-grey-500: #767065;
+
   /* Coffee / warm brown */
   --coffee-100: #FDF5EC;
   --coffee-200: #FFFDF8;

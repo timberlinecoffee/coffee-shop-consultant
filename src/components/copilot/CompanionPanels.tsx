@@ -20,7 +20,8 @@ import type { AuditFinding, AuditReport, AuditSeverity } from "@/lib/business-pl
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
 // TIM-2434: "import" mode added for the document-import companion surface.
-export type CompanionMode = "coach" | "check" | "benchmark" | "import";
+// TIM-2839: "feedback" mode added for the consolidated Feedback panel.
+export type CompanionMode = "coach" | "check" | "benchmark" | "import" | "feedback";
 
 const SEVERITY_CONFIG: Readonly<Record<AuditSeverity, { label: string; className: string }>> = {
   critical: {
@@ -177,6 +178,10 @@ function CompanionFindingCard({
 interface ModeStripProps {
   activeMode: CompanionMode;
   onSelect: (mode: CompanionMode) => void;
+  // TIM-2839: Feedback tab only visible when ui-revamp is on.
+  showFeedback?: boolean;
+  // Badge count for the Feedback tab (Fix-this items from cache).
+  feedbackFixCount?: number;
 }
 
 const MODE_LABEL: Record<CompanionMode, string> = {
@@ -184,9 +189,13 @@ const MODE_LABEL: Record<CompanionMode, string> = {
   check: "Check",
   benchmark: "Benchmark",
   import: "Import",
+  feedback: "Feedback",
 };
 
-export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {
+export function ModeStrip({ activeMode, onSelect, showFeedback = false, feedbackFixCount = 0 }: ModeStripProps) {
+  const baseModes = (["coach", "check", "benchmark", "import"] as const);
+  const modes: CompanionMode[] = showFeedback ? [...baseModes, "feedback"] : [...baseModes];
+
   return (
     <div className="px-4 py-2 border-b border-[var(--border)]">
       <div
@@ -194,8 +203,9 @@ export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {
         aria-label="Companion mode"
         className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1"
       >
-        {(["coach", "check", "benchmark", "import"] as const).map((mode) => {
+        {modes.map((mode) => {
           const active = activeMode === mode;
+          const isFeedback = mode === "feedback";
           return (
             <button
               key={mode}
@@ -203,13 +213,23 @@ export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {
               role="tab"
               aria-selected={active}
               onClick={() => onSelect(mode)}
-              className={`flex-1 text-center text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+              className={`relative flex-1 text-center text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
                 active
-                  ? "bg-[var(--teal)] text-white"
+                  ? isFeedback
+                    ? "bg-[var(--sage)] text-[var(--espresso)]"
+                    : "bg-[var(--teal)] text-white"
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
               {MODE_LABEL[mode]}
+              {isFeedback && feedbackFixCount > 0 && !active && (
+                <span
+                  aria-label={`${feedbackFixCount} fix${feedbackFixCount === 1 ? "" : "es"} needed`}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none"
+                >
+                  {feedbackFixCount > 9 ? "9+" : feedbackFixCount}
+                </span>
+              )}
             </button>
           );
         })}

@@ -45,13 +45,39 @@ import {
   type CompanionMode,
 } from "./CompanionPanels";
 import { ImportPanel } from "./ImportPanel";
+import { FeedbackPanel, countFeedbackFixes } from "./FeedbackPanel";
+import {
+  buildFeedbackKey,
+  storeFeedback,
+  type FeedbackCategory,
+  type FeedbackItem,
+} from "./feedback-cache";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
-import type { AuditFinding, AuditReport } from "@/lib/business-plan/audit";
+import type { AuditFinding, AuditReport, AuditSeverity } from "@/lib/business-plan/audit";
 import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCrossSuiteConflictResolver";
 import { crossSuiteConflictIdForAuditFinding } from "@/lib/cross-suite/audit-mapping";
+import { useUiRevamp } from "@/components/UiRevampProvider";
 
 // TIM-1648: valid units matching the menu_ingredients / menu_item_ingredients schema.
 const MENU_VALID_UNITS = new Set(["g", "ml", "oz", "each", "piece"]);
+
+// TIM-2839: Map AuditSeverity → FeedbackCategory for the Feedback panel.
+function severityToFeedbackCategory(severity: AuditSeverity): FeedbackCategory {
+  if (severity === "critical") return "fix";
+  if (severity === "info") return "good";
+  return "note";
+}
+
+// Derive a section label from an audit finding's workspace / field labels.
+function sectionLabelForFinding(finding: AuditFinding): string {
+  return (
+    finding.target.field_label ??
+    finding.target.workspace_label ??
+    finding.source.field_label ??
+    finding.source.workspace_label ??
+    ""
+  );
+}
 
 // TIM-2381: write accepted suggest_workspace_changes proposals for the business
 // plan workspace. Each accepted change's fieldId is the section key; finalValue
@@ -344,10 +370,13 @@ export function CoPilotDrawer({
   defaultMode = "coach",
   defaultScopeOverride,
 }: CoPilotDrawerProps) {
+  const uiRevamp = useUiRevamp();
   const [open, setOpen] = useState(false);
   // TIM-2416 — companion mode state. Coach mode keeps the existing chat UX;
   // Check + Benchmark render finding-card panels.
   const [activeMode, setActiveMode] = useState<CompanionMode>(defaultMode);
+  // TIM-2839 — session-scoped feedback key for the Feedback panel.
+  const [feedbackKey, setFeedbackKey] = useState<string | null>(null);
   const [checkReport, setCheckReport] = useState<AuditReport | null>(null);
   const [checkScanning, setCheckScanning] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -598,12 +627,34 @@ export function CoPilotDrawer({
       }
       const data = (await res.json()) as { report: AuditReport | null };
       setCheckReport(data.report);
+      // TIM-2839: populate the feedback cache from the completed Check run.
+      if (data.report) {
+        const key = buildFeedbackKey(workspaceKey, "check");
+        const items: FeedbackItem[] = data.report.findings.map((f) => ({
+          id: f.id,
+          category: severityToFeedbackCategory(f.severity),
+          section: sectionLabelForFinding(f),
+          body: stripFindingTags(f.issue ?? f.raw_message),
+          findingId: f.id,
+          fieldId: (f.target.field ?? f.source.field) ?? undefined,
+          fieldLabel: (f.target.field_label ?? f.source.field_label) ?? undefined,
+          proposedValue: f.suggested_replacement ? stripFindingTags(f.suggested_replacement) : undefined,
+          originalValue: f.quoted_text ? stripFindingTags(f.quoted_text) : undefined,
+        }));
+        storeFeedback(key, {
+          workspaceName: workspaceKey,
+          pageName: "Check",
+          items,
+          generatedAt: data.report.generated_at,
+        });
+        setFeedbackKey(key);
+      }
     } catch (err) {
       setCheckError(err instanceof Error ? err.message : "Check failed");
     } finally {
       setCheckScanning(false);
     }
-  }, []);
+  }, [workspaceKey]);
 
   const runBenchmarkScan = useCallback(async (scope: ConversationScope) => {
     setBenchmarkError(null);
@@ -621,12 +672,35 @@ export function CoPilotDrawer({
       }
       const data = (await res.json()) as { report: AuditReport | null };
       setBenchmarkReport(data.report);
+      // TIM-2839: populate the feedback cache from the completed Benchmark run.
+      if (data.report) {
+        const scopeSlug = scope ?? "plan";
+        const key = buildFeedbackKey(workspaceKey, `benchmark:${String(scopeSlug)}`);
+        const items: FeedbackItem[] = data.report.findings.map((f) => ({
+          id: f.id,
+          category: severityToFeedbackCategory(f.severity),
+          section: sectionLabelForFinding(f),
+          body: stripFindingTags(f.issue ?? f.raw_message),
+          findingId: f.id,
+          fieldId: (f.target.field ?? f.source.field) ?? undefined,
+          fieldLabel: (f.target.field_label ?? f.source.field_label) ?? undefined,
+          proposedValue: f.suggested_replacement ? stripFindingTags(f.suggested_replacement) : undefined,
+          originalValue: f.quoted_text ? stripFindingTags(f.quoted_text) : undefined,
+        }));
+        storeFeedback(key, {
+          workspaceName: workspaceKey,
+          pageName: "Benchmark",
+          items,
+          generatedAt: data.report.generated_at,
+        });
+        setFeedbackKey(key);
+      }
     } catch (err) {
       setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed");
     } finally {
       setBenchmarkScanning(false);
     }
-  }, []);
+  }, [workspaceKey]);
 
   // TIM-2416 — Apply suggestion for a finding (Check or Benchmark). Routes
   // through the unified AI review modal; never auto-applies (platform rule).
@@ -1164,18 +1238,37 @@ export function CoPilotDrawer({
           </button>
         </div>
       )}
-      {!open && (
-        <button
-          type="button"
-          aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
-          onClick={openDrawer}
-          // TIM-1574: hide on desktop (lg+) unless this consumer has no Beacon.
-          // TIM-1678: style-guide FAB — bottom-[72px] right-4 z-30 w-14 h-14 rounded-2xl.
-          className={`fixed bottom-[72px] right-4 lg:bottom-6 lg:right-6 z-30 w-14 h-14 rounded-2xl ai-gradient-bg text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform ${showDesktopLauncher ? "" : "lg:hidden"}`}
-        >
-          <Sparkles aria-hidden className="w-5 h-5" />
-        </button>
-      )}
+      {!open && (() => {
+        const fabFixCount = uiRevamp ? countFeedbackFixes(feedbackKey) : 0;
+        return (
+          // TIM-2839: wrapper span for badge positioning — `fixed` on the
+          // button and `absolute` on the badge don't compose correctly since
+          // `position: fixed` on the button makes it the containing block but
+          // only in some browsers. Use a fixed wrapper div instead.
+          <div
+            className={`fixed bottom-[72px] right-4 lg:bottom-6 lg:right-6 z-30 ${showDesktopLauncher ? "" : "lg:hidden"}`}
+          >
+            <button
+              type="button"
+              aria-label={`Open ${COPILOT_NAME} (${COPILOT_SUBTITLE})`}
+              onClick={openDrawer}
+              // TIM-1574 / TIM-1678: style-guide FAB.
+              className="relative w-14 h-14 rounded-2xl ai-gradient-bg text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <Sparkles aria-hidden className="w-5 h-5" />
+              {/* TIM-2839: Fix-this badge on FAB — hides when count is 0. */}
+              {fabFixCount > 0 && (
+                <span
+                  aria-label={`${fabFixCount} fix${fabFixCount === 1 ? "" : "es"} needed`}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none border-2 border-white"
+                >
+                  {fabFixCount > 9 ? "9+" : fabFixCount}
+                </span>
+              )}
+            </button>
+          </div>
+        );
+      })()}
 
       <AnimatePresence>
       {open && (
@@ -1292,8 +1385,14 @@ export function CoPilotDrawer({
             </header>
 
             {/* TIM-2416 — mode strip (UX spec §2). Sits below the header,
-                above the scroll/input column. Always visible, even mid-scan. */}
-            <ModeStrip activeMode={activeMode} onSelect={setActiveMode} />
+                above the scroll/input column. Always visible, even mid-scan.
+                TIM-2839: Feedback tab visible only when ui-revamp is on. */}
+            <ModeStrip
+              activeMode={activeMode}
+              onSelect={setActiveMode}
+              showFeedback={uiRevamp}
+              feedbackFixCount={countFeedbackFixes(feedbackKey)}
+            />
 
             {/* TIM-2436 — the inline conversations rail was retired. Past
                 chats now live in the separate left-anchored drawer (see
@@ -1328,6 +1427,35 @@ export function CoPilotDrawer({
                   onGoToSource={handleGoToFindingSource}
                   resolverConflictIdFor={resolverConflictIdFor}
                   onOpenCrossSuite={handleOpenCrossSuiteResolver}
+                />
+              )}
+              {/* TIM-2839: Feedback mode panel — session-scoped feedback from
+                  the most recent Check or Benchmark run. No new AI calls. */}
+              {activeMode === "feedback" && uiRevamp && (
+                <FeedbackPanel
+                  workspaceKey={workspaceKey}
+                  feedbackKey={feedbackKey}
+                  onRunCheck={() => {
+                    setActiveMode("check");
+                    void runCheckScan();
+                  }}
+                  onReview={(item) => {
+                    if (!item.proposedValue || !item.fieldId) return;
+                    openAIReviewModal({
+                      suggestions: [
+                        {
+                          id: `feedback-${item.findingId}`,
+                          fieldId: item.fieldId,
+                          fieldLabel: item.fieldLabel ?? item.section,
+                          originalValue: item.originalValue ?? "",
+                          proposedValue: item.proposedValue,
+                          isStructured: false,
+                        },
+                      ],
+                      context: { workspace: workspaceKey, section: item.section },
+                      onApply: async () => {},
+                    });
+                  }}
                 />
               )}
               {/* TIM-2434: Document Import mode. Reuses the unified
