@@ -412,8 +412,6 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
-                        onGenerate={() => handleGenerate(key as SopCategoryKey)}
-                        generating={generating === key}
                       />
                     )}
 
@@ -428,8 +426,6 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
-                        onGenerate={() => handleGenerate("roles")}
-                        generating={generating === "roles"}
                       />
                     )}
 
@@ -440,8 +436,6 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
-                        onGenerate={() => handleGenerate("vendor_contacts")}
-                        generating={generating === "vendor_contacts"}
                       />
                     )}
 
@@ -452,8 +446,6 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
-                        onGenerate={() => handleGenerate("training")}
-                        generating={generating === "training"}
                       />
                     )}
                   </AccordionSection>
