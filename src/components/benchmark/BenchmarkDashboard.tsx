@@ -74,7 +74,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-white p-8 text-center space-y-3">
       <p className="text-sm font-semibold text-[var(--foreground)]">Benchmark data didn&apos;t load</p>
-      <p className="text-xs text-[var(--muted-foreground)]">Your own numbers are fine — this is just the comparison view.</p>
+      <p className="text-xs text-[var(--muted-foreground)]">Your own numbers are fine. This is just the comparison view.</p>
       <button
         type="button"
         onClick={onRetry}

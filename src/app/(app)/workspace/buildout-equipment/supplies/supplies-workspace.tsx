@@ -15,6 +15,10 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
+// TIM-2779 (Phase 6): v2 mobile + desktop surfaces gated by ui_revamp_v2.
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { SuppliesMobileV2 } from "@/components/equipment/SuppliesMobileV2";
+import { SuppliesDesktopTable } from "@/components/equipment/SuppliesDesktopTable";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -238,6 +242,9 @@ export function SuppliesWorkspace({
   const suppliesSections = sections.filter((s) => s.list_type === "supplies");
 
   const activeSupplies = supplies.filter((i) => !i.archived);
+
+  // TIM-2779 (Phase 6): v2 surfaces gated by ui_revamp_v2.
+  const uiRevampV2 = useUiRevamp();
   const grandTotalCents = useMemo(
     () => activeSupplies.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0),
     [activeSupplies]
@@ -324,17 +331,40 @@ export function SuppliesWorkspace({
           onSeed={seedSupplies}
         />
 
-        <SectionedListGrid
-          listType="supplies"
-          planId={planId}
-          canEdit={canEdit}
-          sections={suppliesSections}
-          items={supplies as AnyItem[]}
-          onItemsChange={handleSuppliesChange}
-          onSectionsChange={handleSectionsChange}
-          showAiMarkings={showAiMarkings}
-          currencyCode={initialCurrencyCode}
-        />
+        {/* TIM-2779 (Phase 6): v2 mobile + desktop — gated by ui_revamp_v2. */}
+        {uiRevampV2 ? (
+          <>
+            <div className="md:hidden">
+              <SuppliesMobileV2
+                items={supplies}
+                sections={suppliesSections}
+                currencyCode={initialCurrencyCode}
+              />
+            </div>
+            <div className="hidden md:block">
+              <SuppliesDesktopTable
+                planId={planId}
+                canEdit={canEdit}
+                items={supplies}
+                sections={suppliesSections}
+                onItemsChange={handleSuppliesChange}
+                currencyCode={initialCurrencyCode}
+              />
+            </div>
+          </>
+        ) : (
+          <SectionedListGrid
+            listType="supplies"
+            planId={planId}
+            canEdit={canEdit}
+            sections={suppliesSections}
+            items={supplies as AnyItem[]}
+            onItemsChange={handleSuppliesChange}
+            onSectionsChange={handleSectionsChange}
+            showAiMarkings={showAiMarkings}
+            currencyCode={initialCurrencyCode}
+          />
+        )}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
