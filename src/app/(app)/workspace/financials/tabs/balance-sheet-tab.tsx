@@ -337,10 +337,12 @@ function BSMobileSummary({ slices, currencyCode }: { slices: MonthlySlice[]; cur
       <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
         <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Liabilities</p>
         <p className="text-lg font-bold text-[var(--foreground)]">{fmt(tl, currencyCode)}</p>
+        <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">End of Yr 1</p>
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
         <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Equity</p>
         <p className={`text-lg font-bold ${te < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(te, currencyCode)}</p>
+        <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">End of Yr 1</p>
       </div>
     </div>
   );

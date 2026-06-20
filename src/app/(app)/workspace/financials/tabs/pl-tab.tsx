@@ -785,17 +785,17 @@ function PLMobileSummary({ slices, currencyCode }: { slices: MonthlySlice[]; cur
         <p className="text-xl font-bold text-[var(--foreground)]">{fmt(nr, currencyCode)}</p>
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
-        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Gross Profit</p>
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Gross Profit (Yr 1)</p>
         <p className="text-xl font-bold text-[var(--foreground)]">{fmt(gp, currencyCode)}</p>
         <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{pct(gp, nr)} of revenue</p>
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
-        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Operating Income</p>
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Operating Income (Yr 1)</p>
         <p className={`text-xl font-bold ${oi < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(oi, currencyCode)}</p>
         <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{pct(oi, nr)} of revenue</p>
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
-        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Net Income</p>
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Net Income (Yr 1)</p>
         <p className={`text-xl font-bold ${ni < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(ni, currencyCode)}</p>
         <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{pct(ni, nr)} of revenue</p>
       </div>
