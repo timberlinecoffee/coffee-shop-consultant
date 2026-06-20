@@ -24,6 +24,7 @@ import {
 } from "@/lib/financial-projection";
 import {
   ChartCard,
+  FinancialAreaChart,
   FinancialBarChart,
   FinancialLineChart,
   ViewModeToggle,
@@ -493,27 +494,62 @@ export function PLTab({
     { key: "net_revenue", label: "Net Revenue", color: CHART_COLORS.primary },
   ];
 
-  // Expense forecast: total COGS + line-item overhead + total opex
+  // Expense forecast: COGS + top-N overhead lines + Other.
+  // Collapses noisy long-tail into a single "Other" band so the chart reads
+  // clean at both mobile and desktop (TIM-2863).
+  const MAX_OVERHEAD_SERIES = 4;
+
+  const toOperatorLabel = (label: string): string => {
+    const n = label.trim().toLowerCase();
+    if (n === "labor" || n === "labour") return "Baristas";
+    if (n === "rent") return "Shop Rent";
+    return label;
+  };
+
+  const overheadBySpend = overheadLines
+    .map((ol) => ({
+      ...ol,
+      total: columns.reduce(
+        (sum, c) =>
+          sum + (c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0),
+        0
+      ),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const topOverhead = overheadBySpend.slice(0, MAX_OVERHEAD_SERIES);
+  const collapsedOverhead = overheadBySpend.slice(MAX_OVERHEAD_SERIES);
+  const hasOtherOverhead = collapsedOverhead.length > 0;
+
   const expenseChartData: ChartDatum[] = columns.map((c) => {
     const row: ChartDatum = {
       label: c.label,
       total_cogs: (c.data.total_cogs_cents as number | undefined) ?? 0,
-      total_opex: (c.data.total_opex_cents as number | undefined) ?? 0,
       operating_income: (c.data.operating_income_cents as number | undefined) ?? 0,
     };
-    for (const ol of overheadLines) {
+    for (const ol of topOverhead) {
       row[`opex_${ol.id}`] =
         c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0;
+    }
+    if (hasOtherOverhead) {
+      row.opex_other = collapsedOverhead.reduce(
+        (sum, ol) =>
+          sum + (c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0),
+        0
+      );
     }
     return row;
   });
 
   const expenseStackedSeries: ChartSeries[] = [
-    { key: "total_cogs", label: "COGS", color: CHART_COLORS.warning },
-    ...overheadLines.map((ol) => ({
+    { key: "total_cogs", label: "Coffee & Milk", color: CHART_COLORS.warning },
+    ...topOverhead.map((ol) => ({
       key: `opex_${ol.id}`,
-      label: ol.label,
+      label: toOperatorLabel(ol.label),
     })),
+    ...(hasOtherOverhead
+      ? [{ key: "opex_other", label: "Other", color: CHART_COLORS.accentSoft }]
+      : []),
   ];
 
   const profitSeries: ChartSeries[] = [
@@ -581,9 +617,9 @@ export function PLTab({
           </ChartCard>
           <ChartCard
             title="Expense Forecast"
-            description="Stacked operating expenses and COGS by period. Heavier bars = larger total expense burden."
+            description="Top expense categories stacked by period. Minor items are grouped into Other."
           >
-            <FinancialBarChart
+            <FinancialAreaChart
               data={expenseChartData}
               series={expenseStackedSeries}
               currencyCode={currencyCode}
