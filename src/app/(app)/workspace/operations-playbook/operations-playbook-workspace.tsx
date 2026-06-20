@@ -18,6 +18,7 @@ import {
   Printer,
   TrendingUp,
 } from "lucide-react";
+import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
@@ -69,11 +70,23 @@ function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const SHOP_TYPE_DISPLAY: Record<string, string> = {
+  mobile_popup:  "Mobile Cart, Pop-up, or Kiosk",
+  drive_through: "Drive-through",
+  roastery_cafe: "Roastery Cafe",
+};
+
+function shopTypeDisplayName(shopType?: string): string {
+  if (!shopType) return "Full Cafe or Espresso Bar";
+  return SHOP_TYPE_DISPLAY[shopType] ?? "Full Cafe or Espresso Bar";
+}
+
 interface Props {
   planId: string;
   canEdit: boolean;
   initialDoc: OperationsPlaybookDocument;
   conceptShopIdentity: string;
+  shopType?: string;
   initialTrialMessagesUsed?: number;
   initialRecipeCards: OperationsRecipeCard[];
 }
@@ -85,6 +98,7 @@ export function OperationsPlaybookWorkspace({
   planId,
   canEdit,
   initialDoc,
+  shopType,
   initialTrialMessagesUsed,
   initialRecipeCards,
 }: Props) {
@@ -243,6 +257,16 @@ export function OperationsPlaybookWorkspace({
             </>
           }
         />
+
+        {shopType && (
+          <DismissibleCallout
+            calloutKey="operations-playbook.shop-type-sop"
+            variant="info"
+            heading={`Your SOPs are built for: ${shopTypeDisplayName(shopType)}`}
+            subcopy="These templates were pre-filled based on your shop type. Review each section and edit any steps that don't match your setup."
+            className="mb-5"
+          />
+        )}
 
         {/* TIM-2472: top-level view switcher — Playbook vs How You Compare */}
         <div className="mb-5">

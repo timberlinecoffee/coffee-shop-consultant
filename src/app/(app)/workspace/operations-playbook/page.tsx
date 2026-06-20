@@ -92,6 +92,7 @@ export default async function OperationsPlaybookPage() {
       canEdit={canEdit}
       initialDoc={initialDoc}
       conceptShopIdentity={conceptShopIdentity}
+      shopType={shopType}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialRecipeCards={recipeCards}
     />

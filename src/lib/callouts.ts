@@ -44,6 +44,10 @@ export const CALLOUT_REGISTRY: Record<CalloutKey, CalloutRegistryEntry> = {
     label: "Supplies starter-list prompt",
     workspace: "Equipment & Supplies",
   },
+  "operations-playbook.shop-type-sop": {
+    label: "Shop-type SOP calibration notice",
+    workspace: "Operations Playbook",
+  },
 };
 
 /**
