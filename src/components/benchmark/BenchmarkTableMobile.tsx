@@ -5,33 +5,13 @@
 
 import { useState } from "react";
 import { ChevronRight, X } from "lucide-react";
-import type { BenchmarkPillar, BenchmarkMetric, DrilldownData, BenchmarkStatus } from "./types";
+import { BenchmarkChip, VERDICT_LABELS } from "./BenchmarkChip";
+import { formatRange } from "./benchmark-utils";
+import type { BenchmarkPillar, BenchmarkMetric, DrilldownData } from "./types";
 
 interface Props {
   pillars: BenchmarkPillar[];
   drilldowns: Record<string, DrilldownData>;
-}
-
-const STATUS_CHIP: Record<BenchmarkStatus, string> = {
-  green:  "bg-[var(--bench-green-bg)]  text-[var(--bench-green-text)]  border-[var(--bench-green-border)]",
-  blue:   "bg-[var(--bench-blue-bg)]   text-[var(--bench-blue-text)]   border-[var(--bench-blue-border)]",
-  yellow: "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)] border-[var(--bench-yellow-border)]",
-  grey:   "bg-[var(--bench-grey-bg)]   text-[var(--bench-grey-text)]   border-[var(--bench-grey-border)]",
-};
-
-const STATUS_LABELS: Record<BenchmarkStatus, string> = {
-  green:  "Top Quartile",
-  blue:   "Median Band",
-  yellow: "Outside Guideline",
-  grey:   "No Data",
-};
-
-function formatRange(d: DrilldownData): string {
-  if (d.bpLow == null || d.bpHigh == null) return "—";
-  const unit = d.bpUnit ?? "";
-  if (unit === "%") return `${d.bpLow}%–${d.bpHigh}%`;
-  if (unit.startsWith("$")) return `${unit}${d.bpLow}–${unit}${d.bpHigh}`;
-  return `${d.bpLow}–${d.bpHigh}${unit ? ` ${unit}` : ""}`;
 }
 
 type MetricWithPillar = BenchmarkMetric & { pillarLabel: string };
@@ -99,11 +79,13 @@ export function BenchmarkTableMobile({ pillars, drilldowns }: Props) {
                       </p>
                     </div>
                     <div className="mt-1">
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded-full border text-[10px] font-semibold ${STATUS_CHIP[metric.status]}`}
-                      >
-                        {STATUS_LABELS[metric.status]}
-                      </span>
+                      <BenchmarkChip
+                        variant="inline"
+                        metric={metric.label}
+                        value={metric.value}
+                        status={metric.status}
+                        sourceType={metric.sourceType}
+                      />
                     </div>
                   </div>
                   <ChevronRight
@@ -150,7 +132,7 @@ function MetricDetailSheet({
   const rows: Array<{ label: string; value: string | null }> = [
     { label: "Pillar",        value: metric.pillarLabel },
     { label: "Your Value",    value: metric.value },
-    { label: "Status",        value: STATUS_LABELS[metric.status] },
+    { label: "Status",        value: VERDICT_LABELS[metric.status] },
     { label: "Target Range",  value: range },
     ...(drilldown.percentileLabel
       ? [{ label: "Percentile", value: drilldown.percentileLabel }]

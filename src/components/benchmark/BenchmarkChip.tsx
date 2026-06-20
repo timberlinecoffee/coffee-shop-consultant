@@ -39,7 +39,7 @@ const SOURCE_LABELS: Record<BenchmarkSourceType, string> = {
   "no data": "no data",
 };
 
-const VERDICT_LABELS: Record<BenchmarkStatus, string> = {
+export const VERDICT_LABELS: Record<BenchmarkStatus, string> = {
   green: "Top quartile",
   blue: "Median band",
   yellow: "Outside guideline",

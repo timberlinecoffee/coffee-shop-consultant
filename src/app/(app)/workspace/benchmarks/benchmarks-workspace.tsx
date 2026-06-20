@@ -10,7 +10,7 @@ import { TrendingUp, RefreshCcw } from "lucide-react";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { BenchmarkTableDesktop } from "@/components/benchmark/BenchmarkTableDesktop";
 import { BenchmarkTableMobile } from "@/components/benchmark/BenchmarkTableMobile";
-import type { BenchmarkPageData, CohortAxes } from "@/components/benchmark/types";
+import type { BenchmarkPageData } from "@/components/benchmark/types";
 
 interface BenchmarksWorkspaceProps {
   planId: string;
@@ -19,11 +19,8 @@ interface BenchmarksWorkspaceProps {
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
-async function fetchBenchmarkMetrics(axes?: CohortAxes): Promise<BenchmarkPageData> {
-  const params = axes
-    ? `?shopModel=${axes.shopModel.join(",")}&locationType=${axes.locationType}&shopSize=${axes.shopSize.join(",")}`
-    : "";
-  const res = await fetch(`/api/benchmarks/all/metrics${params}`);
+async function fetchBenchmarkMetrics(): Promise<BenchmarkPageData> {
+  const res = await fetch("/api/benchmarks/all/metrics");
   if (!res.ok) throw new Error("Failed to load benchmark data");
   return res.json() as Promise<BenchmarkPageData>;
 }
@@ -63,7 +60,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         Benchmark data didn&apos;t load
       </p>
       <p className="text-xs text-[var(--muted-foreground)]">
-        Your own numbers are fine — this is just the comparison view.
+        Your own numbers are fine. This is just the comparison view.
       </p>
       <button
         type="button"
