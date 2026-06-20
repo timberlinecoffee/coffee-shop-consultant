@@ -161,6 +161,13 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
       <AddProjectModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        onCreated={(project) => {
+          setProjects((prev) => [
+            { ...project, isActive: true },
+            ...prev.map((p) => ({ ...p, isActive: false })),
+          ]);
+          setModalOpen(false);
+        }}
       />
       <ProUpgradePrompt
         open={upgradeOpen}
@@ -174,9 +181,11 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
 function AddProjectModal({
   open,
   onClose,
+  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
+  onCreated: (project: Project) => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -234,7 +243,23 @@ function AddProjectModal({
         setError(data.error ?? "Something went wrong. Try again.");
         return;
       }
+      // TIM-2855: switch to the new project, close modal, then refresh server
+      // data. router.push("/dashboard") alone is a no-op when already on
+      // /dashboard, so the modal stayed open and the user saw zero feedback.
+      const data = await res.json().catch(() => ({}));
+      const project = data.project as Project | undefined;
+      if (project?.id) {
+        await fetch(`/api/projects/${project.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+        }).catch(() => { /* tolerated — list still updates, user can switch */ });
+        onCreated(project);
+      } else {
+        onClose();
+      }
       router.push("/dashboard");
+      router.refresh();
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
