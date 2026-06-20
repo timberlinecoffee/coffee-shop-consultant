@@ -1,0 +1,77 @@
+{
+  "issue": "TIM-2859",
+  "title": "Concept page: remove Skip buttons; every field uses 'Improve with AI'",
+  "agent": "CTO (c0528b72-ac51-4031-82ec-b0240550413f)",
+  "shippedCommits": [
+    {
+      "sha": "f5b77bd",
+      "subject": "TIM-2859: Concept page — remove Skip toggle; unify per-field action as Improve with AI",
+      "branch": "main",
+      "files": [
+        "src/app/(app)/workspace/business-plan/print/page.tsx",
+        "src/app/(app)/workspace/concept/concept-editor.tsx",
+        "src/app/(app)/workspace/concept/print/page.tsx",
+        "src/lib/concept.test.mjs",
+        "src/lib/concept.ts"
+      ]
+    },
+    {
+      "sha": "70fae8b",
+      "subject": "verify(TIM-2859): live prod proves zero Skip buttons + six Improve with AI",
+      "branch": "main",
+      "files": [
+        "scripts/tim2859-concept-skip-removal-verify.mjs",
+        "scripts/shots/tim2859-concept-default.png",
+        "scripts/shots/tim2859-concept-hover.png"
+      ]
+    }
+  ],
+  "deploy": {
+    "alias": "groundwork.cafe",
+    "deploymentId": "coffee-shop-consultant-n8llzsimq",
+    "status": "READY",
+    "commitOnAlias": "f5b77bd",
+    "confirmedVia": "vercel inspect groundwork.cafe --logs"
+  },
+  "liveVerify": {
+    "url": "https://groundwork.cafe/workspace/concept",
+    "fixture": "trent@simpler.coffee",
+    "status": 200,
+    "assertions": {
+      "skipOrInDocButtons": {"found": 0, "expected": 0, "result": "PASS"},
+      "improveWithAiButtons": {"found": 6, "expected": 6, "result": "PASS"}
+    },
+    "script": "scripts/tim2859-concept-skip-removal-verify.mjs",
+    "screenshots": [
+      "scripts/shots/tim2859-concept-default.png",
+      "scripts/shots/tim2859-concept-hover.png"
+    ]
+  },
+  "tsc": "clean",
+  "unitTests": "17/17 pass (src/lib/concept.test.mjs)",
+  "scopeNotes": {
+    "perFieldActionCount": "6 — one per concept card except target_customer (PersonaSection multi-record editor has its own authoring flow; out of single-field scope)",
+    "schemaChange": "none — ConceptDocumentV2.components[id].included preserved on the wire, ignored at every read site",
+    "downstreamConsumersUpdated": [
+      "ConceptBriefInline (concept-editor.tsx)",
+      "concept/print/page.tsx",
+      "business-plan/print/page.tsx ConceptSection",
+      "business-plan/print/page.tsx AppendixSection",
+      "isConceptV2Complete (concept.ts)",
+      "getConceptV2Progress (concept.ts)"
+    ]
+  },
+  "styleGuide": {
+    "section": "TIM-1537 → Cards / per-field action affordance",
+    "referenceComponent": "Improve with AI button on multiline concept cards (vision/differentiation/brand_voice) — same teal-tint outlined chip, hover/focus-revealed, top-right of card"
+  },
+  "standingRules": {
+    "rule1": "n/a (no new tables)",
+    "rule2": "n/a (UI-only edit; server-side validation + plan-tier checks unchanged)",
+    "rule3": "n/a (no new endpoints)",
+    "rule4": "n/a (no new paid-API calls)",
+    "rule5": "n/a (no error handling surface changed)"
+  },
+  "boardConfirmationStatus": "pending — Paperclip API server (100.102.87.39:3100) was offline at completion time; comment + request_confirmation interaction could not be posted. Next CTO wake should re-attempt: comment with the shipped block above, then POST /interactions kind=request_confirmation continuationPolicy=wake_assignee_on_accept idempotencyKey=confirmation:tim-2859:skip-removal:f5b77bd targeting board review of the live page.",
+  "stampedAt": "2026-06-20T22:50:00Z"
+}
