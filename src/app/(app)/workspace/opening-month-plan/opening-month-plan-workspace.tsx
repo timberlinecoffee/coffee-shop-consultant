@@ -15,11 +15,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Rocket, ChevronDown, ChevronRight, Check, X,
+  Rocket, ChevronDown, Check, X,
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
+  CheckCircle, Circle, Minus,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
-import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
+import { LaunchPlanSubNav, type LaunchPlanTab } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   WorkspaceSubNav,
   type WorkspaceSubNavTab,
@@ -35,7 +36,8 @@ import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessB
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import type { ApprovedChange } from "@/hooks/useAIReviewModal";
+import { consumeSseFrames } from "@/components/copilot/sse";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import {
   TRACK_KEYS, TRACK_LABELS, TRACK_COLORS,
   daysToGo, daysToGoColor, detectLeadTimeConflicts,
@@ -45,7 +47,7 @@ import {
 import type { LaunchItemStatus } from "@/types/supabase";
 import { progressPct } from "@/lib/formatters";
 
-export type WorkspaceSection = "milestones" | "playbook" | "all";
+export type WorkspaceSection = "milestones" | "playbook" | "all" | "overview";
 
 interface Props {
   planId: string;
@@ -188,7 +190,91 @@ function Toast({
   );
 }
 
-// ── Status badge ─────────────────────────────────────────────────────────────
+// ── AccordionSection (TIM-2778: v2 pattern, mirrors FinancialsV2) ─────────────
+
+type SectionStatus = "complete" | "in_progress" | "empty";
+
+function SectionStatusBadge({ status }: { status: SectionStatus }) {
+  if (status === "complete") {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-tint-100)] border border-[var(--teal-tint)] px-2 py-0.5 rounded-full shrink-0">
+        <CheckCircle size={10} aria-hidden="true" />
+        Complete
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
+        <Circle size={10} aria-hidden="true" />
+        In progress
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
+      <Minus size={10} aria-hidden="true" />
+      Empty
+    </span>
+  );
+}
+
+function AccordionSection({
+  title,
+  status,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  status: SectionStatus;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <ChevronDown
+            size={16}
+            className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
+        </div>
+        <SectionStatusBadge status={status} />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getMilestoneTrackStatus(items: Milestone[]): SectionStatus {
+  if (items.length === 0) return "empty";
+  const done = items.filter((m) => m.status === "done").length;
+  if (done === items.length) return "complete";
+  if (done > 0 || items.some((m) => m.status === "in_progress")) return "in_progress";
+  return "empty";
+}
+
+function getBucketStatus(rows: PlaybookItem[]): SectionStatus {
+  if (rows.length === 0) return "empty";
+  const done = rows.filter((r) => r.status === "done").length;
+  if (done === rows.length) return "complete";
+  if (done > 0 || rows.some((r) => r.status === "in_progress")) return "in_progress";
+  return "empty";
+}
+
+// ── Milestone row status styles ───────────────────────────────────────────────
 
 const STATUS_STYLES: Record<MilestoneStatus, string> = {
   not_started: "bg-[var(--neutral-cool-100)] text-[var(--muted-foreground)]",
@@ -326,22 +412,12 @@ interface ListViewProps {
 }
 
 function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAddMilestone }: ListViewProps) {
-  const [collapsed, setCollapsed] = useState<Set<TrackKey>>(new Set());
-
   const byTrack = new Map<TrackKey, Milestone[]>();
   for (const m of milestones) {
     const arr = byTrack.get(m.track) ?? [];
     arr.push(m);
     byTrack.set(m.track, arr);
   }
-
-  const toggleTrack = (t: TrackKey) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(t)) next.delete(t); else next.add(t);
-      return next;
-    });
-  };
 
   const doneCount = milestones.filter((m) => m.status === "done").length;
 
@@ -371,77 +447,58 @@ function ListView({ milestones, canEdit, onStatusChange, onEdit, onDelete, onAdd
         </span>
       </div>
 
-      {/* Tracks */}
-      {TRACK_KEYS.map((track) => {
-        const items = (byTrack.get(track) ?? []).sort((a, b) => {
-          if (a.target_date && b.target_date) return a.target_date.localeCompare(b.target_date);
-          return a.order_index - b.order_index;
-        });
-        const isCollapsed = collapsed.has(track);
-        const trackColor = TRACK_COLORS[track];
-        const doneInTrack = items.filter((m) => m.status === "done").length;
+      {/* Tracks — each track is an AccordionSection (TIM-2778 v2 pattern) */}
+      <div className="space-y-3">
+        {TRACK_KEYS.map((track) => {
+          const items = (byTrack.get(track) ?? []).sort((a, b) => {
+            if (a.target_date && b.target_date) return a.target_date.localeCompare(b.target_date);
+            return a.order_index - b.order_index;
+          });
+          const trackColor = TRACK_COLORS[track];
+          const trackStatus = getMilestoneTrackStatus(items);
 
-        return (
-          // TIM-2240: track group renders with the canonical neutral header
-          // (white bg, neutral border, foreground text) used by every other
-          // Groundwork suite — the per-track pastel bar that the board flagged
-          // on TIM-1407 is replaced with a small colored dot so the track
-          // identity is preserved without pastel chrome. Border-b is gated on
-          // the expanded state so a collapsed card doesn't carry a stray
-          // divider above its bottom edge.
-          <div key={track} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
-            <button
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--neutral-cool-50)] transition-colors ${
-                isCollapsed ? "" : "border-b border-[var(--neutral-cool-100)]"
-              }`}
-              onClick={() => toggleTrack(track)}
+          return (
+            <AccordionSection
+              key={track}
+              title={TRACK_LABELS[track]}
+              status={trackStatus}
+              defaultOpen={trackStatus !== "complete"}
             >
-              {isCollapsed ? (
-                <ChevronRight size={16} className="text-[var(--dark-grey)]" />
-              ) : (
-                <ChevronDown size={16} className="text-[var(--dark-grey)]" />
-              )}
-              <span
-                className={`flex-shrink-0 w-2 h-2 rounded-full ${trackColor.dot}`}
-                aria-hidden="true"
-              />
-              <span className="text-sm font-semibold text-[var(--foreground)]">
-                {TRACK_LABELS[track]}
-              </span>
-              <span className="text-xs text-[var(--dark-grey)] ml-auto">
-                {doneInTrack}/{items.length}
-              </span>
-            </button>
-
-            {!isCollapsed && (
-              <>
-                {items.map((m) => (
-                  <MilestoneRow
-                    key={m.id}
-                    milestone={m}
-                    canEdit={canEdit}
-                    onStatusChange={onStatusChange}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                ))}
-                {items.length === 0 && (
+              <div className="flex items-center gap-2 -mt-1 mb-1">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${trackColor.dot}`} aria-hidden="true" />
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {items.filter((m) => m.status === "done").length}/{items.length} complete
+                </span>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+                {items.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-[var(--dark-grey)]">No milestones yet in this track.</div>
+                ) : (
+                  items.map((m) => (
+                    <MilestoneRow
+                      key={m.id}
+                      milestone={m}
+                      canEdit={canEdit}
+                      onStatusChange={onStatusChange}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  ))
                 )}
                 {canEdit && (
                   <button
                     onClick={() => onAddMilestone(track)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors w-full"
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors w-full border-t border-[var(--neutral-cool-100)]"
                   >
                     <Plus size={14} />
                     Add milestone
                   </button>
                 )}
-              </>
-            )}
-          </div>
-        );
-      })}
+              </div>
+            </AccordionSection>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -660,6 +717,8 @@ export function OpeningMonthPlanWorkspace({
 }: Props) {
   const showMilestones = section === "milestones" || section === "all";
   const showPlaybook = section === "playbook" || section === "all";
+  const showOverview = section === "overview";
+  const loadPlaybookData = showPlaybook || showOverview;
 
   // Milestones state
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
@@ -671,12 +730,14 @@ export function OpeningMonthPlanWorkspace({
   const [editModal, setEditModal] = useState<{ milestone: Partial<Milestone> & { track: TrackKey }; isNew: boolean } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [stalesBannerDismissed, setStalesBannerDismissed] = useState(false);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   // Playbook state. `playbookLoading` starts false when the playbook section
   // is hidden (TIM-1521 milestones sub-page), so the empty-state copy
   // doesn't briefly flash a "Loading…" the user can never resolve.
+  // TIM-2778: also load for the overview tab so summary counts are accurate.
   const [playbookItems, setPlaybookItems] = useState<PlaybookItem[]>([]);
-  const [playbookLoading, setPlaybookLoading] = useState(showPlaybook);
+  const [playbookLoading, setPlaybookLoading] = useState(loadPlaybookData);
 
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -717,9 +778,9 @@ export function OpeningMonthPlanWorkspace({
   }, []);
 
   useEffect(() => {
-    if (!showPlaybook) return;
+    if (!loadPlaybookData) return;
     reloadPlaybook();
-  }, [reloadPlaybook, showPlaybook]);
+  }, [reloadPlaybook, loadPlaybookData]);
 
   // ── Save config ───────────────────────────────────────────────────────────────
   async function saveConfig(patch: Partial<LaunchPlanConfig>) {
@@ -803,6 +864,114 @@ export function OpeningMonthPlanWorkspace({
     } finally {
       setGenerating(false);
     }
+  }
+
+  // TIM-1521: was bundled with the playbook seed in handleGenerateAll. Now its
+  // own CTA on the Launch Milestones sub-page so an AI failure can't take the
+  // playbook with it.
+  async function handleGenerateMilestones() {
+    if (!canEdit) { setPaywallOpen(true); return; }
+    if (!launchDateInput) return;
+    setGenerating(true);
+    setToast(null);
+
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 90_000);
+
+    let milestonesUpdated = 0;
+    let paywallHit = false;
+
+    try {
+      const res = await fetch("/api/opening-month-plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId,
+          targetLaunchDate: launchDateInput,
+          existingMilestones: milestones.map((m) => ({ id: m.id, user_edited: m.user_edited })),
+        }),
+        signal: abortController.signal,
+      });
+
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const { events, rest } = consumeSseFrames(buf);
+        buf = rest;
+
+        for (const { data } of events) {
+          try {
+            const payload = JSON.parse(data);
+            if (payload.code === "paywall") {
+              paywallHit = true;
+              return;
+            }
+            if (
+              payload.code === "error" ||
+              payload.code === "db_error" ||
+              payload.code === "parse_error" ||
+              payload.code === "timeout" ||
+              payload.code === "upstream_error"
+            ) {
+              showToast("error", payload.message ?? "Couldn't generate milestones. Try again or contact support.");
+            }
+            if (payload.milestones) {
+              const proposedMilestones = payload.milestones as Milestone[];
+              const lastGeneratedAt = payload.lastGeneratedAt as string | undefined;
+              openAIReviewModal({
+                suggestions: [
+                  {
+                    id: "opening-month-milestones",
+                    fieldId: "milestones",
+                    fieldLabel: "Launch Milestones",
+                    originalValue: JSON.stringify(milestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
+                    proposedValue: JSON.stringify(proposedMilestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
+                    isStructured: true,
+                  },
+                ],
+                context: { workspace: "Opening Month Plan", section: "Launch Milestones" },
+                onApply: async () => {
+                  setMilestones(proposedMilestones);
+                  setConfig((c) => ({ ...c, lastGeneratedAt: lastGeneratedAt ?? c.lastGeneratedAt }));
+                  setStalesBannerDismissed(false);
+                },
+              });
+              milestonesUpdated = proposedMilestones.length;
+            }
+          } catch { /* non-JSON lines */ }
+        }
+      }
+
+      if (paywallHit) {
+        setPaywallOpen(true);
+      } else if (milestonesUpdated > 0) {
+        showToast("success", "Launch Milestones generated. Edit anything that doesn't fit your shop.");
+      }
+    } catch (err) {
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      showToast(
+        "error",
+        isAbort
+          ? "Generation timed out. Try again or contact support."
+          : "Couldn't generate milestones. Try again or contact support.",
+      );
+    } finally {
+      clearTimeout(timeoutId);
+      setGenerating(false);
+    }
+  }
+
+  // Legacy unified handler (defensive fallback for section="all").
+  async function handleGenerateAll() {
+    if (!canEdit) { setPaywallOpen(true); return; }
+    if (!launchDateInput) return;
+    await Promise.all([handleGenerateMilestones(), handleSeedPlaybook()]);
   }
 
   // ── Milestone CRUD ──────────────────────────────────────────────────────────
@@ -966,20 +1135,35 @@ export function OpeningMonthPlanWorkspace({
     (showPlaybook && playbookItems.length > 0);
 
   // TIM-1521: section-specific header copy + CTAs.
+  // TIM-2778: added "overview" case for the main launch-plan tab.
   const headerTitle =
-    section === "milestones" ? "Launch Milestones"
+    section === "overview" ? "Launch Plan"
+      : section === "milestones" ? "Launch Milestones"
       : section === "playbook" ? "Opening Month Plan"
       : "Opening Month Plan";
   const headerIcon = section === "playbook" ? ClipboardList : Rocket;
   const headerSubtitle =
-    section === "milestones"
+    section === "overview"
+      ? "Track your path to opening day — milestones, readiness, and the opening-month playbook in one place."
+      : section === "milestones"
       ? "The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates. Can be a year or more out."
       : section === "playbook"
       ? "The tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop."
       : "The dated milestones that gate opening day, plus the tactical week-by-week playbook for the weeks before, opening week, and your first 30 days in the shop.";
   const ctaLabel =
-    playbookItems.length > 0 ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan";
-  const ctaDisabled = generating || !canEdit;
+    section === "milestones" || section === "overview"
+      ? (milestones.length > 0 ? "Regenerate Launch Milestones" : "Generate Launch Milestones")
+      : section === "playbook"
+      ? (playbookItems.length > 0 ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan")
+      : (hasContent ? "Regenerate Opening Month Plan" : "Generate Opening Month Plan");
+  const onCtaClick =
+    section === "milestones" || section === "overview" ? handleGenerateMilestones
+      : section === "playbook" ? handleSeedPlaybook
+      : handleGenerateAll;
+  const ctaDisabled =
+    generating ||
+    !canEdit ||
+    (section !== "playbook" && !launchDateInput);
   const coPilotFocusLabel =
     section === "milestones" ? "Launch Milestones"
       : section === "playbook" ? "Opening Month Plan"
@@ -987,6 +1171,7 @@ export function OpeningMonthPlanWorkspace({
 
   return (
     <>
+    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
 
@@ -1005,11 +1190,17 @@ export function OpeningMonthPlanWorkspace({
           ) : undefined}
         />
 
-        {/* TIM-1634: standard suite sub-nav between the two pages in this
-            suite, replacing the old two-card landing. Only rendered for the
-            split sub-pages; the legacy unified ("all") page has no sub-nav. */}
+        {/* TIM-1634: standard suite sub-nav. Only rendered for split sub-pages;
+            the legacy unified ("all") page has no sub-nav.
+            TIM-2778: 3-tab nav (overview / milestones / playbook). */}
         {section !== "all" && (
-          <LaunchPlanSubNav active={section === "milestones" ? "milestones" : "playbook"} />
+          <LaunchPlanSubNav
+            active={
+              section === "overview" ? "overview"
+              : section === "milestones" ? "milestones"
+              : "playbook"
+            }
+          />
         )}
 
         <div className="space-y-4">
@@ -1114,6 +1305,76 @@ export function OpeningMonthPlanWorkspace({
             </div>
           )}
 
+          {/* ── Overview tab (TIM-2778): summary accordions ───────────────── */}
+          {showOverview && (() => {
+            const milestonesOverallStatus: SectionStatus =
+              milestones.length === 0 ? "empty"
+              : milestones.filter((m) => m.status === "done").length === milestones.length ? "complete"
+              : milestones.some((m) => m.status === "done" || m.status === "in_progress") ? "in_progress"
+              : "empty";
+            const playbookOverallStatus: SectionStatus =
+              playbookItems.length === 0 ? "empty"
+              : playbookItems.filter((r) => r.status === "done").length === playbookItems.length ? "complete"
+              : playbookItems.some((r) => r.status === "done" || r.status === "in_progress") ? "in_progress"
+              : "empty";
+            return (
+              <div className="space-y-3">
+                {/* Milestones summary */}
+                <AccordionSection title="Launch Milestones" status={milestonesOverallStatus} defaultOpen>
+                  {milestones.length === 0 ? (
+                    <p className="text-sm text-[var(--dark-grey)]">
+                      No milestones yet. Set a target opening date above and generate.
+                    </p>
+                  ) : (
+                    <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden divide-y divide-[var(--neutral-cool-100)]">
+                      {TRACK_KEYS.map((track) => {
+                        const items = milestones.filter((m) => m.track === track);
+                        const done = items.filter((m) => m.status === "done").length;
+                        const color = TRACK_COLORS[track];
+                        return (
+                          <div key={track} className="flex items-center gap-3 px-4 py-2.5">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color.dot}`} aria-hidden="true" />
+                            <span className="text-sm text-[var(--foreground)] flex-1">{TRACK_LABELS[track]}</span>
+                            <span className="text-xs text-[var(--muted-foreground)]">{done}/{items.length}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </AccordionSection>
+
+                {/* Playbook summary */}
+                <AccordionSection title="Opening Month Playbook" status={playbookOverallStatus} defaultOpen>
+                  {playbookLoading ? (
+                    <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>
+                  ) : playbookItems.length === 0 ? (
+                    <p className="text-sm text-[var(--dark-grey)]">
+                      No playbook items yet. Go to the Opening Month tab to generate a starter playbook.
+                    </p>
+                  ) : (
+                    <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden divide-y divide-[var(--neutral-cool-100)]">
+                      {PLAYBOOK_BUCKETS.map((b) => {
+                        const rows = playbookItems.filter((r) => bucketFor(r.day_offset).key === b.key);
+                        const done = rows.filter((r) => r.status === "done").length;
+                        return (
+                          <div key={b.key} className="flex items-center gap-3 px-4 py-2.5">
+                            <span className="text-sm text-[var(--foreground)] flex-1">{b.label}</span>
+                            <span className="text-xs text-[var(--muted-foreground)]">{done}/{rows.length} done</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </AccordionSection>
+
+                {/* Launch readiness */}
+                <div className="pt-2">
+                  <LaunchReadinessButton planId={planId} />
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ── Section 1: Milestones ─────────────────────────────────────── */}
           {showMilestones && (
           <section aria-labelledby="milestones-heading" className="pt-4">
@@ -1195,111 +1456,117 @@ export function OpeningMonthPlanWorkspace({
                 </div>
               )}
 
-              {playbookGrouped.map(({ bucket, rows }) => (
-                <div key={bucket.key} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
-                  <header className="px-4 py-3 border-b border-[var(--neutral-cool-100)]">
-                    <h3 className="text-lg font-bold text-[var(--foreground)] leading-tight">{bucket.label}</h3>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{bucket.description}</p>
-                  </header>
-
-                  {rows.length === 0 ? (
-                    <div className="px-4 py-3 text-sm text-[var(--dark-grey)]">No tasks yet in this stretch.</div>
-                  ) : (
-                    <ul className="divide-y divide-[var(--neutral-cool-100)]">
-                      {rows.map((row) => (
-                        <li key={row.id} className="px-4 py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
-                          <label className="md:col-span-1 text-xs text-[var(--muted-foreground)]">
-                            <span className="block mb-1">Day</span>
-                            <input
-                              type="number"
-                              min={bucket.min}
-                              max={bucket.max}
-                              defaultValue={row.day_offset}
-                              disabled={!canEdit}
-                              onBlur={(e) => {
-                                const next = parseOffset(e.target.value, row.day_offset);
-                                if (next !== row.day_offset) updatePlaybookItem(row.id, { day_offset: next });
-                              }}
-                              className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] text-center disabled:opacity-60"
-                            />
-                          </label>
-                          <label className="md:col-span-4 text-xs text-[var(--muted-foreground)]">
-                            <span className="block mb-1">Task</span>
-                            <input
-                              type="text"
-                              defaultValue={row.task}
-                              disabled={!canEdit}
-                              onBlur={(e) => e.target.value !== row.task && updatePlaybookItem(row.id, { task: e.target.value })}
-                              className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
-                            />
-                          </label>
-                          <label className="md:col-span-2 text-xs text-[var(--muted-foreground)]">
-                            <span className="block mb-1">Owner</span>
-                            <input
-                              type="text"
-                              defaultValue={row.owner ?? ""}
-                              disabled={!canEdit}
-                              onBlur={(e) => updatePlaybookItem(row.id, { owner: e.target.value || null })}
-                              placeholder="Founder"
-                              className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
-                            />
-                          </label>
-                          <label className="md:col-span-2 text-xs text-[var(--muted-foreground)]">
-                            <span className="block mb-1">Status</span>
-                            <select
-                              value={row.status}
-                              disabled={!canEdit}
-                              onChange={(e) => updatePlaybookItem(row.id, { status: e.target.value as LaunchItemStatus })}
-                              className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
-                            >
-                              {PLAYBOOK_STATUS_OPTIONS.map((s) => (
-                                <option key={s} value={s}>
-                                  {PLAYBOOK_STATUS_LABELS[s]}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="md:col-span-2 text-xs text-[var(--muted-foreground)]">
-                            <span className="block mb-1">Notes</span>
-                            <input
-                              type="text"
-                              defaultValue={row.notes ?? ""}
-                              disabled={!canEdit}
-                              onBlur={(e) => updatePlaybookItem(row.id, { notes: e.target.value || null })}
-                              className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
-                            />
-                          </label>
-                          <div className="md:col-span-1 flex items-center justify-end gap-2 pt-5">
-                            <span className={`hidden md:inline px-1.5 py-0.5 rounded text-xs font-medium ${PLAYBOOK_STATUS_STYLES[row.status]}`}>
-                              {formatOffset(row.day_offset)}
-                            </span>
-                            {canEdit && (
-                              <button
-                                type="button"
-                                onClick={() => removePlaybookItem(row.id)}
-                                className="text-xs text-[var(--dark-grey)] hover:text-red-500 transition-colors"
-                                title="Remove"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {canEdit && (
-                    <button
-                      onClick={() => addPlaybookItem(bucket)}
-                      className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors w-full border-t border-[var(--neutral-cool-100)]"
-                    >
-                      <Plus size={14} />
-                      Add task to {bucket.label}
-                    </button>
-                  )}
-                </div>
-              ))}
+              {/* TIM-2778: each bucket is an AccordionSection (v2 pattern) */}
+              {playbookGrouped.map(({ bucket, rows }) => {
+                const bucketStatus = getBucketStatus(rows);
+                return (
+                  <AccordionSection
+                    key={bucket.key}
+                    title={bucket.label}
+                    status={bucketStatus}
+                    defaultOpen={bucketStatus !== "complete"}
+                  >
+                    <p className="text-xs text-[var(--muted-foreground)] -mt-1">{bucket.description}</p>
+                    <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+                      {rows.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-[var(--dark-grey)]">No tasks yet in this stretch.</div>
+                      ) : (
+                        <ul className="divide-y divide-[var(--neutral-cool-100)]">
+                          {rows.map((row) => (
+                            <li key={row.id} className="px-4 py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+                              <label className="md:col-span-1 text-xs text-[var(--muted-foreground)]">
+                                <span className="block mb-1">Day</span>
+                                <input
+                                  type="number"
+                                  min={bucket.min}
+                                  max={bucket.max}
+                                  defaultValue={row.day_offset}
+                                  disabled={!canEdit}
+                                  onBlur={(e) => {
+                                    const next = parseOffset(e.target.value, row.day_offset);
+                                    if (next !== row.day_offset) updatePlaybookItem(row.id, { day_offset: next });
+                                  }}
+                                  className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] text-center disabled:opacity-60"
+                                />
+                              </label>
+                              <label className="md:col-span-4 text-xs text-[var(--muted-foreground)]">
+                                <span className="block mb-1">Task</span>
+                                <input
+                                  type="text"
+                                  defaultValue={row.task}
+                                  disabled={!canEdit}
+                                  onBlur={(e) => e.target.value !== row.task && updatePlaybookItem(row.id, { task: e.target.value })}
+                                  className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
+                                />
+                              </label>
+                              <label className="md:col-span-2 text-xs text-[var(--muted-foreground)]">
+                                <span className="block mb-1">Owner</span>
+                                <input
+                                  type="text"
+                                  defaultValue={row.owner ?? ""}
+                                  disabled={!canEdit}
+                                  onBlur={(e) => updatePlaybookItem(row.id, { owner: e.target.value || null })}
+                                  placeholder="Founder"
+                                  className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
+                                />
+                              </label>
+                              <label className="md:col-span-2 text-xs text-[var(--muted-foreground)]">
+                                <span className="block mb-1">Status</span>
+                                <select
+                                  value={row.status}
+                                  disabled={!canEdit}
+                                  onChange={(e) => updatePlaybookItem(row.id, { status: e.target.value as LaunchItemStatus })}
+                                  className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
+                                >
+                                  {PLAYBOOK_STATUS_OPTIONS.map((s) => (
+                                    <option key={s} value={s}>
+                                      {PLAYBOOK_STATUS_LABELS[s]}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="md:col-span-2 text-xs text-[var(--muted-foreground)]">
+                                <span className="block mb-1">Notes</span>
+                                <input
+                                  type="text"
+                                  defaultValue={row.notes ?? ""}
+                                  disabled={!canEdit}
+                                  onBlur={(e) => updatePlaybookItem(row.id, { notes: e.target.value || null })}
+                                  className="w-full border border-[var(--border-medium)] rounded px-2 py-1 text-sm text-[var(--foreground)] disabled:opacity-60"
+                                />
+                              </label>
+                              <div className="md:col-span-1 flex items-center justify-end gap-2 pt-5">
+                                <span className={`hidden md:inline px-1.5 py-0.5 rounded text-xs font-medium ${PLAYBOOK_STATUS_STYLES[row.status]}`}>
+                                  {formatOffset(row.day_offset)}
+                                </span>
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removePlaybookItem(row.id)}
+                                    className="text-xs text-[var(--dark-grey)] hover:text-red-500 transition-colors"
+                                    title="Remove"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => addPlaybookItem(bucket)}
+                          className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors w-full border-t border-[var(--neutral-cool-100)]"
+                        >
+                          <Plus size={14} />
+                          Add task to {bucket.label}
+                        </button>
+                      )}
+                    </div>
+                  </AccordionSection>
+                );
+              })}
 
               {playbookLoading && <p className="text-sm text-[var(--muted-foreground)]">Loading…</p>}
             </div>
