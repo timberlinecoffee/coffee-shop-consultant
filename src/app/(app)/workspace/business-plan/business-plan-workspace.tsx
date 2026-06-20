@@ -157,9 +157,10 @@ function determineInitialExpanded(
   section: BusinessPlanSectionData,
   allSections: BusinessPlanSectionData[]
 ): boolean {
-  if (section.userContent && section.userContent !== section.autoContent) return false;
+  // Align with StatusChip: any non-empty saved content = done
+  if (section.userContent && section.userContent.trim().length > 0) return false;
   const firstUnreviewed = allSections.find(
-    (s) => s.autoContent && (!s.userContent || s.userContent === s.autoContent)
+    (s) => s.autoContent && (!s.userContent || !s.userContent.trim().length)
   );
   if (firstUnreviewed) return section.key === firstUnreviewed.key;
   return section.key === "executive-summary";
