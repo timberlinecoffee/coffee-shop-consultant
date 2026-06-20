@@ -20,6 +20,7 @@ import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
   WorkspaceActionButton,
@@ -96,6 +97,7 @@ export function ConceptWorkspace({
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
   const { promoteOnEdit } = useWorkspaceStatus();
+  const uiRevamp = useUiRevamp();
   const router = useRouter();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
@@ -350,10 +352,37 @@ export function ConceptWorkspace({
             </>
           }
         />
-        {shopName && (
-          <p className="mb-6 text-xs text-[var(--dark-grey)]">
-            {shopName} · {progress.filled} of {progress.total} sections filled
-          </p>
+        {uiRevamp ? (
+          progress.total > 0 && (
+            <div className="mb-6 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {shopName ? <>{shopName} — </> : null}
+                  {progress.filled} of {progress.total} sections
+                </span>
+                <span className="text-xs font-semibold text-[var(--teal)]">
+                  {Math.round((progress.filled / progress.total) * 100)}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
+                  style={{ width: `${Math.round((progress.filled / progress.total) * 100)}%` }}
+                  role="progressbar"
+                  aria-valuenow={progress.filled}
+                  aria-valuemin={0}
+                  aria-valuemax={progress.total}
+                  aria-label="Concept completion"
+                />
+              </div>
+            </div>
+          )
+        ) : (
+          shopName && (
+            <p className="mb-6 text-xs text-[var(--dark-grey)]">
+              {shopName} · {progress.filled} of {progress.total} sections filled
+            </p>
+          )
         )}
 
         {/* Read-only banner */}
