@@ -335,7 +335,7 @@ export function OperationsPlaybookWorkspace({
     {AIReviewModalNode}
     {benchmarkAIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="w-full px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
             under the title, SaveIndicator + Print action top-right, matching
             Financials (was description full-width below the title row). Header
@@ -1015,7 +1015,7 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
             ingredients on each menu item. They print here for the bar.
           </SectionHelp>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
           <Link
             href="/workspace/operations-playbook/print?doc=recipes"
             target="_blank"
@@ -1028,7 +1028,7 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
           </Link>
           <Link
             href="/workspace/menu-pricing"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             Open Menu workspace

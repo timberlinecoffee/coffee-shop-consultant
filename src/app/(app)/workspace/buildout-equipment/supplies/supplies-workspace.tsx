@@ -257,7 +257,7 @@ export function SuppliesWorkspace({
       {showInventoryToast && <InventoryRedirectToast />}
       {grandTotalCents > 0 && (
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[var(--teal-bg-ultra)] shadow-sm">
-          <div className="px-6 py-3 flex items-center gap-6">
+          <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-4 sm:gap-6">
             <div>
               <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Startup Total</p>
               <p className="text-xl font-bold text-[var(--teal)]">{formatCurrencyAmount(grandTotalCents / 100, initialCurrencyCode)}</p>
@@ -283,7 +283,7 @@ export function SuppliesWorkspace({
           </div>
         </div>
       )}
-      <div className="px-6 pt-8 pb-16">
+      <div className="px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
         {/* TIM-1894: canonical WorkspaceHeader (View filter is the only action;
             no hero primary on the Supplies tab). */}

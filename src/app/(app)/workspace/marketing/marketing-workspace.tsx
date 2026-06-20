@@ -326,7 +326,7 @@ export function MarketingWorkspace({
     <>
       {AIReviewModalNode}
       <div className="bg-[var(--background)] min-h-screen">
-        <div className="w-full px-6 pt-8 pb-16">
+        <div className="w-full px-4 sm:px-6 pt-8 pb-16">
           {/* TIM-1894: canonical WorkspaceHeader — description in the left column
               under the title, SaveIndicator + Print action top-right, matching
               ops-playbook and Financials. */}
@@ -642,7 +642,7 @@ function CustomChannelInput({
         }}
         disabled={!canEdit}
         placeholder="Add another channel"
-        className={`${inputCls} max-w-xs`}
+        className={`${inputCls} flex-1 min-w-0`}
       />
       <button
         type="button"

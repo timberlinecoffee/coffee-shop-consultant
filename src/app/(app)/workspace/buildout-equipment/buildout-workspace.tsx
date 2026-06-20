@@ -373,7 +373,7 @@ export function BuildoutEquipmentWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="px-6 pt-8 pb-16">
+      <div className="px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
         {/* TIM-1894: canonical WorkspaceHeader. "Describe your setup" is the
             filled-primary (the AI hero action, analogous to Financials' Guided

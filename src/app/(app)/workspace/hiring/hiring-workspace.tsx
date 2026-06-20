@@ -2052,7 +2052,7 @@ function OnboardingTab({
                           return (
                             <div key={t.id} className="px-5 py-3 space-y-2">
                               {/* Task row */}
-                              <div className="flex items-start gap-3">
+                              <div className="flex flex-wrap items-start gap-3">
                                 <button
                                   type="button"
                                   onClick={() => canEdit && toggleTask(t)}
@@ -2068,7 +2068,7 @@ function OnboardingTab({
                                   )}
                                 </button>
 
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-[140px]">
                                   <input
                                     className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent ${
                                       t.completed_at
@@ -2085,7 +2085,7 @@ function OnboardingTab({
                                 </div>
 
                                 {/* Due day input + computed calendar date */}
-                                <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0 pl-7 sm:pl-0">
                                   <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                     <span className="whitespace-nowrap">Due: Day</span>
                                     <input
