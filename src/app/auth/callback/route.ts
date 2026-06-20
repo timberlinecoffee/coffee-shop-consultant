@@ -2,12 +2,27 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { resolveNext } from "@/lib/safe-next";
+import {
+  browserHintFromUA,
+  cookieShape,
+  logOAuthDiag,
+  newCorrId,
+  tail4,
+} from "@/lib/oauth-diag";
 
 // TIM-2327: short-lived first-party handoff cookies set by /login before
 // signInWithOAuth. Lets us strip query params off `redirectTo` so it matches
 // Supabase's Additional Redirect URLs allowlist exactly (bare `/auth/callback`),
 // avoiding the Site URL fallback that drops users on apex coming-soon.
-const HANDOFF_COOKIES = ["gw_oauth_signup_source", "gw_oauth_next", "gw_oauth_verifier_pre_nav", "gw_oauth_stale_verifiers"] as const;
+// TIM-2786 adds gw_oauth_corr_id to thread one login attempt across the
+// pre-nav client beacon, this callback, and the bounced /login page.
+const HANDOFF_COOKIES = [
+  "gw_oauth_signup_source",
+  "gw_oauth_next",
+  "gw_oauth_verifier_pre_nav",
+  "gw_oauth_stale_verifiers",
+  "gw_oauth_corr_id",
+] as const;
 
 function clearHandoffCookies(res: NextResponse) {
   for (const name of HANDOFF_COOKIES) {
@@ -35,10 +50,17 @@ function buildDiag(parts: Record<string, string | number | boolean | null | unde
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const requestUrl = new URL(request.url);
+  const { searchParams, origin } = requestUrl;
   const code = searchParams.get("code");
   const errorParam = searchParams.get("error");
   const cookieStore = await cookies();
+
+  // TIM-2786: correlation id threads pre-nav client beacon → this callback →
+  // bounced /login client beacon. Reuse the handoff cookie if present so the
+  // pre-nav row matches this server row; otherwise mint a fresh one so this
+  // attempt still gets its own group key in Vercel logs.
+  const corrId = cookieStore.get("gw_oauth_corr_id")?.value || newCorrId();
 
   // Probe the verifier cookie presence (NOT its value — that's secret). The
   // verifier name pattern is `sb-<ref>-auth-token-code-verifier`. Also count
@@ -70,15 +92,7 @@ export async function GET(request: Request) {
   // would have shadowed the fresh write and broken the round-trip).
   const staleVerifiers = cookieStore.get("gw_oauth_stale_verifiers")?.value;
   const userAgent = request.headers.get("user-agent") ?? "";
-  const browserHint = /Firefox\//.test(userAgent)
-    ? "firefox"
-    : /Edg\//.test(userAgent)
-    ? "edge"
-    : /Chrome\//.test(userAgent) && !/Edg\//.test(userAgent)
-    ? "chrome"
-    : /Safari\//.test(userAgent)
-    ? "safari"
-    : "other";
+  const browserHint = browserHintFromUA(userAgent);
 
   // Prefer the cookie handoff (OAuth path); fall back to query param for the
   // email-link confirmation flow which still uses `?next=` on emailRedirectTo.
@@ -86,14 +100,71 @@ export async function GET(request: Request) {
     cookieStore.get("gw_oauth_next")?.value ?? searchParams.get("next")
   );
 
+  // TIM-2786: structured diag at handler entry. The full URL bar (with
+  // code/state truncated to last 4 chars), every Supabase + handoff cookie
+  // (name + length, NEVER value), the resolved `next` allowlist outcome,
+  // and the redirect chain headers (Referer + sec-fetch hints) so we can
+  // tell a clean magic-link callback from a stale-cookie bounce. Default-on.
+  logOAuthDiag("callback_entry", {
+    corrId,
+    url: `${requestUrl.pathname}${requestUrl.search ? "?" + [...searchParams.entries()].map(([k, v]) => k === "code" || k === "state" ? `${k}=${tail4(v)}` : `${k}=${v.slice(0, 64)}`).join("&") : ""}`,
+    has_code: code !== null,
+    code_tail: tail4(code),
+    state_tail: tail4(searchParams.get("state")),
+    error_param: errorParam ?? "absent",
+    error_desc: searchParams.get("error_description")?.slice(0, 120) ?? "absent",
+    verifier_cookies: verifierCookies.length,
+    verifier_chunks: verifierChunked.length,
+    verifier_pre_nav: verifierPreNav ?? "absent",
+    stale_verifiers: staleVerifiers ?? "absent",
+    auth_token_cookies: authTokenCookies.length,
+    handoff_cookies: handoffPresent,
+    remember_me: rememberMeRaw ?? "absent",
+    browser: browserHint,
+    next_resolved: next ?? "none",
+    next_raw_cookie: tail4(cookieStore.get("gw_oauth_next")?.value),
+    referer: request.headers.get("referer")?.slice(0, 200) ?? "absent",
+    sec_fetch_site: request.headers.get("sec-fetch-site") ?? "absent",
+    sec_fetch_mode: request.headers.get("sec-fetch-mode") ?? "absent",
+    sec_fetch_dest: request.headers.get("sec-fetch-dest") ?? "absent",
+    sb_cookie_shape: cookieShape(allCookies.filter((c) => c.name.startsWith("sb-"))),
+    all_cookie_names: allCookies.map((c) => c.name).slice(0, 60),
+  });
+
+  // TIM-2786 helper: build a redirect, log the Location header for the
+  // diag stream (NEVER the full code/state), and clear handoff cookies.
+  function redirectAndLog(path: string, stage: string, extra: Record<string, unknown> = {}) {
+    const targetUrl = path.startsWith("http") ? path : `${origin}${path}`;
+    const sanitized = (() => {
+      try {
+        const u = new URL(targetUrl);
+        const params = new URLSearchParams();
+        for (const [k, v] of u.searchParams.entries()) {
+          params.set(k, k === "diag" ? `len=${v.length}` : v.slice(0, 80));
+        }
+        return `${u.pathname}${params.size > 0 ? "?" + params.toString() : ""}`;
+      } catch {
+        return "unparseable";
+      }
+    })();
+    logOAuthDiag("callback_redirect", {
+      corrId,
+      stage,
+      location: sanitized,
+      ...extra,
+    });
+    return clearHandoffCookies(NextResponse.redirect(targetUrl));
+  }
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      logOAuthDiag("callback_exchange_ok", { corrId, browser: browserHint });
       const { data: { user } } = await supabase.auth.getUser();
 
       if (next) {
-        return clearHandoffCookies(NextResponse.redirect(`${origin}${next}`));
+        return redirectAndLog(next, "exchange_ok_next", { next_resolved: next });
       }
 
       if (user) {
@@ -113,12 +184,26 @@ export async function GET(request: Request) {
         }
 
         if (!profile?.onboarding_completed) {
-          return clearHandoffCookies(NextResponse.redirect(`${origin}/onboarding`));
+          return redirectAndLog("/onboarding", "exchange_ok_onboarding");
         }
       }
-      return clearHandoffCookies(NextResponse.redirect(`${origin}/dashboard`));
+      return redirectAndLog("/dashboard", "exchange_ok_dashboard");
     }
 
+    logOAuthDiag("callback_exchange_fail", {
+      corrId,
+      err: error.message?.slice(0, 200),
+      err_status: (error as { status?: number }).status,
+      err_name: (error as { name?: string }).name,
+      verifier_cookies: verifierCookies.length,
+      verifier_chunks: verifierChunked.length,
+      verifier_pre_nav: verifierPreNav ?? "absent",
+      stale_verifiers: staleVerifiers ?? "absent",
+      auth_token_cookies: authTokenCookies.length,
+      handoff_cookies: handoffPresent,
+      browser: browserHint,
+      sb_names: sbNames,
+    });
     const diag = buildDiag({
       stage: "exchange_failed",
       err: error.message,
@@ -134,11 +219,19 @@ export async function GET(request: Request) {
       browser: browserHint,
       sb_names: sbNames,
     });
-    return clearHandoffCookies(
-      NextResponse.redirect(`${origin}/login?error=auth_failed&diag=${encodeURIComponent(diag)}`)
+    // TIM-2786: include `corr=` so the client beacon on /login can stitch
+    // back to the same corrId without reading any cookie value.
+    return redirectAndLog(
+      `/login?error=auth_failed&corr=${encodeURIComponent(corrId)}&diag=${encodeURIComponent(diag)}`,
+      "exchange_failed",
     );
   }
 
+  logOAuthDiag("callback_no_code", {
+    corrId,
+    error_param: errorParam ?? "absent",
+    search_keys: [...searchParams.keys()].join(","),
+  });
   const diag = buildDiag({
     stage: errorParam ? "supabase_error_param" : "no_code",
     err: errorParam ?? undefined,
@@ -153,7 +246,8 @@ export async function GET(request: Request) {
     sb_names: sbNames,
     search_keys: [...searchParams.keys()].join(","),
   });
-  return clearHandoffCookies(
-    NextResponse.redirect(`${origin}/login?error=auth_failed&diag=${encodeURIComponent(diag)}`)
+  return redirectAndLog(
+    `/login?error=auth_failed&corr=${encodeURIComponent(corrId)}&diag=${encodeURIComponent(diag)}`,
+    errorParam ? "supabase_error_param" : "no_code",
   );
 }

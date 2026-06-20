@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/remember-me";
 import { resolveNext } from "@/lib/safe-next";
 import { deleteAllVerifierVariants, verifierPresentInDocumentCookie } from "./clear-stale-verifier";
+import { newCorrId } from "@/lib/oauth-diag";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -150,6 +151,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setHandoffCookie("gw_oauth_signup_source", getSignupSource());
     const next = getNextParam();
     if (next) setHandoffCookie("gw_oauth_next", next);
+    // TIM-2786: mint a correlation id and hand it off so /auth/callback can
+    // stitch the pre-nav client beacon, the server callback log row, and the
+    // post-bounce /login client beacon into one log group. The id is opaque,
+    // short, and contains no PII (see lib/oauth-diag.ts).
+    const corrId = newCorrId();
+    setHandoffCookie("gw_oauth_corr_id", corrId);
     // TIM-2430: write preference before redirecting to Google; it survives the
     // OAuth round-trip and the proxy+server reads it on /auth/callback.
     writeRememberPreference(rememberMe);
@@ -203,6 +210,50 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       setLoading(false);
       googleInFlightRef.current = false;
       return;
+    }
+    // TIM-2786: pre-nav beacon. sendBeacon survives the page-unload from
+    // window.location.assign(); fetch with keepalive falls back if Beacon API
+    // is absent. Captures the verifier-cookie / sb-* state at the EXACT moment
+    // we hand control to Google so we can spot Safari ITP / narrow-Path
+    // shadowing / refresh-token wipe race conditions that take effect across
+    // the Google round-trip. Best-effort: never blocks the redirect.
+    try {
+      const cookieNames = (typeof document !== "undefined" ? document.cookie : "")
+        .split(";")
+        .map((c) => c.trim().split("=")[0])
+        .filter(Boolean);
+      const beacon = {
+        event: "pre_nav_intent" as const,
+        corrId,
+        ua: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 200) : "absent",
+        vw: typeof window !== "undefined" ? window.innerWidth : 0,
+        vh: typeof window !== "undefined" ? window.innerHeight : 0,
+        cookie_names: cookieNames.slice(0, 80),
+        verifier_present: typeof document !== "undefined" && verifierPresentInDocumentCookie(document.cookie),
+        stale_verifiers: staleVerifierCount,
+        authorize_host: (() => {
+          try { return new URL(data.url).host; } catch { return "unparseable"; }
+        })(),
+        authorize_path: (() => {
+          try { return new URL(data.url).pathname; } catch { return "unparseable"; }
+        })(),
+        third_party_cookie_hint: typeof document !== "undefined" && /Safari/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent) ? "safari_check_itp" : "other",
+        next_set: Boolean(next),
+      };
+      const body = JSON.stringify(beacon);
+      const blob = new Blob([body], { type: "application/json" });
+      if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon("/api/auth-diag", blob);
+      } else if (typeof fetch === "function") {
+        fetch("/api/auth-diag", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Observation must never break the navigation.
     }
     window.location.assign(data.url);
   }

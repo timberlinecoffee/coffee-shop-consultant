@@ -6,6 +6,7 @@ import {
   SessionExpiredBanner,
   isSessionExpiredFlag,
 } from "../_components/SessionExpiredBanner";
+import { OAuthDiagBeacon } from "../_components/OAuthDiagBeacon";
 import { createClient } from "@/lib/supabase/server";
 import { resolveNext } from "@/lib/safe-next";
 
@@ -18,9 +19,9 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; next?: string; error?: string; diag?: string; expired?: string }>;
+  searchParams: Promise<{ mode?: string; next?: string; error?: string; diag?: string; expired?: string; corr?: string }>;
 }) {
-  const { mode, next, error, diag, expired } = await searchParams;
+  const { mode, next, error, diag, expired, corr } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
   // TIM-2732: surface a session-expiry banner when the (app) layout or proxy
@@ -59,6 +60,14 @@ export default async function LoginPage({
           {isSignup ? "Start your coffee shop journey for free" : "Sign in to your coffee shop plan"}
         </p>
         {sessionExpired && <SessionExpiredBanner className="mb-4" />}
+        {/* TIM-2786: client beacon — fires only when ?error= is present, so
+            visitors arriving at /login from a link or footer never trigger it. */}
+        <OAuthDiagBeacon
+          corrId={typeof corr === "string" && corr.length > 0 ? corr : null}
+          errorParam={typeof error === "string" && error.length > 0 ? error : null}
+          diagLen={typeof diag === "string" ? diag.length : 0}
+          diagHead={typeof diag === "string" ? diag.slice(0, 200) : ""}
+        />
         {error === "auth_failed" && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             <p className="font-medium mb-1">Sign-in didn&apos;t complete. Please try again.</p>
