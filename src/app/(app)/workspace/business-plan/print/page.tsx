@@ -283,13 +283,15 @@ export default async function BusinessPlanPrintPage({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            /* TIM-2333: workspace chrome (sidebar + topbar) carries the
-               Groundwork mark; the printable should look like the user's
-               own document at every magnification. The action bar above
-               already provides a "Back to editing" link, so the workspace
-               nav is redundant on this route. Hide in all media. */
+            /* TIM-2333 / TIM-2785: workspace chrome (sidebar + topbar) carries
+               the Groundwork mark; the printable should look like the user's
+               own document at every magnification. Targets both v1 AppSidebar
+               and v2 SidebarV2 by aria-label. Pattern matches concept/print
+               (TIM-2784). */
             aside[aria-label="Workspace navigation"],
-            nav[aria-label="Workspace navigation"] { display: none !important; }
+            nav[aria-label="Workspace navigation"],
+            aside[aria-label="Main navigation"],
+            nav[aria-label="Main navigation"] { display: none !important; }
             /* Workspace layout puts the lg:pl-[224px] padding on the flex-1
                wrapper, not on <main>. With the sidebar hidden, undo that
                offset so the printable centers correctly on screen. */

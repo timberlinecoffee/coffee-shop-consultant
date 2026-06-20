@@ -27,6 +27,7 @@ import {
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { useBusinessPlanProgressOverlay } from "@/hooks/useBusinessPlanProgressOverlay";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { PreGenerateChecklist, type PreGenerateChecklistItem } from "./pre-generate-checklist";
@@ -216,6 +217,7 @@ export function BusinessPlanWorkspace({
   // still calls /api/business-plan/audit (`runPreflightAudit` below).
 
   const { promoteOnEdit } = useWorkspaceStatus();
+  const uiRevamp = useUiRevamp();
   // Auto-promote not_started → in_progress once any section has user content.
   const hasContent = sections.some((s) => s.userContent || s.autoContent);
   useEffect(() => {
@@ -806,9 +808,45 @@ export function BusinessPlanWorkspace({
         {/* TIM-2416 — sub-nav removed with the Quality Check tab. The
             Business Plan workspace is now a single-view editor; the audit
             engine lives in the companion. */}
-        <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
-          {visibleCount} of {sections.length} sections visible
-        </p>
+        {/* TIM-2785: v2 chrome — progress bar matches concept workspace pattern
+            (TIM-2784). Shows reviewed sections when uiRevamp is on; falls back
+            to the plain section count for v1. */}
+        {uiRevamp ? (
+          visibleCount > 0 && (() => {
+            const reviewedCount = sections.filter(
+              (s) => s.isVisible && s.userContent && s.userContent.trim().length > 0,
+            ).length;
+            const pct = Math.round((reviewedCount / visibleCount) * 100);
+            return (
+              <div className="mb-6 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    {shopName ? <>{shopName} — </> : null}
+                    {reviewedCount} of {visibleCount} sections reviewed
+                  </span>
+                  <span className="text-xs font-semibold text-[var(--teal)]">
+                    {pct}%
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
+                    style={{ width: `${pct}%` }}
+                    role="progressbar"
+                    aria-valuenow={reviewedCount}
+                    aria-valuemin={0}
+                    aria-valuemax={visibleCount}
+                    aria-label="Business plan completion"
+                  />
+                </div>
+              </div>
+            );
+          })()
+        ) : (
+          <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
+            {visibleCount} of {sections.length} sections visible
+          </p>
+        )}
 
         {/* TIM-2466: pre-generate checklist. Renders only when at least one
             source workspace (Concept, Menu & Pricing, Marketing, Hiring) is
