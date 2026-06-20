@@ -30,6 +30,7 @@ import {
 import { loadFinancialSnapshot } from "@/lib/dashboard/financial-snapshot";
 import { HomeV2 } from "./_components/HomeV2";
 import { TrialBanner } from "./_components/trial-banner";
+import { PaymentFailureBanner } from "./_components/payment-failure-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
 import { OpenImportFromQuery } from "./_components/open-import-from-query";
@@ -94,6 +95,13 @@ export default async function DashboardPage() {
         <Suspense fallback={null}>
           <OpenImportFromQuery />
         </Suspense>
+        {/* TIM-2803: payment failure banner — shown when invoice.payment_failed
+            webhook stamped past_due. Directs owner to update card before the
+            3-day grace period expires. Rendered before the trial banner so it
+            is never obscured. */}
+        {profile?.subscription_status === "past_due" && (
+          <PaymentFailureBanner />
+        )}
         {profile?.subscription_status === "free_trial" &&
           isTrialActive(profile.trial_ends_at) && (
             <TrialBanner
@@ -125,6 +133,10 @@ export default async function DashboardPage() {
         <Suspense fallback={null}>
           <OpenImportFromQuery />
         </Suspense>
+        {/* TIM-2803: payment failure banner — v1 path */}
+        {profile?.subscription_status === "past_due" && (
+          <PaymentFailureBanner />
+        )}
         {profile?.subscription_status === "free_trial" &&
           isTrialActive(profile.trial_ends_at) && (
             <TrialBanner
