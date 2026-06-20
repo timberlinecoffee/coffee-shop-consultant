@@ -292,8 +292,8 @@ export function ConceptWorkspace({
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
   return (
-    <div className="bg-[var(--background)]">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
+    <div className="bg-[var(--background)] min-h-screen">
+      <div className="w-full px-6 pt-8 pb-16">
         {/* TIM-2455: canonical WorkspaceHeader (matches Financials / Equipment /
             Hiring chrome). Action cluster: [Primary: Ask Scout] [Print
             document] [SaveStatusAndButton]. Replaces the bespoke ring + bar

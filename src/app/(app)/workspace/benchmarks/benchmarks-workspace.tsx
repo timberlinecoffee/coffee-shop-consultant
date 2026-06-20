@@ -99,8 +99,8 @@ export function BenchmarksWorkspace({
   const drilldowns = data?.drilldowns ?? {};
 
   return (
-    <div className="bg-[var(--background)]">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
+    <div className="bg-[var(--background)] min-h-screen">
+      <div className="w-full px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={TrendingUp}
           title="Benchmarks"
