@@ -74,7 +74,7 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
 
       <button
         onClick={() => setMenuOpen((o) => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-white text-left hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--border)] bg-white text-left hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
         aria-expanded={menuOpen}
         aria-haspopup="listbox"
       >
@@ -141,7 +141,7 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
               className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--teal)] hover:bg-[var(--surface-warm-100)] transition-colors"
             >
               <Plus size={14} aria-hidden="true" />
-              Add project
+              Add Project
             </button>
           ) : (
             <button
@@ -259,7 +259,7 @@ function AddProjectModal({
       <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-lg text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
+          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
           aria-label="Close"
         >
           <X size={18} aria-hidden="true" />
