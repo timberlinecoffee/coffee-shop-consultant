@@ -8,20 +8,23 @@
 //
 // TIM-1793: now delegates to the canonical WorkspaceSubNav (pill style) so its
 // layout matches every other Groundwork workspace.
+//
+// TIM-2778: 3-tab layout (Launch Plan overview / Milestones / Opening Month).
 
 import {
   WorkspaceSubNav,
   type WorkspaceSubNavTab,
 } from "@/components/workspace/WorkspaceSubNav";
 
-type Active = "milestones" | "playbook";
+export type LaunchPlanTab = "overview" | "milestones" | "playbook";
 
 // TIM-1888 H-6: text-only pills (no leading icon) to match the Financials canonical.
-const TABS: ReadonlyArray<WorkspaceSubNavTab<Active>> = [
-  { key: "milestones", label: "Launch Milestones", href: "/workspace/launch-plan/milestones" },
-  { key: "playbook", label: "Opening Month Plan", href: "/workspace/launch-plan/opening-month" },
+const TABS: ReadonlyArray<WorkspaceSubNavTab<LaunchPlanTab>> = [
+  { key: "overview", label: "Launch Plan", href: "/workspace/launch-plan" },
+  { key: "milestones", label: "Milestones", href: "/workspace/launch-plan/milestones" },
+  { key: "playbook", label: "Opening Month", href: "/workspace/launch-plan/opening-month" },
 ];
 
-export function LaunchPlanSubNav({ active }: { active: Active }) {
+export function LaunchPlanSubNav({ active }: { active: LaunchPlanTab }) {
   return <WorkspaceSubNav tabs={TABS} active={active} ariaLabel="Launch Plan" />;
 }
