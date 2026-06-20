@@ -1,23 +1,27 @@
 "use client";
 
-// TIM-1417: Marketing planning workspace. Four tabs: Overview, Channels,
+// TIM-1417: Marketing planning workspace. Four sections: Overview, Channels,
 // Story And Brand, Pre-launch Plan. Autosaves to workspace_documents under
 // workspace_key='marketing'. AI seed pulls from concept + onboarding answers.
+// TIM-2777: v2 layout — WorkspaceHeader + AccordionSection full-width, replacing
+// the max-w-3xl tab-based pattern (matches ops-playbook TIM-2776).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Megaphone,
-  Check,
   Sparkles,
   Plus,
   Trash2,
   ArrowUp,
   ArrowDown,
   Printer,
+  ChevronDown,
+  CheckCircle,
+  Circle,
+  Minus,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
   WorkspaceActionButton,
@@ -45,15 +49,108 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
-// TIM-1353 v2: section headers parse as structural headers (14px / bold / wider
-// tracking + more bottom space), not floating eyebrow tags.
-const sectionLabelCls =
-  "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
-const cardCls = "rounded-xl border border-[var(--border)] bg-white";
 
 function localId(): string {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// ── Accordion types & components ─────────────────────────────────────────────
+// TIM-2777: pattern lifted from OperationsPlaybookWorkspace (TIM-2776).
+
+type SectionStatus = "complete" | "in_progress" | "empty";
+
+function StatusBadge({ status }: { status: SectionStatus }) {
+  if (status === "complete") {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-tint-100)] border border-[var(--teal-tint)] px-2 py-0.5 rounded-full shrink-0">
+        <CheckCircle size={10} aria-hidden="true" />
+        Complete
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
+        <Circle size={10} aria-hidden="true" />
+        In progress
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
+      <Minus size={10} aria-hidden="true" />
+      Empty
+    </span>
+  );
+}
+
+function AccordionSection({
+  title,
+  status,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  status: SectionStatus;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <ChevronDown
+            size={16}
+            className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
+        </div>
+        <StatusBadge status={status} />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section status derivers ───────────────────────────────────────────────────
+
+function getMarketingSectionStatus(
+  doc: MarketingDocument,
+  key: MarketingSectionKey,
+): SectionStatus {
+  if (key === "overview") {
+    return doc.overview.narrative.trim().length > 0 ? "complete" : "empty";
+  }
+  if (key === "channels") {
+    return doc.channels.selected.length > 0 ? "complete" : "empty";
+  }
+  if (key === "story") {
+    const { founder_story, origin, differentiator, target_customer } = doc.story;
+    const filled = [founder_story, origin, differentiator, target_customer].filter(
+      (v) => v.trim().length > 0,
+    ).length;
+    if (filled === 4) return "complete";
+    if (filled > 0) return "in_progress";
+    return "empty";
+  }
+  if (key === "pre_launch") {
+    return doc.pre_launch.milestones.length > 0 ? "complete" : "empty";
+  }
+  return "empty";
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   planId: string;
@@ -72,7 +169,6 @@ export function MarketingWorkspace({
   initialTrialMessagesUsed,
 }: Props) {
   const [doc, setDoc] = useState<MarketingDocument>(initialDoc);
-  const [active, setActive] = useState<MarketingSectionKey>("overview");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [paywallReason, setPaywallReason] = useState<
@@ -159,12 +255,14 @@ export function MarketingWorkspace({
       if (!res.ok) return;
       const body = (await res.json()) as { content: MarketingDocument };
       const sectionLabel = section.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const currentSectionValue = typeof doc[section as keyof typeof doc] === "string"
-        ? (doc[section as keyof typeof doc] as string)
-        : JSON.stringify(doc[section as keyof typeof doc] ?? "");
-      const proposedValue = typeof body.content[section as keyof typeof body.content] === "string"
-        ? (body.content[section as keyof typeof body.content] as string)
-        : JSON.stringify(body.content[section as keyof typeof body.content] ?? "");
+      const currentSectionValue =
+        typeof doc[section as keyof typeof doc] === "string"
+          ? (doc[section as keyof typeof doc] as string)
+          : JSON.stringify(doc[section as keyof typeof doc] ?? "");
+      const proposedValue =
+        typeof body.content[section as keyof typeof body.content] === "string"
+          ? (body.content[section as keyof typeof body.content] as string)
+          : JSON.stringify(body.content[section as keyof typeof body.content] ?? "");
       openAIReviewModal({
         suggestions: [
           {
@@ -187,120 +285,89 @@ export function MarketingWorkspace({
     }
   }
 
-  const activeLabel = MARKETING_SECTION_LABELS[active];
-
   return (
     <>
-    {AIReviewModalNode}
-    <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
-        {/* TIM-1894: canonical WorkspaceHeader — description sits in the left
-            column under the title (was full-width below the title row) and the
-            SaveIndicator + Print action live top-right, matching Financials. */}
-        <WorkspaceHeader
-          Icon={Megaphone}
-          title="Marketing"
-          description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
-          actions={
-            <>
-              {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
-              <WorkspaceActionButton
-                className="hidden sm:flex"
-                onClick={() =>
-                  window.open(
-                    "/workspace/marketing/print",
-                    "_blank",
-                    "noopener,noreferrer"
-                  )
-                }
-                aria-label="Print view"
-                title="Open a print-friendly view of your marketing plan"
-              >
-                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>Print view</span>
-              </WorkspaceActionButton>
-              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
-            </>
-          }
+      {AIReviewModalNode}
+      <div className="bg-[var(--background)] min-h-screen">
+        <div className="w-full px-6 pt-8 pb-16">
+          {/* TIM-1894: canonical WorkspaceHeader — description in the left column
+              under the title, SaveIndicator + Print action top-right, matching
+              ops-playbook and Financials. */}
+          <WorkspaceHeader
+            Icon={Megaphone}
+            title="Marketing"
+            description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
+            actions={
+              <>
+                {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
+                <WorkspaceActionButton
+                  className="hidden sm:flex"
+                  onClick={() =>
+                    window.open(
+                      "/workspace/marketing/print",
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
+                  aria-label="Print view"
+                  title="Open a print-friendly view of your marketing plan"
+                >
+                  <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  <span>Print view</span>
+                </WorkspaceActionButton>
+                <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              </>
+            }
+          />
+
+          {/* TIM-2777: accordion layout — replaces max-w-3xl tab-based pattern */}
+          <div className="space-y-3">
+            {MARKETING_SECTION_KEYS.map((key, i) => {
+              const label = MARKETING_SECTION_LABELS[key];
+              const status = getMarketingSectionStatus(doc, key);
+              return (
+                <AccordionSection
+                  key={key}
+                  title={label}
+                  status={status}
+                  defaultOpen={i === 0}
+                >
+                  <SectionBody
+                    sectionKey={key}
+                    label={label}
+                    tagline={MARKETING_SECTION_TAGLINES[key]}
+                    canEdit={canEdit}
+                    doc={doc}
+                    updateDoc={updateDoc}
+                    onGenerate={() => handleGenerate(key)}
+                    generating={generating === key}
+                  />
+                </AccordionSection>
+              );
+            })}
+          </div>
+        </div>
+
+        <CoPilotDrawer
+          planId={planId}
+          workspaceKey="marketing"
+          currentFocus={{ label: "Marketing" }}
+          initialTrialMessagesUsed={initialTrialMessagesUsed}
         />
 
-        <SectionTabs active={active} onChange={setActive} doc={doc} />
-
-        <div className="mt-6 space-y-6">
-          <SectionEditor
-            key={active}
-            sectionKey={active}
-            label={activeLabel}
-            tagline={MARKETING_SECTION_TAGLINES[active]}
-            canEdit={canEdit}
-            doc={doc}
-            updateDoc={updateDoc}
-            onGenerate={() => handleGenerate(active)}
-            generating={generating === active}
-          />
-        </div>
+        <PaywallModal
+          open={paywallReason !== null}
+          reason={paywallReason ?? "no_subscription"}
+          onClose={() => setPaywallReason(null)}
+        />
       </div>
-
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="marketing"
-        currentFocus={{ label: activeLabel }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-      />
-
-      <PaywallModal
-        open={paywallReason !== null}
-        reason={paywallReason ?? "no_subscription"}
-        onClose={() => setPaywallReason(null)}
-      />
-    </div>
     </>
   );
 }
 
-// ── Save status — see SaveIndicator in @/components/ui/save-indicator ────────
+// ── Section body (dispatches by section key, no card wrapper) ─────────────────
 
-// ── Section tabs ────────────────────────────────────────────────────────────
-
-function SectionTabs({
-  active,
-  onChange,
-  doc,
-}: {
-  active: MarketingSectionKey;
-  onChange: (k: MarketingSectionKey) => void;
-  doc: MarketingDocument;
-}) {
-  const filledMap: Record<MarketingSectionKey, boolean> = {
-    overview: doc.overview.narrative.trim().length > 0,
-    channels: doc.channels.selected.length > 0,
-    story:
-      doc.story.founder_story.trim().length > 0 ||
-      doc.story.origin.trim().length > 0 ||
-      doc.story.differentiator.trim().length > 0 ||
-      doc.story.target_customer.trim().length > 0,
-    pre_launch: doc.pre_launch.milestones.length > 0,
-  };
-
-  // TIM-1793: canonical WorkspaceSubNav (left-aligned pill). A filled section
-  // shows a leading check via the tab's optional Icon.
-  return (
-    <WorkspaceSubNav
-      tabs={MARKETING_SECTION_KEYS.map((key) => ({
-        key,
-        label: MARKETING_SECTION_LABELS[key],
-        Icon: filledMap[key] ? Check : undefined,
-      }))}
-      active={active}
-      onSelect={onChange}
-      ariaLabel="Marketing sections"
-    />
-  );
-}
-
-// ── Section editor (dispatches by section key) ──────────────────────────────
-
-interface SectionEditorProps {
+interface SectionBodyProps {
   sectionKey: MarketingSectionKey;
   label: string;
   tagline: string;
@@ -311,13 +378,12 @@ interface SectionEditorProps {
   generating: boolean;
 }
 
-function SectionEditor(props: SectionEditorProps) {
-  const { sectionKey, label, tagline, canEdit, onGenerate, generating } = props;
+function SectionBody(props: SectionBodyProps) {
+  const { label, tagline, canEdit, onGenerate, generating, sectionKey } = props;
   return (
-    <section className={`${cardCls} p-6`}>
+    <div>
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0 flex items-center gap-1">
-          <h2 className={sectionLabelCls}>{label}</h2>
           <SectionHelp title={label}>{tagline}</SectionHelp>
         </div>
         <button
@@ -338,11 +404,11 @@ function SectionEditor(props: SectionEditorProps) {
       {sectionKey === "channels" && <ChannelsEditor {...props} />}
       {sectionKey === "story" && <StoryEditor {...props} />}
       {sectionKey === "pre_launch" && <PreLaunchEditor {...props} />}
-    </section>
+    </div>
   );
 }
 
-function OverviewEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
+function OverviewEditor({ canEdit, doc, updateDoc }: SectionBodyProps) {
   return (
     <div>
       {/* TIM-1477: helper one-liner moved into a "?" popup beside the question
@@ -369,7 +435,7 @@ function OverviewEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
   );
 }
 
-function ChannelsEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
+function ChannelsEditor({ canEdit, doc, updateDoc }: SectionBodyProps) {
   const selected = doc.channels.selected;
   const selectedNames = new Set(selected.map((c) => c.name.toLowerCase()));
 
@@ -549,7 +615,7 @@ function CustomChannelInput({
   );
 }
 
-function StoryEditor({ canEdit, doc, updateDoc }: SectionEditorProps) {
+function StoryEditor({ canEdit, doc, updateDoc }: SectionBodyProps) {
   function set<K extends keyof MarketingDocument["story"]>(
     key: K,
     value: MarketingDocument["story"][K],
@@ -610,7 +676,7 @@ function PreLaunchEditor({
   canEdit,
   doc,
   updateDoc,
-}: SectionEditorProps) {
+}: SectionBodyProps) {
   const milestones = doc.pre_launch.milestones;
 
   function patch(idx: number, patch: Partial<MarketingMilestone>) {
