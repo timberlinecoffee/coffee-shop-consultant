@@ -85,16 +85,24 @@ export function ProFeatureEntries({ isPro }: ProFeatureEntriesProps) {
             );
 
             if (isPro) {
-              return (
+              const href =
+                row.feature === "multi_project" ? "/account/projects" : null;
+              const inner = (
                 <div
-                  key={row.feature}
-                  className="flex items-center gap-4 py-4 first:pt-0 last:pb-0"
+                  className={`flex items-center gap-4 py-4 first:pt-0 last:pb-0 ${href ? "hover:bg-[var(--surface-warm-100)] -mx-2 px-2 rounded-lg transition-colors" : ""}`}
                 >
                   {labelEl}
                   <span className="text-xs font-medium text-[var(--teal)]">
-                    Included
+                    {href ? "Manage →" : "Included"}
                   </span>
                 </div>
+              );
+              return href ? (
+                <Link key={row.feature} href={href}>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={row.feature}>{inner}</div>
               );
             }
 
