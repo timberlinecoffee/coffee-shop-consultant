@@ -24,6 +24,7 @@ import {
 } from "@/lib/financial-projection";
 import {
   ChartCard,
+  FinancialAreaChart,
   FinancialBarChart,
   FinancialLineChart,
   ViewModeToggle,
@@ -465,6 +466,27 @@ export function PLTab({
   const colCount = columns.length;
 
   // ── Chart datasets ──
+  // TIM-2863: plain-English label overrides for the Expense Forecast legend.
+  // Applied chart-side only; P&L table labels are unchanged.
+  const EXPENSE_LABEL_MAP: Record<string, string> = {
+    labour: "Baristas",
+    labor: "Baristas",
+    wages: "Baristas",
+    payroll: "Baristas",
+    "staff wages": "Baristas",
+    "staff costs": "Baristas",
+    staffing: "Baristas",
+    rent: "Shop Rent",
+    "shop rent": "Shop Rent",
+    lease: "Shop Rent",
+    utilities: "Utilities",
+    utility: "Utilities",
+    "electric & gas": "Utilities",
+    insurance: "Insurance",
+  };
+  const normExpenseLabel = (raw: string) =>
+    EXPENSE_LABEL_MAP[raw.toLowerCase().trim()] ?? raw;
+
   // Revenue forecast: net revenue + foot-traffic vs. extra revenue lines
   const revenueChartData: ChartDatum[] = columns.map((c) => {
     const addls = revenueLines.reduce(
@@ -493,27 +515,62 @@ export function PLTab({
     { key: "net_revenue", label: "Net Revenue", color: CHART_COLORS.primary },
   ];
 
-  // Expense forecast: total COGS + line-item overhead + total opex
+  // TIM-2863: rank overhead lines by total spend, keep top 5, collapse rest
+  // into a single "Other" band to reduce visual noise.
+  const TOP_N_OPEX = 5;
+  const overheadBySpend = overheadLines
+    .map((ol) => ({
+      ...ol,
+      total: columns.reduce(
+        (sum, c) =>
+          sum + (c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0),
+        0
+      ),
+    }))
+    .sort((a, b) => b.total - a.total);
+  const topOverheadLines = overheadBySpend.slice(0, TOP_N_OPEX);
+  const otherOverheadLines = overheadBySpend.slice(TOP_N_OPEX);
+  const hasOtherOpex = otherOverheadLines.length > 0;
+
+  // Expense forecast: COGS + top-N overhead lines + collapsed "Other"
   const expenseChartData: ChartDatum[] = columns.map((c) => {
     const row: ChartDatum = {
       label: c.label,
       total_cogs: (c.data.total_cogs_cents as number | undefined) ?? 0,
-      total_opex: (c.data.total_opex_cents as number | undefined) ?? 0,
       operating_income: (c.data.operating_income_cents as number | undefined) ?? 0,
     };
-    for (const ol of overheadLines) {
+    for (const ol of topOverheadLines) {
       row[`opex_${ol.id}`] =
         c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0;
+    }
+    if (hasOtherOpex) {
+      row.opex_other = otherOverheadLines.reduce(
+        (sum, ol) =>
+          sum + (c.lineAmounts.find((ln) => ln.id === ol.id)?.amount_cents ?? 0),
+        0
+      );
     }
     return row;
   });
 
+  // Expense palette: controlled sequence from existing tokens, no new colors.
+  const EXPENSE_PALETTE = [
+    CHART_COLORS.warning,      // COGS — amber/brown
+    CHART_COLORS.primary,      // top line #1 — teal
+    CHART_COLORS.accent,       // top line #2 — sage
+    CHART_COLORS.primarySoft,  // top line #3 — teal light
+    CHART_COLORS.accentSoft,   // top line #4 — sage light
+    CHART_COLORS.negative,     // top line #5 — red
+    CHART_COLORS.muted,        // Other — muted grey
+  ];
   const expenseStackedSeries: ChartSeries[] = [
-    { key: "total_cogs", label: "COGS", color: CHART_COLORS.warning },
-    ...overheadLines.map((ol) => ({
+    { key: "total_cogs", label: "Coffee & Milk", color: EXPENSE_PALETTE[0] },
+    ...topOverheadLines.map((ol, i) => ({
       key: `opex_${ol.id}`,
-      label: ol.label,
+      label: normExpenseLabel(ol.label),
+      color: EXPENSE_PALETTE[i + 1],
     })),
+    ...(hasOtherOpex ? [{ key: "opex_other", label: "Other", color: EXPENSE_PALETTE[6] }] : []),
   ];
 
   const profitSeries: ChartSeries[] = [
@@ -581,9 +638,9 @@ export function PLTab({
           </ChartCard>
           <ChartCard
             title="Expense Forecast"
-            description="Stacked operating expenses and COGS by period. Heavier bars = larger total expense burden."
+            description="Stacked expenses by category. Top 5 categories shown individually; smaller lines grouped as Other."
           >
-            <FinancialBarChart
+            <FinancialAreaChart
               data={expenseChartData}
               series={expenseStackedSeries}
               currencyCode={currencyCode}
