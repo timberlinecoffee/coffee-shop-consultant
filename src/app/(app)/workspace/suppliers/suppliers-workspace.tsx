@@ -15,7 +15,7 @@
 //   5. Elegant truncation via shared <TruncatedText> in every cell — no more
 //      silently clipped bubbles.
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -186,11 +186,31 @@ export function SuppliersWorkspace({
   const [dragColId, setDragColId] = useState<SupplierColId | null>(null);
   const [dropTarget, setDropTarget] = useState<SupplierColId | null>(null);
 
+  // TIM-2835: right-edge fade affordance for the horizontally scrollable supplier table.
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [showTableFade, setShowTableFade] = useState(false);
+
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- localStorage is unavailable during SSR; hydrate after mount */
     setColWidths(loadColWidths());
     setColOrder(loadColOrder());
     /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    function update() {
+      setShowTableFade(el!.scrollLeft < el!.scrollWidth - el!.clientWidth - 1);
+    }
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
   }, []);
 
   const { promoteOnEdit } = useWorkspaceStatus();
@@ -802,7 +822,14 @@ export function SuppliersWorkspace({
                   No candidates yet. Add a vendor or generate suggestions.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="relative">
+                  {showTableFade && (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-white to-transparent"
+                    />
+                  )}
+                  <div className="overflow-x-auto" ref={tableScrollRef}>
                   <table
                     className={`w-full ${TABLE_CELL_TEXT}`}
                     style={{ tableLayout: "fixed", minWidth: orderedCols.reduce((s, c) => s + (colWidths.get(c.id) ?? c.defaultWidth), 0) }}
@@ -865,6 +892,7 @@ export function SuppliersWorkspace({
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -959,7 +987,7 @@ function CandidateRow({
           <button
             type="button"
             onClick={() => onDelete(row.id)}
-            className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors p-1"
+            className="text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors p-2"
             aria-label="Delete vendor"
           >
             <Trash2 size={TABLE_ACTION_ICON_SIZE} />
