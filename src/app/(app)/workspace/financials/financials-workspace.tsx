@@ -683,7 +683,8 @@ function ForecastTab({
         help="Estimated customers per open day. Closed days are excluded from revenue calculations."
       >
         <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
+          <div className="overflow-x-auto -mx-1 px-1 pb-1">
+          <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(52px, 1fr))`, minWidth: `${(openDays.length || 7) * 60}px` }}>
             {DAY_KEYS.map((day) => {
               const isOpen = mp.weekly_schedule[day].open;
               if (!isOpen) return null;
@@ -716,6 +717,7 @@ function ForecastTab({
                 </div>
               );
             })}
+          </div>
           </div>
           {openDays.length === 0 && (
             <p className="text-xs text-[var(--dark-grey)] text-center py-4">No open days selected.</p>
@@ -2387,7 +2389,7 @@ export function FinancialsWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen" style={brandStyle}>
-      <div className="w-full px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1745 / TIM-1894 / TIM-1937: action toolbar (Guided setup /
             Export PDF / Export Excel / SaveStatusAndButton) lives top-right on
             the same band as the title via the canonical WorkspaceHeader.

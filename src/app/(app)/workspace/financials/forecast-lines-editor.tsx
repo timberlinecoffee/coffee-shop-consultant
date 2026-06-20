@@ -134,7 +134,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
 
   return (
     <div className="border border-[var(--border)] rounded-xl bg-white">
-      <div className="flex items-center gap-2 px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-2.5">
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
@@ -154,7 +154,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           value={line.label}
           onChange={(e) => onChange({ ...line, label: e.target.value })}
           disabled={!canEdit}
-          className={`${inputCls} flex-1 min-w-0 font-medium`}
+          className={`${inputCls} flex-1 min-w-[80px] font-medium`}
           aria-label="Line item name"
         />
 
@@ -227,9 +227,12 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           </span>
         )}
 
+        {/* TIM-2830: force controls to their own row on narrow viewports */}
+        <span className="w-full sm:hidden h-0" aria-hidden="true" />
+        <div className="flex flex-wrap items-center gap-2 pl-5 sm:pl-0 sm:ml-auto">
         {isOverhead ? (
           <select
-            className={`${inputCls} shrink-0 w-44 py-1`}
+            className={`${inputCls} shrink-0 w-28 sm:w-36 py-1`}
             value={overheadModeValue}
             disabled={!canEdit}
             onChange={(e) => applyOverheadModeChoice(e.target.value)}
@@ -270,7 +273,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
           </div>
         ) : null}
 
-        <div className="relative w-28 shrink-0">
+        <div className="relative w-20 sm:w-24 shrink-0">
           {menuLinked ? (
             <>
               <input
@@ -343,18 +346,18 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               auto
             </button>
           ) : (
-            <span className="text-[10px] text-[var(--dark-grey)] shrink-0 w-16">
+            <span className="hidden sm:inline text-[10px] text-[var(--dark-grey)] shrink-0 w-16">
               {isRevenue ? "/ mo" : line.mode === "pct" ? "% of rev" : "/ mo"}
             </span>
           )
         )}
         {isOverhead && (
-          <span className="text-[10px] text-[var(--dark-grey)] shrink-0 w-12">
+          <span className="hidden sm:inline text-[10px] text-[var(--dark-grey)] shrink-0 w-12">
             {line.mode === "pct" ? "" : "/ mo"}
           </span>
         )}
         {isCapex && (
-          <span className="text-[10px] text-[var(--dark-grey)] shrink-0 w-20 whitespace-nowrap">
+          <span className="hidden sm:inline text-[10px] text-[var(--dark-grey)] shrink-0 w-20 whitespace-nowrap">
             one-time · Mo {line.ramp?.start_month ?? 1}
           </span>
         )}
@@ -368,6 +371,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
         >
           <Trash2 size={14} />
         </button>
+        </div>
       </div>
 
       {/* TIM-1168: inline breakdown reveal triggered from the "auto" button */}
