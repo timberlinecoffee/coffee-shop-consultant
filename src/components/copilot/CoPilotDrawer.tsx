@@ -48,6 +48,7 @@ import { ImportPanel } from "./ImportPanel";
 import { FeedbackPanel, countFeedbackFixes } from "./FeedbackPanel";
 import {
   buildFeedbackKey,
+  hasFeedbackForKey,
   storeFeedback,
   type FeedbackCategory,
   type FeedbackItem,
@@ -376,7 +377,12 @@ export function CoPilotDrawer({
   // Check + Benchmark render finding-card panels.
   const [activeMode, setActiveMode] = useState<CompanionMode>(defaultMode);
   // TIM-2839 — session-scoped feedback key for the Feedback panel.
-  const [feedbackKey, setFeedbackKey] = useState<string | null>(null);
+  // Initialize from the module-level cache so a remount after a completed
+  // Check run restores the Feedback panel without requiring a new run.
+  const [feedbackKey, setFeedbackKey] = useState<string | null>(() => {
+    const cachedKey = buildFeedbackKey(workspaceKey, "check");
+    return hasFeedbackForKey(cachedKey) ? cachedKey : null;
+  });
   const [checkReport, setCheckReport] = useState<AuditReport | null>(null);
   const [checkScanning, setCheckScanning] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -636,7 +642,7 @@ export function CoPilotDrawer({
           section: sectionLabelForFinding(f),
           body: stripFindingTags(f.issue ?? f.raw_message),
           findingId: f.id,
-          fieldId: (f.target.field ?? f.source.field) ?? undefined,
+          fieldId: (f.target.field ?? f.source.field ?? f.id) ?? undefined,
           fieldLabel: (f.target.field_label ?? f.source.field_label) ?? undefined,
           proposedValue: f.suggested_replacement ? stripFindingTags(f.suggested_replacement) : undefined,
           originalValue: f.quoted_text ? stripFindingTags(f.quoted_text) : undefined,
@@ -682,7 +688,7 @@ export function CoPilotDrawer({
           section: sectionLabelForFinding(f),
           body: stripFindingTags(f.issue ?? f.raw_message),
           findingId: f.id,
-          fieldId: (f.target.field ?? f.source.field) ?? undefined,
+          fieldId: (f.target.field ?? f.source.field ?? f.id) ?? undefined,
           fieldLabel: (f.target.field_label ?? f.source.field_label) ?? undefined,
           proposedValue: f.suggested_replacement ? stripFindingTags(f.suggested_replacement) : undefined,
           originalValue: f.quoted_text ? stripFindingTags(f.quoted_text) : undefined,
