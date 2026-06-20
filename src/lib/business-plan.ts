@@ -72,13 +72,13 @@ export interface BusinessPlanSectionMeta {
 
 // Display order is the array order; ordering within a group is implicit.
 export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
-  { key: "executive-summary",              title: "Executive Summary",      groupKey: null,             defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "executive-summary",              title: "Executive Summary",      groupKey: null,             defaultVisible: true,  sourceLabel: "Based on your plan" },
 
-  { key: "opportunity-problem-solution",   title: "Problem & Solution",     groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "opportunity-problem-solution",   title: "Problem & Solution",     groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Based on your plan" },
   { key: "opportunity-target-market",      title: "Target Market",          groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Concept workspace" },
-  { key: "opportunity-competition",        title: "Competition",            groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "opportunity-competition",        title: "Competition",            groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Based on your plan" },
   // TIM-2341: dedicated Risks section.
-  { key: "opportunity-risks",              title: "Risks",                  groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "opportunity-risks",              title: "Risks",                  groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Based on your plan" },
 
   { key: "execution-marketing-sales",      title: "Marketing & Sales",      groupKey: "execution",      defaultVisible: true,  sourceLabel: "Menu & Pricing + Marketing workspaces" },
   { key: "execution-operations",           title: "Operations",             groupKey: "execution",      defaultVisible: true,  sourceLabel: "Location & Equipment workspaces" },
