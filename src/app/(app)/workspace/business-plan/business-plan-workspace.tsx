@@ -64,6 +64,7 @@ interface SectionState extends BusinessPlanSectionData {
   isEditing: boolean;
   editBuffer: string;
   isSaving: boolean;
+  isGenerating?: boolean;
 }
 
 // ── SSE fetch helper ──────────────────────────────────────────────────────────
@@ -226,6 +227,10 @@ export function BusinessPlanWorkspace({
   // ── Autosave state ─────────────────────────────────────────────────────────
 
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle", lastSavedAt: null });
+  // Tracks which section (if any) is currently streaming an Improve/Regenerate
+  // response so per-section CTAs can show progress and the RegenerateAll
+  // button can disable itself while a single-section run is in flight.
+  const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Accumulates edits waiting to be persisted; keyed by section key.
   const dirtyBuffersRef = useRef<Map<BusinessPlanSectionKey, string | null>>(new Map());

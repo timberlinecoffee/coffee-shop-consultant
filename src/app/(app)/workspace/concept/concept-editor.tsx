@@ -350,11 +350,6 @@ export function ConceptWorkspace({
             </>
           }
         />
-        {reviewError && (
-          <p className="mb-4 text-xs text-[var(--error)]" role="alert">
-            {reviewError}
-          </p>
-        )}
         {shopName && (
           <p className="mb-6 text-xs text-[var(--dark-grey)]">
             {shopName} · {progress.filled} of {progress.total} sections filled
