@@ -14,7 +14,10 @@ import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProv
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 // TIM-2598 (Phase 5.0): mobile card-per-item Equipment surface, gated by
 // ui_revamp_v2. Renders below md; v1 SectionedListGrid keeps rendering at md+.
+// TIM-2779 (Phase 6): desktop v2 — EquipmentGrid (workspace-table tokens) at md+
+// when ui_revamp_v2 is on.
 import { EquipmentMobileV2 } from "@/components/equipment/EquipmentMobileV2";
+import { EquipmentGrid } from "@/components/equipment/EquipmentGrid";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
@@ -487,7 +490,17 @@ export function BuildoutEquipmentWorkspace({
             />
           </div>
         )}
-        <div className={uiRevampV2 ? "hidden md:block" : undefined}>
+        {/* TIM-2779 (Phase 6): desktop v2 — EquipmentGrid at md+ when flag on. */}
+        {uiRevampV2 ? (
+          <div className="hidden md:block">
+            <EquipmentGrid
+              planId={planId}
+              canEdit={canEdit}
+              items={equipment}
+              onItemsChange={handleEquipmentChange}
+            />
+          </div>
+        ) : (
           <SectionedListGrid
             listType="equipment"
             planId={planId}
@@ -501,7 +514,7 @@ export function BuildoutEquipmentWorkspace({
             showAiMarkings={showAiMarkings}
             currencyCode={initialCurrencyCode}
           />
-        </div>
+        )}
       </div>
 
       {settingsOpen && (
