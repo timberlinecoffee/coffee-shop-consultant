@@ -1,13 +1,10 @@
-// TIM-1037: Business Plan Generator workspace page.
-// TIM-1225: loads cover settings + signed logo URL for CoverBrandingPanel.
-// TIM-1483: loads financial document visibility for FinancialDocumentsPanel.
-// TIM-2759: when ui_revamp_v2 is true, redirect to the V2 subpage-per-section
-// IA. The flag is the safety net per TIM-2587; prod-default-false is acceptable
-// without a separate preview URL gate.
+// TIM-2759: Shared data loader for Business Plan V2 subpage routes.
+// Extracted from page.tsx so each of the 6 tab pages can call the same
+// query set without duplicating the data-loading logic.
+
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
-import { BusinessPlanWorkspace } from "./business-plan-workspace";
 import type { CoverSettings } from "./cover-branding-panel";
 import { buildInitialFinancialDocuments } from "@/lib/business-plan-financials";
 import type { CoverTemplateId } from "@/lib/pdf/business-plan/covers";
@@ -28,10 +25,20 @@ import {
   type BpHiringRole,
   toBpMarketingPlanning,
 } from "@/lib/business-plan";
+import type { FinancialDocumentState } from "./financial-documents-panel";
 
-export const dynamic = "force-dynamic";
+export interface BusinessPlanLoaderResult {
+  planId: string;
+  shopName: string;
+  initialSections: BusinessPlanSectionData[];
+  canEdit: boolean;
+  initialTrialMessagesUsed?: number;
+  initialCoverSettings: CoverSettings;
+  logoPublicUrl: string | null;
+  initialFinancialDocuments: FinancialDocumentState[];
+}
 
-export default async function BusinessPlanWorkspacePage() {
+export async function loadBusinessPlanData(): Promise<BusinessPlanLoaderResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -50,17 +57,6 @@ export default async function BusinessPlanWorkspacePage() {
   if (!plan) redirect("/onboarding");
 
   const planId = plan.id;
-
-  // TIM-2759: V2 IA redirect — check flag before loading heavy data.
-  const { data: flagRow } = await supabase
-    .from("users")
-    .select("ui_revamp_v2")
-    .eq("id", user.id)
-    .maybeSingle();
-  const bpV2Enabled = (flagRow as { ui_revamp_v2?: boolean } | null)?.ui_revamp_v2 === true;
-  if (bpV2Enabled) {
-    redirect("/workspace/business-plan/executive-summary");
-  }
 
   const [
     { data: conceptDoc },
@@ -126,7 +122,7 @@ export default async function BusinessPlanWorkspacePage() {
       .eq("plan_id", planId),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, ui_revamp_v2")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -144,7 +140,6 @@ export default async function BusinessPlanWorkspacePage() {
     (savedSections ?? []).map((s) => [s.section_key, s])
   );
 
-  // TIM-1498: two-level taxonomy autoContent map.
   const autoContent: Record<string, string> = {
     "executive-summary":
       (savedMap.get("executive-summary") as { user_content: string | null } | undefined)
@@ -212,7 +207,6 @@ export default async function BusinessPlanWorkspacePage() {
     (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
   );
 
-  // Get a signed URL for the logo preview (1 hour).
   let logoPublicUrl: string | null = null;
   if (coverRow?.logo_path) {
     const { data: signed } = await supabase.storage
@@ -221,16 +215,14 @@ export default async function BusinessPlanWorkspacePage() {
     logoPublicUrl = signed?.signedUrl ?? null;
   }
 
-  return (
-    <BusinessPlanWorkspace
-      planId={planId}
-      shopName={plan.plan_name ?? ""}
-      initialSections={sections}
-      canEdit={canEdit}
-      initialTrialMessagesUsed={initialTrialMessagesUsed}
-      initialCoverSettings={initialCoverSettings}
-      logoPublicUrl={logoPublicUrl}
-      initialFinancialDocuments={initialFinancialDocuments}
-    />
-  );
+  return {
+    planId,
+    shopName: plan.plan_name ?? "",
+    initialSections: sections,
+    canEdit,
+    initialTrialMessagesUsed,
+    initialCoverSettings,
+    logoPublicUrl,
+    initialFinancialDocuments,
+  };
 }
