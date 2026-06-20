@@ -440,20 +440,36 @@ async function scenario6() {
   await advanceClock(tc.id, 3 * 86400);
   await sleep(3000);
 
-  // Cancel — mirror what billing/cancel endpoint does (cancel_at_period_end)
-  log("S6 — cancel subscription (cancel_at_period_end)");
-  const cancelled = await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+  // TIM-2806: drive the real /api/billing/cancel endpoint as the authenticated
+  // user so we exercise the trialing-branch fix (TIM-2802). Calling
+  // stripe.subscriptions.update(...,{cancel_at_period_end:true}) directly would
+  // reproduce the bug instead of testing the fix.
+  log("S6 — POST /api/billing/cancel as authenticated user");
+  const cookieValue = await mintSessionCookie(subj.email);
+  const cancelRes = await fetch(`${BASE}/api/billing/cancel`, {
+    method: "POST",
+    headers: { Cookie: `sb-${REF}-auth-token=${encodeURIComponent(cookieValue)}` },
+  });
+  const cancelBody = await cancelRes.json().catch(() => ({}));
+  rec("S6", "cancel_endpoint_status", cancelRes.status);
+  rec("S6", "cancel_endpoint_body", cancelBody);
+  if (!cancelRes.ok) throw new Error(`/api/billing/cancel ${cancelRes.status}: ${JSON.stringify(cancelBody)}`);
+  await sleep(4000);
+  const cancelled = await stripe.subscriptions.retrieve(sub.id);
   rec("S6", "stripe_cancel_at_period_end", cancelled.cancel_at_period_end);
   rec("S6", "stripe_status_after_cancel", cancelled.status);
-  await sleep(4000);
 
   // Advance past Day 7 → trial ends → no charge, sub becomes canceled
   log("S6 — advance to Day 7+1h");
   await advanceClock(tc.id, 7 * 86400 + 3600);
   await sleep(6000);
 
-  const subAfter = await stripe.subscriptions.retrieve(sub.id);
-  rec("S6", "stripe_status_after_trial_end", subAfter.status);
+  // After trial-end the subscription may already be deleted (immediate-cancel
+  // path) — list() w/ a deleted id 404s, so guard with retrieve-or-null.
+  let subAfter = null;
+  try { subAfter = await stripe.subscriptions.retrieve(sub.id); }
+  catch (e) { log(`S6 — sub no longer retrievable (immediate-cancelled): ${e.message}`); }
+  rec("S6", "stripe_status_after_trial_end", subAfter?.status ?? "deleted");
   const invs = await stripe.invoices.list({ subscription: sub.id, status: "paid", limit: 5 });
   rec("S6", "paid_invoices_count", invs.data.length);
 
@@ -461,11 +477,12 @@ async function scenario6() {
   rec("S6", "users_subscription_status", s6.user.subscription_status);
   rec("S6", "subscriptions_status", s6.sub?.status);
 
+  const subOk = !subAfter || subAfter.status === "canceled" ||
+                subAfter.status === "incomplete_expired" || subAfter.cancel_at_period_end;
   setVerdict("S6",
-    (subAfter.status === "canceled" || subAfter.status === "incomplete_expired" || subAfter.cancel_at_period_end) &&
-    invs.data.length === 0 ? "PASS" :
+    subOk && invs.data.length === 0 ? "PASS" :
     invs.data.length === 0 ? "PARTIAL" : "FAIL",
-    `Cancel-at-period-end set; trial ended; paid invoice count=${invs.data.length}.`);
+    `Cancel via /api/billing/cancel; trial ended; paid invoice count=${invs.data.length}.`);
 
   return { uid: subj.uid, customerId: customer.id, subId: sub.id, tcId: tc.id };
 }
