@@ -29,6 +29,7 @@ import {
   Download,
 } from "lucide-react";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -1207,14 +1208,14 @@ function RoleRow({
                         <label className={labelCls}>{label}</label>
                       </div>
                       {multiline ? (
-                        <textarea
-                          rows={4}
-                          className={inputCls + " resize-none"}
+                        <MobileExpandableTextarea
                           value={jdFields?.[key] ?? ""}
-                          onChange={(e) => {
-                            setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
+                          onChange={(val) => {
+                            setJdFields((prev) => prev ? { ...prev, [key]: val } : prev);
                             setJdDirty(true);
                           }}
+                          label={label}
+                          minRows={4}
                           disabled={!canEdit}
                         />
                       ) : (
@@ -2142,14 +2143,15 @@ function OnboardingTab({
                               {isExpanded && (
                                 <div className="ml-7 rounded-lg bg-[var(--warm-1050)] border border-[var(--neutral-cool-200)] p-3 space-y-2">
                                   {canEdit ? (
-                                    <textarea
-                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus-visible:outline-none placeholder-[var(--neutral-cool-400)]"
-                                      rows={3}
+                                    <MobileExpandableTextarea
                                       value={t.detail ?? ""}
-                                      onChange={(e) =>
-                                        updateTask(t.id, { detail: e.target.value || null })
+                                      onChange={(val) =>
+                                        updateTask(t.id, { detail: val || null })
                                       }
+                                      label="Task detail"
                                       placeholder="Add detail, instructions, or context for this task..."
+                                      minRows={3}
+                                      className="text-xs bg-transparent border-transparent"
                                     />
                                   ) : t.detail ? (
                                     <p className="text-xs text-[var(--gray-1150)]">{t.detail}</p>

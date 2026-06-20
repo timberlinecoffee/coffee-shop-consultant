@@ -33,6 +33,7 @@ import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import {
   type MarketingDocument,
   type MarketingSectionKey,
@@ -462,15 +463,15 @@ function OverviewEditor({ canEdit, doc, updateDoc }: SectionBodyProps) {
           surface, from your social bio to your launch posts.
         </InfoTip>
       </span>
-      <textarea
-        className={textareaCls}
-        rows={10}
+      <MobileExpandableTextarea
         value={doc.overview.narrative}
-        onChange={(e) =>
-          updateDoc((d) => ({ ...d, overview: { narrative: e.target.value } }))
+        onChange={(val) =>
+          updateDoc((d) => ({ ...d, overview: { narrative: val } }))
         }
-        disabled={!canEdit}
+        label="How you plan to market the shop"
         placeholder="A few paragraphs in your own voice. How will people hear about this shop in the lead-up to opening, and after? What feels right for the neighborhood, the concept, the kind of regular you want?"
+        minRows={10}
+        disabled={!canEdit}
       />
     </div>
   );
@@ -599,13 +600,13 @@ function ChannelsEditor({ canEdit, doc, updateDoc }: SectionBodyProps) {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <textarea
-                rows={2}
-                className={textareaCls}
+              <MobileExpandableTextarea
                 value={c.notes}
-                onChange={(e) => patchChannel(idx, { notes: e.target.value })}
-                disabled={!canEdit}
+                onChange={(val) => patchChannel(idx, { notes: val })}
+                label={`${c.name} notes`}
                 placeholder="Why this channel? Who runs it? What kind of post or moment shows up here?"
+                minRows={2}
+                disabled={!canEdit}
               />
             </li>
           ))}
@@ -667,46 +668,46 @@ function StoryEditor({ canEdit, doc, updateDoc }: SectionBodyProps) {
     <div className="space-y-4">
       <div>
         <label className={labelCls}>Founder story</label>
-        <textarea
-          className={textareaCls}
-          rows={4}
+        <MobileExpandableTextarea
           value={doc.story.founder_story}
-          onChange={(e) => set("founder_story", e.target.value)}
-          disabled={!canEdit}
+          onChange={(val) => set("founder_story", val)}
+          label="Founder story"
           placeholder="How did you get here? A few sentences a customer could read in your bio and feel like they already know you."
+          minRows={4}
+          disabled={!canEdit}
         />
       </div>
       <div>
         <label className={labelCls}>Origin of the shop</label>
-        <textarea
-          className={textareaCls}
-          rows={4}
+        <MobileExpandableTextarea
           value={doc.story.origin}
-          onChange={(e) => set("origin", e.target.value)}
-          disabled={!canEdit}
+          onChange={(val) => set("origin", val)}
+          label="Origin of the shop"
           placeholder="Why this shop, why this neighborhood, why now. The reason it should exist."
+          minRows={4}
+          disabled={!canEdit}
         />
       </div>
       <div>
         <label className={labelCls}>What makes this shop different</label>
-        <textarea
-          className={textareaCls}
-          rows={4}
+        <MobileExpandableTextarea
           value={doc.story.differentiator}
-          onChange={(e) => set("differentiator", e.target.value)}
-          disabled={!canEdit}
+          onChange={(val) => set("differentiator", val)}
+          label="What makes this shop different"
           placeholder="The one or two things competitors in this market cannot easily copy. Supplier relationships, people, atmosphere, expertise."
+          minRows={4}
+          disabled={!canEdit}
         />
       </div>
       <div>
         <label className={labelCls}>Who it is for</label>
-        <textarea
-          className={textareaCls}
-          rows={4}
+        <MobileExpandableTextarea
           value={doc.story.target_customer}
-          onChange={(e) => set("target_customer", e.target.value)}
-          disabled={!canEdit}
+          onChange={(val) => set("target_customer", val)}
+          label="Who it is for"
           placeholder="The real person you are making decisions for. Their week, their morning, what brings them in."
+          minRows={4}
+          disabled={!canEdit}
         />
       </div>
     </div>
@@ -851,13 +852,13 @@ function PreLaunchEditor({
                     disabled={!canEdit}
                   />
                 </div>
-                <textarea
-                  rows={2}
-                  className={textareaCls}
+                <MobileExpandableTextarea
                   value={m.notes}
-                  onChange={(e) => patch(idx, { notes: e.target.value })}
-                  disabled={!canEdit}
+                  onChange={(val) => patch(idx, { notes: val })}
+                  label={m.label ? `${m.label} notes` : "Milestone notes"}
                   placeholder="What happens here? Who shows up, what gets tested, what would make it feel right?"
+                  minRows={2}
+                  disabled={!canEdit}
                 />
               </div>
               <button

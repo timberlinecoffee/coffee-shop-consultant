@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import type { ConceptCompetitor } from "@/lib/concept";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 
 const MAX_COMPETITORS = 6;
 
@@ -266,31 +267,28 @@ function CompetitorEditor({
       </EditorField>
 
       <EditorField label="What they do well" optional>
-        <textarea
+        <MobileExpandableTextarea
           value={draft.what_they_do_well ?? ""}
-          onChange={(e) =>
-            setDraft((p) => ({
-              ...p,
-              what_they_do_well: e.target.value || undefined,
-            }))
+          onChange={(val) =>
+            setDraft((p) => ({ ...p, what_they_do_well: val || undefined }))
           }
+          label="What they do well"
           placeholder="e.g. Strong lunchtime traffic, loyal regulars, great pastries."
-          rows={2}
+          minRows={2}
           disabled={!canEdit}
-          className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)]"
         />
       </EditorField>
 
       <EditorField label="Gaps this shop fills" optional>
-        <textarea
+        <MobileExpandableTextarea
           value={draft.gaps ?? ""}
-          onChange={(e) =>
-            setDraft((p) => ({ ...p, gaps: e.target.value || undefined }))
+          onChange={(val) =>
+            setDraft((p) => ({ ...p, gaps: val || undefined }))
           }
+          label="Gaps this shop fills"
           placeholder="e.g. No work seating, closes at 2pm."
-          rows={2}
+          minRows={2}
           disabled={!canEdit}
-          className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)]"
         />
       </EditorField>
 

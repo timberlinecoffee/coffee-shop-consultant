@@ -82,6 +82,7 @@ import {
   marginRanking,
 } from "@/lib/menu-engineering";
 import { fmtPct, fmtIntegerPct, formatMinor, formatMinorExact } from "@/lib/formatters";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 
 interface ConceptContext {
   shop_identity?: string;
@@ -1215,18 +1216,13 @@ function RecipeTabContent({
                   {idx + 1}
                 </span>
                 {canEdit ? (
-                  <textarea
-                    className={inputCls + " resize-none flex-1"}
-                    rows={2}
+                  <MobileExpandableTextarea
                     value={step}
-                    onChange={(e) => updateStep(idx, e.target.value)}
-                    onBlur={() => {
-                      const cleaned = steps
-                        .map((s) => s.trim())
-                        .filter((s) => s.length > 0);
-                      onUpdateItem({ preparation_steps: cleaned });
-                    }}
+                    onChange={(val) => updateStep(idx, val)}
+                    label={`Step ${idx + 1}`}
                     placeholder="Step instructions…"
+                    minRows={2}
+                    className="flex-1"
                   />
                 ) : (
                   <p className="text-sm text-[var(--foreground)] leading-relaxed flex-1 pt-0.5">
@@ -1285,13 +1281,12 @@ function RecipeTabContent({
           Notes
         </h3>
         {canEdit ? (
-          <textarea
-            className={inputCls + " resize-none"}
-            rows={3}
+          <MobileExpandableTextarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            onBlur={onNotesBlur}
+            onChange={setNotes}
+            label="Notes"
             placeholder="Prep notes, variations, seasonal availability…"
+            minRows={3}
           />
         ) : notes.trim() ? (
           <p className="text-sm text-[var(--foreground)] leading-relaxed italic">

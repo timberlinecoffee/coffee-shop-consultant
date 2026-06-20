@@ -58,6 +58,7 @@ import {
 } from "@/lib/operations-playbook";
 import type { OperationsRecipeCard } from "@/lib/operations-recipes";
 import { groupRecipeCardsByCategory } from "@/lib/operations-recipes";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 
 // ── Shared styles — match Concept / Marketing tokens ────────────────────────
 
@@ -623,13 +624,13 @@ function CategoryEditor({
             without asking questions.
           </InfoTip>
         </span>
-        <textarea
-          className={textareaCls}
-          rows={3}
+        <MobileExpandableTextarea
           value={category.intro}
-          onChange={(e) => setIntro(e.target.value)}
-          disabled={!canEdit}
+          onChange={setIntro}
+          label="How this SOP works"
           placeholder="A one-line description for your team."
+          minRows={3}
+          disabled={!canEdit}
         />
       </div>
 
@@ -814,13 +815,13 @@ function ChecklistItemRow({
         </button>
       </div>
       <div className="flex-1 min-w-0">
-        <textarea
-          rows={2}
-          className={textareaCls}
+        <MobileExpandableTextarea
           value={item.text}
-          onChange={(e) => onPatch(idx, { text: e.target.value })}
-          disabled={!canEdit}
+          onChange={(val) => onPatch(idx, { text: val })}
+          label="Step description"
           placeholder="What does your team do at this step?"
+          minRows={2}
+          disabled={!canEdit}
         />
         {(useStation || useDuration) && (
           <div className="mt-1.5 flex flex-wrap gap-2">
@@ -1187,13 +1188,13 @@ function RolesEditor({
 
       <div className="mb-5">
         <label className={labelCls}>How roles work in your shop</label>
-        <textarea
-          className={textareaCls}
-          rows={3}
+        <MobileExpandableTextarea
           value={section.intro}
-          onChange={(e) => setIntro(e.target.value)}
-          disabled={!canEdit}
+          onChange={setIntro}
+          label="How roles work in your shop"
           placeholder="A one-line description for your team."
+          minRows={3}
+          disabled={!canEdit}
         />
       </div>
 
@@ -1238,14 +1239,13 @@ function RolesEditor({
                 placeholder="Role (e.g. Bar, Register, Manager On Duty)"
                 aria-label="Role name"
               />
-              <textarea
-                rows={3}
-                className={textareaCls}
+              <MobileExpandableTextarea
                 value={item.responsibilities}
-                onChange={(e) => patch(idx, { responsibilities: e.target.value })}
-                disabled={!canEdit}
+                onChange={(val) => patch(idx, { responsibilities: val })}
+                label={item.role ? `${item.role} responsibilities` : "Responsibilities"}
                 placeholder="What this role owns on the shift."
-                aria-label="Responsibilities"
+                minRows={3}
+                disabled={!canEdit}
               />
             </div>
             <button
@@ -1357,13 +1357,13 @@ function VendorContactsEditor({
 
       <div className="mb-5">
         <label className={labelCls}>How to use this card</label>
-        <textarea
-          className={textareaCls}
-          rows={3}
+        <MobileExpandableTextarea
           value={section.intro}
-          onChange={(e) => setIntro(e.target.value)}
-          disabled={!canEdit}
+          onChange={setIntro}
+          label="How to use this card"
           placeholder="A one-line description."
+          minRows={3}
+          disabled={!canEdit}
         />
       </div>
 
@@ -1448,13 +1448,13 @@ function VendorContactsEditor({
                 </div>
                 <div className="sm:col-span-2">
                   <label className={labelCls}>Notes</label>
-                  <textarea
-                    className={textareaCls}
-                    rows={2}
+                  <MobileExpandableTextarea
                     value={item.notes}
-                    onChange={(e) => patch(idx, { notes: e.target.value })}
-                    disabled={!canEdit}
+                    onChange={(val) => patch(idx, { notes: val })}
+                    label={item.label ? `${item.label} notes` : "Contact notes"}
                     placeholder="Account number, after-hours line, contract reference."
+                    minRows={2}
+                    disabled={!canEdit}
                   />
                 </div>
               </div>
@@ -1564,13 +1564,13 @@ function TrainingEditor({
 
       <div className="mb-5">
         <label className={labelCls}>How training works in your shop</label>
-        <textarea
-          className={textareaCls}
-          rows={3}
+        <MobileExpandableTextarea
           value={section.intro}
-          onChange={(e) => setIntro(e.target.value)}
-          disabled={!canEdit}
+          onChange={setIntro}
+          label="How training works in your shop"
           placeholder="A one-line description for trainers and new hires."
+          minRows={3}
+          disabled={!canEdit}
         />
       </div>
 
@@ -1616,13 +1616,13 @@ function TrainingEditor({
                       </button>
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
-                      <textarea
-                        rows={2}
-                        className={textareaCls}
+                      <MobileExpandableTextarea
                         value={item.text}
-                        onChange={(e) => patch(idx, { text: e.target.value })}
-                        disabled={!canEdit}
+                        onChange={(val) => patch(idx, { text: val })}
+                        label="Training milestone"
                         placeholder="Specific milestone a new hire should hit."
+                        minRows={2}
+                        disabled={!canEdit}
                       />
                       <select
                         className="text-[11px] border border-[var(--border-medium)] rounded-md px-2 py-1 text-[var(--muted-foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]"

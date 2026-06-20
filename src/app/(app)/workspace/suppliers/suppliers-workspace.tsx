@@ -21,6 +21,7 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { TABLE_CELL_TEXT, TABLE_HEADER_TEXT, TABLE_ACTION_ICON_SIZE } from "@/lib/workspace-table";
 import {
@@ -1036,12 +1037,13 @@ function ChooseReasonModal({
         </p>
         <label className="block mt-4">
           <span className="text-xs font-medium text-[var(--foreground)]">Why this vendor (optional)</span>
-          <textarea
+          <MobileExpandableTextarea
             value={reason}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange}
+            label="Why this vendor"
             placeholder="Best price, local relationship, fits the brand..."
-            rows={4}
-            className="mt-1 w-full text-sm border border-[var(--neutral-cool-200)] rounded-lg px-3 py-2 focus:border-[var(--teal)] focus-visible:outline-none"
+            minRows={4}
+            className="mt-1"
           />
         </label>
         <div className="mt-5 flex items-center justify-end gap-2">

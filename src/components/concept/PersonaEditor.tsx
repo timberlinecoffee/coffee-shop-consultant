@@ -17,6 +17,7 @@ import {
   setPersonaPrimary,
 } from "@/lib/concept";
 import { toTitleCase } from "@/lib/text";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 
 interface PersonaEditorProps {
   persona: CustomerPersona;
@@ -170,16 +171,14 @@ export function PersonaEditor({
                 </button>
               )}
             </div>
-            <textarea
-              id="persona-why"
+            <MobileExpandableTextarea
               value={draft.whyTheyVisit}
-              onChange={(e) => setField("whyTheyVisit", e.target.value)}
-              disabled={!canEdit}
-              rows={3}
+              onChange={(val) => setField("whyTheyVisit", val)}
+              label="Why they visit"
               placeholder="What brings this person in? What are they hoping for?"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)] ${
-                whyError ? "border-[var(--error)]" : "border-[var(--border)] focus:border-[var(--teal)]"
-              }`}
+              minRows={3}
+              disabled={!canEdit}
+              className={whyError ? "border-[var(--error)]" : ""}
             />
             {whyError && <p className="mt-1 text-xs text-[var(--error)]">{whyError}</p>}
           </div>
@@ -200,14 +199,13 @@ export function PersonaEditor({
                 </button>
               )}
             </div>
-            <textarea
-              id="persona-pain"
+            <MobileExpandableTextarea
               value={draft.painPoints ?? ""}
-              onChange={(e) => setField("painPoints", e.target.value)}
-              disabled={!canEdit}
-              rows={3}
+              onChange={(val) => setField("painPoints", val)}
+              label="Pain points"
               placeholder="What frustrates them about existing coffee shops?"
-              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+              minRows={3}
+              disabled={!canEdit}
             />
           </div>
 
@@ -216,14 +214,13 @@ export function PersonaEditor({
             <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-order">
               What do they typically order?
             </label>
-            <textarea
-              id="persona-order"
+            <MobileExpandableTextarea
               value={draft.typicalOrder ?? ""}
-              onChange={(e) => setField("typicalOrder", e.target.value || undefined)}
-              disabled={!canEdit}
-              rows={2}
+              onChange={(val) => setField("typicalOrder", val || undefined)}
+              label="What do they typically order?"
               placeholder="e.g. Oat milk cortado plus an almond croissant on weekday mornings."
-              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+              minRows={2}
+              disabled={!canEdit}
             />
           </div>
 
@@ -331,14 +328,13 @@ export function PersonaEditor({
                   <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-daily">
                     Daily Context
                   </label>
-                  <textarea
-                    id="persona-daily"
+                  <MobileExpandableTextarea
                     value={draft.dailyContext ?? ""}
-                    onChange={(e) => setField("dailyContext", e.target.value || undefined)}
-                    disabled={!canEdit}
-                    rows={2}
+                    onChange={(val) => setField("dailyContext", val || undefined)}
+                    label="Daily Context"
                     placeholder="What does their day look like? Where are they going before or after?"
-                    className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+                    minRows={2}
+                    disabled={!canEdit}
                   />
                 </div>
               </div>
@@ -406,14 +402,13 @@ export function PersonaEditor({
                 Your previous target customer description was moved here. Flesh out the fields above and clear this when you are ready.
               </p>
             )}
-            <textarea
-              id="persona-notes"
+            <MobileExpandableTextarea
               value={draft.notes ?? ""}
-              onChange={(e) => setField("notes", e.target.value || undefined)}
-              disabled={!canEdit}
-              rows={3}
+              onChange={(val) => setField("notes", val || undefined)}
+              label="Notes"
               placeholder="Any other notes about this customer..."
-              className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+              minRows={3}
+              disabled={!canEdit}
             />
           </div>
 
