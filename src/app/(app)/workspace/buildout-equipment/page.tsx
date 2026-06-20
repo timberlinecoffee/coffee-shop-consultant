@@ -21,7 +21,7 @@ export default async function BuildoutEquipmentPage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, shop_type")
+    .select("id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -50,7 +50,7 @@ export default async function BuildoutEquipmentPage() {
         .maybeSingle(),
       supabase
         .from("users")
-        .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+        .select("subscription_status, subscription_tier, copilot_trial_messages_used, onboarding_data")
         .eq("id", user.id)
         .maybeSingle(),
     ]);
@@ -67,6 +67,10 @@ export default async function BuildoutEquipmentPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawCurrencyCode = (modelRow?.forecast_inputs as any)?.currency_code;
   const initialCurrencyCode = normalizeCurrencyCode(rawCurrencyCode ?? "USD");
+  // TIM-2798: shop_type lives in users.onboarding_data, not coffee_shop_plans
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialShopType = ((profile?.onboarding_data as any)?.shop_type as string | string[] | null | undefined) ?? null;
+  const shopTypeStr = Array.isArray(initialShopType) ? initialShopType[0] ?? null : initialShopType;
 
   return (
     <BuildoutEquipmentWorkspace
@@ -79,7 +83,7 @@ export default async function BuildoutEquipmentPage() {
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCurrencyCode={initialCurrencyCode}
-      initialShopType={(plan as { id: string; shop_type?: string }).shop_type ?? null}
+      initialShopType={shopTypeStr}
     />
   );
 }
