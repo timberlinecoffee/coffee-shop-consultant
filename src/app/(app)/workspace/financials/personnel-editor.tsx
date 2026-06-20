@@ -373,7 +373,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
               </span>
             </label>
             {line.ramp?.enabled && (
-              <div className="ml-6 mt-2 grid grid-cols-3 gap-3 max-w-md">
+              <div className="ml-6 mt-2 grid grid-cols-2 md:grid-cols-3 gap-3 max-w-md">
                 <div>
                   {/* TIM-1477: helper one-liner moved into a "?" popup beside
                       the question label, matching the Financial Suite pattern. */}

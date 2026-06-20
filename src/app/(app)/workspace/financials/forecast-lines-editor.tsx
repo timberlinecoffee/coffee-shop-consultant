@@ -598,7 +598,7 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               </span>
             </label>
             {line.ramp?.enabled && (
-              <div className="ml-6 mt-2 grid grid-cols-3 gap-3">
+              <div className="ml-6 mt-2 grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-1">Start month</label>
                   <NumericInput

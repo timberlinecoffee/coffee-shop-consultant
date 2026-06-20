@@ -184,7 +184,7 @@ export function WorkspaceProgressProvider({
 
   return (
     <WorkspaceStatusContext.Provider value={contextValue}>
-      <div className="flex min-h-screen bg-[var(--background)]">
+      <div className="flex min-h-screen bg-[var(--background)] overflow-x-hidden">
         {/* TIM-2590: branch sidebar on ui_revamp_v2 flag */}
         {uiRevamp && userInfo ? (
           <SidebarV2 userInfo={userInfo} />

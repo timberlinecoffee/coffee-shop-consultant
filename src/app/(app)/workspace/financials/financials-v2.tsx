@@ -608,7 +608,7 @@ function RevenueStreamsContent({
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
               Avg sales/day (~{avgCustomersPerDay} customers)
             </p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div>
                 <span className="text-[var(--muted-foreground)]">Beverage</span>
                 <p className="font-semibold">{formatCurrency((bevTicketCents * avgCustomersPerDay) / 100, currencyCode)}/day</p>
@@ -983,7 +983,7 @@ function GrowthRampContent({
               <span className="text-xs text-[var(--muted-foreground)]">Per-month growth %</span>
               <InfoTip label="Per-month growth %">Month 1 is the first post-ramp month. Months 13+ use the last entered rate.</InfoTip>
             </div>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
               {Array.from({ length: 12 }).map((_, i) => {
                 const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
                 return (

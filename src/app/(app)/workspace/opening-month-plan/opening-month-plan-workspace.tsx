@@ -530,6 +530,8 @@ function CalendarView({ milestones, targetLaunchDate, onMilestoneClick }: Calend
             </h3>
           </div>
 
+          <div className="overflow-x-auto">
+          <div className="min-w-[350px]">
           <div className="grid grid-cols-7 border-b border-[var(--neutral-cool-100)]">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div key={d} className="py-2 text-center text-xs font-medium text-[var(--dark-grey)]">{d}</div>
@@ -581,6 +583,8 @@ function CalendarView({ milestones, targetLaunchDate, onMilestoneClick }: Calend
               })}
             </div>
           ))}
+          </div>
+          </div>
         </div>
       ))}
     </div>

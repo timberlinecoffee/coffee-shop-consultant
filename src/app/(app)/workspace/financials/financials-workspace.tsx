@@ -969,7 +969,7 @@ function ForecastTab({
                 Average sales per day {avgCustomersPerDay > 0 ? `(at ~${avgCustomersPerDay} customers/day)` : ""}
               </p>
               {avgCustomersPerDay > 0 ? (
-                <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   <div>
                     <span className="text-[var(--muted-foreground)]">Beverage</span>
                     <p className="font-semibold text-[var(--foreground)]">
@@ -1464,7 +1464,7 @@ function ForecastTab({
                   Per-month growth % after ramp ends. Month 1 is the first post-ramp month.
                 </InfoTip>
               </div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                 {Array.from({ length: 12 }).map((_, i) => {
                   const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
                   return (
@@ -1710,7 +1710,7 @@ function ProjectionsTab({
       />
 
       {/* KPI summary tiles */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           {
             label: "Year 1 GM",
