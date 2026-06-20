@@ -3,6 +3,8 @@
 // TIM-1061: Operations Playbook workspace — SOP tabs plus the V1 binder
 // sections added in TIM-1416 (Menu-sourced recipes, roles, vendor contacts,
 // training checklist).
+// TIM-2776: v2 layout — WorkspaceHeader + AccordionSection replacing the
+// sidebar+single-section pattern (matches FinancialsV2).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -13,10 +15,13 @@ import {
   Trash2,
   Plus,
   Sparkles,
-  Check,
   ExternalLink,
   Printer,
   TrendingUp,
+  ChevronDown,
+  CheckCircle,
+  Circle,
+  Minus,
 } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -43,7 +48,6 @@ import {
   type TrainingPhase,
   type OperationsSectionKey,
   SOP_CATEGORY_KEYS,
-  PLANNING_SECTION_KEYS,
   TRAINING_PHASE_KEYS,
   TRAINING_PHASE_LABELS,
   RECIPES_SECTION_KEY,
@@ -60,14 +64,145 @@ const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const textareaCls = `${inputCls} resize-none leading-relaxed`;
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
-// TIM-1353 v2: 14px / bold / wider tracking — read as section headers.
-const sectionLabelCls =
-  "text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3 leading-tight";
-const cardCls = "rounded-xl border border-[var(--border)] bg-white";
 
 function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// ── Accordion types & components ─────────────────────────────────────────────
+// TIM-2776: pattern lifted from FinancialsV2 (financials-v2.tsx).
+
+type SectionStatus = "complete" | "in_progress" | "empty";
+
+function StatusBadge({ status }: { status: SectionStatus }) {
+  if (status === "complete") {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-tint-100)] border border-[var(--teal-tint)] px-2 py-0.5 rounded-full shrink-0">
+        <CheckCircle size={10} aria-hidden="true" />
+        Complete
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
+        <Circle size={10} aria-hidden="true" />
+        In progress
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
+      <Minus size={10} aria-hidden="true" />
+      Empty
+    </span>
+  );
+}
+
+function AccordionSection({
+  title,
+  status,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  status: SectionStatus;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <ChevronDown
+            size={16}
+            className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
+        </div>
+        <StatusBadge status={status} />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+
+function PlaybookProgressBar({ statuses }: { statuses: SectionStatus[] }) {
+  const complete = statuses.filter((s) => s === "complete").length;
+  const pct = Math.round((complete / statuses.length) * 100);
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          Playbook completion
+        </span>
+        <span className="text-xs font-semibold text-[var(--teal)]">
+          {complete} of {statuses.length} sections complete
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-[var(--border)] overflow-hidden">
+        <div
+          className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
+          style={{ width: `${pct}%` }}
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Section-status derivers ───────────────────────────────────────────────────
+
+function getSectionStatus(
+  doc: OperationsPlaybookDocument,
+  key: OperationsSectionKey,
+  recipeCount: number,
+): SectionStatus {
+  if (key === RECIPES_SECTION_KEY) return recipeCount > 0 ? "complete" : "empty";
+  if ((SOP_CATEGORY_KEYS as readonly string[]).includes(key)) {
+    const cat = doc[key as SopCategoryKey];
+    if (cat.items.length > 0) return "complete";
+    if (cat.intro?.trim()) return "in_progress";
+    return "empty";
+  }
+  if (key === "roles") {
+    const s = doc.roles;
+    if (s.items.length > 0) return "complete";
+    if (s.intro?.trim()) return "in_progress";
+    return "empty";
+  }
+  if (key === "vendor_contacts") {
+    const s = doc.vendor_contacts;
+    if (s.items.length > 0) return "complete";
+    if (s.intro?.trim()) return "in_progress";
+    return "empty";
+  }
+  if (key === "training") {
+    const s = doc.training;
+    if (s.items.length > 0) return "complete";
+    if (s.intro?.trim()) return "in_progress";
+    return "empty";
+  }
+  return "empty";
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   planId: string;
@@ -89,7 +224,6 @@ export function OperationsPlaybookWorkspace({
   initialRecipeCards,
 }: Props) {
   const [doc, setDoc] = useState<OperationsPlaybookDocument>(initialDoc);
-  const [active, setActive] = useState<OperationsSectionKey>("opening");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [paywallReason, setPaywallReason] = useState<
@@ -205,14 +339,17 @@ export function OperationsPlaybookWorkspace({
     }
   }
 
-  const activeLabel = operationsSectionLabel(active);
+  // Section statuses for progress bar
+  const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
+    getSectionStatus(doc, key, initialRecipeCards.length),
+  );
 
   return (
     <>
     {AIReviewModalNode}
     {benchmarkAIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-5xl mx-auto px-6 pt-8 pb-36 sm:pb-12">
+      <div className="w-full px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
             under the title, SaveIndicator + Print action top-right, matching
             Financials (was description full-width below the title row). Header
@@ -255,88 +392,79 @@ export function OperationsPlaybookWorkspace({
           />
         </div>
 
+        {/* TIM-2776: accordion layout — replaces sidebar + single-section pattern */}
         {activeView === "playbook" && (
-          <>
-            {/* Mobile: horizontal scroll nav above content */}
-            <div className="md:hidden mb-4">
-              <SectionNavMobile
-                active={active}
-                onChange={setActive}
-                doc={doc}
-                recipeCount={initialRecipeCards.length}
-              />
+          <div>
+            <PlaybookProgressBar statuses={statuses} />
+            <div className="space-y-3">
+              {OPERATIONS_SECTION_KEYS.map((key, i) => {
+                const status = statuses[i];
+                const label = operationsSectionLabel(key);
+
+                return (
+                  <AccordionSection
+                    key={key}
+                    title={label}
+                    status={status}
+                    defaultOpen={i === 0}
+                  >
+                    {(SOP_CATEGORY_KEYS as readonly string[]).includes(key) && (
+                      <CategoryEditor
+                        categoryKey={key as SopCategoryKey}
+                        label={label}
+                        tagline={operationsSectionTagline(key)}
+                        canEdit={canEdit}
+                        doc={doc}
+                        updateDoc={updateDoc}
+                        onGenerate={() => handleGenerate(key as SopCategoryKey)}
+                        generating={generating === key}
+                      />
+                    )}
+
+                    {key === RECIPES_SECTION_KEY && (
+                      <RecipesPanel cards={initialRecipeCards} />
+                    )}
+
+                    {key === "roles" && (
+                      <RolesEditor
+                        label={label}
+                        tagline={operationsSectionTagline(key)}
+                        canEdit={canEdit}
+                        doc={doc}
+                        updateDoc={updateDoc}
+                        onGenerate={() => handleGenerate("roles")}
+                        generating={generating === "roles"}
+                      />
+                    )}
+
+                    {key === "vendor_contacts" && (
+                      <VendorContactsEditor
+                        label={label}
+                        tagline={operationsSectionTagline(key)}
+                        canEdit={canEdit}
+                        doc={doc}
+                        updateDoc={updateDoc}
+                        onGenerate={() => handleGenerate("vendor_contacts")}
+                        generating={generating === "vendor_contacts"}
+                      />
+                    )}
+
+                    {key === "training" && (
+                      <TrainingEditor
+                        label={label}
+                        tagline={operationsSectionTagline(key)}
+                        canEdit={canEdit}
+                        doc={doc}
+                        updateDoc={updateDoc}
+                        onGenerate={() => handleGenerate("training")}
+                        generating={generating === "training"}
+                      />
+                    )}
+                  </AccordionSection>
+                );
+              })}
             </div>
-
-            {/* Desktop: 2-col grid — sticky sidebar + content */}
-            <div className="md:grid md:grid-cols-[240px_minmax(0,1fr)] md:gap-8 md:items-start">
-              <aside className="hidden md:block">
-                <div className="sticky top-6">
-                  <SectionNavSidebar
-                    active={active}
-                    onChange={setActive}
-                    doc={doc}
-                    recipeCount={initialRecipeCards.length}
-                  />
-                </div>
-              </aside>
-
-              <div className="space-y-6">
-                {SOP_CATEGORY_KEYS.includes(active as SopCategoryKey) && (
-                  <CategoryEditor
-                    key={active}
-                    categoryKey={active as SopCategoryKey}
-                    label={activeLabel}
-                    tagline={operationsSectionTagline(active)}
-                    canEdit={canEdit}
-                    doc={doc}
-                    updateDoc={updateDoc}
-                    onGenerate={() => handleGenerate(active as SopCategoryKey)}
-                    generating={generating === active}
-                  />
-                )}
-
-                {active === RECIPES_SECTION_KEY && (
-                  <RecipesPanel cards={initialRecipeCards} />
-                )}
-
-                {active === "roles" && (
-                  <RolesEditor
-                    label={activeLabel}
-                    tagline={operationsSectionTagline(active)}
-                    canEdit={canEdit}
-                    doc={doc}
-                    updateDoc={updateDoc}
-                    onGenerate={() => handleGenerate("roles")}
-                    generating={generating === "roles"}
-                  />
-                )}
-
-                {active === "vendor_contacts" && (
-                  <VendorContactsEditor
-                    label={activeLabel}
-                    tagline={operationsSectionTagline(active)}
-                    canEdit={canEdit}
-                    doc={doc}
-                    updateDoc={updateDoc}
-                    onGenerate={() => handleGenerate("vendor_contacts")}
-                    generating={generating === "vendor_contacts"}
-                  />
-                )}
-
-                {active === "training" && (
-                  <TrainingEditor
-                    label={activeLabel}
-                    tagline={operationsSectionTagline(active)}
-                    canEdit={canEdit}
-                    doc={doc}
-                    updateDoc={updateDoc}
-                    onGenerate={() => handleGenerate("training")}
-                    generating={generating === "training"}
-                  />
-                )}
-              </div>
-            </div>
-          </>
+          </div>
         )}
 
         {activeView === "how-you-compare" && (
@@ -384,7 +512,7 @@ export function OperationsPlaybookWorkspace({
       <CoPilotDrawer
         planId={planId}
         workspaceKey="operations_playbook"
-        currentFocus={{ label: activeView === "how-you-compare" ? "How You Compare" : activeLabel }}
+        currentFocus={{ label: activeView === "how-you-compare" ? "How You Compare" : "Playbook" }}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
 
@@ -395,113 +523,6 @@ export function OperationsPlaybookWorkspace({
       />
     </div>
     </>
-  );
-}
-
-// ── Section nav shared helpers ────────────────────────────────────────────────
-
-function useFilledMap(
-  doc: OperationsPlaybookDocument,
-  recipeCount: number,
-): Record<OperationsSectionKey, boolean> {
-  return useMemo<Record<OperationsSectionKey, boolean>>(() => {
-    const out = {} as Record<OperationsSectionKey, boolean>;
-    for (const k of SOP_CATEGORY_KEYS) out[k] = doc[k].items.length > 0;
-    for (const k of PLANNING_SECTION_KEYS) out[k] = doc[k].items.length > 0;
-    out[RECIPES_SECTION_KEY] = recipeCount > 0;
-    return out;
-  }, [doc, recipeCount]);
-}
-
-interface SectionNavProps {
-  active: OperationsSectionKey;
-  onChange: (k: OperationsSectionKey) => void;
-  doc: OperationsPlaybookDocument;
-  recipeCount: number;
-}
-
-// ── Desktop sidebar nav ───────────────────────────────────────────────────────
-
-function SectionNavSidebar({ active, onChange, doc, recipeCount }: SectionNavProps) {
-  const filledMap = useFilledMap(doc, recipeCount);
-  const filledCount = OPERATIONS_SECTION_KEYS.filter((k) => filledMap[k]).length;
-
-  return (
-    <nav aria-label="Operations Playbook sections">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)] px-4 mb-2">
-        {filledCount} of {OPERATIONS_SECTION_KEYS.length} filled
-      </p>
-      <ul role="tablist" aria-label="Operations Playbook sections">
-        {OPERATIONS_SECTION_KEYS.map((key) => {
-          const isActive = active === key;
-          const filled = filledMap[key];
-          return (
-            <li key={key}>
-              <button
-                role="tab"
-                aria-selected={isActive}
-                type="button"
-                onClick={() => onChange(key)}
-                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium whitespace-nowrap transition-colors ${
-                  isActive
-                    ? "border-l-2 border-[var(--teal)] bg-[var(--teal-bg-f0f8)] text-[var(--teal)]"
-                    : "border-l-2 border-transparent text-[var(--muted-foreground)] hover:bg-[var(--background)]"
-                }`}
-              >
-                {filled ? (
-                  <Check className="w-3.5 h-3.5 flex-shrink-0 text-[var(--teal)]" />
-                ) : (
-                  <span className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center">
-                    <span className="w-1 h-1 rounded-full bg-[var(--border-medium)]" />
-                  </span>
-                )}
-                {operationsSectionLabel(key)}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
-}
-
-// ── Mobile horizontal scroll nav ─────────────────────────────────────────────
-
-function SectionNavMobile({ active, onChange, doc, recipeCount }: SectionNavProps) {
-  const filledMap = useFilledMap(doc, recipeCount);
-
-  return (
-    <div
-      role="tablist"
-      aria-label="Operations Playbook sections"
-      className="flex overflow-x-auto scrollbar-none gap-1 pb-1"
-    >
-      {OPERATIONS_SECTION_KEYS.map((key) => {
-        const isActive = active === key;
-        const filled = filledMap[key];
-        return (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={isActive}
-            type="button"
-            onClick={() => onChange(key)}
-            className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${
-              isActive
-                ? "bg-[var(--teal)] text-white"
-                : "text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] hover:border-[var(--teal)]/40"
-            }`}
-          >
-            {filled && (
-              <Check
-                className={`w-3 h-3 flex-shrink-0 ${isActive ? "text-white" : "text-[var(--teal)]"}`}
-              />
-            )}
-            {operationsSectionLabel(key)}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -598,7 +619,7 @@ function CategoryEditor({
   }, [useStation, category.items]);
 
   return (
-    <section className={`${cardCls} p-6`}>
+    <div>
       <SectionHeader
         label={label}
         tagline={tagline}
@@ -718,7 +739,7 @@ function CategoryEditor({
       )}
       {/* TIM-1477: inline "Tip" one-liner removed — folded into the InfoTip
           beside the "How this SOP works" question label above. */}
-    </section>
+    </div>
   );
 }
 
@@ -740,7 +761,6 @@ function SectionHeader({
   return (
     <div className="flex items-start justify-between gap-4 mb-4">
       <div className="flex-1 min-w-0 flex items-center gap-1">
-        <h2 className={sectionLabelCls}>{label}</h2>
         <SectionHelp title={label}>{tagline}</SectionHelp>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -1023,10 +1043,9 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
   const grouped = useMemo(() => groupRecipeCardsByCategory(cards), [cards]);
 
   return (
-    <section className={`${cardCls} p-6`}>
+    <div>
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0 flex items-center gap-1">
-          <h2 className={sectionLabelCls}>Drink Recipes</h2>
           <SectionHelp title="Drink Recipes">
             Read-only view of the recipes you build in the Menu workspace. Edit
             a recipe by opening the menu item. Tip: add the prep notes and
@@ -1090,7 +1109,7 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
 
       {/* TIM-1477: inline "Tip" one-liner removed — folded into the
           SectionHelp popover beside the Drink Recipes section header above. */}
-    </section>
+    </div>
   );
 }
 
@@ -1200,7 +1219,7 @@ function RolesEditor({
   }
 
   return (
-    <section className={`${cardCls} p-6`}>
+    <div>
       <SectionHeader
         label={label}
         tagline={tagline}
@@ -1302,7 +1321,7 @@ function RolesEditor({
           <Plus className="w-3.5 h-3.5" /> Add role
         </button>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -1377,7 +1396,7 @@ function VendorContactsEditor({
   }
 
   return (
-    <section className={`${cardCls} p-6`}>
+    <div>
       <SectionHeader
         label={label}
         tagline={tagline}
@@ -1519,7 +1538,7 @@ function VendorContactsEditor({
           <Plus className="w-3.5 h-3.5" /> Add contact
         </button>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -1591,7 +1610,7 @@ function TrainingEditor({
   }, [section.items]);
 
   return (
-    <section className={`${cardCls} p-6`}>
+    <div>
       <SectionHeader
         label={label}
         tagline={tagline}
@@ -1710,6 +1729,6 @@ function TrainingEditor({
           No milestones yet. Add one above or let AI draft a starter checklist.
         </p>
       )}
-    </section>
+    </div>
   );
 }
