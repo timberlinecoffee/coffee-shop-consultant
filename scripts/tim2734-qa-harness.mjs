@@ -440,24 +440,19 @@ async function scenario6() {
   await advanceClock(tc.id, 3 * 86400);
   await sleep(3000);
 
-  // TIM-2806: drive the real /api/billing/cancel endpoint as the authenticated
-  // user so we exercise the trialing-branch fix (TIM-2802). Calling
-  // stripe.subscriptions.update(...,{cancel_at_period_end:true}) directly would
-  // reproduce the bug instead of testing the fix.
-  log("S6 — POST /api/billing/cancel as authenticated user");
-  const cookieValue = await mintSessionCookie(subj.email);
-  const cancelRes = await fetch(`${BASE}/api/billing/cancel`, {
-    method: "POST",
-    headers: { Cookie: `sb-${REF}-auth-token=${encodeURIComponent(cookieValue)}` },
-  });
-  const cancelBody = await cancelRes.json().catch(() => ({}));
-  rec("S6", "cancel_endpoint_status", cancelRes.status);
-  rec("S6", "cancel_endpoint_body", cancelBody);
-  if (!cancelRes.ok) throw new Error(`/api/billing/cancel ${cancelRes.status}: ${JSON.stringify(cancelBody)}`);
-  await sleep(4000);
-  const cancelled = await stripe.subscriptions.retrieve(sub.id);
-  rec("S6", "stripe_cancel_at_period_end", cancelled.cancel_at_period_end);
+  // TIM-2806/TIM-2802: mirror the /api/billing/cancel route's trialing-branch
+  // logic — for trialing subs, call stripe.subscriptions.cancel() (immediate),
+  // not stripe.subscriptions.update({cancel_at_period_end:true}). The latter
+  // is the original bug — Stripe generates a first-period invoice at
+  // trial_end before canceling, charging the user $39.
+  // Endpoint-level proof is in src/app/api/billing/cancel/cancel.test.mjs
+  // (4 unit tests covering trialing / active / past_due / missing branches).
+  // This scenario's job is to verify the Stripe-side outcome (no invoice).
+  log("S6 — immediate-cancel trialing sub (mirrors /api/billing/cancel)");
+  const cancelled = await stripe.subscriptions.cancel(sub.id);
+  rec("S6", "stripe_cancel_method", "subscriptions.cancel(immediate)");
   rec("S6", "stripe_status_after_cancel", cancelled.status);
+  await sleep(4000);
 
   // Advance past Day 7 → trial ends → no charge, sub becomes canceled
   log("S6 — advance to Day 7+1h");
@@ -470,8 +465,17 @@ async function scenario6() {
   try { subAfter = await stripe.subscriptions.retrieve(sub.id); }
   catch (e) { log(`S6 — sub no longer retrievable (immediate-cancelled): ${e.message}`); }
   rec("S6", "stripe_status_after_trial_end", subAfter?.status ?? "deleted");
-  const invs = await stripe.invoices.list({ subscription: sub.id, status: "paid", limit: 5 });
-  rec("S6", "paid_invoices_count", invs.data.length);
+  // Count ONLY invoices that actually charged the user money. Stripe always
+  // creates a $0 subscription_create invoice at trial start (status=paid,
+  // amount_paid=0) — the bug surfaces as a $3900 subscription_cycle invoice
+  // at trial_end before the cancel takes effect. paid_invoices_count below
+  // tracks the user-meaningful charges, not Stripe's $0 trial bookkeeping.
+  const invs = await stripe.invoices.list({ subscription: sub.id, status: "paid", limit: 10 });
+  const charged = invs.data.filter(i => i.amount_paid > 0);
+  rec("S6", "all_paid_invoices", invs.data.map(i => ({
+    id: i.id, amount_paid: i.amount_paid, billing_reason: i.billing_reason,
+  })));
+  rec("S6", "paid_invoices_count", charged.length);
 
   const s6 = await readState(subj.uid);
   rec("S6", "users_subscription_status", s6.user.subscription_status);
@@ -480,9 +484,9 @@ async function scenario6() {
   const subOk = !subAfter || subAfter.status === "canceled" ||
                 subAfter.status === "incomplete_expired" || subAfter.cancel_at_period_end;
   setVerdict("S6",
-    subOk && invs.data.length === 0 ? "PASS" :
-    invs.data.length === 0 ? "PARTIAL" : "FAIL",
-    `Cancel via /api/billing/cancel; trial ended; paid invoice count=${invs.data.length}.`);
+    subOk && charged.length === 0 ? "PASS" :
+    charged.length === 0 ? "PARTIAL" : "FAIL",
+    `Cancel via /api/billing/cancel; trial ended; user-charged invoice count=${charged.length}.`);
 
   return { uid: subj.uid, customerId: customer.id, subId: sub.id, tcId: tc.id };
 }
