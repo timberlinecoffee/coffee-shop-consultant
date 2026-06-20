@@ -5,7 +5,8 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X } from 'lucide-react'
+import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X, MapPin } from 'lucide-react'
+import { WorkspaceEmptyState } from '@/app/_components/WorkspaceEmptyState'
 import {
   Card,
   CardHeader,
@@ -399,22 +400,24 @@ export function CandidateListCard({
           {/* ── List ── */}
           {visible.length === 0 ? (
             view === 'shortlist' ? (
-              <div className="py-10 text-center">
-                <p className="text-sm text-[var(--neutral-cool-600)] mb-3">
-                  No shortlisted locations yet. Tap the star on a location to add it to your shortlist.
-                </p>
-                <Button variant="outline" size="sm" onClick={() => setView('all')}>
-                  See all locations
-                </Button>
+              <div>
+                <WorkspaceEmptyState
+                  icon={MapPin}
+                  description="Star a location to add it to your shortlist."
+                />
+                <div className="flex justify-center pb-8">
+                  <Button variant="outline" size="sm" onClick={() => setView('all')}>
+                    See all locations
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="py-10 text-center">
-                <p className="text-sm text-[var(--neutral-cool-600)] mb-3">No locations yet.</p>
-                <Button size="sm" onClick={handleAdd} disabled={adding}>
-                  <Plus className="size-3.5 mr-1" />
-                  Add your first location
-                </Button>
-              </div>
+              <WorkspaceEmptyState
+                icon={MapPin}
+                description="Search and compare locations before you sign a lease."
+                ctaLabel="Add your first location"
+                onCtaClick={handleAdd}
+              />
             )
           ) : (
             <div className="flex flex-col gap-3">

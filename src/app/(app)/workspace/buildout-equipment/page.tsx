@@ -21,7 +21,7 @@ export default async function BuildoutEquipmentPage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id")
+    .select("id, shop_type")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -79,6 +79,7 @@ export default async function BuildoutEquipmentPage() {
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCurrencyCode={initialCurrencyCode}
+      initialShopType={(plan as { id: string; shop_type?: string }).shop_type ?? null}
     />
   );
 }

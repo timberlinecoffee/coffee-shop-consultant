@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Download,
 } from "lucide-react";
+import { WorkspaceEmptyState } from "@/app/_components/WorkspaceEmptyState";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -632,9 +633,12 @@ function OrgTab({
         </div>
 
         {orderedRoles.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-sm text-[var(--dark-grey)]">No roles yet. Add your first role above.</p>
-          </div>
+          <WorkspaceEmptyState
+            icon={Users}
+            description="Map out the roles you'll need from day one."
+            ctaLabel="Add your first role"
+            onCtaClick={addRole}
+          />
         ) : (
           <div className="divide-y divide-[var(--neutral-cool-100)]">
             {orderedRoles.map((role) => (

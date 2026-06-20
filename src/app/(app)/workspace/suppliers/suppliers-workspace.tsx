@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
+import { WorkspaceEmptyState } from "@/app/_components/WorkspaceEmptyState";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
@@ -798,9 +799,12 @@ export function SuppliersWorkspace({
               </div>
 
               {activeRows.length === 0 ? (
-                <div className="px-5 py-10 text-center text-sm text-[var(--dark-grey)]">
-                  No candidates yet. Add a vendor or generate suggestions.
-                </div>
+                <WorkspaceEmptyState
+                  icon={Truck}
+                  description="Track the vendors who supply your coffee, food, and packaging."
+                  ctaLabel="Add a vendor"
+                  onCtaClick={() => handleAddRow(activeCategory)}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table

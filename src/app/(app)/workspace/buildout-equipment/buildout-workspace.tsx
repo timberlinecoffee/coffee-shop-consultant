@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { Wrench, X, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
+import { WorkspaceEmptyState } from "@/app/_components/WorkspaceEmptyState";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -42,6 +43,49 @@ type AnyItem = EquipmentItem | SuppliesItem;
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
+// TIM-2798: seed table — 3 items per shop type for the empty-state seed link.
+const SHOP_TYPE_LABELS: Record<string, string> = {
+  full_cafe: "Full Cafe",
+  espresso_bar: "Espresso Bar",
+  roastery_cafe: "Roastery Cafe",
+  drive_through: "Drive-Through",
+  kiosk: "Kiosk",
+  mobile_cart: "Mobile Cart",
+};
+
+const SHOP_TYPE_SEED: Record<string, Array<{ name: string; unit_cost_cents: number }>> = {
+  full_cafe: [
+    { name: "Espresso Machine", unit_cost_cents: 1000000 },
+    { name: "Commercial Grinder", unit_cost_cents: 250000 },
+    { name: "Commercial Refrigerator", unit_cost_cents: 200000 },
+  ],
+  espresso_bar: [
+    { name: "Espresso Machine", unit_cost_cents: 1000000 },
+    { name: "Grinder", unit_cost_cents: 200000 },
+    { name: "POS System", unit_cost_cents: 100000 },
+  ],
+  roastery_cafe: [
+    { name: "Espresso Machine", unit_cost_cents: 1000000 },
+    { name: "Sample Roaster", unit_cost_cents: 500000 },
+    { name: "Commercial Grinder", unit_cost_cents: 250000 },
+  ],
+  drive_through: [
+    { name: "Espresso Machine", unit_cost_cents: 1000000 },
+    { name: "Commercial Grinder", unit_cost_cents: 250000 },
+    { name: "Drive-Through Headset System", unit_cost_cents: 150000 },
+  ],
+  kiosk: [
+    { name: "Compact Espresso Machine", unit_cost_cents: 350000 },
+    { name: "Grinder", unit_cost_cents: 200000 },
+    { name: "POS System", unit_cost_cents: 100000 },
+  ],
+  mobile_cart: [
+    { name: "Portable Espresso Machine", unit_cost_cents: 300000 },
+    { name: "Hand Grinder", unit_cost_cents: 20000 },
+    { name: "Portable Power Unit", unit_cost_cents: 150000 },
+  ],
+};
+
 interface Props {
   planId: string;
   initialEquipment: EquipmentItem[];
@@ -52,6 +96,7 @@ interface Props {
   initialNeedsReviewAt: string | null;
   initialModelUpdatedAtForReview: string | null;
   initialCurrencyCode?: string;
+  initialShopType?: string | null;
 }
 
 type SaveState =
@@ -150,6 +195,7 @@ export function BuildoutEquipmentWorkspace({
   initialNeedsReviewAt,
   initialModelUpdatedAtForReview,
   initialCurrencyCode = "USD",
+  initialShopType = null,
 }: Props) {
   const [equipment, setEquipment] = useState<EquipmentItem[]>(initialEquipment);
   const [sections, setSections] = useState<ListSection[]>(initialSections);
@@ -339,10 +385,39 @@ export function BuildoutEquipmentWorkspace({
     void fetchRecommendations(newItems);
   }
 
-  // Equipment seed
+  // Equipment seed (AI-generated full list via existing seed endpoint)
   async function seedEquipment() {
     const res = await fetch("/api/workspaces/financials/seed", { method: "POST" });
     if (!res.ok) throw new Error(`seed failed (${res.status})`);
+    const [eqRes, secRes] = await Promise.all([
+      fetch("/api/workspaces/financials/equipment"),
+      fetch("/api/workspaces/buildout/sections?list_type=equipment"),
+    ]);
+    if (!eqRes.ok || !secRes.ok) throw new Error("reload failed");
+    const [newEq, newSec] = await Promise.all([eqRes.json(), secRes.json()]);
+    setEquipment(newEq as EquipmentItem[]);
+    setSections(newSec as ListSection[]);
+    scheduleSave(newEq as EquipmentItem[]);
+    void fetchRecommendations(newEq as EquipmentItem[]);
+  }
+
+  // TIM-2798: seed 3 shop-type-specific starter items via the add-item mutation.
+  async function seedStarterEquipment() {
+    const items = SHOP_TYPE_SEED[initialShopType ?? "full_cafe"] ?? SHOP_TYPE_SEED["full_cafe"];
+    await Promise.all(
+      items.map((item) =>
+        fetch("/api/workspaces/financials/equipment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: item.name,
+            category: "Equipment",
+            unit_cost_cents: item.unit_cost_cents,
+            priority_tier: "must_have",
+          }),
+        })
+      )
+    );
     const [eqRes, secRes] = await Promise.all([
       fetch("/api/workspaces/financials/equipment"),
       fetch("/api/workspaces/buildout/sections?list_type=equipment"),
@@ -467,41 +542,56 @@ export function BuildoutEquipmentWorkspace({
         {/* TIM-1458/TIM-1793: canonical pill sub-nav, left-aligned under header. */}
         <EquipmentSuppliesSubNav active="equipment" />
 
-        <SeedBanner
-          canEdit={canEdit}
-          listType="equipment"
-          hasAiItems={hasAiEquipment}
-          onSeed={seedEquipment}
-        />
-        {/* TIM-2481 (F12): inline reconciliation banner — surfaces only when
-            the buildout grid total drifts meaningfully from Financials
-            startup_costs.equipment. Sync button opens the cross-suite
-            resolver on equipment_mismatch. */}
-        <EquipmentReconciliationBanner origin="buildout" className="mb-3" />
-        {uiRevampV2 && (
-          <div className="md:hidden">
-            <EquipmentMobileV2
-              items={equipment}
-              sections={equipmentSections}
-              currencyCode={initialCurrencyCode}
-            />
-          </div>
-        )}
-        <div className={uiRevampV2 ? "hidden md:block" : undefined}>
-          <SectionedListGrid
-            listType="equipment"
-            planId={planId}
-            canEdit={canEdit}
-            sections={equipmentSections}
-            items={equipment as AnyItem[]}
-            onItemsChange={handleEquipmentChange}
-            onSectionsChange={handleSectionsChange}
-            recommendations={recommendations}
-            showRecommendations={showRecommendations}
-            showAiMarkings={showAiMarkings}
-            currencyCode={initialCurrencyCode}
+        {/* TIM-2798: show canonical empty state at zero-state; SeedBanner only
+            renders after at least one item exists so both never appear together. */}
+        {activeEquipment.length === 0 ? (
+          <WorkspaceEmptyState
+            icon={Wrench}
+            description="This is where you build the equipment list you'll need to open your shop."
+            ctaLabel="Add your first piece of equipment"
+            onCtaClick={() => setDescribeOpen(true)}
+            seedLabel={`Load starter equipment for ${SHOP_TYPE_LABELS[initialShopType ?? ""] ?? "your shop type"}`}
+            onSeedClick={seedStarterEquipment}
           />
-        </div>
+        ) : (
+          <>
+            <SeedBanner
+              canEdit={canEdit}
+              listType="equipment"
+              hasAiItems={hasAiEquipment}
+              onSeed={seedEquipment}
+            />
+            {/* TIM-2481 (F12): inline reconciliation banner — surfaces only when
+                the buildout grid total drifts meaningfully from Financials
+                startup_costs.equipment. Sync button opens the cross-suite
+                resolver on equipment_mismatch. */}
+            <EquipmentReconciliationBanner origin="buildout" className="mb-3" />
+            {uiRevampV2 && (
+              <div className="md:hidden">
+                <EquipmentMobileV2
+                  items={equipment}
+                  sections={equipmentSections}
+                  currencyCode={initialCurrencyCode}
+                />
+              </div>
+            )}
+            <div className={uiRevampV2 ? "hidden md:block" : undefined}>
+              <SectionedListGrid
+                listType="equipment"
+                planId={planId}
+                canEdit={canEdit}
+                sections={equipmentSections}
+                items={equipment as AnyItem[]}
+                onItemsChange={handleEquipmentChange}
+                onSectionsChange={handleSectionsChange}
+                recommendations={recommendations}
+                showRecommendations={showRecommendations}
+                showAiMarkings={showAiMarkings}
+                currencyCode={initialCurrencyCode}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {settingsOpen && (
