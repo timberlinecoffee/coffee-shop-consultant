@@ -15,7 +15,7 @@ export const maxDuration = 30;
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { hasWriteAccess } from "@/lib/access";
+import { effectivePlanForGating, isBetaWaived } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { loadReferenceDataset } from "@/lib/benchmarking/load-reference-data";
 import { loadWorkspaceInputs } from "@/lib/benchmarking/load-workspace-inputs";
@@ -78,20 +78,24 @@ export async function GET(
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, trial_ends_at, beta_waiver_until")
+    .select(
+      "subscription_status, subscription_tier, paused_from_tier, trial_ends_at, beta_waiver_until",
+    )
     .eq("id", userId)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  const hasAccess = hasWriteAccess({
+  // TIM-2838: Pro-tier gate mirrors /workspace/benchmarks page gate.
+  const betaWaived = isBetaWaived(profile.beta_waiver_until);
+  const tier = effectivePlanForGating({
     subscription_status: profile.subscription_status,
+    subscription_tier: profile.subscription_tier,
+    paused_from_tier: profile.paused_from_tier,
     trial_ends_at: profile.trial_ends_at,
   });
-  const betaWaivedUntil = profile.beta_waiver_until ? new Date(profile.beta_waiver_until) : null;
-  const isBetaWaived = betaWaivedUntil ? betaWaivedUntil > new Date() : false;
-  if (!hasAccess && !isBetaWaived) {
+  if (tier !== "pro" && !betaWaived) {
     return NextResponse.json(
-      { reason: "no_subscription", tier_required: "starter" },
-      { status: 402 },
+      { error: "Pro plan required", reason: "pro_required", tier_required: "pro" },
+      { status: 403 },
     );
   }
 

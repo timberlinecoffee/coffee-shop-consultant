@@ -13,7 +13,9 @@
 // (whole plan) returns every benchmark finding.
 //
 // Standing Rules:
-//   Rule 2 — server-side ownership + plan-tier gate (mirrors /audit).
+//   Rule 2 — server-side ownership + Pro-tier gate (mirrors /workspace/benchmarks
+//            page gate). TIM-2838: was hasWriteAccess() only, which let Starter
+//            users bypass the page UpgradeGate by POSTing directly.
 //   Rule 3 — body validated; finding strings sanitized through stripFindingTags.
 //   Rule 4 — per-user rate limit on the bucket. No LLM calls in this path.
 //   Rule 5 — single error boundary, sanitized 5xx shape.
@@ -23,7 +25,7 @@ export const maxDuration = 30;
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { hasWriteAccess } from "@/lib/access";
+import { effectivePlanForGating, isBetaWaived } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type {
   BpLocationCandidate,
@@ -105,18 +107,28 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, trial_ends_at, beta_waiver_until")
+    .select(
+      "subscription_status, subscription_tier, paused_from_tier, trial_ends_at, beta_waiver_until",
+    )
     .eq("id", user.id)
     .maybeSingle();
   if (!profile) return Response.json({ error: "Profile not found" }, { status: 404 });
-  const hasAccess = hasWriteAccess({
+  // TIM-2838: server-side Pro gate must mirror /workspace/benchmarks page gate.
+  // hasWriteAccess() alone (subscription_status === 'active') let Starter users
+  // POST directly and bypass the page's UpgradeGate. effectivePlanForGating()
+  // already honors trial-as-Pro (TIM-1902) and paused_from_tier (TIM-1541).
+  const betaWaived = isBetaWaived(profile.beta_waiver_until);
+  const tier = effectivePlanForGating({
     subscription_status: profile.subscription_status,
+    subscription_tier: profile.subscription_tier,
+    paused_from_tier: profile.paused_from_tier,
     trial_ends_at: profile.trial_ends_at,
   });
-  const betaWaivedUntil = profile.beta_waiver_until ? new Date(profile.beta_waiver_until) : null;
-  const isBetaWaived = betaWaivedUntil ? betaWaivedUntil > new Date() : false;
-  if (!hasAccess && !isBetaWaived) {
-    return Response.json({ reason: "no_subscription", tier_required: "starter" }, { status: 402 });
+  if (tier !== "pro" && !betaWaived) {
+    return Response.json(
+      { error: "Pro plan required", reason: "pro_required", tier_required: "pro" },
+      { status: 403 },
+    );
   }
 
   const { data: plan } = await supabase
