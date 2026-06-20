@@ -12,7 +12,10 @@
 //   active tab: bg-[var(--teal)] text-white
 //   inactive tab: text-[var(--muted-foreground)] hover:text-[var(--foreground)]
 // Do NOT recreate this markup in a workspace — import this component.
+//
+// TIM-2833: right-edge scroll indicator — fades when more tabs exist off-screen.
 
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 
@@ -47,62 +50,93 @@ export function WorkspaceSubNav<K extends string>({
   ariaLabel,
   className,
 }: WorkspaceSubNavProps<K>) {
-  return (
-    <nav
-      aria-label={ariaLabel}
-      className={`flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full ${
-        className ?? "mb-5"
-      }`}
-    >
-      {tabs.map((t) => {
-        const isActive = t.key === active;
-        const stateClass = isActive
-          ? "bg-[var(--teal)] text-white"
-          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]";
-        const Icon = t.Icon;
-        const content = (
-          <>
-            {Icon ? <Icon size={13} aria-hidden="true" /> : null}
-            {t.label}
-            {t.badge != null && t.badge > 0 ? (
-              <span
-                className={`ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full ${
-                  isActive
-                    ? "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
-                    : "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
-                }`}
-              >
-                {t.badge}
-              </span>
-            ) : null}
-          </>
-        );
+  const scrollRef = useRef<HTMLElement>(null);
+  const [showFade, setShowFade] = useState(false);
 
-        if (t.href) {
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    function checkOverflow() {
+      if (!el) return;
+      setShowFade(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    }
+
+    checkOverflow();
+    el.addEventListener("scroll", checkOverflow, { passive: true });
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", checkOverflow);
+      ro.disconnect();
+    };
+  }, []);
+
+  return (
+    <div className={`relative ${className ?? "mb-5"}`}>
+      <nav
+        ref={scrollRef}
+        aria-label={ariaLabel}
+        className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full"
+      >
+        {tabs.map((t) => {
+          const isActive = t.key === active;
+          const stateClass = isActive
+            ? "bg-[var(--teal)] text-white"
+            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]";
+          const Icon = t.Icon;
+          const content = (
+            <>
+              {Icon ? <Icon size={13} aria-hidden="true" /> : null}
+              {t.label}
+              {t.badge != null && t.badge > 0 ? (
+                <span
+                  className={`ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full ${
+                    isActive
+                      ? "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
+                      : "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
+                  }`}
+                >
+                  {t.badge}
+                </span>
+              ) : null}
+            </>
+          );
+
+          if (t.href) {
+            return (
+              <Link
+                key={t.key}
+                href={t.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`${TAB_CLASS} ${stateClass}`}
+              >
+                {content}
+              </Link>
+            );
+          }
+
           return (
-            <Link
+            <button
               key={t.key}
-              href={t.href}
+              type="button"
               aria-current={isActive ? "page" : undefined}
+              onClick={() => onSelect?.(t.key)}
               className={`${TAB_CLASS} ${stateClass}`}
             >
               {content}
-            </Link>
+            </button>
           );
-        }
-
-        return (
-          <button
-            key={t.key}
-            type="button"
-            aria-current={isActive ? "page" : undefined}
-            onClick={() => onSelect?.(t.key)}
-            className={`${TAB_CLASS} ${stateClass}`}
-          >
-            {content}
-          </button>
-        );
-      })}
-    </nav>
+        })}
+      </nav>
+      {/* TIM-2833: right-edge fade signals more tabs beyond the viewport */}
+      {showFade && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 rounded-r-xl"
+          style={{ background: "linear-gradient(to right, transparent, white)" }}
+        />
+      )}
+    </div>
   );
 }
