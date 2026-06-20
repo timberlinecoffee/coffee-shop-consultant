@@ -100,6 +100,11 @@ export function ConceptWorkspace({
   const uiRevamp = useUiRevamp();
   const router = useRouter();
 
+  // TIM-2858: lift unified review modal to the parent so it survives the
+  // AIAssistCallout draft-modal unmount (`onClose()` runs immediately after
+  // `openAIReviewModal()` when the stream completes).
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
   // TIM-2505: shop-type-aware hints/emptyPrompts. shopType is stable (set at
@@ -665,6 +670,7 @@ export function ConceptWorkspace({
           if (aiAssistField) updateContent(aiAssistField.id, newValue);
           setAiAssistField(null);
         }}
+        openAIReviewModal={openAIReviewModal}
       />
 
       {/* TIM-880 / TIM-893: CoPilotDrawer handles both the WorkspaceTopBar button
@@ -676,6 +682,10 @@ export function ConceptWorkspace({
         initialTrialMessagesUsed={initialTrialMessagesUsed}
         onApplySuggestions={handleApplyConceptSuggestions}
       />
+
+      {/* TIM-2858: unified AI review modal — owned here (not inside
+          AIAssistCallout) so it survives the draft modal closing. */}
+      {AIReviewModalNode}
     </div>
   );
 }
