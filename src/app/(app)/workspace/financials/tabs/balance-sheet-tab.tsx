@@ -8,8 +8,8 @@ import {
   fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import {
-  ChartCard,
   FinancialBarChart,
   FinancialComboChart,
   FinancialLineChart,
@@ -81,21 +81,25 @@ function BalanceSheetSummaryChart({
   }));
   return (
     <div className="mb-4">
-      <ChartCard
+      <ResponsiveChart
         title="Year 1 Assets vs. Financing"
         description="How your asset base is funded each month. Liabilities and equity stack up to the total-assets line when the books balance."
+        defaultHeight={260}
       >
-        <FinancialComboChart
-          data={data}
-          barSeries={[
-            { key: "total_liabilities", label: "Liabilities", color: CHART_COLORS.negative },
-            { key: "total_equity", label: "Equity", color: CHART_COLORS.primary },
-          ]}
-          lineSeries={[{ key: "total_assets", label: "Total Assets", color: CHART_COLORS.warning }]}
-          currencyCode={currencyCode}
-          height={260}
-        />
-      </ChartCard>
+        {(h, _isDrawer, isCompact) => (
+          <FinancialComboChart
+            data={data}
+            barSeries={[
+              { key: "total_liabilities", label: "Liabilities", color: CHART_COLORS.negative },
+              { key: "total_equity", label: "Equity", color: CHART_COLORS.primary },
+            ]}
+            lineSeries={[{ key: "total_assets", label: "Total Assets", color: CHART_COLORS.warning }]}
+            currencyCode={currencyCode}
+            height={h}
+            compactAxis={!!isCompact}
+          />
+        )}
+      </ResponsiveChart>
     </div>
   );
 }
@@ -228,37 +232,49 @@ export function BalanceSheetTab({
 
       {view === "chart" ? (
         <div className="space-y-4">
-          <ChartCard
+          <ResponsiveChart
             title="Assets Composition"
             description="How total assets break down across cash, inventory, fixed assets, and receivables."
           >
-            <FinancialBarChart
-              data={chartData}
-              series={assetSeries}
-              currencyCode={currencyCode}
-            />
-          </ChartCard>
-          <ChartCard
+            {(h, _isDrawer, isCompact) => (
+              <FinancialBarChart
+                data={chartData}
+                series={assetSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+              />
+            )}
+          </ResponsiveChart>
+          <ResponsiveChart
             title="Liabilities & Equity"
             description="How the asset side is financed — debt vs. owner equity & retained earnings."
           >
-            <FinancialBarChart
-              data={chartData}
-              series={capitalSeries}
-              currencyCode={currencyCode}
-            />
-          </ChartCard>
-          <ChartCard
+            {(h, _isDrawer, isCompact) => (
+              <FinancialBarChart
+                data={chartData}
+                series={capitalSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+              />
+            )}
+          </ResponsiveChart>
+          <ResponsiveChart
             title="Cash On Hand"
             description="Cash and cash equivalents at the end of each period."
           >
-            <FinancialLineChart
-              data={chartData}
-              series={cashLine}
-              currencyCode={currencyCode}
-              showZero
-            />
-          </ChartCard>
+            {(h, _isDrawer, isCompact) => (
+              <FinancialLineChart
+                data={chartData}
+                series={cashLine}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+                showZero
+              />
+            )}
+          </ResponsiveChart>
         </div>
       ) : (
       <>

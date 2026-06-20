@@ -41,7 +41,10 @@ export const CHART_COLORS = {
 } as const;
 
 const AXIS_STYLE = { fill: CHART_COLORS.muted, fontSize: 11 } as const;
+const AXIS_STYLE_COMPACT = { fill: CHART_COLORS.muted, fontSize: 10 } as const;
 const TICK_LINE = { stroke: CHART_COLORS.grid } as const;
+const YAXIS_WIDTH = 70;
+const YAXIS_WIDTH_COMPACT = 44;
 
 function compactCurrency(cents: number, currencyCode: string) {
   const dollars = cents / 100;
@@ -127,6 +130,7 @@ interface LineChartProps {
   currencyCode: string;
   height?: number;
   showZero?: boolean;
+  compactAxis?: boolean;
 }
 
 export function FinancialLineChart({
@@ -135,24 +139,27 @@ export function FinancialLineChart({
   currencyCode,
   height = 280,
   showZero = false,
+  compactAxis = false,
 }: LineChartProps) {
   const resolved = resolveColors(series);
+  const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
+  const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={AXIS_STYLE} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
         <YAxis
-          tick={AXIS_STYLE}
+          tick={axisStyle}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          width={yWidth}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
           <Legend
-            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
             iconType="square"
             iconSize={8}
           />
@@ -182,6 +189,7 @@ interface StackedBarChartProps {
   currencyCode: string;
   height?: number;
   stack?: boolean;
+  compactAxis?: boolean;
 }
 
 export function FinancialBarChart({
@@ -190,25 +198,28 @@ export function FinancialBarChart({
   currencyCode,
   height = 280,
   stack = true,
+  compactAxis = false,
 }: StackedBarChartProps) {
   const resolved = resolveColors(series);
   const stackId = stack ? "stack" : undefined;
+  const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
+  const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={AXIS_STYLE} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
         <YAxis
-          tick={AXIS_STYLE}
+          tick={axisStyle}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          width={yWidth}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         {series.length > 1 && (
           <Legend
-            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
             iconType="square"
             iconSize={8}
           />
@@ -236,6 +247,7 @@ interface AreaChartProps {
   currencyCode: string;
   height?: number;
   stack?: boolean;
+  compactAxis?: boolean;
 }
 
 export function FinancialAreaChart({
@@ -244,25 +256,28 @@ export function FinancialAreaChart({
   currencyCode,
   height = 280,
   stack = true,
+  compactAxis = false,
 }: AreaChartProps) {
   const resolved = resolveColors(series);
   const stackId = stack ? "stack" : undefined;
+  const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
+  const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={AXIS_STYLE} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
         <YAxis
-          tick={AXIS_STYLE}
+          tick={axisStyle}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          width={yWidth}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
           <Legend
-            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
             iconType="square"
             iconSize={8}
           />
@@ -292,6 +307,7 @@ interface ComboChartProps {
   lineSeries: ChartSeries[];
   currencyCode: string;
   height?: number;
+  compactAxis?: boolean;
 }
 
 export function FinancialComboChart({
@@ -300,6 +316,7 @@ export function FinancialComboChart({
   lineSeries,
   currencyCode,
   height = 320,
+  compactAxis = false,
 }: ComboChartProps) {
   const bars = resolveColors(barSeries);
   const lines = resolveColors(
@@ -308,21 +325,23 @@ export function FinancialComboChart({
       color: s.color ?? DEFAULT_PALETTE[(barSeries.length + i) % DEFAULT_PALETTE.length],
     }))
   );
+  const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
+  const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={AXIS_STYLE} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
         <YAxis
-          tick={AXIS_STYLE}
+          tick={axisStyle}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          width={yWidth}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         <Legend
-          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+          wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
           iconType="square"
           iconSize={8}
         />

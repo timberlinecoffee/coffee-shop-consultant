@@ -9,8 +9,8 @@ import {
 } from "@/lib/financial-projection";
 import type { EquipmentItem } from "../financials-workspace";
 import { ForecastLinesEditor, type MenuCogsItem } from "../forecast-lines-editor";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import {
-  ChartCard,
   FinancialBarChart,
   CHART_COLORS,
   type ChartDatum,
@@ -210,17 +210,21 @@ export function DepreciationTab({
         />
       </div>
 
-      <ChartCard
+      <ResponsiveChart
         title="Monthly Depreciation Expense: Year 1"
         description="Straight-line depreciation charged to the P&L each month across all capital assets."
       >
-        <FinancialBarChart
-          data={chartData}
-          series={CHART_SERIES}
-          currencyCode={currencyCode}
-          stack={false}
-        />
-      </ChartCard>
+        {(h, _isDrawer, isCompact) => (
+          <FinancialBarChart
+            data={chartData}
+            series={CHART_SERIES}
+            currencyCode={currencyCode}
+            height={h}
+            compactAxis={!!isCompact}
+            stack={false}
+          />
+        )}
+      </ResponsiveChart>
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--teal-tint-500)] px-4 py-3">
         <p className="text-xs font-semibold text-[var(--teal)] mb-1.5">How depreciation flows</p>

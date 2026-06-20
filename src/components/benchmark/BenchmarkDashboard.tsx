@@ -9,6 +9,7 @@ import { CohortSummaryCard } from "./CohortSummaryCard";
 import { HealthGrid } from "./HealthGrid";
 import { AdjustCohortModal } from "./AdjustCohortModal";
 import { BenchmarkTrendChart } from "./BenchmarkTrendChart";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import type { BenchmarkPageData, CohortAxes, DrilldownData } from "./types";
 
 interface BenchmarkDashboardProps {
@@ -210,12 +211,14 @@ export function BenchmarkDashboard({
 
       {/* Trend chart */}
       {trendData && trendData.length > 0 && (
-        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-3">
-            {trendMetric?.label} — trend
-          </p>
-          <BenchmarkTrendChart data={trendData} />
-        </div>
+        <ResponsiveChart
+          title={`${trendMetric?.label ?? "Metric"} — Trend`}
+          minHeightNarrow={180}
+          minHeightMedium={180}
+          defaultHeight={180}
+        >
+          {(h) => <BenchmarkTrendChart data={trendData} height={h} />}
+        </ResponsiveChart>
       )}
 
       {/* Adjust-cohort modal */}

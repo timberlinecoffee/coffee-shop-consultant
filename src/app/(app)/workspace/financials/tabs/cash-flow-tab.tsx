@@ -8,8 +8,8 @@ import {
   fiscalYearMonthLabels,
   fmt,
 } from "@/lib/financial-projection";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import {
-  ChartCard,
   FinancialComboChart,
   FinancialLineChart,
   ViewModeToggle,
@@ -113,18 +113,24 @@ function CashSummaryChart({
   }));
   return (
     <div className="mb-4">
-      <ChartCard
+      <ResponsiveChart
         title="Year 1 Ending Cash Balance"
         description="Where your cash lands at the end of each month of your first operating year. Watch for any dip toward or below zero."
+        minHeightNarrow={200}
+        minHeightMedium={240}
+        defaultHeight={240}
       >
-        <FinancialLineChart
-          data={data}
-          series={[{ key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary }]}
-          currencyCode={currencyCode}
-          height={240}
-          showZero
-        />
-      </ChartCard>
+        {(h, _isDrawer, isCompact) => (
+          <FinancialLineChart
+            data={data}
+            series={[{ key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary }]}
+            currencyCode={currencyCode}
+            height={h}
+            compactAxis={!!isCompact}
+            showZero
+          />
+        )}
+      </ResponsiveChart>
     </div>
   );
 }
@@ -294,30 +300,38 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
 
       {view === "chart" ? (
         <div className="space-y-4">
-          <ChartCard
+          <ResponsiveChart
             title="Cash Flow By Category"
             description="Stacked bars show net cash from Operating, Investing, and Financing activities each period. The line is the ending cash balance."
           >
-            <FinancialComboChart
-              data={chartData}
-              barSeries={flowSeries}
-              lineSeries={cashLineSeries}
-              currencyCode={currencyCode}
-            />
-          </ChartCard>
-          <ChartCard
+            {(h, _isDrawer, isCompact) => (
+              <FinancialComboChart
+                data={chartData}
+                barSeries={flowSeries}
+                lineSeries={cashLineSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+              />
+            )}
+          </ResponsiveChart>
+          <ResponsiveChart
             title="Ending Cash Trajectory"
             description="Where your cash balance lands at the end of each period. Watch for dips toward zero."
           >
-            <FinancialLineChart
-              data={chartData}
-              series={[
-                { key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary },
-              ]}
-              currencyCode={currencyCode}
-              showZero
-            />
-          </ChartCard>
+            {(h, _isDrawer, isCompact) => (
+              <FinancialLineChart
+                data={chartData}
+                series={[
+                  { key: "ending_cash", label: "Ending Cash", color: CHART_COLORS.primary },
+                ]}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+                showZero
+              />
+            )}
+          </ResponsiveChart>
         </div>
       ) : (
       <>

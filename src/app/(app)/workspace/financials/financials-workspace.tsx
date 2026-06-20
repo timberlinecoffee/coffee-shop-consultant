@@ -60,7 +60,8 @@ import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
 import { fmtIntegerPct } from "@/lib/formatters";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
-import { ChartCard, FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
+import { FinancialBarChart, CHART_COLORS } from "./tabs/financial-charts";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import { brandCssVars, BP_BRAND_CHANNEL_NAME } from "@/lib/bp-brand-channel";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
@@ -1581,18 +1582,22 @@ function RevenueChart({
     { key: "revenue", label: "Monthly Revenue", color: CHART_COLORS.primary },
   ];
   return (
-    <ChartCard
+    <ResponsiveChart
       title="Year 1 Monthly Revenue"
       description="Projected revenue for each month of your first operating year."
+      defaultHeight={240}
     >
-      <FinancialBarChart
-        data={data}
-        series={series}
-        currencyCode={currencyCode}
-        height={240}
-        stack={false}
-      />
-    </ChartCard>
+      {(h, _isDrawer, isCompact) => (
+        <FinancialBarChart
+          data={data}
+          series={series}
+          currencyCode={currencyCode}
+          height={h}
+          compactAxis={!!isCompact}
+          stack={false}
+        />
+      )}
+    </ResponsiveChart>
   );
 }
 
@@ -1625,12 +1630,21 @@ function PayrollSummaryChart({
   ];
   return (
     <div className="mb-6">
-      <ChartCard
+      <ResponsiveChart
         title="Year 1 Monthly Payroll"
         description="Total payroll for each month of your first operating year, split into service labor (counted in COGS) and overhead labor."
+        defaultHeight={240}
       >
-        <FinancialBarChart data={data} series={series} currencyCode={currencyCode} height={240} />
-      </ChartCard>
+        {(h, _isDrawer, isCompact) => (
+          <FinancialBarChart
+            data={data}
+            series={series}
+            currencyCode={currencyCode}
+            height={h}
+            compactAxis={!!isCompact}
+          />
+        )}
+      </ResponsiveChart>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
 // TIM-2472: Line chart showing user value + cohort median + best-practice band over time.
+// TIM-2841: Internally responsive via ResizeObserver when ui_revamp_v2 is on.
 // Uses Recharts, following the pattern in financial-charts.tsx.
 
+import { useEffect, useRef, useState } from "react";
 import {
   ComposedChart,
   Line,
@@ -14,6 +16,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import type { PercentilePoint } from "./types";
 
 interface BenchmarkTrendChartProps {
@@ -22,12 +25,39 @@ interface BenchmarkTrendChartProps {
   height?: number;
 }
 
-export function BenchmarkTrendChart({ data, unit = "", height = 180 }: BenchmarkTrendChartProps) {
+export function BenchmarkTrendChart({ data, unit = "", height: heightProp }: BenchmarkTrendChartProps) {
+  const uiRevamp = useUiRevamp();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(800);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w != null) setContainerWidth(w);
+    });
+    ro.observe(el);
+    setContainerWidth(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+
+  const height = heightProp != null
+    ? heightProp
+    : uiRevamp
+    ? containerWidth < 480
+      ? 160
+      : containerWidth < 768
+      ? 180
+      : 180
+    : 180;
+
   if (!data || data.length === 0) return null;
 
   const fmtTick = (v: number) => `${v}${unit}`;
 
   return (
+    <div ref={containerRef}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -84,5 +114,6 @@ export function BenchmarkTrendChart({ data, unit = "", height = 180 }: Benchmark
         />
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
   );
 }

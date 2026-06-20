@@ -22,8 +22,8 @@ import {
   pct,
   BASE_REVENUE_LINE_ID,
 } from "@/lib/financial-projection";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import {
-  ChartCard,
   FinancialBarChart,
   FinancialLineChart,
   ViewModeToggle,
@@ -559,47 +559,63 @@ export function PLTab({
 
       {view === "chart" ? (
         <div className="space-y-4">
-          <ChartCard
+          <ResponsiveChart
             title="Revenue Forecast"
             description="Stacked revenue by source over the period, with net revenue overlaid as a line."
           >
-            <FinancialBarChart
-              data={revenueChartData}
-              series={revenueBarSeries}
-              currencyCode={currencyCode}
-            />
-          </ChartCard>
-          <ChartCard
+            {(h, _isDrawer, isCompact) => (
+              <FinancialBarChart
+                data={revenueChartData}
+                series={revenueBarSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+              />
+            )}
+          </ResponsiveChart>
+          <ResponsiveChart
             title="Revenue Trajectory"
             description="Net revenue trend across the selected period."
           >
-            <FinancialLineChart
-              data={revenueChartData}
-              series={revenueLineSeries}
-              currencyCode={currencyCode}
-            />
-          </ChartCard>
-          <ChartCard
+            {(h, _isDrawer, isCompact) => (
+              <FinancialLineChart
+                data={revenueChartData}
+                series={revenueLineSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+              />
+            )}
+          </ResponsiveChart>
+          <ResponsiveChart
             title="Expense Forecast"
             description="Stacked operating expenses and COGS by period. Heavier bars = larger total expense burden."
           >
-            <FinancialBarChart
-              data={expenseChartData}
-              series={expenseStackedSeries}
-              currencyCode={currencyCode}
-            />
-          </ChartCard>
-          <ChartCard
+            {(h, _isDrawer, isCompact) => (
+              <FinancialBarChart
+                data={expenseChartData}
+                series={expenseStackedSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+              />
+            )}
+          </ResponsiveChart>
+          <ResponsiveChart
             title="Operating Income"
             description="What you keep after COGS and operating expenses. Negative values mean you're burning cash."
           >
-            <FinancialLineChart
-              data={expenseChartData}
-              series={profitSeries}
-              currencyCode={currencyCode}
-              showZero
-            />
-          </ChartCard>
+            {(h, _isDrawer, isCompact) => (
+              <FinancialLineChart
+                data={expenseChartData}
+                series={profitSeries}
+                currencyCode={currencyCode}
+                height={h}
+                compactAxis={!!isCompact}
+                showZero
+              />
+            )}
+          </ResponsiveChart>
         </div>
       ) : (
       <>
