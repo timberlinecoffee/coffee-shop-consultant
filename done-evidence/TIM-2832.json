@@ -1,0 +1,13 @@
+{
+  "issueId": "TIM-2832",
+  "mergeSha": "eb739c3f39ca95625a1ecb7bedbb64b921fcd28f",
+  "prodHttpCode": 200,
+  "prodUrl": "https://groundwork.cafe",
+  "timestamp": "2026-06-20T20:08:00Z",
+  "playwrightExitCode": null,
+  "playwrightSkippedReason": "no @TIM-2832 tagged test exists; board approved CSS-only fade affordance via parent interaction; Playwright runner blocked project-wide on tests/smoke.spec.ts ESM-TLA + missing NEXT_PUBLIC_SUPABASE_URL env (unrelated to this fix)",
+  "filesChanged": [
+    "src/app/(app)/workspace/menu-pricing/menu-workspace.tsx"
+  ],
+  "vercelDeployment": "coffee-shop-consultant-ewrbimk7j-timberlinecoffees-projects.vercel.app"
+}
