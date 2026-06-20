@@ -30,6 +30,7 @@ import {
 import { loadFinancialSnapshot } from "@/lib/dashboard/financial-snapshot";
 import { HomeV2 } from "./_components/HomeV2";
 import { TrialBanner } from "./_components/trial-banner";
+import { PaymentFailureBanner } from "./_components/payment-failure-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
 import { OpenImportFromQuery } from "./_components/open-import-from-query";
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
               }
             />
           )}
+        {profile?.subscription_status === "past_due" && <PaymentFailureBanner />}
         {profile?.trial_just_converted_to && (
           <WelcomeToast
             planName={
@@ -142,6 +144,8 @@ export default async function DashboardPage() {
               }
             />
           )}
+
+        {profile?.subscription_status === "past_due" && <PaymentFailureBanner />}
 
         {profile?.trial_just_converted_to && (
           <WelcomeToast
