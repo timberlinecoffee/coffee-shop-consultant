@@ -1,4 +1,5 @@
 // TIM-2377: Projects CRUD — PATCH (rename / activate) + DELETE.
+// TIM-2805: stats endpoint lives at /api/projects/[id]/stats/route.ts.
 // PATCH isActive:true sets users.current_plan_id (project switcher).
 // DELETE refuses if sole project; reassigns current_plan_id to next-newest on delete.
 import { createClient } from "@/lib/supabase/server"
