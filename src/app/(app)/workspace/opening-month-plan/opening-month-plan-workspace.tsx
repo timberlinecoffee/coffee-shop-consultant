@@ -18,7 +18,6 @@ import {
   Rocket, ChevronDown, ChevronRight, Check, X,
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
 } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   WorkspaceSubNav,
@@ -1308,14 +1307,6 @@ export function OpeningMonthPlanWorkspace({
         </div>
       </div>
 
-      {/* CoPilot */}
-      <CoPilotDrawer
-        workspaceKey="opening_month_plan"
-        planId={planId}
-        currentFocus={{ anchor: "opening_month_plan", label: coPilotFocusLabel }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleApplyOpeningMonthSuggestions}
-      />
 
       {/* Edit modal */}
       {editModal && (

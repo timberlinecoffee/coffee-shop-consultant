@@ -14,7 +14,6 @@ import {
   ArrowDown,
   Printer,
 } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -228,14 +227,6 @@ export function MarketingWorkspace({
           />
         </div>
       </div>
-
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="marketing"
-        currentFocus={{ label: activeLabel }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleApplyMarketingSuggestions}
-      />
 
       <PaywallModal
         open={paywallReason !== null}

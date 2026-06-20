@@ -33,7 +33,6 @@ import { TrialBanner } from "./_components/trial-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
 import { OpenImportFromQuery } from "./_components/open-import-from-query";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
@@ -113,13 +112,6 @@ export default async function DashboardPage() {
           />
         )}
         <HomeV2 firstName={firstName} overview={overview} snapshot={snapshot} />
-        {overview.planId && (
-          <CoPilotDrawer
-            workspaceKey="dashboard"
-            planId={overview.planId}
-            showDesktopLauncher={true}
-          />
-        )}
       </>
     );
   }
@@ -199,13 +191,6 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
-      {overview.planId && (
-        <CoPilotDrawer
-          workspaceKey="dashboard"
-          planId={overview.planId}
-          showDesktopLauncher={true}
-        />
-      )}
     </div>
   );
 }

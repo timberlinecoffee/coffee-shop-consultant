@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { FinancialsV2 } from "./financials-v2";
 import { BarChart2, X, AlertTriangle, FileDown, Sheet, Compass, ChevronDown } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -2667,12 +2666,6 @@ export function FinancialsWorkspace({
 
       {benchmarkAIReviewModalNode}
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="financials"
-        currentFocus={{ label: "Financials" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-      />
     </div>
   );
 }

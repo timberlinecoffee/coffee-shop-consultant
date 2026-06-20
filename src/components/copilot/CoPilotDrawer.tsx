@@ -237,7 +237,7 @@ type CreditsState =
   | null;
 
 export interface CoPilotDrawerProps {
-  workspaceKey: WorkspaceKey;
+  workspaceKey: WorkspaceKey | null;
   planId: string;
   currentFocus?: CopilotFocus;
   initialTrialMessagesUsed?: number;
@@ -368,7 +368,7 @@ export function CoPilotDrawer({
   });
   // Track the prop separately so a parent-driven workspace switch resets the active
   // workspace without us calling setState inside an effect body.
-  const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey }>(() => ({
+  const [workspaceKeyVersion, setWorkspaceKeyVersion] = useState<{ key: WorkspaceKey | null }>(() => ({
     key: workspaceKey,
   }));
   // TIM-2416 — Dashboard + Business Plan callers pass defaultScopeOverride=null

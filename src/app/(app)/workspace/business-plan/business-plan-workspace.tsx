@@ -30,7 +30,6 @@ import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { PreGenerateChecklist, type PreGenerateChecklistItem } from "./pre-generate-checklist";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
@@ -878,14 +877,6 @@ export function BusinessPlanWorkspace({
         TIM-2382 — workspaceKey="business_plan" so suggest_workspace_changes
         proposals route to the BP section-write path; onApplySuggestions wires
         the AIReviewModal accept handler back to the workspace state. */}
-    <CoPilotDrawer
-      planId={planId}
-      workspaceKey="business_plan"
-      defaultMode="check"
-      defaultScopeOverride={null}
-      initialTrialMessagesUsed={initialTrialMessagesUsed}
-      onApplySuggestions={handleApplyBusinessPlanSuggestions}
-    />
     </>
   );
 }

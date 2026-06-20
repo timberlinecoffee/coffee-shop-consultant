@@ -50,7 +50,6 @@ export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   operations_playbook: "Operations Playbook",
   benchmarks: "Benchmarks",
   business_plan: "Business Plan",
-  dashboard: "Dashboard",
 }
 
 export function scopeLabel(scope: ConversationScope): string {
@@ -77,7 +76,7 @@ export interface ThreadBrowserProps {
   /** Bump this number from the parent (after a successful send) to force a refresh. */
   refreshKey?: number
   /** The workspace the drawer was opened from. Drives the "+ New here" button. */
-  currentWorkspaceKey: WorkspaceKey
+  currentWorkspaceKey: WorkspaceKey | null
   /** "inline" (default): border-b + max-h-60 list. "fill": fills parent height, no cap. */
   variant?: "inline" | "fill"
 }
@@ -212,7 +211,6 @@ export function ThreadBrowser({
       operations_playbook: [],
       benchmarks: [],
       business_plan: [],
-      dashboard: [],
     }
     for (const item of filteredItems) {
       const key: GroupKey = item.workspace_key ?? GENERAL_GROUP_KEY
@@ -337,7 +335,7 @@ export function ThreadBrowser({
             type="button"
             onClick={() => onNewThread(currentWorkspaceKey)}
             className="text-xs font-semibold text-[var(--teal)] hover:underline"
-            title={`New conversation in ${WORKSPACE_LABELS[currentWorkspaceKey]}`}
+            title={`New conversation in ${scopeLabel(currentWorkspaceKey)}`}
           >
             This Page
           </button>

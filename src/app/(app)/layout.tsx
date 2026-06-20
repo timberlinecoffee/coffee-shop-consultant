@@ -17,6 +17,7 @@ import {
   resolveUiRevamp,
 } from "@/lib/ui-revamp";
 import { effectivePlanForGating } from "@/lib/access";
+import { ShellCopilot } from "./_components/ShellCopilot";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +52,21 @@ export default async function AppLayout({
     redirect(buildSessionExpiredLoginUrl(safeNext));
   }
 
-  const [settings, dbUiRevamp, profileRow] = await Promise.all([
+  const [settings, dbUiRevamp, profileRow, planRow] = await Promise.all([
     getAccountSettings(supabase, user.id),
     getUiRevampSetting(supabase, user.id),
     supabase
       .from("users")
       .select("full_name, subscription_tier, subscription_status, trial_ends_at, paused_from_tier")
       .eq("id", user.id)
+      .maybeSingle()
+      .then((r) => r.data),
+    supabase
+      .from("coffee_shop_plans")
+      .select("id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
       .then((r) => r.data),
   ]);
@@ -102,6 +111,7 @@ export default async function AppLayout({
             <WorkspaceStatusBootstrap userId={user.id} />
           </Suspense>
           {children}
+          {planRow && <ShellCopilot planId={planRow.id} />}
         </WorkspaceProgressProvider>
       </UiRevampProvider>
     </CurrencyProvider>
