@@ -7,6 +7,10 @@
 // every Groundwork workspace renders the same chrome instead of hand-rolling
 // its own — that drift is what TIM-1791 flagged.
 //
+// TIM-2831: scroll-to-active keeps the active pill in view when the strip
+// overflows (11+ tabs on mobile). The right-edge fade gradient gives a clear
+// affordance that more tabs exist beyond the viewport edge.
+//
 // Style is locked to the canonical tokens from the spec:
 //   container: bg-white border border-[var(--border)] rounded-xl p-1, overflow-x-auto
 //   active tab: bg-[var(--teal)] text-white
@@ -14,6 +18,7 @@
 // Do NOT recreate this markup in a workspace — import this component.
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 
 export type WorkspaceSubNavTab<K extends string = string> = {
@@ -47,62 +52,90 @@ export function WorkspaceSubNav<K extends string>({
   ariaLabel,
   className,
 }: WorkspaceSubNavProps<K>) {
-  return (
-    <nav
-      aria-label={ariaLabel}
-      className={`flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full ${
-        className ?? "mb-5"
-      }`}
-    >
-      {tabs.map((t) => {
-        const isActive = t.key === active;
-        const stateClass = isActive
-          ? "bg-[var(--teal)] text-white"
-          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]";
-        const Icon = t.Icon;
-        const content = (
-          <>
-            {Icon ? <Icon size={13} aria-hidden="true" /> : null}
-            {t.label}
-            {t.badge != null && t.badge > 0 ? (
-              <span
-                className={`ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full ${
-                  isActive
-                    ? "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
-                    : "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
-                }`}
-              >
-                {t.badge}
-              </span>
-            ) : null}
-          </>
-        );
+  const navRef = useRef<HTMLElement>(null);
+  const [showFade, setShowFade] = useState(false);
 
-        if (t.href) {
+  // Scroll the active tab into view whenever active changes.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const activeEl = nav.querySelector('[aria-current="page"]') as HTMLElement | null;
+    activeEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [active]);
+
+  // Show a right-edge fade when the strip is scrollable further right.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const check = () => {
+      setShowFade(nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4);
+    };
+    check();
+    nav.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check, { passive: true });
+    return () => {
+      nav.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, []);
+
+  return (
+    <div className={`relative ${className ?? "mb-5"}`}>
+      <nav
+        ref={navRef}
+        aria-label={ariaLabel}
+        className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full"
+      >
+        {tabs.map((t) => {
+          const isActive = t.key === active;
+          const stateClass = isActive
+            ? "bg-[var(--teal)] text-white"
+            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]";
+          const Icon = t.Icon;
+          const content = (
+            <>
+              {Icon ? <Icon size={13} aria-hidden="true" /> : null}
+              {t.label}
+              {t.badge != null && t.badge > 0 ? (
+                <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]">
+                  {t.badge}
+                </span>
+              ) : null}
+            </>
+          );
+
+          if (t.href) {
+            return (
+              <Link
+                key={t.key}
+                href={t.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`${TAB_CLASS} ${stateClass}`}
+              >
+                {content}
+              </Link>
+            );
+          }
+
           return (
-            <Link
+            <button
               key={t.key}
-              href={t.href}
+              type="button"
               aria-current={isActive ? "page" : undefined}
+              onClick={() => onSelect?.(t.key)}
               className={`${TAB_CLASS} ${stateClass}`}
             >
               {content}
-            </Link>
+            </button>
           );
-        }
-
-        return (
-          <button
-            key={t.key}
-            type="button"
-            aria-current={isActive ? "page" : undefined}
-            onClick={() => onSelect?.(t.key)}
-            className={`${TAB_CLASS} ${stateClass}`}
-          >
-            {content}
-          </button>
-        );
-      })}
-    </nav>
+        })}
+      </nav>
+      {showFade && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 rounded-r-xl bg-gradient-to-l from-white to-transparent"
+        />
+      )}
+    </div>
   );
 }

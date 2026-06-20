@@ -239,6 +239,24 @@ export function DepreciationTab({
         </ul>
       </div>
 
+      {/* TIM-2831: asset totals summary — mobile only, above the scrollable schedule */}
+      {assetRows.length > 0 && (
+        <div className="sm:hidden grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+            <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Total Cost</p>
+            <p className="text-lg font-bold text-[var(--foreground)]">{fmtC(totals.costCents)}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+            <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Monthly Dep.</p>
+            <p className="text-lg font-bold text-[var(--foreground)]">{fmtC(totals.monthlyDepCents)}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+            <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">5-Yr Accum.</p>
+            <p className="text-lg font-bold text-[var(--foreground)]">{fmtC(totals.accumulatedCents)}</p>
+          </div>
+        </div>
+      )}
+
       {assetRows.length > 0 ? (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-4 pb-2">

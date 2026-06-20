@@ -602,6 +602,9 @@ export function PLTab({
           </ChartCard>
         </div>
       ) : (
+      <>
+      {/* TIM-2831: Year 1 annual highlights — mobile only, above the scrollable table */}
+      <PLMobileSummary slices={slices} currencyCode={currencyCode} />
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -733,6 +736,7 @@ export function PLTab({
           </tbody>
         </table>
       </div>
+      </>
       )}
 
       {editable && view === "table" && (
@@ -760,6 +764,40 @@ export function PLTab({
       <div className="mt-4 rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <PLCritique slices={slices} year={year} />
+      </div>
+    </div>
+  );
+}
+
+// TIM-2831: Year 1 annual headline metrics — hidden on sm+ so desktop sees
+// the full table immediately. Mobile users get key numbers without horizontal scroll.
+function PLMobileSummary({ slices, currencyCode }: { slices: MonthlySlice[]; currencyCode: string }) {
+  const y1 = sumSlices(slices.filter((s) => s.year === 1));
+  const nr = y1.net_revenue_cents ?? 0;
+  const gp = y1.gross_profit_cents ?? 0;
+  const oi = y1.operating_income_cents ?? 0;
+  const ni = y1.net_income_cents ?? 0;
+  if (nr === 0) return null;
+  return (
+    <div className="sm:hidden grid grid-cols-2 gap-3 mb-4">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Net Revenue (Yr 1)</p>
+        <p className="text-xl font-bold text-[var(--foreground)]">{fmt(nr, currencyCode)}</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Gross Profit</p>
+        <p className="text-xl font-bold text-[var(--foreground)]">{fmt(gp, currencyCode)}</p>
+        <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{pct(gp, nr)} of revenue</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Operating Income</p>
+        <p className={`text-xl font-bold ${oi < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(oi, currencyCode)}</p>
+        <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{pct(oi, nr)} of revenue</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Net Income</p>
+        <p className={`text-xl font-bold ${ni < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(ni, currencyCode)}</p>
+        <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">{pct(ni, nr)} of revenue</p>
       </div>
     </div>
   );

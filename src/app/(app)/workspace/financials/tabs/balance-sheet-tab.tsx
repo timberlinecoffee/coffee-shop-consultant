@@ -261,6 +261,9 @@ export function BalanceSheetTab({
           </ChartCard>
         </div>
       ) : (
+      <>
+      {/* TIM-2831: Year 1 balance sheet highlights — mobile only */}
+      <BSMobileSummary slices={slices} currencyCode={currencyCode} />
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -306,11 +309,38 @@ export function BalanceSheetTab({
           </tbody>
         </table>
       </div>
+      </>
       )}
 
       <div className="mt-4 rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
         <p className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide mb-1">What The Numbers Are Saying</p>
         <BalanceSheetCritique slices={slices} year={year} />
+      </div>
+    </div>
+  );
+}
+
+// TIM-2831: Year 1 end-of-year balance sheet highlights — mobile only.
+function BSMobileSummary({ slices, currencyCode }: { slices: MonthlySlice[]; currencyCode: string }) {
+  const lastY1 = slices.filter((s) => s.year === 1).at(-1);
+  if (!lastY1) return null;
+  const ta = lastY1.total_assets_cents ?? 0;
+  const tl = lastY1.total_liabilities_cents ?? 0;
+  const te = lastY1.total_equity_cents ?? 0;
+  return (
+    <div className="sm:hidden grid grid-cols-3 gap-3 mb-4">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Total Assets</p>
+        <p className="text-lg font-bold text-[var(--foreground)]">{fmt(ta, currencyCode)}</p>
+        <p className="text-[10px] text-[var(--dark-grey)] mt-0.5">End of Yr 1</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Liabilities</p>
+        <p className="text-lg font-bold text-[var(--foreground)]">{fmt(tl, currencyCode)}</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Equity</p>
+        <p className={`text-lg font-bold ${te < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(te, currencyCode)}</p>
       </div>
     </div>
   );
