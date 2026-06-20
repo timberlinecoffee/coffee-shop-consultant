@@ -669,6 +669,24 @@ function IngredientsTab({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<IngredientSortKey>("name");
   const [sortDir, setSortDir] = useState<IngredientSortDir>("asc");
+  // TIM-2832: right-edge fade affordance for the horizontally scrollable ingredient grid.
+  const ingScrollRef = useRef<HTMLDivElement>(null);
+  const [showIngFade, setShowIngFade] = useState(false);
+  useEffect(() => {
+    const el = ingScrollRef.current;
+    if (!el) return;
+    function update() {
+      setShowIngFade(el!.scrollLeft < el!.scrollWidth - el!.clientWidth - 1);
+    }
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
 
   function toggleSort(key: IngredientSortKey) {
     if (key === sortKey) {
@@ -742,7 +760,14 @@ function IngredientsTab({
             <p className="text-sm text-[var(--dark-grey)]">No ingredients yet.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative">
+            {showIngFade && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-white to-transparent"
+              />
+            )}
+            <div className="overflow-x-auto" ref={ingScrollRef}>
             <div className="min-w-[640px]">
               <div
                 className={
@@ -788,6 +813,7 @@ function IngredientsTab({
               )}
 
               {canEdit && <QuickAddRow onAdd={onAddIngredient} />}
+            </div>
             </div>
           </div>
         )}
