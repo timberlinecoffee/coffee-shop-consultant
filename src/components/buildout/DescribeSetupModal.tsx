@@ -169,13 +169,14 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+    <>
       <div
-        className="relative mt-10 mb-10 mx-4 w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 bg-black/40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        className="fixed inset-x-0 bottom-0 z-[51] flex flex-col max-h-[92dvh] bg-white rounded-t-2xl shadow-2xl lg:inset-x-auto lg:inset-y-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(94vw,64rem)] lg:max-h-[90vh] lg:rounded-2xl"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
@@ -197,7 +198,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
           </button>
         </div>
 
-        <div className="flex-1 px-6 py-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+        <div className="flex-1 px-6 py-5 overflow-y-auto">
 
           {/* ── Step: input ── */}
           {step === "input" && (
@@ -406,7 +407,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
