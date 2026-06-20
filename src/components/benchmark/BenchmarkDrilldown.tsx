@@ -8,6 +8,7 @@ import { X, ExternalLink, Sparkles, ArrowUpRight } from "lucide-react";
 import { PercentileBar } from "./PercentileBar";
 import { BestPracticeBand } from "./BestPracticeBand";
 import { BenchmarkTrendChart } from "./BenchmarkTrendChart";
+import { ResponsiveChart } from "@/components/charts/ResponsiveChart";
 import type { DrilldownData } from "./types";
 
 interface BenchmarkDrilldownProps {
@@ -107,14 +108,18 @@ export function BenchmarkDrilldown({ data, onClose, onAskBenchmark, onApplySugge
         </div>
       )}
 
-      {/* Trend chart */}
+      {/* Trend chart — M4: wrapped in ResponsiveChart for expand + compact-axis support */}
       {data.trendData && data.trendData.length > 0 && (
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-2">
-            Trend
-          </p>
-          <BenchmarkTrendChart data={data.trendData} unit={data.bpUnit} />
-        </div>
+        <ResponsiveChart
+          title="Trend"
+          minHeightNarrow={140}
+          minHeightMedium={160}
+          defaultHeight={180}
+        >
+          {(h) => (
+            <BenchmarkTrendChart data={data.trendData!} unit={data.bpUnit} height={h} />
+          )}
+        </ResponsiveChart>
       )}
 
       {/* Insight */}

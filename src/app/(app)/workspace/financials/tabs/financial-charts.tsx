@@ -3,6 +3,7 @@
 // TIM-1120: Shared chart components for numeric financial tabs.
 // Uses Recharts with the Groundwork palette (teal var(--teal) + accents).
 
+import { useContext, useEffect } from "react";
 import {
   Area,
   AreaChart,
@@ -21,6 +22,7 @@ import {
 } from "recharts";
 import { fmt } from "@/lib/financial-projection";
 import { currencySymbol } from "@/lib/currency";
+import { DrawerTooltipContext } from "@/components/charts/ResponsiveChart";
 
 // TIM-2755: primary/positive/highlight fall back to the global teal tokens when
 // no BP brand color is set. The workspace injects --bp-brand, --bp-brand-soft,
@@ -76,6 +78,21 @@ function ChartTooltip({
   label?: string | number;
   currencyCode: string;
 }) {
+  const setDrawerTooltip = useContext(DrawerTooltipContext);
+
+  // Push active tooltip data into the drawer's pinned bar (M3).
+  useEffect(() => {
+    if (!setDrawerTooltip || !active || !payload?.length) return;
+    setDrawerTooltip({
+      label: String(label ?? ""),
+      payload: payload.map((e) => ({
+        name: e.name,
+        color: e.color ?? CHART_COLORS.primary,
+        formattedValue: typeof e.value === "number" ? fmt(e.value, currencyCode) : "—",
+      })),
+    });
+  }, [setDrawerTooltip, active, payload, label, currencyCode]);
+
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 shadow-sm">
@@ -89,6 +106,51 @@ function ChartTooltip({
           <span className="text-[var(--muted-foreground)]">{entry.name}</span>
           <span className="ml-auto font-semibold text-[var(--foreground)] tabular-nums">
             {typeof entry.value === "number" ? fmt(entry.value, currencyCode) : "—"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// M2: 3-across grid legend for compact (narrow) containers.
+function CompactLegend({
+  payload,
+}: {
+  payload?: Array<{ value: string; color: string }>;
+}) {
+  if (!payload?.length) return null;
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: "4px 8px",
+        paddingTop: 8,
+        fontSize: 10,
+      }}
+    >
+      {payload.map((entry, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+          <span
+            style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: 2,
+              background: entry.color,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              color: "var(--muted-foreground)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {entry.value}
           </span>
         </div>
       ))}
@@ -144,11 +206,18 @@ export function FinancialLineChart({
   const resolved = resolveColors(series);
   const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
   const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
+  const rotateLabels = compactAxis && data.length > 8;
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
+      <LineChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: rotateLabels ? 16 : 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis
+          dataKey="label"
+          tick={axisStyle}
+          tickLine={TICK_LINE}
+          axisLine={TICK_LINE}
+          {...(rotateLabels ? { angle: -45, textAnchor: "end", height: 60 } : {})}
+        />
         <YAxis
           tick={axisStyle}
           tickLine={TICK_LINE}
@@ -158,11 +227,9 @@ export function FinancialLineChart({
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
-          <Legend
-            wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
-            iconType="square"
-            iconSize={8}
-          />
+          compactAxis
+            ? <Legend content={CompactLegend} />
+            : <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="square" iconSize={8} />
         )}
         {showZero && <ReferenceLine y={0} stroke={CHART_COLORS.axis} strokeDasharray="2 2" />}
         {resolved.map((s) => (
@@ -204,11 +271,18 @@ export function FinancialBarChart({
   const stackId = stack ? "stack" : undefined;
   const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
   const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
+  const rotateLabels = compactAxis && data.length > 8;
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
+      <BarChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: rotateLabels ? 16 : 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis
+          dataKey="label"
+          tick={axisStyle}
+          tickLine={TICK_LINE}
+          axisLine={TICK_LINE}
+          {...(rotateLabels ? { angle: -45, textAnchor: "end", height: 60 } : {})}
+        />
         <YAxis
           tick={axisStyle}
           tickLine={TICK_LINE}
@@ -218,11 +292,9 @@ export function FinancialBarChart({
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         {series.length > 1 && (
-          <Legend
-            wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
-            iconType="square"
-            iconSize={8}
-          />
+          compactAxis
+            ? <Legend content={CompactLegend} />
+            : <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="square" iconSize={8} />
         )}
         <ReferenceLine y={0} stroke={CHART_COLORS.axis} />
         {resolved.map((s) => (
@@ -262,11 +334,18 @@ export function FinancialAreaChart({
   const stackId = stack ? "stack" : undefined;
   const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
   const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
+  const rotateLabels = compactAxis && data.length > 8;
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
+      <AreaChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: rotateLabels ? 16 : 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis
+          dataKey="label"
+          tick={axisStyle}
+          tickLine={TICK_LINE}
+          axisLine={TICK_LINE}
+          {...(rotateLabels ? { angle: -45, textAnchor: "end", height: 60 } : {})}
+        />
         <YAxis
           tick={axisStyle}
           tickLine={TICK_LINE}
@@ -276,11 +355,9 @@ export function FinancialAreaChart({
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
-          <Legend
-            wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
-            iconType="square"
-            iconSize={8}
-          />
+          compactAxis
+            ? <Legend content={CompactLegend} />
+            : <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="square" iconSize={8} />
         )}
         {resolved.map((s) => (
           <Area
@@ -327,11 +404,18 @@ export function FinancialComboChart({
   );
   const axisStyle = compactAxis ? AXIS_STYLE_COMPACT : AXIS_STYLE;
   const yWidth = compactAxis ? YAXIS_WIDTH_COMPACT : YAXIS_WIDTH;
+  const rotateLabels = compactAxis && data.length > 8;
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: 4 }}>
+      <ComposedChart data={data} margin={{ top: 10, right: 16, left: 4, bottom: rotateLabels ? 16 : 4 }}>
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={axisStyle} tickLine={TICK_LINE} axisLine={TICK_LINE} />
+        <XAxis
+          dataKey="label"
+          tick={axisStyle}
+          tickLine={TICK_LINE}
+          axisLine={TICK_LINE}
+          {...(rotateLabels ? { angle: -45, textAnchor: "end", height: 60 } : {})}
+        />
         <YAxis
           tick={axisStyle}
           tickLine={TICK_LINE}
@@ -340,11 +424,10 @@ export function FinancialComboChart({
           width={yWidth}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
-        <Legend
-          wrapperStyle={{ fontSize: compactAxis ? 10 : 11, paddingTop: 8 }}
-          iconType="square"
-          iconSize={8}
-        />
+        {compactAxis
+          ? <Legend content={CompactLegend} />
+          : <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="square" iconSize={8} />
+        }
         <ReferenceLine y={0} stroke={CHART_COLORS.axis} />
         {bars.map((s) => (
           <Bar

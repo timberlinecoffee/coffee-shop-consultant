@@ -5,10 +5,25 @@
 // drawer on narrow containers. Gated on ui_revamp_v2 flag — falls back to current
 // behavior when the flag is off.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Maximize2, X } from "lucide-react";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
+
+// Context used by chart tooltip components to push their active data into the
+// drawer's pinned tooltip bar. Setter is the stable useState dispatcher — the
+// context value itself never changes reference after mount.
+export interface DrawerTooltipEntry {
+  name?: string;
+  formattedValue: string;
+  color?: string;
+}
+export interface DrawerTooltipState {
+  label: string;
+  payload: DrawerTooltipEntry[];
+}
+export type DrawerTooltipSetter = (data: DrawerTooltipState) => void;
+export const DrawerTooltipContext = createContext<DrawerTooltipSetter | null>(null);
 
 export interface ResponsiveChartProps {
   children: (height: number, isDrawer?: boolean, isCompact?: boolean) => React.ReactNode;
@@ -143,8 +158,10 @@ function ChartDrawer({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const [tooltip, setTooltip] = useState<DrawerTooltipState | null>(null);
+
   return (
-    <>
+    <DrawerTooltipContext.Provider value={setTooltip}>
       {/* Scrim */}
       <div
         className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
@@ -174,7 +191,30 @@ function ChartDrawer({
 
         {/* Chart content */}
         <div className="flex-1 overflow-hidden p-4">{children}</div>
+
+        {/* Pinned tooltip bar — shows last touched data point */}
+        {tooltip && (
+          <div className="border-t border-[var(--border)] bg-white px-4 py-2.5">
+            <p className="mb-1 text-[11px] font-semibold text-[var(--foreground)]">
+              {tooltip.label}
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {tooltip.payload.map((entry, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-sm"
+                    style={{ background: entry.color }}
+                  />
+                  <span className="text-[var(--muted-foreground)]">{entry.name}</span>
+                  <span className="tabular-nums font-semibold text-[var(--foreground)]">
+                    {entry.formattedValue}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </>
+    </DrawerTooltipContext.Provider>
   );
 }
