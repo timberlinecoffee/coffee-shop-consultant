@@ -7,6 +7,10 @@
 // every Groundwork workspace renders the same chrome instead of hand-rolling
 // its own — that drift is what TIM-1791 flagged.
 //
+// TIM-2831: scroll-to-active keeps the active pill in view when the strip
+// overflows (11+ tabs on mobile). The right-edge fade gradient gives a clear
+// affordance that more tabs exist beyond the viewport edge.
+//
 // Style is locked to the canonical tokens from the spec:
 //   container: bg-white border border-[var(--border)] rounded-xl p-1, overflow-x-auto
 //   active tab: bg-[var(--teal)] text-white
@@ -15,7 +19,7 @@
 //
 // TIM-2833: right-edge scroll indicator — fades when more tabs exist off-screen.
 
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 
@@ -50,11 +54,20 @@ export function WorkspaceSubNav<K extends string>({
   ariaLabel,
   className,
 }: WorkspaceSubNavProps<K>) {
-  const scrollRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   const [showFade, setShowFade] = useState(false);
 
+  // TIM-2831: scroll the active pill into view whenever the active tab changes.
   useEffect(() => {
-    const el = scrollRef.current;
+    const nav = navRef.current;
+    if (!nav) return;
+    const activeEl = nav.querySelector('[aria-current="page"]') as HTMLElement | null;
+    activeEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [active]);
+
+  // TIM-2833: show right-edge fade when more tabs exist off-screen.
+  useEffect(() => {
+    const el = navRef.current;
     if (!el) return;
 
     function checkOverflow() {
@@ -75,7 +88,7 @@ export function WorkspaceSubNav<K extends string>({
   return (
     <div className={`relative ${className ?? "mb-5"}`}>
       <nav
-        ref={scrollRef}
+        ref={navRef}
         aria-label={ariaLabel}
         className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1 overflow-x-auto max-w-full"
       >
@@ -90,13 +103,7 @@ export function WorkspaceSubNav<K extends string>({
               {Icon ? <Icon size={13} aria-hidden="true" /> : null}
               {t.label}
               {t.badge != null && t.badge > 0 ? (
-                <span
-                  className={`ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full ${
-                    isActive
-                      ? "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
-                      : "bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]"
-                  }`}
-                >
+                <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-[var(--bench-yellow-bg)] text-[var(--bench-yellow-text)]">
                   {t.badge}
                 </span>
               ) : null}
@@ -133,8 +140,7 @@ export function WorkspaceSubNav<K extends string>({
       {showFade && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 rounded-r-xl"
-          style={{ background: "linear-gradient(to right, transparent, white)" }}
+          className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 rounded-r-xl bg-gradient-to-l from-white to-transparent"
         />
       )}
     </div>
