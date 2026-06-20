@@ -85,9 +85,11 @@ export default async function ConceptPrintPage() {
 
   const personas = conceptDoc.personas ?? [];
 
+  // TIM-2859: content presence is the single signal for inclusion in the print
+  // brief. The `included` flag is preserved on the wire (no schema change) but
+  // ignored at read time — empty fields are implicitly skipped.
   const sections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     const comp = conceptDoc.components[meta.id];
-    if (!comp.included) return false;
     if (meta.id === "target_customer") {
       return personas.length > 0 || comp.content.trim().length > 0;
     }

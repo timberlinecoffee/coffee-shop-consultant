@@ -1,8 +1,13 @@
 "use client";
 
-// TIM-834 / TIM-865 / TIM-881: Concept workspace v2 card layout + inline concept brief.
-// - Component cards with include/exclude toggle, "Improve with AI" opens AIAssistCallout modal.
-// - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
+// TIM-834 / TIM-865 / TIM-881 / TIM-2859: Concept workspace v2 card layout + inline concept brief.
+// - Per-card "Improve with AI" opens AIAssistCallout modal (TIM-2858 routes the result
+//   through the unified review modal mounted on the ConceptWorkspace parent).
+// - TIM-2859: per-card "In doc / Skip" toggle removed; empty fields are implicitly
+//   skipped (no print inclusion, not counted toward progress, no unlock-gate penalty).
+//   The `included` flag in ConceptDocumentV2 is preserved on the wire (no schema change)
+//   but ignored at read time — content presence is the single signal.
+// - Autosaves on each change (debounced).
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
 // - TIM-893: per-field "Ask Co-pilot" buttons dispatch copilot:open-with-prompt and
 //   the drawer is mounted here so the listener fires on this page.
@@ -256,21 +261,6 @@ export function ConceptWorkspace({
     });
   }
 
-  function toggleIncluded(id: ConceptComponentId) {
-    if (!canEdit) return;
-    setDoc((prev) => {
-      const next: ConceptDocumentV2 = {
-        ...prev,
-        components: {
-          ...prev.components,
-          [id]: { ...prev.components[id], included: !prev.components[id].included },
-        },
-      };
-      scheduleSave(next);
-      return next;
-    });
-  }
-
   function activateCard(id: ConceptComponentId) {
     setActivatedCards((prev) => {
       const next = new Set(prev);
@@ -430,8 +420,7 @@ export function ConceptWorkspace({
             const comp = doc.components[meta.id];
             const isEmpty = !comp.content.trim();
             const isActivated = activatedCards.has(meta.id);
-            // TIM-1476: showField no longer factors in comp.included; the
-            // In doc / Skip toggle only affects print inclusion, not the editor.
+            // TIM-2859: every field is always editable; empty is implicitly skipped.
             const showField = !isEmpty || isActivated;
 
             return (
@@ -469,8 +458,10 @@ export function ConceptWorkspace({
                       </button>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise */}
-                      {meta.multiline && (
+                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise.
+                          TIM-2859: shown on every non-Persona card (target_customer renders the
+                          PersonaSection editor below and has its own authoring flow). */}
+                      {meta.id !== "target_customer" && (
                         <button
                           type="button"
                           onClick={() =>
@@ -486,22 +477,8 @@ export function ConceptWorkspace({
                           Improve with AI
                         </button>
                       )}
-                      {/* TIM-1408: per-card "Ask Co-pilot" merged into the single global Co-pilot beacon */}
-                      {/* Include/exclude toggle — only on deferrable components */}
-                      {meta.deferrable && (
-                        <button
-                          type="button"
-                          onClick={() => toggleIncluded(meta.id)}
-                          disabled={!canEdit}
-                          className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed whitespace-nowrap ${
-                            comp.included
-                              ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20 hover:bg-[var(--teal)]/15"
-                              : "bg-[var(--surface-warm-200)] text-[var(--muted-foreground)] border-[var(--border-medium)] hover:bg-[var(--border)]"
-                          }`}
-                        >
-                          {comp.included ? "In doc" : "Skip"}
-                        </button>
-                      )}
+                      {/* TIM-2859: per-card In doc / Skip toggle removed. Empty fields are
+                          implicitly skipped (not printed, not counted toward unlock). */}
                     </div>
                   </div>
 
@@ -737,10 +714,12 @@ function ConceptBriefInline({
 }) {
   const [expanded, setExpanded] = useState(true);
 
+  // TIM-2859: content presence is the single signal for inclusion in the brief.
+  // The `included` flag is preserved on the wire (no schema change) but ignored
+  // at read time — empty fields are implicitly skipped.
   const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     if (meta.id === "shop_identity") return false;
     const comp = doc.components[meta.id];
-    if (!comp.included) return false;
     if (meta.id === "target_customer") {
       return (doc.personas && doc.personas.length > 0) || comp.content.trim().length > 0;
     }
