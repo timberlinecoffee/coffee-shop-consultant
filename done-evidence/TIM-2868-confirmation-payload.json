@@ -1,0 +1,43 @@
+{
+  "kind": "request_confirmation",
+  "continuationPolicy": "wake_assignee_on_accept",
+  "idempotencyKey": "confirmation:tim-2868:add-location-fix:8dd5233",
+  "payload": {
+    "version": 1,
+    "prompt": "Please confirm the Add-new-location fix on Location & Lease in groundwork.cafe (trent@simpler.coffee, Beaver & Beef). Desktop and mobile both POST 201 with the active plan_id (37f5d270). Screenshots attached as evidence files. Approving closes TIM-2868 and unblocks TIM-2866.",
+    "links": [
+      {
+        "label": "Live workspace",
+        "url": "https://groundwork.cafe/workspace/location-lease"
+      },
+      {
+        "label": "Desktop before",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/scripts/shots/tim2868-before.png"
+      },
+      {
+        "label": "Desktop after (201)",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/scripts/shots/tim2868-after.png"
+      },
+      {
+        "label": "Mobile before",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/scripts/shots/tim2868-mobile-before.png"
+      },
+      {
+        "label": "Mobile after (201)",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/scripts/shots/tim2868-mobile-after.png"
+      },
+      {
+        "label": "Desktop verify JSON",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/done-evidence/TIM-2868-verify.json"
+      },
+      {
+        "label": "Mobile verify + cleanup JSON",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/blob/main/done-evidence/TIM-2868-mobile-and-cleanup.json"
+      },
+      {
+        "label": "Fix commit",
+        "url": "https://github.com/timberlinecoffee/coffee-shop-consultant/commit/56269e4"
+      }
+    ]
+  }
+}
