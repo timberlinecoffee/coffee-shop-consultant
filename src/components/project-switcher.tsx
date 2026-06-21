@@ -161,12 +161,11 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
       <AddProjectModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onCreated={(project) => {
+        onCreated={(project, activatedNow) => {
           setProjects((prev) => [
-            { ...project, isActive: true },
-            ...prev.map((p) => ({ ...p, isActive: false })),
+            { ...project, isActive: activatedNow },
+            ...prev.map((p) => ({ ...p, isActive: activatedNow ? false : p.isActive })),
           ]);
-          setModalOpen(false);
         }}
       />
       <ProUpgradePrompt
@@ -185,18 +184,29 @@ function AddProjectModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated: (project: Project) => void;
+  onCreated: (project: Project, activatedNow: boolean) => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [locationLabel, setLocationLabel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdProject, setCreatedProject] = useState<Project | null>(null);
+  const [switching, setSwitching] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+  // TIM-2865: synchronous re-entry guard. setSubmitting/disabled don't block
+  // a second submit in the same JS turn (rapid double-click / Enter+Enter).
+  // The ref check fires before any await, so a second handler exits immediately.
+  const submittingRef = useRef(false);
+  // TIM-2865: per-form-mount idempotency key. Sent on every retry from this
+  // modal instance so the server can dedup, and so any future migration that
+  // adds a unique index can backfill cleanly.
+  const idempotencyKeyRef = useRef<string>("");
+  const abortRef = useRef<AbortController | null>(null);
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !submittingRef.current) onClose();
     },
     [onClose],
   );
@@ -212,27 +222,50 @@ function AddProjectModal({
       setName("");
       setLocationLabel("");
       setError(null);
+      setCreatedProject(null);
+      setSwitching(false);
+      submittingRef.current = false;
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setTimeout(() => nameRef.current?.focus(), 50);
+    } else {
+      // Cancel any in-flight create when modal closes.
+      abortRef.current?.abort();
+      abortRef.current = null;
     }
   }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // TIM-2865: synchronous double-submit guard. Without this, Enter+Enter or
+    // rage-clicks fire two POSTs before React commits `disabled={submitting}`,
+    // which is exactly how a Pro user got two identical empty projects.
+    if (submittingRef.current) return;
     const trimmed = name.trim();
     if (trimmed.length < 2) {
       setError("Project name must be at least 2 characters.");
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKeyRef.current,
+        },
         body: JSON.stringify({
           name: trimmed,
           locationLabel: locationLabel.trim() || undefined,
+          idempotencyKey: idempotencyKeyRef.current,
         }),
+        signal: controller.signal,
       });
       if (res.status === 402) {
         router.push("/pricing");
@@ -243,28 +276,47 @@ function AddProjectModal({
         setError(data.error ?? "Something went wrong. Try again.");
         return;
       }
-      // TIM-2855: switch to the new project, close modal, then refresh server
-      // data. router.push("/dashboard") alone is a no-op when already on
-      // /dashboard, so the modal stayed open and the user saw zero feedback.
       const data = await res.json().catch(() => ({}));
       const project = data.project as Project | undefined;
       if (project?.id) {
-        await fetch(`/api/projects/${project.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: true }),
-        }).catch(() => { /* tolerated — list still updates, user can switch */ });
-        onCreated(project);
+        // TIM-2865: do NOT auto-switch the active project. Board reported on
+        // TIM-2854 that the silent context switch made their original project
+        // look "erased". Show an explicit success state with a clear choice.
+        setCreatedProject(project);
+        onCreated(project, false);
       } else {
         onClose();
       }
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError("Something went wrong. Try again.");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
+  }
+
+  async function openCreatedProject() {
+    if (!createdProject || switching) return;
+    setSwitching(true);
+    try {
+      await fetch(`/api/projects/${createdProject.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      });
+      onCreated(createdProject, true);
+      onClose();
+      router.refresh();
+    } catch {
+      setError("Could not switch to the new project. Try again.");
+      setSwitching(false);
+    }
+  }
+
+  function stayOnCurrentProject() {
+    onClose();
+    router.refresh();
   }
 
   if (!open) return null;
@@ -284,23 +336,68 @@ function AddProjectModal({
       <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
+          disabled={submitting}
+          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close"
         >
           <X size={18} aria-hidden="true" />
         </button>
 
-        <h2
-          id="add-project-modal-title"
-          className="text-lg font-bold text-[var(--foreground)] mb-1"
-        >
-          Add Project
-        </h2>
-        <p className="text-sm text-[var(--muted-foreground)] mb-6">
-          Create a new project to plan a second location.
-        </p>
+        {createdProject ? (
+          <>
+            <h2
+              id="add-project-modal-title"
+              className="text-lg font-bold text-[var(--foreground)] mb-1"
+            >
+              Project Created
+            </h2>
+            <p className="text-sm text-[var(--muted-foreground)] mb-6">
+              <span className="font-medium text-[var(--foreground)]">
+                {createdProject.name}
+              </span>
+              {createdProject.locationLabel ? (
+                <> in {createdProject.locationLabel}</>
+              ) : null}{" "}
+              is ready. Your current project is unchanged.
+            </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={stayOnCurrentProject}
+                disabled={switching}
+              >
+                Stay Here
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={openCreatedProject}
+                disabled={switching}
+              >
+                {switching ? "Opening..." : "Open Project"}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2
+              id="add-project-modal-title"
+              className="text-lg font-bold text-[var(--foreground)] mb-1"
+            >
+              Add Project
+            </h2>
+            <p className="text-sm text-[var(--muted-foreground)] mb-6">
+              Create a new project to plan a second location.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
               htmlFor="add-project-name"
@@ -358,6 +455,8 @@ function AddProjectModal({
             </Button>
           </div>
         </form>
+          </>
+        )}
       </div>
     </div>
   );
