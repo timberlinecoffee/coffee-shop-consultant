@@ -2,14 +2,21 @@
 // TIM-2598 (Phase 5.0 prod merge): default flipped to FALSE per board lock
 // "every existing user keeps seeing v1 untouched". Board verifies v2 by
 // flipping the flag on their own account.
+// TIM-2790 (BP V2 IA flag flip): DB column DEFAULT flipped back to TRUE for
+// new signups after board confirmed V2 IA on preview (TIM-2759). Existing
+// rows preserved at their prior value — TIM-2598's backfilled false rows
+// stay false until the user opts in via Preferences or ?ui=v2.
 //
 // Resolution priority (highest wins):
 //   1. gw_ui_revamp_override cookie  — set by proxy.ts when ?ui=v1/v2 is in
 //      the URL; persisted 365d so the board's `?ui=v2` sticks across visits.
 //   2. gw_ui_revamp_v2 cookie        — mirror of the DB value, set by the
 //      PATCH /api/account/ui-revamp endpoint so SSR skips a DB round-trip.
-//   3. users.ui_revamp_v2 column     — persisted per-user preference.
-//   4. Hard default: false           — new UI off for all default accounts.
+//   3. users.ui_revamp_v2 column     — persisted per-user preference; new
+//      signups default true per TIM-2790.
+//   4. Hard fallback: false          — only hit on missing row / read error;
+//      conservative safety net so a DB hiccup never surprise-ships v2 to
+//      explicit opt-outs.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 

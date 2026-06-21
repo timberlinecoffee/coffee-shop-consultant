@@ -1,0 +1,29 @@
+name: TIM-2790 Apply ui_revamp_v2 default true (one-shot)
+
+# One-shot workflow: trigger manually via workflow_dispatch on the default
+# branch after the PR lands. Applies the TIM-2790 DDL to production.
+# Delete this workflow after the migration is verified.
+#
+# Required repo secret: SUPABASE_DB_URL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply-migration:
+    name: Apply TIM-2790 ui_revamp_v2 default-true DDL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pg driver
+        run: npm install --no-save pg
+
+      - name: Apply migration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/apply-tim2790-migration.mjs
