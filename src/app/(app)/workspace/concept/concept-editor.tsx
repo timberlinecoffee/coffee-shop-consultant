@@ -293,7 +293,7 @@ export function ConceptWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="w-full px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-2455: canonical WorkspaceHeader (matches Financials / Equipment /
             Hiring chrome). Action cluster: [Primary: Ask Scout] [Print
             document] [SaveStatusAndButton]. Replaces the bespoke ring + bar

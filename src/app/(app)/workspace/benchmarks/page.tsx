@@ -48,7 +48,7 @@ export default async function BenchmarksPage() {
 
   if (tier !== "pro" && !betaWaived) {
     return (
-      <div className="w-full px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         <UpgradeGate
           title="Benchmarks"
           description="See how your coffee shop numbers compare to real independent shops in your area. Available on Pro."

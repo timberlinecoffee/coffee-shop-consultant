@@ -100,7 +100,7 @@ export function BenchmarksWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="w-full px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={TrendingUp}
           title="Benchmarks"
