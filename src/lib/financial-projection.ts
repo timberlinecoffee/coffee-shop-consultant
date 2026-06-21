@@ -439,7 +439,7 @@ export function defaultForecastLines(): ForecastLine[] {
   return [
     {
       id: SEED_LINE_ID.rent,
-      label: "Rent",
+      label: "Monthly Rent",
       category: "overhead",
       mode: "flat",
       value: 450000,
@@ -447,7 +447,7 @@ export function defaultForecastLines(): ForecastLine[] {
     },
     {
       id: SEED_LINE_ID.marketing,
-      label: "Marketing",
+      label: "Marketing & Ads",
       category: "overhead",
       mode: "pct",
       value: 2,
@@ -814,7 +814,7 @@ function migrateLegacyToForecastLines(r: Record<string, unknown>): ForecastLine[
   if (typeof r.monthly_rent_cents === "number") {
     lines.push({
       id: SEED_LINE_ID.rent,
-      label: "Rent",
+      label: "Monthly Rent",
       category: "overhead",
       mode: "flat",
       value: r.monthly_rent_cents,
@@ -827,7 +827,7 @@ function migrateLegacyToForecastLines(r: Record<string, unknown>): ForecastLine[
     const m = normalizeOpexLine(r.marketing, "pct", 2, 0);
     lines.push({
       id: SEED_LINE_ID.marketing,
-      label: "Marketing",
+      label: "Marketing & Ads",
       category: "overhead",
       mode: m.mode,
       value: m.mode === "pct" ? m.pct : m.flat_cents,

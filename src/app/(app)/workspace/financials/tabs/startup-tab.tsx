@@ -34,8 +34,8 @@ const EDITABLE_FIELDS: { key: keyof StartupCosts; label: string; hint?: string }
   { key: "licenses_cents", label: "Licenses & Permits", hint: "Business license, food service, health and signage permits" },
   { key: "professional_fees_cents", label: "Professional & Legal Fees", hint: "Entity formation, attorney, accountant and bookkeeping setup" },
   { key: "pre_opening_marketing_cents", label: "Pre-Opening Marketing", hint: "Sign, launch promo, grand-opening spend before day one" },
-  { key: "working_capital_reserve_cents", label: "Working Capital Reserve", hint: "Cushion: 3-6 months of fixed costs (stays in the bank)" },
-  { key: "opening_cash_buffer_cents", label: "Opening Cash Buffer", hint: "Extra cash on hand for the first slow months" },
+  { key: "working_capital_reserve_cents", label: "Cash Cushion", hint: "Cushion: 3-6 months of fixed costs (stays in the bank)" },
+  { key: "opening_cash_buffer_cents", label: "Opening Cash Reserve", hint: "Extra cash on hand for the first slow months" },
 ];
 
 interface CapexRow {
