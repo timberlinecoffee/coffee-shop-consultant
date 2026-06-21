@@ -1,9 +1,15 @@
 // TIM-643 / TIM-819: Workspace document read/write endpoint.
 // GET is open (read-only preview). POST/PUT/PATCH require subscription_status === 'active'.
 // Returns 402 { reason: 'no_subscription'|'paused'|'expired', tier_required: 'starter' } for inactive subscriptions.
+//
+// TIM-2860: plan lookup uses getActivePlanId() (TIM-2377 canonical resolver).
+// The previous .single() lookup returned null when a user had more than one
+// coffee_shop_plans row (multi-project, shipped via TIM-1953), so every save
+// from a multi-project account 404'd with "No plan found".
 
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive, isBetaWaived, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
+import { getActivePlanId } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -32,18 +38,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: doc } = await supabase
     .from("workspace_documents")
     .select("content, updated_at")
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("workspace_key", workspaceKey)
     .maybeSingle()
 
@@ -86,18 +87,13 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "Missing content" }, { status: 400 })
   }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data, error } = await supabase
     .from("workspace_documents")
     .upsert(
-      { plan_id: plan.id, workspace_key: workspaceKey, content: body.content },
+      { plan_id: planId, workspace_key: workspaceKey, content: body.content },
       { onConflict: "plan_id,workspace_key" }
     )
     .select("id, updated_at")
@@ -114,7 +110,7 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
     await supabase
       .from("financial_models")
       .update({ needs_review_at: new Date().toISOString() })
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
   }
 
   // TIM-1406: coffee_shop_plans.plan_name is the SoT for shop name. The
@@ -129,7 +125,7 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
         await supabase
           .from("coffee_shop_plans")
           .update({ plan_name: trimmed })
-          .eq("id", plan.id)
+          .eq("id", planId)
       }
     }
   }
@@ -165,18 +161,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     )
   }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { error } = await supabase
     .from("workspace_documents")
     .delete()
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("workspace_key", workspaceKey)
 
   if (error) {
