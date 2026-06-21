@@ -7,6 +7,7 @@
 //       hiring_plan_roles, returns { line, monthly_cost_cents }
 
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import {
@@ -23,20 +24,6 @@ function genStaffId(): string {
   return `staff:${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
 }
 
-async function getPlanId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-): Promise<string | null> {
-  const { data } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data?.id ?? null;
-}
-
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -47,7 +34,7 @@ export async function GET(request: NextRequest) {
   const orgRoleId = request.nextUrl.searchParams.get("org_role_id");
   if (!orgRoleId) return Response.json({ error: "Missing org_role_id" }, { status: 400 });
 
-  const planId = await getPlanId(supabase, user.id);
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   const { data: modelRow } = await supabase
@@ -84,7 +71,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
   }
 
-  const planId = await getPlanId(supabase, user.id);
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   let body: Record<string, unknown>;

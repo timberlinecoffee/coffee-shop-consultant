@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
+import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X, Circle, CheckCircle, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -24,8 +24,9 @@ import {
   WorkspaceActionMenu,
   WorkspaceActionMenuItem,
 } from "@/components/workspace/WorkspaceActionMenu";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { useBusinessPlanProgressOverlay } from "@/hooks/useBusinessPlanProgressOverlay";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { PreGenerateChecklist, type PreGenerateChecklistItem } from "./pre-generate-checklist";
@@ -62,8 +63,8 @@ interface SectionState extends BusinessPlanSectionData {
   isExpanded: boolean;
   isEditing: boolean;
   editBuffer: string;
-  isGenerating: boolean;
   isSaving: boolean;
+  isGenerating?: boolean;
 }
 
 // ── SSE fetch helper ──────────────────────────────────────────────────────────
@@ -151,6 +152,21 @@ async function fetchSse(
   }
 }
 
+// ── Progressive disclosure helpers ───────────────────────────────────────────
+
+function determineInitialExpanded(
+  section: BusinessPlanSectionData,
+  allSections: BusinessPlanSectionData[]
+): boolean {
+  // Align with StatusChip: any non-empty saved content = done
+  if (section.userContent && section.userContent.trim().length > 0) return false;
+  const firstUnreviewed = allSections.find(
+    (s) => s.autoContent && (!s.userContent || !s.userContent.trim().length)
+  );
+  if (firstUnreviewed) return section.key === firstUnreviewed.key;
+  return section.key === "executive-summary";
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BusinessPlanWorkspace({
@@ -158,6 +174,7 @@ export function BusinessPlanWorkspace({
   shopName,
   initialSections,
   canEdit,
+  initialTrialMessagesUsed,
   initialCoverSettings,
   logoPublicUrl,
   initialFinancialDocuments,
@@ -166,10 +183,9 @@ export function BusinessPlanWorkspace({
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
       ...s,
-      isExpanded: true,
+      isExpanded: determineInitialExpanded(s, initialSections),
       isEditing: false,
       editBuffer: s.userContent ?? s.autoContent,
-      isGenerating: false,
       isSaving: false,
     }))
   );
@@ -183,7 +199,6 @@ export function BusinessPlanWorkspace({
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [pendingExportAction, setPendingExportAction] = useState<"export" | "print" | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-1498: Default state -- all groups expanded; user can collapse per group.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
@@ -212,6 +227,10 @@ export function BusinessPlanWorkspace({
   // ── Autosave state ─────────────────────────────────────────────────────────
 
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle", lastSavedAt: null });
+  // Tracks which section (if any) is currently streaming an Improve/Regenerate
+  // response so per-section CTAs can show progress and the RegenerateAll
+  // button can disable itself while a single-section run is in flight.
+  const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Accumulates edits waiting to be persisted; keyed by section key.
   const dirtyBuffersRef = useRef<Map<BusinessPlanSectionKey, string | null>>(new Map());
@@ -656,9 +675,21 @@ export function BusinessPlanWorkspace({
     }
   }, []);
 
+  // TIM-2382: apply Scout suggest_workspace_changes proposals for business plan.
+  // fieldId = BusinessPlanSectionKey; finalValue = proposed section text.
+  const handleApplyBusinessPlanSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    for (const c of accepted) {
+      const sectionKey = c.fieldId as BusinessPlanSectionKey;
+      const section = sections.find((s) => s.key === sectionKey);
+      if (!section) continue;
+      await saveSection(sectionKey, c.finalValue);
+    }
+  }, [sections, saveSection]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
+  const allExpanded = sections.every((s) => s.isExpanded);
 
   return (
     <>
@@ -690,6 +721,21 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
+              <button
+                onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
+                className="text-sm text-[var(--muted-foreground)] hover:text-foreground underline underline-offset-2 cursor-pointer"
+              >
+                {allExpanded ? "Collapse all" : "Expand all"}
+              </button>
+              {/* TIM-2382: Scout-as-hub — top-level AskScoutButton on the
+                  Business Plan workspace replaces the legacy auto-apply
+                  Generate/Improve flow. Suggestions route through chat +
+                  AIReviewModal ([[feedback_ai_never_auto_apply]]). */}
+              <AskScoutButton
+                workspaceKey="business_plan"
+                focusLabel="business plan"
+                hasContent={hasContent}
+              />
               <SaveStatusAndButton
                 saving={saveState.kind === "saving"}
                 savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
@@ -795,7 +841,6 @@ export function BusinessPlanWorkspace({
         <SectionTree
           sections={sections}
           canEdit={canEdit}
-          streamingKey={streamingKey}
           collapsedGroups={collapsedGroups}
           onToggleGroup={(g) =>
             setCollapsedGroups((prev) => {
@@ -814,37 +859,32 @@ export function BusinessPlanWorkspace({
             updateSection(key, { editBuffer: val });
             scheduleSave(key, val || null);
           }}
-          onEditSave={(key, buf, isGenerating) => {
-            if (isGenerating) {
-              handleSaveAfterImprove(key, buf);
-              updateSection(key, { isEditing: false, isGenerating: false });
-            } else {
-              saveSection(key, buf || null);
-            }
+          onEditSave={(key, buf) => {
+            saveSection(key, buf || null);
           }}
           onEditCancel={(key, fallback) => {
-            if (abortRef.current) abortRef.current.abort();
-            setStreamingKey(null);
             updateSection(key, {
               isEditing: false,
-              isGenerating: false,
               editBuffer: fallback,
             });
           }}
           onResetToAuto={(key) => saveSection(key, null)}
-          onGenerateExec={(key) => handleGenerate(key)}
-          onImprove={(key) => handleImprove(key)}
         />
       </div>
     </div>
     {/* TIM-2416 — the AI companion mounts inside the Business Plan workspace
         so Coach/Check/Benchmark are reachable from this view. Defaults to
-        Check mode with whole-plan scope per UX spec §5. */}
+        Check mode with whole-plan scope per UX spec §5.
+        TIM-2382 — workspaceKey="business_plan" so suggest_workspace_changes
+        proposals route to the BP section-write path; onApplySuggestions wires
+        the AIReviewModal accept handler back to the workspace state. */}
     <CoPilotDrawer
       planId={planId}
-      workspaceKey="concept"
+      workspaceKey="business_plan"
       defaultMode="check"
       defaultScopeOverride={null}
+      initialTrialMessagesUsed={initialTrialMessagesUsed}
+      onApplySuggestions={handleApplyBusinessPlanSuggestions}
     />
     </>
   );
@@ -855,18 +895,18 @@ export function BusinessPlanWorkspace({
 interface SectionTreeProps {
   sections: SectionState[];
   canEdit: boolean;
-  streamingKey: BusinessPlanSectionKey | null;
+  streamingKey?: BusinessPlanSectionKey | null;
   collapsedGroups: Set<BusinessPlanGroupKey>;
   onToggleGroup: (group: BusinessPlanGroupKey) => void;
   onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
   onToggleExpand: (key: BusinessPlanSectionKey, current: boolean) => void;
   onEditStart: (key: BusinessPlanSectionKey, content: string) => void;
   onEditChange: (key: BusinessPlanSectionKey, val: string) => void;
-  onEditSave: (key: BusinessPlanSectionKey, buf: string, isGenerating: boolean) => void;
+  onEditSave: (key: BusinessPlanSectionKey, buf: string) => void;
   onEditCancel: (key: BusinessPlanSectionKey, fallback: string) => void;
   onResetToAuto: (key: BusinessPlanSectionKey) => void;
-  onGenerateExec: (key: BusinessPlanSectionKey) => void;
-  onImprove: (key: BusinessPlanSectionKey) => void;
+  onGenerateExec?: (key: BusinessPlanSectionKey) => void;
+  onImprove?: (key: BusinessPlanSectionKey) => void;
 }
 
 function SectionTree(props: SectionTreeProps) {
@@ -880,6 +920,7 @@ function SectionTree(props: SectionTreeProps) {
   );
 
   function renderCard(section: SectionState) {
+    const blurb = sectionMetaByKey.get(section.key)?.blurb ?? "";
     return (
       <SectionCard
         key={section.key}
@@ -887,15 +928,16 @@ function SectionTree(props: SectionTreeProps) {
         canEdit={props.canEdit}
         exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
         isStreaming={props.streamingKey === section.key}
+        blurb={blurb}
         onToggleVisible={() => props.onToggleVisibility(section.key, section.isVisible)}
         onToggleExpand={() => props.onToggleExpand(section.key, section.isExpanded)}
         onEditStart={() => props.onEditStart(section.key, section.userContent ?? section.autoContent)}
         onEditChange={(val) => props.onEditChange(section.key, val)}
-        onEditSave={() => props.onEditSave(section.key, section.editBuffer, section.isGenerating)}
+        onEditSave={() => props.onEditSave(section.key, section.editBuffer)}
         onEditCancel={() => props.onEditCancel(section.key, section.userContent ?? section.autoContent)}
         onResetToAuto={() => props.onResetToAuto(section.key)}
-        onGenerateExec={() => props.onGenerateExec(section.key)}
-        onImprove={() => props.onImprove(section.key)}
+        onGenerateExec={props.onGenerateExec ? () => props.onGenerateExec!(section.key) : undefined}
+        onImprove={props.onImprove ? () => props.onImprove!(section.key) : undefined}
       />
     );
   }
@@ -972,6 +1014,7 @@ interface SectionCardProps {
   canEdit: boolean;
   exampleContent: string | null;
   isStreaming: boolean;
+  blurb: string;
   onToggleVisible: () => void;
   onToggleExpand: () => void;
   onEditStart: () => void;
@@ -1012,11 +1055,36 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
+function StatusChip({ section }: { section: SectionState }) {
+  const isDone = Boolean(section.userContent && section.userContent.trim().length > 0);
+  const isGenerating = section.isGenerating;
+  if (isGenerating) {
+    return (
+      <span className="flex items-center gap-1 text-[var(--teal)] shrink-0">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      </span>
+    );
+  }
+  if (isDone) {
+    return (
+      <span className="flex items-center gap-1 text-[var(--sage)] shrink-0">
+        <CheckCircle className="w-3.5 h-3.5" />
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[var(--neutral-cool-500)] shrink-0">
+      <Circle className="w-3.5 h-3.5" />
+    </span>
+  );
+}
+
 function SectionCard({
   section,
   canEdit,
   exampleContent,
   isStreaming,
+  blurb,
   onToggleVisible,
   onToggleExpand,
   onEditStart,
@@ -1060,11 +1128,18 @@ function SectionCard({
             ) : (
               <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
             )}
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
-              <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
+                {!section.isExpanded && <StatusChip section={section} />}
+              </div>
+              {section.isExpanded ? (
+                <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{blurb}</p>
+              )}
             </div>
-            {hasUserOverride && (
+            {hasUserOverride && section.isExpanded && (
               <span className="ml-2 flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
                 Edited
               </span>
@@ -1073,7 +1148,7 @@ function SectionCard({
 
           <div className="flex items-center gap-2 shrink-0">
             {/* AI chips — inline from sm: up only; mobile row rendered below */}
-            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (
+            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && (
               <div className="hidden sm:flex items-center gap-2">
                 {onGenerateExec && (
                   <button
@@ -1135,7 +1210,7 @@ function SectionCard({
         </div>
 
         {/* TIM-1679: AI chips second row — mobile (<640px) only, mirrors Menu Suite CategoryHeader pattern */}
-        {canEdit && section.isExpanded && !section.isEditing && !isStreaming && !section.isGenerating && (onGenerateExec || onImprove) && (
+        {canEdit && section.isExpanded && !section.isEditing && !isStreaming && (onGenerateExec || onImprove) && (
           <div className="sm:hidden flex flex-wrap items-center gap-2 mt-2 pl-6">
             {onGenerateExec && (
               <button
@@ -1163,7 +1238,7 @@ function SectionCard({
       {section.isExpanded && (
         <div className="px-5 pb-5">
           <div className="border-t border-[var(--neutral-cool-150)] pt-4">
-            {(isStreaming || section.isGenerating) && !section.editBuffer && (
+            {isStreaming && !section.editBuffer && (
               <div className="flex items-center gap-2 mb-3" role="status">
                 <div className="flex gap-1" aria-hidden="true">
                   {[0, 1, 2].map((i) => (
@@ -1185,7 +1260,7 @@ function SectionCard({
                   onChange={(e) => onEditChange(e.target.value)}
                   className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
                   placeholder="Add content for this section..."
-                  disabled={section.isGenerating && !section.editBuffer}
+                  disabled={false}
                 />
                 <div className="flex gap-2 mt-2">
                   <button
@@ -1199,7 +1274,7 @@ function SectionCard({
                     onClick={onEditCancel}
                     className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
                   >
-                    {section.isGenerating ? "Stop" : "Cancel"}
+                    Cancel
                   </button>
                 </div>
               </div>

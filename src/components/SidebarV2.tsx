@@ -29,12 +29,14 @@ import {
 } from "lucide-react";
 import { Logo, LogoMark } from "@/app/_components/Logo";
 import { RevertToggle } from "@/components/account/RevertToggle";
+import { ProjectSwitcher } from "@/components/project-switcher";
 
 export interface SidebarV2UserInfo {
   email: string;
   displayName: string | null;
   planLabel: string;
   uiRevampEnabled: boolean;
+  isPro: boolean;
 }
 
 // ── Nav item definitions ───────────────────────────────────────────────────
@@ -395,6 +397,8 @@ function SidebarV2Content({
         aria-label="Main navigation"
         className="flex-1 overflow-y-auto py-4 px-2"
       >
+        {/* TIM-2378: project switcher above main nav */}
+        <ProjectSwitcher isPro={userInfo.isPro} />
         <ul role="list" className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item);

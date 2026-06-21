@@ -13,6 +13,8 @@ import { createServiceClient } from "@/lib/supabase/service"
 import type { NextRequest } from "next/server"
 import { toTitleCase } from "@/lib/text"
 import { normalizeAIOutput } from "@/lib/normalize"
+// TIM-2868: getActivePlanId() — see candidates/route.ts header.
+import { getActivePlanId } from "@/lib/plan-context"
 
 const SCORECARD_FACTORS = [
   { key: "foot_traffic_weekday", label: "Weekday Foot Traffic" },
@@ -169,12 +171,8 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "You are out of AI credits this month." }, { status: 402 })
   }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: { candidateIds?: unknown }
   try {
@@ -201,7 +199,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "No candidates found." }, { status: 404 })
   }
   for (const c of candidates) {
-    if (c.plan_id !== plan.id) {
+    if (c.plan_id !== planId) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
     }
   }

@@ -1,8 +1,10 @@
 // TIM-1153: Bulk-update candidate status (shortlist / un-shortlist many at once).
 // PATCH /api/workspaces/location-lease/candidates/bulk
 //   body: { ids: string[], status: CandidateStatus }
+// TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
+import { getActivePlanId } from "@/lib/plan-context"
 
 const ALLOWED_STATUSES = new Set([
   "shortlisted",
@@ -17,12 +19,8 @@ export async function PATCH(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: Record<string, unknown>
   try {
@@ -52,7 +50,7 @@ export async function PATCH(request: NextRequest) {
   if (!rows || rows.length !== ids.length) {
     return Response.json({ error: "One or more candidates not found" }, { status: 404 })
   }
-  if (rows.some((r) => r.plan_id !== plan.id)) {
+  if (rows.some((r) => r.plan_id !== planId)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 

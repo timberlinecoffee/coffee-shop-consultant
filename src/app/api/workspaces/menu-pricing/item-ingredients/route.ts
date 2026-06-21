@@ -1,26 +1,16 @@
 // TIM-967: CRUD for menu_item_ingredients junction.
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
-
-async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return data?.id ?? null
-}
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const itemId = request.nextUrl.searchParams.get("item_id")
@@ -41,7 +31,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: Record<string, unknown>
@@ -91,7 +81,7 @@ export async function PATCH(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: Record<string, unknown>

@@ -15,6 +15,10 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
+// TIM-2779 (Phase 6): v2 mobile + desktop surfaces gated by ui_revamp_v2.
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { SuppliesMobileV2 } from "@/components/equipment/SuppliesMobileV2";
+import { SuppliesDesktopTable } from "@/components/equipment/SuppliesDesktopTable";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -238,6 +242,9 @@ export function SuppliesWorkspace({
   const suppliesSections = sections.filter((s) => s.list_type === "supplies");
 
   const activeSupplies = supplies.filter((i) => !i.archived);
+
+  // TIM-2779 (Phase 6): v2 surfaces gated by ui_revamp_v2.
+  const uiRevampV2 = useUiRevamp();
   const grandTotalCents = useMemo(
     () => activeSupplies.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0),
     [activeSupplies]
@@ -250,7 +257,7 @@ export function SuppliesWorkspace({
       {showInventoryToast && <InventoryRedirectToast />}
       {grandTotalCents > 0 && (
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-[var(--teal-bg-ultra)] shadow-sm">
-          <div className="px-6 py-3 flex items-center gap-6">
+          <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-4 sm:gap-6">
             <div>
               <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Startup Total</p>
               <p className="text-xl font-bold text-[var(--teal)]">{formatCurrencyAmount(grandTotalCents / 100, initialCurrencyCode)}</p>
@@ -276,7 +283,7 @@ export function SuppliesWorkspace({
           </div>
         </div>
       )}
-      <div className="px-6 pt-8 pb-16">
+      <div className="px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
         {/* TIM-1894: canonical WorkspaceHeader (View filter is the only action;
             no hero primary on the Supplies tab). */}
@@ -324,17 +331,40 @@ export function SuppliesWorkspace({
           onSeed={seedSupplies}
         />
 
-        <SectionedListGrid
-          listType="supplies"
-          planId={planId}
-          canEdit={canEdit}
-          sections={suppliesSections}
-          items={supplies as AnyItem[]}
-          onItemsChange={handleSuppliesChange}
-          onSectionsChange={handleSectionsChange}
-          showAiMarkings={showAiMarkings}
-          currencyCode={initialCurrencyCode}
-        />
+        {/* TIM-2779 (Phase 6): v2 mobile + desktop — gated by ui_revamp_v2. */}
+        {uiRevampV2 ? (
+          <>
+            <div className="md:hidden">
+              <SuppliesMobileV2
+                items={supplies}
+                sections={suppliesSections}
+                currencyCode={initialCurrencyCode}
+              />
+            </div>
+            <div className="hidden md:block">
+              <SuppliesDesktopTable
+                planId={planId}
+                canEdit={canEdit}
+                items={supplies}
+                sections={suppliesSections}
+                onItemsChange={handleSuppliesChange}
+                currencyCode={initialCurrencyCode}
+              />
+            </div>
+          </>
+        ) : (
+          <SectionedListGrid
+            listType="supplies"
+            planId={planId}
+            canEdit={canEdit}
+            sections={suppliesSections}
+            items={supplies as AnyItem[]}
+            onItemsChange={handleSuppliesChange}
+            onSectionsChange={handleSectionsChange}
+            showAiMarkings={showAiMarkings}
+            currencyCode={initialCurrencyCode}
+          />
+        )}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />

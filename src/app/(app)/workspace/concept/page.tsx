@@ -1,8 +1,12 @@
 // TIM-834: Concept workspace v2 — backed by workspace_documents.
+// TIM-2860: plan lookup uses getActivePlanId() so the page reads from the user's
+// active project (TIM-2378 switcher) — keeps the displayed plan aligned with
+// where the workspace API route writes saves.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { normalizeConceptV2 } from "@/lib/concept";
+import { getActivePlanId } from "@/lib/plan-context";
 import { ConceptWorkspace } from "./concept-editor";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +21,15 @@ export default async function ConceptWorkspacePage() {
     redirect("/login");
   }
 
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) {
+    redirect("/onboarding");
+  }
+
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
     .select("id, plan_name")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .eq("id", planId)
     .maybeSingle();
 
   if (!plan) {

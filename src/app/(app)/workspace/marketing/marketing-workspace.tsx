@@ -27,7 +27,8 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -234,6 +235,37 @@ export function MarketingWorkspace({
     [],
   );
 
+  // TIM-2382: apply Scout suggest_workspace_changes proposals for marketing.
+  // fieldId is a top-level section key (e.g. "overview") or dot-notation sub-field
+  // (e.g. "story.founder_story"). JSON proposedValues replace entire sections;
+  // string values update narrative/sub-fields in place. Doc autosaves via useEffect.
+  const handleApplyMarketingSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    setDoc((prev) => {
+      let next = { ...prev };
+      for (const c of accepted) {
+        const dotIdx = c.fieldId.indexOf(".");
+        const section = dotIdx === -1 ? c.fieldId : c.fieldId.slice(0, dotIdx);
+        const subField = dotIdx === -1 ? "" : c.fieldId.slice(dotIdx + 1);
+        if (subField) {
+          const sectionVal = next[section as keyof MarketingDocument] as unknown as Record<string, unknown>;
+          if (sectionVal && typeof sectionVal === "object") {
+            next = { ...next, [section]: { ...sectionVal, [subField]: c.finalValue } };
+          }
+        } else {
+          try {
+            const val = JSON.parse(c.finalValue) as MarketingDocument[keyof MarketingDocument];
+            next = { ...next, [section as keyof MarketingDocument]: val };
+          } catch {
+            if (section === "overview") {
+              next = { ...next, overview: { ...next.overview, narrative: c.finalValue } };
+            }
+          }
+        }
+      }
+      return next;
+    });
+  }, []);
+
   // TIM-1561: routes AI result through unified review modal before applying.
   async function handleGenerate(section: MarketingSectionKey) {
     if (!canEdit || generating) return;
@@ -285,11 +317,16 @@ export function MarketingWorkspace({
     }
   }
 
+  const hasContent = MARKETING_SECTION_KEYS.some((k) => {
+    const s = doc[k];
+    return Boolean(s);
+  });
+
   return (
     <>
       {AIReviewModalNode}
       <div className="bg-[var(--background)] min-h-screen">
-        <div className="w-full px-6 pt-8 pb-16">
+        <div className="w-full px-4 sm:px-6 pt-8 pb-16">
           {/* TIM-1894: canonical WorkspaceHeader — description in the left column
               under the title, SaveIndicator + Print action top-right, matching
               ops-playbook and Financials. */}
@@ -299,6 +336,12 @@ export function MarketingWorkspace({
             description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
             actions={
               <>
+                {/* TIM-2382: Scout-as-hub primary entry point for AI generation. */}
+                <AskScoutButton
+                  workspaceKey="marketing"
+                  focusLabel="marketing plan"
+                  hasContent={hasContent}
+                />
                 {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
                 <WorkspaceActionButton
                   className="hidden sm:flex"
@@ -353,6 +396,7 @@ export function MarketingWorkspace({
           workspaceKey="marketing"
           currentFocus={{ label: "Marketing" }}
           initialTrialMessagesUsed={initialTrialMessagesUsed}
+          onApplySuggestions={handleApplyMarketingSuggestions}
         />
 
         <PaywallModal
@@ -393,11 +437,8 @@ function SectionBody(props: SectionBodyProps) {
           className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Drafting…" : "Draft with AI"}
+          {generating ? "Generating…" : "Generate with AI"}
         </button>
-        <span className="sr-only" role="status">
-          {generating ? `Drafting the ${label} section with AI…` : ""}
-        </span>
       </div>
 
       {sectionKey === "overview" && <OverviewEditor {...props} />}
@@ -601,7 +642,7 @@ function CustomChannelInput({
         }}
         disabled={!canEdit}
         placeholder="Add another channel"
-        className={`${inputCls} max-w-xs`}
+        className={`${inputCls} flex-1 min-w-0`}
       />
       <button
         type="button"

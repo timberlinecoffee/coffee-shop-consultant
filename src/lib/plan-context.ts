@@ -4,6 +4,12 @@
 // canonical workspace tables. Onboarding-only fields with no workspace home
 // (motivation, timeline) are still read directly from users.onboarding_data
 // by callers — this helper does not surface them.
+//
+// TIM-2377: Also exports getActivePlanId — the single canonical resolver for
+// a user's active plan ID. Replaces ~20 inline getPlanId definitions across
+// the workspace API routes. Reads users.current_plan_id first (set by
+// projects PATCH /activate), falls back to latest-by-created_at during the
+// deploy window before all users are backfilled.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeConceptV2 } from "./concept.ts";
@@ -203,4 +209,29 @@ export async function loadPlanContext(
     no_direct_competitors_identified: concept.no_direct_competitors_identified ?? false,
     city_label: cityLabelFromCandidates(locationsRes.data),
   };
+}
+
+// TIM-2377: Canonical active-plan resolver. Replaces ~20 inline getPlanId
+// definitions across workspace API routes. Priority:
+//   1. users.current_plan_id (explicit activation via PATCH /api/projects/:id)
+//   2. Latest coffee_shop_plans.created_at (back-compat during deploy window)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getActivePlanId(supabase: SupabaseClient<any>, userId: string): Promise<string | null> {
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("current_plan_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (userRow?.current_plan_id) return userRow.current_plan_id as string;
+
+  const { data: plan } = await supabase
+    .from("coffee_shop_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return plan?.id ?? null;
 }

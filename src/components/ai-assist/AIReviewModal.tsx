@@ -408,7 +408,7 @@ function ChangeCard({
           </button>
         </div>
       ) : isMobile ? (
-        <div className="grid grid-cols-3 border-t border-[var(--border)] -mx-4 -mb-4 mt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 border-t border-[var(--border)] -mx-4 -mb-4 mt-1">
           {[
             { label: "Accept", icon: <Check size={13} />, action: onAccept, active: isAccepted, activeCls: "bg-[var(--teal)] text-white" },
             { label: "Reject", icon: <X size={13} />, action: onReject, active: isRejected, activeCls: "bg-red-50 text-red-600" },

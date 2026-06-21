@@ -4,21 +4,11 @@
 // PATCH upserts the override (null clears it, restoring auto-detect).
 
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import type { NextRequest } from "next/server"
 import type { HiringCountry } from "@/lib/hiring"
 
 const VALID_COUNTRIES: HiringCountry[] = ["US", "GB", "CA", "AU"]
-
-async function getPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return data?.id ?? null
-}
 
 // Derive the effective country from location_candidates when no override is set.
 // Priority: signed candidate > first non-archived candidate > null.
@@ -68,7 +58,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: settings } = await supabase
@@ -93,7 +83,7 @@ export async function PATCH(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const planId = await getPlanId(supabase, user.id)
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const body = await request.json() as { hiring_country: string | null }

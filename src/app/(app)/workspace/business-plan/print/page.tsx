@@ -499,9 +499,11 @@ function Paragraph({ children }: { children: React.ReactNode }) {
 
 function ConceptSection({ concept }: { concept: ConceptDocumentV2 }) {
   const personas = concept.personas ?? [];
+  // TIM-2859: content presence is the single signal for inclusion (the per-card
+  // In doc / Skip toggle was removed from the Concept workspace; the `included`
+  // flag is preserved on the wire but ignored at read time).
   const filled = CONCEPT_COMPONENTS_V2.filter((meta) => {
     const comp = concept.components[meta.id];
-    if (!comp.included) return false;
     if (meta.id === "shop_identity") return false;
     if (meta.id === "target_customer") {
       return personas.length > 0 || comp.content.trim().length > 0;
@@ -1246,11 +1248,12 @@ function AppendixSection({
   concept: ConceptDocumentV2;
   updatedAt: string | null;
 }) {
-  // V1 of the appendix: assumption log (deferred concept components) +
-  // last-updated timestamp. AI revision tracking lands in a follow-up.
+  // V1 of the appendix: assumption log + last-updated timestamp. AI revision
+  // tracking lands in a follow-up.
+  // TIM-2859: "deferred" now equals "empty" (per-card Skip toggle removed).
   const deferredOrEmpty = CONCEPT_COMPONENTS_V2.filter((meta) => {
     const comp = concept.components[meta.id];
-    return !comp.included || !comp.content.trim();
+    return !comp.content.trim();
   });
 
   return (

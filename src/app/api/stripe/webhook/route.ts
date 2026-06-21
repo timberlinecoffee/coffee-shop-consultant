@@ -41,6 +41,59 @@ export async function POST(request: NextRequest) {
   }
 
   switch (event.type) {
+    // TIM-1906: direct Stripe API subscription creation (QA harness, admin tools)
+    // fires customer.subscription.created, not checkout.session.completed.
+    // This handler seeds the same Supabase state so both paths work correctly.
+    case "customer.subscription.created": {
+      const sub = event.data.object as unknown as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const userId: string = sub.metadata?.userId ?? "";
+      if (!userId) break;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? "";
+      const item = sub.items?.data?.[0];
+      const priceId: string = item?.price?.id ?? "";
+      const tier = tierFromPriceId(priceId);
+      const isTrialing = sub.status === "trialing";
+      const trialEnd = typeof sub.trial_end === "number" ? sub.trial_end : null;
+      const trialEndIso = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
+      const periodStart = item?.current_period_start ?? sub.current_period_start;
+      const periodEnd = item?.current_period_end ?? sub.current_period_end;
+
+      await supabase.from("subscriptions").upsert({
+        user_id: userId,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: sub.id,
+        tier,
+        status: isTrialing ? "trialing" : "active",
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+      }, { onConflict: "user_id" });
+
+      if (isTrialing) {
+        await supabase.from("users").update({
+          subscription_status: "free_trial",
+          subscription_tier: tier,
+          ai_credits_remaining: TRIAL_CREDITS,
+          trial_ends_at: trialEndIso,
+          trial_credits_granted: true,
+        }).eq("id", userId);
+
+        await supabase.from("credit_transactions").insert({
+          user_id: userId,
+          amount: TRIAL_CREDITS,
+          type: "monthly_allocation",
+          description: `${tier} 7-day trial: initial allocation`,
+        });
+      } else {
+        await supabase.from("users").update({
+          subscription_status: "active",
+          subscription_tier: tier,
+          ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
+          trial_ends_at: null,
+        }).eq("id", userId);
+      }
+      break;
+    }
+
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
 

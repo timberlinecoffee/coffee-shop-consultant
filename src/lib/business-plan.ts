@@ -68,42 +68,43 @@ export interface BusinessPlanSectionMeta {
   groupKey: BusinessPlanGroupKey | null;
   defaultVisible: boolean;
   sourceLabel: string;
+  blurb: string;
 }
 
 // Display order is the array order; ordering within a group is implicit.
 export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
-  { key: "executive-summary",              title: "Executive Summary",      groupKey: null,             defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "executive-summary",              title: "Executive Summary",      groupKey: null,             defaultVisible: true,  sourceLabel: "Based on your plan",                           blurb: "A one-page snapshot of your business for investors and lenders." },
 
-  { key: "opportunity-problem-solution",   title: "Problem & Solution",     groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
-  { key: "opportunity-target-market",      title: "Target Market",          groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Concept workspace" },
-  { key: "opportunity-competition",        title: "Competition",            groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "opportunity-problem-solution",   title: "Problem & Solution",     groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Based on your plan",                           blurb: "The gap your shop fills and why you're the one to fill it." },
+  { key: "opportunity-target-market",      title: "Target Market",          groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Concept workspace",                            blurb: "Who your customer is and how many of them exist nearby." },
+  { key: "opportunity-competition",        title: "Competition",            groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Based on your plan",                           blurb: "Who else competes for your customer and how you stand apart." },
   // TIM-2341: dedicated Risks section.
-  { key: "opportunity-risks",              title: "Risks",                  groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "AI-generated from your plan" },
+  { key: "opportunity-risks",              title: "Risks",                  groupKey: "opportunity",    defaultVisible: true,  sourceLabel: "Based on your plan",                           blurb: "The biggest threats to your plan and how you will manage them." },
 
-  { key: "execution-marketing-sales",      title: "Marketing & Sales",      groupKey: "execution",      defaultVisible: true,  sourceLabel: "Menu & Pricing + Marketing workspaces" },
-  { key: "execution-operations",           title: "Operations",             groupKey: "execution",      defaultVisible: true,  sourceLabel: "Location & Equipment workspaces" },
-  { key: "execution-milestones-metrics",   title: "Milestones & Metrics",   groupKey: "execution",      defaultVisible: true,  sourceLabel: "Launch Plan workspace" },
+  { key: "execution-marketing-sales",      title: "Marketing & Sales",      groupKey: "execution",      defaultVisible: true,  sourceLabel: "Menu & Pricing + Marketing workspaces",        blurb: "How you will attract your first customers and keep them coming back." },
+  { key: "execution-operations",           title: "Operations",             groupKey: "execution",      defaultVisible: true,  sourceLabel: "Location & Equipment workspaces",              blurb: "How your shop runs day-to-day: staffing, suppliers, workflows." },
+  { key: "execution-milestones-metrics",   title: "Milestones & Metrics",   groupKey: "execution",      defaultVisible: true,  sourceLabel: "Launch Plan workspace",                        blurb: "The checkpoints and numbers you will use to measure success." },
 
-  { key: "company-overview",               title: "Overview",               groupKey: "company",        defaultVisible: true,  sourceLabel: "Concept workspace" },
-  { key: "company-team",                   title: "Team",                   groupKey: "company",        defaultVisible: true,  sourceLabel: "Hiring workspace" },
+  { key: "company-overview",               title: "Overview",               groupKey: "company",        defaultVisible: true,  sourceLabel: "Concept workspace",                            blurb: "Your shop's name, structure, ownership, and founding story." },
+  { key: "company-team",                   title: "Team",                   groupKey: "company",        defaultVisible: true,  sourceLabel: "Hiring workspace",                             blurb: "Who is building and running this with you." },
 
   // TIM-1496 owns Financial Plan subsection content/structure. Stubbed here so
   // the taxonomy is complete and the UI/PDF render the group with placeholder
   // subsections that route handlers can fill in.
-  { key: "financial-plan-forecast",          title: "Forecast",                  groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
+  { key: "financial-plan-forecast",          title: "Forecast",                  groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace",                    blurb: "Your revenue and cost projections for years 1 through 5." },
   // TIM-2341: unit economics buildup is visible ABOVE the P&L (per investor
   // critique on TIM-2315). Order places it right after Forecast.
-  { key: "financial-plan-unit-economics",    title: "Unit Economics",            groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
-  { key: "financial-plan-break-even",        title: "Break-even Analysis",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
-  { key: "financial-plan-sensitivity",       title: "Sensitivity Analysis",      groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
-  { key: "financial-plan-financing",         title: "Financing",                 groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Your inputs" },
-  { key: "financial-plan-dscr",              title: "DSCR & Debt Service",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your loan terms" },
-  { key: "financial-plan-capex-schedule",    title: "CapEx Schedule",            groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Equipment workspace" },
-  { key: "financial-plan-depreciation",      title: "Depreciation Schedule",     groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your CapEx" },
-  { key: "financial-plan-working-capital",   title: "Working Capital",           groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions" },
-  { key: "financial-plan-statements",        title: "Statements",                groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace" },
+  { key: "financial-plan-unit-economics",    title: "Unit Economics",            groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions",          blurb: "Revenue per customer and the math behind your model." },
+  { key: "financial-plan-break-even",        title: "Break-even Analysis",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions",          blurb: "The sales volume at which your shop covers its costs." },
+  { key: "financial-plan-sensitivity",       title: "Sensitivity Analysis",      groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions",          blurb: "How your numbers shift under optimistic and pessimistic assumptions." },
+  { key: "financial-plan-financing",         title: "Financing",                 groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Your inputs",                             blurb: "How much you need to raise and from which sources." },
+  { key: "financial-plan-dscr",              title: "DSCR & Debt Service",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your loan terms",           blurb: "Your ability to service loan payments from projected cash flow." },
+  { key: "financial-plan-capex-schedule",    title: "CapEx Schedule",            groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Equipment workspace",                     blurb: "Equipment and build-out costs timed against your opening date." },
+  { key: "financial-plan-depreciation",      title: "Depreciation Schedule",     groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your CapEx",                blurb: "How your fixed assets lose value over time for accounting and tax." },
+  { key: "financial-plan-working-capital",   title: "Working Capital",           groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Computed from your assumptions",          blurb: "The cash cushion you need to survive the first months." },
+  { key: "financial-plan-statements",        title: "Statements",                groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace",                    blurb: "Projected income statement, balance sheet, and cash flow summary." },
 
-  { key: "appendix-monthly-statements",    title: "Monthly Statements",     groupKey: "appendix",       defaultVisible: true,  sourceLabel: "Financials workspace" },
+  { key: "appendix-monthly-statements",    title: "Monthly Statements",     groupKey: "appendix",       defaultVisible: true,  sourceLabel: "Financials workspace",                         blurb: "Month-by-month financials for years 1 through 3." },
 ];
 
 // Convenience: subsections grouped by their parent group, in display order.

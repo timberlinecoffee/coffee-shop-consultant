@@ -625,12 +625,26 @@ function isTargetCustomerFilled(doc: ConceptDocumentV2): boolean {
   );
 }
 
+// TIM-2859: per-card "In doc / Skip" toggle removed from the editor. Empty
+// content on a deferrable component is now the implicit-skip signal (it neither
+// gates completion nor contributes to progress totals — matches the prior
+// included:false default semantics for those components). The `included` flag
+// in ConceptDocumentV2 is preserved on the wire for forward compatibility but
+// is ignored here.
+const DEFERRABLE_BY_ID: ReadonlySet<ConceptComponentId> = new Set(
+  CONCEPT_COMPONENTS_V2.filter((m) => m.deferrable).map((m) => m.id),
+);
+
+function isComponentFilled(id: ConceptComponentId, c: ConceptComponentV2, doc: ConceptDocumentV2): boolean {
+  if (id === "target_customer") return isTargetCustomerFilled(doc);
+  return c.content.trim().length > 0;
+}
+
 export function isConceptV2Complete(doc: ConceptDocumentV2): boolean {
   return (Object.entries(doc.components) as [ConceptComponentId, ConceptComponentV2][]).every(
     ([id, c]) => {
-      if (!c.included) return true;
-      if (id === "target_customer") return isTargetCustomerFilled(doc);
-      return c.content.trim().length > 0;
+      if (DEFERRABLE_BY_ID.has(id) && c.content.trim().length === 0) return true;
+      return isComponentFilled(id, c, doc);
     }
   );
 }
@@ -642,13 +656,9 @@ export function getConceptV2Progress(doc: ConceptDocumentV2): {
   let filled = 0;
   let total = 0;
   for (const [id, c] of Object.entries(doc.components) as [ConceptComponentId, ConceptComponentV2][]) {
-    if (!c.included) continue;
+    if (DEFERRABLE_BY_ID.has(id) && c.content.trim().length === 0) continue;
     total++;
-    if (id === "target_customer") {
-      if (isTargetCustomerFilled(doc)) filled++;
-    } else {
-      if (c.content.trim().length > 0) filled++;
-    }
+    if (isComponentFilled(id, c, doc)) filled++;
   }
   return { filled, total };
 }
