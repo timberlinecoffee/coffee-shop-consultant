@@ -15,6 +15,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
+// TIM-2868: getActivePlanId() — see candidates/route.ts header.
+import { getActivePlanId } from "@/lib/plan-context"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -165,12 +167,8 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     .eq("id", user.id)
     .maybeSingle()
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: candidate } = await supabase
     .from("location_candidates")
@@ -179,7 +177,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     .maybeSingle()
 
   if (!candidate) return Response.json({ error: "Candidate not found" }, { status: 404 })
-  if (candidate.plan_id !== plan.id) return Response.json({ error: "Forbidden" }, { status: 403 })
+  if (candidate.plan_id !== planId) return Response.json({ error: "Forbidden" }, { status: 403 })
 
   if (candidate.lat == null || candidate.lng == null) {
     return Response.json(
@@ -196,7 +194,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const { data: conceptRow } = await supabase
     .from("module_responses")
     .select("response_data")
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("module_number", 1)
     .maybeSingle()
 

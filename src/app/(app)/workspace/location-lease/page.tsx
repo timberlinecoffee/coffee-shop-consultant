@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { CandidateListCard } from "@/components/location-lease/CandidateListCard";
 import type { Candidate } from "@/components/location-lease/CandidateListCard";
 import { MapPin } from "lucide-react";
+// TIM-2868: Page must resolve via getActivePlanId() so multi-plan users see
+// the project they're editing — and so the page + API agree on the same plan
+// (same parity rule shipped under TIM-2860 for the Concept workspace).
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -14,27 +18,21 @@ export default async function LocationLeaseWorkspacePage() {
 
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: plan }] = await Promise.all([
+  const [{ data: profile }, planId] = await Promise.all([
     supabase
       .from("users")
       .select("ai_credits_remaining, subscription_tier")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
-      .from("coffee_shop_plans")
-      .select("id")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    getActivePlanId(supabase, user.id),
   ]);
 
-  if (!plan) redirect("/onboarding");
+  if (!planId) redirect("/onboarding");
 
   const { data: rows } = await supabase
     .from("location_candidates")
     .select("*")
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("archived", false)
     .order("position");
 
@@ -87,7 +85,7 @@ export default async function LocationLeaseWorkspacePage() {
 
         <CandidateListCard
           initialCandidates={initialCandidates}
-          planId={plan.id}
+          planId={planId}
           aiCreditsRemaining={profile?.ai_credits_remaining ?? 0}
           subscriptionTier={profile?.subscription_tier ?? "free"}
         />
