@@ -23,6 +23,7 @@ type Status = "good" | "caution" | "warning";
 interface Ratio {
   key: string;
   label: string;
+  subLabel?: string;
   plainEnglish: string;
   value: number | null;
   unit: "pct";
@@ -106,6 +107,7 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
     {
       key: "prime_cost",
       label: "Prime Cost",
+      subLabel: "Ingredients + Staff Combined",
       plainEnglish:
         "Cost of goods + labor combined. The single best predictor of whether a shop survives.",
       value: primeCost,
@@ -142,7 +144,7 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
     },
     {
       key: "labor_pct",
-      label: "Labor",
+      label: "Staff Costs",
       plainEnglish:
         "Wages, payroll taxes, and benefits as a share of every dollar earned.",
       value: laborPct,
@@ -161,7 +163,7 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
     },
     {
       key: "occupancy",
-      label: "Rent (Occupancy)",
+      label: "Rent & Occupancy",
       plainEnglish:
         "Rent plus other occupancy costs as a share of every dollar earned.",
       value: occupancy,
@@ -218,7 +220,7 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
     },
     {
       key: "payment_processing",
-      label: "Payment Processing",
+      label: "Card Fee %",
       plainEnglish:
         "Card processor fees (Square, Toast, Stripe, etc.) as % of revenue.",
       value: processingPct,
@@ -234,7 +236,7 @@ function computeRatios(slices: MonthlySlice[]): Ratio[] {
     },
     {
       key: "spoilage",
-      label: "Spoilage",
+      label: "Waste %",
       plainEnglish:
         "Food and drink wasted (expired milk, dropped pastries, etc.) as % of cost of goods.",
       value: spoilagePct,
@@ -302,6 +304,9 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-bold text-[var(--foreground)] leading-tight">{ratio.label}</p>
+          {ratio.subLabel && (
+            <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{ratio.subLabel}</p>
+          )}
           <p className="text-xs text-[var(--gray-mid)] mt-1 leading-snug">
             {ratio.plainEnglish}
           </p>

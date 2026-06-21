@@ -1620,8 +1620,8 @@ function PayrollSummaryChart({
     overhead_labor: s.labor_cents ?? 0,
   }));
   const series = [
-    { key: "service_labor", label: "Service Labor (COGS)", color: CHART_COLORS.warning },
-    { key: "overhead_labor", label: "Overhead Labor", color: CHART_COLORS.primary },
+    { key: "service_labor", label: "Barista Wages", color: CHART_COLORS.warning },
+    { key: "overhead_labor", label: "Management Wages", color: CHART_COLORS.primary },
   ];
   return (
     <div className="mb-6">
@@ -1713,19 +1713,19 @@ function ProjectionsTab({
       <div className="grid grid-cols-3 gap-3">
         {[
           {
-            label: "Year 1 GM",
+            label: "Year 1 Gross Margin",
             value: fmtIntegerPct(y1.gross_margin_pct / 100),
             sub: "Gross margin",
             ok: y1.gross_margin_pct >= 60,
           },
           {
-            label: "Year 1 Op. Income",
+            label: "Year 1 Operating Profit",
             value: formatCurrency(y1.operating_income, currencyCode),
             sub: y1.revenue > 0 ? `${fmtIntegerPct(y1.operating_income / y1.revenue)} margin` : "n/a",
             ok: y1.operating_income >= 0,
           },
           {
-            label: "Year 5 Net",
+            label: "Year 5 Net Income",
             value: formatCurrency(y5.net_income, currencyCode),
             sub: "Net income",
             ok: y5.net_income >= 0,
@@ -2369,16 +2369,16 @@ export function FinancialsWorkspace({
   }
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
-    { id: "forecast", label: "Forecast Inputs" },
+    { id: "forecast", label: "Budget Inputs" },
     { id: "personnel", label: "Salaries" },
     { id: "funding", label: "Funding" },
-    { id: "projections", label: "P&L" },
+    { id: "projections", label: "Profit & Loss" },
     { id: "balance-sheet", label: "Balance Sheet" },
     { id: "cash-flow", label: "Cash Flow" },
     { id: "break-even", label: "Break-Even" },
-    { id: "ratios", label: "Ratios" },
+    { id: "ratios", label: "Health Check" },
     { id: "startup", label: "Startup Costs" },
-    { id: "depreciation", label: "Asset & Depreciation" },
+    { id: "depreciation", label: "Depreciation Schedule" },
     { id: "how-you-compare", label: "How You Compare", badge: benchmarkYellowCount || undefined },
   ];
 

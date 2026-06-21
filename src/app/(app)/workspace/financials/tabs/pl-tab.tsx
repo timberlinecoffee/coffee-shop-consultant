@@ -39,6 +39,7 @@ type Period = "monthly" | "quarterly" | "annual";
 
 interface RowProps {
   label: string;
+  title?: string;
   values: (number | undefined)[];
   bold?: boolean;
   negative?: boolean;
@@ -50,7 +51,7 @@ interface RowProps {
   memo?: boolean;
 }
 
-function StatRow({ label, values, bold, negative, indent, highlight, pctValues, memo, currencyCode }: RowProps & { currencyCode: string }) {
+function StatRow({ label, title, values, bold, negative, indent, highlight, pctValues, memo, currencyCode }: RowProps & { currencyCode: string }) {
   const isNeg = (v?: number) => (v !== undefined && v < 0) || negative;
   // TIM-1309: the frozen first column must be fully opaque with a z-index above
   // the scrolled value cells (some of which are positioned), so month numbers
@@ -58,7 +59,7 @@ function StatRow({ label, values, bold, negative, indent, highlight, pctValues, 
   const stickyBg = memo ? "bg-white" : highlight ? "bg-[var(--teal-tint-50)]" : "bg-white";
   return (
     <tr className={highlight ? "bg-[var(--teal-tint-50)]" : ""}>
-      <td className={`py-2.5 pr-4 text-xs sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""}`}>
+      <td title={title} className={`py-2.5 pr-4 text-xs sticky left-0 z-10 ${stickyBg} ${indent ? "pl-8" : "pl-4"} ${bold ? "font-semibold" : ""} ${memo ? "italic text-[var(--neutral-cool-500)]" : ""}`}>
         {label}
       </td>
       {values.map((v, i) => (
@@ -656,15 +657,15 @@ export function PLTab({
                   onClick={() => setShowCogs(!showCogs)}
                   className="text-xs font-semibold text-[var(--teal)] uppercase tracking-wide"
                 >
-                  {showCogs ? "▼" : "▶"} Cost Of Goods Sold
+                  {showCogs ? "▼" : "▶"} Cost of Ingredients & Supplies
                 </button>
               </td>
             </tr>
             {showCogs && (
               <>
-                <StatRow currencyCode={currencyCode} label="Beverage COGS" values={vals("beverage_cogs_cents")} indent />
-                <StatRow currencyCode={currencyCode} label="Food COGS" values={vals("food_cogs_cents")} indent />
-                <StatRow currencyCode={currencyCode} label="Retail COGS" values={vals("retail_cogs_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Drink Costs" values={vals("beverage_cogs_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Food Costs" values={vals("food_cogs_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Retail Product Costs" values={vals("retail_cogs_cents")} indent />
                 {cogsLines.map((cl) =>
                   monthlyEditable ? (
                     <EditableLineRow {...editProps} key={cl.id} label={cl.label} lineId={cl.id} cells={cellsForLine(cl.id)} manual={manualSet.has(cl.id)} indent />
@@ -676,7 +677,7 @@ export function PLTab({
             )}
             <StatRow
               currencyCode={currencyCode}
-              label="Total COGS"
+              label="Total Cost of Ingredients & Supplies"
               values={vals("total_cogs_cents")}
               bold
               pctValues={pctOf("total_cogs_cents", "net_revenue_cents")}
@@ -704,15 +705,15 @@ export function PLTab({
                     <StatRow currencyCode={currencyCode} key={ol.id} label={ol.label} values={valsForLine(ol.id)} indent />
                   )
                 )}
-                <StatRow currencyCode={currencyCode} label="Payment Processing Fees" values={vals("payment_processing_cents")} indent pctValues={pctOf("payment_processing_cents", "net_revenue_cents")} />
-                <StatRow currencyCode={currencyCode} label="Spoilage And Waste" values={vals("spoilage_cents")} indent />
+                <StatRow currencyCode={currencyCode} label="Card Fees" values={vals("payment_processing_cents")} indent pctValues={pctOf("payment_processing_cents", "net_revenue_cents")} />
+                <StatRow currencyCode={currencyCode} label="Waste" values={vals("spoilage_cents")} indent />
               </>
             )}
             <StatRow currencyCode={currencyCode} label="Total Operating Expenses" values={vals("total_opex_cents")} bold
               pctValues={pctOf("total_opex_cents", "net_revenue_cents")} />
             <DividerRow cols={colCount} />
 
-            <StatRow currencyCode={currencyCode} label="EBITDA (Earnings Before Interest, Taxes, Depreciation & Amortization)" values={vals("ebitda_cents")} bold
+            <StatRow currencyCode={currencyCode} label="EBITDA" title="Earnings Before Interest, Taxes, Depreciation & Amortization" values={vals("ebitda_cents")} bold
               pctValues={pctOf("ebitda_cents", "net_revenue_cents")} />
             <StatRow currencyCode={currencyCode} label="Depreciation" values={vals("depreciation_cents")} negative indent />
             <StatRow currencyCode={currencyCode} label="Operating Income (EBIT)" values={vals("ebit_cents")} bold highlight
