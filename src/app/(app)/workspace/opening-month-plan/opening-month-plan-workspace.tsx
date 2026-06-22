@@ -941,15 +941,19 @@ export function OpeningMonthPlanWorkspace({
                   const applyRes = await fetch("/api/opening-month-plan/milestones/apply", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ milestones: specs, lastGeneratedAt }),
+                    body: JSON.stringify({ milestones: specs, lastGeneratedAt, planId }),
                   });
                   if (!applyRes.ok) throw new Error("Failed to apply milestones");
                   const applied = await applyRes.json() as { milestones: Milestone[]; lastGeneratedAt: string };
                   setMilestones(applied.milestones);
                   setConfig((c) => ({ ...c, lastGeneratedAt: applied.lastGeneratedAt }));
                   setStalesBannerDismissed(false);
+                  showToast("success", "Launch milestones saved. Edit anything that doesn't fit your shop.");
                 },
               });
+              // milestonesUpdated is set so the outer try can show a fallback only
+              // if somehow the modal never opened (defensive); normal flow toasts
+              // inside onApply above.
               milestonesUpdated = proposedMilestones.length;
             }
           } catch { /* non-JSON lines */ }
@@ -958,8 +962,6 @@ export function OpeningMonthPlanWorkspace({
 
       if (paywallHit) {
         setPaywallOpen(true);
-      } else if (milestonesUpdated > 0) {
-        showToast("success", "Launch Milestones generated. Edit anything that doesn't fit your shop.");
       }
     } catch (err) {
       const isAbort = err instanceof Error && err.name === "AbortError";
