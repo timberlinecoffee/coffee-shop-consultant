@@ -19,7 +19,6 @@ import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
-import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -295,8 +294,8 @@ export function ConceptWorkspace({
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-2455: canonical WorkspaceHeader (matches Financials / Equipment /
-            Hiring chrome). Action cluster: [Primary: Ask Scout] [Print
-            document] [SaveStatusAndButton]. Replaces the bespoke ring + bar
+            Hiring chrome). Action cluster (TIM-2897): [Print document]
+            [SaveStatusAndButton]. Replaces the bespoke ring + bar
             "100% into 100%" progress duo and the page-footer Print CTA the
             board flagged on TIM-2451. The page-level workspace status still
             promotes through `useWorkspaceStatus` on first edit — that's the
@@ -308,17 +307,9 @@ export function ConceptWorkspace({
           description="Shape the identity of your shop. Every other workspace builds on this."
           actions={
             <>
-              {/* TIM-2382: Scout-as-hub — replaces the bespoke "Review with AI"
-                  WorkspaceActionButton with AskScoutButton so concept review
-                  routes through the chat narration + AIReviewModal path
-                  ([[feedback_ai_never_auto_apply]]). */}
-              {canEdit && (
-                <AskScoutButton
-                  workspaceKey="concept"
-                  focusLabel="concept"
-                  hasContent={progress.filled > 0}
-                />
-              )}
+              {/* TIM-2897: top-level "Improve with Scout" removed — per-field
+                  "Improve with AI" controls (AIAssistCallout) on each card are
+                  the canonical AI surface on Concept now. */}
               {/* TIM-2455: Print document moved from the page footer into the
                   canonical chrome action cluster. With a single secondary
                   utility the TIM-2413 0/1-threshold rule keeps it inline (no
