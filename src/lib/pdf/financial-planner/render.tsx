@@ -570,7 +570,7 @@ function expenseBreakdownConfig(
   return {
     type: "doughnut",
     data: {
-      labels: ["COGS", "Labor", "Rent", "Marketing", "Utilities", "Other"],
+      labels: ["COGS", "Labor", "Monthly Rent", "Marketing & Ads", "Utilities", "Other"],
       datasets: [
         {
           data: [
@@ -766,8 +766,8 @@ function buildPlRows(year1: MonthlySlice[], fiscalStart: number, code: string): 
     { label: "COGS", values: cogs, negative: true },
     { label: "Gross profit", values: grossProfit, bold: true },
     { label: "Labor", values: labor, negative: true },
-    { label: "Rent", values: rent, negative: true },
-    { label: "Marketing", values: marketing, negative: true },
+    { label: "Monthly Rent", values: rent, negative: true },
+    { label: "Marketing & Ads", values: marketing, negative: true },
     { label: "Utilities", values: utilities, negative: true },
     { label: "Insurance", values: insurance, negative: true },
     { label: "Tech / software", values: tech, negative: true },
