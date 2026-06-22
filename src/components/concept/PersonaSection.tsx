@@ -16,6 +16,9 @@ import { PersonaEditor } from "./PersonaEditor";
 const NEW_PERSONA_ID = "__new__";
 const EXAMPLE_PERSONA_ID = "__example__";
 
+// TIM-2898: deeper sample so owners see the depth expected across all five
+// persona dimensions -- motivations, purchasing behaviour, day-in-the-life,
+// decision drivers, price sensitivity -- not a one-line caricature.
 const EXAMPLE_PERSONA: CustomerPersona = {
   id: EXAMPLE_PERSONA_ID,
   name: "The Morning Regular",
@@ -23,14 +26,18 @@ const EXAMPLE_PERSONA: CustomerPersona = {
   createdAt: "",
   updatedAt: "",
   ageRange: "25-35",
-  occupation: "Knowledge worker",
+  occupation: "Product designer at a downtown software company",
   incomeRange: "80k-120k",
-  dailyContext: "Commutes to an office, stops in before 9am most days.",
-  whyTheyVisit: "They want a reliable cup they can count on without having to think. The ritual matters as much as the coffee.",
-  painPoints: "Chains feel impersonal; specialty shops feel slow and precious. They want craft without fuss.",
-  typicalOrder: "Oat Milk Cortado plus a Butter Croissant most weekdays. Drip coffee on Saturdays when they have more time.",
+  dailyContext:
+    "Walks to a hybrid office Tuesday through Thursday, arriving between 8:15 and 8:45am. Stops in on the same block as their building so they're at their desk by 9:00. Saturday morning is the slower visit -- they linger 20 minutes with a book before walking the dog.",
+  whyTheyVisit:
+    "Buying coffee here is the deliberate, calm part of their workday. They want to start the morning with a beautifully made drink and one familiar face who knows their name, not a 30-second app pickup. The ritual signals 'work mode on' before they even reach the office, and they're willing to pay a small premium for that headspace.",
+  painPoints:
+    "Chain shops feel transactional and the espresso tastes burnt; the line moves but the cup is forgettable. Specialty shops nearby treat espresso like a lecture -- slow pours, baristas explaining the farm, no clear cue when their drink is ready. They've also been burned by shops that take mobile orders but make in-store customers wait behind them.",
+  typicalOrder:
+    "Oat Milk Cortado plus a butter croissant Tuesday through Thursday (about $9). Saturday is a single-origin pour-over for here and an almond croissant they eat in-house ($11). They won't order anything blended or flavoured -- syrup is a deal-breaker.",
   values: ["craft", "consistency", "speed"],
-  visitFrequency: "daily",
+  visitFrequency: "several-per-week",
   spendPerVisit: "6-10",
 };
 

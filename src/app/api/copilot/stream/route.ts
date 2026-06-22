@@ -571,10 +571,15 @@ const ADD_PERSONA_DIRECTIVE = `## Adding Target Customer Personas (use add_perso
 You have an \`add_persona\` tool. When the owner asks you to add, draft, create, design, write, or come up with a Target Customer Persona for their shop -- including phrasings like "add a persona", "draft a persona for the morning crowd", "create a customer persona", "make me a persona" -- you MUST call this tool. Do NOT write a text-only persona description and claim it was added. The tool emits a structured proposal the owner reviews and accepts, edits, or rejects in the review modal before anything is saved.
 
 ### How to use it
-- Draft a concrete, vivid persona grounded in the owner's plan (shop concept, location, segment, target customer language already in the Concept workspace).
-- ALWAYS include \`name\` and \`whyTheyVisit\`. Fill every other field you can reason about from the plan -- demographics (age range, occupation, income range), behavior (visit frequency, spend per visit, typical order), values, and daily context. Empty optional fields are fine when you genuinely cannot infer them, but lean toward populating.
-- \`typicalOrder\` should be a real order in their voice ("Oat Milk Cortado plus a Butter Croissant most weekdays."), not a generic drink list.
-- After calling the tool, in 1-2 sentences explain the choices you made and offer to draft a second persona if it fits.
+- Draft a concrete, vivid persona grounded in the owner's plan (shop concept, location, segment, target customer language already in the Concept workspace). Name a real-sounding occupation and a real-sounding daily anchor (commute, school, gym, second shift) -- never "young professional" or "coffee lover".
+- ALWAYS include \`name\` and \`whyTheyVisit\`. Fill every other field you can reason about from the plan. Empty optional fields are only fine when you truly cannot infer them; otherwise populate.
+- Cover every one of these five dimensions in the structured fields. A persona that only nails motivation but leaves purchasing behaviour blank is a draft, not a persona.
+  1. **Motivations** (\`whyTheyVisit\`): 2-3 sentences on the deeper job the visit does for them -- the ritual, the headspace, the social signal -- not just "good coffee". Show *why* they chose this shop over the alternatives.
+  2. **Purchasing behaviour** (\`typicalOrder\` + \`visitFrequency\` + \`spendPerVisit\`): a real, specific order in their voice ("Oat Milk Cortado plus a butter croissant Tuesday through Thursday"), including weekday vs weekend variation and what they explicitly will NOT order. Match \`spendPerVisit\` to the order you described -- don't say "$15+ visit" then describe a $4 drip.
+  3. **Day-in-the-life** (\`dailyContext\` + \`occupation\`): where they're coming from, what time, where they're going next, what frequency the visit slots into their week. Name the anchor (commute, school dropoff, lunch break, after-shift).
+  4. **Decision drivers** (\`painPoints\` + \`values\`): what specifically frustrates them about the alternatives within walking distance -- name the failure mode (impersonal chain, slow precious specialty, mobile orders queue-jumping the bar) -- and pick 2-4 \`values\` that are actually load-bearing for this persona, not seven values "they care about everything".
+  5. **Price sensitivity** (\`incomeRange\` + the spend bucket): make the income range consistent with the spend bucket and the occupation. If you call them a barista they don't sit in the \`over-120k\` bucket; if you call them a partner at a law firm they're not in the \`under-6\` spend bucket.
+- After calling the tool, in 1-2 sentences explain the choices you made (which dimension you anchored on, what evidence in the plan you used) and offer to draft a second persona if it fits.
 - If the owner already has 5 personas (the cap), do not call the tool -- tell them the cap and offer to refine an existing one instead.`
 
 const ADD_PERSONA_TOOL: Anthropic.Tool = {
@@ -602,30 +607,36 @@ const ADD_PERSONA_TOOL: Anthropic.Tool = {
       },
       occupation: {
         type: ["string", "null"],
-        description: "One-line occupation/role (e.g. 'Remote knowledge worker', 'Cass Tech teacher').",
+        description:
+          "Specific occupation/role -- name an actual job or institution where you can ('Product designer at a downtown software firm', 'ER nurse at Henry Ford', 'Cass Tech English teacher'). Avoid generic labels like 'professional' or 'creative'.",
       },
       incomeRange: {
         type: ["string", "null"],
         enum: ["under-40k", "40k-80k", "80k-120k", "over-120k", null],
-        description: "Annual income bucket. Omit (null) if genuinely unknown.",
+        description:
+          "Annual income bucket. Must be consistent with the occupation AND the spendPerVisit you describe -- a barista isn't in over-120k; a senior engineer isn't in under-40k. Omit (null) if genuinely unknown.",
       },
       dailyContext: {
         type: ["string", "null"],
-        description: "One sentence on where they're coming from / going to when they visit.",
+        description:
+          "2-3 sentences on the day-in-the-life around the visit: where they're coming from, the time window, where they're going next, and how the visit fits into their week (commute days vs weekend, post-shift, school dropoff, etc.). Avoid one-line throwaways.",
       },
       whyTheyVisit: {
         type: "string",
-        description: "2-3 sentences on what drives them to choose this shop, in their voice.",
+        description:
+          "2-3 sentences on the deeper motivation: the ritual, headspace, social signal, or specific craft promise that pulls them to THIS shop over the alternatives. Not 'they like good coffee'. Show why they chose you, not the chain across the street.",
       },
       painPoints: {
         type: ["string", "null"],
-        description: "1-2 sentences on what they dislike about alternatives.",
+        description:
+          "1-2 sentences naming the SPECIFIC failure modes of the alternatives within reach -- 'chain espresso tastes burnt and the line moves but the cup is forgettable', 'specialty shops nearby treat espresso like a lecture'. Avoid generic 'too expensive' or 'too slow'.",
       },
       typicalOrder: {
         type: ["string", "null"],
         description:
-          "A concrete order they tend to place (drink + food/pastry), in plain language. " +
-          "Example: 'Oat Milk Cortado plus a Butter Croissant most weekdays. Drip on Saturdays.'",
+          "A concrete, vivid order in their voice -- drink + food/pastry, with weekday vs weekend variation if it exists and explicit dealbreakers if relevant. Tie the order to spendPerVisit (don't describe a $4 drip and put them in the $10-15 bucket). " +
+          "Good: 'Oat Milk Cortado plus a butter croissant Tuesday through Thursday (around $9). Saturday is a single-origin pour-over and an almond croissant in-house ($11). Won't touch anything blended or syruped.' " +
+          "Bad: 'Coffee and a pastry.'",
       },
       values: {
         type: "array",

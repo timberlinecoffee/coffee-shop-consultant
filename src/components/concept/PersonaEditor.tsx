@@ -71,9 +71,18 @@ export function PersonaEditor({
     });
   }
 
-  function triggerAI(field: "whyTheyVisit" | "painPoints") {
-    const label = field === "whyTheyVisit" ? "Why they visit" : "Pain points";
-    const prompt = `Help me describe the "${label}" for a customer persona named "${draft.name}" at a coffee shop.`;
+  function triggerAI(field: "whyTheyVisit" | "painPoints" | "typicalOrder") {
+    const labelByField: Record<typeof field, string> = {
+      whyTheyVisit: "Why they visit",
+      painPoints: "Pain points",
+      typicalOrder: "Typical order",
+    };
+    const label = labelByField[field];
+    const personaName = draft.name.trim() || "this persona";
+    const prompt =
+      field === "typicalOrder"
+        ? `Suggest what "${personaName}" typically orders at my coffee shop -- a real, specific order (drink + food/pastry) in plain language, not a generic drink list. Tie it to their visit habits and budget if you can.`
+        : `Help me describe the "${label}" for a customer persona named "${personaName}" at a coffee shop.`;
     window.dispatchEvent(
       new CustomEvent("copilot:open-with-prompt", { detail: { prompt, focusLabel: label } })
     );
@@ -211,11 +220,22 @@ export function PersonaEditor({
             />
           </div>
 
-          {/* TIM-1476: Typical order */}
+          {/* TIM-1476: Typical order. TIM-2898: per-field Ask AI parity with whyTheyVisit/painPoints. */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--foreground)] mb-1.5" htmlFor="persona-order">
-              What do they typically order?
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-order">
+                What do they typically order?
+              </label>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => triggerAI("typicalOrder")}
+                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                >
+                  Ask AI
+                </button>
+              )}
+            </div>
             <textarea
               id="persona-order"
               value={draft.typicalOrder ?? ""}

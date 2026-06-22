@@ -270,6 +270,15 @@ export function assembleTargetMarket(conceptContent: unknown): string {
       if (p.spendPerVisit) tags.push(`${p.spendPerVisit}/visit`);
       const desc = p.dailyContext ?? p.notes ?? "";
       lines.push(`- ${p.name || "Persona"}${tags.length ? ` (${tags.join(", ")})` : ""}${desc ? `: ${desc}` : ""}`);
+      // TIM-2898: surface motivation + purchasing behaviour in the business
+      // plan customer profiles so investors/lenders/landlords see the depth
+      // the owner did on the Concept page, not just demographics.
+      if (p.whyTheyVisit?.trim()) {
+        lines.push(`    Why they visit: ${p.whyTheyVisit.trim()}`);
+      }
+      if (p.typicalOrder?.trim()) {
+        lines.push(`    Typical order: ${p.typicalOrder.trim()}`);
+      }
     }
   }
 
