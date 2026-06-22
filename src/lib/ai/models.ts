@@ -1,6 +1,6 @@
 // TIM-1897: board directive (owner: Trent on TIM-1555) — ALL platform AI runs on
 // Claude Haiku, not Sonnet. This is the single source of truth for the model ID
-// used by every AI call path (chat, inline generation, "Improve with AI",
+// used by every AI call path (chat, inline generation, "Write with AI",
 // consistency check, workspace generators, critiques, suggestions, etc.).
 //
 // To move the whole platform to a different model, change this one constant.

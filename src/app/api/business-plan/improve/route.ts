@@ -1,4 +1,4 @@
-// TIM-1037: Business Plan per-section "Improve with AI" — SSE stream.
+// TIM-1037: Business Plan per-section "Write with AI" (renamed TIM-2899) — SSE stream.
 // Rewrites a specific section for clarity, persuasiveness, and concision.
 // TIM-1315: upgraded voice rules and quality spec enforcement.
 

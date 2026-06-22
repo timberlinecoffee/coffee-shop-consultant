@@ -175,7 +175,7 @@ export function PersonaEditor({
                   onClick={() => triggerAI("whyTheyVisit")}
                   className="text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
-                  Ask AI
+                  Write with AI
                 </button>
               )}
             </div>
@@ -205,7 +205,7 @@ export function PersonaEditor({
                   onClick={() => triggerAI("painPoints")}
                   className="text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
-                  Ask AI
+                  Write with AI
                 </button>
               )}
             </div>
@@ -220,7 +220,7 @@ export function PersonaEditor({
             />
           </div>
 
-          {/* TIM-1476: Typical order. TIM-2898: per-field Ask AI parity with whyTheyVisit/painPoints. */}
+          {/* TIM-1476: Typical order. TIM-2898: per-field Write with AI parity with whyTheyVisit/painPoints. */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-order">
@@ -232,7 +232,7 @@ export function PersonaEditor({
                   onClick={() => triggerAI("typicalOrder")}
                   className="text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
-                  Ask AI
+                  Write with AI
                 </button>
               )}
             </div>

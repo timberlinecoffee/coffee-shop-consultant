@@ -1019,7 +1019,7 @@ export function CoPilotDrawer({
     }
   }, [messages, assistantBuffer, isThinking, error]);
 
-  // External "Ask AI" hook (TIM-619): per-field buttons in workspace editors
+  // External "Write with AI" hook (TIM-619, renamed TIM-2899): per-field buttons in workspace editors
   // dispatch `copilot:open-with-prompt` to open the drawer with a seeded prompt
   // so the user can refine a Concept field without retyping context.
   // TIM-2381: extended to accept workspaceKey so AskScoutButton can scope the

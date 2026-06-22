@@ -1,7 +1,7 @@
 "use client";
 
 // TIM-834 / TIM-865 / TIM-881 / TIM-2859: Concept workspace v2 card layout + inline concept brief.
-// - Per-card "Improve with AI" opens AIAssistCallout modal (TIM-2858 routes the result
+// - Per-card "Write with AI" opens AIAssistCallout modal (TIM-2858 routes the result
 //   through the unified review modal mounted on the ConceptWorkspace parent).
 // - TIM-2859: per-card "In doc / Skip" toggle removed; empty fields are implicitly
 //   skipped (no print inclusion, not counted toward progress, no unlock-gate penalty).
@@ -308,7 +308,7 @@ export function ConceptWorkspace({
           actions={
             <>
               {/* TIM-2897: top-level "Improve with Scout" removed — per-field
-                  "Improve with AI" controls (AIAssistCallout) on each card are
+                  "Write with AI" controls (AIAssistCallout) on each card are
                   the canonical AI surface on Concept now. */}
               {/* TIM-2455: Print document moved from the page footer into the
                   canonical chrome action cluster. With a single secondary
@@ -449,7 +449,7 @@ export function ConceptWorkspace({
                       </button>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise.
+                      {/* TIM-881 + TIM-1408 + TIM-2899: Write with AI is hover/focus-revealed to reduce ambient noise.
                           TIM-2859: shown on every non-Persona card (target_customer renders the
                           PersonaSection editor below and has its own authoring flow). */}
                       {meta.id !== "target_customer" && (
@@ -465,7 +465,7 @@ export function ConceptWorkspace({
                           disabled={!canEdit}
                           className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                         >
-                          Improve with AI
+                          Write with AI
                         </button>
                       )}
                       {/* TIM-2859: per-card In doc / Skip toggle removed. Empty fields are

@@ -328,7 +328,7 @@ export function AIAssistCallout({
                   onClick={() => void startStream("write")}
                   className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
-                  Write this for me
+                  Write with AI
                 </button>
               </div>
             </div>
