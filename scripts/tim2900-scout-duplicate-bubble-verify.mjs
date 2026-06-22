@@ -159,13 +159,39 @@ if ((res?.status() ?? 0) >= 400 || page.url().includes("/login")) {
 }
 await page.waitForLoadState("networkidle").catch(() => {});
 
+// Dismiss the cookie-consent dialog if present (it overlays the Scout opener).
+const consentDialog = page.getByRole("dialog", { name: /Cookie consent/i });
+if (await consentDialog.isVisible().catch(() => false)) {
+  const acceptBtn = consentDialog
+    .getByRole("button", { name: /Accept|Got it|OK|Allow|Dismiss/i })
+    .first();
+  if (await acceptBtn.isVisible().catch(() => false)) {
+    await acceptBtn.click().catch(() => {});
+  } else {
+    // Fallback — click any button in the dialog to dismiss it.
+    await consentDialog.getByRole("button").first().click().catch(() => {});
+  }
+  await consentDialog.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
+}
+
 // Open the drawer via the floating Scout opener.
 const opener = page.getByRole("button", { name: /Open Scout/i }).first();
 await opener.waitFor({ state: "visible", timeout: 15_000 });
 await opener.click();
+await page.waitForTimeout(500);
+
+// The drawer can open in Check mode by default; the duplicate-bubble bug
+// lives in Coach mode (the chat surface), so switch tabs explicitly.
+// Tabs are role="tab" inside role="tablist" aria-label="Companion mode".
+const coachTab = page.getByRole("tab", { name: /Coach/i }).first();
+if (await coachTab.isVisible().catch(() => false)) {
+  await coachTab.click();
+  await page.waitForTimeout(300);
+}
+await page.screenshot({ path: "scripts/shots/tim2900-drawer-opened.png" });
 
 // Wait for the input to be ready.
-const textarea = page.getByPlaceholder(/Ask Scout/i).first();
+const textarea = page.locator("textarea").first();
 await textarea.waitFor({ state: "visible", timeout: 10_000 });
 
 // ── 5. send 3 prompts, assert exactly one assistant bubble per turn ───────
