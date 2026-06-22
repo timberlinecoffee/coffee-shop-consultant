@@ -415,13 +415,16 @@ export function BusinessPlanWorkspace({
               },
             ],
             context: { workspace: "Business Plan", section: sectionMeta?.title },
-            onApply: async () => {
+            onApply: async (accepted) => {
               // Inline save (avoids hoisting issue with handleSaveAfterImprove ref)
+              // Use the user's final edited value from the modal (accepted[0].finalValue)
+              // so any edits made in the review step are persisted, not silently dropped.
+              const text = accepted[0]?.finalValue ?? full;
               const res = await fetch(`/api/business-plan/sections/${sectionKey}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  user_content: full,
+                  user_content: text,
                   estimated_claims_json: estimatedClaims,
                 }),
               });
@@ -429,7 +432,7 @@ export function BusinessPlanWorkspace({
               setSections((prev) =>
                 prev.map((s) => {
                   if (s.key !== sectionKey) return s;
-                  return { ...s, userContent: full };
+                  return { ...s, userContent: text };
                 })
               );
               updateSection(sectionKey, { isEditing: false, isGenerating: false });

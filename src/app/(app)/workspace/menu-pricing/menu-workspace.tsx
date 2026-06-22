@@ -3591,16 +3591,16 @@ export function MenuWorkspace({
           ],
           context: { workspace: "Menu & Pricing", section: item.name },
           onApply: async (accepted) => {
-            if (accepted.length > 0) {
-              await fetch(`/api/workspaces/menu-pricing/items/${item.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ price_cents: data.suggested_price_cents }),
-              });
-              setItems((prev) =>
-                prev.map((i) => i.id === item.id ? { ...i, price_cents: data.suggested_price_cents } : i)
-              );
-            }
+            if (!accepted[0]) return;
+            const patchRes = await fetch("/api/workspaces/menu-pricing/items", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: item.id, price_cents: data.suggested_price_cents }),
+            });
+            if (!patchRes.ok) throw new Error("Failed to save price");
+            setItems((prev) =>
+              prev.map((i) => i.id === item.id ? { ...i, price_cents: data.suggested_price_cents } : i)
+            );
           },
         });
       }

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "lint:normalize": "eslint --no-config-lookup --config eslint.normalize.config.mjs 'src/**/*.ts' 'src/**/*.tsx' 'scripts/**/*.js' 'scripts/**/*.mjs'",
-    "test": "node --experimental-strip-types --no-warnings --test --test-reporter=spec 'src/**/*.test.mjs'",
+    "test": "node scripts/lint-onapply-urls.mjs && node scripts/lint-ai-review-modal.mjs && node --experimental-strip-types --no-warnings --test --test-reporter=spec 'src/**/*.test.mjs'",
+    "ci": "node scripts/lint-onapply-urls.mjs && node scripts/lint-ai-review-modal.mjs",
     "test:smoke": "node scripts/smoke.mjs",
     "check:links": "node scripts/check-links.mjs",
     "lhci": "lhci autorun"
