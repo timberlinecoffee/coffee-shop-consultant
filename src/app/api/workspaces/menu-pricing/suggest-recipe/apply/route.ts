@@ -125,18 +125,19 @@ export async function POST(request: Request) {
     )
   }
 
-  // Skip ingredients already on this item to avoid duplicate rows.
-  const { data: existingLines, error: existingLinesErr } = await supabase
+  // Delete all existing recipe lines for this item so the AI suggestion fully
+  // replaces them — including amount updates for ingredients already present.
+  // (Skipping existing ingredient_ids caused silent no-ops on amount refinements.)
+  const { error: clearErr } = await supabase
     .from("menu_item_ingredients")
-    .select("ingredient_id")
+    .delete()
     .eq("menu_item_id", body.item_id)
-  if (existingLinesErr) {
-    return Response.json({ error: "Failed to load existing recipe lines" }, { status: 500 })
+  if (clearErr) {
+    console.error("suggest-recipe/apply clear error:", clearErr)
+    return Response.json({ error: "Failed to clear existing recipe lines" }, { status: 500 })
   }
-  const alreadyOnItem = new Set(
-    ((existingLines ?? []) as { ingredient_id: string }[]).map((r) => r.ingredient_id),
-  )
 
+  const seen = new Set<string>()
   const lineRows: {
     menu_item_id: string
     ingredient_id: string
@@ -144,7 +145,8 @@ export async function POST(request: Request) {
     unit: IngredientUnit
   }[] = []
   for (const r of resolved) {
-    if (alreadyOnItem.has(r.ingredient.id)) continue
+    if (seen.has(r.ingredient.id)) continue
+    seen.add(r.ingredient.id)
     const unit = (MENU_VALID_UNITS.has(r.ingredient.package_unit) ? r.ingredient.package_unit : "oz") as IngredientUnit
     lineRows.push({
       menu_item_id: body.item_id,
@@ -152,7 +154,6 @@ export async function POST(request: Request) {
       amount: r.line.amount,
       unit,
     })
-    alreadyOnItem.add(r.ingredient.id)
   }
 
   if (lineRows.length > 0) {
