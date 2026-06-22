@@ -523,26 +523,10 @@ export async function POST(request: NextRequest): Promise<Response> {
         const estimatedClaims = extractEstimatedClaims(sectionKey, draftCanon.text);
         const draft = parsed.rendered;
 
-        // TIM-2360: idempotent upsert BEFORE emitting section:complete so
-        // persisted sections survive a Lambda kill mid-batch. The user can
-        // refresh and see completed sections rather than losing all work.
-        try {
-          const svc = createServiceClient();
-          await svc
-            .from("business_plan_sections")
-            .upsert(
-              {
-                plan_id: planId,
-                section_key: sectionKey,
-                user_content: draft,
-                ...(estimatedClaims.length > 0 ? { estimated_claims_json: estimatedClaims } : {}),
-              },
-              { onConflict: "plan_id,section_key" },
-            );
-        } catch {
-          // Non-fatal — section:complete still fires; user can accept manually.
-        }
-
+        // TIM-2924 Shape C fix: do not pre-write here. The review modal is the
+        // Accept gate; the client's accept() function PATCHes sections with
+        // finalValue when the user confirms. Pre-writing caused Reject to be a
+        // no-op (rejected sections stayed in DB). See TIM-2924.
         completed.push({ key: sectionKey, draft });
         send("section:complete", {
           sectionKey,

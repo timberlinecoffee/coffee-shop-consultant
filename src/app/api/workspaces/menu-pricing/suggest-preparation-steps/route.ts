@@ -126,26 +126,14 @@ Return ONLY a JSON object: { "steps": ["...", "...", ...] }`
       return Response.json({ error: "AI returned no steps" }, { status: 500 })
     }
 
-    // Persist the steps on the menu item so a refresh keeps them. Title-Case
-    // fragment-shaped lines defensively at the boundary (TIM-1002): full
-    // sentences stay as written, but if the model returned a label-shaped step
-    // toTitleCase() catches it.
+    // TIM-1002: Title-Case fragment-shaped lines at the boundary; full
+    // sentences (end in punctuation) stay sentence-cased.
     const persisted = steps.map((s) =>
-      // A complete sentence ends in punctuation. Don't force Title Case on those.
       /[.!?]$/.test(s) ? s : toTitleCase(s),
     )
 
-    const { error: updateErr } = await supabase
-      .from("menu_items")
-      .update({ preparation_steps: persisted })
-      .eq("id", body.item_id)
-      .eq("plan_id", planId)
-
-    if (updateErr) {
-      console.error("suggest-preparation-steps update error:", updateErr)
-      return Response.json({ error: "Failed to save steps" }, { status: 500 })
-    }
-
+    // TIM-2924 Shape C fix: do not persist here. The review modal is the
+    // Accept gate; onApply writes via the items PATCH when the user confirms.
     return Response.json({ steps: persisted })
   } catch (err) {
     console.error("suggest-preparation-steps error:", err)

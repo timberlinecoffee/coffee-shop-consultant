@@ -253,11 +253,8 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       return Response.json({ error: "Area analysis returned empty." }, { status: 502 })
     }
 
-    await supabase
-      .from("location_candidates")
-      .update({ area_analysis: normalizedText, area_analysis_at: new Date().toISOString() })
-      .eq("id", candidateId)
-
+    // TIM-2924 Shape C fix: do not persist here. The review modal is the
+    // Accept gate; onApply writes via PATCH /candidates/{id} when confirmed.
     const nearbyCount = Object.values(counts).reduce((a, b) => a + b, 0)
     return Response.json({ text: normalizedText, nearbyCount, generatedAt: new Date().toISOString() })
   } catch (err) {
