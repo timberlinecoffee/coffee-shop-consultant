@@ -28,6 +28,9 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+// TIM-2781 (Phase 6): mobile card-per-supplier, gated by ui_revamp_v2.
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { SuppliersMobileV2 } from "@/components/suppliers/SuppliersMobileV2";
 import { useCurrency } from "@/components/CurrencyProvider";
 import {
   VENDOR_CATEGORY_KEYS,
@@ -245,6 +248,9 @@ export function SuppliersWorkspace({
 
   const chosenCount = decisionsByCategory.size;
   const totalCategories = allCategoryIds.length;
+
+  // TIM-2781 (Phase 6): gate mobile card view by ui_revamp_v2.
+  const uiRevampV2 = useUiRevamp();
 
   useEffect(() => {
     if (chosenCount > 0) promoteOnEdit("suppliers");
@@ -597,6 +603,18 @@ export function SuppliersWorkspace({
           }
         />
 
+        {/* TIM-2781 (Phase 6): mobile card-per-supplier gated by ui_revamp_v2. */}
+        {uiRevampV2 && (
+          <div className="md:hidden">
+            <SuppliersMobileV2
+              candidates={candidates}
+              decisions={decisions}
+              customCategories={customCategories}
+            />
+          </div>
+        )}
+
+        <div className={uiRevampV2 ? "hidden md:block" : ""}>
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
           {/* Category nav */}
           <nav className="rounded-xl border border-[var(--border)] bg-white overflow-hidden self-start">
@@ -870,6 +888,7 @@ export function SuppliersWorkspace({
             </div>
           </section>
         </div>
+        </div>{/* end hidden md:block wrapper */}
       </div>
 
       {reasonModal && (
