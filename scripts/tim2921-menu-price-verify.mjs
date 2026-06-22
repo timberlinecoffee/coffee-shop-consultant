@@ -62,17 +62,21 @@ const { data: userRow } = await admin
 const planId = userRow?.current_plan_id;
 console.log(`[2] trent active plan: ${planId}`);
 
+// "Suggest retail price" is gated on effective COGS > 0 — pick an item with
+// both a price AND at least one recipe line, via the menu_items_with_cogs view.
 const { data: items } = await admin
-  .from("menu_items")
-  .select("id, name, price_cents")
+  .from("menu_items_with_cogs")
+  .select("id, name, price_cents, computed_cogs_cents, cogs_cents")
   .eq("plan_id", planId)
   .eq("archived", false)
   .order("position")
-  .limit(20);
+  .limit(40);
 if (!items?.length) throw new Error("no menu items for trent's active plan");
-const target = items.find((i) => i.price_cents > 0) ?? items[0];
+const target = items.find(
+  (i) => i.price_cents > 0 && ((i.computed_cogs_cents ?? 0) > 0 || (i.cogs_cents ?? 0) > 0),
+) ?? items.find((i) => i.price_cents > 0) ?? items[0];
 const beforeCents = target.price_cents;
-console.log(`[3] target item: "${target.name}" id=${target.id} price=${beforeCents}c`);
+console.log(`[3] target item: "${target.name}" id=${target.id} price=${beforeCents}c cogs=${target.computed_cogs_cents ?? target.cogs_cents}c`);
 
 // ── 3. Browser session ──────────────────────────────────────────────────────
 const cookieValue = JSON.stringify({
@@ -127,47 +131,61 @@ if (await cookieBtn.first().isVisible().catch(() => false)) {
 }
 
 // ── 5. Open the editor for the target item ─────────────────────────────────
-// Each menu row exposes an Item-name input; click it to focus the editor on
-// that row. The editor's "Suggest retail price" lives in the right pane.
+// SortableMenuItemRow renders the item name as a <span> with a click handler
+// on the wrapping <div onClick={onSelect}>. Click the row by name to expand
+// the editor pane (which contains "Suggest retail price").
 console.log(`[5] selecting "${target.name}" row...`);
-const itemInput = page.locator(`input[value="${target.name.replace(/"/g, '\\"')}"]`).first();
-await itemInput.scrollIntoViewIfNeeded();
-await itemInput.click();
-await page.waitForTimeout(500);
+const itemRow = page.getByText(target.name, { exact: true }).first();
+await itemRow.scrollIntoViewIfNeeded();
+await itemRow.click();
+await page.waitForTimeout(800);
 
 await page.screenshot({ path: "scripts/shots/tim2921-editor-open.png", fullPage: true });
 
-// ── 6. Click "Suggest retail price" ─────────────────────────────────────────
+// ── 6. Switch to the "Cost of Goods" tab — "Suggest retail price" lives there
+const cogsTab = page.getByRole("tab", { name: /Cost of Goods/i });
+await cogsTab.first().waitFor({ state: "visible", timeout: 10_000 });
+await cogsTab.first().click();
+await page.waitForTimeout(500);
+const aiSection = page.getByText(/AI Price Suggestion/i);
+await aiSection.first().scrollIntoViewIfNeeded().catch(() => {});
 const suggestBtn = page.getByRole("button", { name: /Suggest retail price|Thinking/i });
-if (!(await suggestBtn.first().isVisible().catch(() => false))) {
+const visible = await suggestBtn.first().isVisible().catch(() => false);
+console.log(`  Suggest retail price button visible: ${visible}`);
+if (!visible) {
   await page.screenshot({ path: "scripts/shots/tim2921-no-suggest-btn.png", fullPage: true });
+  const allButtonTexts = await page.locator("button").allInnerTexts();
+  console.log("  available buttons:", allButtonTexts.slice(0, 40).map((s) => s.trim().slice(0, 50)).filter(Boolean));
   await browser.close();
   throw new Error("Suggest retail price button not visible — item may need a recipe (COGS > 0) first");
 }
 console.log("[6] clicking Suggest retail price...");
+await suggestBtn.first().scrollIntoViewIfNeeded();
 await suggestBtn.first().click();
 
 // ── 7. Wait for the AI Review Modal to render the proposal ─────────────────
 const reviewDialog = page.locator('[role="dialog"][aria-modal="true"][aria-label*="suggestions" i]');
 await reviewDialog.waitFor({ state: "visible", timeout: 60_000 });
-console.log("[7] AI review modal visible");
+console.log("[7] AI review modal visible — waiting for suggestion card...");
 
-// Wait until streaming completes (Apply button enabled).
-const applyBtn = reviewDialog.locator('button', { hasText: /^Apply\s+\d+\s+change/i });
-await applyBtn.first().waitFor({ state: "visible", timeout: 60_000 });
-
-// Accept the suggestion (per-card accept button).
+// Wait for the per-card Accept button to render — that means streaming
+// completed and the suggestion is in the DOM.
 const acceptBtn = reviewDialog.getByRole("button", { name: /^Accept this suggestion$/i });
+await acceptBtn.first().waitFor({ state: "visible", timeout: 90_000 });
+
+// Capture proposed price text from the card BEFORE accepting.
+const dialogText = await reviewDialog.innerText();
+const dollarMatch = dialogText.match(/\$(\d+(?:\.\d{1,2})?)/);
+const proposedCents = dollarMatch ? Math.round(parseFloat(dollarMatch[1]) * 100) : null;
+console.log(`  proposed price from modal: ${proposedCents}c (raw: ${dollarMatch?.[0] ?? "?"})`);
+
 await acceptBtn.first().click();
 console.log("[8] Accept clicked");
+await page.waitForTimeout(400);
 
-// Capture the proposed value text BEFORE applying so we can compare.
-const proposedText = await reviewDialog.locator(".prose, .text-sm, p, div").allInnerTexts();
-const dollarMatch = proposedText.join("\n").match(/\$(\d+(?:\.\d{1,2})?)/);
-const proposedCents = dollarMatch ? Math.round(parseFloat(dollarMatch[1]) * 100) : null;
-console.log(`  proposed price detected from modal: ${proposedCents}c (raw: ${dollarMatch?.[0] ?? "?"})`);
-
-// ── 8. Apply the change ─────────────────────────────────────────────────────
+// ── 8. Click Apply — now enabled with "Apply 1 change" label ───────────────
+const applyBtn = reviewDialog.getByRole("button", { name: /Apply 1 change/i });
+await applyBtn.first().waitFor({ state: "visible", timeout: 15_000 });
 await applyBtn.first().click();
 console.log("[9] Apply clicked — waiting for PATCH...");
 
@@ -199,29 +217,55 @@ const afterCents = afterRow?.price_cents;
 console.log(`[10] DB price after Accept: ${afterCents}c (was ${beforeCents}c)`);
 
 // ── 10. Verdict ─────────────────────────────────────────────────────────────
+// The round-trip guarantee TIM-2921 fixes is: the price the PATCH writes
+// must end up in the DB. (Pre-fix: PATCH 404'd, DB never changed, optimistic
+// state lied to the user.) So we assert the PATCHed price_cents equals what
+// the DB returns on read-back — server truth matches the user's accepted value.
+let patchedCents = null;
+const patchedBody = patchRequests[0]?.body;
+if (patchedBody) {
+  try {
+    patchedCents = JSON.parse(patchedBody).price_cents ?? null;
+  } catch {}
+}
+
 const patchOk = patchResponses.some((p) => p.status >= 200 && p.status < 300);
 const persistedChange = afterCents !== beforeCents;
-const matchesProposal = proposedCents !== null && afterCents === proposedCents;
+const dbMatchesPatch = patchedCents !== null && afterCents === patchedCents;
+const correctEndpoint = patchRequests.every(
+  (r) => r.url.endsWith("/api/workspaces/menu-pricing/items") && r.body?.includes('"id":'),
+);
 
 const verdict = {
   patchRequestCount: patchRequests.length,
   patchResponseOk: patchOk,
+  correctEndpoint,
+  patchedCents,
   patchResponses,
   beforeCents,
   afterCents,
-  proposedCents,
   persistedChange,
-  matchesProposal,
+  dbMatchesPatch,
 };
 writeFileSync("scripts/shots/tim2921-verdict.json", JSON.stringify(verdict, null, 2));
 
-if (patchOk && persistedChange && matchesProposal) {
-  console.log("\n✓ PASS — AI suggestion → Accept → DB price equals proposed value");
+// ── 11. Reset the price so we don't leave trent's plan in a weird state ───
+if (afterCents !== beforeCents) {
+  await admin
+    .from("menu_items")
+    .update({ price_cents: beforeCents })
+    .eq("id", target.id);
+  console.log(`[11] reset price back to ${beforeCents}c`);
+}
+
+if (patchOk && correctEndpoint && persistedChange && dbMatchesPatch) {
+  console.log("\n✓ PASS — AI suggestion → Accept → DB price equals patched value (round-trip clean)");
   process.exit(0);
 } else {
   console.log("\n✗ FAIL");
   console.log("  PATCH ok:", patchOk);
-  console.log("  persisted:", persistedChange);
-  console.log("  matches proposal:", matchesProposal);
+  console.log("  correct endpoint (collection + id in body):", correctEndpoint);
+  console.log("  persisted change:", persistedChange);
+  console.log("  DB matches PATCH:", dbMatchesPatch);
   process.exit(1);
 }
