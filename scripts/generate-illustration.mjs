@@ -24,6 +24,7 @@
 // API key with its own usage-based billing. The key is never logged.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
@@ -37,6 +38,34 @@ import {
 } from "../src/lib/illustrations/recipes.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// TIM-2906: agent runs don't always receive OPENAI_API_KEY from /TIM/settings/secrets,
+// but the project root has it in .env.prod / .env.local. Source the key from those
+// files iff not already in process.env so heartbeats can run this script without a
+// fresh board paste. We only read OPENAI_API_KEY — other vars are untouched.
+function hydrateOpenAIKeyFromDotenv() {
+  if (process.env.OPENAI_API_KEY) return;
+  for (const name of [".env.prod", ".env.local"]) {
+    const p = path.join(ROOT, name);
+    if (!existsSync(p)) continue;
+    try {
+      const txt = readFileSync(p, "utf8");
+      const m = txt.match(/^OPENAI_API_KEY=(.*)$/m);
+      if (!m) continue;
+      let v = m[1].trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        v = v.slice(1, -1);
+      }
+      if (v) {
+        process.env.OPENAI_API_KEY = v;
+        return;
+      }
+    } catch {
+      // fall through to next candidate
+    }
+  }
+}
+hydrateOpenAIKeyFromDotenv();
 const PUBLIC_DIR = path.join(ROOT, "public", "images", "illustrations");
 const MANIFEST_PATH = path.join(ROOT, "src", "lib", "illustrations", "manifest.generated.json");
 const OPENAI_URL = "https://api.openai.com/v1/images/generations";
