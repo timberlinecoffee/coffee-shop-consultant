@@ -214,6 +214,38 @@ export async function POST(request: Request) {
       },
     )
 
+    const industryPanel = industryData
+      ? {
+          low_cents: industryData.low_cents,
+          high_cents: industryData.high_cents,
+          source_label: industryData.source_label,
+          source_note: industryData.source_note,
+          currency: "USD" as const,
+        }
+      : null
+
+    // TIM-2922 (hardening): local research can come back empty when the
+    // model refuses (country/city mismatch, no usable JSON, etc.). Don't
+    // 500 — surface a 200 with source=local_cafes_unavailable so the UI
+    // can render the industry panel as a temporary fallback with an
+    // explicit "couldn't pull live cafes" note.
+    if (local.citations.length === 0) {
+      const fallbackLow = industryData?.low_cents ?? 0
+      const fallbackHigh = industryData?.high_cents ?? 0
+      return Response.json({
+        low_cents: fallbackLow,
+        high_cents: fallbackHigh,
+        current_price_cents: currentCents,
+        verdict: deriveVerdict(currentCents, fallbackLow, fallbackHigh),
+        commentary: local.commentary || "Could not pull live cafe prices for this market right now. Industry reference data is shown below as a temporary backstop.",
+        source: "local_cafes_unavailable" as const,
+        citations: [],
+        country_used: local.country_used,
+        city_used: local.city_used,
+        industry_comparison: industryPanel,
+      })
+    }
+
     const verdict = deriveVerdict(currentCents, local.low_cents, local.high_cents)
 
     return Response.json({
@@ -229,18 +261,7 @@ export async function POST(request: Request) {
       city_used: local.city_used,
       // Secondary industry comparison (labelled, optional). UI renders this
       // as a small "for reference" subline — never as the headline.
-      // industry-dataset values are USD; country_for_industry tells the UI
-      // to label the panel with the source currency when it differs from
-      // the workspace currency.
-      industry_comparison: industryData
-        ? {
-            low_cents: industryData.low_cents,
-            high_cents: industryData.high_cents,
-            source_label: industryData.source_label,
-            source_note: industryData.source_note,
-            currency: "USD" as const,
-          }
-        : null,
+      industry_comparison: industryPanel,
     })
   } catch (err) {
     console.error("benchmark-price error:", err)

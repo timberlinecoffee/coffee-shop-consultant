@@ -118,6 +118,10 @@ export async function POST(request: Request) {
   const marginFloorDollars = (marginFloorCents / 100).toFixed(2)
 
   // TIM-2922: Pull the live local cafe range. Same engine as /benchmark-price.
+  // TIM-2922 (hardening): computeLocalCafeRange now returns empty-citations
+  // rather than throwing on thin LLM output, so localUnavailable is set
+  // either when the engine throws (network, infra) OR when the returned
+  // citation list is empty.
   let localLow = 0
   let localHigh = 0
   let localCitations: BenchmarkCitation[] = []
@@ -130,13 +134,14 @@ export async function POST(request: Request) {
       city: geo.city,
       ctx,
     })
-    localLow = local.low_cents
-    localHigh = local.high_cents
-    localCitations = local.citations
+    if (local.citations.length === 0) {
+      localUnavailable = "Could not pull live local cafe prices"
+    } else {
+      localLow = local.low_cents
+      localHigh = local.high_cents
+      localCitations = local.citations
+    }
   } catch (err) {
-    // If the local research fails (web_search unavailable, model refused, etc.)
-    // still emit a suggestion — but flag in the response so the UI surfaces
-    // the unchecked state rather than claiming reconciliation.
     localUnavailable = err instanceof Error ? err.message : "Local research unavailable"
     console.warn("suggest-price: local range fetch failed:", localUnavailable)
   }
@@ -251,12 +256,16 @@ Return ONLY the JSON object, no other text.`
         }
       }
     }
-    // TIM-2922 (review fix): when the local band IS unavailable, leave
-    // disagreement_reason alone unless the model itself didn't supply one.
-    // The previous always-overwrite behaviour collided with the UI label
-    // "Reason for going outside the local band" (there's no band to be
-    // outside of). Surface this as a distinct top-level flag instead.
+    // TIM-2922 (hardening): when the local band IS unavailable, set
+    // disagreement_reason explicitly so the UI surfaces "couldn't check
+    // local cafes" instead of silently presenting the suggestion as
+    // reconciled. Distinct from the local_range_unavailable top-level flag —
+    // disagreement_reason captures "the suggestion is not anchored to live
+    // local data", which is exactly the board's complaint to fix.
     const localRangeChecked = localLow > 0 && localHigh > 0
+    if (!localRangeChecked && !disagreementReason) {
+      disagreementReason = `Could not pull live local cafe prices; suggestion is not anchored to a local range. (${localUnavailable ?? "no signal"})`
+    }
 
     const marginAtSuggested = body.cogs_cents > 0
       ? (suggestedCents - body.cogs_cents) / suggestedCents
