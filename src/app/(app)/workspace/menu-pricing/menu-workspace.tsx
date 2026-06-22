@@ -1795,7 +1795,6 @@ function SortableMenuItemRow({
   isSelected,
   canEdit,
   onSelect,
-  onUpdate,
   onDelete,
   isOverlay,
 }: {
@@ -1804,7 +1803,6 @@ function SortableMenuItemRow({
   isSelected: boolean;
   canEdit: boolean;
   onSelect: () => void;
-  onUpdate: (patch: Partial<MenuItemWithCogs>) => void;
   onDelete: () => void;
   isOverlay?: boolean;
 }) {
@@ -1824,14 +1822,6 @@ function SortableMenuItemRow({
         transition,
         opacity: isDragging ? 0.4 : 1,
       };
-
-  const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(item.name);
-
-  function handleNameBlur() {
-    setEditingName(false);
-    if (name !== item.name) onUpdate({ name });
-  }
 
   const cogs =
     item.computed_cogs_cents > 0
@@ -1871,43 +1861,22 @@ function SortableMenuItemRow({
       {/* TIM-1674: name + (price/COGS + actions) reflow to two stacked rows on
           mobile so nothing crowds or overlaps; collapse to one row from sm: up. */}
       <div className="flex-1 min-w-0 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-      <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-        {editingName ? (
-          <input
-            autoFocus
-            className="text-sm font-medium text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus-visible:outline-none bg-transparent w-full"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={handleNameBlur}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleNameBlur();
-              if (e.key === "Escape") {
-                setName(item.name);
-                setEditingName(false);
-              }
-            }}
-          />
-        ) : (
-          <div onClick={onSelect}>
-            {/* TIM-1409: sidebar shows the full item name. Long names wrap to
-                additional lines instead of being ellipsized — the owner needs
-                to recognize the item without hovering. */}
-            <span className="text-sm font-medium text-[var(--foreground)] break-words block">
-              {item.name || (
-                <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>
-              )}
-            </span>
-            {/* TIM-1140: explicit "Category:" tag on the row so it isn't
-                mistakable for a subtitle. */}
-            <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 flex items-center gap-1 min-w-0">
-              <Tag size={9} className="shrink-0" />
-              <span className="shrink-0">Category:</span>
-              <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal truncate">
-                {category?.name ?? "—"}
-              </span>
-            </span>
-          </div>
-        )}
+      {/* TIM-2923: row click is the single edit affordance — it opens
+          ItemEditorPanel (the card editor) where name + recipe + price +
+          COGS all live. The pencil button below also routes here. */}
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-[var(--foreground)] break-words block">
+          {item.name || (
+            <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>
+          )}
+        </span>
+        <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 flex items-center gap-1 min-w-0">
+          <Tag size={9} className="shrink-0" />
+          <span className="shrink-0">Category:</span>
+          <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal truncate">
+            {category?.name ?? "—"}
+          </span>
+        </span>
       </div>
 
       <div className="flex items-center justify-between gap-3 shrink-0 sm:justify-end">
@@ -1937,12 +1906,16 @@ function SortableMenuItemRow({
 
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">
+          {/* TIM-2923: pencil opens the same card editor as row click — single
+              canonical edit path, not an inline name-only field. */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setEditingName(true);
+              onSelect();
             }}
+            aria-label="Edit item"
+            title="Edit item"
             className="text-[var(--neutral-cool-350)] hover:text-[var(--teal)] transition-colors"
           >
             <Edit2 size={12} />
@@ -2506,7 +2479,6 @@ function MenuTab(props: MenuTabProps) {
                             onSelect={() =>
                               onSelectItem(isExpanded ? null : item.id)
                             }
-                            onUpdate={(patch) => onUpdateItem(item.id, patch)}
                             onDelete={() => onDeleteItem(item.id)}
                           />
                           {isExpanded && (
