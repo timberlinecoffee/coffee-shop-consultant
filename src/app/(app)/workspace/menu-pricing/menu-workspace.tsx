@@ -105,17 +105,38 @@ interface Props {
 
 // TIM-1471: "Benchmark against cafés in my area" — AI compares current price
 // to the local market band and tells the owner where they sit.
+// TIM-2922: now ships citations (real cafes in the same country) as the
+// primary range; the curated industry dataset moves to a secondary panel.
+type BenchmarkCitation = {
+  name: string;
+  url: string;
+  price_cents: number;
+  city?: string | null;
+};
 type BenchmarkResult = {
   low_cents: number;
   high_cents: number;
   current_price_cents: number;
   verdict: "below" | "in_band" | "above" | "unknown";
   commentary: string;
-  // TIM-1698: "industry_benchmark" = curated public dataset (NCA/SCA/Square/BLS).
-  // "platform_data" = cross-user aggregate (future, needs scale).
-  // "ai_estimated" = fallback when no industry record exists for the item.
-  source?: "ai_estimated" | "platform_data" | "industry_benchmark";
+  // TIM-2922: post-rewrite, primary source is always "local_cafes" (real
+  // cited cafes via web_search). Old values kept for backwards-compat reads
+  // of any cached responses during the deploy window.
+  source?: "local_cafes" | "ai_estimated" | "platform_data" | "industry_benchmark";
   source_note?: string;
+  // TIM-2922: real cafe citations powering the primary range.
+  citations?: BenchmarkCitation[];
+  country_used?: string | null;
+  city_used?: string | null;
+  // TIM-2922: secondary industry comparison panel (was the primary source
+  // pre-rewrite). Rendered as a labelled "for reference" panel, never the
+  // headline.
+  industry_comparison?: {
+    low_cents: number;
+    high_cents: number;
+    source_label: string;
+    source_note: string;
+  } | null;
 };
 
 function makeLocalId() {
@@ -162,6 +183,16 @@ type PriceSuggestion = {
   high_cents: number;
   margin_pct: number;
   commentary: string;
+  // TIM-2922: when suggestion sits outside the live local cafe band the
+  // server surfaces the reason here instead of silently disagreeing.
+  disagreement_reason?: string | null;
+  local_range?: {
+    low_cents: number;
+    high_cents: number;
+    citations: { name: string; url: string; price_cents: number; city?: string | null }[];
+  } | null;
+  country_used?: string | null;
+  city_used?: string | null;
 };
 
 // TIM-1323: an AI-suggested candidate menu item the owner can add in one tap.
@@ -1498,12 +1529,27 @@ function CostOfGoodsTabContent({
             <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-[var(--muted-foreground)]">
-                  Local range for{" "}
-                  <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
+                  {/* TIM-2922: header surfaces the resolved city/country so the geo is auditable at a glance. */}
+                  Local cafe range for{" "}
+                  <span className="font-medium text-[var(--foreground)]">{item.name}</span>
+                  {benchmarkResult.city_used
+                    ? ` in ${benchmarkResult.city_used}`
+                    : benchmarkResult.country_used
+                      ? ` (${benchmarkResult.country_used})`
+                      : ""}
+                  :{" "}
                   <span className="font-semibold text-[var(--foreground)]">
                     {formatMinorExact(benchmarkResult.low_cents, currencyCode)} to {formatMinorExact(benchmarkResult.high_cents, currencyCode)}
                   </span>
                 </p>
+                {benchmarkResult.source === "local_cafes" && (
+                  <span
+                    className="shrink-0 text-[10px] font-medium text-[var(--teal)] border border-[var(--teal-bg-750)] rounded px-1.5 py-0.5 leading-none cursor-default"
+                    title={`Range derived from ${benchmarkResult.citations?.length ?? 0} real cafe citations in ${benchmarkResult.country_used ?? "your country"}.`}
+                  >
+                    Local cafes
+                  </span>
+                )}
                 {benchmarkResult.source === "industry_benchmark" && (
                   <span
                     className="shrink-0 text-[10px] font-medium text-[var(--teal)] border border-[var(--teal-bg-750)] rounded px-1.5 py-0.5 leading-none cursor-default"
@@ -1546,6 +1592,46 @@ function CostOfGoodsTabContent({
               <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
                 {benchmarkResult.commentary}
               </p>
+              {/* TIM-2922: citation list — the actual cafes powering the range. */}
+              {benchmarkResult.citations && benchmarkResult.citations.length > 0 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[11px] font-medium text-[var(--teal)] hover:text-[var(--teal-deep)]">
+                    Cited cafes ({benchmarkResult.citations.length})
+                  </summary>
+                  <ul className="mt-1.5 space-y-1 text-[11px]">
+                    {benchmarkResult.citations.map((c, idx) => (
+                      <li key={`${c.url}-${idx}`} className="flex items-baseline justify-between gap-2">
+                        <a
+                          href={c.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[var(--teal)] hover:underline truncate"
+                          title={c.url}
+                        >
+                          {c.name}
+                          {c.city ? <span className="text-[var(--muted-foreground)]"> · {c.city}</span> : null}
+                        </a>
+                        <span className="shrink-0 tabular-nums text-[var(--foreground)] font-medium">
+                          {formatMinorExact(c.price_cents, currencyCode)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {/* TIM-2922: industry-body figures (SCA/NCA/Square/BLS) — secondary panel, never the headline. */}
+              {benchmarkResult.industry_comparison && (
+                <div className="mt-2 pt-2 border-t border-[var(--teal-bg-750)] text-[11px] text-[var(--muted-foreground)]">
+                  <span className="font-medium">For reference</span>
+                  <span className="ml-1">
+                    ({benchmarkResult.industry_comparison.source_label.replace(/_/g, " ")}):{" "}
+                  </span>
+                  <span className="text-[var(--foreground)]">
+                    {formatMinorExact(benchmarkResult.industry_comparison.low_cents, currencyCode)} to{" "}
+                    {formatMinorExact(benchmarkResult.industry_comparison.high_cents, currencyCode)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -3593,6 +3679,15 @@ export function MenuWorkspace({
         const currentDollars = item.price_cents > 0
           ? `${symbol}${(item.price_cents / 100).toFixed(2)}`
           : "Not set";
+        // TIM-2922: surface the live local cafe band + any disagreement_reason
+        // so the owner sees both the suggestion AND its reconciliation with the
+        // benchmark engine in the same modal.
+        const localRangeLine = data.local_range
+          ? `\nLive local cafe band${data.city_used ? ` (${data.city_used})` : data.country_used ? ` (${data.country_used})` : ""}: ${symbol}${(data.local_range.low_cents / 100).toFixed(2)} – ${symbol}${(data.local_range.high_cents / 100).toFixed(2)} from ${data.local_range.citations.length} cited cafes.`
+          : "";
+        const disagreementLine = data.disagreement_reason
+          ? `\n\nReason for going outside the local band: ${data.disagreement_reason}`
+          : "";
         openAIReviewModal({
           suggestions: [
             {
@@ -3600,7 +3695,7 @@ export function MenuWorkspace({
               fieldId: "price_cents",
               fieldLabel: `${item.name} - Retail Price`,
               originalValue: currentDollars,
-              proposedValue: `${symbol}${suggestedDollars}\n\nMarket range: ${symbol}${(data.low_cents / 100).toFixed(2)} – ${symbol}${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
+              proposedValue: `${symbol}${suggestedDollars}\n\nMarket range: ${symbol}${(data.low_cents / 100).toFixed(2)} – ${symbol}${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${(data.margin_pct * 100).toFixed(1)}%${localRangeLine}\n\n${data.commentary}${disagreementLine}`,
               isStructured: false,
             },
           ],
