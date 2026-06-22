@@ -1024,7 +1024,16 @@ export function CoPilotDrawer({
   // so the user can refine a Concept field without retyping context.
   // TIM-2381: extended to accept workspaceKey so AskScoutButton can scope the
   // chat to "This Page" before the first message — no flash of unscoped chat.
+  // TIM-2902: extended to accept autoSubmit. Per-field buttons set it so the
+  // seeded prompt is sent as a real user turn (appearing in the transcript as a
+  // normal user message) instead of sitting silently in the composer.
   const [externalFocusLabel, setExternalFocusLabel] = useState<string | null>(null);
+  // Hold the latest performSend in a ref so the listener doesn't re-subscribe
+  // on every messages/state change.
+  const performSendRef = useRef<((prompt: string) => Promise<void>) | null>(null);
+  useEffect(() => {
+    performSendRef.current = performSend;
+  }, [performSend]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -1033,6 +1042,7 @@ export function CoPilotDrawer({
         focusLabel?: string;
         workspaceKey?: WorkspaceKey;
         action?: string;
+        autoSubmit?: boolean;
       }>).detail;
       if (!detail) return;
       openDrawer();
@@ -1045,7 +1055,14 @@ export function CoPilotDrawer({
         setActiveScope(detail.workspaceKey);
       }
       if (typeof detail.prompt === "string" && detail.prompt.trim().length > 0) {
-        setInput(detail.prompt);
+        if (detail.autoSubmit && performSendRef.current) {
+          // TIM-2902: force Coach mode so the user message bubble actually
+          // renders — Check/Benchmark/Import modes don't show the transcript.
+          setActiveMode("coach");
+          void performSendRef.current(detail.prompt);
+        } else {
+          setInput(detail.prompt);
+        }
       }
     };
     window.addEventListener("copilot:open-with-prompt", handler);

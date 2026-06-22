@@ -83,8 +83,14 @@ export function PersonaEditor({
       field === "typicalOrder"
         ? `Suggest what "${personaName}" typically orders at my coffee shop -- a real, specific order (drink + food/pastry) in plain language, not a generic drink list. Tie it to their visit habits and budget if you can.`
         : `Help me describe the "${label}" for a customer persona named "${personaName}" at a coffee shop.`;
+    // TIM-2902: per-field AI buttons submit the prompt directly so it appears
+    // in the Scout transcript as a normal user message — without autoSubmit the
+    // prompt would sit in the composer and "disappear" once the user sends it
+    // (the assistant reply renders without any visible record of what was asked).
     window.dispatchEvent(
-      new CustomEvent("copilot:open-with-prompt", { detail: { prompt, focusLabel: label } })
+      new CustomEvent("copilot:open-with-prompt", {
+        detail: { prompt, focusLabel: label, autoSubmit: true },
+      })
     );
   }
 
