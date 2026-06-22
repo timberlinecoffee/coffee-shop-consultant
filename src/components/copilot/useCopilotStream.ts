@@ -46,12 +46,20 @@ interface UseCopilotStreamResult {
   // TIM-1561: set when the stream emits a `suggestions` event.
   pendingSuggestions: SuggestionsEvent | null;
   clearSuggestions: () => void;
+  // TIM-2900: id for the in-flight turn. The streaming bubble must only render
+  // while this is non-null; the parent calls `commitTurn(turnId)` immediately
+  // after committing the assistant message to `messages`, which clears the
+  // buffer and id in the same React batch — so the streaming bubble disappears
+  // the instant the committed bubble appears, with no overlap.
+  streamingTurnId: string | null;
+  commitTurn: (turnId: string) => void;
   send: (args: SendArgs) => Promise<{
     threadId: string;
     modelUsed: string | null;
     assistant: string;
     trialRemaining: number | null;
     creditsRemaining: number | null;
+    turnId: string;
   } | null>;
   abort: () => void;
   reset: () => void;
@@ -68,6 +76,9 @@ export function useCopilotStream(): UseCopilotStreamResult {
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
   // TIM-1561: populated when the SSE stream emits a `suggestions` event.
   const [pendingSuggestions, setPendingSuggestions] = useState<SuggestionsEvent | null>(null);
+  // TIM-2900: tracks the in-flight turn so the streaming bubble can be hidden
+  // the moment the parent commits the assistant message into history.
+  const [streamingTurnId, setStreamingTurnId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // TIM-1795: display-layer state for the thinking beat + typewriter reveal.
@@ -170,7 +181,25 @@ export function useCopilotStream(): UseCopilotStreamResult {
     setIsThinking(false);
     setIsStreaming(false);
     setPendingSuggestions(null);
+    setStreamingTurnId(null);
   }, [stopReveal]);
+
+  // TIM-2900: parent calls this immediately after appending the assistant
+  // message to its `messages` array. We clear the buffer + turn id in the same
+  // synchronous tick so React batches both updates with the parent's
+  // `setMessages`, swapping the streaming bubble for the committed bubble in
+  // one render — no duplicate, no flash. We guard on turn-id match so an old
+  // commitTurn for a previous turn can't wipe a fresh stream.
+  const commitTurn = useCallback((turnId: string) => {
+    setStreamingTurnId((current) => {
+      if (current !== turnId) return current;
+      targetTextRef.current = "";
+      revealedRef.current = 0;
+      revealAccRef.current = 0;
+      setAssistantBuffer("");
+      return null;
+    });
+  }, []);
 
   const abort = useCallback(() => {
     abortRef.current?.abort();
@@ -188,6 +217,15 @@ export function useCopilotStream(): UseCopilotStreamResult {
       const controller = new AbortController();
       abortRef.current?.abort();
       abortRef.current = controller;
+
+      // TIM-2900: stamp this turn so the streaming bubble can be tied to a
+      // specific request lifecycle. The parent clears it via commitTurn(id)
+      // the instant it commits the assistant message into history.
+      const turnId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `turn-${Math.random().toString(36).slice(2)}`;
+      setStreamingTurnId(turnId);
 
       setError(null);
       setAssistantBuffer("");
@@ -381,6 +419,7 @@ export function useCopilotStream(): UseCopilotStreamResult {
         assistant,
         trialRemaining: resolvedTrialRemaining,
         creditsRemaining: resolvedCreditsRemaining,
+        turnId,
       };
     },
     [settleReveal, stopReveal],
@@ -397,6 +436,8 @@ export function useCopilotStream(): UseCopilotStreamResult {
     creditsRemaining,
     pendingSuggestions,
     clearSuggestions,
+    streamingTurnId,
+    commitTurn,
     send,
     abort,
     reset,

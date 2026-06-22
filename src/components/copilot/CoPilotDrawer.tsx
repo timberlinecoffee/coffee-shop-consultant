@@ -420,6 +420,12 @@ export function CoPilotDrawer({
     trialRemaining,
     pendingSuggestions,
     clearSuggestions,
+    // TIM-2900: turn-id-keyed render guard. The streaming bubble must only
+    // render while `streamingTurnId !== null`; we call `commitTurn(turnId)`
+    // the same tick we append the assistant message to `messages`, so React
+    // batches both updates and the bubble swaps cleanly with no overlap.
+    streamingTurnId,
+    commitTurn,
     send,
     abort,
     reset,
@@ -815,6 +821,11 @@ export function CoPilotDrawer({
       };
       const finalMessages = [...nextHistory, assistantMessage];
       setMessages(finalMessages);
+      // TIM-2900: clear the streaming bubble in the SAME tick we commit the
+      // assistant message. React 18 batches these into one render — the
+      // streaming bubble disappears exactly when the committed bubble appears,
+      // so the same response can never render twice.
+      commitTurn(result.turnId);
       setPendingRetry(null);
       if (result.threadId !== activeThreadId) {
         setActiveThreadId(result.threadId);
@@ -841,6 +852,7 @@ export function CoPilotDrawer({
     [
       activeThreadId,
       activeScope,
+      commitTurn,
       isStreaming,
       maybeRequestTitle,
       messages,
@@ -1376,7 +1388,16 @@ export function CoPilotDrawer({
                 <MessageBubble key={idx} role={msg.role} content={msg.content} />
               ))}
 
-              {activeMode === "coach" && (assistantBuffer || isThinking) && (
+              {/* TIM-2900: turn-id-keyed render guard. The streaming bubble
+                  must only render while a turn is in-flight or in-error
+                  (streamingTurnId still set). The instant we commit the
+                  assistant message to `messages`, commitTurn() clears
+                  streamingTurnId AND the buffer in the same React batch, so
+                  the streaming bubble swaps cleanly to the committed bubble
+                  with no overlap. Without this guard, a stale buffer plus a
+                  freshly-committed assistant message render two identical
+                  bubbles (the original TIM-2900 regression). */}
+              {activeMode === "coach" && streamingTurnId !== null && (assistantBuffer || isThinking) && (
                 <div className="space-y-2">
                   {isThinking && (
                     <div
@@ -1668,8 +1689,16 @@ function MessageBubble({
   streaming?: boolean;
 }) {
   const isUser = role === "user";
+  // TIM-2900: stable testids so the duplicate-bubble regression guard can
+  // count assistant bubbles (committed vs streaming) without coupling to
+  // class names that drift with the style guide.
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+      data-testid="copilot-bubble"
+      data-role={role}
+      data-streaming={streaming ? "true" : "false"}
+    >
       {isUser ? (
         <div className="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap bg-[var(--teal)] text-white rounded-br-sm">
           {content}
